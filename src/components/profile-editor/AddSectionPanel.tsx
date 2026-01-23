@@ -469,7 +469,11 @@ export function AddSectionPanel({ open, onClose, onAddSection }: AddSectionPanel
 
   const handleSelectPreset = (presetId: string) => {
     onAddSection(selectedType, presetId);
-    onClose();
+    // Don't call onClose - let parent handle closing after section is added
+  };
+
+  const handleTypeSelect = (type: SectionType) => {
+    setSelectedType(type);
   };
 
   // Group templates by category
@@ -479,18 +483,21 @@ export function AddSectionPanel({ open, onClose, onAddSection }: AddSectionPanel
   })).filter(g => g.templates.length > 0);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background">
+    <div 
+      className="fixed inset-0 bg-background flex flex-col"
+      style={{ zIndex: 9999 }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
         <h2 className="text-xl font-bold">Add New Section</h2>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="w-5 h-5" />
         </Button>
       </div>
 
-      <div className="flex h-[calc(100vh-65px)]">
+      <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Section Types */}
-        <div className="w-64 border-r border-border bg-muted/30">
+        <div className="w-64 border-r border-border bg-muted/30 shrink-0 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-4 space-y-6">
               {groupedTemplates.map((group) => (
@@ -502,9 +509,10 @@ export function AddSectionPanel({ open, onClose, onAddSection }: AddSectionPanel
                     {group.templates.map((template) => (
                       <button
                         key={template.type}
-                        onClick={() => setSelectedType(template.type)}
+                        type="button"
+                        onClick={() => handleTypeSelect(template.type)}
                         className={cn(
-                          "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                          "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer",
                           selectedType === template.type
                             ? "bg-primary text-primary-foreground font-medium"
                             : "hover:bg-muted text-foreground"
@@ -521,7 +529,7 @@ export function AddSectionPanel({ open, onClose, onAddSection }: AddSectionPanel
         </div>
 
         {/* Right Panel - Preset Previews */}
-        <div className="flex-1 bg-muted/10">
+        <div className="flex-1 bg-muted/10 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-8">
               {selectedTemplate && (
@@ -536,8 +544,9 @@ export function AddSectionPanel({ open, onClose, onAddSection }: AddSectionPanel
                       {presets.map((preset, index) => (
                         <button
                           key={preset.id}
+                          type="button"
                           onClick={() => handleSelectPreset(preset.id)}
-                          className="group relative bg-card rounded-xl border border-border hover:border-primary/50 hover:shadow-lg transition-all overflow-hidden"
+                          className="group relative bg-card rounded-xl border border-border hover:border-primary/50 hover:shadow-lg transition-all overflow-hidden cursor-pointer text-left"
                         >
                           {/* Preview number badge */}
                           <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-muted-foreground/80 text-white text-xs font-medium flex items-center justify-center z-10">
@@ -550,9 +559,9 @@ export function AddSectionPanel({ open, onClose, onAddSection }: AddSectionPanel
                           </div>
 
                           {/* Hover overlay */}
-                          <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                             <div className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium">
-                              Use This Layout
+                              Add This Layout
                             </div>
                           </div>
                         </button>
@@ -561,7 +570,7 @@ export function AddSectionPanel({ open, onClose, onAddSection }: AddSectionPanel
                   ) : (
                     <div className="text-center py-12">
                       <p className="text-muted-foreground mb-4">Click to add this section</p>
-                      <Button onClick={() => handleSelectPreset('style1')}>
+                      <Button type="button" onClick={() => handleSelectPreset('style1')}>
                         Add {selectedTemplate.name}
                       </Button>
                     </div>
