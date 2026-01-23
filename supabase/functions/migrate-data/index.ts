@@ -66,9 +66,12 @@ Deno.serve(async (req) => {
       
       if (sourceProfiles) {
         for (const profile of sourceProfiles) {
+          // Use profile.id as user_id if user_id is null (Base44 migration)
+          const userId = profile.user_id || profile.id;
+          
           const { error } = await destClient.from("profiles").upsert({
             id: profile.id,
-            user_id: profile.user_id,
+            user_id: userId,
             username: profile.username,
             email: profile.email,
             full_name: profile.full_name,
@@ -115,6 +118,13 @@ Deno.serve(async (req) => {
             creator_id: product.creator_id,
             created_at: product.created_at,
             updated_at: product.updated_at,
+            // New columns
+            created_by: product.created_by,
+            locked: product.locked,
+            attachments: product.attachments,
+            benefits: product.benefits,
+            duration_label: product.duration_label,
+            excerpt: product.excerpt,
           }, { onConflict: 'id' });
 
           if (error) {
