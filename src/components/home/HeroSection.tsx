@@ -21,36 +21,25 @@ export default function HeroSection() {
     <section className="relative min-h-[90vh] flex items-center overflow-hidden">
       {/* Animated gradient background */}
       <div className="absolute inset-0 -z-10">
-        {/* Base gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/20" />
+        {/* Intense purple gradient base */}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/40 via-background to-background" />
         
-        {/* Primary gradient orbs */}
-        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-primary/30 rounded-full blur-[150px] animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-accent/25 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/3 right-1/3 w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }} />
-        
-        {/* Central glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-gradient-radial from-primary/15 via-primary/5 to-transparent rounded-full" />
+        {/* Large visible gradient orbs */}
+        <div className="absolute -top-[200px] left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-primary/50 rounded-full blur-[180px]" />
+        <div className="absolute top-1/4 -left-[200px] w-[600px] h-[600px] bg-purple-500/40 rounded-full blur-[150px]" />
+        <div className="absolute top-1/4 -right-[200px] w-[600px] h-[600px] bg-accent/30 rounded-full blur-[150px]" />
+        <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] bg-primary/25 rounded-full blur-[120px]" />
         
         {/* Grain texture overlay */}
         <div 
-          className="absolute inset-0 opacity-[0.15] mix-blend-overlay"
+          className="absolute inset-0 opacity-[0.25] mix-blend-overlay pointer-events-none"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
           }}
         />
         
-        {/* Subtle grid pattern */}
-        <div 
-          className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
-            backgroundSize: '60px 60px'
-          }}
-        />
-        
-        {/* Top and bottom vignette */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_hsl(var(--background))_75%)]" />
+        {/* Bottom vignette only */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
       </div>
 
       {/* Floating decorative elements */}
@@ -96,16 +85,7 @@ export default function HeroSection() {
 
           {/* Subtitle with rotating words */}
           <p className="text-xl sm:text-2xl text-muted-foreground max-w-2xl mb-10 leading-relaxed">
-            Discover premium{' '}
-            <span className="inline-block w-[140px] text-left">
-              <span 
-                key={activeWord}
-                className="text-foreground font-semibold animate-fade-in"
-              >
-                {floatingWords[activeWord]}
-              </span>
-            </span>
-            crafted by
+            Discover premium <span className="text-foreground font-semibold animate-fade-in" key={activeWord}>{floatingWords[activeWord]}</span> crafted by
             <br className="hidden sm:block" />
             professional creators worldwide.
           </p>
