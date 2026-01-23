@@ -9,7 +9,8 @@ import {
   AudioWaveform,
   Sparkles,
   Image,
-  Wand2
+  Wand2,
+  Volume2
 } from "lucide-react";
 
 export interface Tool {
@@ -96,6 +97,15 @@ export const tools: Tool[] = [
     description: "Generate visual waveforms from audio",
     icon: AudioWaveform,
     category: "audio",
+    available: true,
+  },
+  {
+    id: "sfx-generator",
+    title: "SFX Generator",
+    description: "Create sound effects from text with AI",
+    icon: Volume2,
+    category: "audio",
+    badge: "New",
     available: true,
   },
   // Generators

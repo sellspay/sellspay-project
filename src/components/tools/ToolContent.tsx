@@ -13,6 +13,7 @@ const WaveformGenerator = lazy(() => import("@/pages/tools/WaveformGenerator"));
 const VoiceIsolator = lazy(() => import("@/pages/tools/VoiceIsolator"));
 const SFXIsolator = lazy(() => import("@/pages/tools/SFXIsolator"));
 const MusicSplitter = lazy(() => import("@/pages/tools/MusicSplitter"));
+const SFXGenerator = lazy(() => import("@/pages/tools/SFXGenerator"));
 
 interface ToolContentProps {
   toolId: string | null;
@@ -85,6 +86,7 @@ export function ToolContent({ toolId }: ToolContentProps) {
         {toolId === "video-to-audio" && <VideoToAudioInline />}
         {toolId === "audio-converter" && <AudioConverterInline />}
         {toolId === "waveform-generator" && <WaveformGeneratorInline />}
+        {toolId === "sfx-generator" && <SFXGenerator />}
       </div>
     </Suspense>
   );
