@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, BadgeCheck, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus } from "lucide-react";
+import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, BadgeCheck, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,9 +9,12 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { GifPicker } from "@/components/comments/GifPicker";
+import { cn } from "@/lib/utils";
 
 interface Product {
   id: string;
@@ -38,17 +41,30 @@ interface Product {
   } | null;
 }
 
+interface CommentUser {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  verified: boolean | null;
+}
+
+interface CommentLike {
+  id: string;
+  user_id: string;
+  user?: CommentUser | null;
+}
+
 interface Comment {
   id: string;
   content: string;
+  gif_url: string | null;
   created_at: string;
   user_id: string;
-  user: {
-    username: string | null;
-    full_name: string | null;
-    avatar_url: string | null;
-    verified: boolean | null;
-  } | null;
+  parent_comment_id: string | null;
+  user: CommentUser | null;
+  likes: CommentLike[];
+  replies?: Comment[];
 }
 
 interface RelatedProduct {
@@ -122,7 +138,10 @@ export default function ProductDetail() {
   const [commentCount, setCommentCount] = useState(0);
   const [showAllComments, setShowAllComments] = useState(false);
   const [newComment, setNewComment] = useState("");
+  const [selectedGif, setSelectedGif] = useState<string | null>(null);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [likingComment, setLikingComment] = useState<string | null>(null);
   
   // Related
   const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
@@ -261,28 +280,96 @@ export default function ProductDetail() {
     if (!id) return;
     
     try {
+      // Fetch top-level comments (no parent)
       const { data, count } = await supabase
         .from("comments")
         .select("*", { count: "exact" })
         .eq("product_id", id)
+        .is("parent_comment_id", null)
         .order("created_at", { ascending: false })
         .limit(10);
       
       setCommentCount(count || 0);
       
-      // Fetch user info for each comment
       if (data) {
-        const commentsWithUsers = await Promise.all(
+        // Fetch user info, likes, and replies for each comment
+        const commentsWithDetails = await Promise.all(
           data.map(async (comment) => {
+            // Get user profile
             const { data: profile } = await supabase
               .from("profiles")
-              .select("username, full_name, avatar_url, verified")
+              .select("id, username, full_name, avatar_url, verified")
               .eq("id", comment.user_id)
               .maybeSingle();
-            return { ...comment, user: profile };
+            
+            // Get likes for this comment
+            const { data: likes } = await supabase
+              .from("comment_likes")
+              .select("id, user_id")
+              .eq("comment_id", comment.id);
+            
+            // Fetch user info for likes (especially to show creator like)
+            const likesWithUsers = await Promise.all(
+              (likes || []).map(async (like) => {
+                const { data: likeUser } = await supabase
+                  .from("profiles")
+                  .select("id, username, full_name, avatar_url, verified")
+                  .eq("id", like.user_id)
+                  .maybeSingle();
+                return { ...like, user: likeUser };
+              })
+            );
+            
+            // Get replies
+            const { data: replies } = await supabase
+              .from("comments")
+              .select("*")
+              .eq("parent_comment_id", comment.id)
+              .order("created_at", { ascending: true });
+            
+            // Fetch user info and likes for replies
+            const repliesWithDetails = await Promise.all(
+              (replies || []).map(async (reply) => {
+                const { data: replyProfile } = await supabase
+                  .from("profiles")
+                  .select("id, username, full_name, avatar_url, verified")
+                  .eq("id", reply.user_id)
+                  .maybeSingle();
+                
+                const { data: replyLikes } = await supabase
+                  .from("comment_likes")
+                  .select("id, user_id")
+                  .eq("comment_id", reply.id);
+                
+                const replyLikesWithUsers = await Promise.all(
+                  (replyLikes || []).map(async (like) => {
+                    const { data: likeUser } = await supabase
+                      .from("profiles")
+                      .select("id, username, full_name, avatar_url, verified")
+                      .eq("id", like.user_id)
+                      .maybeSingle();
+                    return { ...like, user: likeUser };
+                  })
+                );
+                
+                return {
+                  ...reply,
+                  user: replyProfile,
+                  likes: replyLikesWithUsers,
+                  replies: [],
+                };
+              })
+            );
+            
+            return {
+              ...comment,
+              user: profile,
+              likes: likesWithUsers,
+              replies: repliesWithDetails,
+            };
           })
         );
-        setComments(commentsWithUsers);
+        setComments(commentsWithDetails);
       }
     } catch (error) {
       console.error("Error fetching comments:", error);
@@ -353,7 +440,7 @@ export default function ProductDetail() {
       return;
     }
     
-    if (!userProfileId || !id || !newComment.trim()) return;
+    if (!userProfileId || !id || (!newComment.trim() && !selectedGif)) return;
 
     setSubmittingComment(true);
     try {
@@ -363,18 +450,74 @@ export default function ProductDetail() {
           product_id: id,
           user_id: userProfileId,
           content: newComment.trim(),
+          gif_url: selectedGif,
+          parent_comment_id: replyingTo,
         });
 
       if (error) throw error;
 
       setNewComment("");
+      setSelectedGif(null);
+      setReplyingTo(null);
       fetchComments();
-      toast.success("Comment posted!");
+      toast.success(replyingTo ? "Reply posted!" : "Comment posted!");
     } catch (error) {
       console.error("Error posting comment:", error);
       toast.error("Failed to post comment");
     } finally {
       setSubmittingComment(false);
+    }
+  };
+
+  const handleCommentLike = async (commentId: string) => {
+    if (!user) {
+      toast.error("Please sign in to like comments");
+      return;
+    }
+    
+    if (!userProfileId) return;
+
+    setLikingComment(commentId);
+    try {
+      // Check if already liked
+      const { data: existingLike } = await supabase
+        .from("comment_likes")
+        .select("id")
+        .eq("comment_id", commentId)
+        .eq("user_id", userProfileId)
+        .maybeSingle();
+
+      if (existingLike) {
+        // Unlike
+        await supabase
+          .from("comment_likes")
+          .delete()
+          .eq("id", existingLike.id);
+      } else {
+        // Like
+        await supabase
+          .from("comment_likes")
+          .insert({
+            comment_id: commentId,
+            user_id: userProfileId,
+          });
+      }
+
+      fetchComments();
+    } catch (error) {
+      console.error("Error toggling comment like:", error);
+      toast.error("Failed to update like");
+    } finally {
+      setLikingComment(null);
+    }
+  };
+
+  const handleReply = (commentId: string) => {
+    setReplyingTo(commentId);
+    // Find the comment to show who we're replying to
+    const comment = comments.find(c => c.id === commentId);
+    if (comment?.user?.username) {
+      setNewComment(`@${comment.user.username} `);
     }
   };
 
@@ -755,49 +898,247 @@ export default function ProductDetail() {
           <div>
             <h3 className="font-semibold mb-4">Comments</h3>
             
+            {/* Replying indicator */}
+            {replyingTo && (
+              <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+                <Reply className="w-3 h-3" />
+                <span>Replying to comment</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-auto p-1 text-xs"
+                  onClick={() => {
+                    setReplyingTo(null);
+                    setNewComment("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+            
             {/* New Comment Input */}
             {user && (
-              <div className="flex gap-3 mb-4">
-                <Textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Add a comment..."
-                  className="min-h-[60px]"
-                />
-                <Button 
-                  onClick={handleSubmitComment} 
-                  disabled={submittingComment || !newComment.trim()}
-                  size="sm"
-                  className="h-auto"
-                >
-                  {submittingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : "Post"}
-                </Button>
+              <div className="space-y-2 mb-4">
+                {/* Selected GIF preview */}
+                {selectedGif && (
+                  <div className="relative inline-block">
+                    <img 
+                      src={selectedGif} 
+                      alt="Selected GIF" 
+                      className="max-h-24 rounded-md"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full"
+                      onClick={() => setSelectedGif(null)}
+                    >
+                      <span className="sr-only">Remove GIF</span>
+                      ×
+                    </Button>
+                  </div>
+                )}
+                
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1 relative">
+                    <Textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
+                      className="min-h-[60px] pr-10"
+                    />
+                    <div className="absolute right-2 bottom-2">
+                      <GifPicker onSelect={setSelectedGif} />
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={handleSubmitComment} 
+                    disabled={submittingComment || (!newComment.trim() && !selectedGif)}
+                    size="icon"
+                    className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90"
+                  >
+                    {submittingComment ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             )}
 
             {/* Comments List */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               {displayedComments.map((comment) => (
-                <div key={comment.id} className="flex gap-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={comment.user?.avatar_url || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {comment.user?.username?.[0]?.toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium flex items-center gap-1">
-                        @{comment.user?.username || "anonymous"}
-                        {comment.user?.verified && (
-                          <BadgeCheck className="w-3 h-3 text-primary" />
+                <div key={comment.id} className="space-y-2">
+                  <div className="flex gap-3">
+                    <Avatar className="w-8 h-8 flex-shrink-0">
+                      <AvatarImage src={comment.user?.avatar_url || undefined} />
+                      <AvatarFallback className="text-xs">
+                        {comment.user?.username?.[0]?.toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium flex items-center gap-1">
+                          @{comment.user?.username || "anonymous"}
+                          {comment.user?.verified && (
+                            <BadgeCheck className="w-3 h-3 text-primary" />
+                          )}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(comment.created_at)}
+                        </span>
+                      </div>
+                      
+                      {/* Comment content */}
+                      {comment.content && (
+                        <p className="text-sm text-muted-foreground mt-1">{comment.content}</p>
+                      )}
+                      
+                      {/* GIF content */}
+                      {comment.gif_url && (
+                        <div className="mt-2 rounded-lg overflow-hidden max-w-xs">
+                          <img
+                            src={comment.gif_url}
+                            alt="GIF"
+                            className="max-w-full h-auto"
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Actions row */}
+                      <div className="flex items-center gap-3 mt-2">
+                        {/* Like button with count */}
+                        <button
+                          onClick={() => handleCommentLike(comment.id)}
+                          disabled={likingComment === comment.id}
+                          className={cn(
+                            "flex items-center gap-1 text-xs transition-colors",
+                            comment.likes.some(l => l.user_id === userProfileId)
+                              ? "text-destructive"
+                              : "text-muted-foreground hover:text-destructive"
+                          )}
+                        >
+                          {likingComment === comment.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Heart
+                              className={cn(
+                                "w-3.5 h-3.5",
+                                comment.likes.some(l => l.user_id === userProfileId) && "fill-current"
+                              )}
+                            />
+                          )}
+                          {comment.likes.length > 0 && (
+                            <span>{comment.likes.length}</span>
+                          )}
+                        </button>
+
+                        {/* Creator liked indicator */}
+                        {product?.creator && comment.likes.some(l => l.user_id === product.creator?.id) && (
+                          <div className="flex items-center gap-1">
+                            <Heart className="w-3 h-3 text-destructive fill-destructive" />
+                            <Avatar className="w-4 h-4 border border-destructive">
+                              <AvatarImage src={product.creator.avatar_url || undefined} />
+                              <AvatarFallback className="text-[8px]">
+                                {product.creator.username?.[0]?.toUpperCase() || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
                         )}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(comment.created_at)}
-                      </span>
+
+                        {/* Reply button */}
+                        <button
+                          onClick={() => handleReply(comment.id)}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <Reply className="w-3.5 h-3.5" />
+                          Reply
+                        </button>
+                      </div>
+                      
+                      {/* Replies */}
+                      {comment.replies && comment.replies.length > 0 && (
+                        <Collapsible className="mt-2">
+                          <CollapsibleTrigger className="flex items-center gap-1 text-xs text-primary hover:underline">
+                            <ChevronDown className="w-3 h-3" />
+                            View {comment.replies.length} {comment.replies.length === 1 ? "reply" : "replies"}
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-2 space-y-3 ml-6 border-l-2 border-border pl-3">
+                            {comment.replies.map((reply) => (
+                              <div key={reply.id} className="flex gap-2">
+                                <Avatar className="w-6 h-6 flex-shrink-0">
+                                  <AvatarImage src={reply.user?.avatar_url || undefined} />
+                                  <AvatarFallback className="text-[10px]">
+                                    {reply.user?.username?.[0]?.toUpperCase() || "?"}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-medium flex items-center gap-1">
+                                      @{reply.user?.username || "anonymous"}
+                                      {reply.user?.verified && (
+                                        <BadgeCheck className="w-2.5 h-2.5 text-primary" />
+                                      )}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {formatDate(reply.created_at)}
+                                    </span>
+                                  </div>
+                                  {reply.content && (
+                                    <p className="text-xs text-muted-foreground mt-0.5">{reply.content}</p>
+                                  )}
+                                  {reply.gif_url && (
+                                    <div className="mt-1 rounded overflow-hidden max-w-[150px]">
+                                      <img src={reply.gif_url} alt="GIF" className="max-w-full h-auto" loading="lazy" />
+                                    </div>
+                                  )}
+                                  {/* Reply like button */}
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <button
+                                      onClick={() => handleCommentLike(reply.id)}
+                                      disabled={likingComment === reply.id}
+                                      className={cn(
+                                        "flex items-center gap-1 text-[10px] transition-colors",
+                                        reply.likes.some(l => l.user_id === userProfileId)
+                                          ? "text-destructive"
+                                          : "text-muted-foreground hover:text-destructive"
+                                      )}
+                                    >
+                                      {likingComment === reply.id ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <Heart
+                                          className={cn(
+                                            "w-3 h-3",
+                                            reply.likes.some(l => l.user_id === userProfileId) && "fill-current"
+                                          )}
+                                        />
+                                      )}
+                                      {reply.likes.length > 0 && <span>{reply.likes.length}</span>}
+                                    </button>
+                                    {product?.creator && reply.likes.some(l => l.user_id === product.creator?.id) && (
+                                      <div className="flex items-center gap-0.5">
+                                        <Heart className="w-2.5 h-2.5 text-destructive fill-destructive" />
+                                        <Avatar className="w-3 h-3 border border-destructive">
+                                          <AvatarImage src={product.creator.avatar_url || undefined} />
+                                          <AvatarFallback className="text-[6px]">
+                                            {product.creator.username?.[0]?.toUpperCase() || "?"}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">{comment.content}</p>
                   </div>
                 </div>
               ))}
