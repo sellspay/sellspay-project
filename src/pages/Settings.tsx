@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { User, Bell, Shield, CreditCard, LogOut, Upload, Loader2, CheckCircle, ExternalLink } from "lucide-react";
+import { User, Bell, Shield, CreditCard, LogOut, Upload, Loader2, CheckCircle, ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +24,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [connectingStripe, setConnectingStripe] = useState(false);
+  const [checkingStripeStatus, setCheckingStripeStatus] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [uploadingBackground, setUploadingBackground] = useState(false);
@@ -90,11 +91,36 @@ export default function Settings() {
         setBackgroundUrl((data as Record<string, unknown>).background_url as string | null);
         setStripeAccountId(data.stripe_account_id);
         setStripeOnboardingComplete(data.stripe_onboarding_complete || false);
+        
+        // If there's a Stripe account but onboarding not complete, check status
+        if (data.stripe_account_id && !data.stripe_onboarding_complete) {
+          checkStripeStatus();
+        }
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkStripeStatus = async () => {
+    setCheckingStripeStatus(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-connect-status");
+      
+      if (error) throw error;
+      
+      if (data?.onboarding_complete) {
+        setStripeOnboardingComplete(true);
+        toast.success("Stripe account verified and connected!");
+      } else if (data?.connected && !data?.onboarding_complete) {
+        toast.info("Stripe onboarding is still incomplete. Please complete setup.");
+      }
+    } catch (error) {
+      console.error("Error checking Stripe status:", error);
+    } finally {
+      setCheckingStripeStatus(false);
     }
   };
 
@@ -697,22 +723,37 @@ export default function Settings() {
                     Manage Stripe Account
                   </Button>
                 ) : (
-                  <Button 
-                    className="bg-gradient-to-r from-primary to-accent"
-                    onClick={handleConnectStripe}
-                    disabled={connectingStripe}
-                  >
-                    {connectingStripe ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Connecting...
-                      </>
-                    ) : stripeAccountId ? (
-                      "Complete Onboarding"
-                    ) : (
-                      "Connect Stripe Account"
+                  <div className="flex gap-2">
+                    <Button 
+                      className="bg-gradient-to-r from-primary to-accent"
+                      onClick={handleConnectStripe}
+                      disabled={connectingStripe}
+                    >
+                      {connectingStripe ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Connecting...
+                        </>
+                      ) : stripeAccountId ? (
+                        "Complete Onboarding"
+                      ) : (
+                        "Connect Stripe Account"
+                      )}
+                    </Button>
+                    {stripeAccountId && (
+                      <Button 
+                        variant="outline"
+                        onClick={checkStripeStatus}
+                        disabled={checkingStripeStatus}
+                      >
+                        {checkingStripeStatus ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                      </Button>
                     )}
-                  </Button>
+                  </div>
                 )}
               </div>
 
