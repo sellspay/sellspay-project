@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,8 +38,6 @@ export default function EditProduct() {
   const [pricingType, setPricingType] = useState("free");
   const [price, setPrice] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
   const [status, setStatus] = useState("draft");
   
   // Existing media URLs
@@ -109,7 +106,6 @@ export default function EditProduct() {
       setPricingType(product.pricing_type || "free");
       setPrice(product.price_cents ? (product.price_cents / 100).toString() : "");
       setYoutubeUrl(product.youtube_url || "");
-      setTags(product.tags || []);
       setStatus(product.status || "draft");
       setExistingCoverUrl(product.cover_image_url);
       setExistingPreviewVideoPath(product.preview_video_url);
@@ -148,19 +144,6 @@ export default function EditProduct() {
       setRemoveDownload(false);
     }
   };
-
-  const addTag = () => {
-    const tag = tagInput.trim().toLowerCase();
-    if (tag && !tags.includes(tag) && tags.length < 10) {
-      setTags([...tags, tag]);
-      setTagInput("");
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setTags(tags.filter(t => t !== tag));
-  };
-
   const getPreviewVideoUrl = (path: string | null): string | null => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
@@ -285,7 +268,7 @@ export default function EditProduct() {
           pricing_type: pricingType,
           price_cents: priceCents,
           youtube_url: youtubeUrl || null,
-          tags: tags.length > 0 ? tags : null,
+          tags: null,
           cover_image_url: coverImageUrl,
           preview_video_url: previewVideoPath,
           download_url: downloadUrl,
@@ -678,42 +661,6 @@ export default function EditProduct() {
                 )}
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Tags */}
-        <Card className="bg-card/50">
-          <CardHeader>
-            <CardTitle>Tags</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                placeholder="Add a tag"
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-              />
-              <Button type="button" onClick={addTag}>
-                Add
-              </Button>
-            </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="gap-1">
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="ml-1 hover:text-destructive"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
           </CardContent>
         </Card>
 

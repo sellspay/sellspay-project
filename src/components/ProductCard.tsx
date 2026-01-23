@@ -43,6 +43,19 @@ function getPreviewVideoUrl(path: string | null): string | null {
   return data?.publicUrl || null;
 }
 
+const productTypeLabels: Record<string, string> = {
+  preset: "Preset",
+  lut: "LUT",
+  sfx: "SFX",
+  music: "Music",
+  template: "Template",
+  overlay: "Overlay",
+  font: "Font",
+  tutorial: "Tutorial",
+  project_file: "Project File",
+  other: "Other",
+};
+
 function formatPrice(cents: number | null, currency: string | null): string {
   if (!cents || cents === 0) return 'Free';
   const amount = cents / 100;
@@ -143,6 +156,13 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
           </div>
         )}
 
+        {/* Product Type Badge */}
+        {product.product_type && (
+          <div className="absolute bottom-2 left-2 rounded bg-secondary/90 px-2 py-0.5 text-xs font-medium text-secondary-foreground backdrop-blur-sm">
+            {productTypeLabels[product.product_type] || product.product_type}
+          </div>
+        )}
+
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
       </div>
@@ -152,11 +172,6 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
         <h3 className="truncate text-sm font-medium text-foreground group-hover:text-primary transition-colors">
           {product.name}
         </h3>
-        {showType && product.product_type && (
-          <p className="text-xs text-muted-foreground capitalize">
-            {product.product_type.replace('_', ' ')}
-          </p>
-        )}
       </div>
     </Link>
   );
