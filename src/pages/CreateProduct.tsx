@@ -34,8 +34,6 @@ export default function CreateProduct() {
   const [pricingType, setPricingType] = useState("free");
   const [price, setPrice] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [previewVideo, setPreviewVideo] = useState<File | null>(null);
@@ -65,17 +63,6 @@ export default function CreateProduct() {
     }
   };
 
-  const addTag = () => {
-    const tag = tagInput.trim().toLowerCase();
-    if (tag && !tags.includes(tag) && tags.length < 10) {
-      setTags([...tags, tag]);
-      setTagInput("");
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setTags(tags.filter(t => t !== tag));
-  };
 
   const handleSubmit = async (e: React.FormEvent, publish: boolean) => {
     e.preventDefault();
@@ -171,7 +158,7 @@ export default function CreateProduct() {
           price_cents: priceCents,
           currency: "USD",
           youtube_url: youtubeUrl || null,
-          tags: tags.length > 0 ? tags : null,
+          tags: null,
           cover_image_url: coverImageUrl,
           preview_video_url: previewVideoPath,
           download_url: downloadUrl,
@@ -444,42 +431,6 @@ export default function CreateProduct() {
                 )}
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Tags */}
-        <Card className="bg-card/50">
-          <CardHeader>
-            <CardTitle>Tags</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                placeholder="Add a tag"
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-              />
-              <Button type="button" onClick={addTag}>
-                Add
-              </Button>
-            </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="gap-1">
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="ml-1 hover:text-destructive"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
           </CardContent>
         </Card>
 

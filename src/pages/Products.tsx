@@ -25,8 +25,20 @@ interface Product {
   pricing_type: string | null;
   price_cents: number | null;
   currency: string | null;
-  tags: string[] | null;
 }
+
+const productTypeLabels: Record<string, string> = {
+  preset: "Preset Pack",
+  lut: "LUT Pack",
+  sfx: "Sound Effects",
+  music: "Music",
+  template: "Template",
+  overlay: "Overlay",
+  font: "Font",
+  tutorial: "Tutorial",
+  project_file: "Project File",
+  other: "Other",
+};
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -39,7 +51,7 @@ export default function Products() {
     async function fetchProducts() {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, status, product_type, featured, cover_image_url, preview_video_url, youtube_url, pricing_type, price_cents, currency, tags')
+        .select('id, name, description, status, product_type, featured, cover_image_url, preview_video_url, youtube_url, pricing_type, price_cents, currency')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
 
@@ -100,10 +112,11 @@ export default function Products() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="tutorial">Tutorials</SelectItem>
-              <SelectItem value="project_file">Project Files</SelectItem>
-              <SelectItem value="preset">Presets</SelectItem>
-              <SelectItem value="template">Templates</SelectItem>
+              {Object.entries(productTypeLabels).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={priceFilter} onValueChange={setPriceFilter}>
