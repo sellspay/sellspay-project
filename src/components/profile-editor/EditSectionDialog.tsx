@@ -38,6 +38,7 @@ import {
 interface EditSectionDialogProps {
   section: ProfileSection | null;
   collections: { id: string; name: string }[];
+  products?: { id: string; name: string }[];
   onUpdate: (section: ProfileSection) => void;
   onDelete: (sectionId: string) => void;
   onClose: () => void;
@@ -47,6 +48,7 @@ interface EditSectionDialogProps {
 export function EditSectionDialog({
   section,
   collections,
+  products = [],
   onUpdate,
   onDelete,
   onClose,
@@ -125,6 +127,7 @@ export function EditSectionDialog({
             onChange={updateContent}
             onUpload={handleImageUpload}
             uploading={uploading}
+            products={products}
           />
         );
       case 'gallery':
@@ -319,11 +322,13 @@ function ImageWithTextEditor({
   onChange,
   onUpload,
   uploading,
+  products = [],
 }: {
   content: ImageWithTextContent;
   onChange: (updates: Partial<ImageWithTextContent>) => void;
   onUpload: (file: File, onSuccess: (url: string) => void) => void;
   uploading: boolean;
+  products?: { id: string; name: string }[];
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -392,6 +397,66 @@ function ImageWithTextEditor({
       <div>
         <Label>Body</Label>
         <Textarea value={content.body} onChange={(e) => onChange({ body: e.target.value })} rows={3} />
+      </div>
+      
+      {/* Button Configuration */}
+      <div className="border-t border-border pt-4 mt-4">
+        <Label className="text-sm font-medium">Button Settings</Label>
+        <div className="space-y-3 mt-3">
+          <div>
+            <Label className="text-xs text-muted-foreground">Button Text</Label>
+            <Input
+              value={content.buttonText || ''}
+              onChange={(e) => onChange({ buttonText: e.target.value })}
+              placeholder="e.g. Shop Now, Learn More, View"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Link Type</Label>
+            <Select
+              value={content.buttonLinkType || 'external'}
+              onValueChange={(value) => onChange({ buttonLinkType: value as 'external' | 'product' | 'profile' })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choose link type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="external">External URL</SelectItem>
+                <SelectItem value="product">Link to Product</SelectItem>
+                <SelectItem value="profile">Link to My Profile</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {content.buttonLinkType === 'product' ? (
+            <div>
+              <Label className="text-xs text-muted-foreground">Select Product</Label>
+              <Select
+                value={content.buttonProductId || ''}
+                onValueChange={(value) => onChange({ buttonProductId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products.map((prod) => (
+                    <SelectItem key={prod.id} value={prod.id}>
+                      {prod.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : content.buttonLinkType !== 'profile' && (
+            <div>
+              <Label className="text-xs text-muted-foreground">Button URL</Label>
+              <Input
+                value={content.buttonUrl || ''}
+                onChange={(e) => onChange({ buttonUrl: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -53,6 +53,8 @@ export interface ImageWithTextContent {
   imagePosition: 'left' | 'right';
   buttonText?: string;
   buttonUrl?: string;
+  buttonLinkType?: 'external' | 'product' | 'profile'; // Link destination type
+  buttonProductId?: string; // If linking to a product
   layout?: 'hero' | 'side-by-side' | 'overlay'; // For different preset layouts
 }
 

@@ -61,6 +61,31 @@ const ImageWithTextPreview = memo(({ section }: { section: ProfileSection }) => 
   const layout = content.layout || resolvedLayout || 'side-by-side';
   const imagePosition = content.imagePosition || resolvedImagePosition;
   
+  // Compute the button href based on link type
+  const getButtonHref = () => {
+    if (!content.buttonText) return undefined;
+    switch (content.buttonLinkType) {
+      case 'product':
+        return content.buttonProductId ? `/product/${content.buttonProductId}` : undefined;
+      case 'profile':
+        return '/profile';
+      case 'external':
+      default:
+        return content.buttonUrl || undefined;
+    }
+  };
+  
+  const buttonHref = getButtonHref();
+  const ButtonElement = buttonHref ? (
+    <Button asChild>
+      <a href={buttonHref} target={content.buttonLinkType === 'external' ? '_blank' : '_self'} rel="noopener noreferrer">
+        {content.buttonText}
+      </a>
+    </Button>
+  ) : content.buttonText ? (
+    <Button>{content.buttonText}</Button>
+  ) : null;
+  
   // Hero Banner layout (style1)
   if (layout === 'hero') {
     return (
@@ -71,7 +96,7 @@ const ImageWithTextPreview = memo(({ section }: { section: ProfileSection }) => 
         <div className="relative z-10 flex flex-col items-center justify-center min-h-[300px] text-center p-8">
           <h3 className="text-3xl font-bold mb-4">{content.title}</h3>
           <p className="text-muted-foreground mb-6 max-w-lg">{content.body}</p>
-          {content.buttonText && <Button>{content.buttonText}</Button>}
+          {ButtonElement}
         </div>
       </div>
     );
@@ -87,7 +112,7 @@ const ImageWithTextPreview = memo(({ section }: { section: ProfileSection }) => 
         <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background/90 to-transparent">
           <h3 className="text-2xl font-bold mb-2">{content.title}</h3>
           <p className="text-muted-foreground mb-4">{content.body}</p>
-          {content.buttonText && <Button variant="secondary">{content.buttonText}</Button>}
+          {ButtonElement && React.cloneElement(ButtonElement, { variant: 'secondary' })}
         </div>
       </div>
     );
@@ -108,7 +133,7 @@ const ImageWithTextPreview = memo(({ section }: { section: ProfileSection }) => 
       <div className="flex-1">
         <h3 className="text-2xl font-bold mb-4">{content.title}</h3>
         <p className="text-muted-foreground mb-6">{content.body}</p>
-        {content.buttonText && <Button>{content.buttonText}</Button>}
+        {ButtonElement}
       </div>
     </div>
   );
