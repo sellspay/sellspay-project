@@ -25,15 +25,15 @@ export function CreditWallet({
       <button
         onClick={() => navigate("/pricing")}
         className={cn(
-          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full",
-          "bg-gradient-to-r from-amber-500/10 to-orange-500/10",
-          "border border-amber-500/20 hover:border-amber-500/40",
-          "transition-all hover:scale-105",
+          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg",
+          "bg-gradient-to-r from-primary to-primary/80",
+          "hover:from-primary/90 hover:to-primary/70",
+          "transition-all hover:scale-105 shadow-md shadow-primary/20",
           className
         )}
       >
-        <Coins className="w-4 h-4 text-amber-500" />
-        <span className="text-sm font-semibold text-amber-500">
+        <Coins className="w-4 h-4 text-white" />
+        <span className="text-sm font-semibold text-white">
           {isLoading ? "..." : balance}
         </span>
       </button>

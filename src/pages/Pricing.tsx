@@ -4,13 +4,11 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useCredits } from "@/hooks/useCredits";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import MainLayout from "@/components/layout/MainLayout";
-import { Wallet, Check, Zap, Music, Mic, Wand2, Loader2, Sparkles, Shield, Clock, RefreshCw } from "lucide-react";
+import { Wallet, Check, Zap, Music, Mic, Wand2, Loader2, Sparkles, Crown, Star, ArrowRight, Volume2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface CreditPackage {
   id: string;
@@ -22,36 +20,20 @@ interface CreditPackage {
   stripe_price_id: string | null;
 }
 
-// Mapping to monthly recurring price IDs
+// Mapping to monthly recurring price IDs based on actual DB credits
 const MONTHLY_PRICE_MAP: Record<number, string> = {
-  25: "price_1SssVIE5Ga1Ha0QbMRTCVK4R",  // Starter
-  50: "price_1SssVSE5Ga1Ha0Qb0fUFWDk9",  // Basic
-  150: "price_1SssVhE5Ga1Ha0Qbt8oDdKvc", // Pro
-  350: "price_1SssWzE5Ga1Ha0QbGjeeSuID", // Power
-  1000: "price_1SssXEE5Ga1Ha0QbgDYnF7Ds", // Enterprise
+  15: "price_1SssVIE5Ga1Ha0QbMRTCVK4R",   // Starter
+  50: "price_1SssVSE5Ga1Ha0Qb0fUFWDk9",   // Basic
+  150: "price_1SssVhE5Ga1Ha0Qbt8oDdKvc",  // Pro
+  350: "price_1SssWzE5Ga1Ha0QbGjeeSuID",  // Power
+  800: "price_1SssXEE5Ga1Ha0QbgDYnF7Ds",  // Enterprise
 };
 
 const proTools = [
-  { 
-    icon: Wand2, 
-    name: "SFX Generator", 
-    description: "Create custom sound effects from text descriptions using AI" 
-  },
-  { 
-    icon: Mic, 
-    name: "Voice Isolator", 
-    description: "Remove background music and isolate vocals from any audio" 
-  },
-  { 
-    icon: Music, 
-    name: "Music Splitter", 
-    description: "Split audio into separate stems: drums, bass, vocals, and more" 
-  },
-  { 
-    icon: Zap, 
-    name: "SFX Isolator", 
-    description: "Extract and isolate sound effects from complex audio files" 
-  },
+  { icon: Volume2, name: "SFX Generator" },
+  { icon: Mic, name: "Voice Isolator" },
+  { icon: Music, name: "Music Splitter" },
+  { icon: Zap, name: "SFX Isolator" },
 ];
 
 const faqs = [
@@ -88,11 +70,9 @@ export default function Pricing() {
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
 
-  // Fetch packages and handle success/cancel params
   useEffect(() => {
     fetchPackages();
     
-    // Handle Stripe redirect
     const sessionId = searchParams.get("session_id");
     const success = searchParams.get("success");
     const canceled = searchParams.get("canceled");
@@ -121,7 +101,6 @@ export default function Pricing() {
       const pkgs = data || [];
       setPackages(pkgs);
       
-      // Select the popular package by default, or the middle one
       const popularPkg = pkgs.find(p => p.is_popular);
       if (popularPkg) {
         setSelectedPackageId(popularPkg.id);
@@ -150,7 +129,6 @@ export default function Pricing() {
       return;
     }
 
-    // Get the monthly recurring price ID based on credits
     const monthlyPriceId = MONTHLY_PRICE_MAP[selectedPackage.credits];
     if (!monthlyPriceId) {
       toast.error("Invalid package configuration");
@@ -169,7 +147,7 @@ export default function Pricing() {
   };
 
   const formatPrice = (cents: number) => {
-    return (cents / 100).toFixed(2);
+    return (cents / 100).toFixed(0);
   };
 
   const calculatePerCredit = (pkg: CreditPackage) => {
@@ -177,9 +155,10 @@ export default function Pricing() {
   };
 
   const calculateSavings = (pkg: CreditPackage) => {
-    // Compare against $0.20 per credit baseline (Starter rate)
-    const baselineRate = 0.20;
-    const actualRate = pkg.price_cents / pkg.credits / 100;
+    const starterPkg = packages.find(p => p.display_order === 1);
+    if (!starterPkg || pkg.id === starterPkg.id) return 0;
+    const baselineRate = starterPkg.price_cents / starterPkg.credits;
+    const actualRate = pkg.price_cents / pkg.credits;
     const savings = Math.round((1 - actualRate / baselineRate) * 100);
     return savings > 0 ? savings : 0;
   };
@@ -196,191 +175,216 @@ export default function Pricing() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-background">
-        <div className="max-w-3xl mx-auto px-4 py-10 sm:py-12">
+      <div className="min-h-screen bg-background relative overflow-hidden">
+        {/* Background effects */}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-br from-primary/20 via-purple-500/10 to-transparent rounded-full blur-3xl opacity-50" />
+        
+        <div className="relative max-w-5xl mx-auto px-4 py-12 sm:py-16">
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary mb-3">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span className="text-xs font-medium">Pro AI Tools</span>
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-purple-500/20 border border-primary/20 mb-6">
+              <Crown className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
+                Unlock Pro Tools
+              </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">
-              Unlock Powerful Audio Tools
+            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
+              Create <span className="bg-gradient-to-r from-primary via-purple-400 to-pink-400 bg-clip-text text-transparent">Unlimited</span> Audio
             </h1>
-            <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-              Get monthly credits to access our AI-powered audio tools. Cancel anytime.
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Professional AI-powered audio tools at your fingertips. Choose your plan and start creating.
             </p>
           </div>
 
-          {/* Current Balance */}
-          {user && (
-            <div className="flex justify-center mb-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/50 border border-border/50">
-                <Wallet className="h-4 w-4 text-primary" />
-                <span className="text-xs">Balance:</span>
-                <span className="font-semibold">
-                  {creditsLoading ? "..." : creditBalance}
-                </span>
-                <span className="text-xs text-muted-foreground">credits</span>
-              </div>
-            </div>
-          )}
-
           {/* Active Subscription Notice */}
           {subscription && (
-            <div className="max-w-md mx-auto mb-6">
-              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Check className="h-4 w-4 text-green-500" />
-                  <p className="text-sm font-medium text-green-700 dark:text-green-400">
-                    Active: {subscription.credits} credits/month
-                  </p>
+            <div className="max-w-md mx-auto mb-8">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Check className="h-5 w-5 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-green-400">
+                      Active: {subscription.credits} credits/month
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Renews {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Renews {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-                </p>
               </div>
             </div>
           )}
 
-          {/* Main Pricing Card - Compact Premium Design */}
-          <div className="max-w-md mx-auto">
-            <div className="relative">
-              {/* Glow effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-2xl blur-xl opacity-50" />
+          {/* Pricing Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+            {packages.slice(0, 5).map((pkg) => {
+              const isSelected = pkg.id === selectedPackageId;
+              const isPopular = pkg.is_popular;
+              const savings = calculateSavings(pkg);
               
-              <Card className="relative border border-primary/20 bg-card/80 backdrop-blur-xl shadow-2xl">
-                <CardHeader className="text-center pb-3 pt-5">
-                  <div className="mx-auto w-11 h-11 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center mb-3">
-                    <Wallet className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle className="text-xl">Credit Subscription</CardTitle>
-                  <CardDescription className="text-xs">
-                    Choose your monthly credit allocation
-                  </CardDescription>
-                </CardHeader>
-                
-                <CardContent className="space-y-4 pb-5">
-                  {/* Package Selector */}
-                  <div>
-                    <Select value={selectedPackageId} onValueChange={setSelectedPackageId}>
-                      <SelectTrigger className="w-full h-11 bg-secondary/30">
-                        <SelectValue placeholder="Choose a package" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {packages.map((pkg) => (
-                          <SelectItem key={pkg.id} value={pkg.id}>
-                            <div className="flex items-center justify-between w-full gap-3">
-                              <span className="font-medium text-sm">{pkg.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {pkg.credits} · ${formatPrice(pkg.price_cents)}/mo
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Selected Package Details */}
-                  {selectedPackage && (
-                    <>
-                      <div className="text-center py-3 bg-gradient-to-br from-secondary/50 to-secondary/20 rounded-lg border border-border/30">
-                        <div className="flex items-baseline justify-center gap-0.5">
-                          <span className="text-3xl font-bold">
-                            ${formatPrice(selectedPackage.price_cents)}
-                          </span>
-                          <span className="text-sm text-muted-foreground">/mo</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2 mt-1">
-                          <span className="text-base font-semibold text-primary">
-                            {selectedPackage.credits} Credits
-                          </span>
-                          {calculateSavings(selectedPackage) > 0 && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
-                              -{calculateSavings(selectedPackage)}%
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          ${calculatePerCredit(selectedPackage)}/credit
-                        </p>
-                      </div>
-
-                      {/* Compact Pro Tools Grid */}
-                      <div className="grid grid-cols-2 gap-2">
-                        {proTools.map((tool) => (
-                          <div key={tool.name} className="flex items-center gap-2 p-2 rounded-lg bg-secondary/30 border border-border/20">
-                            <tool.icon className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                            <span className="text-xs font-medium truncate">{tool.name}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Compact Benefits */}
-                      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Check className="h-3 w-3 text-green-500" />
-                          Monthly refresh
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Check className="h-3 w-3 text-green-500" />
-                          Cancel anytime
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Check className="h-3 w-3 text-green-500" />
-                          Priority processing
-                        </span>
-                      </div>
-
-                      {/* Subscribe Button */}
-                      <Button 
-                        className="w-full h-10 text-sm font-semibold" 
-                        onClick={handleSubscribe}
-                        disabled={purchasing || !selectedPackage}
-                      >
-                        {purchasing ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Processing...
-                          </>
-                        ) : subscription ? (
-                          <>Change Plan · ${formatPrice(selectedPackage.price_cents)}/mo</>
-                        ) : (
-                          <>Subscribe · ${formatPrice(selectedPackage.price_cents)}/mo</>
-                        )}
-                      </Button>
-
-                      <p className="text-[10px] text-center text-muted-foreground">
-                        Secure payment via Stripe
-                      </p>
-                    </>
+              return (
+                <button
+                  key={pkg.id}
+                  onClick={() => setSelectedPackageId(pkg.id)}
+                  className={cn(
+                    "relative p-6 rounded-2xl text-left transition-all duration-300 group",
+                    "border-2",
+                    isSelected
+                      ? "border-primary bg-gradient-to-br from-primary/10 via-purple-500/5 to-transparent scale-[1.02] shadow-xl shadow-primary/20"
+                      : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card/80"
                   )}
-                </CardContent>
-              </Card>
-            </div>
+                >
+                  {/* Popular badge */}
+                  {isPopular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <div className="px-4 py-1 rounded-full bg-gradient-to-r from-primary to-purple-500 text-xs font-bold text-white shadow-lg shadow-primary/30">
+                        MOST POPULAR
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Selection indicator */}
+                  <div className={cn(
+                    "absolute top-4 right-4 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                    isSelected
+                      ? "border-primary bg-primary"
+                      : "border-muted-foreground/30"
+                  )}>
+                    {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
+                  </div>
+
+                  {/* Content */}
+                  <div className="mb-4">
+                    <h3 className="text-lg font-bold mb-1">{pkg.name}</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold">${formatPrice(pkg.price_cents)}</span>
+                      <span className="text-muted-foreground">/mo</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className={cn(
+                      "px-3 py-1.5 rounded-lg font-bold text-sm",
+                      isSelected
+                        ? "bg-primary/20 text-primary"
+                        : "bg-secondary text-foreground"
+                    )}>
+                      {pkg.credits} Credits
+                    </div>
+                    {savings > 0 && (
+                      <div className="px-2 py-1 rounded-md bg-green-500/10 text-green-500 text-xs font-semibold">
+                        Save {savings}%
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    ${calculatePerCredit(pkg)} per credit
+                  </p>
+                </button>
+              );
+            })}
           </div>
 
+          {/* CTA Section */}
+          {selectedPackage && (
+            <div className="max-w-lg mx-auto">
+              <div className="relative">
+                {/* Glow */}
+                <div className="absolute -inset-2 bg-gradient-to-r from-primary via-purple-500 to-pink-500 rounded-3xl blur-xl opacity-30 animate-pulse" />
+                
+                <div className="relative p-8 rounded-2xl bg-gradient-to-br from-card via-card to-card/90 border border-primary/30 shadow-2xl">
+                  {/* Selected plan summary */}
+                  <div className="text-center mb-6">
+                    <p className="text-sm text-muted-foreground mb-1">Selected Plan</p>
+                    <h3 className="text-2xl font-bold">{selectedPackage.name}</h3>
+                    <div className="flex items-baseline justify-center gap-1 mt-2">
+                      <span className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
+                        ${formatPrice(selectedPackage.price_cents)}
+                      </span>
+                      <span className="text-muted-foreground">/month</span>
+                    </div>
+                    <p className="text-primary font-semibold mt-1">{selectedPackage.credits} Credits</p>
+                  </div>
+
+                  {/* Pro tools grid */}
+                  <div className="grid grid-cols-2 gap-2 mb-6">
+                    {proTools.map((tool) => (
+                      <div key={tool.name} className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50">
+                        <tool.icon className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">{tool.name}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Benefits */}
+                  <div className="flex flex-wrap justify-center gap-4 mb-6 text-sm">
+                    <span className="flex items-center gap-1.5">
+                      <Check className="h-4 w-4 text-green-500" />
+                      Monthly credits
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Check className="h-4 w-4 text-green-500" />
+                      Cancel anytime
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Check className="h-4 w-4 text-green-500" />
+                      Priority support
+                    </span>
+                  </div>
+
+                  {/* Subscribe Button */}
+                  <Button 
+                    className="w-full h-14 text-lg font-bold bg-gradient-to-r from-primary via-purple-500 to-primary bg-[length:200%_100%] hover:bg-[length:100%_100%] transition-all duration-500"
+                    onClick={handleSubscribe}
+                    disabled={purchasing}
+                  >
+                    {purchasing ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        {subscription ? "Change Plan" : "Get Started"}
+                        <ArrowRight className="h-5 w-5 ml-2" />
+                      </>
+                    )}
+                  </Button>
+
+                  <p className="text-xs text-center text-muted-foreground mt-4">
+                    Secure payment via Stripe • Cancel anytime
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Free Credits Notice */}
-          <div className="mt-8 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-primary/5 to-purple-500/5 border border-primary/10">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-xs">
-                <strong>New users:</strong> Get 3 free credits — no card required!
+          <div className="mt-12 text-center">
+            <div className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-gradient-to-r from-primary/10 via-purple-500/10 to-pink-500/10 border border-primary/20">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-sm">
+                <strong className="text-primary">New users</strong> get 3 free credits — no card required!
               </span>
             </div>
           </div>
 
           {/* FAQ Section */}
-          <div className="mt-12">
-            <h2 className="text-xl font-bold text-center mb-6">FAQ</h2>
-            <Accordion type="single" collapsible className="max-w-lg mx-auto">
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
+            <Accordion type="single" collapsible className="max-w-2xl mx-auto">
               {faqs.map((faq, index) => (
-                <AccordionItem key={index} value={`item-${index}`}>
-                  <AccordionTrigger className="text-left text-sm">
+                <AccordionItem key={index} value={`item-${index}`} className="border-border/50">
+                  <AccordionTrigger className="text-left hover:no-underline">
                     {faq.question}
                   </AccordionTrigger>
-                  <AccordionContent className="text-sm text-muted-foreground">
+                  <AccordionContent className="text-muted-foreground">
                     {faq.answer}
                   </AccordionContent>
                 </AccordionItem>

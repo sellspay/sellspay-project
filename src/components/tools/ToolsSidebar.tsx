@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CreditWallet } from "@/components/credits/CreditWallet";
 import { 
   Mic2, 
   Scissors, 
@@ -204,14 +203,7 @@ export function ToolsSidebar({
   });
 
   return (
-    <div className="w-full lg:w-80 flex-shrink-0 space-y-5">
-      {/* Credit Wallet */}
-      <CreditWallet 
-        balance={creditBalance} 
-        isLoading={isLoadingCredits}
-        variant="sidebar"
-      />
-
+    <div className="w-full lg:w-80 flex-shrink-0 space-y-4">
       {/* Search Input */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
