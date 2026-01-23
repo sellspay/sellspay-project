@@ -682,6 +682,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_email_by_username: { Args: { p_username: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -689,6 +690,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_email_available: { Args: { p_email: string }; Returns: boolean }
       is_username_available: { Args: { p_username: string }; Returns: boolean }
     }
     Enums: {

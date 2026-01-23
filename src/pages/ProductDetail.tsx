@@ -1265,33 +1265,6 @@ export default function ProductDetail() {
 
           <Separator />
 
-          {/* Attachments Section - Purple style with lock icon */}
-          {product.attachments && Array.isArray(product.attachments) && product.attachments.length > 0 && (
-            <div>
-              <h3 className="font-semibold mb-3">Attachments</h3>
-              <div className="space-y-2">
-                {product.attachments.map((attachment: any, index: number) => (
-                  <div 
-                    key={index} 
-                    className="flex items-center gap-3 p-4 rounded-lg bg-primary/10 border border-primary/20"
-                  >
-                    <div className="w-10 h-10 rounded bg-primary/20 flex items-center justify-center">
-                      <FileIcon className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-primary truncate">
-                        {attachment.name || `Attachment ${index + 1}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(attachment.size || 0)}
-                      </p>
-                    </div>
-                    <Lock className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Description - Collapsible */}
           {product.description && (
@@ -1359,6 +1332,64 @@ export default function ProductDetail() {
                     View Profile
                   </Link>
                 </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Attachments Card - Purple themed */}
+          {product.attachments && Array.isArray(product.attachments) && product.attachments.length > 0 && (
+            <Card className="bg-card border-primary/20">
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <FileIcon className="w-4 h-4 text-primary" />
+                  Attachments
+                </h3>
+                <div className="space-y-2">
+                  {product.attachments.map((attachment: any, index: number) => {
+                    const hasAccess = isOwner || hasPurchased || product.pricing_type === "free";
+                    return (
+                      <div 
+                        key={index} 
+                        className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20 hover:bg-primary/15 transition-colors"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                          <FileIcon className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate" title={attachment.name || `Attachment ${index + 1}`}>
+                            {attachment.name || `Attachment ${index + 1}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(attachment.size || 0)}
+                          </p>
+                        </div>
+                        {hasAccess ? (
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-primary hover:text-primary hover:bg-primary/20"
+                            onClick={() => {
+                              if (attachment.url) {
+                                window.open(attachment.url, '_blank');
+                              } else {
+                                toast.success("Download starting...");
+                              }
+                            }}
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        ) : (
+                          <Lock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {!isOwner && !hasPurchased && product.pricing_type !== "free" && (
+                  <p className="text-xs text-muted-foreground mt-3 text-center">
+                    Purchase to unlock all attachments
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
