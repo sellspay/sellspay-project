@@ -33,7 +33,7 @@ export function VerifiedBadge({ isAdmin = false, size = 'md', className = '' }: 
           <svg 
             viewBox="0 0 24 24" 
             fill="none" 
-            className={`${checkSizes[size]} text-white transition-all duration-300`}
+            className={`${checkSizes[size]} text-white transition-all duration-300 translate-y-[0.5px]`}
             stroke="currentColor" 
             strokeWidth="4" 
             strokeLinecap="round" 
