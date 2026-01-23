@@ -28,7 +28,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { 
   X, Plus, Save, Undo, GripVertical, Eye, EyeOff, Trash2, Pencil,
-  Link as LinkIcon, Settings, User, Download, Bookmark, Layers, Play
+  Link as LinkIcon, Settings, User, Download, Bookmark, Layers, Play,
+  ChevronRight
 } from 'lucide-react';
 import { ProfileSection, SectionType, SECTION_TEMPLATES } from './types';
 import { AddSectionPanel } from './AddSectionPanel';
@@ -107,7 +108,7 @@ const getYouTubeThumbnail = (youtubeUrl: string | null): string | null => {
   return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 };
 
-// Sortable collection item for editor
+// Sortable collection item for editor - mirrors CollectionRow display
 const SortableCollectionCard = memo(({
   collection,
   onEdit,
@@ -138,43 +139,84 @@ const SortableCollectionCard = memo(({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'relative group bg-card/50 backdrop-blur-sm border border-border rounded-lg overflow-hidden transition-all',
-        isDragging && 'opacity-50 z-50 shadow-xl',
-        !collection.is_visible && 'opacity-50'
+        'relative group transition-all',
+        isDragging && 'opacity-50 z-50',
+        !collection.is_visible && 'opacity-40'
       )}
     >
-      {/* Collection Preview */}
-      <div className="p-4">
-        <div className="flex items-center gap-3 mb-3">
+      {/* Collection Header - exactly like CollectionRow */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
           {collection.cover_image_url ? (
             <img
               src={collection.cover_image_url}
               alt={collection.name}
-              className="w-10 h-10 rounded-lg object-cover"
+              className="w-12 h-12 rounded-lg object-cover"
             />
           ) : (
-            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-              <Layers className="w-5 h-5 text-primary" />
+            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+              <Layers className="w-6 h-6 text-muted-foreground" />
             </div>
           )}
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm truncate">{collection.name}</h4>
-            <p className="text-xs text-muted-foreground">
-              {collection.totalCount} {collection.totalCount === 1 ? 'product' : 'products'}
+          <div className="text-left">
+            <div className="flex items-center gap-1">
+              <h3 className="text-lg font-semibold text-foreground">{collection.name}</h3>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground flex items-center gap-1">
+              <Layers className="w-3.5 h-3.5" />
+              {collection.totalCount} {collection.totalCount === 1 ? 'post' : 'posts'}
             </p>
           </div>
         </div>
 
-        {/* Product thumbnails preview */}
-        {collection.products.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {collection.products.slice(0, 4).map((product) => {
-              const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
-              return (
-                <div
-                  key={product.id}
-                  className="relative w-20 h-14 rounded-md overflow-hidden bg-muted flex-shrink-0"
-                >
+        {/* Editor Controls - visible on hover */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div
+            className="p-2 rounded-lg bg-muted/50 cursor-grab hover:bg-muted transition-colors"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onEdit}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleVisibility}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          >
+            {collection.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onDelete}
+            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Products Grid - 3 per row like CollectionRow */}
+      {collection.products.length > 0 ? (
+        <div className="grid grid-cols-3 gap-4">
+          {collection.products.slice(0, 3).map((product) => {
+            const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
+            return (
+              <div
+                key={product.id}
+                className="group/card"
+              >
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border border-border">
                   {thumbnail ? (
                     <img
                       src={thumbnail}
@@ -182,60 +224,52 @@ const SortableCollectionCard = memo(({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Play className="w-4 h-4 text-muted-foreground" />
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                      <Layers className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                  )}
+                  {/* Play indicator for videos */}
+                  {(product.preview_video_url || product.youtube_url) && (
+                    <div className="absolute top-2 left-2 bg-background/80 rounded-full p-1.5">
+                      <Play className="w-3 h-3 text-foreground" fill="currentColor" />
                     </div>
                   )}
                 </div>
-              );
-            })}
-            {collection.totalCount > 4 && (
-              <div className="w-20 h-14 rounded-md bg-muted/50 flex items-center justify-center flex-shrink-0">
-                <span className="text-xs text-muted-foreground">+{collection.totalCount - 4}</span>
+                <div className="mt-2">
+                  <h4 className="font-medium text-foreground text-sm line-clamp-2">
+                    {product.name}
+                  </h4>
+                </div>
               </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Hover controls */}
-      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-        <div
-          className="p-2 rounded-lg bg-white/10 cursor-grab hover:bg-white/20 transition-colors"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="w-5 h-5 text-white" />
+            );
+          })}
         </div>
+      ) : (
+        <div className="border-2 border-dashed border-muted-foreground/20 rounded-lg p-8 text-center">
+          <Layers className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">No products in this collection</p>
+          <Button variant="ghost" size="sm" onClick={onEdit} className="mt-2 text-primary">
+            Add Products
+          </Button>
+        </div>
+      )}
 
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={onEdit}
-          className="bg-white/10 hover:bg-white/20 text-white border-0"
-        >
-          <Pencil className="w-4 h-4 mr-1" />
-          Edit
-        </Button>
+      {/* Show more indicator */}
+      {collection.totalCount > 3 && (
+        <p className="text-xs text-muted-foreground mt-3 text-center">
+          +{collection.totalCount - 3} more products
+        </p>
+      )}
 
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={onToggleVisibility}
-          className="bg-white/10 hover:bg-white/20 text-white border-0"
-        >
-          {collection.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-        </Button>
-
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={onDelete}
-          className="bg-destructive/20 hover:bg-destructive/40 text-destructive border-0"
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </div>
+      {/* Visibility overlay when hidden */}
+      {!collection.is_visible && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-lg pointer-events-none">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <EyeOff className="w-5 h-5" />
+            <span className="font-medium">Hidden</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
@@ -862,7 +896,7 @@ export function ProfileEditorDialog({
                             </div>
                           )}
 
-                          {/* Collections */}
+                          {/* Collections - displayed like profile page */}
                           {editorCollections.length > 0 && (
                             <DndContext
                               sensors={sensors}
@@ -873,10 +907,7 @@ export function ProfileEditorDialog({
                                 items={editorCollections.map((c) => c.id)}
                                 strategy={verticalListSortingStrategy}
                               >
-                                <div className="space-y-4">
-                                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Collections
-                                  </h4>
+                                <div className="space-y-10">
                                   {editorCollections.map((collection) => (
                                     <SortableCollectionCard
                                       key={collection.id}
