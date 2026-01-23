@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.create-editor-booking]
 verify_jwt = false
+
+[functions.audio-stem-separation]
+verify_jwt = false
