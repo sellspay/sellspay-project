@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/lib/auth";
+import { useAuth, checkUserRole } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ViewApplicationDialog from "@/components/admin/ViewApplicationDialog";
@@ -88,6 +88,7 @@ export default function Admin() {
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [users, setUsers] = useState<Profile[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [editorApplications, setEditorApplications] = useState<EditorApplication[]>([]);
@@ -110,12 +111,25 @@ export default function Admin() {
   const [totalCreators, setTotalCreators] = useState(0);
   const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
 
+  // Check admin role on mount
   useEffect(() => {
-    if (user) {
-      fetchData();
-    } else {
-      setLoading(false);
-    }
+    const checkAdminAccess = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      
+      const hasAdminRole = await checkUserRole('admin');
+      setIsAdmin(hasAdminRole);
+      
+      if (hasAdminRole) {
+        fetchData();
+      } else {
+        setLoading(false);
+      }
+    };
+    
+    checkAdminAccess();
   }, [user]);
 
   const fetchData = async () => {
@@ -390,15 +404,15 @@ export default function Admin() {
     );
   }
 
-  if (!user) {
+  if (!user || !isAdmin) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
         <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
         <p className="text-muted-foreground mb-8">
-          Please sign in to access the admin panel.
+          {!user ? "Please sign in to access the admin panel." : "You don't have permission to access this page."}
         </p>
-        <Button onClick={() => navigate("/login")}>Sign In</Button>
+        <Button onClick={() => navigate(user ? "/" : "/login")}>{user ? "Go Home" : "Sign In"}</Button>
       </div>
     );
   }

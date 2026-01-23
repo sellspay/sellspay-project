@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
-import { useAuth } from '@/lib/auth';
+import { useAuth, checkUserRole } from '@/lib/auth';
 
 interface Creator {
   id: string;
@@ -30,8 +30,12 @@ export default function Creators() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Check if current user is admin
-    setIsAdmin(user?.email === 'vizual90@gmail.com');
+    // Check if current user is admin via database
+    if (user) {
+      checkUserRole('admin').then(setIsAdmin);
+    } else {
+      setIsAdmin(false);
+    }
   }, [user]);
 
   useEffect(() => {

@@ -14,6 +14,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper function to check user roles via database RPC
+export const checkUserRole = async (role: 'admin' | 'moderator' | 'user'): Promise<boolean> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  
+  const { data, error } = await supabase.rpc('has_role', { 
+    _user_id: user.id, 
+    _role: role 
+  });
+  
+  if (error) {
+    console.error('Error checking user role:', error);
+    return false;
+  }
+  
+  return data === true;
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);

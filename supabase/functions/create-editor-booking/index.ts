@@ -12,6 +12,9 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-EDITOR-BOOKING] ${step}${detailsStr}`);
 };
 
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -36,27 +39,94 @@ serve(async (req) => {
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header provided");
+      return new Response(
+        JSON.stringify({ error: "No authorization header provided" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    if (userError) {
+      return new Response(
+        JSON.stringify({ error: `Authentication error: ${userError.message}` }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    if (!user?.email) {
+      return new Response(
+        JSON.stringify({ error: "User not authenticated or email not available" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Parse request body
-    const { editorId, buyerId, hours, hourlyRateCents } = await req.json();
-    logStep("Request body parsed", { editorId, buyerId, hours, hourlyRateCents });
-
-    if (!editorId || !buyerId || !hours || !hourlyRateCents) {
-      throw new Error("Missing required fields: editorId, buyerId, hours, hourlyRateCents");
+    // Parse and validate request body
+    let body: { editorId?: string; buyerId?: string; hours?: number; hourlyRateCents?: number };
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Calculate amounts
-    // 5% platform fee, 95% to editor
+    const { editorId, buyerId, hours, hourlyRateCents } = body;
+    logStep("Request body parsed", { editorId, buyerId, hours, hourlyRateCents });
+
+    // Validate required fields exist
+    if (!editorId || !buyerId || !hours || !hourlyRateCents) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields: editorId, buyerId, hours, hourlyRateCents" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate UUIDs
+    if (!UUID_REGEX.test(editorId)) {
+      return new Response(
+        JSON.stringify({ error: "editorId must be a valid UUID" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (!UUID_REGEX.test(buyerId)) {
+      return new Response(
+        JSON.stringify({ error: "buyerId must be a valid UUID" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate hours (1-100)
+    if (typeof hours !== 'number' || !Number.isInteger(hours) || hours < 1 || hours > 100) {
+      return new Response(
+        JSON.stringify({ error: "hours must be an integer between 1 and 100" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate hourlyRateCents (100 cents to $1000/hr = 100000 cents)
+    if (typeof hourlyRateCents !== 'number' || !Number.isInteger(hourlyRateCents) || hourlyRateCents < 100 || hourlyRateCents > 100000) {
+      return new Response(
+        JSON.stringify({ error: "hourlyRateCents must be an integer between 100 and 100000" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Calculate amounts - use safe integer arithmetic
+    // Maximum: 100 hours * $1000/hr = $100,000 = 10,000,000 cents (safe for JS integers)
     const totalAmountCents = hours * hourlyRateCents;
+    
+    // Final safety check on total
+    if (totalAmountCents > 10000000) { // Max $100,000
+      return new Response(
+        JSON.stringify({ error: "Total amount exceeds maximum allowed" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     const platformFeeCents = Math.round(totalAmountCents * 0.05); // 5% platform fee
     const editorPayoutCents = totalAmountCents - platformFeeCents; // 95% to editor
 
@@ -75,7 +145,12 @@ serve(async (req) => {
       .eq("id", editorId)
       .single();
 
-    if (editorError) throw new Error(`Failed to fetch editor profile: ${editorError.message}`);
+    if (editorError) {
+      return new Response(
+        JSON.stringify({ error: `Failed to fetch editor profile: ${editorError.message}` }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     logStep("Editor profile fetched", { 
       hasStripeAccount: !!editorProfile?.stripe_account_id,
       onboardingComplete: editorProfile?.stripe_onboarding_complete 
@@ -83,7 +158,10 @@ serve(async (req) => {
 
     // Verify editor has completed Stripe onboarding
     if (!editorProfile?.stripe_account_id || !editorProfile?.stripe_onboarding_complete) {
-      throw new Error("Editor has not completed Stripe onboarding");
+      return new Response(
+        JSON.stringify({ error: "Editor has not completed Stripe onboarding" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Initialize Stripe
@@ -106,10 +184,6 @@ serve(async (req) => {
     const origin = req.headers.get("origin") || "https://editorsparadise.org";
 
     // Create Checkout Session with Stripe Connect
-    // Using application_fee_amount + transfer_data.destination:
-    // - Total amount is charged to buyer
-    // - application_fee_amount (5%) goes to YOUR platform account
-    // - Remaining 95% is automatically transferred to the connected account (editor)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
@@ -128,9 +202,7 @@ serve(async (req) => {
       ],
       mode: "payment",
       payment_intent_data: {
-        // application_fee_amount is what YOU keep (5%)
         application_fee_amount: platformFeeCents,
-        // transfer_data.destination is where the remaining 95% goes
         transfer_data: {
           destination: editorProfile.stripe_account_id,
         },

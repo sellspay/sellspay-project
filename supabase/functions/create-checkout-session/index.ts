@@ -12,6 +12,9 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -34,9 +37,35 @@ serve(async (req) => {
       auth: { persistSession: false }
     });
 
-    const { product_id } = await req.json();
-    if (!product_id) throw new Error("product_id is required");
-    logStep("Product ID received", { product_id });
+    // Parse and validate request body
+    let body: { product_id?: string };
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { product_id } = body;
+    
+    // Validate product_id exists and is a valid UUID
+    if (!product_id) {
+      return new Response(
+        JSON.stringify({ error: "product_id is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (typeof product_id !== 'string' || !UUID_REGEX.test(product_id)) {
+      return new Response(
+        JSON.stringify({ error: "product_id must be a valid UUID" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    logStep("Product ID validated", { product_id });
 
     // Get user from auth header
     const authHeader = req.headers.get("Authorization");
@@ -68,12 +97,18 @@ serve(async (req) => {
 
     if (productError || !product) {
       logStep("Product not found", { error: productError?.message });
-      throw new Error("Product not found");
+      return new Response(
+        JSON.stringify({ error: "Product not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     logStep("Product found", { name: product.name, price: product.price_cents, creatorId: product.creator_id });
 
     if (!product.creator_id) {
-      throw new Error("Product has no creator");
+      return new Response(
+        JSON.stringify({ error: "Product has no creator" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Fetch creator profile separately (no FK dependency)
@@ -85,7 +120,10 @@ serve(async (req) => {
 
     if (creatorError || !creatorProfile) {
       logStep("Creator profile not found", { error: creatorError?.message });
-      throw new Error("Creator profile not found");
+      return new Response(
+        JSON.stringify({ error: "Creator profile not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     if (!creatorProfile.stripe_account_id || !creatorProfile.stripe_onboarding_complete) {
@@ -93,16 +131,26 @@ serve(async (req) => {
         hasAccount: !!creatorProfile.stripe_account_id, 
         complete: creatorProfile.stripe_onboarding_complete 
       });
-      throw new Error("Creator has not completed Stripe onboarding");
+      return new Response(
+        JSON.stringify({ error: "Creator has not completed Stripe onboarding" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     logStep("Creator verified", { stripeAccountId: creatorProfile.stripe_account_id });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Calculate fees (5% platform commission)
-    // application_fee_amount = what YOU (the platform) keep
-    // The connected account receives: total - application_fee_amount
     const totalAmount = product.price_cents || 0;
+    
+    // Validate amount is reasonable (max $10,000)
+    if (totalAmount < 0 || totalAmount > 1000000) {
+      return new Response(
+        JSON.stringify({ error: "Invalid product price" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     const platformFee = Math.round(totalAmount * 0.05); // 5% platform fee
     const creatorPayout = totalAmount - platformFee; // 95% to creator
     
@@ -127,10 +175,6 @@ serve(async (req) => {
     const origin = req.headers.get("origin") || "https://editorsparadise.org";
 
     // Create checkout session with Stripe Connect
-    // Using application_fee_amount + transfer_data.destination:
-    // - Total amount is charged to buyer
-    // - application_fee_amount (5%) goes to YOUR platform account
-    // - Remaining 95% is automatically transferred to the connected account (creator)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : buyerEmail,
@@ -149,9 +193,7 @@ serve(async (req) => {
       ],
       mode: "payment",
       payment_intent_data: {
-        // application_fee_amount is what YOU keep (5%)
         application_fee_amount: platformFee,
-        // transfer_data.destination is where the remaining 95% goes
         transfer_data: {
           destination: creatorProfile.stripe_account_id,
         },

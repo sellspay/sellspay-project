@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +12,57 @@ serve(async (req) => {
   }
 
   try {
-    const { query, limit = 20, trending = false } = await req.json();
+    // Authenticate user - only logged-in users can use GIPHY API
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    );
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid authentication" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Parse and validate request body
+    let body: { query?: string; limit?: number; trending?: boolean };
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON in request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Input validation
+    const query = body.query;
+    const trending = body.trending === true;
+    let limit = typeof body.limit === 'number' ? body.limit : 20;
+    
+    // Validate limit (1-50)
+    if (limit < 1) limit = 1;
+    if (limit > 50) limit = 50;
+    
+    // Validate query length (max 200 characters)
+    if (query && typeof query === 'string' && query.length > 200) {
+      return new Response(
+        JSON.stringify({ error: "Query too long (max 200 characters)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const apiKey = Deno.env.get("GIPHY_API_KEY");
     if (!apiKey) {

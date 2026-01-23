@@ -522,6 +522,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "purchases_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "purchases_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -595,7 +602,84 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          background_url: string | null
+          banner_url: string | null
+          bio: string | null
+          created_at: string | null
+          editor_about: string | null
+          editor_city: string | null
+          editor_country: string | null
+          editor_hourly_rate_cents: number | null
+          editor_languages: string[] | null
+          editor_services: string[] | null
+          editor_social_links: Json | null
+          full_name: string | null
+          id: string | null
+          is_creator: boolean | null
+          is_editor: boolean | null
+          show_recent_uploads: boolean | null
+          social_links: Json | null
+          updated_at: string | null
+          user_id: string | null
+          username: string | null
+          verified: boolean | null
+          website: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          background_url?: string | null
+          banner_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          editor_about?: string | null
+          editor_city?: string | null
+          editor_country?: string | null
+          editor_hourly_rate_cents?: number | null
+          editor_languages?: string[] | null
+          editor_services?: string[] | null
+          editor_social_links?: Json | null
+          full_name?: string | null
+          id?: string | null
+          is_creator?: boolean | null
+          is_editor?: boolean | null
+          show_recent_uploads?: boolean | null
+          social_links?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string | null
+          verified?: boolean | null
+          website?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          background_url?: string | null
+          banner_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          editor_about?: string | null
+          editor_city?: string | null
+          editor_country?: string | null
+          editor_hourly_rate_cents?: number | null
+          editor_languages?: string[] | null
+          editor_services?: string[] | null
+          editor_social_links?: Json | null
+          full_name?: string | null
+          id?: string | null
+          is_creator?: boolean | null
+          is_editor?: boolean | null
+          show_recent_uploads?: boolean | null
+          social_links?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string | null
+          verified?: boolean | null
+          website?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {

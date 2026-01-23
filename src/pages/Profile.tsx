@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/lib/auth';
+import { useAuth, checkUserRole } from '@/lib/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -447,9 +447,10 @@ const ProfilePage: React.FC = () => {
         const ownProfile = user?.id === data.user_id;
         setIsOwnProfile(ownProfile);
 
-        // TODO: Check admin status from user_roles table if needed
-        // For now, assume admin if email matches
-        setIsAdmin(user?.email === 'vizual90@gmail.com');
+        // Check admin status from user_roles table
+        if (user) {
+          checkUserRole('admin').then(setIsAdmin);
+        }
 
         // Fetch followers count
         const { count: followers } = await supabase
