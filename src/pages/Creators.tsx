@@ -40,8 +40,9 @@ export default function Creators() {
 
   useEffect(() => {
     async function fetchCreators() {
+      // Use public_profiles view for public access (no RLS restrictions)
       const { data, error } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id, username, full_name, avatar_url, bio, is_creator, verified')
         .eq('is_creator', true)
         .order('created_at', { ascending: false });

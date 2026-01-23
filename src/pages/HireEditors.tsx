@@ -114,8 +114,9 @@ export default function HireEditors() {
 
   const fetchEditors = async () => {
     try {
+      // Use public_profiles view for public access (no RLS restrictions)
       const { data, error } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id, user_id, full_name, username, avatar_url, verified, editor_hourly_rate_cents, editor_services, editor_languages, editor_country, editor_city, editor_about, editor_social_links')
         .eq('is_editor', true)
         .not('editor_hourly_rate_cents', 'is', null);
