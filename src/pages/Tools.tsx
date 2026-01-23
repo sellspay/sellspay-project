@@ -14,27 +14,29 @@ export default function Tools() {
     <div className="h-[calc(100vh-4rem)] overflow-hidden">
       <div className="container mx-auto px-4 h-full py-4">
         <div className="flex flex-col lg:flex-row gap-6 h-full">
-          {/* Sidebar */}
-          <div className="lg:w-72 flex-shrink-0">
-            <ScrollArea className="h-full pr-2">
-              <ToolsSidebar
-                selectedTool={selectedTool}
-                onSelectTool={setSelectedTool}
-                selectedCategory={selectedCategory}
-                onSelectCategory={setSelectedCategory}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                creditBalance={creditBalance}
-                isLoadingCredits={isLoading}
-              />
+          {/* Sidebar - with proper height and internal scroll */}
+          <div className="lg:w-80 flex-shrink-0 h-full overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="pr-4 pb-4">
+                <ToolsSidebar
+                  selectedTool={selectedTool}
+                  onSelectTool={setSelectedTool}
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={setSelectedCategory}
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  creditBalance={creditBalance}
+                  isLoadingCredits={isLoading}
+                />
+              </div>
             </ScrollArea>
           </div>
 
           {/* Divider */}
-          <div className="hidden lg:block w-px bg-gradient-to-b from-transparent via-border/50 to-transparent" />
+          <div className="hidden lg:block w-px bg-gradient-to-b from-transparent via-border/50 to-transparent flex-shrink-0" />
 
           {/* Content Area */}
-          <div className="flex-1 min-w-0 h-full">
+          <div className="flex-1 min-w-0 h-full overflow-hidden">
             <div className="relative rounded-2xl border border-border/50 bg-gradient-to-br from-card/50 to-card/30 backdrop-blur-sm h-full overflow-hidden">
               {/* Glass effect border */}
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
