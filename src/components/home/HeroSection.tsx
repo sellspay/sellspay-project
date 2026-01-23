@@ -27,6 +27,9 @@ export default function HeroSection() {
           src={heroCosmicBg} 
           alt="" 
           className="absolute inset-0 w-full h-full object-cover"
+          style={{ imageRendering: 'auto' }}
+          loading="eager"
+          fetchPriority="high"
         />
         
         {/* Bottom fade to background */}
@@ -45,10 +48,23 @@ export default function HeroSection() {
 
           {/* Main headline */}
           <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-6">
-            <span className="text-foreground">Level Up Your</span>
+            <span className="text-foreground drop-shadow-lg">Level Up Your</span>
             <br />
             <span className="relative inline-block">
-              <span className="bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent">
+              <span 
+                className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-2xl"
+                style={{
+                  textShadow: '0 0 40px rgba(168, 85, 247, 0.5), 0 0 80px rgba(168, 85, 247, 0.3)',
+                  filter: 'drop-shadow(0 0 20px rgba(168, 85, 247, 0.4))'
+                }}
+              >
+                Creative Workflow
+              </span>
+              {/* Glow effect layer */}
+              <span 
+                className="absolute inset-0 bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent blur-sm opacity-50"
+                aria-hidden="true"
+              >
                 Creative Workflow
               </span>
               {/* Underline decoration */}
@@ -63,11 +79,14 @@ export default function HeroSection() {
                   stroke="url(#gradient)"
                   strokeWidth="3"
                   strokeLinecap="round"
+                  className="drop-shadow-lg"
+                  style={{ filter: 'drop-shadow(0 0 8px rgba(168, 85, 247, 0.8))' }}
                 />
                 <defs>
                   <linearGradient id="gradient" x1="0" y1="0" x2="300" y2="0">
-                    <stop stopColor="hsl(var(--primary))" />
-                    <stop offset="1" stopColor="hsl(var(--accent))" />
+                    <stop stopColor="#a855f7" />
+                    <stop offset="0.5" stopColor="#d946ef" />
+                    <stop offset="1" stopColor="#22d3ee" />
                   </linearGradient>
                 </defs>
               </svg>
