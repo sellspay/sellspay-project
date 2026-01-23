@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Loader2, Lock, Sparkles } from "lucide-react";
+import { Loader2, Lock, Wand2 } from "lucide-react";
 import { tools, Tool } from "./ToolsSidebar";
 import { Button } from "@/components/ui/button";
 
@@ -53,7 +53,7 @@ function WelcomeContent() {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center px-8">
       <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-6 shadow-lg shadow-primary/20">
-        <Sparkles className="w-10 h-10 text-primary-foreground" />
+        <Wand2 className="w-10 h-10 text-primary-foreground" />
       </div>
       <h2 className="text-2xl font-bold mb-3">Select a Tool</h2>
       <p className="text-muted-foreground max-w-md">
