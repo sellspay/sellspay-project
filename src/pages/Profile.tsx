@@ -16,10 +16,13 @@ import {
   MessageCircle,
   Play,
   UserPlus,
-  UserMinus
+  UserMinus,
+  Layers
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import CollectionRow from '@/components/profile/CollectionRow';
+import CreateCollectionDialog from '@/components/profile/CreateCollectionDialog';
 
 interface Profile {
   id: string;
@@ -62,6 +65,22 @@ interface Purchase {
     preview_video_url: string | null;
     pricing_type: string | null;
   } | null;
+}
+
+interface Collection {
+  id: string;
+  name: string;
+  cover_image_url: string | null;
+  products: {
+    id: string;
+    name: string;
+    cover_image_url: string | null;
+    youtube_url: string | null;
+    preview_video_url: string | null;
+    price_cents: number | null;
+    currency: string | null;
+  }[];
+  totalCount: number;
 }
 
 // Helper to generate YouTube thumbnail URL
@@ -213,6 +232,59 @@ const ProfilePage: React.FC = () => {
   const [followingCount, setFollowingCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [showCreateCollection, setShowCreateCollection] = useState(false);
+
+  const fetchCollections = async (profileId: string) => {
+    try {
+      // Fetch collections for this profile
+      const { data: collectionsData, error: collectionsError } = await supabase
+        .from('collections')
+        .select('id, name, cover_image_url')
+        .eq('creator_id', profileId)
+        .order('display_order', { ascending: true });
+
+      if (collectionsError) throw collectionsError;
+
+      if (collectionsData && collectionsData.length > 0) {
+        // For each collection, fetch its products
+        const collectionsWithProducts = await Promise.all(
+          collectionsData.map(async (collection) => {
+            // Get collection items
+            const { data: items, count } = await supabase
+              .from('collection_items')
+              .select('product_id', { count: 'exact' })
+              .eq('collection_id', collection.id)
+              .order('display_order', { ascending: true });
+
+            if (!items || items.length === 0) {
+              return { ...collection, products: [], totalCount: 0 };
+            }
+
+            // Fetch product details
+            const productIds = items.map((item) => item.product_id);
+            const { data: products } = await supabase
+              .from('products')
+              .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency')
+              .in('id', productIds)
+              .eq('status', 'published');
+
+            return {
+              ...collection,
+              products: products || [],
+              totalCount: count || 0,
+            };
+          })
+        );
+
+        setCollections(collectionsWithProducts);
+      } else {
+        setCollections([]);
+      }
+    } catch (error) {
+      console.error('Error fetching collections:', error);
+    }
+  };
 
   useEffect(() => {
     async function fetchProfile() {
@@ -375,6 +447,9 @@ const ProfilePage: React.FC = () => {
           
           setPurchases(typedPurchases);
         }
+
+        // Fetch collections for the profile
+        fetchCollections(data.id);
       }
 
       setLoading(false);
@@ -635,15 +710,43 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
 
+        {/* Collections Section - for creators */}
+        {profile.is_creator && collections.length > 0 && (
+          <div className="mt-10 max-w-6xl mx-auto px-4">
+            {collections.map((collection) => (
+              <CollectionRow
+                key={collection.id}
+                id={collection.id}
+                name={collection.name}
+                coverImage={collection.cover_image_url}
+                products={collection.products}
+                totalCount={collection.totalCount}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Store Section - for creators OR non-creators with their own profile showing purchases */}
         <div className="mt-10 max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">
-              {profile.is_creator ? 'Store' : isOwnProfile ? 'My Library' : 'Profile'}
+              {profile.is_creator ? 'All Products' : isOwnProfile ? 'My Library' : 'Profile'}
             </h2>
-            {(products.length > 0 || purchases.length > 0) && (
-              <span className="text-sm text-muted-foreground">Showing newest</span>
-            )}
+            <div className="flex items-center gap-2">
+              {isOwnProfile && profile.is_creator && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCreateCollection(true)}
+                >
+                  <Layers className="w-4 h-4 mr-2" />
+                  Create Collection
+                </Button>
+              )}
+              {(products.length > 0 || purchases.length > 0) && (
+                <span className="text-sm text-muted-foreground">Showing newest</span>
+              )}
+            </div>
           </div>
 
           {/* Tab buttons - for creators (own profile) */}
@@ -783,6 +886,21 @@ const ProfilePage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Create Collection Dialog */}
+      {profile && (
+        <CreateCollectionDialog
+          open={showCreateCollection}
+          onOpenChange={setShowCreateCollection}
+          creatorId={profile.id}
+          products={products.filter(p => p.status === 'published').map(p => ({
+            id: p.id,
+            name: p.name,
+            cover_image_url: p.cover_image_url,
+          }))}
+          onCreated={() => fetchCollections(profile.id)}
+        />
+      )}
     </TooltipProvider>
   );
 };
