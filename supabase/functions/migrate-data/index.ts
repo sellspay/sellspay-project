@@ -120,7 +120,13 @@ Deno.serve(async (req) => {
     }
 
     if (action === "migrate") {
-      const results = { profiles: { success: 0, failed: 0 }, products: { success: 0, failed: 0 } };
+      const results: Record<string, { success: number; failed: number }> = {
+        profiles: { success: 0, failed: 0 },
+        products: { success: 0, failed: 0 },
+        follows: { success: 0, failed: 0 },
+        product_likes: { success: 0, failed: 0 },
+        comments: { success: 0, failed: 0 },
+      };
 
       // Migrate profiles first
       const { data: sourceProfiles } = await sourceClient.from("profiles").select("*");
@@ -193,6 +199,76 @@ Deno.serve(async (req) => {
             results.products.failed++;
           } else {
             results.products.success++;
+          }
+        }
+      }
+
+      // Migrate follows (to followers table)
+      const { data: sourceFollows } = await sourceClient.from("follows").select("*");
+      
+      if (sourceFollows) {
+        for (const follow of sourceFollows) {
+          const { error } = await destClient.from("followers").upsert({
+            follower_id: follow.follower_id,
+            following_id: follow.following_id,
+            created_at: follow.created_at,
+          }, { onConflict: 'follower_id,following_id', ignoreDuplicates: true });
+
+          if (error) {
+            console.error("Follow migration error:", error);
+            results.follows = results.follows || { success: 0, failed: 0 };
+            results.follows.failed++;
+          } else {
+            results.follows = results.follows || { success: 0, failed: 0 };
+            results.follows.success++;
+          }
+        }
+      }
+
+      // Migrate product_likes
+      const { data: sourceProductLikes } = await sourceClient.from("product_likes").select("*");
+      
+      if (sourceProductLikes) {
+        for (const like of sourceProductLikes) {
+          const { error } = await destClient.from("product_likes").upsert({
+            id: like.id,
+            product_id: like.product_id,
+            user_id: like.user_id,
+            created_at: like.created_at,
+          }, { onConflict: 'id' });
+
+          if (error) {
+            console.error("Product like migration error:", error);
+            results.product_likes = results.product_likes || { success: 0, failed: 0 };
+            results.product_likes.failed++;
+          } else {
+            results.product_likes = results.product_likes || { success: 0, failed: 0 };
+            results.product_likes.success++;
+          }
+        }
+      }
+
+      // Migrate comments
+      const { data: sourceComments } = await sourceClient.from("comments").select("*");
+      
+      if (sourceComments) {
+        for (const comment of sourceComments) {
+          const { error } = await destClient.from("comments").upsert({
+            id: comment.id,
+            product_id: comment.product_id,
+            user_id: comment.user_id,
+            content: comment.content,
+            created_at: comment.created_at,
+            updated_at: comment.updated_at,
+          }, { onConflict: 'id' });
+
+          if (error) {
+            console.error("Comment migration error:", error);
+            results.comments = results.comments || { success: 0, failed: 0 };
+            results.comments.failed++;
+          } else {
+            results.comments = results.comments || { success: 0, failed: 0 };
+            results.comments.success++;
           }
         }
       }
