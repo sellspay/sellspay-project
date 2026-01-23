@@ -264,7 +264,8 @@ export default function Settings() {
       if (error) throw error;
 
       if (data?.url) {
-        window.location.href = data.url;
+        window.open(data.url, "_blank");
+        toast.success("Stripe onboarding opened in a new tab");
       } else {
         throw new Error("No onboarding URL returned");
       }
