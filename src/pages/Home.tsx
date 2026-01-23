@@ -173,17 +173,17 @@ export default function Home() {
           ) : (
             <>
               {/* Featured Carousel */}
-              <div className="relative px-12">
+              <div className="relative">
                 <Carousel
                   opts={{
                     align: 'start',
-                    loop: featuredWithStats.length > 7,
+                    loop: featuredWithStats.length > 5,
                   }}
                   className="w-full"
                 >
-                  <CarouselContent className="-ml-4">
+                  <CarouselContent className="-ml-6">
                     {featuredWithStats.map((product) => (
-                      <CarouselItem key={product.id} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-[14.28%]">
+                      <CarouselItem key={product.id} className="pl-6 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
                         <ProductCard 
                           product={product} 
                           showFeaturedBadge={false} 
@@ -196,13 +196,17 @@ export default function Home() {
                       </CarouselItem>
                     ))}
                   </CarouselContent>
-                  <CarouselPrevious className="-left-4 lg:-left-6" />
-                  <CarouselNext className="-right-4 lg:-right-6" />
+                  
+                  {/* Navigation arrows centered below carousel */}
+                  <div className="flex items-center justify-center gap-4 mt-8">
+                    <CarouselPrevious className="static translate-x-0 translate-y-0 h-10 w-10" />
+                    <CarouselNext className="static translate-x-0 translate-y-0 h-10 w-10" />
+                  </div>
                 </Carousel>
               </div>
 
               {/* View All Button */}
-              {featuredWithStats.length > 7 && (
+              {featuredWithStats.length > 5 && (
                 <div className="text-center mt-12">
                   <Button 
                     onClick={() => navigate('/products?featured=true')} 
