@@ -96,6 +96,9 @@ const productTypeLabels: Record<string, string> = {
   font: "Font",
   tutorial: "Tutorial",
   project_file: "Project File",
+  transition: "Transition Pack",
+  color_grading: "Color Grading",
+  motion_graphics: "Motion Graphics",
   other: "Other",
 };
 
@@ -134,6 +137,7 @@ export default function ProductDetail() {
   const [showFollowDialog, setShowFollowDialog] = useState(false);
   const [followingCreator, setFollowingCreator] = useState(false);
   const [isCreatorAdmin, setIsCreatorAdmin] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   
   // Comments
   const [comments, setComments] = useState<Comment[]>([]);
@@ -273,12 +277,18 @@ export default function ProductDetail() {
 
   const fetchRelatedProducts = async (creatorId: string | null, productType: string | null, excludeId: string) => {
     try {
-      const { data } = await supabase
+      let query = supabase
         .from("products")
         .select("id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency")
         .eq("status", "published")
-        .neq("id", excludeId)
-        .limit(5);
+        .neq("id", excludeId);
+      
+      // Filter by product_type if it exists
+      if (productType) {
+        query = query.eq("product_type", productType);
+      }
+      
+      const { data } = await query.limit(5);
       
       setRelatedProducts(data || []);
     } catch (error) {
@@ -660,10 +670,37 @@ export default function ProductDetail() {
     
     // User follows creator or is owner - proceed with download/purchase
     if (product?.pricing_type === "free") {
-      // Handle free download
-      toast.success("Download starting...");
+      // Handle free download using signed URL
+      handleDownload();
     } else {
       handlePurchase();
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!product) return;
+    
+    setDownloading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("get-download-url", {
+        body: { productId: product.id },
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        // Open download URL in new tab
+        window.open(data.url, '_blank');
+        toast.success("Download started!");
+      } else {
+        throw new Error("No download URL returned");
+      }
+    } catch (error) {
+      console.error("Download error:", error);
+      const message = error instanceof Error ? error.message : "Failed to get download link";
+      toast.error(message);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -863,17 +900,30 @@ export default function ProductDetail() {
               {!isOwner && (
                 <div className="flex-shrink-0">
                   {hasPurchased ? (
-                    <Button className="bg-emerald-600 hover:bg-emerald-700">
-                      <Download className="w-4 h-4 mr-2" />
+                    <Button 
+                      className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600"
+                      onClick={handleDownload}
+                      disabled={downloading}
+                    >
+                      {downloading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4 mr-2" />
+                      )}
                       Download
                     </Button>
                   ) : isFollowingCreator || !product.creator ? (
                     product.pricing_type === "free" ? (
                       <Button 
                         className="bg-gradient-to-r from-primary to-accent"
-                        onClick={handleAccessClick}
+                        onClick={handleDownload}
+                        disabled={downloading}
                       >
-                        <Download className="w-4 h-4 mr-2" />
+                        {downloading ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4 mr-2" />
+                        )}
                         Download Free
                       </Button>
                     ) : (

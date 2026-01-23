@@ -21,8 +21,43 @@ const productTypes = [
   { value: "template", label: "Template" },
   { value: "overlay", label: "Overlay" },
   { value: "font", label: "Font" },
+  { value: "tutorial", label: "Tutorial" },
+  { value: "project_file", label: "Project File" },
+  { value: "transition", label: "Transition Pack" },
+  { value: "color_grading", label: "Color Grading" },
+  { value: "motion_graphics", label: "Motion Graphics" },
   { value: "other", label: "Other" },
 ];
+
+// Helper to convert YouTube video ID to full URL
+const youtubeIdToUrl = (idOrUrl: string | null): string => {
+  if (!idOrUrl) return "";
+  // If it already looks like a URL, return as-is
+  if (idOrUrl.includes("youtube.com") || idOrUrl.includes("youtu.be")) {
+    return idOrUrl;
+  }
+  // Otherwise assume it's a video ID and convert to full URL
+  return `https://www.youtube.com/watch?v=${idOrUrl}`;
+};
+
+// Helper to extract YouTube video ID from URL
+const extractYoutubeId = (url: string): string => {
+  if (!url) return "";
+  // If it's already just an ID (no slashes or dots except in common domains)
+  if (!url.includes("/") && !url.includes(".")) {
+    return url;
+  }
+  // Extract ID from various YouTube URL formats
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^?&]+)/,
+    /^([a-zA-Z0-9_-]{11})$/
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return url; // Return as-is if no pattern matches
+};
 
 // Helper to generate slug from title
 const generateSlug = (title: string): string => {
@@ -118,9 +153,17 @@ export default function EditProduct() {
       setExistingSlug(product.slug || null);
       setDescription(product.description || "");
       setProductType(product.product_type || "");
-      setPricingType(product.pricing_type || "free");
+      // Map subscription_access back to pricingType
+      let mappedPricingType = product.pricing_type || "free";
+      if (product.subscription_access === 'subscription_only') {
+        mappedPricingType = 'subscription';
+      } else if (product.subscription_access === 'both') {
+        mappedPricingType = 'both';
+      }
+      setPricingType(mappedPricingType);
       setPrice(product.price_cents ? (product.price_cents / 100).toString() : "");
-      setYoutubeUrl(product.youtube_url || "");
+      // Convert YouTube ID to full URL for display
+      setYoutubeUrl(youtubeIdToUrl(product.youtube_url));
       setStatus(product.status || "draft");
       setExistingCoverUrl(product.cover_image_url);
       setExistingPreviewVideoPath(product.preview_video_url);
@@ -252,23 +295,23 @@ export default function EditProduct() {
         }
       }
 
-      // Handle download file
+      // Handle download file - upload to private bucket
       if (removeDownload) {
         downloadUrl = null;
       } else if (downloadFile) {
-        const ext = downloadFile.name.split(".").pop();
-        const path = `downloads/${profile.id}/${Date.now()}.${ext}`;
+        // Store in private bucket with user's auth ID as folder for RLS policy
+        const path = `${user.id}/${Date.now()}-${downloadFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
         const { error: uploadError } = await supabase.storage
-          .from("product-media")
+          .from("product-files")
           .upload(path, downloadFile);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Download file upload error:', uploadError);
+          throw uploadError;
+        }
 
-        const { data: publicUrl } = supabase.storage
-          .from("product-media")
-          .getPublicUrl(path);
-        
-        downloadUrl = publicUrl.publicUrl;
+        // Store the path (not public URL) - downloads will use signed URLs
+        downloadUrl = path;
       }
 
       // Check slug uniqueness if changed
@@ -289,7 +332,15 @@ export default function EditProduct() {
       }
 
       // Update product
-      const priceCents = pricingType === "free" ? 0 : Math.round(parseFloat(price) * 100);
+      const priceCents = (pricingType === "free" || pricingType === "subscription") ? 0 : Math.round(parseFloat(price) * 100);
+      
+      // Map pricing type to subscription_access
+      let subscriptionAccess = 'none';
+      if (pricingType === 'subscription') subscriptionAccess = 'subscription_only';
+      else if (pricingType === 'both') subscriptionAccess = 'both';
+
+      // Extract YouTube video ID from URL for storage
+      const youtubeVideoId = extractYoutubeId(youtubeUrl);
 
       const { error } = await supabase
         .from("products")
@@ -298,14 +349,15 @@ export default function EditProduct() {
           description,
           slug: finalSlug,
           product_type: productType || null,
-          pricing_type: pricingType,
+          pricing_type: pricingType === 'subscription' ? 'paid' : pricingType === 'both' ? 'paid' : pricingType,
           price_cents: priceCents,
-          youtube_url: youtubeUrl || null,
+          youtube_url: youtubeVideoId || null,
           tags: null,
           cover_image_url: coverImageUrl,
           preview_video_url: previewVideoPath,
           download_url: downloadUrl,
           status: publish ? "published" : "draft",
+          subscription_access: subscriptionAccess,
         })
         .eq("id", id);
 
@@ -457,7 +509,7 @@ export default function EditProduct() {
           <CardContent className="space-y-6">
             <div>
               <Label>Pricing Type</Label>
-              <div className="flex gap-4 mt-2">
+              <div className="flex flex-wrap gap-3 mt-2">
                 <Button
                   type="button"
                   variant={pricingType === "free" ? "default" : "outline"}
@@ -470,14 +522,32 @@ export default function EditProduct() {
                   variant={pricingType === "paid" ? "default" : "outline"}
                   onClick={() => setPricingType("paid")}
                 >
-                  Paid
+                  One-Time Purchase
+                </Button>
+                <Button
+                  type="button"
+                  variant={pricingType === "subscription" ? "default" : "outline"}
+                  onClick={() => setPricingType("subscription")}
+                >
+                  Subscription Only
+                </Button>
+                <Button
+                  type="button"
+                  variant={pricingType === "both" ? "default" : "outline"}
+                  onClick={() => setPricingType("both")}
+                >
+                  Both (One-Time + Subscription)
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {pricingType === "subscription" && "Only users subscribed to one of your plans can access this product."}
+                {pricingType === "both" && "Users can buy once OR get access through their subscription."}
+              </p>
             </div>
 
-            {pricingType === "paid" && (
+            {(pricingType === "paid" || pricingType === "both") && (
               <div>
-                <Label htmlFor="price">Price (USD)</Label>
+                <Label htmlFor="price">One-Time Price (USD)</Label>
                 <div className="relative mt-2">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                     $
@@ -665,10 +735,18 @@ export default function EditProduct() {
             {/* Download File */}
             <div>
               <Label>Product File</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Upload any file type (ZIP, RAR, 7z, etc.) - stored securely and only accessible to buyers/subscribers
+              </p>
               <div className="mt-2">
                 {downloadFile ? (
                   <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/20">
-                    <span className="text-sm truncate">{downloadFile.name}</span>
+                    <div className="flex flex-col min-w-0 flex-1 mr-2">
+                      <span className="text-sm font-medium truncate">{downloadFile.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {(downloadFile.size / (1024 * 1024)).toFixed(2)} MB
+                      </span>
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
@@ -680,7 +758,12 @@ export default function EditProduct() {
                   </div>
                 ) : existingDownloadUrl && !removeDownload ? (
                   <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/20">
-                    <span className="text-sm truncate">Current file attached</span>
+                    <div className="flex flex-col min-w-0 flex-1 mr-2">
+                      <span className="text-sm font-medium truncate">
+                        {existingDownloadUrl.split('/').pop() || 'Current file attached'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">File uploaded</span>
+                    </div>
                     <div className="flex gap-2">
                       <label>
                         <Button type="button" variant="secondary" size="sm" asChild>
@@ -707,6 +790,9 @@ export default function EditProduct() {
                     <Upload className="w-8 h-8 text-muted-foreground mb-2" />
                     <span className="text-sm text-muted-foreground">
                       Click to upload product file
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-1">
+                      ZIP, RAR, 7z, PDF, and other file types supported
                     </span>
                     <input
                       type="file"
