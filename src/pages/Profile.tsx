@@ -1237,9 +1237,16 @@ const ProfilePage: React.FC = () => {
             verified: profile.verified,
           }}
           collections={collections.map(c => ({ id: c.id, name: c.name }))}
-          onCollectionsChange={() => {
+          onCollectionsChange={async () => {
             fetchCollections(profile.id, isOwnProfile);
             bumpLayoutRefresh();
+            // Re-fetch recent uploads visibility after editor save
+            const { data } = await supabase
+              .from('profiles')
+              .select('show_recent_uploads')
+              .eq('id', profile.id)
+              .single();
+            if (data) setShowRecentUploads(data.show_recent_uploads !== false);
           }}
         />
       )}
