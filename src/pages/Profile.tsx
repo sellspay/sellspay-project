@@ -1170,15 +1170,6 @@ const ProfilePage: React.FC = () => {
                         <Pencil className="w-4 h-4 mr-1" />
                         Launch Editor
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowCreateCollection(true)}
-                        className="text-primary"
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        New Collection
-                      </Button>
                       {collections.length > 0 && (
                         <Button
                           variant="ghost"
@@ -1458,6 +1449,7 @@ const ProfilePage: React.FC = () => {
             verified: profile.verified,
           }}
           collections={collections.map(c => ({ id: c.id, name: c.name }))}
+          onCollectionsChange={() => fetchCollections(profile.id, isOwnProfile)}
         />
       )}
     </TooltipProvider>

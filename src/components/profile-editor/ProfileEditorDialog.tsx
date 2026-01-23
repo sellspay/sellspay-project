@@ -33,6 +33,7 @@ import { ProfileSection, SectionType, SECTION_TEMPLATES } from './types';
 import { AddSectionPanel } from './AddSectionPanel';
 import { EditSectionDialog } from './EditSectionDialog';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
+import { CreateCollectionInEditor } from './CreateCollectionInEditor';
 import { cn } from '@/lib/utils';
 
 interface Profile {
@@ -54,6 +55,7 @@ interface ProfileEditorDialogProps {
   profileId: string;
   profile: Profile;
   collections: { id: string; name: string }[];
+  onCollectionsChange?: () => void;
 }
 
 // Sortable section item
@@ -146,6 +148,7 @@ export function ProfileEditorDialog({
   profileId,
   profile,
   collections,
+  onCollectionsChange,
 }: ProfileEditorDialogProps) {
   const [sections, setSections] = useState<ProfileSection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,6 +158,7 @@ export function ProfileEditorDialog({
   const [editingSection, setEditingSection] = useState<ProfileSection | null>(null);
   const [productCount, setProductCount] = useState(0);
   const [previewSection, setPreviewSection] = useState<ProfileSection | null>(null);
+  const [showCreateCollection, setShowCreateCollection] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -590,7 +594,23 @@ export function ProfileEditorDialog({
         onUpdate={updateSection}
         onDelete={deleteSection}
         onClose={() => setEditingSection(null)}
+        onCreateCollection={() => {
+          setShowCreateCollection(true);
+        }}
       />
+
+      {/* Create Collection Dialog - nested inside editor */}
+      {showCreateCollection && (
+        <CreateCollectionInEditor
+          open={showCreateCollection}
+          onOpenChange={setShowCreateCollection}
+          profileId={profileId}
+          onCreated={() => {
+            setShowCreateCollection(false);
+            onCollectionsChange?.();
+          }}
+        />
+      )}
     </TooltipProvider>
   );
 }

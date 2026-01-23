@@ -40,6 +40,7 @@ interface EditSectionDialogProps {
   onUpdate: (section: ProfileSection) => void;
   onDelete: (sectionId: string) => void;
   onClose: () => void;
+  onCreateCollection?: () => void;
 }
 
 export function EditSectionDialog({
@@ -48,6 +49,7 @@ export function EditSectionDialog({
   onUpdate,
   onDelete,
   onClose,
+  onCreateCollection,
 }: EditSectionDialogProps) {
   const [uploading, setUploading] = useState(false);
 
@@ -141,6 +143,7 @@ export function EditSectionDialog({
             content={section.content as CollectionContent}
             onChange={updateContent}
             collections={collections}
+            onCreateCollection={onCreateCollection}
           />
         );
       case 'about_me':
@@ -494,43 +497,81 @@ function CollectionEditor({
   content,
   onChange,
   collections,
+  onCreateCollection,
 }: {
   content: CollectionContent;
   onChange: (updates: Partial<CollectionContent>) => void;
   collections: { id: string; name: string }[];
+  onCreateCollection?: () => void;
 }) {
   return (
     <div className="space-y-4">
       <div>
         <Label>Select Collection</Label>
-        <Select value={content.collectionId} onValueChange={(value) => onChange({ collectionId: value })}>
-          <SelectTrigger>
-            <SelectValue placeholder="Choose a collection" />
-          </SelectTrigger>
-          <SelectContent>
-            {collections.map((col) => (
-              <SelectItem key={col.id} value={col.id}>
-                {col.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {collections.length > 0 ? (
+          <Select value={content.collectionId} onValueChange={(value) => onChange({ collectionId: value })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a collection" />
+            </SelectTrigger>
+            <SelectContent>
+              {collections.map((col) => (
+                <SelectItem key={col.id} value={col.id}>
+                  {col.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="mt-2 p-4 border-2 border-dashed border-border rounded-lg text-center">
+            <p className="text-sm text-muted-foreground mb-3">
+              No collections yet. Create one to display your products.
+            </p>
+            {onCreateCollection && (
+              <Button 
+                type="button"
+                variant="outline" 
+                size="sm"
+                onClick={onCreateCollection}
+                className="gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Create Collection
+              </Button>
+            )}
+          </div>
+        )}
       </div>
-      <div>
-        <Label>Display Style</Label>
-        <Select
-          value={content.displayStyle || 'grid'}
-          onValueChange={(value) => onChange({ displayStyle: value as 'grid' | 'slider' })}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="grid">Grid</SelectItem>
-            <SelectItem value="slider">Slider</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {collections.length > 0 && (
+        <>
+          <div>
+            <Label>Display Style</Label>
+            <Select
+              value={content.displayStyle || 'grid'}
+              onValueChange={(value) => onChange({ displayStyle: value as 'grid' | 'slider' })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="grid">Grid</SelectItem>
+                <SelectItem value="slider">Slider</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {onCreateCollection && (
+            <Button 
+              type="button"
+              variant="ghost" 
+              size="sm"
+              onClick={onCreateCollection}
+              className="w-full gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <Plus className="w-4 h-4" />
+              Create Another Collection
+            </Button>
+          )}
+        </>
+      )}
     </div>
   );
 }
