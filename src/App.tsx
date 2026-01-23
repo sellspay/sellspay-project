@@ -8,6 +8,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ResetPassword from "./pages/ResetPassword";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import CreateProduct from "./pages/CreateProduct";
@@ -44,6 +45,7 @@ const App = () => (
             {/* Auth pages without layout */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             
             {/* Main pages with layout */}
             <Route path="/" element={<MainLayout><Home /></MainLayout>} />
