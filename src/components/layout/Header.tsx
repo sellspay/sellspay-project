@@ -96,8 +96,11 @@ export default function Header() {
               </Link>
             ))}
 
-            {/* Hire Editors Button - Standout */}
-            <Button asChild className="ml-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
+            {/* Hire Editors Button - Standout with animated gradient */}
+            <Button 
+              asChild 
+              className="ml-2 rounded-full text-white font-medium relative overflow-hidden bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-[gradient-wave_3s_ease-in-out_infinite] hover:shadow-lg hover:shadow-primary/25 transition-shadow"
+            >
               <Link to="/hire-editors">Hire Editors</Link>
             </Button>
           </nav>
@@ -223,7 +226,7 @@ export default function Header() {
               <Link
                 to="/hire-editors"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient-wave"
               >
                 Hire Editors
               </Link>
