@@ -45,6 +45,17 @@ import {
 import CollectionRow from '@/components/profile/CollectionRow';
 import SortableCollectionItem from '@/components/profile/SortableCollectionItem';
 import CreateCollectionDialog from '@/components/profile/CreateCollectionDialog';
+import EditCollectionDialog from '@/components/profile/EditCollectionDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Profile {
   id: string;
@@ -280,6 +291,9 @@ const ProfilePage: React.FC = () => {
   const [showCreateCollection, setShowCreateCollection] = useState(false);
   const [isEditingCollections, setIsEditingCollections] = useState(false);
   const [showRecentUploads, setShowRecentUploads] = useState(true);
+  const [showEditCollection, setShowEditCollection] = useState(false);
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
+  const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -682,6 +696,40 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  // Delete collection
+  const handleDeleteCollection = async (collectionId: string) => {
+    try {
+      // First delete collection items
+      const { error: itemsError } = await supabase
+        .from('collection_items')
+        .delete()
+        .eq('collection_id', collectionId);
+
+      if (itemsError) throw itemsError;
+
+      // Then delete the collection itself
+      const { error: collectionError } = await supabase
+        .from('collections')
+        .delete()
+        .eq('id', collectionId);
+
+      if (collectionError) throw collectionError;
+
+      setCollections(prev => prev.filter(c => c.id !== collectionId));
+      setDeleteCollectionId(null);
+      toast.success('Collection deleted');
+    } catch (error) {
+      console.error('Error deleting collection:', error);
+      toast.error('Failed to delete collection');
+    }
+  };
+
+  // Open edit dialog for a collection
+  const handleEditCollection = (collection: Collection) => {
+    setEditingCollection(collection);
+    setShowEditCollection(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -1054,6 +1102,8 @@ const ProfilePage: React.FC = () => {
                           collection={collection}
                           isEditing={isEditingCollections && isOwnProfile}
                           onToggleVisibility={toggleCollectionVisibility}
+                          onDelete={(id) => setDeleteCollectionId(id)}
+                          onEdit={handleEditCollection}
                         />
                       ))}
                     </div>
@@ -1177,6 +1227,40 @@ const ProfilePage: React.FC = () => {
           onCreated={() => fetchCollections(profile.id, isOwnProfile)}
         />
       )}
+
+      {/* Edit Collection Dialog */}
+      <EditCollectionDialog
+        open={showEditCollection}
+        onOpenChange={setShowEditCollection}
+        collection={editingCollection}
+        onUpdated={() => {
+          if (profile) {
+            fetchCollections(profile.id, isOwnProfile);
+          }
+        }}
+      />
+
+      {/* Delete Collection Confirmation */}
+      <AlertDialog open={!!deleteCollectionId} onOpenChange={(open) => !open && setDeleteCollectionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Collection?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this collection. The products inside will not be deleted, 
+              only the collection grouping.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteCollectionId && handleDeleteCollection(deleteCollectionId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   );
 };
