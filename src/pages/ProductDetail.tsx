@@ -956,7 +956,7 @@ export default function ProductDetail() {
                     onClick={handleSubmitComment} 
                     disabled={submittingComment || (!newComment.trim() && !selectedGif)}
                     size="icon"
-                    className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90"
+                    className="h-9 w-9 rounded-full shrink-0"
                   >
                     {submittingComment ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1194,22 +1194,22 @@ export default function ProductDetail() {
           {/* Description - Collapsible */}
           {product.description && (
             <div>
-              <div className={`text-muted-foreground whitespace-pre-wrap leading-relaxed ${!descriptionExpanded && shouldTruncateDescription ? 'line-clamp-5' : ''}`}>
+              <h3 className="font-semibold mb-2">Description</h3>
+              <div 
+                className={cn(
+                  "text-muted-foreground whitespace-pre-wrap leading-relaxed overflow-hidden",
+                  !descriptionExpanded && shouldTruncateDescription && "line-clamp-5"
+                )}
+              >
                 {product.description}
               </div>
               {shouldTruncateDescription && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-primary hover:text-primary p-0 h-auto mt-2"
+                <button
+                  className="text-primary hover:underline text-sm mt-1"
                   onClick={() => setDescriptionExpanded(!descriptionExpanded)}
                 >
-                  {descriptionExpanded ? (
-                    <>Show less <ChevronUp className="w-4 h-4 ml-1" /></>
-                  ) : (
-                    <>Show more <ChevronDown className="w-4 h-4 ml-1" /></>
-                  )}
-                </Button>
+                  {descriptionExpanded ? "Show less" : "Show more"}
+                </button>
               )}
             </div>
           )}
