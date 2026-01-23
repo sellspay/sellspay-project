@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, CollectionContent, AboutMeContent, HeadlineContent, DividerContent, TestimonialsContent, FAQContent, NewsletterContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, ContactUsContent, FooterContent } from '../types';
+import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, CollectionContent, AboutMeContent, HeadlineContent, SlidingBannerContent, DividerContent, TestimonialsContent, FAQContent, NewsletterContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, ContactUsContent, FooterContent } from '../types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -179,6 +179,35 @@ const HeadlinePreview = memo(({ content }: { content: HeadlineContent }) => {
   );
 });
 HeadlinePreview.displayName = 'HeadlinePreview';
+
+// Sliding Banner Preview
+const SlidingBannerPreview = memo(({ content }: { content: SlidingBannerContent }) => {
+  const speedClasses = {
+    slow: 'animate-[marquee_20s_linear_infinite]',
+    medium: 'animate-[marquee_12s_linear_infinite]',
+    fast: 'animate-[marquee_6s_linear_infinite]',
+  };
+  
+  return (
+    <div className="overflow-hidden py-2 bg-primary/10 rounded-lg">
+      <div className={`whitespace-nowrap ${speedClasses[content.speed]}`}>
+        <span className="inline-block px-4 text-foreground font-medium">
+          {content.text}
+        </span>
+        <span className="inline-block px-4 text-foreground font-medium">
+          {content.text}
+        </span>
+      </div>
+      <style>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
+    </div>
+  );
+});
+SlidingBannerPreview.displayName = 'SlidingBannerPreview';
 
 // Divider Preview
 const DividerPreview = memo(({ content }: { content: DividerContent }) => {
@@ -480,6 +509,8 @@ export const SectionPreviewContent = memo(({ section }: SectionPreviewContentPro
       return <AboutMePreview content={section.content as AboutMeContent} />;
     case 'headline':
       return <HeadlinePreview content={section.content as HeadlineContent} />;
+    case 'sliding_banner':
+      return <SlidingBannerPreview content={section.content as SlidingBannerContent} />;
     case 'divider':
       return <DividerPreview content={section.content as DividerContent} />;
     case 'testimonials':
