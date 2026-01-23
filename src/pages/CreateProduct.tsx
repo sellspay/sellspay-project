@@ -20,6 +20,11 @@ const productTypes = [
   { value: "template", label: "Template" },
   { value: "overlay", label: "Overlay" },
   { value: "font", label: "Font" },
+  { value: "tutorial", label: "Tutorial" },
+  { value: "project_file", label: "Project File" },
+  { value: "transition", label: "Transition Pack" },
+  { value: "color_grading", label: "Color Grading" },
+  { value: "motion_graphics", label: "Motion Graphics" },
   { value: "other", label: "Other" },
 ];
 
@@ -141,21 +146,22 @@ export default function CreateProduct() {
         }
       }
 
-      // Upload download file
+      // Upload download file to private bucket
       if (downloadFile) {
         const ext = downloadFile.name.split(".").pop();
-        const path = `downloads/${profile.id}/${Date.now()}.${ext}`;
+        // Store in private bucket with user's ID as folder for RLS policy
+        const path = `${user.id}/${Date.now()}-${downloadFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
         const { error: uploadError } = await supabase.storage
-          .from("product-media")
+          .from("product-files")
           .upload(path, downloadFile);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Download file upload error:', uploadError);
+          throw uploadError;
+        }
 
-        const { data: publicUrl } = supabase.storage
-          .from("product-media")
-          .getPublicUrl(path);
-        
-        downloadUrl = publicUrl.publicUrl;
+        // Store the path (not public URL) - downloads will use signed URLs
+        downloadUrl = path;
       }
 
       // Create product
@@ -488,10 +494,18 @@ export default function CreateProduct() {
             {/* Download File */}
             <div>
               <Label>Product File</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Upload any file type (ZIP, RAR, 7z, etc.) - stored securely and only accessible to buyers/subscribers
+              </p>
               <div className="mt-2">
                 {downloadFile ? (
                   <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/20">
-                    <span className="text-sm truncate">{downloadFile.name}</span>
+                    <div className="flex flex-col min-w-0 flex-1 mr-2">
+                      <span className="text-sm font-medium truncate">{downloadFile.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {(downloadFile.size / (1024 * 1024)).toFixed(2)} MB
+                      </span>
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
@@ -506,6 +520,9 @@ export default function CreateProduct() {
                     <Upload className="w-8 h-8 text-muted-foreground mb-2" />
                     <span className="text-sm text-muted-foreground">
                       Click to upload product file
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-1">
+                      ZIP, RAR, 7z, PDF, and other file types supported
                     </span>
                     <input
                       type="file"
