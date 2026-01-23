@@ -34,6 +34,23 @@ function formatPrice(cents: number | null, currency: string | null): string {
   }).format(amount);
 }
 
+function getProductThumbnail(product: Product): string | null {
+  if (product.cover_image_url) return product.cover_image_url;
+  
+  // Use YouTube thumbnail if available
+  if (product.youtube_url) {
+    // Handle both full URLs and video IDs
+    let videoId = product.youtube_url;
+    if (product.youtube_url.includes('/') || product.youtube_url.includes('?')) {
+      const match = product.youtube_url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      videoId = match ? match[1] : product.youtube_url;
+    }
+    return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+  }
+  
+  return null;
+}
+
 export default function HorizontalProductRow({ title, products, limit = 12 }: HorizontalProductRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const displayProducts = products.slice(0, limit);
@@ -84,17 +101,20 @@ export default function HorizontalProductRow({ title, products, limit = 12 }: Ho
             className="flex-shrink-0 w-[280px] group"
           >
             <div className="relative aspect-video rounded-xl overflow-hidden bg-muted">
-              {product.cover_image_url ? (
-                <img
-                  src={product.cover_image_url}
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Play className="w-12 h-12 text-muted-foreground" />
-                </div>
-              )}
+              {(() => {
+                const thumbnail = getProductThumbnail(product);
+                return thumbnail ? (
+                  <img
+                    src={thumbnail}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/20">
+                    <Play className="w-12 h-12 text-muted-foreground" />
+                  </div>
+                );
+              })()}
               
               {/* Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
