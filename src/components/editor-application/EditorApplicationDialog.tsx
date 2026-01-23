@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -8,7 +8,7 @@ import Step3Services from './Step3Services';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle, Clock } from 'lucide-react';
 
 interface EditorApplicationDialogProps {
   open: boolean;
@@ -41,31 +41,85 @@ const initialFormData: ApplicationFormData = {
   services: [],
 };
 
+// Calculate days remaining before rejected user can reapply
+const getDaysUntilReapply = (reviewedAt: string): number => {
+  const reviewedDate = new Date(reviewedAt);
+  const cooldownEnd = new Date(reviewedDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const daysRemaining = Math.ceil((cooldownEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, daysRemaining);
+};
+
 export default function EditorApplicationDialog({ open, onOpenChange }: EditorApplicationDialogProps) {
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<ApplicationFormData>(initialFormData);
   const [submitting, setSubmitting] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(true);
+  const [applicationStatus, setApplicationStatus] = useState<{
+    status: 'none' | 'pending' | 'approved' | 'rejected';
+    daysUntilReapply?: number;
+  }>({ status: 'none' });
 
-  // Fetch avatar on open
-  useState(() => {
-    if (user) {
-      supabase
-        .from('profiles')
-        .select('avatar_url, full_name')
-        .eq('user_id', user.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) {
-            setAvatarUrl(data.avatar_url);
-            if (data.full_name && !formData.displayName) {
-              setFormData(prev => ({ ...prev, displayName: data.full_name || '' }));
+  // Check application status on open
+  useEffect(() => {
+    const checkApplicationStatus = async () => {
+      if (!user || !open) return;
+      
+      setCheckingStatus(true);
+      try {
+        // Get profile id
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, avatar_url, full_name')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!profile) {
+          setApplicationStatus({ status: 'none' });
+          return;
+        }
+
+        setAvatarUrl(profile.avatar_url);
+        if (profile.full_name && !formData.displayName) {
+          setFormData(prev => ({ ...prev, displayName: profile.full_name || '' }));
+        }
+
+        // Check for existing application
+        const { data: existingApp } = await supabase
+          .from('editor_applications')
+          .select('id, status, reviewed_at')
+          .eq('user_id', profile.id)
+          .maybeSingle();
+
+        if (existingApp) {
+          if (existingApp.status === 'pending') {
+            setApplicationStatus({ status: 'pending' });
+          } else if (existingApp.status === 'approved') {
+            setApplicationStatus({ status: 'approved' });
+          } else if (existingApp.status === 'rejected' && existingApp.reviewed_at) {
+            const daysRemaining = getDaysUntilReapply(existingApp.reviewed_at);
+            if (daysRemaining > 0) {
+              setApplicationStatus({ status: 'rejected', daysUntilReapply: daysRemaining });
+            } else {
+              // Cooldown expired, they can apply again
+              setApplicationStatus({ status: 'none' });
             }
           }
-        });
-    }
-  });
+        } else {
+          setApplicationStatus({ status: 'none' });
+        }
+      } catch (error) {
+        console.error('Error checking application status:', error);
+        setApplicationStatus({ status: 'none' });
+      } finally {
+        setCheckingStatus(false);
+      }
+    };
+
+    checkApplicationStatus();
+  }, [user, open]);
 
   const updateFormData = (updates: Partial<ApplicationFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
@@ -158,68 +212,139 @@ export default function EditorApplicationDialog({ open, onOpenChange }: EditorAp
           <DialogTitle className="text-2xl">Apply as an Editor</DialogTitle>
         </DialogHeader>
 
-        {/* Progress */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Step {step} of 3</span>
-            <span>{step === 1 ? 'Personal Info' : step === 2 ? 'Rates & Languages' : 'Services'}</span>
+        {/* Loading State */}
+        {checkingStatus && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-          <Progress value={(step / 3) * 100} className="h-2" />
-        </div>
-
-        {/* Steps */}
-        {step === 1 && (
-          <Step1PersonalInfo
-            formData={formData}
-            updateFormData={updateFormData}
-            avatarUrl={avatarUrl}
-          />
-        )}
-        {step === 2 && (
-          <Step2Rates
-            formData={formData}
-            updateFormData={updateFormData}
-          />
-        )}
-        {step === 3 && (
-          <Step3Services
-            formData={formData}
-            updateFormData={updateFormData}
-          />
         )}
 
-        {/* Navigation */}
-        <div className="flex justify-between pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={() => step > 1 ? setStep(step - 1) : handleClose()}
-          >
-            {step === 1 ? 'Cancel' : 'Back'}
-          </Button>
-          
-          {step < 3 ? (
-            <Button
-              onClick={() => setStep(step + 1)}
-              disabled={step === 1 ? !canProceedStep1 : !canProceedStep2}
-            >
-              Next
+        {/* Already Pending */}
+        {!checkingStatus && applicationStatus.status === 'pending' && (
+          <div className="py-8 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto">
+              <Clock className="w-8 h-8 text-yellow-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Application Pending</h3>
+              <p className="text-muted-foreground mt-2">
+                Your application is currently under review. We'll notify you once a decision has been made.
+              </p>
+            </div>
+            <Button variant="outline" onClick={handleClose}>
+              Close
             </Button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={!canSubmit || submitting}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
+          </div>
+        )}
+
+        {/* Already Approved */}
+        {!checkingStatus && applicationStatus.status === 'approved' && (
+          <div className="py-8 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto">
+              <Clock className="w-8 h-8 text-green-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Already an Editor</h3>
+              <p className="text-muted-foreground mt-2">
+                You're already an approved editor! Visit your profile to manage your editor settings.
+              </p>
+            </div>
+            <Button variant="outline" onClick={handleClose}>
+              Close
+            </Button>
+          </div>
+        )}
+
+        {/* Rejected with Cooldown */}
+        {!checkingStatus && applicationStatus.status === 'rejected' && applicationStatus.daysUntilReapply && (
+          <div className="py-8 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-8 h-8 text-destructive" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Application Rejected</h3>
+              <p className="text-muted-foreground mt-2">
+                Your previous application was not approved.
+              </p>
+              <div className="mt-4 p-4 rounded-lg bg-destructive/10 border border-destructive/20 inline-block">
+                <p className="text-destructive font-medium">
+                  Try again in {applicationStatus.daysUntilReapply} day{applicationStatus.daysUntilReapply !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" onClick={handleClose}>
+              Close
+            </Button>
+          </div>
+        )}
+
+        {/* Application Form */}
+        {!checkingStatus && applicationStatus.status === 'none' && (
+          <>
+            {/* Progress */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Step {step} of 3</span>
+                <span>{step === 1 ? 'Personal Info' : step === 2 ? 'Rates & Languages' : 'Services'}</span>
+              </div>
+              <Progress value={(step / 3) * 100} className="h-2" />
+            </div>
+
+            {/* Steps */}
+            {step === 1 && (
+              <Step1PersonalInfo
+                formData={formData}
+                updateFormData={updateFormData}
+                avatarUrl={avatarUrl}
+              />
+            )}
+            {step === 2 && (
+              <Step2Rates
+                formData={formData}
+                updateFormData={updateFormData}
+              />
+            )}
+            {step === 3 && (
+              <Step3Services
+                formData={formData}
+                updateFormData={updateFormData}
+              />
+            )}
+
+            {/* Navigation */}
+            <div className="flex justify-between pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => step > 1 ? setStep(step - 1) : handleClose()}
+              >
+                {step === 1 ? 'Cancel' : 'Back'}
+              </Button>
+              
+              {step < 3 ? (
+                <Button
+                  onClick={() => setStep(step + 1)}
+                  disabled={step === 1 ? !canProceedStep1 : !canProceedStep2}
+                >
+                  Next
+                </Button>
               ) : (
-                'Submit Application'
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!canSubmit || submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Application'
+                  )}
+                </Button>
               )}
-            </Button>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
