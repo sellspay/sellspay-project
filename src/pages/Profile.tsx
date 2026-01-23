@@ -779,12 +779,22 @@ const ProfilePage: React.FC = () => {
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background relative">
-        {/* Steam-style full-page background */}
+        {/* Steam-style full-page background - using img for better quality */}
         {profile.background_url && (
-          <div 
-            className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
-            style={{ backgroundImage: `url(${profile.background_url})` }}
-          />
+          <div className="fixed inset-0 pointer-events-none overflow-hidden">
+            <img 
+              src={profile.background_url}
+              alt=""
+              className="w-full h-full object-cover"
+              style={{ 
+                imageRendering: 'auto',
+                WebkitBackfaceVisibility: 'hidden',
+                backfaceVisibility: 'hidden'
+              }}
+              loading="eager"
+              decoding="sync"
+            />
+          </div>
         )}
         
         {/* Content wrapper - solid card when background is present */}
