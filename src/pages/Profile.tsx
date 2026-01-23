@@ -177,8 +177,10 @@ function ProductCard({
   );
 }
 
-export default function Profile() {
-  const { username } = useParams();
+const ProfilePage: React.FC = () => {
+  const params = useParams();
+  const username = (params as Record<string, string | undefined>).username;
+  const atUsername = (params as Record<string, string | undefined>).atUsername;
   const navigate = useNavigate();
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -190,7 +192,11 @@ export default function Profile() {
 
   useEffect(() => {
     async function fetchProfile() {
-      const cleanUsername = username?.replace('@', '');
+      // Supports:
+      // - /profile (no username in URL)
+      // - /@username via route param ":atUsername" where value starts with '@'
+      const raw = atUsername ?? username;
+      const cleanUsername = raw?.replace('@', '');
       
       let data = null;
       let error = null;
@@ -247,7 +253,7 @@ export default function Profile() {
     }
 
     fetchProfile();
-  }, [username, user]);
+  }, [username, atUsername, user]);
 
   const copyProfileLink = () => {
     const url = `${window.location.origin}/@${profile?.username}`;
@@ -452,4 +458,6 @@ export default function Profile() {
       </div>
     </div>
   );
-}
+};
+
+export default ProfilePage;
