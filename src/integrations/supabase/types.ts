@@ -152,6 +152,111 @@ export type Database = {
           },
         ]
       }
+      editor_applications: {
+        Row: {
+          about_me: string
+          city: string
+          country: string
+          created_at: string | null
+          display_name: string
+          hourly_rate_cents: number
+          id: string
+          languages: string[]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          services: string[]
+          social_links: Json | null
+          starting_budget_cents: number | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          about_me: string
+          city: string
+          country: string
+          created_at?: string | null
+          display_name: string
+          hourly_rate_cents: number
+          id?: string
+          languages: string[]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          services: string[]
+          social_links?: Json | null
+          starting_budget_cents?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          about_me?: string
+          city?: string
+          country?: string
+          created_at?: string | null
+          display_name?: string
+          hourly_rate_cents?: number
+          id?: string
+          languages?: string[]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          services?: string[]
+          social_links?: Json | null
+          starting_budget_cents?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      editor_bookings: {
+        Row: {
+          buyer_id: string
+          created_at: string | null
+          editor_id: string
+          editor_payout_cents: number
+          hours: number
+          id: string
+          platform_fee_cents: number
+          status: string | null
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_transfer_id: string | null
+          total_amount_cents: number
+          updated_at: string | null
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string | null
+          editor_id: string
+          editor_payout_cents: number
+          hours: number
+          id?: string
+          platform_fee_cents: number
+          status?: string | null
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_transfer_id?: string | null
+          total_amount_cents: number
+          updated_at?: string | null
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string | null
+          editor_id?: string
+          editor_payout_cents?: number
+          hours?: number
+          id?: string
+          platform_fee_cents?: number
+          status?: string | null
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_transfer_id?: string | null
+          total_amount_cents?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       followers: {
         Row: {
           created_at: string
@@ -282,10 +387,18 @@ export type Database = {
           banner_url: string | null
           bio: string | null
           created_at: string | null
+          editor_about: string | null
+          editor_city: string | null
+          editor_country: string | null
+          editor_hourly_rate_cents: number | null
+          editor_languages: string[] | null
+          editor_services: string[] | null
+          editor_social_links: Json | null
           email: string | null
           full_name: string | null
           id: string
           is_creator: boolean | null
+          is_editor: boolean | null
           phone: string | null
           show_recent_uploads: boolean | null
           social_links: Json | null
@@ -303,10 +416,18 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
+          editor_about?: string | null
+          editor_city?: string | null
+          editor_country?: string | null
+          editor_hourly_rate_cents?: number | null
+          editor_languages?: string[] | null
+          editor_services?: string[] | null
+          editor_social_links?: Json | null
           email?: string | null
           full_name?: string | null
           id?: string
           is_creator?: boolean | null
+          is_editor?: boolean | null
           phone?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
@@ -324,10 +445,18 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
+          editor_about?: string | null
+          editor_city?: string | null
+          editor_country?: string | null
+          editor_hourly_rate_cents?: number | null
+          editor_languages?: string[] | null
+          editor_services?: string[] | null
+          editor_social_links?: Json | null
           email?: string | null
           full_name?: string | null
           id?: string
           is_creator?: boolean | null
+          is_editor?: boolean | null
           phone?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
@@ -440,15 +569,43 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_username_available: { Args: { p_username: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -575,6 +732,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
