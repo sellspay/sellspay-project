@@ -116,7 +116,7 @@ const getYouTubeThumbnail = (youtubeUrl: string | null): string | null => {
 };
 
 export default function ProductDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id, slug } = useParams<{ id?: string; slug?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -180,12 +180,13 @@ export default function ProductDetail() {
   }, [searchParams, id]);
 
   useEffect(() => {
-    if (id) {
+    const productIdentifier = id || slug;
+    if (productIdentifier) {
       fetchProduct();
       fetchLikes();
       fetchComments();
     }
-  }, [id, userProfileId]);
+  }, [id, slug, userProfileId]);
 
   // Check if user follows the creator
   useEffect(() => {
@@ -209,11 +210,20 @@ export default function ProductDetail() {
 
   const fetchProduct = async () => {
     try {
-      const { data: productData, error: productError } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
+      let query = supabase.from("products").select("*");
+      
+      // Support both ID and slug lookups
+      if (slug) {
+        query = query.eq("slug", slug);
+      } else if (id) {
+        query = query.eq("id", id);
+      } else {
+        setProduct(null);
+        setLoading(false);
+        return;
+      }
+      
+      const { data: productData, error: productError } = await query.maybeSingle();
 
       if (productError) throw productError;
       if (!productData) {
@@ -251,6 +261,7 @@ export default function ProductDetail() {
       
       // Fetch related products (same creator or same type)
       fetchRelatedProducts(productData.creator_id, productData.product_type, productData.id);
+      fetchRelatedCreators(productData.creator_id);
       fetchRelatedCreators(productData.creator_id);
     } catch (error) {
       console.error("Error fetching product:", error);
@@ -290,14 +301,15 @@ export default function ProductDetail() {
   };
 
   const fetchComments = async () => {
-    if (!id) return;
+    const productId = id || (product?.id);
+    if (!productId) return;
     
     try {
       // Fetch top-level comments (no parent)
       const { data, count } = await supabase
         .from("comments")
         .select("*", { count: "exact" })
-        .eq("product_id", id)
+        .eq("product_id", productId)
         .is("parent_comment_id", null)
         .order("created_at", { ascending: false })
         .limit(10);
@@ -390,13 +402,14 @@ export default function ProductDetail() {
   };
 
   const fetchLikes = async () => {
-    if (!id) return;
+    const productId = id || (product?.id);
+    if (!productId) return;
     
     try {
       const { count } = await supabase
         .from("product_likes")
         .select("*", { count: "exact", head: true })
-        .eq("product_id", id);
+        .eq("product_id", productId);
       
       setLikeCount(count || 0);
 
@@ -404,7 +417,7 @@ export default function ProductDetail() {
         const { data } = await supabase
           .from("product_likes")
           .select("id")
-          .eq("product_id", id)
+          .eq("product_id", productId)
           .eq("user_id", userProfileId)
           .maybeSingle();
         
@@ -421,14 +434,15 @@ export default function ProductDetail() {
       return;
     }
     
-    if (!userProfileId || !id) return;
+    const productId = id || product?.id;
+    if (!userProfileId || !productId) return;
 
     try {
       if (isLiked) {
         await supabase
           .from("product_likes")
           .delete()
-          .eq("product_id", id)
+          .eq("product_id", productId)
           .eq("user_id", userProfileId);
         
         setIsLiked(false);
@@ -436,7 +450,7 @@ export default function ProductDetail() {
       } else {
         await supabase
           .from("product_likes")
-          .insert({ product_id: id, user_id: userProfileId });
+          .insert({ product_id: productId, user_id: userProfileId });
         
         setIsLiked(true);
         setLikeCount((prev) => prev + 1);
@@ -453,14 +467,15 @@ export default function ProductDetail() {
       return;
     }
     
-    if (!userProfileId || !id || (!newComment.trim() && !selectedGif)) return;
+    const productId = id || product?.id;
+    if (!userProfileId || !productId || (!newComment.trim() && !selectedGif)) return;
 
     setSubmittingComment(true);
     try {
       const { error } = await supabase
         .from("comments")
         .insert({
-          product_id: id,
+          product_id: productId,
           user_id: userProfileId,
           content: newComment.trim(),
           gif_url: selectedGif,

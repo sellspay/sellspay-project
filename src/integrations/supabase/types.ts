@@ -377,6 +377,7 @@ export type Database = {
           price_cents: number | null
           pricing_type: string | null
           product_type: string | null
+          slug: string | null
           status: string | null
           subscription_access: string | null
           subscription_price_cents: number | null
@@ -404,6 +405,7 @@ export type Database = {
           price_cents?: number | null
           pricing_type?: string | null
           product_type?: string | null
+          slug?: string | null
           status?: string | null
           subscription_access?: string | null
           subscription_price_cents?: number | null
@@ -431,6 +433,7 @@ export type Database = {
           price_cents?: number | null
           pricing_type?: string | null
           product_type?: string | null
+          slug?: string | null
           status?: string | null
           subscription_access?: string | null
           subscription_price_cents?: number | null

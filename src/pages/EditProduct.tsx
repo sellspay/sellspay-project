@@ -24,6 +24,17 @@ const productTypes = [
   { value: "other", label: "Other" },
 ];
 
+// Helper to generate slug from title
+const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special chars
+    .replace(/\s+/g, '-')     // Replace spaces with hyphens
+    .replace(/-+/g, '-')      // Replace multiple hyphens
+    .substring(0, 100);       // Limit length
+};
+
 export default function EditProduct() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -33,6 +44,8 @@ export default function EditProduct() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [existingSlug, setExistingSlug] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [productType, setProductType] = useState("");
   const [pricingType, setPricingType] = useState("free");
@@ -101,6 +114,8 @@ export default function EditProduct() {
 
       // Populate form
       setName(product.name);
+      setSlug(product.slug || "");
+      setExistingSlug(product.slug || null);
       setDescription(product.description || "");
       setProductType(product.product_type || "");
       setPricingType(product.pricing_type || "free");
@@ -256,6 +271,23 @@ export default function EditProduct() {
         downloadUrl = publicUrl.publicUrl;
       }
 
+      // Check slug uniqueness if changed
+      const finalSlug = slug.trim() || null;
+      if (finalSlug && finalSlug !== existingSlug) {
+        const { data: slugCheck } = await supabase
+          .from("products")
+          .select("id")
+          .eq("slug", finalSlug)
+          .neq("id", id)
+          .maybeSingle();
+        
+        if (slugCheck) {
+          toast.error("This URL slug is already taken. Please choose another.");
+          setSaving(false);
+          return;
+        }
+      }
+
       // Update product
       const priceCents = pricingType === "free" ? 0 : Math.round(parseFloat(price) * 100);
 
@@ -264,6 +296,7 @@ export default function EditProduct() {
         .update({
           name,
           description,
+          slug: finalSlug,
           product_type: productType || null,
           pricing_type: pricingType,
           price_cents: priceCents,
@@ -279,7 +312,7 @@ export default function EditProduct() {
       if (error) throw error;
 
       toast.success(publish ? "Product published!" : "Changes saved!");
-      navigate(`/product/${id}`);
+      navigate(slug ? `/p/${slug}` : `/product/${id}`);
     } catch (error) {
       console.error("Error updating product:", error);
       toast.error("Failed to update product");
@@ -361,6 +394,29 @@ export default function EditProduct() {
                 placeholder="My Awesome Product"
                 className="mt-2"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="slug">Custom URL Slug</Label>
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">/p/</span>
+                  <Input
+                    id="slug"
+                    value={slug}
+                    onChange={(e) => setSlug(generateSlug(e.target.value))}
+                    placeholder="my-awesome-product"
+                    className="flex-1 font-mono text-sm"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {slug ? (
+                    <>Preview: <span className="font-mono text-primary">editorsparadise.com/p/{slug}</span></>
+                  ) : (
+                    "Leave empty to use product ID in URL"
+                  )}
+                </p>
+              </div>
             </div>
 
             <div>
