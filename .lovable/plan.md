@@ -1,182 +1,315 @@
 
-# Implementation Plan: Hire Editors, Home Page & Profile Enhancements
+
+# Implementation Plan: Product Attachments, Auth Improvements, and OAuth
 
 ## Overview
-This plan covers three main areas of improvement:
-1. **Hire Editors Page** - Expandable editor cards with detailed view, username-first ordering, and social media icons
-2. **Home Page Featured Section** - Carousel with arrows, like/comment stats, and "Hot" popularity badges
-3. **Profile Page** - Add price labels to product cards
+This plan covers four main features:
+1. **Product Attachments Card** - Display attachments with file info below the creator card
+2. **Real-time Username/Email Validation** - Debounced availability checking during signup
+3. **Login with Username or Email** - Flexible credential entry
+4. **OAuth Providers** - Social login integration
 
 ---
 
-## 1. Hire Editors Page Enhancements
+## 1. Product Attachments Card
 
-### 1.1 Create Editor Detail Dialog
-**New Component: `src/components/hire/EditorDetailDialog.tsx`**
+### Current State
+The ProductDetail page already has an attachments section (lines 1268-1294), but it's positioned below comments. The request is to move this to a dedicated card below the "View Profile" card in the sidebar.
 
-A modal dialog that opens when clicking an editor card, showing:
-- Full profile picture (larger)
-- Username prominently displayed, full name below
-- Complete "About Me" section
-- All services offered (not truncated)
-- All languages spoken
-- Location details
-- Hourly rate
-- Social media icons (Instagram, YouTube, Twitter/X, TikTok)
-- "Hire Now" button
+### Changes Required
 
-### 1.2 Update Editor Card Display
-**Modify: `src/pages/HireEditors.tsx`**
+**Modify: `src/pages/ProductDetail.tsx`**
 
-- **Reorder name display**: Show `@username` first (prominent), then `full_name` below in smaller text
-- **Add social media icons row** with clickable links:
-  - Instagram icon (if linked)
-  - YouTube icon (if linked)
-  - Twitter/X icon (if linked)
-  - TikTok icon (if linked)
-- **Make card clickable** to open the detail dialog
-- **Fetch `editor_social_links`** from the profiles table (JSONB field already exists)
+Create a new "Attachments" card in the sidebar section (after line 1363) with:
+- Purple-themed styling matching the existing theme
+- File icon for each attachment
+- File name (truncated if long)
+- File size (formatted: KB, MB, etc.)
+- Lock icon indicating access required (for non-owners/non-purchasers)
+- Unlocked download button for users with access
 
-### 1.3 Social Media Icons
-Icons will be sourced from Lucide React:
-- Instagram: Custom SVG or external icon
-- YouTube: `Youtube` from lucide-react
-- Twitter/X: Custom SVG (X logo)
-- TikTok: Custom SVG
+**Card Layout:**
+```text
+┌────────────────────────────────┐
+│  📂 Attachments                │
+├────────────────────────────────┤
+│  ┌───┐  Premium_Pack.zip       │
+│  │ 📄 │ 125.4 MB         🔒   │
+│  └───┘                         │
+│  ┌───┐  Bonus_Assets.rar       │
+│  │ 📄 │ 45.2 MB          🔒   │
+│  └───┘                         │
+└────────────────────────────────┘
+```
 
 ---
 
-## 2. Home Page Featured Section
+## 2. Real-time Username/Email Validation
 
-### 2.1 Convert to Horizontal Carousel
-**Modify: `src/pages/Home.tsx`**
+### Current State
+- Username availability is checked only on form submit
+- Email availability is checked only after Supabase signup fails
+- No visual feedback during typing
 
-- Replace the grid layout with a horizontal scrollable carousel
-- Display 7 products per visible row
-- Add left/right arrow buttons for navigation
-- Use the existing `HorizontalProductRow.tsx` pattern or Embla carousel
+### Changes Required
 
-### 2.2 Add Like/Comment Stats
-**Modify: `src/components/ProductCard.tsx` and `src/pages/Home.tsx`**
+**Create: Database function `is_email_available`**
+```sql
+CREATE FUNCTION public.is_email_available(p_email text)
+RETURNS boolean
+```
+Checks `auth.users` table for existing email (uses SECURITY DEFINER).
 
-- Extend `ProductCard` to accept and display `likeCount` and `commentCount`
-- Fetch like/comment counts when loading featured products
-- Display stats below or on the product card (heart icon + count, message icon + count)
+**Modify: `src/pages/Signup.tsx`**
 
-### 2.3 Add "Hot" Popularity Badge
-**Modify: `src/components/ProductCard.tsx`**
+Add real-time validation with debounce:
+- Use `useDebounce` hook (already exists) with 500ms delay
+- Show inline status indicators:
+  - Spinner while checking
+  - Green checkmark if available
+  - Red X with message if taken
+- Validate both username and email fields as user types
+- Block form submission if either is unavailable
 
-- Add a new prop `showHotBadge?: boolean`
-- Calculate "hot" status based on:
-  - High like count (threshold TBD, e.g., top 20% of likes)
-  - Recent creation date (within last 7 days with engagement)
-- Display flame icon badge with "Hot" or "Trending" label
+**UI Feedback:**
+```text
+Username: @cooluser ✓ Available
+Email: test@email.com ✗ Already registered
+```
 
 ---
 
-## 3. Profile Page Price Labels
+## 3. Login with Username or Email
 
-### 3.1 Update Profile ProductCard
-**Modify: `src/pages/Profile.tsx`**
+### Current State
+- Login only accepts email format
+- Uses `signInWithPassword({ email, password })`
 
-The internal `ProductCard` component (lines 169-271) needs to display price:
-- Add price badge overlay (top-left) showing:
-  - "Free" for free products
-  - Formatted price for paid products (e.g., "$9.99")
-- Use the same formatting function as the main `ProductCard` component
+### Changes Required
+
+**Create: Database function `get_email_by_username`**
+```sql
+CREATE FUNCTION public.get_email_by_username(p_username text)
+RETURNS text
+```
+Looks up email from profiles table by username (case-insensitive).
+
+**Modify: `src/pages/Login.tsx`**
+
+- Change input placeholder to "Email or Username"
+- Update icon to `AtSign` (or keep `Mail`)
+- Before calling `signIn`:
+  1. Check if input contains `@` symbol
+  2. If no `@`, treat as username and call `get_email_by_username` RPC
+  3. Use returned email for authentication
+  4. If username not found, show "Username not found" error
+
+**Modify: `src/lib/auth.tsx`**
+
+- Update `signIn` function signature to accept `emailOrUsername`
+- Add logic to resolve username to email before auth
+
+---
+
+## 4. OAuth Providers
+
+### Important Limitation
+Based on Lovable Cloud capabilities, **only Google OAuth is currently supported**. Discord, Facebook, and Apple OAuth are NOT yet available in Lovable Cloud.
+
+### Changes Required for Google OAuth
+
+**Modify: `src/pages/Login.tsx` and `src/pages/Signup.tsx`**
+
+Add social login buttons:
+- Google Sign In button with Google logo
+- Disabled placeholder buttons for Discord, Facebook, Apple (showing "Coming Soon")
+
+**Modify: `src/lib/auth.tsx`**
+
+Add `signInWithGoogle` function:
+```typescript
+const signInWithGoogle = async () => {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin
+    }
+  });
+  return { error };
+};
+```
+
+**User Action Required:**
+- Configure Google OAuth in Cloud dashboard
+- Set up Google Cloud Console OAuth client
 
 ---
 
 ## Technical Details
 
-### Database Fields Used
-- `profiles.editor_social_links` (JSONB) - Contains social links like `{instagram: "url", youtube: "url", twitter: "url", tiktok: "url"}`
-- `product_likes` table - For counting likes
-- `comments` table - For counting comments
-- `products.featured` - Boolean for featured status
+### Database Functions to Create
 
-### New Interfaces
+```sql
+-- Function to check if email is available
+CREATE OR REPLACE FUNCTION public.is_email_available(p_email text)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  IF p_email IS NULL OR length(p_email) = 0 THEN
+    RETURN false;
+  END IF;
+  
+  RETURN NOT EXISTS (
+    SELECT 1 FROM auth.users
+    WHERE LOWER(email) = LOWER(p_email)
+  );
+END;
+$$;
 
-```typescript
-// EditorProfile extended with social links
-interface EditorProfile {
-  // ...existing fields
-  editor_social_links: {
-    instagram?: string;
-    youtube?: string;
-    twitter?: string;
-    tiktok?: string;
-    website?: string;
-  } | null;
-}
-
-// Product extended with engagement stats
-interface FeaturedProduct extends Product {
-  likeCount: number;
-  commentCount: number;
-  isHot?: boolean;
-}
+-- Function to get email by username
+CREATE OR REPLACE FUNCTION public.get_email_by_username(p_username text)
+RETURNS text
+LANGUAGE plpgsql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  user_email text;
+BEGIN
+  IF p_username IS NULL OR length(p_username) = 0 THEN
+    RETURN NULL;
+  END IF;
+  
+  SELECT email INTO user_email
+  FROM public.profiles
+  WHERE LOWER(username) = LOWER(p_username)
+  LIMIT 1;
+  
+  RETURN user_email;
+END;
+$$;
 ```
 
 ### File Changes Summary
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/components/hire/EditorDetailDialog.tsx` | Create | Full editor profile modal |
-| `src/pages/HireEditors.tsx` | Modify | Add social icons, reorder names, add dialog trigger |
-| `src/pages/Home.tsx` | Modify | Convert to carousel, fetch engagement stats |
-| `src/components/ProductCard.tsx` | Modify | Add likeCount, commentCount, hotBadge props |
-| `src/pages/Profile.tsx` | Modify | Add price badge to internal ProductCard |
+| `src/pages/ProductDetail.tsx` | Modify | Move attachments to sidebar card with purple theme |
+| `src/pages/Signup.tsx` | Modify | Add debounced real-time validation for username/email |
+| `src/pages/Login.tsx` | Modify | Support username login, add Google OAuth button |
+| `src/lib/auth.tsx` | Modify | Add `signInWithGoogle`, update `signIn` for username |
+| Database migration | Create | Add `is_email_available` and `get_email_by_username` functions |
 
-### Social Media Icon Components
-Will create small SVG components for platforms not in Lucide:
-- Instagram (Lucide has this)
-- YouTube (Lucide has this)
-- Twitter/X (custom SVG needed)
-- TikTok (custom SVG needed)
+### Signup Validation Flow
 
----
-
-## UI Mockups
-
-### Editor Card (Updated)
 ```text
-┌─────────────────────────────────┐
-│ [Gradient Bar]                  │
-├─────────────────────────────────┤
-│  [Avatar]  @username ✓          │
-│            Daniel Visuals       │
-│            📍 Los Angeles, USA  │
-│                                 │
-│  "Professional video editor..." │
-│                                 │
-│  [Video Editing] [Color] +2     │
-│                                 │
-│  🌐 English, Spanish            │
-│                                 │
-│  [IG] [YT] [X] [TikTok]        │
-│                                 │
-│  ⏱ $50/hr        [Hire Now]    │
-└─────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│                 User Types                      │
+└─────────────────────────────────────────────────┘
+                      │
+                      ▼
+         ┌─────────────────────┐
+         │ Debounce 500ms      │
+         └─────────────────────┘
+                      │
+                      ▼
+         ┌─────────────────────┐
+         │ Call RPC function   │
+         │ is_username_available│
+         │ is_email_available  │
+         └─────────────────────┘
+                      │
+                      ▼
+    ┌─────────────────┴─────────────────┐
+    │                                   │
+    ▼                                   ▼
+┌───────────┐                    ┌───────────┐
+│ Available │                    │   Taken   │
+│    ✓      │                    │    ✗      │
+└───────────┘                    └───────────┘
 ```
 
-### Featured Carousel (Home Page)
+### Login Flow with Username Support
+
 ```text
-┌─────────────────────────────────────────────┐
-│           ✨ Curated Selection              │
-│           Featured Products                 │
-│                                             │
-│  [◀]  [Card][Card][Card][Card][Card]  [▶]  │
-│        🔥Hot  $9.99          Free           │
-│        ❤️12 💬3              ❤️5 💬1        │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│          User enters credential                 │
+└─────────────────────────────────────────────────┘
+                      │
+                      ▼
+         ┌─────────────────────┐
+         │ Contains @ symbol?  │
+         └─────────────────────┘
+                      │
+        ┌─────────────┴─────────────┐
+        │                           │
+        ▼                           ▼
+   ┌─────────┐               ┌─────────────┐
+   │  Email  │               │  Username   │
+   │  Format │               │   Format    │
+   └─────────┘               └─────────────┘
+        │                           │
+        │                           ▼
+        │                ┌────────────────────┐
+        │                │ get_email_by_      │
+        │                │ username RPC       │
+        │                └────────────────────┘
+        │                           │
+        │                           ▼
+        │                    ┌────────────┐
+        │                    │ Get Email  │
+        │                    └────────────┘
+        │                           │
+        └───────────────────────────┘
+                      │
+                      ▼
+         ┌─────────────────────┐
+         │ signInWithPassword  │
+         │ (email, password)   │
+         └─────────────────────┘
 ```
 
 ---
 
 ## Implementation Order
-1. Create EditorDetailDialog component
-2. Update HireEditors page with social icons and dialog
-3. Update ProductCard with engagement stats and hot badge
-4. Update Home page with carousel and stats fetching
-5. Update Profile page ProductCard with price labels
+
+1. **Database Migration**
+   - Create `is_email_available` function
+   - Create `get_email_by_username` function
+
+2. **ProductDetail Attachments Card**
+   - Move attachments to sidebar
+   - Apply purple theme styling
+   - Add access control logic
+
+3. **Signup Validation**
+   - Add debounced username checking
+   - Add debounced email checking
+   - Add inline validation UI
+
+4. **Login with Username**
+   - Update login form to accept username
+   - Add username resolution logic
+   - Update error messages
+
+5. **Google OAuth**
+   - Add Google sign-in button to Login/Signup
+   - Add `signInWithGoogle` to auth context
+   - Provide instructions for Google Cloud setup
+
+---
+
+## OAuth Provider Status
+
+| Provider | Status | Notes |
+|----------|--------|-------|
+| Google | Supported | Requires Google Cloud Console setup |
+| Discord | Not Available | Lovable Cloud limitation |
+| Facebook | Not Available | Lovable Cloud limitation |
+| Apple | Not Available | Lovable Cloud limitation |
+
+The non-supported providers will be shown as disabled buttons with "Coming Soon" labels, allowing for future expansion when they become available.
+
