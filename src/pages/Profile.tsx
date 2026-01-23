@@ -6,9 +6,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { 
   Settings, 
-  BadgeCheck,
   Plus,
   Link as LinkIcon, 
   Heart,
@@ -20,10 +20,10 @@ import {
   Download,
   Bookmark,
   Pencil,
-  Check,
   User,
   Eye,
-  EyeOff
+  EyeOff,
+  Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -879,37 +879,7 @@ const ProfilePage: React.FC = () => {
                 @{profile.username || 'user'}
               </h1>
               {profile.verified && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div 
-                      className={`w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all duration-300 ${
-                        isAdmin 
-                          ? 'border-blue-500 hover:animate-hue-rotate group' 
-                          : 'border-blue-500'
-                      }`}
-                      style={{ 
-                        background: 'transparent',
-                      }}
-                    >
-                      <svg 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        className={`w-3 h-3 transition-all duration-300 ${
-                          isAdmin ? 'text-blue-500 group-hover:animate-hue-rotate' : 'text-blue-500'
-                        }`}
-                        stroke="currentColor" 
-                        strokeWidth="3.5" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{isAdmin ? 'Verified Creator / Owner' : 'Verified Creator'}</p>
-                  </TooltipContent>
-                </Tooltip>
+                <VerifiedBadge isAdmin={isAdmin} size="md" />
               )}
               {profile.is_creator && (
                 <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, BadgeCheck, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply } from "lucide-react";
+import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { GifPicker } from "@/components/comments/GifPicker";
+import { VerifiedBadge } from "@/components/ui/verified-badge";
 import { cn } from "@/lib/utils";
 
 interface Product {
@@ -890,7 +891,7 @@ export default function ProductDetail() {
                   <span className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
                     @{product.creator.username || "unknown"}
                     {product.creator.verified && (
-                      <BadgeCheck className="w-4 h-4 text-primary" />
+                      <VerifiedBadge size="sm" />
                     )}
                   </span>
                 </Link>
@@ -1012,7 +1013,7 @@ export default function ProductDetail() {
                         <span className="text-sm font-medium flex items-center gap-1">
                           @{comment.user?.username || "anonymous"}
                           {comment.user?.verified && (
-                            <BadgeCheck className="w-3 h-3 text-primary" />
+                            <VerifiedBadge size="sm" />
                           )}
                         </span>
                         <span className="text-xs text-muted-foreground">
@@ -1140,7 +1141,7 @@ export default function ProductDetail() {
                                     <span className="text-xs font-medium flex items-center gap-1">
                                       @{reply.user?.username || "anonymous"}
                                       {reply.user?.verified && (
-                                        <BadgeCheck className="w-2.5 h-2.5 text-primary" />
+                                        <VerifiedBadge size="sm" />
                                       )}
                                     </span>
                                     <span className="text-[10px] text-muted-foreground">
@@ -1333,7 +1334,7 @@ export default function ProductDetail() {
                 <h3 className="font-semibold flex items-center justify-center gap-1">
                   @{product.creator.username || "unknown"}
                   {product.creator.verified && (
-                    <BadgeCheck className="w-4 h-4 text-primary" />
+                    <VerifiedBadge size="sm" />
                   )}
                 </h3>
                 {product.creator.bio && (
@@ -1417,7 +1418,7 @@ export default function ProductDetail() {
                         <p className="text-sm font-medium truncate flex items-center gap-1">
                           {creator.full_name || creator.username}
                           {creator.verified && (
-                            <BadgeCheck className="w-3 h-3 text-primary" />
+                            <VerifiedBadge size="sm" />
                           )}
                         </p>
                         <p className="text-xs text-muted-foreground">@{creator.username}</p>
