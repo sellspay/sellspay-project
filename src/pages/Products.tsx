@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Filter, Play } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -12,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import ProductCard from '@/components/ProductCard';
 
 interface Product {
   id: string;
@@ -21,19 +20,12 @@ interface Product {
   product_type: string | null;
   featured: boolean | null;
   cover_image_url: string | null;
+  preview_video_url: string | null;
+  youtube_url: string | null;
   pricing_type: string | null;
   price_cents: number | null;
   currency: string | null;
   tags: string[] | null;
-}
-
-function formatPrice(cents: number | null, currency: string | null): string {
-  if (!cents || cents === 0) return 'Free';
-  const amount = cents / 100;
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency || 'USD',
-  }).format(amount);
 }
 
 export default function Products() {
@@ -47,7 +39,7 @@ export default function Products() {
     async function fetchProducts() {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, status, product_type, featured, cover_image_url, pricing_type, price_cents, currency, tags')
+        .select('id, name, description, status, product_type, featured, cover_image_url, preview_video_url, youtube_url, pricing_type, price_cents, currency, tags')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
 
@@ -75,6 +67,12 @@ export default function Products() {
 
     return matchesSearch && matchesType && matchesPrice;
   });
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setTypeFilter('all');
+    setPriceFilter('all');
+  };
 
   return (
     <div className="min-h-screen bg-background py-8">
@@ -126,60 +124,15 @@ export default function Products() {
         ) : filteredProducts.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-muted-foreground mb-4">No products found</p>
-            <Button variant="outline" onClick={() => { setSearchQuery(''); setTypeFilter('all'); setPriceFilter('all'); }}>
+            <Button variant="outline" onClick={clearFilters}>
+              <X className="h-4 w-4 mr-2" />
               Clear filters
             </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
-              <Link
-                key={product.id}
-                to={`/product/${product.id}`}
-                className="group"
-              >
-                <div className="relative aspect-video rounded-xl overflow-hidden bg-muted">
-                  {product.cover_image_url ? (
-                    <img
-                      src={product.cover_image_url}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Play className="w-12 h-12 text-muted-foreground" />
-                    </div>
-                  )}
-                  
-                  <div className="absolute top-2 right-2">
-                    <Badge variant={product.pricing_type === 'free' ? 'secondary' : 'default'} className="backdrop-blur-sm">
-                      {formatPrice(product.price_cents, product.currency)}
-                    </Badge>
-                  </div>
-
-                  {product.featured && (
-                    <div className="absolute top-2 left-2">
-                      <Badge className="bg-primary/90 backdrop-blur-sm">Featured</Badge>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-3 space-y-1">
-                  <h4 className="font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">
-                    {product.name}
-                  </h4>
-                  {product.product_type && (
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {product.product_type.replace('_', ' ')}
-                    </p>
-                  )}
-                  {product.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {product.description}
-                    </p>
-                  )}
-                </div>
-              </Link>
+              <ProductCard key={product.id} product={product} showFeaturedBadge={true} showType={true} />
             ))}
           </div>
         )}
