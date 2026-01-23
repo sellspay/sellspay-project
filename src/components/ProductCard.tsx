@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Play, Star } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Product {
   id: string;
@@ -23,14 +24,23 @@ interface ProductCardProps {
 
 function getYouTubeThumbnail(youtubeUrl: string | null): string | null {
   if (!youtubeUrl) return null;
-  const match = youtubeUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([^?&]+)/);
+  // Support:
+  // - full URLs
+  // - short URLs
+  // - raw 11-char video IDs (common when people paste just the ID)
+  const raw = youtubeUrl.trim();
+  const idLike = /^[a-zA-Z0-9_-]{11}$/;
+  if (idLike.test(raw)) return `https://img.youtube.com/vi/${raw}/hqdefault.jpg`;
+
+  const match = raw.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([^?&]+)/);
   return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : null;
 }
 
 function getPreviewVideoUrl(path: string | null): string | null {
   if (!path) return null;
   if (path.startsWith('http')) return path;
-  return `https://cdpfchadvvfdupkgzeiy.supabase.co/storage/v1/object/public/product-media/${path}`;
+  const { data } = supabase.storage.from('product-media').getPublicUrl(path);
+  return data?.publicUrl || null;
 }
 
 function formatPrice(cents: number | null, currency: string | null): string {
@@ -43,13 +53,23 @@ function formatPrice(cents: number | null, currency: string | null): string {
 export default function ProductCard({ product, showFeaturedBadge = true, showType = true }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoError, setVideoError] = useState(false);
 
-  const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
-  const videoUrl = getPreviewVideoUrl(product.preview_video_url);
+  const thumbnail = useMemo(
+    () => product.cover_image_url || getYouTubeThumbnail(product.youtube_url),
+    [product.cover_image_url, product.youtube_url],
+  );
+  const videoUrl = useMemo(
+    () => getPreviewVideoUrl(product.preview_video_url),
+    [product.preview_video_url],
+  );
+
+  const canShowVideo = Boolean(videoUrl) && !videoError;
+  const showVideo = canShowVideo && (isHovered || !thumbnail);
 
   const handleMouseEnter = () => {
     setIsHovered(true);
-    if (videoRef.current && videoUrl) {
+    if (videoRef.current && canShowVideo) {
       videoRef.current.play().catch(() => {});
     }
   };
@@ -62,6 +82,13 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
     }
   };
 
+  // If there's no thumbnail, show the video by default (muted autoplay is generally allowed).
+  useEffect(() => {
+    if (!thumbnail && canShowVideo && videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  }, [thumbnail, canShowVideo]);
+
   return (
     <Link
       to={`/product/${product.id}`}
@@ -70,23 +97,8 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
       onMouseLeave={handleMouseLeave}
     >
       <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
-        {/* Thumbnail Image */}
-        {thumbnail ? (
-          <img
-            src={thumbnail}
-            alt={product.name}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-              isHovered && videoUrl ? 'opacity-0' : 'opacity-100'
-            }`}
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted">
-            <Play className="h-8 w-8 text-muted-foreground" />
-          </div>
-        )}
-
-        {/* Video Preview */}
-        {videoUrl && (
+        {/* Video Preview (default when no thumbnail; on-hover when both exist) */}
+        {canShowVideo && (
           <video
             ref={videoRef}
             src={videoUrl}
@@ -95,10 +107,26 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
             playsInline
             preload="metadata"
             className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-              isHovered ? 'opacity-100' : 'opacity-0'
+              showVideo ? 'opacity-100' : 'opacity-0'
             }`}
+            onError={() => setVideoError(true)}
           />
         )}
+
+        {/* Thumbnail Image (only if available) */}
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={product.name}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+              showVideo ? 'opacity-0' : 'opacity-100'
+            }`}
+          />
+        ) : !canShowVideo ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted">
+            <Play className="h-8 w-8 text-muted-foreground" />
+          </div>
+        ) : null}
 
         {/* Price Badge */}
         <div className="absolute top-2 left-2 rounded bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground backdrop-blur-sm">
