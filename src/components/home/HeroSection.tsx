@@ -9,49 +9,52 @@ export default function HeroSection() {
 
   return (
     <div
-      className="relative z-10 w-full bg-cover bg-center"
+      className="relative w-full bg-cover bg-center min-h-[480px] lg:min-h-[540px]"
       style={{ backgroundImage: `url(${heroBg})` }}
     >
       {/* Overlay gradient */}
-      <div className="absolute inset-0 bg-gradient-to-r from-background/70 via-background/60 to-background/70" />
+      <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/60 to-background/40" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
 
       {/* Content */}
-      <div className="relative z-20 w-full px-6 py-12 lg:py-16 flex flex-col lg:flex-row items-center justify-between gap-8 max-w-7xl mx-auto">
-        {/* Left: Text Content */}
-        <div className="w-full lg:w-1/3 flex flex-col justify-start pt-6">
-          <div className="flex flex-col gap-6">
-            <h1 className="text-4xl lg:text-5xl font-bold text-foreground">
-              Welcome to EditorsParadise
+      <div className="relative z-10 max-w-7xl mx-auto px-6 h-full">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-12 py-16 lg:py-20">
+          {/* Left: Text Content */}
+          <div className="w-full lg:w-2/5 flex flex-col">
+            <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight mb-6">
+              Welcome to<br />EditorsParadise
             </h1>
-            <p className="text-base text-muted-foreground max-w-2xl leading-relaxed font-light">
+            <p className="text-lg text-muted-foreground max-w-md leading-relaxed mb-8">
               Access cutting-edge audio tools and premium creator products. Explore by type and see what the community loves.
             </p>
+            {!user && (
+              <Button
+                asChild
+                size="lg"
+                className="w-fit px-8 py-3 bg-foreground text-background hover:bg-foreground/90 rounded-full font-medium text-base"
+              >
+                <Link to="/signup">Join for free</Link>
+              </Button>
+            )}
+            {user && (
+              <Button
+                asChild
+                size="lg"
+                className="w-fit px-8 py-3 bg-foreground text-background hover:bg-foreground/90 rounded-full font-medium text-base"
+              >
+                <Link to="/products">Browse Products</Link>
+              </Button>
+            )}
           </div>
-          {!user && (
-            <Button
-              asChild
-              className="w-fit mt-8 px-6 py-2 bg-foreground text-background hover:bg-foreground/90 rounded-full font-medium"
-            >
-              <Link to="/signup">Join for free</Link>
-            </Button>
-          )}
-          {user && (
-            <Button
-              asChild
-              className="w-fit mt-8 px-6 py-2 bg-foreground text-background hover:bg-foreground/90 rounded-full font-medium"
-            >
-              <Link to="/products">Browse Products</Link>
-            </Button>
-          )}
-        </div>
 
-        {/* Right: Hero Logo Image */}
-        <div className="hidden lg:flex flex-1 items-center justify-end">
-          <img
-            src={heroLogo}
-            alt="EditorsParadise"
-            className="w-[42rem] drop-shadow-lg"
-          />
+          {/* Right: Hero Logo Image */}
+          <div className="hidden lg:flex flex-1 items-center justify-end">
+            <img
+              src={heroLogo}
+              alt="EditorsParadise"
+              className="w-full max-w-2xl drop-shadow-2xl"
+            />
+          </div>
         </div>
       </div>
     </div>

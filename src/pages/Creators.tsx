@@ -104,36 +104,54 @@ export default function Creators() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background py-8">
-        <div className="max-w-7xl mx-auto px-4">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <Users className="w-8 h-8 text-primary" />
-              <h1 className="text-3xl font-bold text-foreground">Creators</h1>
+      <div className="min-h-screen bg-background">
+        {/* Hero Header */}
+        <div className="relative overflow-hidden border-b border-border/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5" />
+          <div className="relative max-w-7xl mx-auto px-6 py-16 lg:py-20">
+            <div className="max-w-2xl">
+              <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
+                Creators
+              </h1>
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                Discover and follow talented creators in our community. Explore their work, connect, and get inspired.
+              </p>
             </div>
-            <p className="text-muted-foreground">Discover and follow talented creators in our community</p>
           </div>
+        </div>
 
-          {/* Search */}
-          <div className="relative max-w-md mb-8">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search creators..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+        {/* Content Section */}
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          {/* Search & Stats Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-10">
+            <div className="relative w-full sm:max-w-sm">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search creators..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-11 h-11 bg-card border-border/50"
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {filteredCreators.length} {filteredCreators.length === 1 ? 'creator' : 'creators'} found
+            </p>
           </div>
 
           {/* Creators Grid */}
           {loading ? (
-            <div className="text-center text-muted-foreground py-16">Loading creators...</div>
+            <div className="flex flex-col items-center justify-center py-24">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent mb-4" />
+              <p className="text-muted-foreground">Loading creators...</p>
+            </div>
           ) : filteredCreators.length === 0 ? (
-            <div className="text-center py-16">
-              <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                {searchQuery ? 'No creators found matching your search' : 'No creators yet. Be the first to become one!'}
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-6">
+                <Users className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium text-foreground mb-2">No creators found</h3>
+              <p className="text-muted-foreground max-w-sm">
+                {searchQuery ? 'Try adjusting your search terms' : 'Be the first to become a creator!'}
               </p>
             </div>
           ) : (
@@ -145,12 +163,12 @@ export default function Creators() {
                   <Link
                     key={creator.id}
                     to={`/@${creator.username || creator.id}`}
-                    className="group p-6 rounded-xl bg-card border border-border hover:border-primary/50 transition-all"
+                    className="group p-6 rounded-2xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
                   >
                     <div className="flex flex-col items-center text-center">
-                      <Avatar className="w-20 h-20 mb-4">
+                      <Avatar className="w-20 h-20 mb-4 ring-2 ring-border/50 group-hover:ring-primary/30 transition-all">
                         <AvatarImage src={creator.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary/20 text-primary text-xl">
+                        <AvatarFallback className="bg-primary/10 text-primary text-xl font-medium">
                           {(creator.username || 'C').charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -172,18 +190,19 @@ export default function Creators() {
                       
                       {/* Bio/Description */}
                       {creator.bio && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-4 min-h-[2rem]">
                           {creator.bio}
                         </p>
                       )}
+                      {!creator.bio && <div className="mb-4 min-h-[2rem]" />}
                       
                       {/* Stats row with icons */}
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-auto">
+                      <div className="flex items-center justify-center gap-5 text-xs text-muted-foreground w-full py-3 border-t border-border/50">
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5">
                               <Package className="w-3.5 h-3.5" />
-                              <span>{creator.productCount}</span>
+                              <span className="font-medium">{creator.productCount}</span>
                             </div>
                           </TooltipTrigger>
                           <TooltipContent><p>Products</p></TooltipContent>
@@ -191,9 +210,9 @@ export default function Creators() {
                         
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5">
                               <Users className="w-3.5 h-3.5" />
-                              <span>{creator.followersCount}</span>
+                              <span className="font-medium">{creator.followersCount}</span>
                             </div>
                           </TooltipTrigger>
                           <TooltipContent><p>Followers</p></TooltipContent>
@@ -201,9 +220,9 @@ export default function Creators() {
                         
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5">
                               <UserPlus className="w-3.5 h-3.5" />
-                              <span>{creator.followingCount}</span>
+                              <span className="font-medium">{creator.followingCount}</span>
                             </div>
                           </TooltipTrigger>
                           <TooltipContent><p>Following</p></TooltipContent>
@@ -211,7 +230,7 @@ export default function Creators() {
                       </div>
                       
                       {/* Owner badge */}
-                      <Badge variant="outline" className="mt-3 text-muted-foreground border-muted-foreground/30">
+                      <Badge variant="outline" className="mt-3 text-xs text-muted-foreground border-muted-foreground/30">
                         Owner
                       </Badge>
                     </div>
