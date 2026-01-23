@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import {
   DndContext,
   closestCenter,
@@ -27,13 +28,24 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { 
   X, Plus, Save, Undo, GripVertical, Eye, EyeOff, Trash2, Pencil,
-  Link as LinkIcon, Settings, User, Download, Bookmark
+  Link as LinkIcon, Settings, User, Download, Bookmark, Layers, Play
 } from 'lucide-react';
 import { ProfileSection, SectionType, SECTION_TEMPLATES } from './types';
 import { AddSectionPanel } from './AddSectionPanel';
 import { EditSectionDialog } from './EditSectionDialog';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
 import { CreateCollectionInEditor } from './CreateCollectionInEditor';
+import EditCollectionDialog from '@/components/profile/EditCollectionDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 
 interface Profile {
@@ -47,6 +59,27 @@ interface Profile {
   verified?: boolean | null;
   is_creator?: boolean | null;
   social_links?: unknown;
+  show_recent_uploads?: boolean | null;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  cover_image_url: string | null;
+  youtube_url: string | null;
+  preview_video_url: string | null;
+  price_cents: number | null;
+  currency: string | null;
+}
+
+interface Collection {
+  id: string;
+  name: string;
+  cover_image_url: string | null;
+  is_visible: boolean;
+  display_order: number;
+  products: Product[];
+  totalCount: number;
 }
 
 interface ProfileEditorDialogProps {
@@ -57,6 +90,157 @@ interface ProfileEditorDialogProps {
   collections: { id: string; name: string }[];
   onCollectionsChange?: () => void;
 }
+
+// Helper to get YouTube thumbnail
+const getYouTubeThumbnail = (youtubeUrl: string | null): string | null => {
+  if (!youtubeUrl) return null;
+  let videoId = youtubeUrl;
+  if (youtubeUrl.includes('youtube.com/watch')) {
+    const url = new URL(youtubeUrl);
+    videoId = url.searchParams.get('v') || youtubeUrl;
+  } else if (youtubeUrl.includes('youtu.be/')) {
+    videoId = youtubeUrl.split('youtu.be/')[1]?.split('?')[0] || youtubeUrl;
+  } else if (youtubeUrl.includes('youtube.com/embed/')) {
+    videoId = youtubeUrl.split('embed/')[1]?.split('?')[0] || youtubeUrl;
+  }
+  videoId = videoId.split('?')[0].split('&')[0];
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+};
+
+// Sortable collection item for editor
+const SortableCollectionCard = memo(({
+  collection,
+  onEdit,
+  onDelete,
+  onToggleVisibility,
+}: {
+  collection: Collection;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggleVisibility: () => void;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: collection.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'relative group bg-card/50 backdrop-blur-sm border border-border rounded-lg overflow-hidden transition-all',
+        isDragging && 'opacity-50 z-50 shadow-xl',
+        !collection.is_visible && 'opacity-50'
+      )}
+    >
+      {/* Collection Preview */}
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          {collection.cover_image_url ? (
+            <img
+              src={collection.cover_image_url}
+              alt={collection.name}
+              className="w-10 h-10 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+              <Layers className="w-5 h-5 text-primary" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-sm truncate">{collection.name}</h4>
+            <p className="text-xs text-muted-foreground">
+              {collection.totalCount} {collection.totalCount === 1 ? 'product' : 'products'}
+            </p>
+          </div>
+        </div>
+
+        {/* Product thumbnails preview */}
+        {collection.products.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {collection.products.slice(0, 4).map((product) => {
+              const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
+              return (
+                <div
+                  key={product.id}
+                  className="relative w-20 h-14 rounded-md overflow-hidden bg-muted flex-shrink-0"
+                >
+                  {thumbnail ? (
+                    <img
+                      src={thumbnail}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Play className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {collection.totalCount > 4 && (
+              <div className="w-20 h-14 rounded-md bg-muted/50 flex items-center justify-center flex-shrink-0">
+                <span className="text-xs text-muted-foreground">+{collection.totalCount - 4}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Hover controls */}
+      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+        <div
+          className="p-2 rounded-lg bg-white/10 cursor-grab hover:bg-white/20 transition-colors"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="w-5 h-5 text-white" />
+        </div>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onEdit}
+          className="bg-white/10 hover:bg-white/20 text-white border-0"
+        >
+          <Pencil className="w-4 h-4 mr-1" />
+          Edit
+        </Button>
+
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={onToggleVisibility}
+          className="bg-white/10 hover:bg-white/20 text-white border-0"
+        >
+          {collection.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+        </Button>
+
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={onDelete}
+          className="bg-destructive/20 hover:bg-destructive/40 text-destructive border-0"
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+});
+
+SortableCollectionCard.displayName = 'SortableCollectionCard';
 
 // Sortable section item
 const SortableSectionCard = memo(({
@@ -147,16 +331,20 @@ export function ProfileEditorDialog({
   onOpenChange,
   profileId,
   profile,
-  collections,
+  collections: initialCollections,
   onCollectionsChange,
 }: ProfileEditorDialogProps) {
   const [sections, setSections] = useState<ProfileSection[]>([]);
+  const [editorCollections, setEditorCollections] = useState<Collection[]>([]);
+  const [recentProducts, setRecentProducts] = useState<Product[]>([]);
+  const [showRecentUploads, setShowRecentUploads] = useState(profile.show_recent_uploads !== false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [editingSection, setEditingSection] = useState<ProfileSection | null>(null);
-  const [productCount, setProductCount] = useState(0);
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
+  const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);
   const [previewSection, setPreviewSection] = useState<ProfileSection | null>(null);
   const [showCreateCollection, setShowCreateCollection] = useState(false);
 
@@ -167,13 +355,24 @@ export function ProfileEditorDialog({
 
   useEffect(() => {
     if (open && profileId) {
-      fetchSections();
-      fetchProductCount();
+      fetchAllData();
     }
   }, [open, profileId]);
 
-  const fetchSections = async () => {
+  const fetchAllData = async () => {
     setLoading(true);
+    try {
+      await Promise.all([
+        fetchSections(),
+        fetchCollections(),
+        fetchRecentProducts(),
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSections = async () => {
     try {
       const { data, error } = await supabase
         .from('profile_sections')
@@ -185,22 +384,96 @@ export function ProfileEditorDialog({
       setSections((data || []) as unknown as ProfileSection[]);
     } catch (error) {
       console.error('Error fetching sections:', error);
-      toast.error('Failed to load sections');
-    } finally {
-      setLoading(false);
     }
   };
 
-  const fetchProductCount = async () => {
-    const { count } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true })
-      .eq('creator_id', profileId)
-      .eq('status', 'published');
-    setProductCount(count || 0);
+  const fetchCollections = async () => {
+    try {
+      const { data: collectionsData, error } = await supabase
+        .from('collections')
+        .select('id, name, cover_image_url, is_visible, display_order')
+        .eq('creator_id', profileId)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+
+      if (collectionsData && collectionsData.length > 0) {
+        const collectionsWithProducts = await Promise.all(
+          collectionsData.map(async (collection) => {
+            const { data: items, count } = await supabase
+              .from('collection_items')
+              .select('product_id', { count: 'exact' })
+              .eq('collection_id', collection.id)
+              .order('display_order', { ascending: true })
+              .limit(4);
+
+            if (!items || items.length === 0) {
+              return { 
+                ...collection, 
+                is_visible: collection.is_visible ?? true,
+                display_order: collection.display_order ?? 0,
+                products: [], 
+                totalCount: 0 
+              };
+            }
+
+            const productIds = items.map((item) => item.product_id);
+            const { data: productsData } = await supabase
+              .from('products')
+              .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency')
+              .in('id', productIds)
+              .eq('status', 'published');
+
+            return {
+              ...collection,
+              is_visible: collection.is_visible ?? true,
+              display_order: collection.display_order ?? 0,
+              products: productsData || [],
+              totalCount: count || 0,
+            };
+          })
+        );
+
+        setEditorCollections(collectionsWithProducts);
+      } else {
+        setEditorCollections([]);
+      }
+    } catch (error) {
+      console.error('Error fetching collections:', error);
+    }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const fetchRecentProducts = async () => {
+    try {
+      const { data } = await supabase
+        .from('products')
+        .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency')
+        .eq('creator_id', profileId)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      setRecentProducts(data || []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
+
+  const handleCollectionDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = editorCollections.findIndex((c) => c.id === active.id);
+      const newIndex = editorCollections.findIndex((c) => c.id === over.id);
+      const newCollections = arrayMove(editorCollections, oldIndex, newIndex).map((c, idx) => ({
+        ...c,
+        display_order: idx,
+      }));
+      setEditorCollections(newCollections);
+      setHasChanges(true);
+    }
+  };
+
+  const handleSectionDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
       const oldIndex = sections.findIndex((s) => s.id === active.id);
@@ -212,6 +485,49 @@ export function ProfileEditorDialog({
       setSections(newSections);
       setHasChanges(true);
     }
+  };
+
+  const toggleCollectionVisibility = async (collectionId: string) => {
+    const collection = editorCollections.find((c) => c.id === collectionId);
+    if (!collection) return;
+    
+    const newVisibility = !collection.is_visible;
+    setEditorCollections(editorCollections.map((c) => 
+      c.id === collectionId ? { ...c, is_visible: newVisibility } : c
+    ));
+    setHasChanges(true);
+  };
+
+  const handleDeleteCollection = async (collectionId: string) => {
+    try {
+      // Delete collection items first
+      await supabase
+        .from('collection_items')
+        .delete()
+        .eq('collection_id', collectionId);
+
+      // Then delete the collection
+      const { error } = await supabase
+        .from('collections')
+        .delete()
+        .eq('id', collectionId);
+
+      if (error) throw error;
+
+      setEditorCollections(editorCollections.filter((c) => c.id !== collectionId));
+      setDeleteCollectionId(null);
+      toast.success('Collection deleted');
+      onCollectionsChange?.();
+    } catch (error) {
+      console.error('Error deleting collection:', error);
+      toast.error('Failed to delete collection');
+    }
+  };
+
+  const toggleRecentUploadsVisibility = async () => {
+    const newVisibility = !showRecentUploads;
+    setShowRecentUploads(newVisibility);
+    setHasChanges(true);
   };
 
   const addSection = async (type: SectionType, _presetId?: string) => {
@@ -237,7 +553,6 @@ export function ProfileEditorDialog({
 
       const createdSection = data as unknown as ProfileSection;
       setSections(prev => [...prev, createdSection]);
-      // Close add panel and open edit dialog for the new section
       setShowAddPanel(false);
       setEditingSection(createdSection);
       toast.success(`${template.name} section added`);
@@ -266,7 +581,7 @@ export function ProfileEditorDialog({
     }
   };
 
-  const toggleVisibility = (sectionId: string) => {
+  const toggleSectionVisibility = (sectionId: string) => {
     const section = sections.find((s) => s.id === sectionId);
     if (!section) return;
     const updated = { ...section, is_visible: !section.is_visible };
@@ -277,6 +592,7 @@ export function ProfileEditorDialog({
   const saveAllChanges = async () => {
     setSaving(true);
     try {
+      // Save sections
       for (const section of sections) {
         const { error } = await supabase
           .from('profile_sections')
@@ -288,10 +604,30 @@ export function ProfileEditorDialog({
           .eq('id', section.id);
         if (error) throw error;
       }
+
+      // Save collections order and visibility
+      for (const collection of editorCollections) {
+        const { error } = await supabase
+          .from('collections')
+          .update({
+            display_order: collection.display_order,
+            is_visible: collection.is_visible,
+          })
+          .eq('id', collection.id);
+        if (error) throw error;
+      }
+
+      // Save recent uploads visibility
+      await supabase
+        .from('profiles')
+        .update({ show_recent_uploads: showRecentUploads })
+        .eq('id', profileId);
+
       setHasChanges(false);
       toast.success('All changes saved');
+      onCollectionsChange?.();
     } catch (error) {
-      console.error('Error saving sections:', error);
+      console.error('Error saving changes:', error);
       toast.error('Failed to save changes');
     } finally {
       setSaving(false);
@@ -305,18 +641,25 @@ export function ProfileEditorDialog({
     }
     onOpenChange(false);
     setEditingSection(null);
+    setEditingCollection(null);
   };
 
-  // Parse social links
   const socialLinks = profile.social_links && typeof profile.social_links === 'object' 
     ? profile.social_links as Record<string, string> 
     : {};
+
+  const hasContent = recentProducts.length > 0 || editorCollections.length > 0 || sections.length > 0;
 
   return (
     <TooltipProvider>
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="max-w-[100vw] w-[100vw] h-[100vh] max-h-[100vh] p-0 gap-0 rounded-none border-0 [&>button]:hidden overflow-hidden">
-          {/* Fixed background that fills entire viewport */}
+          <VisuallyHidden.Root>
+            <DialogTitle>Profile Editor</DialogTitle>
+            <DialogDescription>Customize your profile layout and sections</DialogDescription>
+          </VisuallyHidden.Root>
+          
+          {/* Fixed background */}
           <div 
             className="absolute inset-0 z-0"
             style={{
@@ -327,11 +670,11 @@ export function ProfileEditorDialog({
             }}
           />
 
-          {/* Header toolbar - fixed at top */}
+          {/* Header toolbar */}
           <div className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
             <h2 className="text-lg font-semibold">Profile Editor</h2>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => fetchSections()} disabled={loading}>
+              <Button variant="ghost" size="sm" onClick={() => fetchAllData()} disabled={loading}>
                 <Undo className="w-4 h-4 mr-2" />
                 Reset
               </Button>
@@ -345,9 +688,8 @@ export function ProfileEditorDialog({
             </div>
           </div>
 
-          {/* Main content area - the card scrolls, background stays fixed */}
+          {/* Main content area */}
           <div className="relative z-10 flex-1 h-[calc(100vh-57px)] flex items-start justify-center overflow-hidden">
-            {/* Scrollable container for the profile card only */}
             <ScrollArea className="h-full w-full">
               <div className="max-w-4xl mx-auto px-4 py-8">
                 {/* Profile Card */}
@@ -355,18 +697,14 @@ export function ProfileEditorDialog({
                   {/* Banner */}
                   <div className="relative h-40 bg-gradient-to-b from-primary/20 to-background overflow-hidden">
                     {profile.banner_url && (
-                      <img
-                        src={profile.banner_url}
-                        alt="Banner"
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={profile.banner_url} alt="Banner" className="w-full h-full object-cover" />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </div>
 
                   {/* Profile content */}
                   <div className="px-6 pb-6">
-                    {/* Avatar & Actions row */}
+                    {/* Avatar & Actions */}
                     <div className="flex justify-between items-end -mt-16">
                       <Avatar className="w-32 h-32 border-4 border-card shadow-xl">
                         <AvatarImage src={profile.avatar_url || undefined} />
@@ -374,7 +712,6 @@ export function ProfileEditorDialog({
                           {(profile.full_name || profile.username || 'U').charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-
                       <div className="flex gap-2 pb-2">
                         <Button variant="outline" size="sm" disabled>
                           <LinkIcon className="w-4 h-4 mr-2" />
@@ -388,7 +725,6 @@ export function ProfileEditorDialog({
 
                     {/* Info Section */}
                     <div className="mt-4">
-                      {/* Username with badges */}
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <h1 className="text-xl font-bold">@{profile.username || 'user'}</h1>
                         {profile.verified && <VerifiedBadge size="md" />}
@@ -398,69 +734,11 @@ export function ProfileEditorDialog({
                           </Badge>
                         )}
                       </div>
-
-                      {/* Display name */}
-                      {profile.full_name && (
-                        <p className="text-muted-foreground mb-2">{profile.full_name}</p>
-                      )}
-
-                      {/* Bio */}
-                      {profile.bio && (
-                        <p className="text-foreground whitespace-pre-line mb-3 max-w-lg">{profile.bio}</p>
-                      )}
-
-                      {/* Social Links */}
-                      {Object.keys(socialLinks).length > 0 && (
-                        <div className="flex items-center gap-3 mb-3">
-                          {socialLinks.instagram && (
-                            <div className="text-muted-foreground">
-                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                              </svg>
-                            </div>
-                          )}
-                          {socialLinks.youtube && (
-                            <div className="text-muted-foreground">
-                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                              </svg>
-                            </div>
-                          )}
-                          {socialLinks.twitter && (
-                            <div className="text-muted-foreground">
-                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                              </svg>
-                            </div>
-                          )}
-                          {socialLinks.tiktok && (
-                            <div className="text-muted-foreground">
-                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Stats row */}
-                      <div className="flex items-center gap-4 text-sm">
-                        <span>
-                          <strong>{productCount}</strong>{' '}
-                          <span className="text-muted-foreground">products</span>
-                        </span>
-                        <span>
-                          <strong>0</strong>{' '}
-                          <span className="text-muted-foreground">followers</span>
-                        </span>
-                        <span>
-                          <strong>0</strong>{' '}
-                          <span className="text-muted-foreground">following</span>
-                        </span>
-                      </div>
+                      {profile.full_name && <p className="text-muted-foreground mb-2">{profile.full_name}</p>}
+                      {profile.bio && <p className="text-foreground whitespace-pre-line mb-3 max-w-lg">{profile.bio}</p>}
                     </div>
 
-                    {/* Tabs - Instagram style */}
+                    {/* Tabs */}
                     <div className="mt-6 flex justify-center border-t border-border">
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -470,7 +748,6 @@ export function ProfileEditorDialog({
                         </TooltipTrigger>
                         <TooltipContent>Collections</TooltipContent>
                       </Tooltip>
-
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button className="flex items-center gap-2 px-8 py-3 border-t-2 border-transparent text-muted-foreground">
@@ -479,7 +756,6 @@ export function ProfileEditorDialog({
                         </TooltipTrigger>
                         <TooltipContent>Downloads</TooltipContent>
                       </Tooltip>
-
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button className="flex items-center gap-2 px-8 py-3 border-t-2 border-transparent text-muted-foreground">
@@ -490,82 +766,178 @@ export function ProfileEditorDialog({
                       </Tooltip>
                     </div>
 
-                    {/* YOUR SECTIONS area */}
-                    <div className="mt-6">
-                      <div className="flex items-center justify-between mb-4">
+                    {/* Content Area */}
+                    <div className="mt-6 space-y-6">
+                      {/* Header with actions */}
+                      <div className="flex items-center justify-between">
                         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          Your Sections
+                          Your Store Layout
                         </h3>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowAddPanel(true)}
-                          className="gap-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add Section
-                        </Button>
-                      </div>
-
-                      {/* Sections list */}
-                      {loading ? (
-                        <div className="text-center py-12 text-muted-foreground">
-                          Loading sections...
-                        </div>
-                      ) : sections.length === 0 && !previewSection ? (
-                        <div className="text-center py-16 border-2 border-dashed border-muted-foreground/25 rounded-lg bg-background/50">
-                          <p className="text-muted-foreground mb-4">
-                            No sections yet. Start building your profile!
-                          </p>
-                          <Button 
-                            onClick={() => setShowAddPanel(true)}
-                            className="bg-primary hover:bg-primary/90"
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowCreateCollection(true)}
+                            className="gap-2"
                           >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Your First Section
+                            <Layers className="w-4 h-4" />
+                            New Collection
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowAddPanel(true)}
+                            className="gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Section
                           </Button>
                         </div>
+                      </div>
+
+                      {loading ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          Loading your store layout...
+                        </div>
+                      ) : !hasContent ? (
+                        <div className="text-center py-16 border-2 border-dashed border-muted-foreground/25 rounded-lg bg-background/50">
+                          <p className="text-muted-foreground mb-4">
+                            No content yet. Start building your store!
+                          </p>
+                          <div className="flex gap-2 justify-center">
+                            <Button onClick={() => setShowCreateCollection(true)} variant="outline">
+                              <Layers className="w-4 h-4 mr-2" />
+                              Create Collection
+                            </Button>
+                            <Button onClick={() => setShowAddPanel(true)} className="bg-primary hover:bg-primary/90">
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add Section
+                            </Button>
+                          </div>
+                        </div>
                       ) : (
-                        <DndContext
-                          sensors={sensors}
-                          collisionDetection={closestCenter}
-                          onDragEnd={handleDragEnd}
-                        >
-                          <SortableContext
-                            items={sections.map((s) => s.id)}
-                            strategy={verticalListSortingStrategy}
-                          >
-                            <div className="space-y-4">
-                              {sections.map((section) => (
-                                <SortableSectionCard
-                                  key={section.id}
-                                  section={section}
-                                  onEdit={() => setEditingSection(section)}
-                                  onDelete={() => {
-                                    if (window.confirm('Delete this section?')) {
-                                      deleteSection(section.id);
-                                    }
-                                  }}
-                                  onToggleVisibility={() => toggleVisibility(section.id)}
-                                />
-                              ))}
-                              
-                              {/* Preview Section - shown while hovering over presets */}
-                              {previewSection && (
-                                <div className="relative bg-card/50 backdrop-blur-sm border-2 border-dashed border-primary rounded-lg overflow-hidden">
-                                  <div className="absolute top-2 left-2 z-10">
-                                    <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded font-medium">
-                                      Preview
-                                    </span>
-                                  </div>
-                                  <div className="p-4 pt-10 min-h-[80px]">
-                                    <SectionPreviewContent section={previewSection} />
-                                  </div>
+                        <div className="space-y-6">
+                          {/* Recent Uploads - toggleable */}
+                          {recentProducts.length > 0 && (
+                            <div className={cn(
+                              'relative group p-4 rounded-lg border transition-all',
+                              showRecentUploads 
+                                ? 'border-border bg-card/50' 
+                                : 'border-dashed border-muted-foreground/25 bg-muted/20 opacity-50'
+                            )}>
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium text-sm">Recent Uploads</h4>
+                                  <Badge variant="secondary" className="text-xs">Auto-generated</Badge>
                                 </div>
-                              )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={toggleRecentUploadsVisibility}
+                                  className="h-8 w-8"
+                                >
+                                  {showRecentUploads ? (
+                                    <Eye className="w-4 h-4" />
+                                  ) : (
+                                    <EyeOff className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              </div>
+                              <div className="flex gap-2 overflow-x-auto pb-1">
+                                {recentProducts.slice(0, 6).map((product) => {
+                                  const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
+                                  return (
+                                    <div key={product.id} className="relative w-24 h-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                                      {thumbnail ? (
+                                        <img src={thumbnail} alt={product.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center">
+                                          <Play className="w-4 h-4 text-muted-foreground" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </SortableContext>
-                        </DndContext>
+                          )}
+
+                          {/* Collections */}
+                          {editorCollections.length > 0 && (
+                            <DndContext
+                              sensors={sensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={handleCollectionDragEnd}
+                            >
+                              <SortableContext
+                                items={editorCollections.map((c) => c.id)}
+                                strategy={verticalListSortingStrategy}
+                              >
+                                <div className="space-y-4">
+                                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Collections
+                                  </h4>
+                                  {editorCollections.map((collection) => (
+                                    <SortableCollectionCard
+                                      key={collection.id}
+                                      collection={collection}
+                                      onEdit={() => setEditingCollection(collection)}
+                                      onDelete={() => setDeleteCollectionId(collection.id)}
+                                      onToggleVisibility={() => toggleCollectionVisibility(collection.id)}
+                                    />
+                                  ))}
+                                </div>
+                              </SortableContext>
+                            </DndContext>
+                          )}
+
+                          {/* Custom Sections */}
+                          {sections.length > 0 && (
+                            <DndContext
+                              sensors={sensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={handleSectionDragEnd}
+                            >
+                              <SortableContext
+                                items={sections.map((s) => s.id)}
+                                strategy={verticalListSortingStrategy}
+                              >
+                                <div className="space-y-4">
+                                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Custom Sections
+                                  </h4>
+                                  {sections.map((section) => (
+                                    <SortableSectionCard
+                                      key={section.id}
+                                      section={section}
+                                      onEdit={() => setEditingSection(section)}
+                                      onDelete={() => {
+                                        if (window.confirm('Delete this section?')) {
+                                          deleteSection(section.id);
+                                        }
+                                      }}
+                                      onToggleVisibility={() => toggleSectionVisibility(section.id)}
+                                    />
+                                  ))}
+                                </div>
+                              </SortableContext>
+                            </DndContext>
+                          )}
+
+                          {/* Preview Section */}
+                          {previewSection && (
+                            <div className="relative bg-card/50 backdrop-blur-sm border-2 border-dashed border-primary rounded-lg overflow-hidden">
+                              <div className="absolute top-2 left-2 z-10">
+                                <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded font-medium">
+                                  Preview
+                                </span>
+                              </div>
+                              <div className="p-4 pt-10 min-h-[80px]">
+                                <SectionPreviewContent section={previewSection} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -576,7 +948,7 @@ export function ProfileEditorDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Add Section Panel - Modal dialog */}
+      {/* Add Section Panel */}
       <AddSectionPanel
         open={showAddPanel}
         onClose={() => {
@@ -590,16 +962,48 @@ export function ProfileEditorDialog({
       {/* Edit Section Dialog */}
       <EditSectionDialog
         section={editingSection}
-        collections={collections}
+        collections={initialCollections}
         onUpdate={updateSection}
         onDelete={deleteSection}
         onClose={() => setEditingSection(null)}
-        onCreateCollection={() => {
-          setShowCreateCollection(true);
+        onCreateCollection={() => setShowCreateCollection(true)}
+      />
+
+      {/* Edit Collection Dialog */}
+      <EditCollectionDialog
+        open={!!editingCollection}
+        onOpenChange={(open) => !open && setEditingCollection(null)}
+        collection={editingCollection}
+        onUpdated={() => {
+          fetchCollections();
+          onCollectionsChange?.();
+          setEditingCollection(null);
         }}
       />
 
-      {/* Create Collection Dialog - nested inside editor */}
+      {/* Delete Collection Confirmation */}
+      <AlertDialog open={!!deleteCollectionId} onOpenChange={(open) => !open && setDeleteCollectionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Collection?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this collection. The products inside will not be deleted, 
+              only the collection grouping.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteCollectionId && handleDeleteCollection(deleteCollectionId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Collection Dialog */}
       {showCreateCollection && (
         <CreateCollectionInEditor
           open={showCreateCollection}
@@ -607,6 +1011,7 @@ export function ProfileEditorDialog({
           profileId={profileId}
           onCreated={() => {
             setShowCreateCollection(false);
+            fetchCollections();
             onCollectionsChange?.();
           }}
         />
