@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,9 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ViewApplicationDialog from "@/components/admin/ViewApplicationDialog";
+import EditUserDialog from "@/components/admin/EditUserDialog";
+import ManageFeaturedDialog from "@/components/admin/ManageFeaturedDialog";
+import DeleteProductDialog from "@/components/admin/DeleteProductDialog";
 
 interface Profile {
   id: string;
@@ -21,8 +24,11 @@ interface Profile {
   full_name: string | null;
   email: string | null;
   avatar_url: string | null;
+  bio: string | null;
   is_creator: boolean | null;
   is_editor: boolean | null;
+  suspended: boolean | null;
+  verified: boolean | null;
   created_at: string | null;
 }
 
@@ -32,6 +38,7 @@ interface Product {
   status: string | null;
   pricing_type: string | null;
   price_cents: number | null;
+  featured: boolean | null;
   created_at: string | null;
   creator: {
     username: string | null;
@@ -73,6 +80,12 @@ export default function Admin() {
   const [applicationSearch, setApplicationSearch] = useState("");
   const [viewingApplication, setViewingApplication] = useState<EditorApplication | null>(null);
   
+  // New dialog states
+  const [editingUser, setEditingUser] = useState<Profile | null>(null);
+  const [showFeaturedDialog, setShowFeaturedDialog] = useState(false);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   // Stats
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -89,10 +102,10 @@ export default function Admin() {
 
   const fetchData = async () => {
     try {
-      // Fetch users
+      // Fetch users with new fields
       const { data: usersData, error: usersError } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, user_id, username, full_name, email, avatar_url, bio, is_creator, is_editor, suspended, verified, created_at")
         .order("created_at", { ascending: false });
 
       if (usersError) throw usersError;
@@ -100,10 +113,10 @@ export default function Admin() {
       setTotalUsers(usersData?.length || 0);
       setTotalCreators(usersData?.filter(u => u.is_creator).length || 0);
 
-      // Fetch products with creator info
+      // Fetch products with featured field
       const { data: productsData, error: productsError } = await supabase
         .from("products")
-        .select("id, name, status, pricing_type, price_cents, created_at, creator_id")
+        .select("id, name, status, pricing_type, price_cents, featured, created_at, creator_id")
         .order("created_at", { ascending: false });
 
       if (productsError) throw productsError;
@@ -208,6 +221,87 @@ export default function Admin() {
     } catch (error) {
       console.error('Error updating application:', error);
       toast.error('Failed to update application');
+    }
+  };
+
+  // User action handlers
+  const handleViewProfile = (profile: Profile) => {
+    if (profile.username) {
+      navigate(`/@${profile.username}`);
+    } else {
+      toast.error("User doesn't have a username set");
+    }
+  };
+
+  const handleEditUser = (profile: Profile) => {
+    setEditingUser(profile);
+  };
+
+  const handleSuspendUser = async (profile: Profile) => {
+    try {
+      const newSuspendedStatus = !profile.suspended;
+      const { error } = await supabase
+        .from("profiles")
+        .update({ suspended: newSuspendedStatus })
+        .eq("id", profile.id);
+
+      if (error) throw error;
+
+      toast.success(newSuspendedStatus ? "User suspended" : "User unsuspended");
+      fetchData();
+    } catch (error) {
+      console.error("Error updating suspension status:", error);
+      toast.error("Failed to update user");
+    }
+  };
+
+  // Product action handlers
+  const handleViewProduct = (product: Product) => {
+    navigate(`/products/${product.id}`);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    navigate(`/edit-product/${product.id}`);
+  };
+
+  const handleToggleFeatured = async (product: Product) => {
+    try {
+      const newFeaturedStatus = !product.featured;
+      const { error } = await supabase
+        .from("products")
+        .update({ featured: newFeaturedStatus })
+        .eq("id", product.id);
+
+      if (error) throw error;
+
+      toast.success(newFeaturedStatus ? "Product featured" : "Product unfeatured");
+      fetchData();
+    } catch (error) {
+      console.error("Error updating featured status:", error);
+      toast.error("Failed to update product");
+    }
+  };
+
+  const handleRemoveProduct = async () => {
+    if (!deletingProduct) return;
+
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", deletingProduct.id);
+
+      if (error) throw error;
+
+      toast.success("Product deleted successfully");
+      setDeletingProduct(null);
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      toast.error("Failed to delete product");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -368,6 +462,7 @@ export default function Admin() {
                     <TableHead>User</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Joined</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
@@ -403,6 +498,19 @@ export default function Admin() {
                           {!profile.is_creator && !profile.is_editor && <Badge variant="secondary">User</Badge>}
                         </div>
                       </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {profile.verified && (
+                            <Badge className="bg-primary/20 text-primary">Verified</Badge>
+                          )}
+                          {profile.suspended && (
+                            <Badge variant="destructive">Suspended</Badge>
+                          )}
+                          {!profile.suspended && !profile.verified && (
+                            <span className="text-muted-foreground text-sm">Active</span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>{formatDate(profile.created_at)}</TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -412,10 +520,17 @@ export default function Admin() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Profile</DropdownMenuItem>
-                            <DropdownMenuItem>Edit User</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              Suspend User
+                            <DropdownMenuItem onClick={() => handleViewProfile(profile)}>
+                              View Profile
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditUser(profile)}>
+                              Edit User
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleSuspendUser(profile)}
+                              className={profile.suspended ? "text-primary" : "text-destructive"}
+                            >
+                              {profile.suspended ? "Unsuspend User" : "Suspend User"}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -461,6 +576,7 @@ export default function Admin() {
                     <TableHead>Product</TableHead>
                     <TableHead>Creator</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Featured</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="w-12"></TableHead>
@@ -481,6 +597,16 @@ export default function Admin() {
                         )}
                       </TableCell>
                       <TableCell>
+                        {product.featured ? (
+                          <Badge className="bg-yellow-500/20 text-yellow-600">
+                            <Star className="w-3 h-3 mr-1 fill-current" />
+                            Featured
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         {formatPrice(product.price_cents, product.pricing_type)}
                       </TableCell>
                       <TableCell>{formatDate(product.created_at)}</TableCell>
@@ -492,10 +618,19 @@ export default function Admin() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Product</DropdownMenuItem>
-                            <DropdownMenuItem>Edit Product</DropdownMenuItem>
-                            <DropdownMenuItem>Feature Product</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem onClick={() => handleViewProduct(product)}>
+                              View Product
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditProduct(product)}>
+                              Edit Product
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleToggleFeatured(product)}>
+                              {product.featured ? "Remove from Featured" : "Add to Featured"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setDeletingProduct(product)}
+                              className="text-destructive"
+                            >
                               Remove Product
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -674,6 +809,30 @@ export default function Admin() {
           }}
         />
 
+        {/* Edit User Dialog */}
+        <EditUserDialog
+          open={!!editingUser}
+          onOpenChange={(open) => !open && setEditingUser(null)}
+          user={editingUser}
+          onUserUpdated={fetchData}
+        />
+
+        {/* Manage Featured Dialog */}
+        <ManageFeaturedDialog
+          open={showFeaturedDialog}
+          onOpenChange={setShowFeaturedDialog}
+          onFeaturedChanged={fetchData}
+        />
+
+        {/* Delete Product Dialog */}
+        <DeleteProductDialog
+          open={!!deletingProduct}
+          onOpenChange={(open) => !open && setDeletingProduct(null)}
+          product={deletingProduct}
+          onConfirm={handleRemoveProduct}
+          isDeleting={isDeleting}
+        />
+
         {/* Settings Tab */}
         <TabsContent value="settings">
           <Card className="bg-card/50">
@@ -705,7 +864,10 @@ export default function Admin() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Manage which products appear on the homepage.
                 </p>
-                <Button variant="outline">Manage Featured</Button>
+                <Button variant="outline" onClick={() => setShowFeaturedDialog(true)}>
+                  <Star className="w-4 h-4 mr-2" />
+                  Manage Featured
+                </Button>
               </div>
             </CardContent>
           </Card>
