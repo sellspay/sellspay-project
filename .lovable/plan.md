@@ -1,159 +1,254 @@
 
 
-# Product Creation and Editing Fixes Plan
+# Pro Tools Credit System Redesign Plan
 
-## Issues Identified
-
-### Issue 1: Related Products Not Filtered by Product Type
-**Current State:** The `fetchRelatedProducts` function in `ProductDetail.tsx` (lines 274-287) fetches all published products regardless of type.
-
-**Problem:** Should only show products with the same `product_type` as the current product.
-
-**Fix:** Modify the query to filter by `product_type` when it exists.
+## Overview
+Transform the current subscription-based Pro Tools system into a flexible credit-based wallet system with tiered pricing plans, free starter credits for new users, and clear distinction between free and Pro tools.
 
 ---
 
-### Issue 2: Missing Product Types in Dropdown
-**Current State:** The `productTypes` array in both `CreateProduct.tsx` and `EditProduct.tsx` has 8 types:
-- Preset Pack, LUT Pack, Sound Effects, Music, Template, Overlay, Font, Other
-
-**Problem:** Missing additional types that may be needed (from the ProductDetail.tsx labels, I see "tutorial" and "project_file" exist).
-
-**Fix:** Add missing product types:
-- Tutorial
-- Project File
-- Transition Pack
-- Color Grading
-- Motion Graphics
+## Current State Analysis
+- **Existing System**: Subscription-based ($9.99/month for 50 uses)
+- **Database Tables**: `pro_tool_subscriptions`, `tool_usage`
+- **Edge Functions**: `create-pro-tools-checkout`, `check-pro-tools-subscription`
+- **Pro Tools**: SFX Generator, Voice Isolator, SFX Isolator, Music Splitter
+- **Free Tools**: Audio Cutter, Joiner, Recorder, Converter, Video to Audio, Waveform Generator
 
 ---
 
-### Issue 3: Missing Subscription Options in EditProduct Pricing Section
-**Current State:** `EditProduct.tsx` only shows "Free" and "Paid" buttons (lines 460-475).
+## New System Architecture
 
-**Problem:** Missing "Subscription Only" and "Both (One-Time + Subscription)" options that exist in `CreateProduct.tsx`.
+### Credit Wallet System
+Users will have a credit balance stored in their profile. Credits are deducted when using Pro tools (1 credit per use). Free tools never deduct credits.
 
-**Fix:** Add the missing pricing options and subscription plan selection to `EditProduct.tsx` to match `CreateProduct.tsx`.
+### Pricing Tiers
 
----
+| Plan | Price | Credits | Value per Credit |
+|------|-------|---------|------------------|
+| Starter | $4.99 | 15 | $0.33 |
+| Basic | $9.99 | 50 | $0.20 |
+| Pro | $24.99 | 150 | $0.17 |
+| Power | $49.99 | 350 | $0.14 |
+| Enterprise | $99.99 | 800 | $0.12 |
 
-### Issue 4: Product File Upload Not Working
-**Current State:** Files are being uploaded to a public bucket (`product-media`) with a public URL being stored.
-
-**Problems:**
-1. Download files should be stored in a private location (not public)
-2. Need a separate private bucket for product files
-3. Should support all file types (zip, rar, etc.) - currently no file type restrictions but the storage path goes to a public URL
-
-**Fix:**
-1. Create a new private storage bucket called `product-files` for downloadable content
-2. Update the upload logic to store files as private paths (not public URLs)
-3. Add RLS policies to restrict access to purchased/subscribed users
-4. Create an Edge Function to generate signed download URLs for authorized users
-5. Display file name/size info after upload to confirm success
+### Free Credits
+- All new signups receive **5 free credits** to try Pro tools
+- Credits are granted automatically on first profile creation
 
 ---
 
-### Issue 5: YouTube URL Displaying Video ID Instead of Full URL
-**Current State:** When editing a product, the `youtubeUrl` field shows just the video ID (e.g., "Ar_9Pny937k") instead of the full URL.
+## Database Changes
 
-**Root Cause:** The database stores just the video ID, not the full URL. The `EditProduct.tsx` loads `product.youtube_url` directly which contains only the ID.
-
-**Fix:** 
-1. When fetching the product, if `youtube_url` contains just an ID (no "youtube.com"), convert it to a full URL for display
-2. When saving, extract the video ID from the full URL if needed (keep backward compatibility)
-3. Also update `CreateProduct.tsx` to normalize/extract video IDs consistently
-
----
-
-### Issue 6: Missing Subscription Plan Selection in Product Forms
-**Current State:** When a user selects "Subscription Only" or "Both", there's no way to select which subscription plan(s) the product should be attached to.
-
-**Fix:** Add a subscription plan selector that:
-1. Fetches the creator's available subscription plans
-2. Allows selecting one or more plans to attach the product to
-3. Creates/updates entries in `subscription_plan_products` table on save
-
----
-
-## Technical Implementation
-
-### Database Changes
-1. Create a new private storage bucket `product-files`:
+### 1. Add Credits Column to Profiles Table
 ```sql
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('product-files', 'product-files', false);
+ALTER TABLE profiles ADD COLUMN credit_balance integer DEFAULT 5;
+```
+New users automatically get 5 credits.
+
+### 2. Create Credit Transactions Table
+Track all credit purchases and usage for transparency:
+```sql
+CREATE TABLE credit_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  type TEXT NOT NULL, -- 'purchase', 'usage', 'bonus'
+  amount INTEGER NOT NULL, -- positive for additions, negative for deductions
+  description TEXT,
+  tool_id TEXT, -- for usage transactions
+  stripe_session_id TEXT, -- for purchase transactions
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 ```
 
-2. Add RLS policies for the private bucket to allow:
-   - Creators to upload/delete their own files
-   - Buyers/subscribers to download files they have access to
+### 3. Create Credit Packages Table
+Store available credit packages:
+```sql
+CREATE TABLE credit_packages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  credits INTEGER NOT NULL,
+  price_cents INTEGER NOT NULL,
+  stripe_price_id TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  display_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
 
-### Edge Function: `get-download-url`
-Create a new Edge Function that:
-- Validates user authentication
-- Checks if user has purchased the product OR is subscribed to a qualifying plan OR is the product owner
-- Generates a signed URL for the file with a short expiration (e.g., 5 minutes)
-- Returns the signed URL for download
+---
 
-### Frontend Changes
+## Edge Functions
 
-#### `src/pages/CreateProduct.tsx`
-- Add more product types to the `productTypes` array
-- Add subscription plan selection when pricing type is "subscription" or "both"
-- Fetch creator's subscription plans on mount
-- Update save logic to also save to `subscription_plan_products` table
-- Store download files to private bucket path (not public URL)
+### 1. Update `check-pro-tools-subscription` -> `check-credits`
+Replace subscription check with credit balance check:
+- Return current credit balance from profiles
+- Return usage history (optional)
 
-#### `src/pages/EditProduct.tsx`
-- Add more product types to the `productTypes` array
-- Add "Subscription Only" and "Both" pricing options
-- Add subscription plan selection section
-- Add YouTube URL normalization (convert ID to full URL on load)
-- Fetch and display currently linked subscription plans
-- Update save logic to handle subscription plan links
-- Store download files to private bucket path
+### 2. Create `create-credit-checkout`
+Create Stripe one-time payment checkout for credit packages:
+- Accept package_id parameter
+- Create Stripe Checkout session with one-time payment mode
+- Store package details in metadata for webhook
 
-#### `src/pages/ProductDetail.tsx`
-- Update `fetchRelatedProducts` to filter by `product_type`
-- Update download logic to call the new `get-download-url` Edge Function
+### 3. Create `add-credits` (or update webhook)
+Add credits after successful payment:
+- Called by Stripe webhook or success page verification
+- Add credits to user's balance
+- Create transaction record
 
-### File Upload Changes
-- Change the upload destination from public URL to private path
-- Store as path reference (e.g., "product-files/downloads/{profile_id}/{timestamp}.zip")
-- Display file name and size after successful upload
-- Accept all file types (zip, rar, 7z, etc.)
+### 4. Create `deduct-credit`
+Deduct credits when using Pro tools:
+- Verify user has sufficient balance
+- Deduct 1 credit
+- Create usage transaction record
+- Return new balance
+
+---
+
+## Frontend Changes
+
+### 1. Header Navigation Update
+**File**: `src/components/layout/Header.tsx`
+- Add "Pricing" link to `navItems` array
+- Add credit wallet display showing current balance (coin icon + number)
+- Show wallet in user dropdown and/or as standalone element
+
+### 2. New Pricing Page
+**File**: `src/pages/Pricing.tsx`
+- Hero section with value proposition
+- Credit package cards with pricing tiers
+- Feature comparison (what Pro tools include)
+- FAQ section about credits
+- Clear CTAs for each tier
+
+### 3. Update Tools Sidebar
+**File**: `src/components/tools/ToolsSidebar.tsx`
+- Add credit wallet display at top of sidebar
+- Add "Free" badge to non-Pro tools (in addition to existing "Pro" badges)
+- Update tool descriptions to clarify credit usage
+
+### 4. Update ProToolsGate Component
+**File**: `src/components/tools/ProToolsGate.tsx`
+- Replace subscription check with credit balance check
+- Show remaining credits instead of usage count
+- Update upgrade prompt to redirect to Pricing page
+- Show "Get Credits" button instead of "Subscribe Now"
+- Add "Top Up" quick action when credits are low
+
+### 5. Update useProToolsSubscription Hook
+**File**: `src/hooks/useProToolsSubscription.ts`
+Rename to `useCredits.ts` with new logic:
+- Fetch credit balance from profiles table
+- `deductCredit(toolId)`: Call edge function to deduct
+- `canUseTool(toolId)`: Check if free tool OR has credits
+- Remove subscription-related logic
+- Add `topUp()` function to navigate to pricing
+
+### 6. Update ToolContent Component
+**File**: `src/components/tools/ToolContent.tsx`
+- Pass credit-related props to ProToolsGate
+- Call deductCredit after successful Pro tool use
+
+### 7. Credit Wallet Component
+**File**: `src/components/credits/CreditWallet.tsx` (new)
+- Animated coin icon
+- Current balance display
+- "Top Up" button
+- Click to see transaction history (optional)
+
+### 8. Add Route for Pricing Page
+**File**: `src/App.tsx`
+- Add `/pricing` route
+
+---
+
+## UI/UX Improvements
+
+### Tools Page Redesign
+1. **Sidebar Header**: Show credit wallet prominently
+2. **Tool Badges**: 
+   - Pro tools: Orange "Pro" badge + "1 credit" indicator
+   - Free tools: Green "Free" badge + "Unlimited" indicator
+3. **Credit Status Bar**: Show at top of content area for Pro tools
+
+### Pricing Page Design
+1. **Hero**: "Power Your Creativity with Credits"
+2. **Package Cards**: 
+   - Highlight best value (Pro tier)
+   - Show savings percentage for larger packages
+3. **Tool Preview**: Icons/names of all Pro tools included
+4. **Trust Elements**: Credit icons, secure payment badges
 
 ---
 
 ## Implementation Order
 
-1. **Database**: Create private storage bucket with RLS policies
-2. **Edge Function**: Create `get-download-url` for secure file access
-3. **EditProduct.tsx**: 
-   - Add missing pricing options
-   - Add product types
-   - Add subscription plan selection
-   - Fix YouTube URL display
-   - Update file upload to private storage
-4. **CreateProduct.tsx**:
-   - Add product types
-   - Add subscription plan selection  
-   - Update file upload to private storage
-5. **ProductDetail.tsx**:
-   - Fix related products filtering by product_type
-   - Update download to use signed URLs
+### Phase 1: Database & Backend
+1. Database migration for profiles (add credit_balance)
+2. Create credit_transactions table
+3. Create credit_packages table with initial data
+4. Create Stripe products/prices for credit packages
+5. Update/create edge functions
+
+### Phase 2: Hook & State Management
+1. Create new `useCredits` hook
+2. Update ProToolsGate component
+3. Update ToolContent to use new hook
+
+### Phase 3: UI Components
+1. Create CreditWallet component
+2. Update ToolsSidebar with wallet and badges
+3. Update Header with Pricing link and wallet
+4. Create Pricing page
+
+### Phase 4: Polish
+1. Add success/error toasts for credit operations
+2. Add loading states
+3. Test edge cases (0 credits, failed payments, etc.)
 
 ---
 
-## Summary of Changes
+## Technical Details
 
-| File | Changes |
-|------|---------|
-| `storage.buckets` | Create `product-files` private bucket |
-| `storage.objects` policies | Add RLS for creator uploads and authorized downloads |
-| `supabase/functions/get-download-url/` | New Edge Function for signed URL generation |
-| `src/pages/CreateProduct.tsx` | Add product types, subscription plan selector, private file uploads |
-| `src/pages/EditProduct.tsx` | Add pricing options, product types, subscription plan selector, fix YouTube URL, private file uploads |
-| `src/pages/ProductDetail.tsx` | Filter related products by type, use signed URLs for downloads |
+### Stripe Products to Create
+| Package | Stripe Product | Price (cents) |
+|---------|---------------|---------------|
+| Starter 15 | prod_starter_credits | 499 |
+| Basic 50 | prod_basic_credits | 999 |
+| Pro 150 | prod_pro_credits | 2499 |
+| Power 350 | prod_power_credits | 4999 |
+| Enterprise 800 | prod_enterprise_credits | 9999 |
+
+### Credit Balance Logic
+```typescript
+// Check if can use tool
+const canUse = !isProTool(toolId) || creditBalance > 0;
+
+// After successful Pro tool use
+await supabase.functions.invoke('deduct-credit', { 
+  body: { tool_id: toolId } 
+});
+```
+
+### Free Credits on Signup
+The `credit_balance DEFAULT 5` in the profiles table handles this automatically when the trigger creates a new profile on signup.
+
+---
+
+## Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/pages/Pricing.tsx` | Create | New pricing page with credit packages |
+| `src/components/credits/CreditWallet.tsx` | Create | Wallet display component |
+| `src/hooks/useCredits.ts` | Create | New credit management hook |
+| `supabase/functions/check-credits/` | Create | Check user credit balance |
+| `supabase/functions/create-credit-checkout/` | Create | Stripe checkout for credits |
+| `supabase/functions/deduct-credit/` | Create | Deduct credit on Pro tool use |
+| `src/components/layout/Header.tsx` | Modify | Add Pricing nav link, wallet display |
+| `src/components/tools/ToolsSidebar.tsx` | Modify | Add wallet, Free badges |
+| `src/components/tools/ProToolsGate.tsx` | Modify | Use credits instead of subscription |
+| `src/components/tools/ToolContent.tsx` | Modify | Use new useCredits hook |
+| `src/App.tsx` | Modify | Add /pricing route |
+| `supabase/migrations/` | Create | Database schema changes |
 
