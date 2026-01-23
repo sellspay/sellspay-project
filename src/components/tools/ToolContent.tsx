@@ -1,7 +1,6 @@
 import { Suspense, lazy } from "react";
 import { Loader2, Lock } from "lucide-react";
 import { tools, Tool } from "./ToolsSidebar";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 // Lazy load tool components
@@ -11,6 +10,9 @@ const AudioJoiner = lazy(() => import("@/pages/tools/AudioJoiner"));
 const VideoToAudio = lazy(() => import("@/pages/tools/VideoToAudio"));
 const AudioConverter = lazy(() => import("@/pages/tools/AudioConverter"));
 const WaveformGenerator = lazy(() => import("@/pages/tools/WaveformGenerator"));
+const VoiceIsolator = lazy(() => import("@/pages/tools/VoiceIsolator"));
+const SFXIsolator = lazy(() => import("@/pages/tools/SFXIsolator"));
+const MusicSplitter = lazy(() => import("@/pages/tools/MusicSplitter"));
 
 interface ToolContentProps {
   toolId: string | null;
@@ -74,6 +76,9 @@ export function ToolContent({ toolId }: ToolContentProps) {
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <div className="tool-content-wrapper">
+        {toolId === "voice-isolator" && <VoiceIsolator />}
+        {toolId === "sfx-isolator" && <SFXIsolator />}
+        {toolId === "music-splitter" && <MusicSplitter />}
         {toolId === "audio-cutter" && <AudioCutterInline />}
         {toolId === "audio-recorder" && <AudioRecorderInline />}
         {toolId === "audio-joiner" && <AudioJoinerInline />}

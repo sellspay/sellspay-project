@@ -31,7 +31,7 @@ export const tools: Tool[] = [
     icon: Mic2,
     category: "audio",
     badge: "Popular",
-    available: false,
+    available: true,
   },
   {
     id: "sfx-isolator",
@@ -39,7 +39,7 @@ export const tools: Tool[] = [
     description: "Isolate sound effects from your audio",
     icon: Sparkles,
     category: "audio",
-    available: false,
+    available: true,
   },
   {
     id: "music-splitter",
@@ -48,7 +48,7 @@ export const tools: Tool[] = [
     icon: Music,
     category: "audio",
     badge: "New",
-    available: false,
+    available: true,
   },
   {
     id: "audio-cutter",
