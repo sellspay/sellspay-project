@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import ViewApplicationDialog from "@/components/admin/ViewApplicationDialog";
 
 interface Profile {
   id: string;
@@ -46,8 +47,10 @@ interface EditorApplication {
   country: string;
   city: string;
   hourly_rate_cents: number;
+  starting_budget_cents?: number | null;
   services: string[];
   languages: string[];
+  social_links?: unknown;
   status: string | null;
   created_at: string | null;
   profile?: {
@@ -68,6 +71,7 @@ export default function Admin() {
   const [userSearch, setUserSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [applicationSearch, setApplicationSearch] = useState("");
+  const [viewingApplication, setViewingApplication] = useState<EditorApplication | null>(null);
   
   // Stats
   const [totalUsers, setTotalUsers] = useState(0);
@@ -607,26 +611,39 @@ export default function Admin() {
                       </TableCell>
                       <TableCell>{formatDate(app.created_at)}</TableCell>
                       <TableCell>
-                        {app.status === 'pending' && (
-                          <div className="flex gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
-                              onClick={() => handleApplicationAction(app.id, 'approve')}
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
-                              onClick={() => handleApplicationAction(app.id, 'reject')}
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            onClick={() => setViewingApplication(app)}
+                            title="View Application"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          {app.status === 'pending' && (
+                            <>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
+                                onClick={() => handleApplicationAction(app.id, 'approve')}
+                                title="Approve"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
+                                onClick={() => handleApplicationAction(app.id, 'reject')}
+                                title="Reject"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -641,6 +658,21 @@ export default function Admin() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* View Application Dialog */}
+        <ViewApplicationDialog
+          open={!!viewingApplication}
+          onOpenChange={(open) => !open && setViewingApplication(null)}
+          application={viewingApplication}
+          onApprove={(id) => {
+            handleApplicationAction(id, 'approve');
+            setViewingApplication(null);
+          }}
+          onReject={(id) => {
+            handleApplicationAction(id, 'reject');
+            setViewingApplication(null);
+          }}
+        />
 
         {/* Settings Tab */}
         <TabsContent value="settings">
