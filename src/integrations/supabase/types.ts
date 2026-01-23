@@ -106,6 +106,8 @@ export type Database = {
           is_creator: boolean | null
           phone: string | null
           social_links: Json | null
+          stripe_account_id: string | null
+          stripe_onboarding_complete: boolean | null
           updated_at: string | null
           user_id: string
           username: string | null
@@ -121,6 +123,8 @@ export type Database = {
           is_creator?: boolean | null
           phone?: string | null
           social_links?: Json | null
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
           updated_at?: string | null
           user_id: string
           username?: string | null
@@ -136,10 +140,90 @@ export type Database = {
           is_creator?: boolean | null
           phone?: string | null
           social_links?: Json | null
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
           updated_at?: string | null
           user_id?: string
           username?: string | null
           website?: string | null
+        }
+        Relationships: []
+      }
+      purchases: {
+        Row: {
+          amount_cents: number
+          buyer_id: string
+          created_at: string
+          creator_payout_cents: number
+          id: string
+          platform_fee_cents: number
+          product_id: string
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_transfer_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          buyer_id: string
+          created_at?: string
+          creator_payout_cents: number
+          id?: string
+          platform_fee_cents: number
+          product_id: string
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_transfer_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          buyer_id?: string
+          created_at?: string
+          creator_payout_cents?: number
+          id?: string
+          platform_fee_cents?: number
+          product_id?: string
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_transfer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stripe_events: {
+        Row: {
+          event_type: string
+          id: string
+          processed_at: string
+          stripe_event_id: string
+        }
+        Insert: {
+          event_type: string
+          id?: string
+          processed_at?: string
+          stripe_event_id: string
+        }
+        Update: {
+          event_type?: string
+          id?: string
+          processed_at?: string
+          stripe_event_id?: string
         }
         Relationships: []
       }

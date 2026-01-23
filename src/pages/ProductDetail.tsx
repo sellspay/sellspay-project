@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Play, Download, Share2, Heart, Tag, Calendar, User } from "lucide-react";
+import { useParams, Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Play, Download, Share2, Heart, Tag, Calendar, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
+import { useAuth } from "@/lib/auth";
 interface Product {
   id: string;
   name: string;
@@ -33,9 +33,27 @@ interface Product {
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [hasPurchased, setHasPurchased] = useState(false);
+
+  // Check for purchase success from URL
+  useEffect(() => {
+    const purchaseStatus = searchParams.get("purchase");
+    if (purchaseStatus === "success") {
+      toast.success("Purchase successful! Thank you for your order.");
+      setHasPurchased(true);
+      // Clean up URL
+      window.history.replaceState({}, "", `/product/${id}`);
+    } else if (purchaseStatus === "canceled") {
+      toast.info("Purchase was canceled");
+      window.history.replaceState({}, "", `/product/${id}`);
+    }
+  }, [searchParams, id]);
 
   useEffect(() => {
     if (id) {
@@ -107,6 +125,36 @@ export default function ProductDetail() {
     } catch {
       await navigator.clipboard.writeText(window.location.href);
       toast.success("Link copied to clipboard!");
+    }
+  };
+
+  const handlePurchase = async () => {
+    if (!user) {
+      toast.error("Please sign in to purchase");
+      return;
+    }
+
+    if (!product) return;
+
+    setPurchasing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+        body: { product_id: product.id },
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (error) {
+      console.error("Purchase error:", error);
+      const message = error instanceof Error ? error.message : "Failed to start checkout";
+      toast.error(message);
+    } finally {
+      setPurchasing(false);
     }
   };
 
@@ -249,16 +297,33 @@ export default function ProductDetail() {
               </div>
 
               <div className="flex gap-3">
-                <Button className="flex-1 bg-gradient-to-r from-primary to-accent" size="lg">
-                  {product.pricing_type === "free" ? (
-                    <>
-                      <Download className="w-4 h-4 mr-2" />
-                      Download Free
-                    </>
-                  ) : (
-                    "Purchase"
-                  )}
-                </Button>
+                {hasPurchased ? (
+                  <Button className="flex-1 bg-emerald-600/90 hover:bg-emerald-600" size="lg" disabled>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Purchased
+                  </Button>
+                ) : product.pricing_type === "free" ? (
+                  <Button className="flex-1 bg-gradient-to-r from-primary to-accent" size="lg">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Free
+                  </Button>
+                ) : (
+                  <Button 
+                    className="flex-1 bg-gradient-to-r from-primary to-accent" 
+                    size="lg"
+                    onClick={handlePurchase}
+                    disabled={purchasing}
+                  >
+                    {purchasing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Purchase"
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="lg"
