@@ -231,7 +231,9 @@ export function ProfileEditorDialog({
       if (error) throw error;
 
       const createdSection = data as unknown as ProfileSection;
-      setSections([...sections, createdSection]);
+      setSections(prev => [...prev, createdSection]);
+      // Close add panel and open edit dialog for the new section
+      setShowAddPanel(false);
       setEditingSection(createdSection);
       toast.success(`${template.name} section added`);
     } catch (error) {
@@ -555,12 +557,14 @@ export function ProfileEditorDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Add Section Panel - Full screen overlay */}
-      <AddSectionPanel
-        open={showAddPanel}
-        onClose={() => setShowAddPanel(false)}
-        onAddSection={addSection}
-      />
+      {/* Add Section Panel - Full screen overlay - rendered outside Dialog for z-index */}
+      {open && (
+        <AddSectionPanel
+          open={showAddPanel}
+          onClose={() => setShowAddPanel(false)}
+          onAddSection={addSection}
+        />
+      )}
 
       {/* Edit Section Dialog */}
       <EditSectionDialog
