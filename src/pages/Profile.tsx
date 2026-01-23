@@ -65,6 +65,7 @@ interface Profile {
   email: string | null;
   avatar_url: string | null;
   banner_url: string | null;
+  background_url: string | null;
   bio: string | null;
   website: string | null;
   social_links: unknown;
@@ -777,21 +778,34 @@ const ProfilePage: React.FC = () => {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background">
-        {/* Banner - contained width like Twitter/X */}
-        <div className="max-w-4xl mx-auto px-4 pt-4">
-          <div className="h-32 md:h-40 rounded-xl overflow-hidden">
-            {profile.banner_url ? (
-              <img
-                src={profile.banner_url}
-                alt="Profile banner"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-primary/40 to-accent/30" />
-            )}
+      <div className="min-h-screen bg-background relative">
+        {/* Steam-style full-page background */}
+        {profile.background_url && (
+          <>
+            <div 
+              className="fixed inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
+              style={{ backgroundImage: `url(${profile.background_url})` }}
+            />
+            <div className="fixed inset-0 bg-background/70 pointer-events-none" />
+          </>
+        )}
+        
+        {/* Content wrapper */}
+        <div className="relative z-10">
+          {/* Banner - contained width like Twitter/X */}
+          <div className="max-w-4xl mx-auto px-4 pt-4">
+            <div className="h-32 md:h-40 rounded-xl overflow-hidden">
+              {profile.banner_url ? (
+                <img
+                  src={profile.banner_url}
+                  alt="Profile banner"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-primary/40 to-accent/30" />
+              )}
+            </div>
           </div>
-        </div>
 
         {/* Profile Header - Avatar and info below banner */}
         <div className="max-w-4xl mx-auto px-4">
@@ -1236,6 +1250,8 @@ const ProfilePage: React.FC = () => {
             </>
           )}
         </div>
+        </div>
+        {/* End content wrapper */}
       </div>
 
       {/* Create Collection Dialog */}
