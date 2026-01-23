@@ -320,9 +320,11 @@ const SortableSectionCard = memo(({
       </div>
 
       {/* Hover controls */}
-      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+      <div className="absolute inset-0 z-20 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
         <div
           className="p-2 rounded-lg bg-white/10 cursor-grab hover:bg-white/20 transition-colors"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           {...attributes}
           {...listeners}
         >
@@ -332,7 +334,10 @@ const SortableSectionCard = memo(({
         <Button
           variant="secondary"
           size="sm"
-          onClick={onEdit}
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
           className="bg-white/10 hover:bg-white/20 text-white border-0"
         >
           <Pencil className="w-4 h-4 mr-1" />
@@ -342,7 +347,10 @@ const SortableSectionCard = memo(({
         <Button
           variant="secondary"
           size="icon"
-          onClick={onToggleVisibility}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleVisibility();
+          }}
           className="bg-white/10 hover:bg-white/20 text-white border-0"
         >
           {section.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
@@ -351,7 +359,10 @@ const SortableSectionCard = memo(({
         <Button
           variant="secondary"
           size="icon"
-          onClick={onDelete}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
           className="bg-destructive/20 hover:bg-destructive/40 text-destructive border-0"
         >
           <Trash2 className="w-4 h-4" />
