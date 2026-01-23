@@ -17,7 +17,8 @@ export type SectionType =
   | 'basic_list'
   | 'featured_product'
   | 'logo_list'
-  | 'contact_us';
+  | 'contact_us'
+  | 'footer';
 
 // Style options for each section
 export interface SectionStyleOptions {
@@ -173,6 +174,26 @@ export interface ContactUsContent {
   socialLinks: boolean;
 }
 
+// Footer section types
+export interface FooterLink {
+  id: string;
+  label: string;
+  url: string;
+}
+
+export interface FooterColumn {
+  id: string;
+  title: string;
+  links: FooterLink[];
+}
+
+export interface FooterContent {
+  text: string;
+  showSocialLinks: boolean;
+  columns: FooterColumn[];
+  backgroundColor?: string;
+}
+
 export type SectionContent = 
   | TextContent 
   | ImageContent 
@@ -190,7 +211,8 @@ export type SectionContent =
   | BasicListContent
   | FeaturedProductContent
   | LogoListContent
-  | ContactUsContent;
+  | ContactUsContent
+  | FooterContent;
 
 export interface ProfileSection {
   id: string;
@@ -519,6 +541,32 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
       { id: 'style1', name: 'Line', styleOptions: {} },
       { id: 'style2', name: 'Space', styleOptions: {} },
       { id: 'style3', name: 'Dots', styleOptions: {} },
+    ],
+  },
+  {
+    type: 'footer',
+    name: 'Footer',
+    description: 'Page footer with links and copyright',
+    icon: 'LayoutGrid',
+    category: 'layout',
+    defaultContent: {
+      text: '© 2026 Your Store. All rights reserved.',
+      showSocialLinks: true,
+      columns: [
+        {
+          id: '1',
+          title: 'Quick Links',
+          links: [
+            { id: '1', label: 'Home', url: '/' },
+            { id: '2', label: 'Products', url: '/products' },
+          ],
+        },
+      ],
+    } as FooterContent,
+    presets: [
+      { id: 'style1', name: 'Simple', styleOptions: { colorScheme: 'dark' } },
+      { id: 'style2', name: 'Multi-Column', styleOptions: { colorScheme: 'dark' } },
+      { id: 'style3', name: 'Minimal', styleOptions: { colorScheme: 'black' } },
     ],
   },
 ];
