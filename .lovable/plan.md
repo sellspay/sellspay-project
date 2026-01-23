@@ -1,188 +1,253 @@
 
+# AI Audio Tools Implementation Plan
 
-# Implementation Plan: Product Slug, World Map, and Tools Redesign
-
-This plan addresses three key improvements: a custom slug system for products, a proper world map for the dashboard, and a complete redesign of the Tools page.
-
----
-
-## 1. Product Slug Section in Create/Edit Product
-
-### Current State
-The `CreateProduct.tsx` and `EditProduct.tsx` pages create products without custom slugs. Products are accessed by their UUID (e.g., `/product/abc123-uuid`).
-
-### Changes Required
-
-**Database Migration:**
-- Add a `slug` column to the `products` table (unique, nullable)
-
-**UI Changes:**
-- Add a "Slug" input field in the "Basic Information" card
-- Display a preview of the URL (e.g., `editorsparadise.com/p/my-awesome-preset`)
-- Auto-generate slug from title when left empty (using `slugify` logic: lowercase, replace spaces with hyphens, remove special characters)
-- Validate for uniqueness before submission
-
-**Files to Create/Modify:**
-- Database migration for `slug` column
-- `src/pages/CreateProduct.tsx` - Add slug input and auto-generation
-- `src/pages/EditProduct.tsx` - Add slug editing capability
-- `src/pages/ProductDetail.tsx` - Support slug-based routing
-- `src/App.tsx` - Add route for `/p/:slug`
+This plan implements three AI-powered audio tools (Voice Isolator, SFX Isolator, Music Splitter) using fal.ai's Demucs API for professional-quality stem separation.
 
 ---
 
-## 2. Dashboard Visits Map Improvement
+## Overview
 
-### Current State
-The `VisitsMap.tsx` component uses a crude hand-drawn SVG with basic polygon shapes for continents. It doesn't show actual country boundaries.
-
-### Changes Required
-
-**Approach:** Use an embedded SVG world map with proper country paths, coloring countries based on visit data.
-
-**Implementation:**
-- Create a proper world map component using GeoJSON-derived SVG paths
-- Color countries based on their visit counts with a gradient scale
-- Add proper country name labels and tooltips on hover
-- Include a legend showing the color scale
-- Keep the country list below the map for quick reference
-
-**Files to Modify:**
-- `src/components/dashboard/VisitsMap.tsx` - Complete rewrite with proper world map SVG
-
-**Data Structure (already in place):**
-```typescript
-{ country: 'US', visits: 150 }
-```
+We will create a backend edge function that calls fal.ai's Demucs API, then build three polished tool interfaces that allow users to:
+- **Voice Isolator**: Remove vocals (get karaoke) OR isolate vocals (get acapella)
+- **SFX Isolator**: Extract the "other" stem containing sound effects, synths, and miscellaneous sounds
+- **Music Splitter**: Split audio into up to 6 stems (vocals, drums, bass, guitar, piano, other)
 
 ---
 
-## 3. Tools Page Complete Redesign
-
-### Current State
-The Tools page shows a 6-card grid layout. Individual tool pages are separate routes (e.g., `/tools/audio-cutter`).
-
-### Reference Design Analysis
-Based on the reference images:
-- Left sidebar with category tabs: "All", "Audio", "Generators"
-- List of tools with: Title, description, badges ("Popular", "New")
-- Selected tool's interface displays on the right side
-- Clean, professional dark theme
-- Tool content is inline (not a separate page)
-
-### New Architecture
-
-**Main Tools Page (`/tools`):**
-- Two-column layout: sidebar (left) + content area (right)
-- Category tabs at the top of sidebar
-- Tool list items are clickable, highlight when active
-- Selected tool's full interface renders on the right
-
-**Tool Categories:**
-1. **Audio** (existing tools):
-   - Voice Isolator (to be added - Popular badge)
-   - SFX Isolator (to be added)
-   - Music Splitter (to be added - New badge)
-   - Pitch Shifter (to be added)
-   - Key/BPM Finder (to be added)
-   - Cutter (Audio Cutter - existing)
-   - Joiner (Audio Joiner - existing)
-   - Recorder (Audio Recorder - existing)
-   - Converter (Audio Converter - existing)
-   - Video to Audio (existing)
-   - Waveform Generator (existing)
-
-2. **Generators** (new category):
-   - Manga Generator (Popular badge)
-   - Manhwa Generator
-   - Shape Scene Generator
-
-**Files to Create:**
-- `src/components/tools/ToolsSidebar.tsx` - Sidebar with categories and tool list
-- `src/components/tools/ToolContent.tsx` - Container for tool interface
-- `src/components/tools/VoiceIsolator.tsx` - Placeholder for future AI tool
-- `src/components/tools/MangaGenerator.tsx` - Placeholder for future AI generator
-
-**Files to Modify:**
-- `src/pages/Tools.tsx` - Complete rewrite with new layout
-- `src/App.tsx` - Update routing (tools now use query params or embedded state, not separate routes)
-
-### New Tools Page Structure
+## Architecture
 
 ```text
-+----------------------------------+----------------------------------------+
-|  Tools                           |                                        |
-|  Your hub for audio tools...     |                                        |
-+----------------------------------+                                        |
-|  All | Audio | Generators        |                                        |
-+----------------------------------+                                        |
-|  > Voice Isolator  [Popular]     |       [Selected Tool Icon]             |
-|    Remove vocals or background   |                                        |
-|                                  |       Tool Title                       |
-|    SFX Isolator                  |       Tool description here...         |
-|    Isolate sound effects...      |                                        |
-|                                  |       [Browse my files]                |
-|    Music Splitter  [New]         |                                        |
-|    Split stems (vocals, drums)   |       ... tool interface ...           |
-|                                  |                                        |
-|    Cutter                        |                                        |
-|    Trim and slice audio...       |                                        |
-|                                  |                                        |
-|    Joiner                        |                                        |
-|    Merge multiple audio files    |                                        |
-|                                  |                                        |
-|    Recorder                      |                                        |
-|    Record high-quality audio     |                                        |
-+----------------------------------+----------------------------------------+
+User uploads audio file
+        ↓
+Frontend uploads to Supabase Storage (temp bucket)
+        ↓
+Frontend calls Edge Function with file URL
+        ↓
+Edge Function calls fal.ai Demucs API
+        ↓
+fal.ai processes audio, returns stem URLs
+        ↓
+Frontend displays results with download buttons
 ```
+
+---
+
+## Implementation Steps
+
+### Step 1: Add FAL_KEY Secret
+
+You will need to create a fal.ai account and get an API key:
+1. Sign up at https://fal.ai
+2. Get your API key from dashboard
+3. We will add it as a secret called `FAL_KEY`
+
+### Step 2: Create Edge Function
+
+**File: `supabase/functions/audio-stem-separation/index.ts`**
+
+This edge function will:
+- Accept an audio URL and separation mode (voice, sfx, or full)
+- Call fal.ai's Demucs API with appropriate parameters
+- Return the separated stem URLs
+
+Modes:
+- `voice-isolator`: Returns vocals + instrumental (no_vocals)
+- `sfx-isolator`: Returns "other" stem + everything else
+- `music-splitter`: Returns all 6 stems
+
+### Step 3: Create Storage Bucket
+
+Create a `temp-audio` bucket in Supabase Storage for temporary file uploads during processing.
+
+### Step 4: Build Voice Isolator Component
+
+**File: `src/pages/tools/VoiceIsolator.tsx`**
+
+Features:
+- Drag & drop audio upload
+- Processing indicator with progress
+- Toggle between "Remove Vocals" and "Isolate Vocals"
+- Audio player for each output
+- Download buttons for both stems
+- Waveform visualization
+
+UI Layout:
+```text
++--------------------------------------------------+
+|  Voice Isolator                        [Popular] |
+|  Remove vocals or isolate them from any track    |
++--------------------------------------------------+
+|                                                  |
+|     [  Drag & drop audio file here  ]            |
+|     [  or click to browse          ]             |
+|                                                  |
++--------------------------------------------------+
+|  Mode:  [Remove Vocals] [Isolate Vocals]         |
++--------------------------------------------------+
+|                                                  |
+|  [====== Processing... 45% ======]               |
+|                                                  |
++--------------------------------------------------+
+|  Results:                                        |
+|  +-------------------+  +-------------------+    |
+|  | Instrumental      |  | Vocals            |    |
+|  | [▶ Play] [⬇ DL]  |  | [▶ Play] [⬇ DL]  |    |
+|  +-------------------+  +-------------------+    |
++--------------------------------------------------+
+```
+
+### Step 5: Build SFX Isolator Component
+
+**File: `src/pages/tools/SFXIsolator.tsx`**
+
+Similar to Voice Isolator but focused on extracting sound effects:
+- Extracts the "other" stem (synths, SFX, ambient sounds)
+- Returns: SFX/Other track + Music (vocals+drums+bass) track
+
+### Step 6: Build Music Splitter Component
+
+**File: `src/pages/tools/MusicSplitter.tsx`**
+
+Full stem separation interface:
+- Shows all 6 stems in a grid
+- Individual play/download for each stem
+- Option to download all as ZIP
+- Stem mixing preview (optional future feature)
+
+UI Layout:
+```text
++--------------------------------------------------+
+|  Music Splitter                           [New]  |
+|  Split any track into individual stems           |
++--------------------------------------------------+
+|     [  Upload your audio file  ]                 |
++--------------------------------------------------+
+|  Stems:                                          |
+|  +----------+ +----------+ +----------+          |
+|  | Vocals   | | Drums    | | Bass     |          |
+|  | [▶] [⬇] | | [▶] [⬇] | | [▶] [⬇] |          |
+|  +----------+ +----------+ +----------+          |
+|  +----------+ +----------+ +----------+          |
+|  | Guitar   | | Piano    | | Other    |          |
+|  | [▶] [⬇] | | [▶] [⬇] | | [▶] [⬇] |          |
+|  +----------+ +----------+ +----------+          |
+|                                                  |
+|  [Download All Stems (ZIP)]                      |
++--------------------------------------------------+
+```
+
+### Step 7: Update ToolsSidebar and ToolContent
+
+- Mark Voice Isolator, SFX Isolator, and Music Splitter as `available: true`
+- Add the new components to the lazy-loading in ToolContent.tsx
+
+### Step 8: Update supabase/config.toml
+
+Add the new edge function configuration with `verify_jwt = false` for public access.
+
+---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `supabase/functions/audio-stem-separation/index.ts` | Edge function for fal.ai API |
+| `src/pages/tools/VoiceIsolator.tsx` | Voice removal/isolation UI |
+| `src/pages/tools/SFXIsolator.tsx` | Sound effects isolation UI |
+| `src/pages/tools/MusicSplitter.tsx` | Full 6-stem separation UI |
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `supabase/config.toml` | Add audio-stem-separation function |
+| `src/components/tools/ToolsSidebar.tsx` | Set available: true for 3 tools |
+| `src/components/tools/ToolContent.tsx` | Add lazy imports for new components |
+
+---
+
+## Cost Considerations
+
+fal.ai charges based on GPU time. Estimated costs:
+- ~$0.05-0.15 per song processed (depends on length)
+- A 3-minute song typically costs ~$0.08
+
+You may want to consider:
+1. **Usage limits**: Track usage per user/IP
+2. **Rate limiting**: Prevent abuse
+3. **Premium tier**: Charge for heavy users
 
 ---
 
 ## Technical Details
 
-### 1. Slug Generation Logic
+### Edge Function API
+
+**Request:**
 ```typescript
-const generateSlug = (title: string): string => {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special chars
-    .replace(/\s+/g, '-')     // Replace spaces with hyphens
-    .replace(/-+/g, '-')      // Replace multiple hyphens
-    .substring(0, 100);       // Limit length
-};
+{
+  audio_url: string;     // URL to audio file
+  mode: "voice" | "sfx" | "full";
+  output_format?: "mp3" | "wav";
+}
 ```
 
-### 2. World Map Implementation
-Using an inline SVG with proper country paths (ISO 3166-1 alpha-2 codes) that can be colored dynamically:
-- Countries with visits get colored on a scale from light to dark primary color
-- Countries without visits stay muted/gray
-- Hover shows tooltip with country name and visit count
+**Response:**
+```typescript
+{
+  success: boolean;
+  stems: {
+    vocals?: { url: string; filename: string };
+    drums?: { url: string; filename: string };
+    bass?: { url: string; filename: string };
+    guitar?: { url: string; filename: string };
+    piano?: { url: string; filename: string };
+    other?: { url: string; filename: string };
+    instrumental?: { url: string; filename: string };
+  };
+  processing_time_ms: number;
+}
+```
 
-### 3. Tools State Management
-The Tools page will use React state to track:
-- `selectedCategory`: 'all' | 'audio' | 'generators'
-- `selectedTool`: string (tool ID)
+### fal.ai Integration
 
-Each tool component will be imported and rendered conditionally based on selection.
+```typescript
+const result = await fal.subscribe("fal-ai/demucs", {
+  input: {
+    audio_url: audioUrl,
+    model: "htdemucs_6s",  // Best quality, 6 stems
+    stems: ["vocals", "drums", "bass", "other", "guitar", "piano"],
+    output_format: "mp3",
+    shifts: 1,
+    overlap: 0.25
+  }
+});
+```
 
 ---
 
-## Implementation Order
+## User Experience Flow
 
-1. **Database Migration** - Add slug column to products
-2. **CreateProduct/EditProduct** - Add slug input UI
-3. **VisitsMap** - Rebuild with proper world map
-4. **Tools Page** - Create new components and redesign layout
-5. **Route Updates** - Support slug-based product URLs
+1. User selects Voice Isolator from sidebar
+2. Drags audio file onto upload zone
+3. File uploads to temp storage, gets public URL
+4. Edge function called with URL and mode
+5. Loading state shows with "Processing with AI..." message
+6. Results appear with waveform visualizations
+7. User can play each stem inline
+8. Download buttons for each output
 
 ---
 
 ## Summary
 
-| Feature | Scope | Complexity |
-|---------|-------|------------|
-| Product Slug | DB + 3 files | Medium |
-| World Map | 1 component rewrite | Medium |
-| Tools Redesign | New layout + 3-4 new components | High |
+| Component | Status | Complexity |
+|-----------|--------|------------|
+| Edge Function | New | Medium |
+| Voice Isolator UI | New | Medium |
+| SFX Isolator UI | New | Low |
+| Music Splitter UI | New | Medium |
+| Storage Bucket | New | Low |
+| FAL_KEY Secret | Required | Setup |
 
+This implementation provides professional-quality AI audio separation matching or exceeding vocalremover.org, with a clean UI that fits your existing Tools page design.
