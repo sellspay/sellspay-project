@@ -3,11 +3,13 @@ import { ToolsSidebar } from "@/components/tools/ToolsSidebar";
 import { ToolContent } from "@/components/tools/ToolContent";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AudioWaveform, Wand2 } from "lucide-react";
+import { useCredits } from "@/hooks/useCredits";
 
 export default function Tools() {
   const [selectedTool, setSelectedTool] = useState<string | null>("sfx-generator");
   const [selectedCategory, setSelectedCategory] = useState<"all" | "audio" | "generators">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const { creditBalance, isLoading } = useCredits();
 
   return (
     <div className="min-h-screen">
@@ -69,6 +71,8 @@ export default function Tools() {
                 onSelectCategory={setSelectedCategory}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
+                creditBalance={creditBalance}
+                isLoadingCredits={isLoading}
               />
             </ScrollArea>
           </div>

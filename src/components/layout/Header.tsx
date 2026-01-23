@@ -18,6 +18,7 @@ const navItems = [
   { name: 'Store', path: '/products' },
   { name: 'Creators', path: '/creators' },
   { name: 'Tools', path: '/tools' },
+  { name: 'Pricing', path: '/pricing' },
   { name: 'Community', path: '/community' },
 ];
 

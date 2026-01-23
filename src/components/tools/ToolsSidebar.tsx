@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { CreditWallet } from "@/components/credits/CreditWallet";
 import { 
   Mic2, 
   Scissors, 
@@ -24,7 +25,7 @@ export interface Tool {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   category: "audio" | "generators";
-  badge?: "Popular" | "New" | "Pro";
+  badge?: "Popular" | "New" | "Pro" | "Free";
   available: boolean;
   isPro?: boolean;
 }
@@ -79,6 +80,7 @@ export const tools: Tool[] = [
     description: "Trim and slice audio with precision",
     icon: Scissors,
     category: "audio",
+    badge: "Free",
     available: true,
   },
   {
@@ -87,6 +89,7 @@ export const tools: Tool[] = [
     description: "Merge multiple audio files into one",
     icon: Music,
     category: "audio",
+    badge: "Free",
     available: true,
   },
   {
@@ -95,6 +98,7 @@ export const tools: Tool[] = [
     description: "Record high-quality audio in your browser",
     icon: Mic2,
     category: "audio",
+    badge: "Free",
     available: true,
   },
   {
@@ -103,6 +107,7 @@ export const tools: Tool[] = [
     description: "Convert audio between different formats",
     icon: FileAudio,
     category: "audio",
+    badge: "Free",
     available: true,
   },
   {
@@ -111,6 +116,7 @@ export const tools: Tool[] = [
     description: "Extract audio from video files",
     icon: Video,
     category: "audio",
+    badge: "Free",
     available: true,
   },
   {
@@ -119,6 +125,7 @@ export const tools: Tool[] = [
     description: "Generate visual waveforms from audio",
     icon: AudioWaveform,
     category: "audio",
+    badge: "Free",
     available: true,
   },
   // Generators
@@ -155,6 +162,8 @@ interface ToolsSidebarProps {
   onSelectCategory: (category: "all" | "audio" | "generators") => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  creditBalance?: number;
+  isLoadingCredits?: boolean;
 }
 
 const categoryIcons = {
@@ -169,7 +178,9 @@ export function ToolsSidebar({
   selectedCategory, 
   onSelectCategory,
   searchQuery,
-  onSearchChange
+  onSearchChange,
+  creditBalance = 0,
+  isLoadingCredits = false
 }: ToolsSidebarProps) {
   // Count tools per category
   const audioCount = tools.filter(t => t.category === "audio").length;
@@ -194,6 +205,13 @@ export function ToolsSidebar({
 
   return (
     <div className="w-full lg:w-80 flex-shrink-0 space-y-5">
+      {/* Credit Wallet */}
+      <CreditWallet 
+        balance={creditBalance} 
+        isLoading={isLoadingCredits}
+        variant="sidebar"
+      />
+
       {/* Search Input */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -290,7 +308,8 @@ export function ToolsSidebar({
                         "text-[10px] px-1.5 py-0 font-medium border-0 h-4 leading-none",
                         tool.badge === "Popular" && "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-sm",
                         tool.badge === "New" && "bg-accent/20 text-accent-foreground",
-                        tool.badge === "Pro" && "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
+                        tool.badge === "Pro" && "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm",
+                        tool.badge === "Free" && "bg-green-500/20 text-green-500"
                       )}
                     >
                       {tool.badge}
@@ -304,6 +323,8 @@ export function ToolsSidebar({
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                   {tool.description}
+                  {tool.isPro && " • 1 credit"}
+                  {tool.badge === "Free" && " • Unlimited"}
                 </p>
               </div>
             </button>

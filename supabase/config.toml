@@ -32,3 +32,15 @@ verify_jwt = false
 
 [functions.get-download-url]
 verify_jwt = false
+
+[functions.check-credits]
+verify_jwt = false
+
+[functions.deduct-credit]
+verify_jwt = false
+
+[functions.create-credit-checkout]
+verify_jwt = false
+
+[functions.add-credits]
+verify_jwt = false
