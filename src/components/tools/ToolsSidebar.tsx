@@ -24,29 +24,33 @@ export interface Tool {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   category: "audio" | "generators";
-  badge?: "Popular" | "New";
+  badge?: "Popular" | "New" | "Pro";
   available: boolean;
+  isPro?: boolean;
 }
 
 export const tools: Tool[] = [
-  // SFX Generator - Top Pick
+  // SFX Generator - Top Pick (Pro)
   {
     id: "sfx-generator",
     title: "SFX Generator",
     description: "Create sound effects from text with AI",
     icon: Volume2,
     category: "audio",
-    badge: "Popular",
+    badge: "Pro",
     available: true,
+    isPro: true,
   },
-  // Audio tools
+  // Audio tools - Pro AI tools first
   {
     id: "voice-isolator",
     title: "Voice Isolator",
     description: "Remove vocals or background from any track",
     icon: Mic2,
     category: "audio",
+    badge: "Pro",
     available: true,
+    isPro: true,
   },
   {
     id: "sfx-isolator",
@@ -54,7 +58,9 @@ export const tools: Tool[] = [
     description: "Isolate sound effects from your audio",
     icon: SlidersHorizontal,
     category: "audio",
+    badge: "Pro",
     available: true,
+    isPro: true,
   },
   {
     id: "music-splitter",
@@ -62,9 +68,11 @@ export const tools: Tool[] = [
     description: "Split stems (vocals, drums, bass, other)",
     icon: Music,
     category: "audio",
-    badge: "New",
+    badge: "Pro",
     available: true,
+    isPro: true,
   },
+  // Free tools
   {
     id: "audio-cutter",
     title: "Cutter",
@@ -281,7 +289,8 @@ export function ToolsSidebar({
                       className={cn(
                         "text-[10px] px-1.5 py-0 font-medium border-0 h-4 leading-none",
                         tool.badge === "Popular" && "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-sm",
-                        tool.badge === "New" && "bg-accent/20 text-accent-foreground"
+                        tool.badge === "New" && "bg-accent/20 text-accent-foreground",
+                        tool.badge === "Pro" && "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
                       )}
                     >
                       {tool.badge}

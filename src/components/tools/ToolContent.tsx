@@ -2,6 +2,8 @@ import { Suspense, lazy } from "react";
 import { Loader2, Lock, Wand2 } from "lucide-react";
 import { tools, Tool } from "./ToolsSidebar";
 import { Button } from "@/components/ui/button";
+import { ProToolsGate } from "./ProToolsGate";
+import { useProToolsSubscription } from "@/hooks/useProToolsSubscription";
 
 // Lazy load tool components
 const AudioCutter = lazy(() => import("@/pages/tools/AudioCutter"));
@@ -57,13 +59,22 @@ function WelcomeContent() {
       </div>
       <h2 className="text-2xl font-bold mb-3">Select a Tool</h2>
       <p className="text-muted-foreground max-w-md">
-        Choose a tool from the sidebar to get started. All tools are free to use with no signup required.
+        Choose a tool from the sidebar to get started. Free tools are available to all users. Pro tools require a subscription.
       </p>
     </div>
   );
 }
 
 export function ToolContent({ toolId }: ToolContentProps) {
+  const { 
+    subscribed, 
+    usageCount, 
+    usageLimit, 
+    remainingUses, 
+    isProTool, 
+    startCheckout 
+  } = useProToolsSubscription();
+
   if (!toolId) {
     return <WelcomeContent />;
   }
@@ -78,46 +89,48 @@ export function ToolContent({ toolId }: ToolContentProps) {
     return <ComingSoonContent tool={tool} />;
   }
 
-  // Render available tools
+  const renderToolContent = () => {
+    switch (toolId) {
+      case "voice-isolator":
+        return <VoiceIsolator />;
+      case "sfx-isolator":
+        return <SFXIsolator />;
+      case "music-splitter":
+        return <MusicSplitter />;
+      case "audio-cutter":
+        return <AudioCutter />;
+      case "audio-recorder":
+        return <AudioRecorder />;
+      case "audio-joiner":
+        return <AudioJoiner />;
+      case "video-to-audio":
+        return <VideoToAudio />;
+      case "audio-converter":
+        return <AudioConverter />;
+      case "waveform-generator":
+        return <WaveformGenerator />;
+      case "sfx-generator":
+        return <SFXGenerator />;
+      default:
+        return null;
+    }
+  };
+
+  // Render available tools with gate
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <div className="p-6 md:p-8">
-        {toolId === "voice-isolator" && <VoiceIsolator />}
-        {toolId === "sfx-isolator" && <SFXIsolator />}
-        {toolId === "music-splitter" && <MusicSplitter />}
-        {toolId === "audio-cutter" && <AudioCutterInline />}
-        {toolId === "audio-recorder" && <AudioRecorderInline />}
-        {toolId === "audio-joiner" && <AudioJoinerInline />}
-        {toolId === "video-to-audio" && <VideoToAudioInline />}
-        {toolId === "audio-converter" && <AudioConverterInline />}
-        {toolId === "waveform-generator" && <WaveformGeneratorInline />}
-        {toolId === "sfx-generator" && <SFXGenerator />}
+        <ProToolsGate
+          isProTool={isProTool(toolId)}
+          subscribed={subscribed}
+          usageCount={usageCount}
+          usageLimit={usageLimit}
+          remainingUses={remainingUses}
+          onSubscribe={startCheckout}
+        >
+          {renderToolContent()}
+        </ProToolsGate>
       </div>
     </Suspense>
   );
-}
-
-// Wrapper components to remove duplicate headers/containers
-function AudioCutterInline() {
-  return <AudioCutter />;
-}
-
-function AudioRecorderInline() {
-  return <AudioRecorder />;
-}
-
-function AudioJoinerInline() {
-  return <AudioJoiner />;
-}
-
-function VideoToAudioInline() {
-  return <VideoToAudio />;
-}
-
-function AudioConverterInline() {
-  return <AudioConverter />;
-}
-
-function WaveformGeneratorInline() {
-  return <WaveformGenerator />;
 }
