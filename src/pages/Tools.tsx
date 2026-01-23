@@ -61,7 +61,7 @@ export default function Tools() {
         <div className="flex flex-col lg:flex-row gap-8 min-h-[calc(100vh-20rem)]">
           {/* Sidebar */}
           <div className="lg:sticky lg:top-24 lg:self-start">
-            <ScrollArea className="lg:h-[calc(100vh-10rem)]">
+            <ScrollArea className="lg:h-[calc(100vh-10rem)] lg:pr-4">
               <ToolsSidebar
                 selectedTool={selectedTool}
                 onSelectTool={setSelectedTool}
