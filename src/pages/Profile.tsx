@@ -636,7 +636,7 @@ const ProfilePage: React.FC = () => {
         </div>
 
         {/* Store Section - for creators OR non-creators with their own profile showing purchases */}
-        <div className="mt-10">
+        <div className="mt-10 max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">
               {profile.is_creator ? 'Store' : isOwnProfile ? 'My Library' : 'Profile'}
@@ -681,7 +681,7 @@ const ProfilePage: React.FC = () => {
           {isOwnProfile && !profile.is_creator && (
             <>
               {purchases.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {purchases.map((purchase) => purchase.product && (
                     <ProductCard
                       key={purchase.id}
@@ -716,7 +716,7 @@ const ProfilePage: React.FC = () => {
           {profile.is_creator && activeTab !== 'downloads' && (
             <>
               {filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {filteredProducts.map((product) => (
                     <ProductCard
                       key={product.id}
@@ -751,7 +751,7 @@ const ProfilePage: React.FC = () => {
           {profile.is_creator && activeTab === 'downloads' && isOwnProfile && (
             <>
               {purchases.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {purchases.map((purchase) => purchase.product && (
                     <ProductCard
                       key={purchase.id}
