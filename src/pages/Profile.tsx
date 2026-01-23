@@ -46,6 +46,8 @@ interface Product {
   currency: string | null;
   status: string | null;
   created_at: string | null;
+  likeCount?: number;
+  commentCount?: number;
 }
 
 // Helper to generate YouTube thumbnail URL
@@ -169,10 +171,10 @@ function ProductCard({
           <span>{format(new Date(product.created_at), 'MMM d, yyyy')}</span>
         )}
         <span className="flex items-center gap-1">
-          <Heart className="w-3 h-3" /> 0
+          <Heart className="w-3 h-3" /> {product.likeCount ?? 0}
         </span>
         <span className="flex items-center gap-1">
-          <MessageCircle className="w-3 h-3" /> 0
+          <MessageCircle className="w-3 h-3" /> {product.commentCount ?? 0}
         </span>
       </div>
     </button>
@@ -286,7 +288,45 @@ const ProfilePage: React.FC = () => {
         }
 
         const { data: productsData } = await productQuery;
-        setProducts(productsData || []);
+        
+        // Fetch like counts for each product
+        if (productsData && productsData.length > 0) {
+          const productIds = productsData.map(p => p.id);
+          
+          // Get like counts
+          const { data: likeCounts } = await supabase
+            .from('product_likes')
+            .select('product_id')
+            .in('product_id', productIds);
+          
+          // Get comment counts
+          const { data: commentCounts } = await supabase
+            .from('comments')
+            .select('product_id')
+            .in('product_id', productIds);
+          
+          // Map counts to products
+          const likeMap = new Map<string, number>();
+          const commentMap = new Map<string, number>();
+          
+          likeCounts?.forEach(like => {
+            likeMap.set(like.product_id, (likeMap.get(like.product_id) || 0) + 1);
+          });
+          
+          commentCounts?.forEach(comment => {
+            commentMap.set(comment.product_id, (commentMap.get(comment.product_id) || 0) + 1);
+          });
+          
+          const productsWithCounts = productsData.map(p => ({
+            ...p,
+            likeCount: likeMap.get(p.id) || 0,
+            commentCount: commentMap.get(p.id) || 0,
+          }));
+          
+          setProducts(productsWithCounts);
+        } else {
+          setProducts([]);
+        }
       }
 
       setLoading(false);
@@ -296,8 +336,18 @@ const ProfilePage: React.FC = () => {
   }, [username, atUsername, user]);
 
   const handleFollow = async () => {
-    if (!user || !profile || !currentUserProfileId) {
-      toast.error('Please log in to follow creators');
+    if (!user) {
+      // Redirect to login for unauthenticated users
+      navigate('/login');
+      return;
+    }
+    
+    if (!profile) return;
+    
+    // If user doesn't have a profile ID yet, they need to complete profile setup
+    if (!currentUserProfileId) {
+      toast.error('Please complete your profile setup first');
+      navigate('/settings');
       return;
     }
 
@@ -395,7 +445,7 @@ const ProfilePage: React.FC = () => {
                 </button>
               )}
               {profile.verified && (
-                <CheckCircle className="w-5 h-5 text-primary" fill="currentColor" />
+                <CheckCircle className="w-5 h-5 text-blue-500" fill="currentColor" />
               )}
               {isAdmin && (
                 <Badge className="bg-primary/20 text-primary border-primary/30">
@@ -444,7 +494,7 @@ const ProfilePage: React.FC = () => {
                   {isFollowing ? (
                     <>
                       <UserMinus className="w-4 h-4 mr-2" />
-                      Unfollow
+                      Following
                     </>
                   ) : (
                     <>
