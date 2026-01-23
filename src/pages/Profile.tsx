@@ -911,6 +911,11 @@ const ProfilePage: React.FC = () => {
                   </TooltipContent>
                 </Tooltip>
               )}
+              {profile.is_creator && (
+                <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
+                  Owner
+                </Badge>
+              )}
               {isAdmin && (
                 <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
                   Admin
