@@ -28,6 +28,7 @@ interface Profile {
   full_name: string | null;
   email: string | null;
   avatar_url: string | null;
+  banner_url: string | null;
   bio: string | null;
   website: string | null;
   social_links: unknown;
@@ -48,6 +49,19 @@ interface Product {
   created_at: string | null;
   likeCount?: number;
   commentCount?: number;
+}
+interface Purchase {
+  id: string;
+  product_id: string;
+  created_at: string;
+  product: {
+    id: string;
+    name: string;
+    cover_image_url: string | null;
+    youtube_url: string | null;
+    preview_video_url: string | null;
+    pricing_type: string | null;
+  } | null;
 }
 
 // Helper to generate YouTube thumbnail URL
@@ -94,6 +108,7 @@ function ProductCard({
   const handleMouseEnter = () => {
     setIsHovering(true);
     if (videoRef.current && previewVideoUrl && !videoError) {
+      videoRef.current.loop = true;
       videoRef.current.play().catch(() => setVideoError(true));
     }
   };
@@ -189,9 +204,10 @@ const ProfilePage: React.FC = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
-  const [activeTab, setActiveTab] = useState<'published' | 'drafts'>('published');
+  const [activeTab, setActiveTab] = useState<'published' | 'drafts' | 'downloads'>('published');
   const [isAdmin, setIsAdmin] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -327,6 +343,38 @@ const ProfilePage: React.FC = () => {
         } else {
           setProducts([]);
         }
+
+        // Fetch purchases for own profile (both creators and non-creators)
+        if (ownProfile) {
+          const { data: purchasesData } = await supabase
+            .from('purchases')
+            .select(`
+              id,
+              product_id,
+              created_at,
+              product:products (
+                id,
+                name,
+                cover_image_url,
+                youtube_url,
+                preview_video_url,
+                pricing_type
+              )
+            `)
+            .eq('buyer_id', data.id)
+            .eq('status', 'completed')
+            .order('created_at', { ascending: false });
+          
+          // Type assertion for the joined data
+          const typedPurchases = (purchasesData || []).map(p => ({
+            id: p.id,
+            product_id: p.product_id,
+            created_at: p.created_at,
+            product: Array.isArray(p.product) ? p.product[0] : p.product
+          })) as Purchase[];
+          
+          setPurchases(typedPurchases);
+        }
       }
 
       setLoading(false);
@@ -387,11 +435,13 @@ const ProfilePage: React.FC = () => {
   };
 
   const filteredProducts = products.filter(p => 
-    activeTab === 'published' ? p.status === 'published' : p.status === 'draft'
+    activeTab === 'published' ? p.status === 'published' : 
+    activeTab === 'drafts' ? p.status === 'draft' : false
   );
 
   const publishedCount = products.filter(p => p.status === 'published').length;
   const draftsCount = products.filter(p => p.status === 'draft').length;
+  const downloadsCount = purchases.length;
 
   if (loading) {
     return (
@@ -415,10 +465,22 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Banner */}
-      <div className="h-32 bg-gradient-to-br from-primary/40 to-accent/30" />
+      {/* Banner - contained width like Twitter/X */}
+      <div className="max-w-4xl mx-auto px-4 pt-4">
+        <div className="h-32 md:h-40 rounded-xl overflow-hidden">
+          {profile.banner_url ? (
+            <img
+              src={profile.banner_url}
+              alt="Profile banner"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/40 to-accent/30" />
+          )}
+        </div>
+      </div>
 
-      <div className="max-w-4xl mx-auto px-4 -mt-16">
+      <div className="max-w-4xl mx-auto px-4 -mt-12">
         {/* Profile Header */}
         <div className="flex flex-col md:flex-row gap-6 items-start">
           {/* Avatar */}
@@ -539,16 +601,18 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Store Section */}
+        {/* Store Section - for creators OR non-creators with their own profile showing purchases */}
         <div className="mt-10">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Store</h2>
-            {products.length > 0 && (
+            <h2 className="text-lg font-semibold text-foreground">
+              {profile.is_creator ? 'Store' : isOwnProfile ? 'My Library' : 'Profile'}
+            </h2>
+            {(products.length > 0 || purchases.length > 0) && (
               <span className="text-sm text-muted-foreground">Showing newest</span>
             )}
           </div>
 
-          {/* Tab buttons - Instagram style */}
+          {/* Tab buttons - for creators (own profile) */}
           {isOwnProfile && profile.is_creator && (
             <div className="flex gap-2 mb-6">
               <Button
@@ -568,40 +632,120 @@ const ProfilePage: React.FC = () => {
               >
                 Drafts ({draftsCount})
               </Button>
+              <Button
+                variant={activeTab === 'downloads' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveTab('downloads')}
+                className={activeTab === 'downloads' ? 'bg-foreground text-background hover:bg-foreground/90' : ''}
+              >
+                Downloads ({downloadsCount})
+              </Button>
             </div>
           )}
 
-          {/* Products Grid */}
-          {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onClick={() => navigate(`/product/${product.id}`)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
-              {isOwnProfile ? (
-                <>
-                  <p className="text-muted-foreground mb-4">
-                    {activeTab === 'published' 
-                      ? "You haven't published any products yet."
-                      : "No drafts saved."}
-                  </p>
-                  {profile.is_creator && (
-                    <Button onClick={() => navigate('/create-product')}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create Your First Product
-                    </Button>
-                  )}
-                </>
+          {/* For non-creators viewing their own profile - show purchases */}
+          {isOwnProfile && !profile.is_creator && (
+            <>
+              {purchases.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {purchases.map((purchase) => purchase.product && (
+                    <ProductCard
+                      key={purchase.id}
+                      product={{
+                        id: purchase.product.id,
+                        name: purchase.product.name,
+                        cover_image_url: purchase.product.cover_image_url,
+                        youtube_url: purchase.product.youtube_url,
+                        preview_video_url: purchase.product.preview_video_url,
+                        pricing_type: purchase.product.pricing_type,
+                        price_cents: null,
+                        currency: null,
+                        status: 'published',
+                        created_at: purchase.created_at,
+                      }}
+                      onClick={() => navigate(`/product/${purchase.product_id}`)}
+                    />
+                  ))}
+                </div>
               ) : (
-                <p className="text-muted-foreground">No products yet.</p>
+                <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
+                  <p className="text-muted-foreground mb-4">No purchases yet.</p>
+                  <Button onClick={() => navigate('/products')}>
+                    Browse Products
+                  </Button>
+                </div>
               )}
-            </div>
+            </>
+          )}
+
+          {/* For creators - show products or downloads based on tab */}
+          {profile.is_creator && activeTab !== 'downloads' && (
+            <>
+              {filteredProducts.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredProducts.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onClick={() => navigate(`/product/${product.id}`)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
+                  {isOwnProfile ? (
+                    <>
+                      <p className="text-muted-foreground mb-4">
+                        {activeTab === 'published' 
+                          ? "You haven't published any products yet."
+                          : "No drafts saved."}
+                      </p>
+                      <Button onClick={() => navigate('/create-product')}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create Your First Product
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground">No products yet.</p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Downloads tab for creators */}
+          {profile.is_creator && activeTab === 'downloads' && isOwnProfile && (
+            <>
+              {purchases.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {purchases.map((purchase) => purchase.product && (
+                    <ProductCard
+                      key={purchase.id}
+                      product={{
+                        id: purchase.product.id,
+                        name: purchase.product.name,
+                        cover_image_url: purchase.product.cover_image_url,
+                        youtube_url: purchase.product.youtube_url,
+                        preview_video_url: purchase.product.preview_video_url,
+                        pricing_type: purchase.product.pricing_type,
+                        price_cents: null,
+                        currency: null,
+                        status: 'published',
+                        created_at: purchase.created_at,
+                      }}
+                      onClick={() => navigate(`/product/${purchase.product_id}`)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
+                  <p className="text-muted-foreground mb-4">No downloads yet.</p>
+                  <Button onClick={() => navigate('/products')}>
+                    Browse Products
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

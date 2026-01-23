@@ -30,6 +30,7 @@ export default function Settings() {
   const [bio, setBio] = useState("");
   const [website, setWebsite] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   
   // Stripe Connect status
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
@@ -78,6 +79,7 @@ export default function Settings() {
         setBio(data.bio || "");
         setWebsite(data.website || "");
         setAvatarUrl(data.avatar_url);
+        setBannerUrl((data as Record<string, unknown>).banner_url as string | null);
         setStripeAccountId(data.stripe_account_id);
         setStripeOnboardingComplete(data.stripe_onboarding_complete || false);
       }
@@ -114,6 +116,32 @@ export default function Settings() {
     }
   };
 
+  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `banners/${user.id}/${Date.now()}.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("product-media")
+        .upload(path, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrl } = supabase.storage
+        .from("product-media")
+        .getPublicUrl(path);
+
+      setBannerUrl(publicUrl.publicUrl);
+      toast.success("Banner uploaded!");
+    } catch (error) {
+      console.error("Error uploading banner:", error);
+      toast.error("Failed to upload banner");
+    }
+  };
+
   const saveProfile = async () => {
     if (!user) return;
     
@@ -145,7 +173,8 @@ export default function Settings() {
           bio,
           website,
           avatar_url: avatarUrl,
-        })
+          banner_url: bannerUrl,
+        } as Record<string, unknown>)
         .eq("user_id", user.id);
 
       if (error) throw error;
@@ -265,6 +294,37 @@ export default function Settings() {
                     JPG, PNG or GIF. Max 2MB.
                   </p>
                 </div>
+              </div>
+
+              {/* Banner Upload */}
+              <div>
+                <Label className="mb-2 block">Profile Banner</Label>
+                <div className="relative rounded-lg overflow-hidden border border-border">
+                  {bannerUrl ? (
+                    <img
+                      src={bannerUrl}
+                      alt="Profile banner"
+                      className="w-full h-24 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-24 bg-gradient-to-br from-primary/40 to-accent/30" />
+                  )}
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                    <span className="text-white text-sm flex items-center gap-2">
+                      <Upload className="w-4 h-4" />
+                      Change Banner
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBannerChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Recommended: 1500x500px. JPG, PNG or GIF.
+                </p>
               </div>
 
               <Separator />
