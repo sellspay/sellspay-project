@@ -152,6 +152,63 @@ export type Database = {
           },
         ]
       }
+      creator_subscription_plans: {
+        Row: {
+          created_at: string
+          creator_id: string
+          currency: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price_cents: number
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price_cents: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_cents?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_subscription_plans_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_subscription_plans_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       editor_applications: {
         Row: {
           about_me: string
@@ -321,6 +378,7 @@ export type Database = {
           pricing_type: string | null
           product_type: string | null
           status: string | null
+          subscription_access: string | null
           subscription_price_cents: number | null
           tags: string[] | null
           updated_at: string | null
@@ -347,6 +405,7 @@ export type Database = {
           pricing_type?: string | null
           product_type?: string | null
           status?: string | null
+          subscription_access?: string | null
           subscription_price_cents?: number | null
           tags?: string[] | null
           updated_at?: string | null
@@ -373,6 +432,7 @@ export type Database = {
           pricing_type?: string | null
           product_type?: string | null
           status?: string | null
+          subscription_access?: string | null
           subscription_price_cents?: number | null
           tags?: string[] | null
           updated_at?: string | null
@@ -579,6 +639,42 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_plan_products: {
+        Row: {
+          created_at: string
+          id: string
+          plan_id: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plan_id: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plan_id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_plan_products_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "creator_subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_plan_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -599,6 +695,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          canceled_at: string | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          plan_id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_id: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan_id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "creator_subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

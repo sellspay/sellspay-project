@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard } from 'lucide-react';
+import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, CreditCard } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -129,6 +129,14 @@ export default function Header() {
                       <Link to="/create-product" className="flex items-center gap-2">
                         <Plus className="h-4 w-4" />
                         Create Product
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {isCreator && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/subscription-plans" className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Subscription Plans
                       </Link>
                     </DropdownMenuItem>
                   )}

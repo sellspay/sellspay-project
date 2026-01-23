@@ -146,7 +146,12 @@ export default function CreateProduct() {
       }
 
       // Create product
-      const priceCents = pricingType === "free" ? 0 : Math.round(parseFloat(price) * 100);
+      const priceCents = (pricingType === "free" || pricingType === "subscription") ? 0 : Math.round(parseFloat(price) * 100);
+      
+      // Map pricing type to subscription_access
+      let subscriptionAccess = 'none';
+      if (pricingType === 'subscription') subscriptionAccess = 'subscription_only';
+      else if (pricingType === 'both') subscriptionAccess = 'both';
 
       const { data: product, error } = await supabase
         .from("products")
@@ -154,7 +159,7 @@ export default function CreateProduct() {
           name,
           description,
           product_type: productType || null,
-          pricing_type: pricingType,
+          pricing_type: pricingType === 'subscription' ? 'paid' : pricingType === 'both' ? 'paid' : pricingType,
           price_cents: priceCents,
           currency: "USD",
           youtube_url: youtubeUrl || null,
@@ -164,6 +169,7 @@ export default function CreateProduct() {
           download_url: downloadUrl,
           creator_id: profile.id,
           status: publish ? "published" : "draft",
+          subscription_access: subscriptionAccess,
         })
         .select()
         .single();
@@ -252,7 +258,7 @@ export default function CreateProduct() {
           <CardContent className="space-y-6">
             <div>
               <Label>Pricing Type</Label>
-              <div className="flex gap-4 mt-2">
+              <div className="flex flex-wrap gap-3 mt-2">
                 <Button
                   type="button"
                   variant={pricingType === "free" ? "default" : "outline"}
@@ -265,14 +271,32 @@ export default function CreateProduct() {
                   variant={pricingType === "paid" ? "default" : "outline"}
                   onClick={() => setPricingType("paid")}
                 >
-                  Paid
+                  One-Time Purchase
+                </Button>
+                <Button
+                  type="button"
+                  variant={pricingType === "subscription" ? "default" : "outline"}
+                  onClick={() => setPricingType("subscription")}
+                >
+                  Subscription Only
+                </Button>
+                <Button
+                  type="button"
+                  variant={pricingType === "both" ? "default" : "outline"}
+                  onClick={() => setPricingType("both")}
+                >
+                  Both (One-Time + Subscription)
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {pricingType === "subscription" && "Only users subscribed to one of your plans can access this product."}
+                {pricingType === "both" && "Users can buy once OR get access through their subscription."}
+              </p>
             </div>
 
-            {pricingType === "paid" && (
+            {(pricingType === "paid" || pricingType === "both") && (
               <div>
-                <Label htmlFor="price">Price (USD)</Label>
+                <Label htmlFor="price">One-Time Price (USD)</Label>
                 <div className="relative mt-2">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                     $
