@@ -1447,6 +1447,16 @@ const ProfilePage: React.FC = () => {
           open={showProfileEditor}
           onOpenChange={setShowProfileEditor}
           profileId={profile.id}
+          profile={{
+            id: profile.id,
+            username: profile.username,
+            full_name: profile.full_name,
+            avatar_url: profile.avatar_url,
+            banner_url: profile.banner_url,
+            background_url: profile.background_url,
+            bio: profile.bio,
+            verified: profile.verified,
+          }}
           collections={collections.map(c => ({ id: c.id, name: c.name }))}
         />
       )}
