@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { User, Bell, Shield, CreditCard, LogOut, Upload, Loader2 } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { User, Bell, Shield, CreditCard, LogOut, Upload, Loader2, CheckCircle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,9 +18,11 @@ import { toast } from "sonner";
 export default function Settings() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [connectingStripe, setConnectingStripe] = useState(false);
   
   // Profile
   const [fullName, setFullName] = useState("");
@@ -28,10 +31,28 @@ export default function Settings() {
   const [website, setWebsite] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   
+  // Stripe Connect status
+  const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
+  const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(false);
+  
   // Notifications
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [salesNotifications, setSalesNotifications] = useState(true);
   const [marketingEmails, setMarketingEmails] = useState(false);
+
+  // Handle Stripe return URLs
+  useEffect(() => {
+    const stripeStatus = searchParams.get("stripe");
+    if (stripeStatus === "success") {
+      toast.success("Stripe account connected! It may take a moment for your status to update.");
+      window.history.replaceState({}, "", "/settings");
+      // Refresh profile to get updated Stripe status
+      if (user) fetchProfile();
+    } else if (stripeStatus === "refresh") {
+      toast.info("Please complete your Stripe onboarding");
+      window.history.replaceState({}, "", "/settings");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (user) {
@@ -57,6 +78,8 @@ export default function Settings() {
         setBio(data.bio || "");
         setWebsite(data.website || "");
         setAvatarUrl(data.avatar_url);
+        setStripeAccountId(data.stripe_account_id);
+        setStripeOnboardingComplete(data.stripe_onboarding_complete || false);
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -132,6 +155,27 @@ export default function Settings() {
       toast.error("Failed to save profile");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleConnectStripe = async () => {
+    setConnectingStripe(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-connect-account");
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No onboarding URL returned");
+      }
+    } catch (error) {
+      console.error("Stripe connect error:", error);
+      const message = error instanceof Error ? error.message : "Failed to connect Stripe";
+      toast.error(message);
+    } finally {
+      setConnectingStripe(false);
     }
   };
 
@@ -401,18 +445,65 @@ export default function Settings() {
             <CardHeader>
               <CardTitle>Billing & Payments</CardTitle>
               <CardDescription>
-                Manage your payment methods and view transaction history.
+                Manage your Stripe account to receive payments for your products.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="p-6 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30">
-                <h3 className="font-medium mb-2">Connect with Stripe</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Connect your Stripe account to receive payments for your products.
-                </p>
-                <Button className="bg-gradient-to-r from-primary to-accent">
-                  Connect Stripe Account
-                </Button>
+              {/* Stripe Connect Status */}
+              <div className={`p-6 rounded-lg border ${stripeOnboardingComplete ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-gradient-to-br from-primary/20 to-accent/20 border-primary/30'}`}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-medium">Stripe Connect</h3>
+                      {stripeOnboardingComplete ? (
+                        <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Connected
+                        </Badge>
+                      ) : stripeAccountId ? (
+                        <Badge variant="secondary" className="bg-amber-500/20 text-amber-400">
+                          Pending
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {stripeOnboardingComplete 
+                        ? "Your Stripe account is connected. You can receive payments for your products."
+                        : stripeAccountId
+                        ? "Your Stripe account setup is incomplete. Please complete onboarding to receive payments."
+                        : "Connect your Stripe account to receive payments for your products. We take a 5% platform fee on each sale."
+                      }
+                    </p>
+                  </div>
+                </div>
+                
+                {stripeOnboardingComplete ? (
+                  <Button variant="outline" onClick={handleConnectStripe} disabled={connectingStripe}>
+                    {connectingStripe ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                    )}
+                    Manage Stripe Account
+                  </Button>
+                ) : (
+                  <Button 
+                    className="bg-gradient-to-r from-primary to-accent"
+                    onClick={handleConnectStripe}
+                    disabled={connectingStripe}
+                  >
+                    {connectingStripe ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : stripeAccountId ? (
+                      "Complete Onboarding"
+                    ) : (
+                      "Connect Stripe Account"
+                    )}
+                  </Button>
+                )}
               </div>
 
               <Separator />
@@ -422,6 +513,7 @@ export default function Settings() {
                 <div className="text-center py-8 text-muted-foreground">
                   <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No transactions yet</p>
+                  <p className="text-sm mt-2">Your sales will appear here once you start selling.</p>
                 </div>
               </div>
             </CardContent>
