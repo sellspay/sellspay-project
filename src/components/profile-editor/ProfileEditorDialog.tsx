@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -17,6 +17,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  MeasuringStrategy,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -129,9 +130,10 @@ const SortableCollectionCard = memo(({
     isDragging,
   } = useSortable({ id: collection.id });
 
+  // Simplified style without transition during drag for better performance
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? undefined : transition,
   };
 
   return (
@@ -139,8 +141,8 @@ const SortableCollectionCard = memo(({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'relative group transition-all',
-        isDragging && 'opacity-50 z-50',
+        'relative group',
+        isDragging && 'opacity-60 z-50 scale-[1.02]',
         !collection.is_visible && 'opacity-40'
       )}
     >
@@ -297,9 +299,10 @@ const SortableSectionCard = memo(({
     isDragging,
   } = useSortable({ id: section.id });
 
+  // Simplified style without transition during drag for better performance
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? undefined : transition,
   };
 
   return (
@@ -307,8 +310,8 @@ const SortableSectionCard = memo(({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'relative group bg-card/50 backdrop-blur-sm border border-border rounded-lg overflow-hidden transition-all',
-        isDragging && 'opacity-50 z-50 shadow-xl',
+        'relative group bg-card/50 backdrop-blur-sm border border-border rounded-lg overflow-hidden',
+        isDragging && 'opacity-60 z-50 shadow-lg scale-[1.01]',
         !section.is_visible && 'opacity-50'
       )}
     >
@@ -382,10 +385,23 @@ export function ProfileEditorDialog({
   const [previewSection, setPreviewSection] = useState<ProfileSection | null>(null);
   const [showCreateCollection, setShowCreateCollection] = useState(false);
 
+  // Optimized sensors with higher distance threshold to reduce accidental drags
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { 
+      activationConstraint: { 
+        distance: 10,
+        tolerance: 5,
+      } 
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  // Optimized measuring configuration to reduce layout recalculations
+  const measuringConfig = useMemo(() => ({
+    droppable: {
+      strategy: MeasuringStrategy.Always,
+    },
+  }), []);
 
   useEffect(() => {
     if (open && profileId) {
@@ -493,44 +509,51 @@ export function ProfileEditorDialog({
     }
   };
 
-  const handleCollectionDragEnd = async (event: DragEndEvent) => {
+  const handleCollectionDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = editorCollections.findIndex((c) => c.id === active.id);
-      const newIndex = editorCollections.findIndex((c) => c.id === over.id);
-      const newCollections = arrayMove(editorCollections, oldIndex, newIndex).map((c, idx) => ({
-        ...c,
-        display_order: idx,
-      }));
-      setEditorCollections(newCollections);
+      setEditorCollections(prev => {
+        const oldIndex = prev.findIndex((c) => c.id === active.id);
+        const newIndex = prev.findIndex((c) => c.id === over.id);
+        const newCollections = arrayMove(prev, oldIndex, newIndex).map((c, idx) => ({
+          ...c,
+          display_order: idx,
+        }));
+        return newCollections;
+      });
       setHasChanges(true);
     }
-  };
+  }, []);
 
-  const handleSectionDragEnd = (event: DragEndEvent) => {
+  const handleSectionDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = sections.findIndex((s) => s.id === active.id);
-      const newIndex = sections.findIndex((s) => s.id === over.id);
-      const newSections = arrayMove(sections, oldIndex, newIndex).map((s, idx) => ({
-        ...s,
-        display_order: idx,
-      }));
-      setSections(newSections);
+      setSections(prev => {
+        const oldIndex = prev.findIndex((s) => s.id === active.id);
+        const newIndex = prev.findIndex((s) => s.id === over.id);
+        const newSections = arrayMove(prev, oldIndex, newIndex).map((s, idx) => ({
+          ...s,
+          display_order: idx,
+        }));
+        return newSections;
+      });
       setHasChanges(true);
     }
-  };
+  }, []);
 
-  const toggleCollectionVisibility = async (collectionId: string) => {
-    const collection = editorCollections.find((c) => c.id === collectionId);
-    if (!collection) return;
-    
-    const newVisibility = !collection.is_visible;
-    setEditorCollections(editorCollections.map((c) => 
-      c.id === collectionId ? { ...c, is_visible: newVisibility } : c
+  const toggleCollectionVisibility = useCallback((collectionId: string) => {
+    setEditorCollections(prev => prev.map((c) => 
+      c.id === collectionId ? { ...c, is_visible: !c.is_visible } : c
     ));
     setHasChanges(true);
-  };
+  }, []);
+
+  const toggleSectionVisibility = useCallback((sectionId: string) => {
+    setSections(prev => prev.map((s) => 
+      s.id === sectionId ? { ...s, is_visible: !s.is_visible } : s
+    ));
+    setHasChanges(true);
+  }, []);
 
   const handleDeleteCollection = async (collectionId: string) => {
     try {
@@ -615,13 +638,6 @@ export function ProfileEditorDialog({
     }
   };
 
-  const toggleSectionVisibility = (sectionId: string) => {
-    const section = sections.find((s) => s.id === sectionId);
-    if (!section) return;
-    const updated = { ...section, is_visible: !section.is_visible };
-    setSections(sections.map((s) => (s.id === sectionId ? updated : s)));
-    setHasChanges(true);
-  };
 
   const saveAllChanges = async () => {
     setSaving(true);
@@ -683,6 +699,10 @@ export function ProfileEditorDialog({
     : {};
 
   const hasContent = recentProducts.length > 0 || editorCollections.length > 0 || sections.length > 0;
+
+  // Memoized IDs for SortableContext to prevent unnecessary re-renders
+  const collectionIds = useMemo(() => editorCollections.map((c) => c.id), [editorCollections]);
+  const sectionIds = useMemo(() => sections.map((s) => s.id), [sections]);
 
   return (
     <TooltipProvider>
@@ -902,9 +922,10 @@ export function ProfileEditorDialog({
                               sensors={sensors}
                               collisionDetection={closestCenter}
                               onDragEnd={handleCollectionDragEnd}
+                              measuring={measuringConfig}
                             >
                               <SortableContext
-                                items={editorCollections.map((c) => c.id)}
+                                items={collectionIds}
                                 strategy={verticalListSortingStrategy}
                               >
                                 <div className="space-y-10">
@@ -928,9 +949,10 @@ export function ProfileEditorDialog({
                               sensors={sensors}
                               collisionDetection={closestCenter}
                               onDragEnd={handleSectionDragEnd}
+                              measuring={measuringConfig}
                             >
                               <SortableContext
-                                items={sections.map((s) => s.id)}
+                                items={sectionIds}
                                 strategy={verticalListSortingStrategy}
                               >
                                 <div className="space-y-4">
