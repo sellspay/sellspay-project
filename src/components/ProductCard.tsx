@@ -65,7 +65,9 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
   );
 
   const canShowVideo = Boolean(videoUrl) && !videoError;
-  const showVideo = canShowVideo && (isHovered || !thumbnail);
+  // Only show video on hover if we have a thumbnail; otherwise show video as default
+  const hasThumbnail = Boolean(thumbnail);
+  const showVideo = canShowVideo && (isHovered || !hasThumbnail);
 
   const handleMouseEnter = () => {
     setIsHovered(true);
