@@ -43,6 +43,7 @@ export interface ImageContent {
   altText?: string;
   caption?: string;
   layout?: 'full' | 'medium' | 'small';
+  imageCount?: 1 | 2 | 4; // For multi-image presets
 }
 
 export interface ImageWithTextContent {
@@ -52,6 +53,7 @@ export interface ImageWithTextContent {
   imagePosition: 'left' | 'right';
   buttonText?: string;
   buttonUrl?: string;
+  layout?: 'hero' | 'side-by-side' | 'overlay'; // For different preset layouts
 }
 
 export interface GalleryContent {
@@ -60,6 +62,7 @@ export interface GalleryContent {
     altText?: string;
   }[];
   columns: 2 | 3 | 4;
+  layout?: 'grid' | 'masonry';
 }
 
 export interface VideoContent {
@@ -152,6 +155,7 @@ export interface BasicListContent {
   title?: string;
   items: ListItem[];
   style: 'bullet' | 'numbered' | 'icon';
+  layout?: 'simple' | 'cards-3col' | 'cards-2col' | 'horizontal';
 }
 
 export interface FeaturedProductContent {
@@ -250,6 +254,7 @@ export interface SectionPreset {
   name: string;
   thumbnail?: string;
   styleOptions: SectionStyleOptions;
+  contentOverrides?: Partial<SectionContent>; // Preset-specific content changes
 }
 
 export const SECTION_CATEGORIES = [
@@ -334,17 +339,19 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
     icon: 'List',
     category: 'content',
     defaultContent: {
-      title: 'Features',
+      title: 'Make it happen',
       items: [
         { id: '1', text: 'First item' },
         { id: '2', text: 'Second item' },
         { id: '3', text: 'Third item' },
       ],
       style: 'bullet',
+      layout: 'simple',
     } as BasicListContent,
     presets: [
-      { id: 'style1', name: 'Simple', styleOptions: { colorScheme: 'white' } },
-      { id: 'style2', name: 'Cards', styleOptions: { colorScheme: 'light' } },
+      { id: 'style1', name: '3 Column Cards', styleOptions: { colorScheme: 'white', preset: 'style1' }, contentOverrides: { layout: 'cards-3col' } },
+      { id: 'style2', name: '2 Column', styleOptions: { colorScheme: 'light', preset: 'style2' }, contentOverrides: { layout: 'cards-2col' } },
+      { id: 'style3', name: 'Horizontal List', styleOptions: { colorScheme: 'white', preset: 'style3' }, contentOverrides: { layout: 'horizontal' } },
     ],
   },
   // Media
@@ -359,10 +366,13 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
       altText: '',
       caption: '',
       layout: 'full',
+      imageCount: 1,
     } as ImageContent,
     presets: [
-      { id: 'style1', name: 'Full Width', styleOptions: { backgroundWidth: 'full' } },
-      { id: 'style2', name: 'Contained', styleOptions: { backgroundWidth: 'contained' } },
+      { id: 'style1', name: 'Full Width', styleOptions: { backgroundWidth: 'full', preset: 'style1' }, contentOverrides: { layout: 'full', imageCount: 1 } },
+      { id: 'style2', name: 'Centered', styleOptions: { backgroundWidth: 'contained', preset: 'style2' }, contentOverrides: { layout: 'medium', imageCount: 1 } },
+      { id: 'style3', name: '2 Images', styleOptions: { preset: 'style3' }, contentOverrides: { layout: 'full', imageCount: 2 } },
+      { id: 'style4', name: '4 Images', styleOptions: { preset: 'style4' }, contentOverrides: { layout: 'full', imageCount: 4 } },
     ],
   },
   {
@@ -378,11 +388,13 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
       imagePosition: 'left',
       buttonText: 'Shop Now',
       buttonUrl: '',
+      layout: 'side-by-side',
     } as ImageWithTextContent,
     presets: [
-      { id: 'style1', name: 'Image Left', styleOptions: { colorScheme: 'white' } },
-      { id: 'style2', name: 'Image Right', styleOptions: { colorScheme: 'white' } },
-      { id: 'style3', name: 'Dark Mode', styleOptions: { colorScheme: 'dark' } },
+      { id: 'style1', name: 'Hero Banner', styleOptions: { colorScheme: 'light', sectionHeight: 'large', preset: 'style1' }, contentOverrides: { layout: 'hero', imagePosition: 'left' } },
+      { id: 'style2', name: 'Image Left', styleOptions: { colorScheme: 'white', preset: 'style2' }, contentOverrides: { layout: 'side-by-side', imagePosition: 'left' } },
+      { id: 'style3', name: 'Image Right', styleOptions: { colorScheme: 'white', preset: 'style3' }, contentOverrides: { layout: 'side-by-side', imagePosition: 'right' } },
+      { id: 'style4', name: 'Overlay Text', styleOptions: { colorScheme: 'dark', preset: 'style4' }, contentOverrides: { layout: 'overlay', imagePosition: 'left' } },
     ],
   },
   {
@@ -394,11 +406,12 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
     defaultContent: {
       images: [],
       columns: 3,
+      layout: 'grid',
     } as GalleryContent,
     presets: [
-      { id: 'style1', name: '3 Columns', styleOptions: {} },
-      { id: 'style2', name: '2 Columns', styleOptions: {} },
-      { id: 'style3', name: '4 Columns', styleOptions: {} },
+      { id: 'style1', name: '3x2 Grid', styleOptions: { preset: 'style1' }, contentOverrides: { columns: 3, layout: 'grid' } },
+      { id: 'style2', name: '2x3 Grid', styleOptions: { preset: 'style2' }, contentOverrides: { columns: 2, layout: 'grid' } },
+      { id: 'style3', name: 'Masonry', styleOptions: { preset: 'style3' }, contentOverrides: { columns: 3, layout: 'masonry' } },
     ],
   },
   {

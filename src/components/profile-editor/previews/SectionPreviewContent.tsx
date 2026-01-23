@@ -48,31 +48,62 @@ const ImagePreview = memo(({ content }: { content: ImageContent }) => {
 });
 ImagePreview.displayName = 'ImagePreview';
 
-// Image With Text Preview
-const ImageWithTextPreview = memo(({ content }: { content: ImageWithTextContent }) => (
-  <div className={`flex flex-col md:flex-row gap-8 items-center ${content.imagePosition === 'right' ? 'md:flex-row-reverse' : ''}`}>
-    <div className="flex-1">
-      {content.imageUrl ? (
-        <img
-          src={content.imageUrl}
-          alt=""
-          className="w-full h-auto rounded-lg"
-        />
-      ) : (
-        <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
-          <span className="text-muted-foreground">No image</span>
+// Image With Text Preview - handles all 4 layout types
+const ImageWithTextPreview = memo(({ content }: { content: ImageWithTextContent }) => {
+  const layout = content.layout || 'side-by-side';
+  
+  // Hero Banner layout (style1)
+  if (layout === 'hero') {
+    return (
+      <div className="relative min-h-[300px] rounded-lg overflow-hidden bg-gradient-to-br from-primary/10 to-secondary/10">
+        {content.imageUrl && (
+          <img src={content.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+        )}
+        <div className="relative z-10 flex flex-col items-center justify-center min-h-[300px] text-center p-8">
+          <h3 className="text-3xl font-bold mb-4">{content.title}</h3>
+          <p className="text-muted-foreground mb-6 max-w-lg">{content.body}</p>
+          {content.buttonText && <Button>{content.buttonText}</Button>}
         </div>
-      )}
+      </div>
+    );
+  }
+  
+  // Overlay Text layout (style4)
+  if (layout === 'overlay') {
+    return (
+      <div className="relative aspect-video rounded-lg overflow-hidden bg-gradient-to-br from-muted to-muted-foreground/20">
+        {content.imageUrl && (
+          <img src={content.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-50" />
+        )}
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background/90 to-transparent">
+          <h3 className="text-2xl font-bold mb-2">{content.title}</h3>
+          <p className="text-muted-foreground mb-4">{content.body}</p>
+          {content.buttonText && <Button variant="secondary">{content.buttonText}</Button>}
+        </div>
+      </div>
+    );
+  }
+  
+  // Side-by-side layout (style2 & style3)
+  return (
+    <div className={`flex flex-col md:flex-row gap-8 items-center ${content.imagePosition === 'right' ? 'md:flex-row-reverse' : ''}`}>
+      <div className="flex-1">
+        {content.imageUrl ? (
+          <img src={content.imageUrl} alt="" className="w-full h-auto rounded-lg" />
+        ) : (
+          <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
+            <span className="text-muted-foreground">No image</span>
+          </div>
+        )}
+      </div>
+      <div className="flex-1">
+        <h3 className="text-2xl font-bold mb-4">{content.title}</h3>
+        <p className="text-muted-foreground mb-6">{content.body}</p>
+        {content.buttonText && <Button>{content.buttonText}</Button>}
+      </div>
     </div>
-    <div className="flex-1">
-      <h3 className="text-2xl font-bold mb-4">{content.title}</h3>
-      <p className="text-muted-foreground mb-6">{content.body}</p>
-      {content.buttonText && (
-        <Button>{content.buttonText}</Button>
-      )}
-    </div>
-  </div>
-));
+  );
+});
 ImageWithTextPreview.displayName = 'ImageWithTextPreview';
 
 // Gallery Preview

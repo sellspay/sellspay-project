@@ -587,22 +587,39 @@ export function ProfileEditorDialog({
     setHasChanges(true);
   };
 
-  const addSection = async (type: SectionType, _presetId?: string) => {
+  const addSection = async (type: SectionType, presetId?: string) => {
     const template = SECTION_TEMPLATES.find((t) => t.type === type);
     if (!template) return;
 
-    const sectionToInsert = {
+    // Find the preset and merge content overrides
+    const preset = presetId ? template.presets.find(p => p.id === presetId) : template.presets[0];
+    const content = {
+      ...JSON.parse(JSON.stringify(template.defaultContent)),
+      ...(preset?.contentOverrides || {}),
+    };
+    const styleOptions = preset?.styleOptions || { preset: presetId || 'style1' };
+
+    const sectionToInsert: {
+      profile_id: string;
+      section_type: string;
+      display_order: number;
+      content: Record<string, unknown>;
+      style_options: Record<string, unknown>;
+      is_visible: boolean;
+    } = {
       profile_id: profileId,
-      section_type: type,
+      section_type: type as string,
       display_order: sections.length,
-      content: JSON.parse(JSON.stringify(template.defaultContent)),
+      content: content as Record<string, unknown>,
+      style_options: styleOptions as Record<string, unknown>,
       is_visible: true,
     };
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await supabase
         .from('profile_sections')
-        .insert([sectionToInsert])
+        .insert([sectionToInsert] as any)
         .select()
         .single();
 
