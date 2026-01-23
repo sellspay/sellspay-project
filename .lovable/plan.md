@@ -1,315 +1,188 @@
 
 
-# Implementation Plan: Product Attachments, Auth Improvements, and OAuth
+# Implementation Plan: Product Slug, World Map, and Tools Redesign
 
-## Overview
-This plan covers four main features:
-1. **Product Attachments Card** - Display attachments with file info below the creator card
-2. **Real-time Username/Email Validation** - Debounced availability checking during signup
-3. **Login with Username or Email** - Flexible credential entry
-4. **OAuth Providers** - Social login integration
+This plan addresses three key improvements: a custom slug system for products, a proper world map for the dashboard, and a complete redesign of the Tools page.
 
 ---
 
-## 1. Product Attachments Card
+## 1. Product Slug Section in Create/Edit Product
 
 ### Current State
-The ProductDetail page already has an attachments section (lines 1268-1294), but it's positioned below comments. The request is to move this to a dedicated card below the "View Profile" card in the sidebar.
+The `CreateProduct.tsx` and `EditProduct.tsx` pages create products without custom slugs. Products are accessed by their UUID (e.g., `/product/abc123-uuid`).
 
 ### Changes Required
 
-**Modify: `src/pages/ProductDetail.tsx`**
+**Database Migration:**
+- Add a `slug` column to the `products` table (unique, nullable)
 
-Create a new "Attachments" card in the sidebar section (after line 1363) with:
-- Purple-themed styling matching the existing theme
-- File icon for each attachment
-- File name (truncated if long)
-- File size (formatted: KB, MB, etc.)
-- Lock icon indicating access required (for non-owners/non-purchasers)
-- Unlocked download button for users with access
+**UI Changes:**
+- Add a "Slug" input field in the "Basic Information" card
+- Display a preview of the URL (e.g., `editorsparadise.com/p/my-awesome-preset`)
+- Auto-generate slug from title when left empty (using `slugify` logic: lowercase, replace spaces with hyphens, remove special characters)
+- Validate for uniqueness before submission
 
-**Card Layout:**
-```text
-┌────────────────────────────────┐
-│  📂 Attachments                │
-├────────────────────────────────┤
-│  ┌───┐  Premium_Pack.zip       │
-│  │ 📄 │ 125.4 MB         🔒   │
-│  └───┘                         │
-│  ┌───┐  Bonus_Assets.rar       │
-│  │ 📄 │ 45.2 MB          🔒   │
-│  └───┘                         │
-└────────────────────────────────┘
-```
+**Files to Create/Modify:**
+- Database migration for `slug` column
+- `src/pages/CreateProduct.tsx` - Add slug input and auto-generation
+- `src/pages/EditProduct.tsx` - Add slug editing capability
+- `src/pages/ProductDetail.tsx` - Support slug-based routing
+- `src/App.tsx` - Add route for `/p/:slug`
 
 ---
 
-## 2. Real-time Username/Email Validation
+## 2. Dashboard Visits Map Improvement
 
 ### Current State
-- Username availability is checked only on form submit
-- Email availability is checked only after Supabase signup fails
-- No visual feedback during typing
+The `VisitsMap.tsx` component uses a crude hand-drawn SVG with basic polygon shapes for continents. It doesn't show actual country boundaries.
 
 ### Changes Required
 
-**Create: Database function `is_email_available`**
-```sql
-CREATE FUNCTION public.is_email_available(p_email text)
-RETURNS boolean
-```
-Checks `auth.users` table for existing email (uses SECURITY DEFINER).
+**Approach:** Use an embedded SVG world map with proper country paths, coloring countries based on visit data.
 
-**Modify: `src/pages/Signup.tsx`**
+**Implementation:**
+- Create a proper world map component using GeoJSON-derived SVG paths
+- Color countries based on their visit counts with a gradient scale
+- Add proper country name labels and tooltips on hover
+- Include a legend showing the color scale
+- Keep the country list below the map for quick reference
 
-Add real-time validation with debounce:
-- Use `useDebounce` hook (already exists) with 500ms delay
-- Show inline status indicators:
-  - Spinner while checking
-  - Green checkmark if available
-  - Red X with message if taken
-- Validate both username and email fields as user types
-- Block form submission if either is unavailable
+**Files to Modify:**
+- `src/components/dashboard/VisitsMap.tsx` - Complete rewrite with proper world map SVG
 
-**UI Feedback:**
-```text
-Username: @cooluser ✓ Available
-Email: test@email.com ✗ Already registered
-```
-
----
-
-## 3. Login with Username or Email
-
-### Current State
-- Login only accepts email format
-- Uses `signInWithPassword({ email, password })`
-
-### Changes Required
-
-**Create: Database function `get_email_by_username`**
-```sql
-CREATE FUNCTION public.get_email_by_username(p_username text)
-RETURNS text
-```
-Looks up email from profiles table by username (case-insensitive).
-
-**Modify: `src/pages/Login.tsx`**
-
-- Change input placeholder to "Email or Username"
-- Update icon to `AtSign` (or keep `Mail`)
-- Before calling `signIn`:
-  1. Check if input contains `@` symbol
-  2. If no `@`, treat as username and call `get_email_by_username` RPC
-  3. Use returned email for authentication
-  4. If username not found, show "Username not found" error
-
-**Modify: `src/lib/auth.tsx`**
-
-- Update `signIn` function signature to accept `emailOrUsername`
-- Add logic to resolve username to email before auth
-
----
-
-## 4. OAuth Providers
-
-### Important Limitation
-Based on Lovable Cloud capabilities, **only Google OAuth is currently supported**. Discord, Facebook, and Apple OAuth are NOT yet available in Lovable Cloud.
-
-### Changes Required for Google OAuth
-
-**Modify: `src/pages/Login.tsx` and `src/pages/Signup.tsx`**
-
-Add social login buttons:
-- Google Sign In button with Google logo
-- Disabled placeholder buttons for Discord, Facebook, Apple (showing "Coming Soon")
-
-**Modify: `src/lib/auth.tsx`**
-
-Add `signInWithGoogle` function:
+**Data Structure (already in place):**
 ```typescript
-const signInWithGoogle = async () => {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin
-    }
-  });
-  return { error };
-};
+{ country: 'US', visits: 150 }
 ```
 
-**User Action Required:**
-- Configure Google OAuth in Cloud dashboard
-- Set up Google Cloud Console OAuth client
+---
+
+## 3. Tools Page Complete Redesign
+
+### Current State
+The Tools page shows a 6-card grid layout. Individual tool pages are separate routes (e.g., `/tools/audio-cutter`).
+
+### Reference Design Analysis
+Based on the reference images:
+- Left sidebar with category tabs: "All", "Audio", "Generators"
+- List of tools with: Title, description, badges ("Popular", "New")
+- Selected tool's interface displays on the right side
+- Clean, professional dark theme
+- Tool content is inline (not a separate page)
+
+### New Architecture
+
+**Main Tools Page (`/tools`):**
+- Two-column layout: sidebar (left) + content area (right)
+- Category tabs at the top of sidebar
+- Tool list items are clickable, highlight when active
+- Selected tool's full interface renders on the right
+
+**Tool Categories:**
+1. **Audio** (existing tools):
+   - Voice Isolator (to be added - Popular badge)
+   - SFX Isolator (to be added)
+   - Music Splitter (to be added - New badge)
+   - Pitch Shifter (to be added)
+   - Key/BPM Finder (to be added)
+   - Cutter (Audio Cutter - existing)
+   - Joiner (Audio Joiner - existing)
+   - Recorder (Audio Recorder - existing)
+   - Converter (Audio Converter - existing)
+   - Video to Audio (existing)
+   - Waveform Generator (existing)
+
+2. **Generators** (new category):
+   - Manga Generator (Popular badge)
+   - Manhwa Generator
+   - Shape Scene Generator
+
+**Files to Create:**
+- `src/components/tools/ToolsSidebar.tsx` - Sidebar with categories and tool list
+- `src/components/tools/ToolContent.tsx` - Container for tool interface
+- `src/components/tools/VoiceIsolator.tsx` - Placeholder for future AI tool
+- `src/components/tools/MangaGenerator.tsx` - Placeholder for future AI generator
+
+**Files to Modify:**
+- `src/pages/Tools.tsx` - Complete rewrite with new layout
+- `src/App.tsx` - Update routing (tools now use query params or embedded state, not separate routes)
+
+### New Tools Page Structure
+
+```text
++----------------------------------+----------------------------------------+
+|  Tools                           |                                        |
+|  Your hub for audio tools...     |                                        |
++----------------------------------+                                        |
+|  All | Audio | Generators        |                                        |
++----------------------------------+                                        |
+|  > Voice Isolator  [Popular]     |       [Selected Tool Icon]             |
+|    Remove vocals or background   |                                        |
+|                                  |       Tool Title                       |
+|    SFX Isolator                  |       Tool description here...         |
+|    Isolate sound effects...      |                                        |
+|                                  |       [Browse my files]                |
+|    Music Splitter  [New]         |                                        |
+|    Split stems (vocals, drums)   |       ... tool interface ...           |
+|                                  |                                        |
+|    Cutter                        |                                        |
+|    Trim and slice audio...       |                                        |
+|                                  |                                        |
+|    Joiner                        |                                        |
+|    Merge multiple audio files    |                                        |
+|                                  |                                        |
+|    Recorder                      |                                        |
+|    Record high-quality audio     |                                        |
++----------------------------------+----------------------------------------+
+```
 
 ---
 
 ## Technical Details
 
-### Database Functions to Create
-
-```sql
--- Function to check if email is available
-CREATE OR REPLACE FUNCTION public.is_email_available(p_email text)
-RETURNS boolean
-LANGUAGE plpgsql
-STABLE SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-BEGIN
-  IF p_email IS NULL OR length(p_email) = 0 THEN
-    RETURN false;
-  END IF;
-  
-  RETURN NOT EXISTS (
-    SELECT 1 FROM auth.users
-    WHERE LOWER(email) = LOWER(p_email)
-  );
-END;
-$$;
-
--- Function to get email by username
-CREATE OR REPLACE FUNCTION public.get_email_by_username(p_username text)
-RETURNS text
-LANGUAGE plpgsql
-STABLE SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-DECLARE
-  user_email text;
-BEGIN
-  IF p_username IS NULL OR length(p_username) = 0 THEN
-    RETURN NULL;
-  END IF;
-  
-  SELECT email INTO user_email
-  FROM public.profiles
-  WHERE LOWER(username) = LOWER(p_username)
-  LIMIT 1;
-  
-  RETURN user_email;
-END;
-$$;
+### 1. Slug Generation Logic
+```typescript
+const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special chars
+    .replace(/\s+/g, '-')     // Replace spaces with hyphens
+    .replace(/-+/g, '-')      // Replace multiple hyphens
+    .substring(0, 100);       // Limit length
+};
 ```
 
-### File Changes Summary
+### 2. World Map Implementation
+Using an inline SVG with proper country paths (ISO 3166-1 alpha-2 codes) that can be colored dynamically:
+- Countries with visits get colored on a scale from light to dark primary color
+- Countries without visits stay muted/gray
+- Hover shows tooltip with country name and visit count
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/pages/ProductDetail.tsx` | Modify | Move attachments to sidebar card with purple theme |
-| `src/pages/Signup.tsx` | Modify | Add debounced real-time validation for username/email |
-| `src/pages/Login.tsx` | Modify | Support username login, add Google OAuth button |
-| `src/lib/auth.tsx` | Modify | Add `signInWithGoogle`, update `signIn` for username |
-| Database migration | Create | Add `is_email_available` and `get_email_by_username` functions |
+### 3. Tools State Management
+The Tools page will use React state to track:
+- `selectedCategory`: 'all' | 'audio' | 'generators'
+- `selectedTool`: string (tool ID)
 
-### Signup Validation Flow
-
-```text
-┌─────────────────────────────────────────────────┐
-│                 User Types                      │
-└─────────────────────────────────────────────────┘
-                      │
-                      ▼
-         ┌─────────────────────┐
-         │ Debounce 500ms      │
-         └─────────────────────┘
-                      │
-                      ▼
-         ┌─────────────────────┐
-         │ Call RPC function   │
-         │ is_username_available│
-         │ is_email_available  │
-         └─────────────────────┘
-                      │
-                      ▼
-    ┌─────────────────┴─────────────────┐
-    │                                   │
-    ▼                                   ▼
-┌───────────┐                    ┌───────────┐
-│ Available │                    │   Taken   │
-│    ✓      │                    │    ✗      │
-└───────────┘                    └───────────┘
-```
-
-### Login Flow with Username Support
-
-```text
-┌─────────────────────────────────────────────────┐
-│          User enters credential                 │
-└─────────────────────────────────────────────────┘
-                      │
-                      ▼
-         ┌─────────────────────┐
-         │ Contains @ symbol?  │
-         └─────────────────────┘
-                      │
-        ┌─────────────┴─────────────┐
-        │                           │
-        ▼                           ▼
-   ┌─────────┐               ┌─────────────┐
-   │  Email  │               │  Username   │
-   │  Format │               │   Format    │
-   └─────────┘               └─────────────┘
-        │                           │
-        │                           ▼
-        │                ┌────────────────────┐
-        │                │ get_email_by_      │
-        │                │ username RPC       │
-        │                └────────────────────┘
-        │                           │
-        │                           ▼
-        │                    ┌────────────┐
-        │                    │ Get Email  │
-        │                    └────────────┘
-        │                           │
-        └───────────────────────────┘
-                      │
-                      ▼
-         ┌─────────────────────┐
-         │ signInWithPassword  │
-         │ (email, password)   │
-         └─────────────────────┘
-```
+Each tool component will be imported and rendered conditionally based on selection.
 
 ---
 
 ## Implementation Order
 
-1. **Database Migration**
-   - Create `is_email_available` function
-   - Create `get_email_by_username` function
-
-2. **ProductDetail Attachments Card**
-   - Move attachments to sidebar
-   - Apply purple theme styling
-   - Add access control logic
-
-3. **Signup Validation**
-   - Add debounced username checking
-   - Add debounced email checking
-   - Add inline validation UI
-
-4. **Login with Username**
-   - Update login form to accept username
-   - Add username resolution logic
-   - Update error messages
-
-5. **Google OAuth**
-   - Add Google sign-in button to Login/Signup
-   - Add `signInWithGoogle` to auth context
-   - Provide instructions for Google Cloud setup
+1. **Database Migration** - Add slug column to products
+2. **CreateProduct/EditProduct** - Add slug input UI
+3. **VisitsMap** - Rebuild with proper world map
+4. **Tools Page** - Create new components and redesign layout
+5. **Route Updates** - Support slug-based product URLs
 
 ---
 
-## OAuth Provider Status
+## Summary
 
-| Provider | Status | Notes |
-|----------|--------|-------|
-| Google | Supported | Requires Google Cloud Console setup |
-| Discord | Not Available | Lovable Cloud limitation |
-| Facebook | Not Available | Lovable Cloud limitation |
-| Apple | Not Available | Lovable Cloud limitation |
-
-The non-supported providers will be shown as disabled buttons with "Coming Soon" labels, allowing for future expansion when they become available.
+| Feature | Scope | Complexity |
+|---------|-------|------------|
+| Product Slug | DB + 3 files | Medium |
+| World Map | 1 component rewrite | Medium |
+| Tools Redesign | New layout + 3-4 new components | High |
 
