@@ -126,13 +126,19 @@ export default function CreateProduct() {
       // Upload preview video
       if (previewVideo) {
         const ext = previewVideo.name.split(".").pop();
-        // Store the relative path for preview_video_url
+        // Use consistent path format: previews/{profile_id}/{timestamp}.{ext}
         previewVideoPath = `previews/${profile.id}/${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("product-media")
-          .upload(previewVideoPath, previewVideo);
+          .upload(previewVideoPath, previewVideo, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Preview video upload error:', uploadError);
+          throw uploadError;
+        }
       }
 
       // Upload download file
