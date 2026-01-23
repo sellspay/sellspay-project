@@ -33,16 +33,16 @@ serve(async (req) => {
 
     const startTime = Date.now();
 
-    // Use fal.ai's beatoven/sound-effect-generation endpoint
-    const response = await fetch("https://fal.run/fal-ai/beatoven/sound-effect-generation", {
+    // Use fal.ai's ElevenLabs sound effects v2 endpoint
+    const response = await fetch("https://fal.run/fal-ai/elevenlabs/sound-effects/v2", {
       method: "POST",
       headers: {
         "Authorization": `Key ${FAL_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        prompt: prompt.trim(),
-        duration_seconds: Math.min(Math.max(duration, 1), 30), // Clamp between 1-30 seconds
+        text: prompt.trim(),
+        duration_seconds: Math.min(Math.max(duration, 1), 22), // ElevenLabs supports up to 22 seconds
       }),
     });
 
