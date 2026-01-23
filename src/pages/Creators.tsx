@@ -155,18 +155,30 @@ export default function Creators() {
                         </AvatarFallback>
                       </Avatar>
                       
-                      {/* Username with verified badge */}
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <h3 className="font-semibold text-primary group-hover:text-primary/80 transition-colors">
-                          @{creator.username || 'creator'}
+                      {/* Name with verified badge */}
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <h3 className="font-semibold text-foreground group-hover:text-foreground/80 transition-colors">
+                          {creator.full_name || creator.username || 'Creator'}
                         </h3>
                         {creator.verified && (
                           <VerifiedBadge isAdmin={creatorIsAdmin} size="sm" />
                         )}
                       </div>
                       
+                      {/* Username */}
+                      <p className="text-sm text-primary mb-2">
+                        @{creator.username || 'creator'}
+                      </p>
+                      
+                      {/* Bio/Description */}
+                      {creator.bio && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                          {creator.bio}
+                        </p>
+                      )}
+                      
                       {/* Stats row with icons */}
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground mt-auto">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex items-center gap-1">
