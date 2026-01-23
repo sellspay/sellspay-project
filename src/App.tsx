@@ -9,8 +9,19 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Products from "./pages/Products";
+import ProductDetail from "./pages/ProductDetail";
+import CreateProduct from "./pages/CreateProduct";
 import Creators from "./pages/Creators";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+import Admin from "./pages/Admin";
+import Tools from "./pages/Tools";
+import AudioCutter from "./pages/tools/AudioCutter";
+import AudioRecorder from "./pages/tools/AudioRecorder";
+import AudioJoiner from "./pages/tools/AudioJoiner";
+import VideoToAudio from "./pages/tools/VideoToAudio";
+import AudioConverter from "./pages/tools/AudioConverter";
+import WaveformGenerator from "./pages/tools/WaveformGenerator";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,9 +41,22 @@ const App = () => (
             {/* Main pages with layout */}
             <Route path="/" element={<MainLayout><Home /></MainLayout>} />
             <Route path="/products" element={<MainLayout><Products /></MainLayout>} />
+            <Route path="/product/:id" element={<MainLayout><ProductDetail /></MainLayout>} />
+            <Route path="/create-product" element={<MainLayout><CreateProduct /></MainLayout>} />
             <Route path="/creators" element={<MainLayout><Creators /></MainLayout>} />
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
+            <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
+            <Route path="/admin" element={<MainLayout><Admin /></MainLayout>} />
             <Route path="/@:username" element={<MainLayout><Profile /></MainLayout>} />
+            
+            {/* Tools */}
+            <Route path="/tools" element={<MainLayout><Tools /></MainLayout>} />
+            <Route path="/tools/audio-cutter" element={<MainLayout><AudioCutter /></MainLayout>} />
+            <Route path="/tools/audio-recorder" element={<MainLayout><AudioRecorder /></MainLayout>} />
+            <Route path="/tools/audio-joiner" element={<MainLayout><AudioJoiner /></MainLayout>} />
+            <Route path="/tools/video-to-audio" element={<MainLayout><VideoToAudio /></MainLayout>} />
+            <Route path="/tools/audio-converter" element={<MainLayout><AudioConverter /></MainLayout>} />
+            <Route path="/tools/waveform-generator" element={<MainLayout><WaveformGenerator /></MainLayout>} />
             
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
