@@ -23,7 +23,8 @@ import {
   User,
   Eye,
   EyeOff,
-  Check
+  Check,
+  Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -46,6 +47,7 @@ import CollectionRow from '@/components/profile/CollectionRow';
 import SortableCollectionItem from '@/components/profile/SortableCollectionItem';
 import CreateCollectionDialog from '@/components/profile/CreateCollectionDialog';
 import EditCollectionDialog from '@/components/profile/EditCollectionDialog';
+import SubscribeDialog from '@/components/profile/SubscribeDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -309,6 +311,8 @@ const ProfilePage: React.FC = () => {
   const [showEditCollection, setShowEditCollection] = useState(false);
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
   const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);
+  const [showSubscribeDialog, setShowSubscribeDialog] = useState(false);
+  const [creatorHasPlans, setCreatorHasPlans] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -602,6 +606,16 @@ const ProfilePage: React.FC = () => {
 
         // Fetch collections for the profile
         fetchCollections(data.id, ownProfile);
+
+        // Check if creator has subscription plans (for non-own profiles)
+        if (!ownProfile && data.is_creator) {
+          const { count } = await supabase
+            .from('creator_subscription_plans')
+            .select('*', { count: 'exact', head: true })
+            .eq('creator_id', data.id)
+            .eq('is_active', true);
+          setCreatorHasPlans((count || 0) > 0);
+        }
       }
 
       setLoading(false);
@@ -863,6 +877,18 @@ const ProfilePage: React.FC = () => {
                 </Button>
               )}
               
+              {/* Subscribe button for creators with plans */}
+              {!isOwnProfile && profile.is_creator && creatorHasPlans && (
+                <Button 
+                  onClick={() => setShowSubscribeDialog(true)}
+                  variant="outline"
+                  className="border-primary/50 text-primary hover:bg-primary/10"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Subscribe
+                </Button>
+              )}
+              
               {/* Own profile buttons */}
               {isOwnProfile && (
                 <>
@@ -955,6 +981,18 @@ const ProfilePage: React.FC = () => {
                       Follow
                     </>
                   )}
+                </Button>
+              )}
+
+              {/* Subscribe button for creators with plans (mobile) */}
+              {!isOwnProfile && profile.is_creator && creatorHasPlans && (
+                <Button 
+                  onClick={() => setShowSubscribeDialog(true)}
+                  variant="outline"
+                  className="border-primary/50 text-primary hover:bg-primary/10"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Subscribe
                 </Button>
               )}
               
@@ -1323,6 +1361,16 @@ const ProfilePage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Subscribe Dialog */}
+      {profile && (
+        <SubscribeDialog
+          open={showSubscribeDialog}
+          onOpenChange={setShowSubscribeDialog}
+          creatorId={profile.id}
+          creatorName={profile.full_name || profile.username || 'Creator'}
+        />
+      )}
     </TooltipProvider>
   );
 };
