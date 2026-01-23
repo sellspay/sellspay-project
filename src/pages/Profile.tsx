@@ -16,49 +16,18 @@ import {
   Play,
   UserPlus,
   UserMinus,
-  Layers,
   Download,
   Bookmark,
   Pencil,
   User,
-  Eye,
-  EyeOff,
-  Check,
   Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
 import CollectionRow from '@/components/profile/CollectionRow';
-import SortableCollectionItem from '@/components/profile/SortableCollectionItem';
 import CreateCollectionDialog from '@/components/profile/CreateCollectionDialog';
-import EditCollectionDialog from '@/components/profile/EditCollectionDialog';
 import SubscribeDialog from '@/components/profile/SubscribeDialog';
 import { ProfileEditorDialog } from '@/components/profile-editor';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 interface Profile {
   id: string;
@@ -307,21 +276,10 @@ const ProfilePage: React.FC = () => {
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [showCreateCollection, setShowCreateCollection] = useState(false);
-  const [isEditingCollections, setIsEditingCollections] = useState(false);
   const [showRecentUploads, setShowRecentUploads] = useState(true);
-  const [showEditCollection, setShowEditCollection] = useState(false);
-  const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
-  const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);
   const [showSubscribeDialog, setShowSubscribeDialog] = useState(false);
   const [creatorHasPlans, setCreatorHasPlans] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   const fetchCollections = async (profileId: string, isOwn: boolean) => {
     try {
@@ -680,89 +638,6 @@ const ProfilePage: React.FC = () => {
   const filteredProducts = products.filter(p => p.status === 'published');
 
   const publishedCount = filteredProducts.length;
-
-  // Handle drag end for collection reordering
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = collections.findIndex(c => c.id === active.id);
-      const newIndex = collections.findIndex(c => c.id === over.id);
-
-      const newCollections = arrayMove(collections, oldIndex, newIndex);
-      setCollections(newCollections);
-
-      // Update display_order in database
-      try {
-        await Promise.all(
-          newCollections.map((col, idx) =>
-            supabase
-              .from('collections')
-              .update({ display_order: idx })
-              .eq('id', col.id)
-          )
-        );
-      } catch (error) {
-        console.error('Error updating collection order:', error);
-        toast.error('Failed to update order');
-      }
-    }
-  };
-
-  // Toggle collection visibility
-  const toggleCollectionVisibility = async (collectionId: string, isVisible: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('collections')
-        .update({ is_visible: isVisible })
-        .eq('id', collectionId);
-
-      if (error) throw error;
-
-      setCollections(prev => 
-        prev.map(c => c.id === collectionId ? { ...c, is_visible: isVisible } : c)
-      );
-
-      toast.success(isVisible ? 'Collection is now visible' : 'Collection hidden');
-    } catch (error) {
-      console.error('Error updating visibility:', error);
-      toast.error('Failed to update visibility');
-    }
-  };
-
-  // Delete collection
-  const handleDeleteCollection = async (collectionId: string) => {
-    try {
-      // First delete collection items
-      const { error: itemsError } = await supabase
-        .from('collection_items')
-        .delete()
-        .eq('collection_id', collectionId);
-
-      if (itemsError) throw itemsError;
-
-      // Then delete the collection itself
-      const { error: collectionError } = await supabase
-        .from('collections')
-        .delete()
-        .eq('id', collectionId);
-
-      if (collectionError) throw collectionError;
-
-      setCollections(prev => prev.filter(c => c.id !== collectionId));
-      setDeleteCollectionId(null);
-      toast.success('Collection deleted');
-    } catch (error) {
-      console.error('Error deleting collection:', error);
-      toast.error('Failed to delete collection');
-    }
-  };
-
-  // Open edit dialog for a collection
-  const handleEditCollection = (collection: Collection) => {
-    setEditingCollection(collection);
-    setShowEditCollection(true);
-  };
 
   // Toggle and persist recent uploads visibility
   const toggleRecentUploadsVisibility = async (visible: boolean) => {
@@ -1148,59 +1023,21 @@ const ProfilePage: React.FC = () => {
               {/* Edit Controls for own profile */}
               {isOwnProfile && profile.is_creator && (
                 <div className="flex justify-end items-center mb-6 gap-2">
-                  {isEditingCollections ? (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsEditingCollections(false)}
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        Done
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => setShowProfileEditor(true)}
-                        className="bg-primary hover:bg-primary/90"
-                      >
-                        <Pencil className="w-4 h-4 mr-1" />
-                        Launch Editor
-                      </Button>
-                      {collections.length > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setIsEditingCollections(true)}
-                        >
-                          <Layers className="w-4 h-4 mr-1" />
-                          Manage
-                        </Button>
-                      )}
-                    </>
-                  )}
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setShowProfileEditor(true)}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    <Pencil className="w-4 h-4 mr-1" />
+                    Launch Editor
+                  </Button>
                 </div>
               )}
 
-              {/* Automatic "Recent Uploads" Collection - toggleable */}
+              {/* Automatic "Recent Uploads" Collection */}
               {filteredProducts.length > 0 && showRecentUploads && (
                 <div className="mb-10">
-                  {isEditingCollections && isOwnProfile && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => toggleRecentUploadsVisibility(false)}
-                      >
-                        <Eye className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                      <span className="text-sm text-muted-foreground">Recent Uploads</span>
-                    </div>
-                  )}
                   <CollectionRow
                     id="recent-uploads"
                     name="Recent Uploads"
@@ -1223,49 +1060,20 @@ const ProfilePage: React.FC = () => {
                 </div>
               )}
 
-              {/* Hidden Recent Uploads toggle when editing */}
-              {filteredProducts.length > 0 && !showRecentUploads && isEditingCollections && isOwnProfile && (
-                <div className="mb-10 p-4 border border-dashed border-border rounded-lg opacity-50">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => toggleRecentUploadsVisibility(true)}
-                    >
-                      <EyeOff className="w-4 h-4 text-destructive" />
-                    </Button>
-                    <span className="text-sm text-muted-foreground">Recent Uploads (Hidden)</span>
-                  </div>
-                </div>
-              )}
-
-              {/* User Created Collections with Drag & Drop */}
+              {/* User Created Collections */}
               {collections.length > 0 && (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={collections.map(c => c.id)}
-                    strategy={verticalListSortingStrategy}
-                    disabled={!isEditingCollections}
-                  >
-                    <div className="space-y-10">
-                      {collections.map((collection) => (
-                        <SortableCollectionItem
-                          key={collection.id}
-                          collection={collection}
-                          isEditing={isEditingCollections && isOwnProfile}
-                          onToggleVisibility={toggleCollectionVisibility}
-                          onDelete={(id) => setDeleteCollectionId(id)}
-                          onEdit={handleEditCollection}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
+                <div className="space-y-10">
+                  {collections.map((collection) => (
+                    <CollectionRow
+                      key={collection.id}
+                      id={collection.id}
+                      name={collection.name}
+                      coverImage={collection.cover_image_url}
+                      products={collection.products}
+                      totalCount={collection.totalCount}
+                    />
+                  ))}
+                </div>
               )}
 
               {/* Empty state */}
@@ -1388,39 +1196,6 @@ const ProfilePage: React.FC = () => {
         />
       )}
 
-      {/* Edit Collection Dialog */}
-      <EditCollectionDialog
-        open={showEditCollection}
-        onOpenChange={setShowEditCollection}
-        collection={editingCollection}
-        onUpdated={() => {
-          if (profile) {
-            fetchCollections(profile.id, isOwnProfile);
-          }
-        }}
-      />
-
-      {/* Delete Collection Confirmation */}
-      <AlertDialog open={!!deleteCollectionId} onOpenChange={(open) => !open && setDeleteCollectionId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Collection?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this collection. The products inside will not be deleted, 
-              only the collection grouping.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteCollectionId && handleDeleteCollection(deleteCollectionId)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Subscribe Dialog */}
       {profile && (
