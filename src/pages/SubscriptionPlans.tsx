@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Plus, Edit2, Trash2, Package, Users, DollarSign, Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import CreatePlanWizard from '@/components/subscription/CreatePlanWizard';
 
 interface SubscriptionPlan {
   id: string;
@@ -33,6 +34,7 @@ interface Product {
   cover_image_url: string | null;
   pricing_type: string | null;
   subscription_access: string | null;
+  price_cents: number | null;
 }
 
 interface Profile {
@@ -51,7 +53,7 @@ export default function SubscriptionPlans() {
   const [saving, setSaving] = useState(false);
   
   // Dialog states
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createWizardOpen, setCreateWizardOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [manageProductsDialogOpen, setManageProductsDialogOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
@@ -150,7 +152,7 @@ export default function SubscriptionPlans() {
       // Fetch creator's products
       const { data: productsData } = await supabase
         .from('products')
-        .select('id, name, cover_image_url, pricing_type, subscription_access')
+        .select('id, name, cover_image_url, pricing_type, subscription_access, price_cents')
         .eq('creator_id', profile.id)
         .eq('status', 'published');
       
@@ -163,39 +165,7 @@ export default function SubscriptionPlans() {
     }
   }
 
-  async function handleCreatePlan() {
-    if (!profile?.id || !planName.trim() || !planPrice) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-    
-    setSaving(true);
-    try {
-      const priceCents = Math.round(parseFloat(planPrice) * 100);
-      
-      const { error } = await supabase
-        .from('creator_subscription_plans')
-        .insert({
-          creator_id: profile.id,
-          name: planName.trim(),
-          description: planDescription.trim() || null,
-          price_cents: priceCents,
-          currency: 'USD',
-        });
-      
-      if (error) throw error;
-      
-      toast.success('Subscription plan created!');
-      setCreateDialogOpen(false);
-      resetForm();
-      fetchData();
-    } catch (error) {
-      console.error('Error creating plan:', error);
-      toast.error('Failed to create plan');
-    } finally {
-      setSaving(false);
-    }
-  }
+  // handleCreatePlan is now handled by CreatePlanWizard component
 
   async function handleUpdatePlan() {
     if (!selectedPlan || !planName.trim() || !planPrice) {
@@ -364,68 +334,10 @@ export default function SubscriptionPlans() {
             </p>
           </div>
           
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create Plan
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create Subscription Plan</DialogTitle>
-                <DialogDescription>
-                  Set up a new subscription tier for your audience
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Plan Name *</Label>
-                  <Input
-                    id="name"
-                    placeholder="e.g., Premium Access"
-                    value={planName}
-                    onChange={(e) => setPlanName(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="What subscribers get..."
-                    value={planDescription}
-                    onChange={(e) => setPlanDescription(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Monthly Price (USD) *</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                    <Input
-                      id="price"
-                      type="number"
-                      min="0.99"
-                      step="0.01"
-                      placeholder="19.99"
-                      value={planPrice}
-                      onChange={(e) => setPlanPrice(e.target.value)}
-                      className="pl-7"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => { setCreateDialogOpen(false); resetForm(); }}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreatePlan} disabled={saving}>
-                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Create Plan
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button className="gap-2" onClick={() => setCreateWizardOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Create Plan
+          </Button>
         </div>
 
         {plans.length === 0 ? (
@@ -438,7 +350,7 @@ export default function SubscriptionPlans() {
               <p className="text-muted-foreground text-center max-w-md mb-6">
                 Create your first subscription plan to offer exclusive access to your content for a monthly fee.
               </p>
-              <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+              <Button onClick={() => setCreateWizardOpen(true)} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Create Your First Plan
               </Button>
@@ -642,6 +554,17 @@ export default function SubscriptionPlans() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Create Plan Wizard */}
+        {profile && (
+          <CreatePlanWizard
+            open={createWizardOpen}
+            onOpenChange={setCreateWizardOpen}
+            creatorId={profile.id}
+            products={products}
+            onSuccess={fetchData}
+          />
+        )}
       </div>
     </MainLayout>
   );
