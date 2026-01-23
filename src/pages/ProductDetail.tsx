@@ -521,6 +521,33 @@ export default function ProductDetail() {
     }
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const { error } = await supabase
+        .from("comments")
+        .delete()
+        .eq("id", commentId);
+
+      if (error) throw error;
+
+      fetchComments();
+      toast.success("Comment deleted");
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      toast.error("Failed to delete comment");
+    }
+  };
+
+  // Check if user can delete a comment (own comment or is creator)
+  const canDeleteComment = (comment: Comment) => {
+    if (!userProfileId) return false;
+    // User can delete their own comment
+    if (comment.user_id === userProfileId) return true;
+    // Creator can delete any comment on their product
+    if (product?.creator?.id === userProfileId) return true;
+    return false;
+  };
+
   const formatPrice = (cents: number | null, type: string | null, currency: string | null) => {
     if (type === "free" || !cents) return "Free";
     const amount = cents / 100;
@@ -1059,6 +1086,37 @@ export default function ProductDetail() {
                           <Reply className="w-3.5 h-3.5" />
                           Reply
                         </button>
+
+                        {/* Delete button */}
+                        {canDeleteComment(comment) && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Delete
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Comment</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this comment? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                       
                       {/* Replies */}
@@ -1131,6 +1189,36 @@ export default function ProductDetail() {
                                           </AvatarFallback>
                                         </Avatar>
                                       </div>
+                                    )}
+                                    
+                                    {/* Delete reply button */}
+                                    {canDeleteComment(reply) && (
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <button
+                                            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Delete Reply</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              Are you sure you want to delete this reply? This action cannot be undone.
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction
+                                              onClick={() => handleDeleteComment(reply.id)}
+                                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                            >
+                                              Delete
+                                            </AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
                                     )}
                                   </div>
                                 </div>
