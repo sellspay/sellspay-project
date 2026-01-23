@@ -38,6 +38,8 @@ export default function CreateProduct() {
   const [tagInput, setTagInput] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [previewVideo, setPreviewVideo] = useState<File | null>(null);
+  const [previewVideoPreview, setPreviewVideoPreview] = useState<string | null>(null);
   const [downloadFile, setDownloadFile] = useState<File | null>(null);
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,6 +47,14 @@ export default function CreateProduct() {
     if (file) {
       setCoverImage(file);
       setCoverPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handlePreviewVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPreviewVideo(file);
+      setPreviewVideoPreview(URL.createObjectURL(file));
     }
   };
 
@@ -93,6 +103,7 @@ export default function CreateProduct() {
       if (profileError) throw profileError;
 
       let coverImageUrl: string | null = null;
+      let previewVideoPath: string | null = null;
       let downloadUrl: string | null = null;
 
       // Upload cover image
@@ -110,6 +121,18 @@ export default function CreateProduct() {
           .getPublicUrl(path);
         
         coverImageUrl = publicUrl.publicUrl;
+      }
+
+      // Upload preview video
+      if (previewVideo) {
+        const ext = previewVideo.name.split(".").pop();
+        // Store the relative path for preview_video_url
+        previewVideoPath = `previews/${profile.id}/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("product-media")
+          .upload(previewVideoPath, previewVideo);
+
+        if (uploadError) throw uploadError;
       }
 
       // Upload download file
@@ -144,6 +167,7 @@ export default function CreateProduct() {
           youtube_url: youtubeUrl || null,
           tags: tags.length > 0 ? tags : null,
           cover_image_url: coverImageUrl,
+          preview_video_url: previewVideoPath,
           download_url: downloadUrl,
           creator_id: profile.id,
           status: publish ? "published" : "draft",
@@ -316,6 +340,54 @@ export default function CreateProduct() {
                       type="file"
                       accept="image/*"
                       onChange={handleCoverChange}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {/* Preview Video */}
+            <div>
+              <Label>Preview Video (loops on hover)</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Short video clip that plays when hovering over your product card
+              </p>
+              <div className="mt-2">
+                {previewVideoPreview ? (
+                  <div className="relative">
+                    <video
+                      src={previewVideoPreview}
+                      className="w-full aspect-video object-cover rounded-lg"
+                      controls
+                      muted
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2"
+                      onClick={() => {
+                        setPreviewVideo(null);
+                        setPreviewVideoPreview(null);
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                    <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                    <span className="text-sm text-muted-foreground">
+                      Click to upload preview video
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-1">
+                      MP4, WebM (max 30 seconds recommended)
+                    </span>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={handlePreviewVideoChange}
                       className="hidden"
                     />
                   </label>
