@@ -70,13 +70,13 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-20 items-center justify-between">
+        <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img 
               src={navbarLogo} 
               alt="EditorsParadise" 
-              className="h-16 sm:h-[72px] w-auto"
+              className="h-14 sm:h-16 w-auto max-w-[200px] sm:max-w-[280px]"
             />
           </Link>
 
