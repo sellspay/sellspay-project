@@ -11,14 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { query, limit = 20 } = await req.json();
-
-    if (!query) {
-      return new Response(
-        JSON.stringify({ error: "Query is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const { query, limit = 20, trending = false } = await req.json();
 
     const apiKey = Deno.env.get("GIPHY_API_KEY");
     if (!apiKey) {
@@ -28,7 +21,15 @@ serve(async (req) => {
       );
     }
 
-    const url = `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(query)}&limit=${limit}&rating=pg-13`;
+    let url: string;
+    
+    if (trending || !query) {
+      // Fetch trending GIFs
+      url = `https://api.giphy.com/v1/gifs/trending?api_key=${apiKey}&limit=${limit}&rating=pg-13`;
+    } else {
+      // Search GIFs
+      url = `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(query)}&limit=${limit}&rating=pg-13`;
+    }
     
     const response = await fetch(url);
     const data = await response.json();
