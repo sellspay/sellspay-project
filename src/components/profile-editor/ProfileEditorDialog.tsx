@@ -30,7 +30,7 @@ import {
   Link as LinkIcon, Settings, User, Download, Bookmark
 } from 'lucide-react';
 import { ProfileSection, SectionType, SECTION_TEMPLATES } from './types';
-import { AddSectionDialog } from './AddSectionDialog';
+import { AddSectionPanel } from './AddSectionPanel';
 import { EditSectionDialog } from './EditSectionDialog';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
 import { cn } from '@/lib/utils';
@@ -151,7 +151,7 @@ export function ProfileEditorDialog({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showAddPanel, setShowAddPanel] = useState(false);
   const [editingSection, setEditingSection] = useState<ProfileSection | null>(null);
   const [productCount, setProductCount] = useState(0);
 
@@ -209,7 +209,7 @@ export function ProfileEditorDialog({
     }
   };
 
-  const addSection = async (type: SectionType) => {
+  const addSection = async (type: SectionType, _presetId?: string) => {
     const template = SECTION_TEMPLATES.find((t) => t.type === type);
     if (!template) return;
 
@@ -308,9 +308,20 @@ export function ProfileEditorDialog({
   return (
     <TooltipProvider>
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-[100vw] w-[100vw] h-[100vh] max-h-[100vh] p-0 gap-0 rounded-none border-0 [&>button]:hidden">
-          {/* Header toolbar */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background/95 backdrop-blur-sm z-50">
+        <DialogContent className="max-w-[100vw] w-[100vw] h-[100vh] max-h-[100vh] p-0 gap-0 rounded-none border-0 [&>button]:hidden overflow-hidden">
+          {/* Fixed background that fills entire viewport */}
+          <div 
+            className="absolute inset-0 z-0"
+            style={{
+              backgroundImage: profile.background_url ? `url(${profile.background_url})` : undefined,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundColor: profile.background_url ? undefined : 'hsl(var(--background))',
+            }}
+          />
+
+          {/* Header toolbar - fixed at top */}
+          <div className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
             <h2 className="text-lg font-semibold">Profile Editor</h2>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => fetchSections()} disabled={loading}>
@@ -327,20 +338,12 @@ export function ProfileEditorDialog({
             </div>
           </div>
 
-          {/* Main canvas with background */}
-          <ScrollArea className="flex-1 h-[calc(100vh-57px)]">
-            <div 
-              className="min-h-full"
-              style={{
-                backgroundImage: profile.background_url ? `url(${profile.background_url})` : undefined,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundAttachment: 'fixed',
-                backgroundColor: profile.background_url ? undefined : 'hsl(var(--background))',
-              }}
-            >
-              {/* Profile Card - matching actual profile layout */}
+          {/* Main content area - the card scrolls, background stays fixed */}
+          <div className="relative z-10 flex-1 h-[calc(100vh-57px)] flex items-start justify-center overflow-hidden">
+            {/* Scrollable container for the profile card only */}
+            <ScrollArea className="h-full w-full">
               <div className="max-w-4xl mx-auto px-4 py-8">
+                {/* Profile Card */}
                 <div className="bg-card/90 backdrop-blur-md rounded-2xl border border-border/50 overflow-hidden">
                   {/* Banner */}
                   <div className="relative h-40 bg-gradient-to-b from-primary/20 to-background overflow-hidden">
@@ -416,6 +419,20 @@ export function ProfileEditorDialog({
                               </svg>
                             </div>
                           )}
+                          {socialLinks.twitter && (
+                            <div className="text-muted-foreground">
+                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                              </svg>
+                            </div>
+                          )}
+                          {socialLinks.tiktok && (
+                            <div className="text-muted-foreground">
+                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+                              </svg>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -475,7 +492,7 @@ export function ProfileEditorDialog({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setShowAddDialog(true)}
+                          onClick={() => setShowAddPanel(true)}
                           className="gap-2"
                         >
                           <Plus className="w-4 h-4" />
@@ -494,7 +511,7 @@ export function ProfileEditorDialog({
                             No sections yet. Start building your profile!
                           </p>
                           <Button 
-                            onClick={() => setShowAddDialog(true)}
+                            onClick={() => setShowAddPanel(true)}
                             className="bg-primary hover:bg-primary/90"
                           >
                             <Plus className="w-4 h-4 mr-2" />
@@ -533,15 +550,15 @@ export function ProfileEditorDialog({
                   </div>
                 </div>
               </div>
-            </div>
-          </ScrollArea>
+            </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* Add Section Dialog */}
-      <AddSectionDialog
-        open={showAddDialog}
-        onOpenChange={setShowAddDialog}
+      {/* Add Section Panel - Full screen overlay */}
+      <AddSectionPanel
+        open={showAddPanel}
+        onClose={() => setShowAddPanel(false)}
         onAddSection={addSection}
       />
 
