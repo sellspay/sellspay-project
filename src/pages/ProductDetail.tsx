@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Play, Download, Share2, Heart, Tag, Calendar, Loader2, CheckCircle } from "lucide-react";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Play, Download, Share2, Heart, Tag, Calendar, Loader2, CheckCircle, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+
 interface Product {
   id: string;
   name: string;
@@ -34,6 +36,7 @@ interface Product {
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,6 +45,8 @@ export default function ProductDetail() {
   const [purchasing, setPurchasing] = useState(false);
   const [hasPurchased, setHasPurchased] = useState(false);
   const [userProfileId, setUserProfileId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
 
   // Fetch user's profile ID for likes
   useEffect(() => {
@@ -106,6 +111,11 @@ export default function ProductDetail() {
           .eq("id", productData.creator_id)
           .maybeSingle();
         creator = creatorData;
+        
+        // Check if current user owns this product
+        if (userProfileId && productData.creator_id === userProfileId) {
+          setIsOwner(true);
+        }
       }
 
       setProduct({ ...productData, creator });
@@ -258,6 +268,28 @@ export default function ProductDetail() {
     return `https://ocwvpzvbnepqmqkkrqcv.supabase.co/storage/v1/object/public/product-media/${path}`;
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+    
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Product deleted");
+      navigate("/products");
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      toast.error("Failed to delete product");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -294,13 +326,48 @@ export default function ProductDetail() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      {/* Back Button */}
-      <Button variant="ghost" asChild className="mb-6">
-        <Link to="/products">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Products
-        </Link>
-      </Button>
+      {/* Back Button & Owner Actions */}
+      <div className="flex items-center justify-between mb-6">
+        <Button variant="ghost" asChild>
+          <Link to="/products">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Products
+          </Link>
+        </Button>
+        
+        {isOwner && (
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link to={`/edit-product/${id}`}>
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={deleting}>
+                  {deleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Product</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this product? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+      </div>
 
       <div className="grid lg:grid-cols-5 gap-8">
         {/* Main Content */}

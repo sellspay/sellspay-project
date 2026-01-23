@@ -12,6 +12,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import CreateProduct from "./pages/CreateProduct";
+import EditProduct from "./pages/EditProduct";
 import Creators from "./pages/Creators";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/products" element={<MainLayout><Products /></MainLayout>} />
             <Route path="/product/:id" element={<MainLayout><ProductDetail /></MainLayout>} />
             <Route path="/create-product" element={<MainLayout><CreateProduct /></MainLayout>} />
+            <Route path="/edit-product/:id" element={<MainLayout><EditProduct /></MainLayout>} />
             <Route path="/creators" element={<MainLayout><Creators /></MainLayout>} />
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
             <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
