@@ -597,7 +597,11 @@ export function ProfileEditorDialog({
       ...JSON.parse(JSON.stringify(template.defaultContent)),
       ...(preset?.contentOverrides || {}),
     };
-    const styleOptions = preset?.styleOptions || { preset: presetId || 'style1' };
+    const styleOptions = {
+      ...(preset?.styleOptions || {}),
+      // Ensure preset is always persisted so previews can render accurately
+      preset: presetId || preset?.id || (preset ? preset.id : 'style1'),
+    };
 
     const sectionToInsert: {
       profile_id: string;
@@ -628,7 +632,6 @@ export function ProfileEditorDialog({
       const createdSection = data as unknown as ProfileSection;
       setSections(prev => [...prev, createdSection]);
       setShowAddPanel(false);
-      setEditingSection(createdSection);
       toast.success(`${template.name} section added`);
     } catch (error) {
       console.error('Error adding section:', error);
