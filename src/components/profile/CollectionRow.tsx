@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, ChevronRight as ArrowIcon, Layers, Lock, Play, Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Product {
   id: string;
@@ -43,11 +44,139 @@ const getYouTubeThumbnail = (youtubeUrl: string | null): string | null => {
   return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
 };
 
+// Helper to get full preview video URL from Supabase storage
+const getPreviewVideoUrl = (path: string | null): string | null => {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  const { data } = supabase.storage.from('product-media').getPublicUrl(path);
+  return data?.publicUrl || null;
+};
+
 const formatDate = (dateString: string | null | undefined) => {
   if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
+
+// Product card with video preview on hover
+function ProductCardWithPreview({ 
+  product, 
+  onClick 
+}: { 
+  product: Product; 
+  onClick: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isHovering, setIsHovering] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  
+  const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
+  const previewVideoUrl = getPreviewVideoUrl(product.preview_video_url);
+  const isLocked = product.locked || product.pricing_type === 'paid';
+
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    if (videoRef.current && previewVideoUrl && !videoError) {
+      videoRef.current.loop = true;
+      videoRef.current.play().catch(() => setVideoError(true));
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className="group text-left w-full"
+    >
+      <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border border-border">
+        {/* Video preview (hidden until hover) */}
+        {previewVideoUrl && !videoError && (
+          <video
+            ref={videoRef}
+            src={previewVideoUrl}
+            muted
+            loop
+            playsInline
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+              isHovering ? 'opacity-100' : 'opacity-0'
+            }`}
+            onError={() => setVideoError(true)}
+          />
+        )}
+        
+        {/* Thumbnail */}
+        {thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={product.name}
+            className={`w-full h-full object-cover transition-all duration-300 ${
+              isHovering && previewVideoUrl && !videoError ? 'opacity-0' : 'opacity-100 group-hover:scale-105'
+            }`}
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (target.src.includes('maxresdefault')) {
+                target.src = target.src.replace('maxresdefault', 'hqdefault');
+              }
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+            <Layers className="w-12 h-12 text-muted-foreground" />
+          </div>
+        )}
+        
+        {/* Locked Badge */}
+        {isLocked && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded text-xs text-white font-medium">
+            <Lock className="w-3 h-3" />
+            Locked
+          </div>
+        )}
+        
+        {/* Play indicator */}
+        {previewVideoUrl && !videoError && !isHovering && (
+          <div className="absolute top-2 left-2 bg-background/80 rounded-full p-1.5">
+            <Play className="w-3 h-3 text-foreground" fill="currentColor" />
+          </div>
+        )}
+        
+        {/* Play Button for YouTube videos */}
+        {!previewVideoUrl && product.youtube_url && (
+          <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+            <Play className="w-5 h-5 text-black fill-black ml-0.5" />
+          </div>
+        )}
+      </div>
+      
+      {/* Product Info */}
+      <div className="mt-2.5">
+        <h4 className="font-medium text-foreground text-sm line-clamp-2 group-hover:text-primary transition-colors">
+          {product.name}
+        </h4>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+          {product.created_at && <span>{formatDate(product.created_at)}</span>}
+          <span className="flex items-center gap-1">
+            <Heart className="w-3 h-3" />
+            {product.likeCount ?? 0}
+          </span>
+          <span className="flex items-center gap-1">
+            <MessageCircle className="w-3 h-3" />
+            {product.commentCount ?? 0}
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
 
 export default function CollectionRow({ id, name, coverImage, products, totalCount }: CollectionRowProps) {
   const navigate = useNavigate();
@@ -126,75 +255,15 @@ export default function CollectionRow({ id, name, coverImage, products, totalCou
           )}
         </div>
 
-        {/* Products Grid - 3 per row, centered */}
+        {/* Products Grid - 3 per row with video preview */}
         <div className="grid grid-cols-3 gap-5">
-          {currentProducts.map((product) => {
-            const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
-            const isLocked = product.locked || product.pricing_type === 'paid';
-            const hasVideo = product.preview_video_url || product.youtube_url;
-            
-            return (
-              <button
-                key={product.id}
-                onClick={() => navigate(`/product/${product.id}`)}
-                className="group text-left w-full"
-              >
-                {/* Thumbnail */}
-                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border border-border">
-                  {thumbnail ? (
-                    <img
-                      src={thumbnail}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (target.src.includes('maxresdefault')) {
-                          target.src = target.src.replace('maxresdefault', 'hqdefault');
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-                      <Layers className="w-12 h-12 text-muted-foreground" />
-                    </div>
-                  )}
-                  
-                  {/* Locked Badge */}
-                  {isLocked && (
-                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded text-xs text-white font-medium">
-                      <Lock className="w-3 h-3" />
-                      Locked
-                    </div>
-                  )}
-                  
-                  {/* Play Button */}
-                  {hasVideo && (
-                    <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                      <Play className="w-5 h-5 text-black fill-black ml-0.5" />
-                    </div>
-                  )}
-                </div>
-                
-                {/* Product Info */}
-                <div className="mt-2.5">
-                  <h4 className="font-medium text-foreground text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                    {product.name}
-                  </h4>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                    {product.created_at && <span>{formatDate(product.created_at)}</span>}
-                    <span className="flex items-center gap-1">
-                      <Heart className="w-3 h-3" />
-                      {product.likeCount ?? 0}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MessageCircle className="w-3 h-3" />
-                      {product.commentCount ?? 0}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+          {currentProducts.map((product) => (
+            <ProductCardWithPreview
+              key={product.id}
+              product={product}
+              onClick={() => navigate(`/product/${product.id}`)}
+            />
+          ))}
         </div>
       </div>
 
@@ -216,71 +285,16 @@ export default function CollectionRow({ id, name, coverImage, products, totalCou
           </DialogHeader>
           
           <div className="grid grid-cols-3 gap-4 mt-4">
-            {products.map((product) => {
-              const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
-              const isLocked = product.locked || product.pricing_type === 'paid';
-              const hasVideo = product.preview_video_url || product.youtube_url;
-              
-              return (
-                <button
-                  key={product.id}
-                  onClick={() => {
-                    setShowModal(false);
-                    navigate(`/product/${product.id}`);
-                  }}
-                  className="group text-left"
-                >
-                  <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border border-border">
-                    {thumbnail ? (
-                      <img
-                        src={thumbnail}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          if (target.src.includes('maxresdefault')) {
-                            target.src = target.src.replace('maxresdefault', 'hqdefault');
-                          }
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-muted">
-                        <Layers className="w-8 h-8 text-muted-foreground" />
-                      </div>
-                    )}
-                    
-                    {isLocked && (
-                      <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 backdrop-blur-sm px-2 py-1 rounded text-xs text-white">
-                        <Lock className="w-3 h-3" />
-                        Locked
-                      </div>
-                    )}
-                    
-                    {hasVideo && (
-                      <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center">
-                        <Play className="w-4 h-4 text-black fill-black ml-0.5" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-2">
-                    <h4 className="text-sm font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors">
-                      {product.name}
-                    </h4>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                      {product.created_at && <span>{formatDate(product.created_at)}</span>}
-                      <span className="flex items-center gap-1">
-                        <Heart className="w-3 h-3" />
-                        {product.likeCount ?? 0}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MessageCircle className="w-3 h-3" />
-                        {product.commentCount ?? 0}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+            {products.map((product) => (
+              <ProductCardWithPreview
+                key={product.id}
+                product={product}
+                onClick={() => {
+                  setShowModal(false);
+                  navigate(`/product/${product.id}`);
+                }}
+              />
+            ))}
           </div>
         </DialogContent>
       </Dialog>
