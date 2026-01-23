@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Eye, EyeOff } from 'lucide-react';
+import { GripVertical, Eye, EyeOff, Trash2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CollectionRow from './CollectionRow';
 
@@ -31,12 +31,16 @@ interface SortableCollectionItemProps {
   collection: Collection;
   isEditing: boolean;
   onToggleVisibility: (id: string, isVisible: boolean) => void;
+  onDelete: (id: string) => void;
+  onEdit: (collection: Collection) => void;
 }
 
 export default function SortableCollectionItem({ 
   collection, 
   isEditing, 
-  onToggleVisibility 
+  onToggleVisibility,
+  onDelete,
+  onEdit,
 }: SortableCollectionItemProps) {
   const {
     attributes,
@@ -84,6 +88,26 @@ export default function SortableCollectionItem({
             ) : (
               <EyeOff className="w-4 h-4 text-destructive" />
             )}
+          </Button>
+          
+          {/* Edit button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onEdit(collection)}
+          >
+            <Pencil className="w-4 h-4 text-muted-foreground" />
+          </Button>
+          
+          {/* Delete button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:bg-destructive/10"
+            onClick={() => onDelete(collection.id)}
+          >
+            <Trash2 className="w-4 h-4 text-destructive" />
           </Button>
           
           <span className="text-sm text-muted-foreground">
