@@ -8,3 +8,12 @@ verify_jwt = false
 
 [functions.create-connect-account]
 verify_jwt = false
+
+[functions.search-giphy]
+verify_jwt = true
+
+[functions.check-connect-status]
+verify_jwt = true
+
+[functions.create-editor-booking]
+verify_jwt = true
