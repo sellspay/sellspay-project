@@ -679,8 +679,9 @@ export default function ProductDetail() {
     }
   };
 
-  // Check if description needs truncation (more than 5 lines ~ 400 chars)
-  const shouldTruncateDescription = (product?.description?.length || 0) > 400;
+  // Check if description needs truncation (more than 5 lines)
+  const descriptionLineCount = (product?.description?.split('\n').length || 0);
+  const shouldTruncateDescription = descriptionLineCount > 5 || (product?.description?.length || 0) > 300;
 
   if (loading) {
     return (
@@ -946,7 +947,7 @@ export default function ProductDetail() {
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
-                      className="min-h-[60px] pr-10"
+                      className="min-h-[60px] pr-16"
                     />
                     <div className="absolute right-2 bottom-2">
                       <GifPicker onSelect={setSelectedGif} />
@@ -956,12 +957,12 @@ export default function ProductDetail() {
                     onClick={handleSubmitComment} 
                     disabled={submittingComment || (!newComment.trim() && !selectedGif)}
                     size="icon"
-                    className="h-9 w-9 rounded-full shrink-0"
+                    className="h-[60px] w-[60px] rounded-full shrink-0"
                   >
                     {submittingComment ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
-                      <Send className="w-4 h-4" />
+                      <Send className="w-5 h-5" />
                     )}
                   </Button>
                 </div>
