@@ -10,10 +10,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.search-giphy]
-verify_jwt = true
+verify_jwt = false
 
 [functions.check-connect-status]
-verify_jwt = true
+verify_jwt = false
 
 [functions.create-editor-booking]
-verify_jwt = true
+verify_jwt = false

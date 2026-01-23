@@ -14,7 +14,7 @@ serve(async (req) => {
   try {
     // Authenticate user - only logged-in users can use GIPHY API
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
         JSON.stringify({ error: "Authentication required" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -23,13 +23,14 @@ serve(async (req) => {
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    const { data: authData, error: authError } = await supabaseClient.auth.getClaims(token);
     
-    if (authError || !user) {
+    if (authError || !authData?.claims) {
       return new Response(
         JSON.stringify({ error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -83,14 +84,14 @@ serve(async (req) => {
     }
     
     const response = await fetch(url);
-    const data = await response.json();
+    const giphyData = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch from GIPHY");
+      throw new Error(giphyData.message || "Failed to fetch from GIPHY");
     }
 
     // Return simplified GIF data
-    const gifs = data.data.map((gif: any) => ({
+    const gifs = giphyData.data.map((gif: any) => ({
       id: gif.id,
       title: gif.title,
       url: gif.images.fixed_height.url,
