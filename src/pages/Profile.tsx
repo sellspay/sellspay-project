@@ -14,7 +14,9 @@ import {
   Grid3X3, 
   Heart,
   MessageCircle,
-  Play
+  Play,
+  UserPlus,
+  UserMinus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -189,6 +191,10 @@ const ProfilePage: React.FC = () => {
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [activeTab, setActiveTab] = useState<'published' | 'drafts'>('published');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -234,6 +240,40 @@ const ProfilePage: React.FC = () => {
         // For now, assume admin if email matches
         setIsAdmin(user?.email === 'vizual90@gmail.com');
 
+        // Fetch followers count
+        const { count: followers } = await supabase
+          .from('followers')
+          .select('*', { count: 'exact', head: true })
+          .eq('following_id', data.id);
+        setFollowersCount(followers || 0);
+
+        // Fetch following count
+        const { count: following } = await supabase
+          .from('followers')
+          .select('*', { count: 'exact', head: true })
+          .eq('follower_id', data.id);
+        setFollowingCount(following || 0);
+
+        // Check if current user is following this profile
+        if (user && !ownProfile) {
+          const { data: currentUserProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (currentUserProfile) {
+            setCurrentUserProfileId(currentUserProfile.id);
+            const { data: followData } = await supabase
+              .from('followers')
+              .select('id')
+              .eq('follower_id', currentUserProfile.id)
+              .eq('following_id', data.id)
+              .maybeSingle();
+            setIsFollowing(!!followData);
+          }
+        }
+
         // Fetch all products if own profile, only published for others
         const productQuery = supabase
           .from('products')
@@ -254,6 +294,41 @@ const ProfilePage: React.FC = () => {
 
     fetchProfile();
   }, [username, atUsername, user]);
+
+  const handleFollow = async () => {
+    if (!user || !profile || !currentUserProfileId) {
+      toast.error('Please log in to follow creators');
+      return;
+    }
+
+    if (isFollowing) {
+      // Unfollow
+      const { error } = await supabase
+        .from('followers')
+        .delete()
+        .eq('follower_id', currentUserProfileId)
+        .eq('following_id', profile.id);
+      
+      if (!error) {
+        setIsFollowing(false);
+        setFollowersCount(prev => prev - 1);
+        toast.success(`Unfollowed @${profile.username}`);
+      }
+    } else {
+      // Follow
+      const { error } = await supabase
+        .from('followers')
+        .insert({ follower_id: currentUserProfileId, following_id: profile.id });
+      
+      if (!error) {
+        setIsFollowing(true);
+        setFollowersCount(prev => prev + 1);
+        toast.success(`Now following @${profile.username}`);
+      } else {
+        toast.error('Failed to follow');
+      }
+    }
+  };
 
   const copyProfileLink = () => {
     const url = `${window.location.origin}/@${profile?.username}`;
@@ -348,45 +423,69 @@ const ProfilePage: React.FC = () => {
                 <span className="text-muted-foreground">products</span>
               </span>
               <span>
-                <strong className="text-foreground">0</strong>{' '}
+                <strong className="text-foreground">{followersCount}</strong>{' '}
                 <span className="text-muted-foreground">followers</span>
               </span>
               <span>
-                <strong className="text-foreground">0</strong>{' '}
+                <strong className="text-foreground">{followingCount}</strong>{' '}
                 <span className="text-muted-foreground">following</span>
               </span>
             </div>
 
-            {/* Action buttons for own profile */}
-            {isOwnProfile && (
-              <div className="flex flex-wrap gap-2">
-                {profile.is_creator && (
-                  <Button 
-                    onClick={() => navigate('/create-product')}
-                    className="bg-primary hover:bg-primary/90"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create product
-                  </Button>
-                )}
-                {isAdmin && (
+            {/* Action buttons */}
+            <div className="flex flex-wrap gap-2">
+              {/* Follow button for other profiles */}
+              {!isOwnProfile && profile.is_creator && (
+                <Button 
+                  onClick={handleFollow}
+                  variant={isFollowing ? "outline" : "default"}
+                  className={isFollowing ? "" : "bg-primary hover:bg-primary/90"}
+                >
+                  {isFollowing ? (
+                    <>
+                      <UserMinus className="w-4 h-4 mr-2" />
+                      Unfollow
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Follow
+                    </>
+                  )}
+                </Button>
+              )}
+              
+              {/* Own profile buttons */}
+              {isOwnProfile && (
+                <>
+                  {profile.is_creator && (
+                    <Button 
+                      onClick={() => navigate('/create-product')}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create product
+                    </Button>
+                  )}
+                  {isAdmin && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => navigate('/admin')}
+                    >
+                      <ShieldCheck className="w-4 h-4 mr-2" />
+                      Admin Dashboard
+                    </Button>
+                  )}
                   <Button 
                     variant="outline"
-                    onClick={() => navigate('/admin')}
+                    onClick={copyProfileLink}
                   >
-                    <ShieldCheck className="w-4 h-4 mr-2" />
-                    Admin Dashboard
+                    <LinkIcon className="w-4 h-4 mr-2" />
+                    Copy link
                   </Button>
-                )}
-                <Button 
-                  variant="outline"
-                  onClick={copyProfileLink}
-                >
-                  <LinkIcon className="w-4 h-4 mr-2" />
-                  Copy link
-                </Button>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 
