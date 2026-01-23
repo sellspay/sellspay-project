@@ -15,6 +15,7 @@ interface EditorSocialLinks {
 
 interface EditorProfile {
   id: string;
+  user_id: string;
   full_name: string | null;
   username: string | null;
   avatar_url: string | null;
@@ -26,6 +27,7 @@ interface EditorProfile {
   editor_city: string | null;
   editor_about: string | null;
   editor_social_links: EditorSocialLinks | null;
+  isAdmin?: boolean;
 }
 
 interface EditorDetailDialogProps {
@@ -88,7 +90,7 @@ export default function EditorDetailDialog({
                 <h2 className="text-xl font-bold text-foreground">
                   @{editor.username || 'editor'}
                 </h2>
-                {editor.verified && <VerifiedBadge size="md" />}
+                {editor.verified && <VerifiedBadge size="md" isAdmin={editor.isAdmin} />}
               </div>
               {editor.full_name && (
                 <p className="text-muted-foreground">{editor.full_name}</p>

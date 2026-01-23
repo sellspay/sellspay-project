@@ -23,6 +23,7 @@ interface EditorSocialLinks {
 
 interface EditorProfile {
   id: string;
+  user_id: string;
   full_name: string | null;
   username: string | null;
   avatar_url: string | null;
@@ -34,6 +35,7 @@ interface EditorProfile {
   editor_city: string | null;
   editor_about: string | null;
   editor_social_links: EditorSocialLinks | null;
+  isAdmin?: boolean;
 }
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -114,16 +116,30 @@ export default function HireEditors() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, username, avatar_url, verified, editor_hourly_rate_cents, editor_services, editor_languages, editor_country, editor_city, editor_about, editor_social_links')
+        .select('id, user_id, full_name, username, avatar_url, verified, editor_hourly_rate_cents, editor_services, editor_languages, editor_country, editor_city, editor_about, editor_social_links')
         .eq('is_editor', true)
         .not('editor_hourly_rate_cents', 'is', null);
 
       if (error) throw error;
       
-      // Cast social links to proper type
+      // Get admin status for all editors
+      const userIds = (data || []).map(e => e.user_id).filter(Boolean);
+      let adminUserIds: string[] = [];
+      
+      if (userIds.length > 0) {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'admin')
+          .in('user_id', userIds);
+        adminUserIds = (roles || []).map(r => r.user_id);
+      }
+      
+      // Cast social links to proper type and add admin status
       const typedData = (data || []).map(editor => ({
         ...editor,
-        editor_social_links: editor.editor_social_links as EditorSocialLinks | null
+        editor_social_links: editor.editor_social_links as EditorSocialLinks | null,
+        isAdmin: adminUserIds.includes(editor.user_id)
       }));
       
       setEditors(typedData);
@@ -372,7 +388,7 @@ export default function HireEditors() {
                           <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                             @{editor.username || 'editor'}
                           </h3>
-                          {editor.verified && <VerifiedBadge size="sm" />}
+                          {editor.verified && <VerifiedBadge size="sm" isAdmin={editor.isAdmin} />}
                         </div>
                         {editor.full_name && (
                           <p className="text-sm text-muted-foreground">{editor.full_name}</p>
