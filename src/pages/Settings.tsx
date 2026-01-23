@@ -23,6 +23,9 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [connectingStripe, setConnectingStripe] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [uploadingBackground, setUploadingBackground] = useState(false);
   
   // Profile
   const [fullName, setFullName] = useState("");
@@ -96,6 +99,7 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    setUploadingAvatar(true);
     try {
       const ext = file.name.split(".").pop();
       const path = `avatars/${user.id}/${Date.now()}.${ext}`;
@@ -115,6 +119,8 @@ export default function Settings() {
     } catch (error) {
       console.error("Error uploading avatar:", error);
       toast.error("Failed to upload avatar");
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -122,6 +128,7 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    setUploadingBanner(true);
     try {
       const ext = file.name.split(".").pop();
       const path = `banners/${user.id}/${Date.now()}.${ext}`;
@@ -141,6 +148,8 @@ export default function Settings() {
     } catch (error) {
       console.error("Error uploading banner:", error);
       toast.error("Failed to upload banner");
+    } finally {
+      setUploadingBanner(false);
     }
   };
 
@@ -148,6 +157,7 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    setUploadingBackground(true);
     try {
       const ext = file.name.split(".").pop();
       const path = `backgrounds/${user.id}/${Date.now()}.${ext}`;
@@ -167,6 +177,8 @@ export default function Settings() {
     } catch (error) {
       console.error("Error uploading background:", error);
       toast.error("Failed to upload background");
+    } finally {
+      setUploadingBackground(false);
     }
   };
 
@@ -213,6 +225,8 @@ export default function Settings() {
 
       if (error) throw error;
       toast.success("Profile saved!");
+      // Redirect to profile page
+      navigate(`/@${username || 'profile'}`);
     } catch (error) {
       console.error("Error saving profile:", error);
       toast.error("Failed to save profile");
@@ -303,18 +317,29 @@ export default function Settings() {
             <CardContent className="space-y-6">
               {/* Avatar */}
               <div className="flex items-center gap-6">
-                <Avatar className="w-20 h-20">
-                  <AvatarImage src={avatarUrl || undefined} />
-                  <AvatarFallback className="text-2xl">
-                    {fullName?.[0] || username?.[0] || user.email?.[0] || "?"}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="w-20 h-20">
+                    <AvatarImage src={avatarUrl || undefined} />
+                    <AvatarFallback className="text-2xl">
+                      {fullName?.[0] || username?.[0] || user.email?.[0] || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  {uploadingAvatar && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-full">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
                 <div>
                   <label>
-                    <Button variant="outline" asChild className="cursor-pointer">
+                    <Button variant="outline" asChild className="cursor-pointer" disabled={uploadingAvatar}>
                       <span>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Change Avatar
+                        {uploadingAvatar ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4 mr-2" />
+                        )}
+                        {uploadingAvatar ? "Uploading..." : "Change Avatar"}
                       </span>
                     </Button>
                     <input
@@ -322,6 +347,7 @@ export default function Settings() {
                       accept="image/*"
                       onChange={handleAvatarChange}
                       className="hidden"
+                      disabled={uploadingAvatar}
                     />
                   </label>
                   <p className="text-sm text-muted-foreground mt-2">
@@ -343,18 +369,27 @@ export default function Settings() {
                   ) : (
                     <div className="w-full h-24 bg-gradient-to-br from-primary/40 to-accent/30" />
                   )}
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
-                    <span className="text-white text-sm flex items-center gap-2">
-                      <Upload className="w-4 h-4" />
-                      Change Banner
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleBannerChange}
-                      className="hidden"
-                    />
-                  </label>
+                  {uploadingBanner ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                      <div className="flex items-center gap-2 text-primary">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="text-sm">Uploading...</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                      <span className="text-white text-sm flex items-center gap-2">
+                        <Upload className="w-4 h-4" />
+                        Change Banner
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBannerChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
                   Recommended: 1500x500px. JPG, PNG or GIF.
@@ -382,29 +417,38 @@ export default function Settings() {
                       <span className="text-muted-foreground text-sm">No background set</span>
                     </div>
                   )}
-                  <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
-                    <label className="cursor-pointer">
-                      <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
-                        <Upload className="w-4 h-4" />
-                        {backgroundUrl ? "Change" : "Upload"}
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleBackgroundChange}
-                        className="hidden"
-                      />
-                    </label>
-                    {backgroundUrl && (
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={removeBackground}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </div>
+                  {uploadingBackground ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                      <div className="flex items-center gap-2 text-primary">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="text-sm">Uploading...</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
+                      <label className="cursor-pointer">
+                        <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
+                          <Upload className="w-4 h-4" />
+                          {backgroundUrl ? "Change" : "Upload"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleBackgroundChange}
+                          className="hidden"
+                        />
+                      </label>
+                      {backgroundUrl && (
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={removeBackground}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
                   Recommended: 1920x1080px or larger. JPG, PNG. This will appear behind your entire profile.
