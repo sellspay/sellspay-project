@@ -882,17 +882,28 @@ const ProfilePage: React.FC = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div 
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      className={`w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all duration-300 ${
                         isAdmin 
-                          ? 'border-current animate-hue-rotate' 
+                          ? 'border-blue-500 hover:animate-hue-rotate group' 
                           : 'border-blue-500'
                       }`}
-                      style={isAdmin ? { animation: 'hue-rotate 3s linear infinite' } : undefined}
+                      style={{ 
+                        background: 'transparent',
+                      }}
                     >
-                      <Check 
-                        className={`w-3 h-3 ${isAdmin ? 'animate-hue-rotate' : 'text-blue-500'}`}
-                        style={isAdmin ? { animation: 'hue-rotate 3s linear infinite' } : undefined}
-                      />
+                      <svg 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        className={`w-3 h-3 transition-all duration-300 ${
+                          isAdmin ? 'text-blue-500 group-hover:animate-hue-rotate' : 'text-blue-500'
+                        }`}
+                        stroke="currentColor" 
+                        strokeWidth="3.5" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
