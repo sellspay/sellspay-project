@@ -21,7 +21,9 @@ import {
   Bookmark,
   Pencil,
   Check,
-  User
+  User,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -277,6 +279,7 @@ const ProfilePage: React.FC = () => {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [showCreateCollection, setShowCreateCollection] = useState(false);
   const [isEditingCollections, setIsEditingCollections] = useState(false);
+  const [showRecentUploads, setShowRecentUploads] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -977,9 +980,22 @@ const ProfilePage: React.FC = () => {
                 </div>
               )}
 
-              {/* Automatic "Recent Uploads" Collection */}
-              {filteredProducts.length > 0 && (
+              {/* Automatic "Recent Uploads" Collection - toggleable */}
+              {filteredProducts.length > 0 && showRecentUploads && (
                 <div className="mb-10">
+                  {isEditingCollections && isOwnProfile && (
+                    <div className="flex items-center gap-2 mb-3">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setShowRecentUploads(false)}
+                      >
+                        <Eye className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                      <span className="text-sm text-muted-foreground">Recent Uploads</span>
+                    </div>
+                  )}
                   <CollectionRow
                     id="recent-uploads"
                     name="Recent Uploads"
@@ -1002,6 +1018,23 @@ const ProfilePage: React.FC = () => {
                 </div>
               )}
 
+              {/* Hidden Recent Uploads toggle when editing */}
+              {filteredProducts.length > 0 && !showRecentUploads && isEditingCollections && isOwnProfile && (
+                <div className="mb-10 p-4 border border-dashed border-border rounded-lg opacity-50">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setShowRecentUploads(true)}
+                    >
+                      <EyeOff className="w-4 h-4 text-destructive" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground">Recent Uploads (Hidden)</span>
+                  </div>
+                </div>
+              )}
+
               {/* User Created Collections with Drag & Drop */}
               {collections.length > 0 && (
                 <DndContext
@@ -1014,7 +1047,7 @@ const ProfilePage: React.FC = () => {
                     strategy={verticalListSortingStrategy}
                     disabled={!isEditingCollections}
                   >
-                    <div className="space-y-10 pl-14">
+                    <div className="space-y-10">
                       {collections.map((collection) => (
                         <SortableCollectionItem
                           key={collection.id}

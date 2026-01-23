@@ -62,7 +62,7 @@ export default function SortableCollectionItem({
       className={`relative ${!isVisible && isEditing ? 'opacity-50' : ''}`}
     >
       {isEditing && (
-        <div className="absolute -left-14 top-3 flex items-center gap-1 z-10">
+        <div className="flex items-center gap-2 mb-3">
           {/* Drag handle */}
           <div
             {...attributes}
@@ -85,6 +85,10 @@ export default function SortableCollectionItem({
               <EyeOff className="w-4 h-4 text-destructive" />
             )}
           </Button>
+          
+          <span className="text-sm text-muted-foreground">
+            {collection.name} {!isVisible && '(Hidden)'}
+          </span>
         </div>
       )}
       
