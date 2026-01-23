@@ -1,25 +1,16 @@
 import { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { useCredits } from "@/hooks/useCredits";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Coins, 
-  Check, 
-  Zap, 
-  Mic2, 
-  Volume2, 
-  Music, 
-  SlidersHorizontal,
-  Sparkles,
-  ChevronDown,
-  ChevronUp
-} from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import MainLayout from "@/components/layout/MainLayout";
+import { Wallet, Check, Zap, Music, Mic, Wand2, Loader2, Sparkles, Shield, Clock, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 interface CreditPackage {
   id: string;
@@ -28,50 +19,92 @@ interface CreditPackage {
   price_cents: number;
   is_popular: boolean;
   display_order: number;
+  stripe_price_id: string | null;
 }
 
+// Mapping to monthly recurring price IDs
+const MONTHLY_PRICE_MAP: Record<number, string> = {
+  25: "price_1SssVIE5Ga1Ha0QbMRTCVK4R",  // Starter
+  50: "price_1SssVSE5Ga1Ha0Qb0fUFWDk9",  // Basic
+  150: "price_1SssVhE5Ga1Ha0Qbt8oDdKvc", // Pro
+  350: "price_1SssWzE5Ga1Ha0QbGjeeSuID", // Power
+  1000: "price_1SssXEE5Ga1Ha0QbgDYnF7Ds", // Enterprise
+};
+
 const proTools = [
-  { icon: Volume2, name: "SFX Generator", description: "Create sound effects from text" },
-  { icon: Mic2, name: "Voice Isolator", description: "Remove vocals or background" },
-  { icon: SlidersHorizontal, name: "SFX Isolator", description: "Isolate sound effects" },
-  { icon: Music, name: "Music Splitter", description: "Split stems (vocals, drums, bass)" },
+  { 
+    icon: Wand2, 
+    name: "SFX Generator", 
+    description: "Create custom sound effects from text descriptions using AI" 
+  },
+  { 
+    icon: Mic, 
+    name: "Voice Isolator", 
+    description: "Remove background music and isolate vocals from any audio" 
+  },
+  { 
+    icon: Music, 
+    name: "Music Splitter", 
+    description: "Split audio into separate stems: drums, bass, vocals, and more" 
+  },
+  { 
+    icon: Zap, 
+    name: "SFX Isolator", 
+    description: "Extract and isolate sound effects from complex audio files" 
+  },
 ];
 
-const faqItems = [
+const faqs = [
   {
-    question: "What are credits?",
-    answer: "Credits are used to power our AI audio tools. Each time you use a Pro tool (like SFX Generator or Voice Isolator), 1 credit is deducted from your balance. Free tools don't use any credits."
+    question: "What are credits used for?",
+    answer: "Credits are used to access Pro AI audio tools. Each tool usage costs 1 credit. Free tools like Audio Converter, Audio Joiner, and Audio Cutter don't require credits."
   },
   {
     question: "Do credits expire?",
-    answer: "No! Your credits never expire. Use them whenever you want, at your own pace."
+    answer: "Credits reset each month with your subscription. Unused credits don't roll over to the next month, so make sure to use them!"
   },
   {
-    question: "What happens when I run out of credits?",
-    answer: "You can always top up with more credits. Free tools will continue to work without credits. You'll also get 5 free credits when you sign up!"
+    question: "Can I cancel anytime?",
+    answer: "Yes! You can cancel your subscription at any time from Settings → Billing. You'll keep your credits until the end of your billing period."
   },
   {
-    question: "Can I get a refund?",
-    answer: "We offer refunds for unused credits within 14 days of purchase. Please contact our support team for assistance."
+    question: "What happens if I run out of credits?",
+    answer: "You can upgrade to a higher tier anytime. Your subscription will be prorated for the remaining days in your billing cycle."
+  },
+  {
+    question: "Do new users get free credits?",
+    answer: "Yes! Every new user receives 3 free credits to try out our Pro tools. No credit card required."
   },
 ];
 
 export default function Pricing() {
   const { user } = useAuth();
-  const { creditBalance, checkCredits, startCheckout } = useCredits();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { creditBalance, isLoading: creditsLoading, startCheckout, verifyPurchase, subscription } = useCredits();
+  
   const [packages, setPackages] = useState<CreditPackage[]>([]);
+  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
 
+  // Fetch packages and handle success/cancel params
   useEffect(() => {
     fetchPackages();
     
-    // Check if returning from canceled checkout
-    if (searchParams.get("canceled") === "true") {
-      toast.info("Checkout canceled. You can try again when you're ready.");
+    // Handle Stripe redirect
+    const sessionId = searchParams.get("session_id");
+    const success = searchParams.get("success");
+    const canceled = searchParams.get("canceled");
+    
+    if (success === "true" && sessionId) {
+      verifyPurchase(sessionId).then(() => {
+        toast.success("Subscription activated! Credits added to your wallet.");
+        navigate("/pricing", { replace: true });
+      });
+    } else if (canceled === "true") {
+      toast.info("Subscription canceled. No charges were made.");
+      navigate("/pricing", { replace: true });
     }
   }, [searchParams]);
 
@@ -84,212 +117,295 @@ export default function Pricing() {
         .order("display_order", { ascending: true });
 
       if (error) throw error;
-      setPackages(data || []);
-    } catch (err) {
-      console.error("Error fetching packages:", err);
-      toast.error("Failed to load pricing packages");
+      
+      const pkgs = data || [];
+      setPackages(pkgs);
+      
+      // Select the popular package by default, or the middle one
+      const popularPkg = pkgs.find(p => p.is_popular);
+      if (popularPkg) {
+        setSelectedPackageId(popularPkg.id);
+      } else if (pkgs.length > 0) {
+        setSelectedPackageId(pkgs[Math.floor(pkgs.length / 2)]?.id || pkgs[0].id);
+      }
+    } catch (error) {
+      console.error("Error fetching packages:", error);
+      toast.error("Failed to load pricing");
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePurchase = async (packageId: string) => {
+  const selectedPackage = packages.find(p => p.id === selectedPackageId);
+
+  const handleSubscribe = async () => {
     if (!user) {
+      toast.error("Please sign in to subscribe");
       navigate("/login");
       return;
     }
 
-    setCheckoutLoading(packageId);
+    if (!selectedPackage) {
+      toast.error("Please select a package");
+      return;
+    }
+
+    // Get the monthly recurring price ID based on credits
+    const monthlyPriceId = MONTHLY_PRICE_MAP[selectedPackage.credits];
+    if (!monthlyPriceId) {
+      toast.error("Invalid package configuration");
+      return;
+    }
+
+    setPurchasing(true);
     try {
-      await startCheckout(packageId);
+      await startCheckout(selectedPackage.id, monthlyPriceId);
+    } catch (error) {
+      console.error("Checkout error:", error);
+      toast.error("Failed to start checkout");
     } finally {
-      setCheckoutLoading(null);
+      setPurchasing(false);
     }
   };
 
-  const calculateSavings = (pkg: CreditPackage) => {
-    // Use Starter as baseline (15 credits for $4.99 = $0.33 per credit)
-    const baselinePerCredit = 499 / 15;
-    const pkgPerCredit = pkg.price_cents / pkg.credits;
-    const savings = ((baselinePerCredit - pkgPerCredit) / baselinePerCredit) * 100;
-    return Math.round(savings);
+  const formatPrice = (cents: number) => {
+    return (cents / 100).toFixed(2);
   };
+
+  const calculatePerCredit = (pkg: CreditPackage) => {
+    return (pkg.price_cents / pkg.credits / 100).toFixed(2);
+  };
+
+  const calculateSavings = (pkg: CreditPackage) => {
+    // Compare against $0.20 per credit baseline (Starter rate)
+    const baselineRate = 0.20;
+    const actualRate = pkg.price_cents / pkg.credits / 100;
+    const savings = Math.round((1 - actualRate / baselineRate) * 100);
+    return savings > 0 ? savings : 0;
+  };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
-      <div className="min-h-screen py-12 md:py-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Hero */}
-          <div className="text-center mb-16">
-            <Badge className="mb-4 bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500 border-amber-500/30">
-              <Sparkles className="w-3 h-3 mr-1" />
-              Credit-Based Pricing
-            </Badge>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Power Your Creativity with Credits
+      <div className="min-h-screen bg-background">
+        <div className="max-w-4xl mx-auto px-4 py-12 sm:py-16">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-4">
+              <Sparkles className="h-4 w-4" />
+              <span className="text-sm font-medium">Pro AI Tools</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
+              Unlock Powerful Audio Tools
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Purchase credits to unlock AI-powered audio tools. No subscriptions, no commitments — pay only for what you use.
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Get monthly credits to access our suite of AI-powered audio tools. 
+              Cancel anytime.
             </p>
-            
-            {user && (
-              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
-                <Coins className="w-5 h-5 text-amber-500" />
-                <span className="text-muted-foreground">Your Balance:</span>
-                <span className="font-bold text-amber-500">{creditBalance} credits</span>
+          </div>
+
+          {/* Current Balance */}
+          {user && (
+            <div className="flex justify-center mb-8">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary border border-border">
+                <Wallet className="h-5 w-5 text-primary" />
+                <span className="text-sm">Current Balance:</span>
+                <span className="font-bold text-lg">
+                  {creditsLoading ? "..." : creditBalance}
+                </span>
+                <span className="text-sm text-muted-foreground">credits</span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Pricing Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-16">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-72 rounded-2xl bg-secondary/50 animate-pulse" />
-              ))
-            ) : (
-              packages.map((pkg) => {
-                const savings = calculateSavings(pkg);
-                const pricePerCredit = (pkg.price_cents / pkg.credits / 100).toFixed(2);
-                
-                return (
-                  <div
-                    key={pkg.id}
-                    className={cn(
-                      "relative rounded-2xl p-6 transition-all",
-                      "border bg-card hover:shadow-lg hover:scale-[1.02]",
-                      pkg.is_popular
-                        ? "border-amber-500/50 shadow-lg shadow-amber-500/10"
-                        : "border-border/50"
-                    )}
-                  >
-                    {pkg.is_popular && (
-                      <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">
-                        Most Popular
-                      </Badge>
-                    )}
-                    
-                    {savings > 0 && (
-                      <Badge variant="outline" className="absolute top-4 right-4 text-xs border-green-500/30 text-green-500">
-                        Save {savings}%
-                      </Badge>
-                    )}
+          {/* Active Subscription Notice */}
+          {subscription && (
+            <div className="max-w-xl mx-auto mb-8">
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                <Check className="h-5 w-5 text-green-500 mx-auto mb-2" />
+                <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                  You have an active subscription ({subscription.credits} credits/month)
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Renews on {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          )}
 
-                    <div className="text-center mb-4">
-                      <h3 className="text-lg font-semibold mb-1">{pkg.name}</h3>
-                      <div className="flex items-center justify-center gap-1.5 mb-2">
-                        <Coins className="w-5 h-5 text-amber-500" />
-                        <span className="text-2xl font-bold text-amber-500">{pkg.credits}</span>
-                        <span className="text-muted-foreground">credits</span>
-                      </div>
-                      <div className="text-3xl font-bold">
-                        ${(pkg.price_cents / 100).toFixed(2)}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        ${pricePerCredit} per credit
-                      </p>
+          {/* Main Pricing Card */}
+          <Card className="max-w-xl mx-auto border-2 border-primary/20 shadow-xl">
+            <CardHeader className="text-center pb-2">
+              <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Wallet className="h-7 w-7 text-primary" />
+              </div>
+              <CardTitle className="text-2xl">Credit Subscription</CardTitle>
+              <CardDescription>
+                Choose your monthly credit allocation
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-6">
+              {/* Package Selector */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Package</label>
+                <Select value={selectedPackageId} onValueChange={setSelectedPackageId}>
+                  <SelectTrigger className="w-full h-12">
+                    <SelectValue placeholder="Choose a package" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {packages.map((pkg) => (
+                      <SelectItem key={pkg.id} value={pkg.id}>
+                        <div className="flex items-center justify-between w-full gap-4">
+                          <span className="font-medium">{pkg.name}</span>
+                          <span className="text-muted-foreground">
+                            {pkg.credits} credits · ${formatPrice(pkg.price_cents)}/mo
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Selected Package Details */}
+              {selectedPackage && (
+                <>
+                  <div className="text-center py-4 bg-secondary/50 rounded-lg">
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className="text-4xl font-bold">
+                        ${formatPrice(selectedPackage.price_cents)}
+                      </span>
+                      <span className="text-muted-foreground">/month</span>
                     </div>
-
-                    <Button
-                      onClick={() => handlePurchase(pkg.id)}
-                      disabled={checkoutLoading !== null}
-                      className={cn(
-                        "w-full",
-                        pkg.is_popular
-                          ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
-                          : ""
+                    <div className="flex items-center justify-center gap-3 mt-2">
+                      <span className="text-lg font-semibold text-primary">
+                        {selectedPackage.credits} Credits
+                      </span>
+                      {calculateSavings(selectedPackage) > 0 && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+                          Save {calculateSavings(selectedPackage)}%
+                        </span>
                       )}
-                    >
-                      {checkoutLoading === pkg.id ? (
-                        "Loading..."
-                      ) : (
-                        <>
-                          <Coins className="w-4 h-4 mr-2" />
-                          Get Credits
-                        </>
-                      )}
-                    </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      ${calculatePerCredit(selectedPackage)} per credit
+                    </p>
                   </div>
-                );
-              })
-            )}
-          </div>
 
-          {/* Pro Tools Section */}
-          <div className="mb-16">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-2">What You Can Create</h2>
-              <p className="text-muted-foreground">
-                Use 1 credit per Pro tool use. Free tools are always unlimited!
-              </p>
-            </div>
+                  <Separator />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {proTools.map((tool) => (
-                <div
-                  key={tool.name}
-                  className="p-4 rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mb-3">
-                    <tool.icon className="w-5 h-5 text-white" />
+                  {/* Pro Tools List */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-primary" />
+                      What You Unlock
+                    </h4>
+                    <div className="space-y-2">
+                      {proTools.map((tool) => (
+                        <div key={tool.name} className="flex items-start gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors">
+                          <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <tool.icon className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{tool.name}</p>
+                            <p className="text-xs text-muted-foreground">{tool.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <h3 className="font-semibold mb-1">{tool.name}</h3>
-                  <p className="text-sm text-muted-foreground">{tool.description}</p>
-                  <Badge className="mt-2 bg-amber-500/10 text-amber-500 border-amber-500/30">
-                    1 credit per use
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
+
+                  <Separator />
+
+                  {/* Benefits */}
+                  <div className="space-y-2">
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-primary" />
+                      Subscription Benefits
+                    </h4>
+                    <ul className="space-y-2">
+                      {[
+                        { icon: RefreshCw, text: "Credits refresh monthly" },
+                        { icon: Clock, text: "Cancel anytime from Settings" },
+                        { icon: Zap, text: "Priority processing" },
+                        { icon: Check, text: "Access all Pro tools" },
+                      ].map((benefit, i) => (
+                        <li key={i} className="flex items-center gap-2 text-sm">
+                          <benefit.icon className="h-4 w-4 text-green-500" />
+                          {benefit.text}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Subscribe Button */}
+                  <Button 
+                    className="w-full h-12 text-base font-semibold" 
+                    size="lg"
+                    onClick={handleSubscribe}
+                    disabled={purchasing || !selectedPackage}
+                  >
+                    {purchasing ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Processing...
+                      </>
+                    ) : subscription ? (
+                      <>
+                        Change Plan · ${formatPrice(selectedPackage.price_cents)}/mo
+                      </>
+                    ) : (
+                      <>
+                        Subscribe Now · ${formatPrice(selectedPackage.price_cents)}/mo
+                      </>
+                    )}
+                  </Button>
+
+                  <p className="text-xs text-center text-muted-foreground">
+                    Secure payment via Stripe. Cancel anytime.
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Free Credits Notice */}
-          <div className="mb-16 p-6 rounded-2xl bg-gradient-to-r from-green-500/10 via-emerald-500/5 to-transparent border border-green-500/20 text-center">
-            <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-6 h-6 text-green-500" />
+          <div className="mt-10 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/20">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span className="text-sm">
+                <strong>New users:</strong> Get 3 free credits to try Pro tools — no card required!
+              </span>
             </div>
-            <h3 className="text-xl font-bold mb-2">New Users Get 5 Free Credits!</h3>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              Sign up for a free account and instantly receive 5 credits to try out our AI-powered tools. No credit card required.
-            </p>
-            {!user && (
-              <Button
-                onClick={() => navigate("/signup")}
-                className="mt-4 bg-green-500 hover:bg-green-600"
-              >
-                Sign Up Free
-              </Button>
-            )}
           </div>
 
-          {/* FAQ */}
-          <div className="max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
-            <div className="space-y-3">
-              {faqItems.map((item, index) => (
-                <div
-                  key={index}
-                  className="border border-border/50 rounded-xl overflow-hidden"
-                >
-                  <button
-                    onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/50 transition-colors"
-                  >
-                    <span className="font-medium">{item.question}</span>
-                    {expandedFaq === index ? (
-                      <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                    )}
-                  </button>
-                  {expandedFaq === index && (
-                    <div className="px-4 pb-4 text-muted-foreground">
-                      {item.answer}
-                    </div>
-                  )}
-                </div>
+          {/* FAQ Section */}
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold text-center mb-8">
+              Frequently Asked Questions
+            </h2>
+            <Accordion type="single" collapsible className="max-w-2xl mx-auto">
+              {faqs.map((faq, index) => (
+                <AccordionItem key={index} value={`item-${index}`}>
+                  <AccordionTrigger className="text-left">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
               ))}
-            </div>
+            </Accordion>
           </div>
         </div>
       </div>

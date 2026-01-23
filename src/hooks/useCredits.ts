@@ -9,6 +9,17 @@ interface CreditStatus {
   error: string | null;
 }
 
+interface CreditSubscription {
+  id: string;
+  status: string;
+  currentPeriodEnd: string;
+  currentPeriodStart: string;
+  cancelAtPeriodEnd: boolean;
+  priceAmount: number;
+  credits: number;
+  productId: string;
+}
+
 // AI-powered tools that require credits (1 credit per use)
 export const PRO_TOOLS = [
   "sfx-generator",
@@ -25,6 +36,8 @@ export function useCredits() {
     isLoading: true,
     error: null,
   });
+  const [subscription, setSubscription] = useState<CreditSubscription | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   const checkCredits = useCallback(async () => {
     if (!user) {
@@ -56,6 +69,33 @@ export function useCredits() {
     }
   }, [user]);
 
+  const checkSubscription = useCallback(async () => {
+    if (!user) {
+      setSubscription(null);
+      return;
+    }
+
+    setSubscriptionLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-credit-subscription", {
+        body: { action: "check" },
+      });
+      
+      if (error) throw error;
+      
+      if (data.hasSubscription && data.subscription) {
+        setSubscription(data.subscription);
+      } else {
+        setSubscription(null);
+      }
+    } catch (err) {
+      console.error("Error checking subscription:", err);
+      setSubscription(null);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  }, [user]);
+
   const deductCredit = useCallback(async (toolId: string) => {
     if (!user) return { success: false, error: "Not authenticated" };
 
@@ -84,7 +124,7 @@ export function useCredits() {
     }
   }, [user]);
 
-  const startCheckout = useCallback(async (packageId: string) => {
+  const startCheckout = useCallback(async (packageId: string, priceId?: string) => {
     if (!user) {
       navigate("/login");
       return null;
@@ -92,7 +132,7 @@ export function useCredits() {
 
     try {
       const { data, error } = await supabase.functions.invoke("create-credit-checkout", {
-        body: { package_id: packageId },
+        body: { package_id: packageId, price_id: priceId },
       });
       
       if (error) throw error;
@@ -123,6 +163,8 @@ export function useCredits() {
           ...prev,
           creditBalance: data.credit_balance,
         }));
+        // Also refresh subscription status
+        checkSubscription();
         return { 
           success: true, 
           creditsAdded: data.credits_added,
@@ -133,6 +175,27 @@ export function useCredits() {
     } catch (err) {
       console.error("Error verifying purchase:", err);
       return { success: false };
+    }
+  }, [user, checkSubscription]);
+
+  const openCustomerPortal = useCallback(async () => {
+    if (!user) return null;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-credit-subscription", {
+        body: { action: "portal" },
+      });
+      
+      if (error) throw error;
+      
+      if (data.url) {
+        window.open(data.url, "_blank");
+      }
+      
+      return data.url;
+    } catch (err) {
+      console.error("Error opening customer portal:", err);
+      return null;
     }
   }, [user]);
 
@@ -154,14 +217,19 @@ export function useCredits() {
 
   useEffect(() => {
     checkCredits();
-  }, [checkCredits]);
+    checkSubscription();
+  }, [checkCredits, checkSubscription]);
 
   return {
     ...status,
+    subscription,
+    subscriptionLoading,
     checkCredits,
+    checkSubscription,
     deductCredit,
     startCheckout,
     verifyPurchase,
+    openCustomerPortal,
     canUseTool,
     isProTool,
     goToPricing,
