@@ -23,12 +23,25 @@ const productTypes = [
   { value: "other", label: "Other" },
 ];
 
+// Helper to generate slug from title
+const generateSlug = (title: string): string => {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special chars
+    .replace(/\s+/g, '-')     // Replace spaces with hyphens
+    .replace(/-+/g, '-')      // Replace multiple hyphens
+    .substring(0, 100);       // Limit length
+};
+
 export default function CreateProduct() {
   const { user } = useAuth();
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [customSlug, setCustomSlug] = useState(false);
   const [description, setDescription] = useState("");
   const [productType, setProductType] = useState("");
   const [pricingType, setPricingType] = useState("free");
@@ -153,11 +166,28 @@ export default function CreateProduct() {
       if (pricingType === 'subscription') subscriptionAccess = 'subscription_only';
       else if (pricingType === 'both') subscriptionAccess = 'both';
 
+      // Check slug uniqueness if provided
+      const finalSlug = slug.trim() || null;
+      if (finalSlug) {
+        const { data: existingSlug } = await supabase
+          .from("products")
+          .select("id")
+          .eq("slug", finalSlug)
+          .maybeSingle();
+        
+        if (existingSlug) {
+          toast.error("This URL slug is already taken. Please choose another.");
+          setLoading(false);
+          return;
+        }
+      }
+
       const { data: product, error } = await supabase
         .from("products")
         .insert({
           name,
           description,
+          slug: finalSlug,
           product_type: productType || null,
           pricing_type: pricingType === 'subscription' ? 'paid' : pricingType === 'both' ? 'paid' : pricingType,
           price_cents: priceCents,
@@ -177,7 +207,7 @@ export default function CreateProduct() {
       if (error) throw error;
 
       toast.success(publish ? "Product published!" : "Draft saved!");
-      navigate(`/product/${product.id}`);
+      navigate(product.slug ? `/p/${product.slug}` : `/product/${product.id}`);
     } catch (error) {
       console.error("Error creating product:", error);
       toast.error("Failed to create product");
@@ -214,10 +244,41 @@ export default function CreateProduct() {
               <Input
                 id="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (!customSlug) {
+                    setSlug(generateSlug(e.target.value));
+                  }
+                }}
                 placeholder="My Awesome Product"
                 className="mt-2"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="slug">Custom URL Slug</Label>
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">/p/</span>
+                  <Input
+                    id="slug"
+                    value={slug}
+                    onChange={(e) => {
+                      setSlug(generateSlug(e.target.value));
+                      setCustomSlug(true);
+                    }}
+                    placeholder="my-awesome-product"
+                    className="flex-1 font-mono text-sm"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {slug ? (
+                    <>Preview: <span className="font-mono text-primary">editorsparadise.com/p/{slug}</span></>
+                  ) : (
+                    "Leave empty to auto-generate from title"
+                  )}
+                </p>
+              </div>
             </div>
 
             <div>
