@@ -22,6 +22,13 @@ import AudioJoiner from "./pages/tools/AudioJoiner";
 import VideoToAudio from "./pages/tools/VideoToAudio";
 import AudioConverter from "./pages/tools/AudioConverter";
 import WaveformGenerator from "./pages/tools/WaveformGenerator";
+import Community from "./pages/Community";
+import HireEditors from "./pages/HireEditors";
+import WorkWithEditors from "./pages/WorkWithEditors";
+import Notifications from "./pages/Notifications";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Refunds from "./pages/Refunds";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +54,13 @@ const App = () => (
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
             <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
             <Route path="/admin" element={<MainLayout><Admin /></MainLayout>} />
+            <Route path="/community" element={<MainLayout><Community /></MainLayout>} />
+            <Route path="/hire-editors" element={<MainLayout><HireEditors /></MainLayout>} />
+            <Route path="/work-with-editors" element={<MainLayout><WorkWithEditors /></MainLayout>} />
+            <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
+            <Route path="/terms" element={<MainLayout><Terms /></MainLayout>} />
+            <Route path="/privacy" element={<MainLayout><Privacy /></MainLayout>} />
+            <Route path="/refunds" element={<MainLayout><Refunds /></MainLayout>} />
             <Route path="/@:username" element={<MainLayout><Profile /></MainLayout>} />
             
             {/* Tools */}
