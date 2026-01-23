@@ -323,36 +323,48 @@ export function AudioProcessingView({
 
   // Upload View
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-2xl font-bold">{title}</h1>
-        <p className="text-muted-foreground mt-1">{description}</p>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">{title}</h1>
+        <p className="text-muted-foreground">{description}</p>
       </div>
 
       {/* Upload Area */}
       <div
-        className={`border-2 border-dashed rounded-xl transition-colors cursor-pointer ${
+        className={`relative rounded-2xl transition-all cursor-pointer overflow-hidden ${
           isDragging
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/30 hover:border-primary/50"
+            ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+            : ""
         }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        <div className="flex flex-col items-center justify-center py-20 px-8">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-            <Upload className="w-8 h-8 text-primary" />
+        {/* Gradient border effect */}
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/20 via-border/50 to-accent/20 p-[1px]">
+          <div className="w-full h-full rounded-2xl bg-card/95" />
+        </div>
+        
+        {/* Dashed inner border */}
+        <div className={`relative m-4 border-2 border-dashed rounded-xl transition-colors ${
+          isDragging
+            ? "border-primary bg-primary/5"
+            : "border-muted-foreground/20 hover:border-primary/40"
+        }`}>
+          <div className="flex flex-col items-center justify-center py-16 md:py-24 px-8">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/20 flex items-center justify-center mb-5">
+              <Upload className="w-7 h-7 text-primary" />
+            </div>
+            <p className="text-lg font-semibold mb-1">Drop your audio file here</p>
+            <p className="text-sm text-muted-foreground mb-5 text-center">
+              or click to browse • MP3, WAV, FLAC, OGG supported
+            </p>
+            <Button variant="secondary" size="default" className="px-6">
+              Browse Files
+            </Button>
           </div>
-          <p className="text-lg font-medium mb-1">Drop your audio file here</p>
-          <p className="text-sm text-muted-foreground mb-4 text-center">
-            or click to browse • MP3, WAV, FLAC, OGG supported
-          </p>
-          <Button variant="outline" size="sm">
-            Browse Files
-          </Button>
         </div>
       </div>
 

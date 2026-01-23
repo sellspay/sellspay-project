@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Loader2, Lock } from "lucide-react";
+import { Loader2, Lock, Sparkles } from "lucide-react";
 import { tools, Tool } from "./ToolsSidebar";
 import { Button } from "@/components/ui/button";
 
@@ -21,23 +21,28 @@ interface ToolContentProps {
 
 function LoadingSpinner() {
   return (
-    <div className="flex items-center justify-center py-16">
-      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+    <div className="flex items-center justify-center py-20">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+        <p className="text-sm text-muted-foreground">Loading tool...</p>
+      </div>
     </div>
   );
 }
 
 function ComingSoonContent({ tool }: { tool: Tool }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-20 h-20 rounded-2xl bg-secondary/50 flex items-center justify-center mb-6">
+    <div className="flex flex-col items-center justify-center py-20 text-center px-8">
+      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-secondary to-secondary/50 flex items-center justify-center mb-6 border border-border/50">
         <Lock className="w-10 h-10 text-muted-foreground" />
       </div>
-      <h2 className="text-2xl font-bold mb-2">{tool.title}</h2>
-      <p className="text-muted-foreground max-w-md mb-6">
+      <h2 className="text-2xl font-bold mb-3">{tool.title}</h2>
+      <p className="text-muted-foreground max-w-md mb-8">
         {tool.description}. This feature is coming soon!
       </p>
-      <Button variant="outline" disabled>
+      <Button variant="outline" disabled className="px-8">
         Coming Soon
       </Button>
     </div>
@@ -46,11 +51,11 @@ function ComingSoonContent({ tool }: { tool: Tool }) {
 
 function WelcomeContent() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-6">
-        <span className="text-4xl">🎛️</span>
+    <div className="flex flex-col items-center justify-center py-20 text-center px-8">
+      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-6 shadow-lg shadow-primary/20">
+        <Sparkles className="w-10 h-10 text-primary-foreground" />
       </div>
-      <h2 className="text-2xl font-bold mb-2">Select a Tool</h2>
+      <h2 className="text-2xl font-bold mb-3">Select a Tool</h2>
       <p className="text-muted-foreground max-w-md">
         Choose a tool from the sidebar to get started. All tools are free to use with no signup required.
       </p>
@@ -76,7 +81,7 @@ export function ToolContent({ toolId }: ToolContentProps) {
   // Render available tools
   return (
     <Suspense fallback={<LoadingSpinner />}>
-      <div className="tool-content-wrapper">
+      <div className="p-6 md:p-8">
         {toolId === "voice-isolator" && <VoiceIsolator />}
         {toolId === "sfx-isolator" && <SFXIsolator />}
         {toolId === "music-splitter" && <MusicSplitter />}
