@@ -1,14 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
-import { ArrowRight, Play, Sparkles, Star, Users, Zap } from 'lucide-react';
+import { ArrowRight, Play, Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-const stats = [
-  { value: '10K+', label: 'Creators', icon: Users },
-  { value: '5K+', label: 'Products', icon: Sparkles },
-  { value: '50K+', label: 'Downloads', icon: Zap },
-];
 
 const floatingWords = ['Presets', 'LUTs', 'SFX', 'Templates', 'Overlays', 'Fonts'];
 
@@ -93,7 +87,7 @@ export default function HeroSection() {
           {/* Subtitle with rotating words */}
           <p className="text-xl sm:text-2xl text-muted-foreground max-w-2xl mb-10 leading-relaxed">
             Discover premium{' '}
-            <span className="inline-flex min-w-[120px] justify-start">
+            <span className="inline-block w-[140px] text-left">
               <span 
                 key={activeWord}
                 className="text-foreground font-semibold animate-fade-in"
@@ -101,7 +95,7 @@ export default function HeroSection() {
                 {floatingWords[activeWord]}
               </span>
             </span>
-            {' '}crafted by
+            crafted by
             <br className="hidden sm:block" />
             professional creators worldwide.
           </p>
@@ -142,24 +136,6 @@ export default function HeroSection() {
                 </Link>
               </Button>
             )}
-          </div>
-
-          {/* Stats */}
-          <div className="flex flex-wrap justify-center gap-8 sm:gap-12 lg:gap-16">
-            {stats.map((stat, index) => (
-              <div 
-                key={stat.label}
-                className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-card/50 border border-border/50 backdrop-blur-sm"
-              >
-                <div className="p-2 rounded-xl bg-primary/10">
-                  <stat.icon className="h-5 w-5 text-primary" />
-                </div>
-                <div className="text-left">
-                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
