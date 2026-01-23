@@ -30,22 +30,32 @@ export default function Header() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
+  const [fullName, setFullName] = useState<string | null>(null);
 
-  // Check if user is a creator
+  // Fetch user profile data
   useEffect(() => {
-    async function checkCreatorStatus() {
+    async function fetchProfile() {
       if (!user) {
         setIsCreator(false);
+        setAvatarUrl(null);
+        setUsername(null);
+        setFullName(null);
         return;
       }
       const { data } = await supabase
         .from('profiles')
-        .select('is_creator')
+        .select('is_creator, avatar_url, username, full_name')
         .eq('user_id', user.id)
         .maybeSingle();
+      
       setIsCreator(data?.is_creator || false);
+      setAvatarUrl(data?.avatar_url || null);
+      setUsername(data?.username || null);
+      setFullName(data?.full_name || null);
     }
-    checkCreatorStatus();
+    fetchProfile();
   }, [user]);
 
   const isActive = (path: string) => location.pathname === path;
@@ -102,9 +112,9 @@ export default function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src={user.user_metadata?.avatar_url} />
+                      <AvatarImage src={avatarUrl || undefined} />
                       <AvatarFallback className="bg-primary/20 text-primary">
-                        {user.email?.charAt(0).toUpperCase()}
+                        {(username || user.email)?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -112,13 +122,13 @@ export default function Header() {
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="flex items-center gap-2 p-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.user_metadata?.avatar_url} />
+                      <AvatarImage src={avatarUrl || undefined} />
                       <AvatarFallback className="bg-primary/20 text-primary">
-                        {user.email?.charAt(0).toUpperCase()}
+                        {(username || user.email)?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">{user.user_metadata?.full_name || 'User'}</span>
+                      <span className="text-sm font-medium">{fullName || username || 'User'}</span>
                       <span className="text-xs text-muted-foreground">{user.email}</span>
                     </div>
                   </div>
