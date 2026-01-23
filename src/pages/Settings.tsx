@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { AvatarCropper } from "@/components/ui/avatar-cropper";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -26,6 +27,8 @@ export default function Settings() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [uploadingBackground, setUploadingBackground] = useState(false);
+  const [showAvatarCropper, setShowAvatarCropper] = useState(false);
+  const [avatarToCrop, setAvatarToCrop] = useState<string | null>(null);
   
   // Profile
   const [fullName, setFullName] = useState("");
@@ -99,14 +102,27 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    // Create a local URL for the cropper
+    const imageUrl = URL.createObjectURL(file);
+    setAvatarToCrop(imageUrl);
+    setShowAvatarCropper(true);
+    
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleAvatarCropComplete = async (croppedBlob: Blob) => {
+    if (!user) return;
+
     setUploadingAvatar(true);
     try {
-      const ext = file.name.split(".").pop();
-      const path = `avatars/${user.id}/${Date.now()}.${ext}`;
+      const path = `avatars/${user.id}/${Date.now()}.jpg`;
       
       const { error: uploadError } = await supabase.storage
         .from("product-media")
-        .upload(path, file);
+        .upload(path, croppedBlob, {
+          contentType: 'image/jpeg',
+        });
 
       if (uploadError) throw uploadError;
 
@@ -121,6 +137,11 @@ export default function Settings() {
       toast.error("Failed to upload avatar");
     } finally {
       setUploadingAvatar(false);
+      // Clean up the object URL
+      if (avatarToCrop) {
+        URL.revokeObjectURL(avatarToCrop);
+        setAvatarToCrop(null);
+      }
     }
   };
 
@@ -726,6 +747,22 @@ export default function Settings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Avatar Cropper Dialog */}
+      {avatarToCrop && (
+        <AvatarCropper
+          open={showAvatarCropper}
+          onOpenChange={(open) => {
+            setShowAvatarCropper(open);
+            if (!open && avatarToCrop) {
+              URL.revokeObjectURL(avatarToCrop);
+              setAvatarToCrop(null);
+            }
+          }}
+          imageSrc={avatarToCrop}
+          onCropComplete={handleAvatarCropComplete}
+        />
+      )}
     </div>
   );
 }
