@@ -41,6 +41,37 @@ Deno.serve(async (req) => {
         .from("profiles")
         .select("*");
 
+      // Check for follows/likes/comments tables
+      const { data: creatorFollows, error: creatorFollowsError } = await sourceClient
+        .from("creator_follows")
+        .select("*")
+        .limit(5);
+
+      const { data: followers, error: followersError } = await sourceClient
+        .from("followers")
+        .select("*")
+        .limit(5);
+
+      const { data: follows, error: followsError } = await sourceClient
+        .from("follows")
+        .select("*")
+        .limit(5);
+
+      const { data: likes, error: likesError } = await sourceClient
+        .from("likes")
+        .select("*")
+        .limit(5);
+
+      const { data: productLikes, error: productLikesError } = await sourceClient
+        .from("product_likes")
+        .select("*")
+        .limit(5);
+
+      const { data: comments, error: commentsError } = await sourceClient
+        .from("comments")
+        .select("*")
+        .limit(5);
+
       return new Response(
         JSON.stringify({
           products: {
@@ -52,6 +83,36 @@ Deno.serve(async (req) => {
             count: profiles?.length || 0,
             sample: profiles?.slice(0, 3) || [],
             error: profilesError?.message,
+          },
+          creator_follows: {
+            count: creatorFollows?.length || 0,
+            sample: creatorFollows || [],
+            error: creatorFollowsError?.message,
+          },
+          followers: {
+            count: followers?.length || 0,
+            sample: followers || [],
+            error: followersError?.message,
+          },
+          follows: {
+            count: follows?.length || 0,
+            sample: follows || [],
+            error: followsError?.message,
+          },
+          likes: {
+            count: likes?.length || 0,
+            sample: likes || [],
+            error: likesError?.message,
+          },
+          product_likes: {
+            count: productLikes?.length || 0,
+            sample: productLikes || [],
+            error: productLikesError?.message,
+          },
+          comments: {
+            count: comments?.length || 0,
+            sample: comments || [],
+            error: commentsError?.message,
           },
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
