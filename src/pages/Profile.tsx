@@ -5,11 +5,11 @@ import { useAuth } from '@/lib/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Settings, 
-  CheckCircle, 
-  ShieldCheck, 
-  Plus, 
+  BadgeCheck,
+  Plus,
   Link as LinkIcon, 
   Grid3X3, 
   Heart,
@@ -464,50 +464,95 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Banner - contained width like Twitter/X */}
-      <div className="max-w-4xl mx-auto px-4 pt-4">
-        <div className="h-32 md:h-40 rounded-xl overflow-hidden">
-          {profile.banner_url ? (
-            <img
-              src={profile.banner_url}
-              alt="Profile banner"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-primary/40 to-accent/30" />
-          )}
+    <TooltipProvider>
+      <div className="min-h-screen bg-background">
+        {/* Banner - contained width like Twitter/X */}
+        <div className="max-w-4xl mx-auto px-4 pt-4">
+          <div className="h-32 md:h-40 rounded-xl overflow-hidden">
+            {profile.banner_url ? (
+              <img
+                src={profile.banner_url}
+                alt="Profile banner"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-primary/40 to-accent/30" />
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto px-4 -mt-12">
-        {/* Profile Header */}
-        <div className="flex flex-col md:flex-row gap-6 items-start">
-          {/* Avatar */}
-          <Avatar className="w-32 h-32 border-4 border-background shadow-xl">
-            <AvatarImage src={profile.avatar_url || undefined} />
-            <AvatarFallback className="bg-primary/20 text-primary text-3xl">
-              {(profile.full_name || profile.username || 'U').charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+        {/* Profile Header - Avatar and info below banner */}
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-end -mt-16">
+            {/* Avatar */}
+            <Avatar className="w-32 h-32 border-4 border-background shadow-xl">
+              <AvatarImage src={profile.avatar_url || undefined} />
+              <AvatarFallback className="bg-primary/20 text-primary text-3xl">
+                {(profile.full_name || profile.username || 'U').charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
 
-          {/* Info Section */}
-          <div className="flex-1 pt-4 md:pt-8">
+            {/* Action buttons on desktop - positioned to the right */}
+            <div className="hidden md:flex flex-1 justify-end gap-2 pb-2">
+              {/* Follow button for other profiles */}
+              {!isOwnProfile && profile.is_creator && (
+                <Button 
+                  onClick={handleFollow}
+                  variant={isFollowing ? "outline" : "default"}
+                  className={isFollowing ? "" : "bg-primary hover:bg-primary/90"}
+                >
+                  {isFollowing ? (
+                    <>
+                      <UserMinus className="w-4 h-4 mr-2" />
+                      Following
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Follow
+                    </>
+                  )}
+                </Button>
+              )}
+              
+              {/* Own profile buttons */}
+              {isOwnProfile && (
+                <>
+                  <Button 
+                    variant="outline"
+                    onClick={copyProfileLink}
+                  >
+                    <LinkIcon className="w-4 h-4 mr-2" />
+                    Copy link
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    size="icon"
+                    onClick={() => navigate('/settings')}
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Info Section - below avatar */}
+          <div className="mt-4">
             {/* Username row with badges */}
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <h1 className="text-xl font-bold text-foreground">
                 @{profile.username || 'user'}
               </h1>
-              {isOwnProfile && (
-                <button 
-                  onClick={() => navigate('/settings')}
-                  className="p-1 rounded-full hover:bg-secondary transition-colors"
-                >
-                  <Settings className="w-4 h-4 text-muted-foreground" />
-                </button>
-              )}
               {profile.verified && (
-                <CheckCircle className="w-5 h-5 text-blue-500" fill="currentColor" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <BadgeCheck className="w-5 h-5 text-primary" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Verified Creator</p>
+                  </TooltipContent>
+                </Tooltip>
               )}
               {isAdmin && (
                 <Badge className="bg-primary/20 text-primary border-primary/30">
@@ -544,8 +589,8 @@ const ProfilePage: React.FC = () => {
               </span>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex flex-wrap gap-2">
+            {/* Mobile action buttons */}
+            <div className="flex md:hidden flex-wrap gap-2 mb-4">
               {/* Follow button for other profiles */}
               {!isOwnProfile && profile.is_creator && (
                 <Button 
@@ -570,30 +615,19 @@ const ProfilePage: React.FC = () => {
               {/* Own profile buttons */}
               {isOwnProfile && (
                 <>
-                  {profile.is_creator && (
-                    <Button 
-                      onClick={() => navigate('/create-product')}
-                      className="bg-primary hover:bg-primary/90"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create product
-                    </Button>
-                  )}
-                  {isAdmin && (
-                    <Button 
-                      variant="outline"
-                      onClick={() => navigate('/admin')}
-                    >
-                      <ShieldCheck className="w-4 h-4 mr-2" />
-                      Admin Dashboard
-                    </Button>
-                  )}
                   <Button 
                     variant="outline"
                     onClick={copyProfileLink}
                   >
                     <LinkIcon className="w-4 h-4 mr-2" />
                     Copy link
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    size="icon"
+                    onClick={() => navigate('/settings')}
+                  >
+                    <Settings className="w-4 h-4" />
                   </Button>
                 </>
               )}
@@ -749,7 +783,7 @@ const ProfilePage: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 };
 
