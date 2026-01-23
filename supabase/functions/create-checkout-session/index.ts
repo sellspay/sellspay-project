@@ -62,32 +62,37 @@ serve(async (req) => {
     // Fetch product details
     const { data: product, error: productError } = await supabaseAdmin
       .from("products")
-      .select(`
-        id,
-        name,
-        price_cents,
-        cover_image_url,
-        creator_id,
-        profiles!products_creator_id_fkey (
-          id,
-          stripe_account_id,
-          stripe_onboarding_complete
-        )
-      `)
+      .select("id, name, price_cents, cover_image_url, creator_id")
       .eq("id", product_id)
       .single();
 
     if (productError || !product) {
+      logStep("Product not found", { error: productError?.message });
       throw new Error("Product not found");
     }
-    logStep("Product found", { name: product.name, price: product.price_cents });
+    logStep("Product found", { name: product.name, price: product.price_cents, creatorId: product.creator_id });
 
-    // Get creator profile - handle the join result
-    const creatorProfile = Array.isArray(product.profiles) 
-      ? product.profiles[0] 
-      : product.profiles;
+    if (!product.creator_id) {
+      throw new Error("Product has no creator");
+    }
 
-    if (!creatorProfile?.stripe_account_id || !creatorProfile?.stripe_onboarding_complete) {
+    // Fetch creator profile separately (no FK dependency)
+    const { data: creatorProfile, error: creatorError } = await supabaseAdmin
+      .from("profiles")
+      .select("id, stripe_account_id, stripe_onboarding_complete")
+      .eq("id", product.creator_id)
+      .single();
+
+    if (creatorError || !creatorProfile) {
+      logStep("Creator profile not found", { error: creatorError?.message });
+      throw new Error("Creator profile not found");
+    }
+
+    if (!creatorProfile.stripe_account_id || !creatorProfile.stripe_onboarding_complete) {
+      logStep("Creator not onboarded", { 
+        hasAccount: !!creatorProfile.stripe_account_id, 
+        complete: creatorProfile.stripe_onboarding_complete 
+      });
       throw new Error("Creator has not completed Stripe onboarding");
     }
     logStep("Creator verified", { stripeAccountId: creatorProfile.stripe_account_id });
@@ -95,9 +100,19 @@ serve(async (req) => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Calculate fees (5% platform commission)
+    // application_fee_amount = what YOU (the platform) keep
+    // The connected account receives: total - application_fee_amount
     const totalAmount = product.price_cents || 0;
-    const platformFee = Math.round(totalAmount * 0.05);
-    logStep("Fees calculated", { total: totalAmount, platformFee, creatorPayout: totalAmount - platformFee });
+    const platformFee = Math.round(totalAmount * 0.05); // 5% platform fee
+    const creatorPayout = totalAmount - platformFee; // 95% to creator
+    
+    logStep("Fee breakdown", { 
+      totalCharged: totalAmount, 
+      platformFee: platformFee,
+      creatorPayout: creatorPayout,
+      platformFeePercentage: "5%",
+      creatorPayoutPercentage: "95%"
+    });
 
     // Check if customer exists
     let customerId: string | undefined;
@@ -111,7 +126,11 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://editorsparadise.org";
 
-    // Create checkout session with Connect
+    // Create checkout session with Stripe Connect
+    // Using application_fee_amount + transfer_data.destination:
+    // - Total amount is charged to buyer
+    // - application_fee_amount (5%) goes to YOUR platform account
+    // - Remaining 95% is automatically transferred to the connected account (creator)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : buyerEmail,
@@ -130,7 +149,9 @@ serve(async (req) => {
       ],
       mode: "payment",
       payment_intent_data: {
+        // application_fee_amount is what YOU keep (5%)
         application_fee_amount: platformFee,
+        // transfer_data.destination is where the remaining 95% goes
         transfer_data: {
           destination: creatorProfile.stripe_account_id,
         },
@@ -142,11 +163,16 @@ serve(async (req) => {
         buyer_profile_id: buyerProfileId || "",
         creator_profile_id: creatorProfile.id,
         platform_fee_cents: platformFee.toString(),
-        creator_payout_cents: (totalAmount - platformFee).toString(),
+        creator_payout_cents: creatorPayout.toString(),
       },
     });
 
-    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+    logStep("Checkout session created", { 
+      sessionId: session.id, 
+      url: session.url,
+      amountTotal: totalAmount,
+      applicationFee: platformFee
+    });
 
     return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import Stripe from "https://esm.sh/stripe@18.5.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,24 +55,39 @@ serve(async (req) => {
     }
 
     // Calculate amounts
+    // 5% platform fee, 95% to editor
     const totalAmountCents = hours * hourlyRateCents;
     const platformFeeCents = Math.round(totalAmountCents * 0.05); // 5% platform fee
-    const editorPayoutCents = totalAmountCents - platformFeeCents;
+    const editorPayoutCents = totalAmountCents - platformFeeCents; // 95% to editor
 
-    logStep("Amounts calculated", { totalAmountCents, platformFeeCents, editorPayoutCents });
+    logStep("Fee breakdown", { 
+      totalCharged: totalAmountCents, 
+      platformFee: platformFeeCents,
+      editorPayout: editorPayoutCents,
+      platformFeePercentage: "5%",
+      editorPayoutPercentage: "95%"
+    });
 
     // Get editor's profile to check for Stripe account
     const { data: editorProfile, error: editorError } = await supabaseClient
       .from("profiles")
-      .select("stripe_account_id, full_name, username")
+      .select("stripe_account_id, stripe_onboarding_complete, full_name, username")
       .eq("id", editorId)
       .single();
 
     if (editorError) throw new Error(`Failed to fetch editor profile: ${editorError.message}`);
-    logStep("Editor profile fetched", { editorProfile });
+    logStep("Editor profile fetched", { 
+      hasStripeAccount: !!editorProfile?.stripe_account_id,
+      onboardingComplete: editorProfile?.stripe_onboarding_complete 
+    });
+
+    // Verify editor has completed Stripe onboarding
+    if (!editorProfile?.stripe_account_id || !editorProfile?.stripe_onboarding_complete) {
+      throw new Error("Editor has not completed Stripe onboarding");
+    }
 
     // Initialize Stripe
-    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Check if user already has a Stripe customer
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -88,10 +103,14 @@ serve(async (req) => {
     }
 
     // Get origin for redirect URLs
-    const origin = req.headers.get("origin") || "https://editorsparadise.com";
+    const origin = req.headers.get("origin") || "https://editorsparadise.org";
 
-    // Create Checkout Session
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+    // Create Checkout Session with Stripe Connect
+    // Using application_fee_amount + transfer_data.destination:
+    // - Total amount is charged to buyer
+    // - application_fee_amount (5%) goes to YOUR platform account
+    // - Remaining 95% is automatically transferred to the connected account (editor)
+    const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
       line_items: [
@@ -108,6 +127,14 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
+      payment_intent_data: {
+        // application_fee_amount is what YOU keep (5%)
+        application_fee_amount: platformFeeCents,
+        // transfer_data.destination is where the remaining 95% goes
+        transfer_data: {
+          destination: editorProfile.stripe_account_id,
+        },
+      },
       success_url: `${origin}/dashboard?booking=success`,
       cancel_url: `${origin}/hire-editors?booking=cancelled`,
       metadata: {
@@ -119,24 +146,14 @@ serve(async (req) => {
         platform_fee_cents: platformFeeCents.toString(),
         editor_payout_cents: editorPayoutCents.toString(),
       },
-    };
+    });
 
-    // If editor has Stripe Connect account, use transfer
-    if (editorProfile?.stripe_account_id) {
-      sessionParams.payment_intent_data = {
-        transfer_data: {
-          destination: editorProfile.stripe_account_id,
-          amount: editorPayoutCents,
-        },
-      };
-      logStep("Stripe Connect transfer configured", { 
-        destination: editorProfile.stripe_account_id,
-        amount: editorPayoutCents 
-      });
-    }
-
-    const session = await stripe.checkout.sessions.create(sessionParams);
-    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+    logStep("Checkout session created", { 
+      sessionId: session.id, 
+      url: session.url,
+      amountTotal: totalAmountCents,
+      applicationFee: platformFeeCents
+    });
 
     // Create booking record with pending status
     const { data: booking, error: bookingError } = await supabaseClient
