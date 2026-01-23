@@ -642,19 +642,28 @@ export type Database = {
       subscription_plan_products: {
         Row: {
           created_at: string
+          discount_percent: number | null
+          discount_type: string | null
           id: string
+          is_free: boolean | null
           plan_id: string
           product_id: string
         }
         Insert: {
           created_at?: string
+          discount_percent?: number | null
+          discount_type?: string | null
           id?: string
+          is_free?: boolean | null
           plan_id: string
           product_id: string
         }
         Update: {
           created_at?: string
+          discount_percent?: number | null
+          discount_type?: string | null
           id?: string
+          is_free?: boolean | null
           plan_id?: string
           product_id?: string
         }
