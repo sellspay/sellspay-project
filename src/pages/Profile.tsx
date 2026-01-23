@@ -17,7 +17,10 @@ import {
   Play,
   UserPlus,
   UserMinus,
-  Layers
+  Layers,
+  Film,
+  Bookmark,
+  UserSquare2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -226,7 +229,7 @@ const ProfilePage: React.FC = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
-  const [activeTab, setActiveTab] = useState<'published' | 'drafts' | 'downloads'>('published');
+  const [activeTab, setActiveTab] = useState<'posts' | 'videos' | 'collections' | 'tagged'>('posts');
   const [isAdmin, setIsAdmin] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -509,13 +512,11 @@ const ProfilePage: React.FC = () => {
     toast.success('Profile link copied!');
   };
 
-  const filteredProducts = products.filter(p => 
-    activeTab === 'published' ? p.status === 'published' : 
-    activeTab === 'drafts' ? p.status === 'draft' : false
-  );
+  const filteredProducts = products.filter(p => p.status === 'published');
+  const draftProducts = products.filter(p => p.status === 'draft');
 
-  const publishedCount = products.filter(p => p.status === 'published').length;
-  const draftsCount = products.filter(p => p.status === 'draft').length;
+  const publishedCount = filteredProducts.length;
+  const draftsCount = draftProducts.length;
   const downloadsCount = purchases.length;
 
   if (loading) {
@@ -710,113 +711,68 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Collections Section - for creators */}
-        {profile.is_creator && collections.length > 0 && (
-          <div className="mt-10 max-w-6xl mx-auto px-4">
-            {collections.map((collection) => (
-              <CollectionRow
-                key={collection.id}
-                id={collection.id}
-                name={collection.name}
-                coverImage={collection.cover_image_url}
-                products={collection.products}
-                totalCount={collection.totalCount}
-              />
-            ))}
+        {/* Instagram-style Icon Tabs */}
+        <div className="mt-8 max-w-4xl mx-auto px-4">
+          <div className="flex justify-center border-t border-border">
+            {/* Posts Tab */}
+            <button
+              onClick={() => setActiveTab('posts')}
+              className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
+                activeTab === 'posts'
+                  ? 'border-foreground text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Grid3X3 className="w-5 h-5" />
+            </button>
+
+            {/* Videos Tab */}
+            <button
+              onClick={() => setActiveTab('videos')}
+              className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
+                activeTab === 'videos'
+                  ? 'border-foreground text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Film className="w-5 h-5" />
+            </button>
+
+            {/* Collections Tab - only for own profile and creators */}
+            {isOwnProfile && profile.is_creator && (
+              <button
+                onClick={() => setActiveTab('collections')}
+                className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
+                  activeTab === 'collections'
+                    ? 'border-foreground text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Bookmark className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Tagged/Downloads Tab - only for own profile */}
+            {isOwnProfile && (
+              <button
+                onClick={() => setActiveTab('tagged')}
+                className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
+                  activeTab === 'tagged'
+                    ? 'border-foreground text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <UserSquare2 className="w-5 h-5" />
+              </button>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Store Section - for creators OR non-creators with their own profile showing purchases */}
-        <div className="mt-10 max-w-6xl mx-auto px-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              {profile.is_creator ? 'All Products' : isOwnProfile ? 'My Library' : 'Profile'}
-            </h2>
-            <div className="flex items-center gap-2">
-              {isOwnProfile && profile.is_creator && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCreateCollection(true)}
-                >
-                  <Layers className="w-4 h-4 mr-2" />
-                  Create Collection
-                </Button>
-              )}
-              {(products.length > 0 || purchases.length > 0) && (
-                <span className="text-sm text-muted-foreground">Showing newest</span>
-              )}
-            </div>
-          </div>
-
-          {/* Tab buttons - for creators (own profile) */}
-          {isOwnProfile && profile.is_creator && (
-            <div className="flex gap-2 mb-6">
-              <Button
-                variant={activeTab === 'published' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveTab('published')}
-                className={activeTab === 'published' ? 'bg-foreground text-background hover:bg-foreground/90' : ''}
-              >
-                <Grid3X3 className="w-4 h-4 mr-2" />
-                Published ({publishedCount})
-              </Button>
-              <Button
-                variant={activeTab === 'drafts' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveTab('drafts')}
-                className={activeTab === 'drafts' ? 'bg-foreground text-background hover:bg-foreground/90' : ''}
-              >
-                Drafts ({draftsCount})
-              </Button>
-              <Button
-                variant={activeTab === 'downloads' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveTab('downloads')}
-                className={activeTab === 'downloads' ? 'bg-foreground text-background hover:bg-foreground/90' : ''}
-              >
-                Downloads ({downloadsCount})
-              </Button>
-            </div>
-          )}
-
-          {/* For non-creators viewing their own profile - show purchases */}
-          {isOwnProfile && !profile.is_creator && (
-            <>
-              {purchases.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {purchases.map((purchase) => purchase.product && (
-                    <ProductCard
-                      key={purchase.id}
-                      product={{
-                        id: purchase.product.id,
-                        name: purchase.product.name,
-                        cover_image_url: purchase.product.cover_image_url,
-                        youtube_url: purchase.product.youtube_url,
-                        preview_video_url: purchase.product.preview_video_url,
-                        pricing_type: purchase.product.pricing_type,
-                        price_cents: null,
-                        currency: null,
-                        status: 'published',
-                        created_at: purchase.created_at,
-                      }}
-                      onClick={() => navigate(`/product/${purchase.product_id}`)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
-                  <p className="text-muted-foreground mb-4">No purchases yet.</p>
-                  <Button onClick={() => navigate('/products')}>
-                    Browse Products
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* For creators - show products or downloads based on tab */}
-          {profile.is_creator && activeTab !== 'downloads' && (
+        {/* Content Section */}
+        <div className="mt-6 max-w-6xl mx-auto px-4 pb-12">
+          
+          {/* Posts Tab - Published products grid */}
+          {activeTab === 'posts' && (
             <>
               {filteredProducts.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -833,9 +789,7 @@ const ProfilePage: React.FC = () => {
                   {isOwnProfile ? (
                     <>
                       <p className="text-muted-foreground mb-4">
-                        {activeTab === 'published' 
-                          ? "You haven't published any products yet."
-                          : "No drafts saved."}
+                        You haven't published any products yet.
                       </p>
                       <Button onClick={() => navigate('/create-product')}>
                         <Plus className="w-4 h-4 mr-2" />
@@ -850,8 +804,77 @@ const ProfilePage: React.FC = () => {
             </>
           )}
 
-          {/* Downloads tab for creators */}
-          {profile.is_creator && activeTab === 'downloads' && isOwnProfile && (
+          {/* Videos Tab - Products with videos */}
+          {activeTab === 'videos' && (
+            <>
+              {(() => {
+                const videoProducts = filteredProducts.filter(p => p.youtube_url || p.preview_video_url);
+                return videoProducts.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {videoProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        onClick={() => navigate(`/product/${product.id}`)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
+                    <p className="text-muted-foreground">No videos yet.</p>
+                  </div>
+                );
+              })()}
+            </>
+          )}
+
+          {/* Collections Tab */}
+          {activeTab === 'collections' && isOwnProfile && profile.is_creator && (
+            <>
+              {/* Create Collection Button */}
+              <div className="flex justify-between items-center mb-6">
+                <p className="text-sm text-muted-foreground">
+                  Only you can see your collections
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCreateCollection(true)}
+                  className="text-primary hover:text-primary/90"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  New Collection
+                </Button>
+              </div>
+
+              {collections.length > 0 ? (
+                <div className="space-y-8">
+                  {collections.map((collection) => (
+                    <CollectionRow
+                      key={collection.id}
+                      id={collection.id}
+                      name={collection.name}
+                      coverImage={collection.cover_image_url}
+                      products={collection.products}
+                      totalCount={collection.totalCount}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
+                  <Layers className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">No collections yet.</p>
+                  <Button onClick={() => setShowCreateCollection(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Collection
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Tagged/Downloads Tab */}
+          {activeTab === 'tagged' && isOwnProfile && (
             <>
               {purchases.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
