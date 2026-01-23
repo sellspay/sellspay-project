@@ -13,7 +13,14 @@ interface StemResult {
 }
 
 interface DemucsResponse {
-  audio: StemResult[];
+  audio?: StemResult[];
+  vocals?: StemResult;
+  no_vocals?: StemResult;
+  drums?: StemResult;
+  bass?: StemResult;
+  other?: StemResult;
+  guitar?: StemResult;
+  piano?: StemResult;
 }
 
 serve(async (req) => {
@@ -43,16 +50,15 @@ serve(async (req) => {
     console.log(`Processing audio: ${audio_url}, mode: ${mode}`);
 
     // Determine which model and stems based on mode
-    let model = "fal-ai/demucs";
     let requestBody: Record<string, unknown>;
 
     switch (mode) {
       case "voice":
-        // Voice isolation: returns vocals + instrumental (everything else combined)
+        // Voice isolation: returns vocals + instrumental
         requestBody = {
           audio_url,
           model: "htdemucs",
-          stems: "vocals", // This will give vocals and "no_vocals" (instrumental)
+          stems: "vocals",
           output_format,
           shifts: 1,
           overlap: 0.25,
@@ -89,8 +95,9 @@ serve(async (req) => {
 
     const startTime = Date.now();
 
-    // Call fal.ai API
-    const response = await fetch("https://queue.fal.run/fal-ai/demucs", {
+    // Use the synchronous fal.ai endpoint (waits for completion)
+    console.log("Sending request to fal.ai sync endpoint...");
+    const response = await fetch("https://fal.run/fal-ai/demucs", {
       method: "POST",
       headers: {
         "Authorization": `Key ${FAL_KEY}`,
@@ -99,9 +106,12 @@ serve(async (req) => {
       body: JSON.stringify(requestBody),
     });
 
+    const responseText = await response.text();
+    console.log("fal.ai response status:", response.status);
+    console.log("fal.ai response body:", responseText.substring(0, 500));
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("fal.ai API error:", response.status, errorText);
+      console.error("fal.ai API error:", response.status, responseText);
       
       if (response.status === 429) {
         return new Response(
@@ -111,71 +121,32 @@ serve(async (req) => {
       }
       
       return new Response(
-        JSON.stringify({ error: "Failed to process audio", details: errorText }),
+        JSON.stringify({ error: "Failed to process audio", details: responseText }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Get the request ID from the response for polling
-    const queueResponse = await response.json();
-    const requestId = queueResponse.request_id;
-
-    if (!requestId) {
-      console.error("No request_id in response:", queueResponse);
+    let result: DemucsResponse;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      console.error("Failed to parse fal.ai response:", e);
       return new Response(
-        JSON.stringify({ error: "Failed to queue audio processing" }),
+        JSON.stringify({ error: "Invalid response from audio processor" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Poll for results
-    let result: DemucsResponse | null = null;
-    let attempts = 0;
-    const maxAttempts = 120; // 10 minutes max wait (5s intervals)
-
-    while (!result && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-      attempts++;
-
-      const statusResponse = await fetch(`https://queue.fal.run/fal-ai/demucs/requests/${requestId}`, {
-        headers: {
-          "Authorization": `Key ${FAL_KEY}`,
-        },
-      });
-
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-        
-        if (statusData.status === "COMPLETED") {
-          result = statusData.response;
-          break;
-        } else if (statusData.status === "FAILED") {
-          console.error("Processing failed:", statusData);
-          return new Response(
-            JSON.stringify({ error: "Audio processing failed", details: statusData.error }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        console.log(`Attempt ${attempts}: Status = ${statusData.status}`);
-      }
-    }
-
-    if (!result) {
-      return new Response(
-        JSON.stringify({ error: "Processing timeout. Please try again with a shorter audio file." }),
-        { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const processingTime = Date.now() - startTime;
+    console.log("Processing completed in", processingTime, "ms");
+    console.log("Result keys:", Object.keys(result));
 
-    // Format the response based on mode
+    // Format the response based on the result structure
     const stems: Record<string, { url: string; filename: string }> = {};
 
+    // Handle array format (audio: [...])
     if (result.audio && Array.isArray(result.audio)) {
       for (const stem of result.audio) {
-        // Extract stem name from filename (e.g., "vocals.mp3" -> "vocals")
         const stemName = stem.file_name.replace(/\.[^/.]+$/, "").toLowerCase();
         stems[stemName] = {
           url: stem.url,
@@ -184,7 +155,27 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Processing completed in ${processingTime}ms. Stems:`, Object.keys(stems));
+    // Handle direct object format (vocals: {...}, no_vocals: {...}, etc.)
+    const stemKeys = ["vocals", "no_vocals", "drums", "bass", "other", "guitar", "piano"];
+    for (const key of stemKeys) {
+      const stem = result[key as keyof DemucsResponse];
+      if (stem && typeof stem === "object" && "url" in stem) {
+        stems[key] = {
+          url: stem.url,
+          filename: stem.file_name || `${key}.${output_format}`,
+        };
+      }
+    }
+
+    console.log("Processed stems:", Object.keys(stems));
+
+    if (Object.keys(stems).length === 0) {
+      console.error("No stems found in result:", result);
+      return new Response(
+        JSON.stringify({ error: "No audio stems returned from processing", raw: result }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
       JSON.stringify({
