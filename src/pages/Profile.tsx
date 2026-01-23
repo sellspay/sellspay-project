@@ -70,6 +70,7 @@ interface Profile {
   social_links: unknown;
   is_creator: boolean | null;
   verified: boolean | null;
+  show_recent_uploads?: boolean | null;
 }
 
 interface Product {
@@ -427,6 +428,8 @@ const ProfilePage: React.FC = () => {
         console.error('Failed to load profile:', error);
       } else if (data) {
         setProfile(data);
+        // Set initial recent uploads visibility from profile data
+        setShowRecentUploads(data.show_recent_uploads !== false);
         const ownProfile = user?.id === data.user_id;
         setIsOwnProfile(ownProfile);
 
@@ -728,6 +731,28 @@ const ProfilePage: React.FC = () => {
   const handleEditCollection = (collection: Collection) => {
     setEditingCollection(collection);
     setShowEditCollection(true);
+  };
+
+  // Toggle and persist recent uploads visibility
+  const toggleRecentUploadsVisibility = async (visible: boolean) => {
+    if (!profile) return;
+    
+    setShowRecentUploads(visible);
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ show_recent_uploads: visible })
+        .eq('id', profile.id);
+
+      if (error) throw error;
+      toast.success(visible ? 'Recent Uploads is now visible' : 'Recent Uploads hidden');
+    } catch (error) {
+      console.error('Error updating visibility:', error);
+      toast.error('Failed to update visibility');
+      // Revert on error
+      setShowRecentUploads(!visible);
+    }
   };
 
   if (loading) {
@@ -1037,7 +1062,7 @@ const ProfilePage: React.FC = () => {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => setShowRecentUploads(false)}
+                        onClick={() => toggleRecentUploadsVisibility(false)}
                       >
                         <Eye className="w-4 h-4 text-muted-foreground" />
                       </Button>
@@ -1074,7 +1099,7 @@ const ProfilePage: React.FC = () => {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => setShowRecentUploads(true)}
+                      onClick={() => toggleRecentUploadsVisibility(true)}
                     >
                       <EyeOff className="w-4 h-4 text-destructive" />
                     </Button>

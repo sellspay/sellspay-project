@@ -243,6 +243,7 @@ export type Database = {
           id: string
           is_creator: boolean | null
           phone: string | null
+          show_recent_uploads: boolean | null
           social_links: Json | null
           stripe_account_id: string | null
           stripe_onboarding_complete: boolean | null
@@ -262,6 +263,7 @@ export type Database = {
           id?: string
           is_creator?: boolean | null
           phone?: string | null
+          show_recent_uploads?: boolean | null
           social_links?: Json | null
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
@@ -281,6 +283,7 @@ export type Database = {
           id?: string
           is_creator?: boolean | null
           phone?: string | null
+          show_recent_uploads?: boolean | null
           social_links?: Json | null
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
