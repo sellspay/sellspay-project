@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,12 +60,28 @@ interface EditorApplication {
   social_links?: unknown;
   status: string | null;
   created_at: string | null;
+  reviewed_at: string | null;
   profile?: {
     avatar_url: string | null;
     username: string | null;
     email: string | null;
   };
 }
+
+// Helper to calculate days remaining before rejected user can reapply
+const getDaysUntilReapply = (reviewedAt: string | null): number => {
+  if (!reviewedAt) return 0;
+  const reviewedDate = new Date(reviewedAt);
+  const cooldownEnd = new Date(reviewedDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const daysRemaining = Math.ceil((cooldownEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, daysRemaining);
+};
+
+// Check if a rejected application is past the 14-day cooldown
+const isExpiredRejection = (reviewedAt: string | null): boolean => {
+  return getDaysUntilReapply(reviewedAt) <= 0;
+};
 
 export default function Admin() {
   const { user } = useAuth();
@@ -79,18 +95,20 @@ export default function Admin() {
   const [productSearch, setProductSearch] = useState("");
   const [applicationSearch, setApplicationSearch] = useState("");
   const [viewingApplication, setViewingApplication] = useState<EditorApplication | null>(null);
+  const [applicationTab, setApplicationTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   
   // New dialog states
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [showFeaturedDialog, setShowFeaturedDialog] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deletingApplicationId, setDeletingApplicationId] = useState<string | null>(null);
   
   // Stats
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalCreators, setTotalCreators] = useState(0);
-  const [pendingApplications, setPendingApplications] = useState(0);
+  const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -172,7 +190,7 @@ export default function Admin() {
         }));
 
         setEditorApplications(appsWithProfiles);
-        setPendingApplications(applicationsData.filter(a => a.status === 'pending').length);
+        setPendingApplicationsCount(applicationsData.filter(a => a.status === 'pending').length);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -305,6 +323,27 @@ export default function Admin() {
     }
   };
 
+  // Delete expired rejected application
+  const handleDeleteApplication = async (applicationId: string) => {
+    setDeletingApplicationId(applicationId);
+    try {
+      const { error } = await supabase
+        .from("editor_applications")
+        .delete()
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Application removed");
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting application:", error);
+      toast.error("Failed to delete application");
+    } finally {
+      setDeletingApplicationId(null);
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Unknown";
     return new Date(dateString).toLocaleDateString();
@@ -325,10 +364,23 @@ export default function Admin() {
     p.name.toLowerCase().includes(productSearch.toLowerCase())
   );
 
-  const filteredApplications = editorApplications.filter(a =>
+  // Filter applications by search query first
+  const searchFilteredApplications = editorApplications.filter(a =>
     a.display_name.toLowerCase().includes(applicationSearch.toLowerCase()) ||
     (a.profile?.username?.toLowerCase() || "").includes(applicationSearch.toLowerCase())
   );
+
+  // Then filter by status tab
+  const pendingApplications = searchFilteredApplications.filter(a => a.status === 'pending');
+  const approvedApplications = searchFilteredApplications.filter(a => a.status === 'approved');
+  const rejectedApplications = searchFilteredApplications.filter(a => a.status === 'rejected');
+
+  // Get the applications for current tab
+  const currentTabApplications = applicationTab === 'pending' 
+    ? pendingApplications 
+    : applicationTab === 'approved' 
+      ? approvedApplications 
+      : rejectedApplications;
 
   if (loading) {
     return (
@@ -411,7 +463,7 @@ export default function Admin() {
                 <FileText className="w-6 h-6 text-yellow-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{pendingApplications}</p>
+                <p className="text-2xl font-bold">{pendingApplicationsCount}</p>
                 <p className="text-sm text-muted-foreground">Pending Applications</p>
               </div>
             </div>
@@ -426,9 +478,9 @@ export default function Admin() {
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="editor-applications" className="relative">
             Editor Applications
-            {pendingApplications > 0 && (
+            {pendingApplicationsCount > 0 && (
               <span className="ml-2 bg-yellow-500 text-yellow-950 text-xs px-1.5 py-0.5 rounded-full">
-                {pendingApplications}
+                {pendingApplicationsCount}
               </span>
             )}
           </TabsTrigger>
@@ -671,6 +723,65 @@ export default function Admin() {
               </div>
             </CardHeader>
             <CardContent>
+              {/* Application Status Tabs */}
+              <div className="flex gap-2 mb-6">
+                <Button
+                  variant={applicationTab === 'pending' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setApplicationTab('pending')}
+                  className="gap-2"
+                >
+                  <Clock className="w-4 h-4" />
+                  Pending
+                  {pendingApplications.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                      {pendingApplications.length}
+                    </Badge>
+                  )}
+                </Button>
+                <Button
+                  variant={applicationTab === 'approved' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setApplicationTab('approved')}
+                  className="gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Approved
+                  {approvedApplications.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                      {approvedApplications.length}
+                    </Badge>
+                  )}
+                </Button>
+                <Button
+                  variant={applicationTab === 'rejected' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setApplicationTab('rejected')}
+                  className="gap-2"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Rejected
+                  {rejectedApplications.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                      {rejectedApplications.length}
+                    </Badge>
+                  )}
+                </Button>
+              </div>
+
+              {/* Rejected Tab Info */}
+              {applicationTab === 'rejected' && rejectedApplications.length > 0 && (
+                <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-destructive">Rejection Cooldown</p>
+                    <p className="text-muted-foreground">
+                      Rejected applicants cannot reapply for 14 days. After the cooldown expires, their application can be removed to allow reapplication.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -678,116 +789,132 @@ export default function Admin() {
                     <TableHead>Location</TableHead>
                     <TableHead>Hourly Rate</TableHead>
                     <TableHead>Services</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Applied</TableHead>
+                    {applicationTab === 'rejected' && <TableHead>Cooldown</TableHead>}
+                    <TableHead>{applicationTab === 'pending' ? 'Applied' : applicationTab === 'approved' ? 'Approved' : 'Rejected'}</TableHead>
                     <TableHead className="w-24">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredApplications.map((app) => (
-                    <TableRow key={app.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={app.profile?.avatar_url || undefined} />
-                            <AvatarFallback>
-                              {app.display_name?.[0] || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{app.display_name}</p>
-                            {app.profile?.username && (
-                              <p className="text-sm text-muted-foreground">
-                                @{app.profile.username}
-                              </p>
+                  {currentTabApplications.map((app) => {
+                    const daysRemaining = app.status === 'rejected' ? getDaysUntilReapply(app.reviewed_at) : 0;
+                    const canBeRemoved = app.status === 'rejected' && isExpiredRejection(app.reviewed_at);
+                    
+                    return (
+                      <TableRow key={app.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-8 h-8">
+                              <AvatarImage src={app.profile?.avatar_url || undefined} />
+                              <AvatarFallback>
+                                {app.display_name?.[0] || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{app.display_name}</p>
+                              {app.profile?.username && (
+                                <p className="text-sm text-muted-foreground">
+                                  @{app.profile.username}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {app.city}, {app.country}
+                        </TableCell>
+                        <TableCell>
+                          ${(app.hourly_rate_cents / 100).toFixed(0)}/hr
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1 max-w-[200px]">
+                            {app.services.slice(0, 2).map((s) => (
+                              <Badge key={s} variant="secondary" className="text-xs">
+                                {s}
+                              </Badge>
+                            ))}
+                            {app.services.length > 2 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{app.services.length - 2}
+                              </Badge>
                             )}
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {app.city}, {app.country}
-                      </TableCell>
-                      <TableCell>
-                        ${(app.hourly_rate_cents / 100).toFixed(0)}/hr
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1 max-w-[200px]">
-                          {app.services.slice(0, 2).map((s) => (
-                            <Badge key={s} variant="secondary" className="text-xs">
-                              {s}
-                            </Badge>
-                          ))}
-                          {app.services.length > 2 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{app.services.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {app.status === 'pending' && (
-                          <Badge className="bg-yellow-500/20 text-yellow-600">
-                            <Clock className="w-3 h-3 mr-1" />
-                            Pending
-                          </Badge>
+                        </TableCell>
+                        {applicationTab === 'rejected' && (
+                          <TableCell>
+                            {canBeRemoved ? (
+                              <Badge variant="outline" className="text-muted-foreground">
+                                Expired - Can remove
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-destructive/20 text-destructive">
+                                {daysRemaining} days left
+                              </Badge>
+                            )}
+                          </TableCell>
                         )}
-                        {app.status === 'approved' && (
-                          <Badge className="bg-green-500/20 text-green-600">
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Approved
-                          </Badge>
-                        )}
-                        {app.status === 'rejected' && (
-                          <Badge className="bg-red-500/20 text-red-600">
-                            <XCircle className="w-3 h-3 mr-1" />
-                            Rejected
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{formatDate(app.created_at)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8"
-                            onClick={() => setViewingApplication(app)}
-                            title="View Application"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          {app.status === 'pending' && (
-                            <>
+                        <TableCell>
+                          {formatDate(applicationTab === 'pending' ? app.created_at : app.reviewed_at)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => setViewingApplication(app)}
+                              title="View Application"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {app.status === 'pending' && (
+                              <>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
+                                  onClick={() => handleApplicationAction(app.id, 'approve')}
+                                  title="Approve"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
+                                  onClick={() => handleApplicationAction(app.id, 'reject')}
+                                  title="Reject"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                            {app.status === 'rejected' && canBeRemoved && (
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
-                                onClick={() => handleApplicationAction(app.id, 'approve')}
-                                title="Approve"
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteApplication(app.id)}
+                                disabled={deletingApplicationId === app.id}
+                                title="Remove application (allow reapplication)"
                               >
-                                <CheckCircle className="w-4 h-4" />
+                                {deletingApplicationId === app.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
                               </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
-                                onClick={() => handleApplicationAction(app.id, 'reject')}
-                                title="Reject"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
 
-              {filteredApplications.length === 0 && (
+              {currentTabApplications.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  No applications found
+                  No {applicationTab} applications found
                 </div>
               )}
             </CardContent>
