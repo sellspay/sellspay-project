@@ -100,7 +100,7 @@ export default function Header() {
             <Button 
               asChild 
               size="sm"
-              className="ml-2 rounded-full text-white text-xs font-medium relative overflow-hidden bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 bg-[length:200%_100%] animate-[gradient-wave_2s_ease-in-out_infinite] hover:shadow-lg hover:shadow-fuchsia-500/40 transition-shadow"
+              className="ml-2 rounded-full text-white text-xs font-medium relative overflow-hidden bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 bg-[length:200%_100%] animate-[gradient-wave_2s_ease-in-out_infinite]"
             >
               <Link to="/hire-editors">Hire Editors</Link>
             </Button>
