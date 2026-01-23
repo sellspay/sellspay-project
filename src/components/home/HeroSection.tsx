@@ -1,62 +1,171 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
-import heroBg from '@/assets/hero-bg.png';
-import heroLogo from '@/assets/hero-logo.png';
+import { ArrowRight, Play, Sparkles, Star, Users, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+const stats = [
+  { value: '10K+', label: 'Creators', icon: Users },
+  { value: '5K+', label: 'Products', icon: Sparkles },
+  { value: '50K+', label: 'Downloads', icon: Zap },
+];
+
+const floatingWords = ['Presets', 'LUTs', 'SFX', 'Templates', 'Overlays', 'Fonts'];
 
 export default function HeroSection() {
   const { user } = useAuth();
+  const [activeWord, setActiveWord] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveWord((prev) => (prev + 1) % floatingWords.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <div
-      className="relative w-full bg-cover bg-center min-h-[480px] lg:min-h-[540px]"
-      style={{ backgroundImage: `url(${heroBg})` }}
-    >
-      {/* Overlay gradient */}
-      <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/60 to-background/40" />
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+    <section className="relative min-h-[90vh] flex items-center overflow-hidden">
+      {/* Animated background */}
+      <div className="absolute inset-0 -z-10">
+        {/* Primary gradient orbs */}
+        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-accent/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[150px]" />
+        
+        {/* Grid pattern overlay */}
+        <div 
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
+            backgroundSize: '50px 50px'
+          }}
+        />
+        
+        {/* Radial gradient from center */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_hsl(var(--background))_70%)]" />
+      </div>
 
-      {/* Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 h-full">
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-12 py-16 lg:py-20">
-          {/* Left: Text Content */}
-          <div className="w-full lg:w-2/5 flex flex-col">
-            <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight mb-6">
-              Welcome to<br />EditorsParadise
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-md leading-relaxed mb-8">
-              Access cutting-edge audio tools and premium creator products. Explore by type and see what the community loves.
-            </p>
-            {!user && (
+      {/* Floating decorative elements */}
+      <div className="absolute top-20 right-[15%] w-3 h-3 bg-primary rounded-full animate-bounce opacity-60" style={{ animationDuration: '3s' }} />
+      <div className="absolute top-40 left-[10%] w-2 h-2 bg-accent rounded-full animate-bounce opacity-40" style={{ animationDuration: '4s', animationDelay: '1s' }} />
+      <div className="absolute bottom-32 right-[25%] w-4 h-4 bg-primary/50 rounded-full animate-bounce opacity-50" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }} />
+      <div className="absolute bottom-20 left-[20%] w-2 h-2 bg-accent/60 rounded-full animate-bounce opacity-30" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }} />
+
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
+        <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8 backdrop-blur-sm">
+            <Star className="h-4 w-4 text-primary fill-primary" />
+            <span className="text-sm font-medium text-primary">The #1 Marketplace for Editors</span>
+          </div>
+
+          {/* Main headline */}
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-6">
+            <span className="text-foreground">Level Up Your</span>
+            <br />
+            <span className="relative inline-block">
+              <span className="bg-gradient-to-r from-primary via-purple-400 to-accent bg-clip-text text-transparent">
+                Creative Workflow
+              </span>
+              {/* Underline decoration */}
+              <svg
+                className="absolute -bottom-2 left-0 w-full"
+                viewBox="0 0 300 12"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M2 8.5C50 2.5 100 2.5 150 8.5C200 14.5 250 2.5 298 8.5"
+                  stroke="url(#gradient)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+                <defs>
+                  <linearGradient id="gradient" x1="0" y1="0" x2="300" y2="0">
+                    <stop stopColor="hsl(var(--primary))" />
+                    <stop offset="1" stopColor="hsl(var(--accent))" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </span>
+          </h1>
+
+          {/* Subtitle with rotating words */}
+          <p className="text-xl sm:text-2xl text-muted-foreground max-w-2xl mb-10 leading-relaxed">
+            Discover premium{' '}
+            <span className="inline-flex min-w-[120px] justify-start">
+              <span 
+                key={activeWord}
+                className="text-foreground font-semibold animate-fade-in"
+              >
+                {floatingWords[activeWord]}
+              </span>
+            </span>
+            {' '}crafted by
+            <br className="hidden sm:block" />
+            professional creators worldwide.
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-16">
+            <Button
+              asChild
+              size="lg"
+              className="h-14 px-8 text-lg rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 group"
+            >
+              <Link to="/products">
+                Explore Store
+                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </Button>
+            {!user ? (
               <Button
                 asChild
                 size="lg"
-                className="w-fit px-8 py-3 bg-foreground text-background hover:bg-foreground/90 rounded-full font-medium text-base"
+                variant="outline"
+                className="h-14 px-8 text-lg rounded-full border-2 hover:bg-foreground/5"
               >
-                <Link to="/signup">Join for free</Link>
+                <Link to="/signup">
+                  Join for Free
+                </Link>
               </Button>
-            )}
-            {user && (
+            ) : (
               <Button
                 asChild
                 size="lg"
-                className="w-fit px-8 py-3 bg-foreground text-background hover:bg-foreground/90 rounded-full font-medium text-base"
+                variant="outline"
+                className="h-14 px-8 text-lg rounded-full border-2 hover:bg-foreground/5 group"
               >
-                <Link to="/products">Browse Products</Link>
+                <Link to="/creators">
+                  <Play className="mr-2 h-5 w-5 fill-current" />
+                  Meet Creators
+                </Link>
               </Button>
             )}
           </div>
 
-          {/* Right: Hero Logo Image */}
-          <div className="hidden lg:flex flex-1 items-center justify-end">
-            <img
-              src={heroLogo}
-              alt="EditorsParadise"
-              className="w-full max-w-2xl drop-shadow-2xl"
-            />
+          {/* Stats */}
+          <div className="flex flex-wrap justify-center gap-8 sm:gap-12 lg:gap-16">
+            {stats.map((stat, index) => (
+              <div 
+                key={stat.label}
+                className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-card/50 border border-border/50 backdrop-blur-sm"
+              >
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <stat.icon className="h-5 w-5 text-primary" />
+                </div>
+                <div className="text-left">
+                  <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Bottom fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
+    </section>
   );
 }
