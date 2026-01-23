@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth";
 import MainLayout from "@/components/layout/MainLayout";
 import Home from "./pages/Home";
@@ -34,6 +34,23 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function AtUsernameRoute() {
+  const { atUsername } = useParams<{ atUsername?: string }>();
+  const value = atUsername ?? "";
+
+  // Only treat /@username as a profile route; otherwise fall through to 404
+  if (!value.startsWith("@") || value.length < 2) {
+    return <NotFound />;
+  }
+
+  return (
+    <MainLayout>
+      {/* Profile reads the param from the URL */}
+      <Profile />
+    </MainLayout>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -63,7 +80,8 @@ const App = () => (
             <Route path="/terms" element={<MainLayout><Terms /></MainLayout>} />
             <Route path="/privacy" element={<MainLayout><Privacy /></MainLayout>} />
             <Route path="/refunds" element={<MainLayout><Refunds /></MainLayout>} />
-            <Route path="/@:username" element={<MainLayout><Profile /></MainLayout>} />
+            {/* Instagram-style profile route: /@username */}
+            <Route path="/:atUsername" element={<AtUsernameRoute />} />
             
             {/* Tools */}
             <Route path="/tools" element={<MainLayout><Tools /></MainLayout>} />
