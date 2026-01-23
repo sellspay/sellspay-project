@@ -669,6 +669,7 @@ export function ProfileEditorDialog({
           .update({
             display_order: section.display_order,
             content: JSON.parse(JSON.stringify(section.content)),
+            style_options: JSON.parse(JSON.stringify(section.style_options || {})),
             is_visible: section.is_visible,
           })
           .eq('id', section.id);

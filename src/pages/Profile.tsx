@@ -28,6 +28,7 @@ import CollectionRow from '@/components/profile/CollectionRow';
 import CreateCollectionDialog from '@/components/profile/CreateCollectionDialog';
 import SubscribeDialog from '@/components/profile/SubscribeDialog';
 import { ProfileEditorDialog } from '@/components/profile-editor';
+import { PublicProfileSections } from '@/components/profile/PublicProfileSections';
 
 interface Profile {
   id: string;
@@ -280,6 +281,7 @@ const ProfilePage: React.FC = () => {
   const [showSubscribeDialog, setShowSubscribeDialog] = useState(false);
   const [creatorHasPlans, setCreatorHasPlans] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [layoutRefreshKey, setLayoutRefreshKey] = useState(0);
 
   const fetchCollections = async (profileId: string, isOwn: boolean) => {
     try {
@@ -368,6 +370,8 @@ const ProfilePage: React.FC = () => {
       console.error('Error fetching collections:', error);
     }
   };
+
+  const bumpLayoutRefresh = () => setLayoutRefreshKey((k) => k + 1);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -804,7 +808,7 @@ const ProfilePage: React.FC = () => {
                 </Badge>
               )}
               {isAdmin && (
-                <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                <Badge className="bg-primary/10 text-primary border-primary/20">
                   Admin
                 </Badge>
               )}
@@ -1076,6 +1080,15 @@ const ProfilePage: React.FC = () => {
                 </div>
               )}
 
+              {/* Saved custom sections from the Profile Editor */}
+              {profile?.id && (
+                <PublicProfileSections
+                  profileId={profile.id}
+                  isOwnProfile={isOwnProfile}
+                  refreshKey={layoutRefreshKey}
+                />
+              )}
+
               {/* Empty state */}
               {filteredProducts.length === 0 && collections.length === 0 && (
                 <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
@@ -1224,7 +1237,10 @@ const ProfilePage: React.FC = () => {
             verified: profile.verified,
           }}
           collections={collections.map(c => ({ id: c.id, name: c.name }))}
-          onCollectionsChange={() => fetchCollections(profile.id, isOwnProfile)}
+          onCollectionsChange={() => {
+            fetchCollections(profile.id, isOwnProfile);
+            bumpLayoutRefresh();
+          }}
         />
       )}
     </TooltipProvider>
