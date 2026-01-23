@@ -190,19 +190,32 @@ export default function Profile() {
 
   useEffect(() => {
     async function fetchProfile() {
-      let query = supabase.from('profiles').select('*');
       const cleanUsername = username?.replace('@', '');
       
+      let data = null;
+      let error = null;
+      
       if (cleanUsername) {
-        query = query.eq('username', cleanUsername);
+        // Use case-insensitive matching via ilike
+        const result = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('username', cleanUsername)
+          .maybeSingle();
+        data = result.data;
+        error = result.error;
       } else if (user) {
-        query = query.eq('user_id', user.id);
+        const result = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        data = result.data;
+        error = result.error;
       } else {
         setLoading(false);
         return;
       }
-
-      const { data, error } = await query.maybeSingle();
 
       if (error) {
         console.error('Failed to load profile:', error);
