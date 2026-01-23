@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,7 @@ interface Profile {
   email: string | null;
   avatar_url: string | null;
   is_creator: boolean | null;
+  is_editor: boolean | null;
   created_at: string | null;
 }
 
@@ -37,6 +38,25 @@ interface Product {
   } | null;
 }
 
+interface EditorApplication {
+  id: string;
+  user_id: string;
+  display_name: string;
+  about_me: string;
+  country: string;
+  city: string;
+  hourly_rate_cents: number;
+  services: string[];
+  languages: string[];
+  status: string | null;
+  created_at: string | null;
+  profile?: {
+    avatar_url: string | null;
+    username: string | null;
+    email: string | null;
+  };
+}
+
 export default function Admin() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -44,13 +64,16 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<Profile[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [editorApplications, setEditorApplications] = useState<EditorApplication[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const [applicationSearch, setApplicationSearch] = useState("");
   
   // Stats
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalCreators, setTotalCreators] = useState(0);
+  const [pendingApplications, setPendingApplications] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -103,11 +126,84 @@ export default function Admin() {
 
       setProducts(productsWithCreators);
       setTotalProducts(productsData?.length || 0);
+
+      // Fetch editor applications
+      const { data: applicationsData, error: applicationsError } = await supabase
+        .from("editor_applications")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!applicationsError && applicationsData) {
+        // Get profile info for each application
+        const appUserIds = [...new Set(applicationsData.map(a => a.user_id))];
+        let profilesMap: Record<string, { avatar_url: string | null; username: string | null; email: string | null }> = {};
+        
+        if (appUserIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, avatar_url, username, email")
+            .in("id", appUserIds);
+          
+          profilesData?.forEach(p => {
+            profilesMap[p.id] = { avatar_url: p.avatar_url, username: p.username, email: p.email };
+          });
+        }
+
+        const appsWithProfiles = applicationsData.map(a => ({
+          ...a,
+          profile: profilesMap[a.user_id] || null
+        }));
+
+        setEditorApplications(appsWithProfiles);
+        setPendingApplications(applicationsData.filter(a => a.status === 'pending').length);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load admin data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApplicationAction = async (applicationId: string, action: 'approve' | 'reject') => {
+    try {
+      const application = editorApplications.find(a => a.id === applicationId);
+      if (!application) return;
+
+      // Update application status
+      const { error: updateError } = await supabase
+        .from('editor_applications')
+        .update({ 
+          status: action === 'approve' ? 'approved' : 'rejected',
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', applicationId);
+
+      if (updateError) throw updateError;
+
+      // If approved, update the profile
+      if (action === 'approve') {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            is_editor: true,
+            editor_hourly_rate_cents: application.hourly_rate_cents,
+            editor_services: application.services,
+            editor_languages: application.languages,
+            editor_country: application.country,
+            editor_city: application.city,
+            editor_about: application.about_me
+          })
+          .eq('id', application.user_id);
+
+        if (profileError) throw profileError;
+      }
+
+      toast.success(`Application ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
+      fetchData(); // Refresh data
+    } catch (error) {
+      console.error('Error updating application:', error);
+      toast.error('Failed to update application');
     }
   };
 
@@ -129,6 +225,11 @@ export default function Admin() {
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(productSearch.toLowerCase())
+  );
+
+  const filteredApplications = editorApplications.filter(a =>
+    a.display_name.toLowerCase().includes(applicationSearch.toLowerCase()) ||
+    (a.profile?.username?.toLowerCase() || "").includes(applicationSearch.toLowerCase())
   );
 
   if (loading) {
@@ -208,12 +309,12 @@ export default function Admin() {
         <Card className="bg-card/50">
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-accent/20">
-                <DollarSign className="w-6 h-6 text-accent" />
+              <div className="p-3 rounded-lg bg-yellow-500/20">
+                <FileText className="w-6 h-6 text-yellow-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">$0</p>
-                <p className="text-sm text-muted-foreground">Total Revenue</p>
+                <p className="text-2xl font-bold">{pendingApplications}</p>
+                <p className="text-sm text-muted-foreground">Pending Applications</p>
               </div>
             </div>
           </CardContent>
@@ -225,6 +326,14 @@ export default function Admin() {
         <TabsList>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="editor-applications" className="relative">
+            Editor Applications
+            {pendingApplications > 0 && (
+              <span className="ml-2 bg-yellow-500 text-yellow-950 text-xs px-1.5 py-0.5 rounded-full">
+                {pendingApplications}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -284,11 +393,11 @@ export default function Admin() {
                       </TableCell>
                       <TableCell>{profile.email || "-"}</TableCell>
                       <TableCell>
-                        {profile.is_creator ? (
-                          <Badge>Creator</Badge>
-                        ) : (
-                          <Badge variant="secondary">User</Badge>
-                        )}
+                        <div className="flex gap-1">
+                          {profile.is_creator && <Badge>Creator</Badge>}
+                          {profile.is_editor && <Badge className="bg-accent text-accent-foreground">Editor</Badge>}
+                          {!profile.is_creator && !profile.is_editor && <Badge variant="secondary">User</Badge>}
+                        </div>
                       </TableCell>
                       <TableCell>{formatDate(profile.created_at)}</TableCell>
                       <TableCell>
@@ -396,6 +505,137 @@ export default function Admin() {
               {filteredProducts.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   No products found
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Editor Applications Tab */}
+        <TabsContent value="editor-applications">
+          <Card className="bg-card/50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Editor Applications</CardTitle>
+                  <CardDescription>Review and manage editor applications</CardDescription>
+                </div>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={applicationSearch}
+                    onChange={(e) => setApplicationSearch(e.target.value)}
+                    placeholder="Search applications..."
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Applicant</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Hourly Rate</TableHead>
+                    <TableHead>Services</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Applied</TableHead>
+                    <TableHead className="w-24">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredApplications.map((app) => (
+                    <TableRow key={app.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-8 h-8">
+                            <AvatarImage src={app.profile?.avatar_url || undefined} />
+                            <AvatarFallback>
+                              {app.display_name?.[0] || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{app.display_name}</p>
+                            {app.profile?.username && (
+                              <p className="text-sm text-muted-foreground">
+                                @{app.profile.username}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {app.city}, {app.country}
+                      </TableCell>
+                      <TableCell>
+                        ${(app.hourly_rate_cents / 100).toFixed(0)}/hr
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {app.services.slice(0, 2).map((s) => (
+                            <Badge key={s} variant="secondary" className="text-xs">
+                              {s}
+                            </Badge>
+                          ))}
+                          {app.services.length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{app.services.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {app.status === 'pending' && (
+                          <Badge className="bg-yellow-500/20 text-yellow-600">
+                            <Clock className="w-3 h-3 mr-1" />
+                            Pending
+                          </Badge>
+                        )}
+                        {app.status === 'approved' && (
+                          <Badge className="bg-green-500/20 text-green-600">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Approved
+                          </Badge>
+                        )}
+                        {app.status === 'rejected' && (
+                          <Badge className="bg-red-500/20 text-red-600">
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Rejected
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{formatDate(app.created_at)}</TableCell>
+                      <TableCell>
+                        {app.status === 'pending' && (
+                          <div className="flex gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
+                              onClick={() => handleApplicationAction(app.id, 'approve')}
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100"
+                              onClick={() => handleApplicationAction(app.id, 'reject')}
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {filteredApplications.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No applications found
                 </div>
               )}
             </CardContent>
