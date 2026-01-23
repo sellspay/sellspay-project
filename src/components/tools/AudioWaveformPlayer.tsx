@@ -16,6 +16,8 @@ interface AudioWaveformPlayerProps {
   fileName?: string;
   onDownload: (url: string, filename: string) => void;
   onDownloadAll?: () => void;
+  bpm?: number;
+  musicalKey?: string;
 }
 
 interface TrackState {
@@ -28,6 +30,8 @@ export function AudioWaveformPlayer({
   fileName,
   onDownload,
   onDownloadAll,
+  bpm,
+  musicalKey,
 }: AudioWaveformPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -285,7 +289,23 @@ export function AudioWaveformPlayer({
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+          {/* BPM Display */}
+          {bpm && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm text-muted-foreground">BPM:</span>
+              <span className="text-sm font-medium">{bpm}</span>
+            </div>
+          )}
+
+          {/* Key Display */}
+          {musicalKey && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm text-muted-foreground">Key:</span>
+              <span className="text-sm font-medium">{musicalKey}</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-1.5">
             <span className="text-sm text-muted-foreground">format:</span>
             <span className="text-sm font-medium text-primary">mp3</span>
           </div>
