@@ -80,65 +80,133 @@ serve(async (req) => {
     // Handle the event
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
-      logStep("Processing checkout.session.completed", { sessionId: session.id });
+      logStep("Processing checkout.session.completed", { sessionId: session.id, mode: session.mode });
 
       const metadata = session.metadata || {};
-      const productId = metadata.product_id;
-      const buyerProfileId = metadata.buyer_profile_id;
-      const creatorProfileId = metadata.creator_profile_id;
-      const platformFeeCents = parseInt(metadata.platform_fee_cents || "0");
-      const creatorPayoutCents = parseInt(metadata.creator_payout_cents || "0");
 
-      if (!productId) {
-        logStep("Missing product_id in metadata");
-        return new Response(JSON.stringify({ error: "Missing product_id" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      // Handle subscription checkout
+      if (session.mode === "subscription") {
+        const planId = metadata.plan_id;
+        const buyerProfileId = metadata.buyer_profile_id;
 
-      // If no buyer profile ID, we need to create/find one based on email
-      let finalBuyerProfileId = buyerProfileId;
+        if (planId && buyerProfileId) {
+          // Create user_subscription record
+          const { error: subError } = await supabaseAdmin.from("user_subscriptions").insert({
+            user_id: buyerProfileId,
+            plan_id: planId,
+            status: "active",
+            stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
+            stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
+            current_period_start: new Date().toISOString(),
+            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+          });
 
-      if (!finalBuyerProfileId && session.customer_email) {
-        // Check if profile exists for this email
-        const { data: existingProfile } = await supabaseAdmin
-          .from("profiles")
-          .select("id")
-          .eq("email", session.customer_email)
-          .maybeSingle();
-
-        if (existingProfile) {
-          finalBuyerProfileId = existingProfile.id;
+          if (subError) {
+            logStep("Failed to create subscription record", { error: subError.message });
+          } else {
+            logStep("Subscription recorded successfully", { planId, buyerProfileId });
+          }
         }
-        logStep("Buyer profile lookup", { email: session.customer_email, profileId: finalBuyerProfileId });
-      }
+      } else {
+        // Handle one-time payment checkout
+        const productId = metadata.product_id;
+        const buyerProfileId = metadata.buyer_profile_id;
+        const platformFeeCents = parseInt(metadata.platform_fee_cents || "0");
+        const creatorPayoutCents = parseInt(metadata.creator_payout_cents || "0");
 
-      if (!finalBuyerProfileId) {
-        logStep("No buyer profile found, cannot record purchase");
-        return new Response(JSON.stringify({ received: true, note: "No buyer profile" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        if (!productId) {
+          logStep("Missing product_id in metadata");
+          return new Response(JSON.stringify({ error: "Missing product_id" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // If no buyer profile ID, we need to create/find one based on email
+        let finalBuyerProfileId = buyerProfileId;
+
+        if (!finalBuyerProfileId && session.customer_email) {
+          // Check if profile exists for this email
+          const { data: existingProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("id")
+            .eq("email", session.customer_email)
+            .maybeSingle();
+
+          if (existingProfile) {
+            finalBuyerProfileId = existingProfile.id;
+          }
+          logStep("Buyer profile lookup", { email: session.customer_email, profileId: finalBuyerProfileId });
+        }
+
+        if (!finalBuyerProfileId) {
+          logStep("No buyer profile found, cannot record purchase");
+          return new Response(JSON.stringify({ received: true, note: "No buyer profile" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Create purchase record
+        const { error: purchaseError } = await supabaseAdmin.from("purchases").insert({
+          buyer_id: finalBuyerProfileId,
+          product_id: productId,
+          amount_cents: session.amount_total || 0,
+          platform_fee_cents: platformFeeCents,
+          creator_payout_cents: creatorPayoutCents,
+          stripe_checkout_session_id: session.id,
+          stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
+          status: "completed",
         });
+
+        if (purchaseError) {
+          logStep("Failed to create purchase record", { error: purchaseError.message });
+          throw new Error(`Failed to create purchase: ${purchaseError.message}`);
+        }
+
+        logStep("Purchase recorded successfully", { productId, buyerProfileId: finalBuyerProfileId });
       }
+    }
 
-      // Create purchase record
-      const { error: purchaseError } = await supabaseAdmin.from("purchases").insert({
-        buyer_id: finalBuyerProfileId,
-        product_id: productId,
-        amount_cents: session.amount_total || 0,
-        platform_fee_cents: platformFeeCents,
-        creator_payout_cents: creatorPayoutCents,
-        stripe_checkout_session_id: session.id,
-        stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
-        status: "completed",
-      });
+    // Handle subscription updates
+    if (event.type === "customer.subscription.updated") {
+      const subscription = event.data.object as Stripe.Subscription;
+      logStep("Processing subscription.updated", { subscriptionId: subscription.id, status: subscription.status });
 
-      if (purchaseError) {
-        logStep("Failed to create purchase record", { error: purchaseError.message });
-        throw new Error(`Failed to create purchase: ${purchaseError.message}`);
+      const { error: updateError } = await supabaseAdmin
+        .from("user_subscriptions")
+        .update({
+          status: subscription.status,
+          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
+        })
+        .eq("stripe_subscription_id", subscription.id);
+
+      if (updateError) {
+        logStep("Failed to update subscription", { error: updateError.message });
+      } else {
+        logStep("Subscription updated successfully");
       }
+    }
 
-      logStep("Purchase recorded successfully", { productId, buyerProfileId: finalBuyerProfileId });
+    // Handle subscription cancellation
+    if (event.type === "customer.subscription.deleted") {
+      const subscription = event.data.object as Stripe.Subscription;
+      logStep("Processing subscription.deleted", { subscriptionId: subscription.id });
+
+      const { error: updateError } = await supabaseAdmin
+        .from("user_subscriptions")
+        .update({
+          status: "canceled",
+          canceled_at: new Date().toISOString(),
+        })
+        .eq("stripe_subscription_id", subscription.id);
+
+      if (updateError) {
+        logStep("Failed to cancel subscription", { error: updateError.message });
+      } else {
+        logStep("Subscription canceled successfully");
+      }
     }
 
     if (event.type === "account.updated") {
