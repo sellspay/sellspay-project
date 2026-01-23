@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
@@ -20,7 +20,12 @@ import {
   Layers,
   Film,
   Bookmark,
-  UserSquare2
+  UserSquare2,
+  Pencil,
+  ChevronUp,
+  ChevronDown,
+  Check,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -237,6 +242,7 @@ const ProfilePage: React.FC = () => {
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [showCreateCollection, setShowCreateCollection] = useState(false);
+  const [isEditingCollections, setIsEditingCollections] = useState(false);
 
   const fetchCollections = async (profileId: string) => {
     try {
@@ -519,6 +525,32 @@ const ProfilePage: React.FC = () => {
   const draftsCount = draftProducts.length;
   const downloadsCount = purchases.length;
 
+  // Move collection up/down
+  const moveCollection = async (index: number, direction: 'up' | 'down') => {
+    if (!profile) return;
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= collections.length) return;
+
+    const newCollections = [...collections];
+    [newCollections[index], newCollections[newIndex]] = [newCollections[newIndex], newCollections[index]];
+    setCollections(newCollections);
+
+    // Update display_order in database
+    try {
+      await Promise.all(
+        newCollections.map((col, idx) =>
+          supabase
+            .from('collections')
+            .update({ display_order: idx })
+            .eq('id', col.id)
+        )
+      );
+    } catch (error) {
+      console.error('Error updating collection order:', error);
+      toast.error('Failed to update order');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -714,7 +746,7 @@ const ProfilePage: React.FC = () => {
         {/* Instagram-style Icon Tabs */}
         <div className="mt-8 max-w-4xl mx-auto px-4">
           <div className="flex justify-center border-t border-border">
-            {/* Posts Tab */}
+            {/* Posts/Collections Tab */}
             <button
               onClick={() => setActiveTab('posts')}
               className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
@@ -738,8 +770,8 @@ const ProfilePage: React.FC = () => {
               <Film className="w-5 h-5" />
             </button>
 
-            {/* Collections Tab - only for own profile and creators */}
-            {isOwnProfile && profile.is_creator && (
+            {/* Saved/Bookmarks Tab - only for own profile */}
+            {isOwnProfile && (
               <button
                 onClick={() => setActiveTab('collections')}
                 className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
@@ -769,22 +801,116 @@ const ProfilePage: React.FC = () => {
         </div>
 
         {/* Content Section */}
-        <div className="mt-6 max-w-6xl mx-auto px-4 pb-12">
+        <div className="mt-6 max-w-5xl mx-auto px-4 pb-12">
           
-          {/* Posts Tab - Published products grid */}
+          {/* Posts Tab - Collections layout (public) */}
           {activeTab === 'posts' && (
             <>
-              {filteredProducts.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {filteredProducts.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onClick={() => navigate(`/product/${product.id}`)}
-                    />
+              {/* Edit Controls for own profile */}
+              {isOwnProfile && profile.is_creator && (
+                <div className="flex justify-end items-center mb-6 gap-2">
+                  {isEditingCollections ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsEditingCollections(false)}
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Done
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowCreateCollection(true)}
+                        className="text-primary"
+                      >
+                        <Plus className="w-4 h-4 mr-1" />
+                        New Collection
+                      </Button>
+                      {collections.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsEditingCollections(true)}
+                        >
+                          <Pencil className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Automatic "Recent Uploads" Collection */}
+              {filteredProducts.length > 0 && (
+                <div className="mb-10">
+                  <CollectionRow
+                    id="recent-uploads"
+                    name="Recent Uploads"
+                    coverImage={null}
+                    products={filteredProducts.slice(0, 9).map(p => ({
+                      id: p.id,
+                      name: p.name,
+                      cover_image_url: p.cover_image_url,
+                      youtube_url: p.youtube_url,
+                      preview_video_url: p.preview_video_url,
+                      price_cents: p.price_cents,
+                      currency: p.currency,
+                      pricing_type: p.pricing_type,
+                      created_at: p.created_at,
+                    }))}
+                    totalCount={filteredProducts.length}
+                  />
+                </div>
+              )}
+
+              {/* User Created Collections */}
+              {collections.length > 0 && (
+                <div className="space-y-10">
+                  {collections.map((collection, index) => (
+                    <div key={collection.id} className="relative">
+                      {/* Reorder controls when editing */}
+                      {isEditingCollections && isOwnProfile && (
+                        <div className="absolute -left-12 top-0 flex flex-col gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => moveCollection(index, 'up')}
+                            disabled={index === 0}
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => moveCollection(index, 'down')}
+                            disabled={index === collections.length - 1}
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                      <CollectionRow
+                        id={collection.id}
+                        name={collection.name}
+                        coverImage={collection.cover_image_url}
+                        products={collection.products}
+                        totalCount={collection.totalCount}
+                      />
+                    </div>
                   ))}
                 </div>
-              ) : (
+              )}
+
+              {/* Empty state */}
+              {filteredProducts.length === 0 && collections.length === 0 && (
                 <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
                   {isOwnProfile ? (
                     <>
@@ -810,14 +936,24 @@ const ProfilePage: React.FC = () => {
               {(() => {
                 const videoProducts = filteredProducts.filter(p => p.youtube_url || p.preview_video_url);
                 return videoProducts.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {videoProducts.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onClick={() => navigate(`/product/${product.id}`)}
-                      />
-                    ))}
+                  <div className="mb-10">
+                    <CollectionRow
+                      id="videos"
+                      name="Videos"
+                      coverImage={null}
+                      products={videoProducts.slice(0, 9).map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        cover_image_url: p.cover_image_url,
+                        youtube_url: p.youtube_url,
+                        preview_video_url: p.preview_video_url,
+                        price_cents: p.price_cents,
+                        currency: p.currency,
+                        pricing_type: p.pricing_type,
+                        created_at: p.created_at,
+                      }))}
+                      totalCount={videoProducts.length}
+                    />
                   </div>
                 ) : (
                   <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
@@ -828,45 +964,38 @@ const ProfilePage: React.FC = () => {
             </>
           )}
 
-          {/* Collections Tab */}
-          {activeTab === 'collections' && isOwnProfile && profile.is_creator && (
+          {/* Saved/Bookmarks Tab - Private downloads/purchases */}
+          {activeTab === 'collections' && isOwnProfile && (
             <>
-              {/* Create Collection Button */}
-              <div className="flex justify-between items-center mb-6">
-                <p className="text-sm text-muted-foreground">
-                  Only you can see your collections
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowCreateCollection(true)}
-                  className="text-primary hover:text-primary/90"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  New Collection
-                </Button>
-              </div>
-
-              {collections.length > 0 ? (
-                <div className="space-y-8">
-                  {collections.map((collection) => (
-                    <CollectionRow
-                      key={collection.id}
-                      id={collection.id}
-                      name={collection.name}
-                      coverImage={collection.cover_image_url}
-                      products={collection.products}
-                      totalCount={collection.totalCount}
-                    />
-                  ))}
+              <p className="text-sm text-muted-foreground mb-6">
+                Only you can see what you've saved
+              </p>
+              {purchases.length > 0 ? (
+                <div className="mb-10">
+                  <CollectionRow
+                    id="saved"
+                    name="Saved Items"
+                    coverImage={null}
+                    products={purchases.filter(p => p.product).slice(0, 9).map(p => ({
+                      id: p.product!.id,
+                      name: p.product!.name,
+                      cover_image_url: p.product!.cover_image_url,
+                      youtube_url: p.product!.youtube_url,
+                      preview_video_url: p.product!.preview_video_url,
+                      price_cents: null,
+                      currency: null,
+                      pricing_type: p.product!.pricing_type,
+                      created_at: p.created_at,
+                    }))}
+                    totalCount={purchases.length}
+                  />
                 </div>
               ) : (
                 <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
-                  <Layers className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">No collections yet.</p>
-                  <Button onClick={() => setShowCreateCollection(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Collection
+                  <Bookmark className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">No saved items yet.</p>
+                  <Button onClick={() => navigate('/products')}>
+                    Browse Products
                   </Button>
                 </div>
               )}
@@ -877,25 +1006,24 @@ const ProfilePage: React.FC = () => {
           {activeTab === 'tagged' && isOwnProfile && (
             <>
               {purchases.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {purchases.map((purchase) => purchase.product && (
-                    <ProductCard
-                      key={purchase.id}
-                      product={{
-                        id: purchase.product.id,
-                        name: purchase.product.name,
-                        cover_image_url: purchase.product.cover_image_url,
-                        youtube_url: purchase.product.youtube_url,
-                        preview_video_url: purchase.product.preview_video_url,
-                        pricing_type: purchase.product.pricing_type,
-                        price_cents: null,
-                        currency: null,
-                        status: 'published',
-                        created_at: purchase.created_at,
-                      }}
-                      onClick={() => navigate(`/product/${purchase.product_id}`)}
-                    />
-                  ))}
+                <div className="mb-10">
+                  <CollectionRow
+                    id="downloads"
+                    name="My Downloads"
+                    coverImage={null}
+                    products={purchases.filter(p => p.product).slice(0, 9).map(p => ({
+                      id: p.product!.id,
+                      name: p.product!.name,
+                      cover_image_url: p.product!.cover_image_url,
+                      youtube_url: p.product!.youtube_url,
+                      preview_video_url: p.product!.preview_video_url,
+                      price_cents: null,
+                      currency: null,
+                      pricing_type: p.product!.pricing_type,
+                      created_at: p.created_at,
+                    }))}
+                    totalCount={purchases.length}
+                  />
                 </div>
               ) : (
                 <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
