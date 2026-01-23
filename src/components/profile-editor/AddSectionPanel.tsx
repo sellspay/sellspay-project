@@ -1,14 +1,16 @@
 import { useState } from 'react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { SectionType, SECTION_TEMPLATES, SECTION_CATEGORIES } from './types';
-import { X } from 'lucide-react';
+import { SectionType, SECTION_TEMPLATES, SECTION_CATEGORIES, ProfileSection } from './types';
 
 interface AddSectionPanelProps {
   open: boolean;
   onClose: () => void;
   onAddSection: (type: SectionType, presetId?: string) => void;
+  onPreviewSection?: (previewSection: ProfileSection | null) => void;
 }
 
 // Preset preview thumbnails - these would ideally be actual images but we'll use styled divs
@@ -457,23 +459,105 @@ const PRESET_PREVIEWS: Record<string, {
       },
     ],
   },
+  footer: {
+    thumbnails: [
+      { 
+        id: 'style1', 
+        name: 'Simple Footer',
+        preview: (
+          <div className="w-full aspect-[3/1] bg-slate-900 rounded-lg overflow-hidden p-3 flex items-center justify-center">
+            <div className="text-center">
+              <div className="flex gap-2 justify-center mb-2">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="w-3 h-3 rounded-full bg-white/20" />
+                ))}
+              </div>
+              <div className="text-[6px] text-white/60">© 2026 Store Name. All rights reserved.</div>
+            </div>
+          </div>
+        )
+      },
+      { 
+        id: 'style2', 
+        name: 'Multi-Column',
+        preview: (
+          <div className="w-full aspect-video bg-slate-900 rounded-lg overflow-hidden p-3">
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              {[...Array(3)].map((_, i) => (
+                <div key={i}>
+                  <div className="text-[6px] text-white font-semibold mb-1">Column {i + 1}</div>
+                  <div className="space-y-0.5">
+                    <div className="text-[5px] text-white/50">Link 1</div>
+                    <div className="text-[5px] text-white/50">Link 2</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="text-center text-[5px] text-white/40 border-t border-white/10 pt-2">© 2026 Store Name</div>
+          </div>
+        )
+      },
+      { 
+        id: 'style3', 
+        name: 'Minimal',
+        preview: (
+          <div className="w-full aspect-[4/1] bg-black rounded-lg overflow-hidden p-2 flex items-center justify-center">
+            <div className="text-[7px] text-white/50">© 2026 Store Name</div>
+          </div>
+        )
+      },
+    ],
+  },
 };
 
-export function AddSectionPanel({ open, onClose, onAddSection }: AddSectionPanelProps) {
+export function AddSectionPanel({ open, onClose, onAddSection, onPreviewSection }: AddSectionPanelProps) {
   const [selectedType, setSelectedType] = useState<SectionType>('image_with_text');
-
-  if (!open) return null;
+  const [hoveredPreset, setHoveredPreset] = useState<string | null>(null);
 
   const selectedTemplate = SECTION_TEMPLATES.find(t => t.type === selectedType);
   const presets = PRESET_PREVIEWS[selectedType]?.thumbnails || [];
 
   const handleSelectPreset = (presetId: string) => {
+    // Clear preview before adding
+    onPreviewSection?.(null);
     onAddSection(selectedType, presetId);
-    // Don't call onClose - let parent handle closing after section is added
   };
 
   const handleTypeSelect = (type: SectionType) => {
     setSelectedType(type);
+    setHoveredPreset(null);
+    onPreviewSection?.(null);
+  };
+
+  const handlePresetHover = (presetId: string | null) => {
+    setHoveredPreset(presetId);
+    
+    if (presetId && onPreviewSection) {
+      const template = SECTION_TEMPLATES.find(t => t.type === selectedType);
+      if (template) {
+        // Create a preview section
+        const previewSection: ProfileSection = {
+          id: 'preview-temp',
+          profile_id: 'preview',
+          section_type: selectedType,
+          display_order: 999,
+          content: JSON.parse(JSON.stringify(template.defaultContent)),
+          style_options: template.presets.find(p => p.id === presetId)?.styleOptions || {},
+          is_visible: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        onPreviewSection(previewSection);
+      }
+    } else {
+      onPreviewSection?.(null);
+    }
+  };
+
+  const handleClose = () => {
+    onPreviewSection?.(null);
+    setHoveredPreset(null);
+    onClose();
   };
 
   // Group templates by category
@@ -483,104 +567,122 @@ export function AddSectionPanel({ open, onClose, onAddSection }: AddSectionPanel
   })).filter(g => g.templates.length > 0);
 
   return (
-    <div 
-      className="fixed inset-0 bg-background flex flex-col"
-      style={{ zIndex: 9999 }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-        <h2 className="text-xl font-bold">Add New Section</h2>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="w-5 h-5" />
-        </Button>
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar - Section Types */}
-        <div className="w-64 border-r border-border bg-muted/30 shrink-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-4 space-y-6">
-              {groupedTemplates.map((group) => (
-                <div key={group.id}>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    {group.name}
-                  </h4>
-                  <div className="space-y-1">
-                    {group.templates.map((template) => (
-                      <button
-                        key={template.type}
-                        type="button"
-                        onClick={() => handleTypeSelect(template.type)}
-                        className={cn(
-                          "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer",
-                          selectedType === template.type
-                            ? "bg-primary text-primary-foreground font-medium"
-                            : "hover:bg-muted text-foreground"
-                        )}
-                      >
-                        {template.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+      <DialogContent className="max-w-4xl w-[95vw] h-[80vh] max-h-[80vh] p-0 gap-0 overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+          <h2 className="text-xl font-bold">Add New Section</h2>
         </div>
 
-        {/* Right Panel - Preset Previews */}
-        <div className="flex-1 bg-muted/10 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="p-8">
-              {selectedTemplate && (
-                <>
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold mb-1">{selectedTemplate.name}</h3>
-                    <p className="text-sm text-muted-foreground">{selectedTemplate.description}</p>
-                  </div>
-
-                  {presets.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-6">
-                      {presets.map((preset, index) => (
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Sidebar - Section Types */}
+          <div className="w-56 border-r border-border bg-muted/30 shrink-0 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="p-3 space-y-4">
+                {groupedTemplates.map((group) => (
+                  <div key={group.id}>
+                    <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-2">
+                      {group.name}
+                    </h4>
+                    <div className="space-y-0.5">
+                      {group.templates.map((template) => (
                         <button
-                          key={preset.id}
+                          key={template.type}
                           type="button"
-                          onClick={() => handleSelectPreset(preset.id)}
-                          className="group relative bg-card rounded-xl border border-border hover:border-primary/50 hover:shadow-lg transition-all overflow-hidden cursor-pointer text-left"
+                          onClick={() => handleTypeSelect(template.type)}
+                          className={cn(
+                            "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer",
+                            selectedType === template.type
+                              ? "bg-primary text-primary-foreground font-medium"
+                              : "hover:bg-muted text-foreground"
+                          )}
                         >
-                          {/* Preview number badge */}
-                          <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-muted-foreground/80 text-white text-xs font-medium flex items-center justify-center z-10">
-                            {index + 1}
-                          </div>
-
-                          {/* Preview content */}
-                          <div className="p-4">
-                            {preset.preview}
-                          </div>
-
-                          {/* Hover overlay */}
-                          <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                            <div className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium">
-                              Add This Layout
-                            </div>
-                          </div>
+                          {template.name}
                         </button>
                       ))}
                     </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <p className="text-muted-foreground mb-4">Click to add this section</p>
-                      <Button type="button" onClick={() => handleSelectPreset('style1')}>
-                        Add {selectedTemplate.name}
-                      </Button>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* Right Panel - Preset Previews */}
+          <div className="flex-1 bg-muted/10 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="p-6">
+                {selectedTemplate && (
+                  <>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold mb-1">{selectedTemplate.name}</h3>
+                      <p className="text-sm text-muted-foreground">{selectedTemplate.description}</p>
                     </div>
-                  )}
-                </>
-              )}
-            </div>
-          </ScrollArea>
+
+                    {presets.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        {presets.map((preset, index) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => handleSelectPreset(preset.id)}
+                            onMouseEnter={() => handlePresetHover(preset.id)}
+                            onMouseLeave={() => handlePresetHover(null)}
+                            className={cn(
+                              "group relative bg-card rounded-xl border hover:shadow-lg transition-all overflow-hidden cursor-pointer text-left",
+                              hoveredPreset === preset.id 
+                                ? "border-primary ring-2 ring-primary/20" 
+                                : "border-border hover:border-primary/50"
+                            )}
+                          >
+                            {/* Preview number badge */}
+                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-muted-foreground/80 text-white text-[10px] font-medium flex items-center justify-center z-10">
+                              {index + 1}
+                            </div>
+
+                            {/* Preview indicator */}
+                            {hoveredPreset === preset.id && (
+                              <Badge 
+                                variant="secondary" 
+                                className="absolute top-2 left-2 z-10 bg-primary text-primary-foreground text-[10px]"
+                              >
+                                Preview
+                              </Badge>
+                            )}
+
+                            {/* Preview content */}
+                            <div className="p-3">
+                              {preset.preview}
+                            </div>
+
+                            {/* Preset name */}
+                            <div className="px-3 pb-2 text-xs font-medium text-muted-foreground">
+                              {preset.name}
+                            </div>
+
+                            {/* Hover overlay */}
+                            <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                              <div className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium">
+                                Add This Layout
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground mb-4">Click to add this section</p>
+                        <Button type="button" onClick={() => handleSelectPreset('style1')}>
+                          Add {selectedTemplate.name}
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, CollectionContent, AboutMeContent, HeadlineContent, DividerContent, TestimonialsContent, FAQContent, NewsletterContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, ContactUsContent } from '../types';
+import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, CollectionContent, AboutMeContent, HeadlineContent, DividerContent, TestimonialsContent, FAQContent, NewsletterContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, ContactUsContent, FooterContent } from '../types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -421,6 +421,46 @@ const ContactUsPreview = memo(({ content }: { content: ContactUsContent }) => (
 ));
 ContactUsPreview.displayName = 'ContactUsPreview';
 
+// Footer Preview
+const FooterPreview = memo(({ content }: { content: FooterContent }) => (
+  <div className="bg-slate-900 text-white rounded-lg p-6">
+    {content.columns.length > 0 && (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        {content.columns.map((column) => (
+          <div key={column.id}>
+            <h4 className="font-semibold mb-3 text-white">{column.title}</h4>
+            <ul className="space-y-2">
+              {column.links.map((link) => (
+                <li key={link.id}>
+                  <a 
+                    href={link.url} 
+                    className="text-sm text-white/60 hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    )}
+    
+    {content.showSocialLinks && (
+      <div className="flex justify-center gap-4 mb-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition-colors" />
+        ))}
+      </div>
+    )}
+    
+    <div className="text-center text-sm text-white/50 border-t border-white/10 pt-4">
+      {content.text}
+    </div>
+  </div>
+));
+FooterPreview.displayName = 'FooterPreview';
+
 // Main Section Preview Content Component
 export const SectionPreviewContent = memo(({ section }: SectionPreviewContentProps) => {
   switch (section.section_type) {
@@ -458,6 +498,8 @@ export const SectionPreviewContent = memo(({ section }: SectionPreviewContentPro
       return <LogoListPreview content={section.content as LogoListContent} />;
     case 'contact_us':
       return <ContactUsPreview content={section.content as ContactUsContent} />;
+    case 'footer':
+      return <FooterPreview content={section.content as FooterContent} />;
     default:
       return <div className="text-muted-foreground">Unknown section type</div>;
   }

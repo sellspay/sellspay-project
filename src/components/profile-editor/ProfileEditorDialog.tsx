@@ -154,6 +154,7 @@ export function ProfileEditorDialog({
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [editingSection, setEditingSection] = useState<ProfileSection | null>(null);
   const [productCount, setProductCount] = useState(0);
+  const [previewSection, setPreviewSection] = useState<ProfileSection | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -507,7 +508,7 @@ export function ProfileEditorDialog({
                         <div className="text-center py-12 text-muted-foreground">
                           Loading sections...
                         </div>
-                      ) : sections.length === 0 ? (
+                      ) : sections.length === 0 && !previewSection ? (
                         <div className="text-center py-16 border-2 border-dashed border-muted-foreground/25 rounded-lg bg-background/50">
                           <p className="text-muted-foreground mb-4">
                             No sections yet. Start building your profile!
@@ -544,6 +545,20 @@ export function ProfileEditorDialog({
                                   onToggleVisibility={() => toggleVisibility(section.id)}
                                 />
                               ))}
+                              
+                              {/* Preview Section - shown while hovering over presets */}
+                              {previewSection && (
+                                <div className="relative bg-card/50 backdrop-blur-sm border-2 border-dashed border-primary rounded-lg overflow-hidden">
+                                  <div className="absolute top-2 left-2 z-10">
+                                    <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded font-medium">
+                                      Preview
+                                    </span>
+                                  </div>
+                                  <div className="p-4 pt-10 min-h-[80px]">
+                                    <SectionPreviewContent section={previewSection} />
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </SortableContext>
                         </DndContext>
@@ -557,14 +572,16 @@ export function ProfileEditorDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Add Section Panel - Full screen overlay - rendered outside Dialog for z-index */}
-      {open && (
-        <AddSectionPanel
-          open={showAddPanel}
-          onClose={() => setShowAddPanel(false)}
-          onAddSection={addSection}
-        />
-      )}
+      {/* Add Section Panel - Modal dialog */}
+      <AddSectionPanel
+        open={showAddPanel}
+        onClose={() => {
+          setShowAddPanel(false);
+          setPreviewSection(null);
+        }}
+        onAddSection={addSection}
+        onPreviewSection={setPreviewSection}
+      />
 
       {/* Edit Section Dialog */}
       <EditSectionDialog
