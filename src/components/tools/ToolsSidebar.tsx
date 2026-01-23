@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { 
   Mic2, 
   Scissors, 
@@ -10,7 +12,11 @@ import {
   Sparkles,
   Image,
   Wand2,
-  Volume2
+  Volume2,
+  Search,
+  X,
+  Layers,
+  Zap
 } from "lucide-react";
 
 export interface Tool {
@@ -24,6 +30,16 @@ export interface Tool {
 }
 
 export const tools: Tool[] = [
+  // SFX Generator - Top Pick
+  {
+    id: "sfx-generator",
+    title: "SFX Generator",
+    description: "Create sound effects from text with AI",
+    icon: Volume2,
+    category: "audio",
+    badge: "Popular",
+    available: true,
+  },
   // Audio tools
   {
     id: "voice-isolator",
@@ -31,7 +47,6 @@ export const tools: Tool[] = [
     description: "Remove vocals or background from any track",
     icon: Mic2,
     category: "audio",
-    badge: "Popular",
     available: true,
   },
   {
@@ -99,15 +114,6 @@ export const tools: Tool[] = [
     category: "audio",
     available: true,
   },
-  {
-    id: "sfx-generator",
-    title: "SFX Generator",
-    description: "Create sound effects from text with AI",
-    icon: Volume2,
-    category: "audio",
-    badge: "New",
-    available: true,
-  },
   // Generators
   {
     id: "manga-generator",
@@ -115,7 +121,6 @@ export const tools: Tool[] = [
     description: "Create manga-style illustrations with AI",
     icon: Image,
     category: "generators",
-    badge: "Popular",
     available: false,
   },
   {
@@ -141,99 +146,161 @@ interface ToolsSidebarProps {
   onSelectTool: (toolId: string) => void;
   selectedCategory: "all" | "audio" | "generators";
   onSelectCategory: (category: "all" | "audio" | "generators") => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }
+
+const categoryIcons = {
+  all: Layers,
+  audio: AudioWaveform,
+  generators: Zap,
+};
 
 export function ToolsSidebar({ 
   selectedTool, 
   onSelectTool, 
   selectedCategory, 
-  onSelectCategory 
+  onSelectCategory,
+  searchQuery,
+  onSearchChange
 }: ToolsSidebarProps) {
-  const filteredTools = selectedCategory === "all" 
-    ? tools 
-    : tools.filter(t => t.category === selectedCategory);
+  // Count tools per category
+  const audioCount = tools.filter(t => t.category === "audio").length;
+  const generatorsCount = tools.filter(t => t.category === "generators").length;
+  const allCount = tools.length;
+
+  const counts = {
+    all: allCount,
+    audio: audioCount,
+    generators: generatorsCount,
+  };
+
+  // Filter by category and search
+  const filteredTools = tools.filter(tool => {
+    const matchesCategory = selectedCategory === "all" || tool.category === selectedCategory;
+    const matchesSearch = searchQuery === "" || 
+      tool.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tool.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tool.category.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
-    <div className="w-full lg:w-80 flex-shrink-0 space-y-4">
-      {/* Header */}
-      <div className="px-1">
-        <h1 className="text-2xl font-bold">Tools</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Your hub for audio tools and AI generators
-        </p>
+    <div className="w-full lg:w-80 flex-shrink-0 space-y-5">
+      {/* Search Input */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Search tools..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-10 pr-10 h-11 bg-secondary/30 border-border/50 rounded-xl focus:border-primary/50 focus:ring-primary/20"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => onSearchChange("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-muted flex items-center justify-center hover:bg-muted-foreground/20 transition-colors"
+          >
+            <X className="w-3 h-3 text-muted-foreground" />
+          </button>
+        )}
       </div>
 
       {/* Category Tabs */}
-      <div className="flex gap-2 px-1">
-        {(["all", "audio", "generators"] as const).map((cat) => (
-          <button
-            key={cat}
-            onClick={() => onSelectCategory(cat)}
-            className={cn(
-              "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
-              selectedCategory === cat
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"
-            )}
-          >
-            {cat === "all" ? "All" : cat.charAt(0).toUpperCase() + cat.slice(1)}
-          </button>
-        ))}
+      <div className="flex gap-2">
+        {(["all", "audio", "generators"] as const).map((cat) => {
+          const Icon = categoryIcons[cat];
+          return (
+            <button
+              key={cat}
+              onClick={() => onSelectCategory(cat)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all",
+                selectedCategory === cat
+                  ? "bg-gradient-to-r from-primary/20 to-accent/20 text-foreground border border-primary/30 shadow-lg shadow-primary/10"
+                  : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground border border-transparent"
+              )}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{cat === "all" ? "All" : cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
+              <span className={cn(
+                "text-xs px-1.5 py-0.5 rounded-md",
+                selectedCategory === cat
+                  ? "bg-primary/30 text-primary-foreground"
+                  : "bg-muted/50 text-muted-foreground"
+              )}>
+                {counts[cat]}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Tools List */}
-      <div className="space-y-1">
-        {filteredTools.map((tool) => (
-          <button
-            key={tool.id}
-            onClick={() => onSelectTool(tool.id)}
-            className={cn(
-              "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all",
-              selectedTool === tool.id
-                ? "bg-primary/10 border border-primary/30"
-                : "hover:bg-secondary/50 border border-transparent"
-            )}
-          >
-            <div className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-              selectedTool === tool.id
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground"
-            )}>
-              <tool.icon className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className={cn(
-                  "font-medium",
-                  selectedTool === tool.id ? "text-primary" : "text-foreground"
-                )}>
-                  {tool.title}
-                </span>
-                {tool.badge && (
-                  <Badge 
-                    variant={tool.badge === "Popular" ? "default" : "secondary"}
-                    className={cn(
-                      "text-[10px] px-1.5 py-0",
-                      tool.badge === "Popular" && "bg-primary/80",
-                      tool.badge === "New" && "bg-accent text-accent-foreground"
-                    )}
-                  >
-                    {tool.badge}
-                  </Badge>
-                )}
-                {!tool.available && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
-                    Soon
-                  </Badge>
-                )}
+      <div className="space-y-1.5">
+        {filteredTools.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No tools found</p>
+          </div>
+        ) : (
+          filteredTools.map((tool) => (
+            <button
+              key={tool.id}
+              onClick={() => tool.available && onSelectTool(tool.id)}
+              disabled={!tool.available}
+              className={cn(
+                "w-full flex items-start gap-3.5 p-3.5 rounded-xl text-left transition-all group",
+                selectedTool === tool.id
+                  ? "bg-gradient-to-r from-primary/15 to-accent/10 border border-primary/40 shadow-lg shadow-primary/5"
+                  : tool.available 
+                    ? "hover:bg-secondary/40 border border-transparent hover:border-border/50 hover:shadow-md" 
+                    : "opacity-60 cursor-not-allowed border border-transparent"
+              )}
+            >
+              <div className={cn(
+                "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all",
+                selectedTool === tool.id
+                  ? "bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-lg shadow-primary/30"
+                  : tool.available
+                    ? "bg-secondary/60 text-muted-foreground group-hover:bg-secondary group-hover:text-foreground"
+                    : "bg-secondary/40 text-muted-foreground/60"
+              )}>
+                <tool.icon className="w-5 h-5" />
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                {tool.description}
-              </p>
-            </div>
-          </button>
-        ))}
+              <div className="flex-1 min-w-0 py-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={cn(
+                    "font-semibold transition-colors",
+                    selectedTool === tool.id ? "text-foreground" : "text-foreground/90"
+                  )}>
+                    {tool.title}
+                  </span>
+                  {tool.badge && (
+                    <Badge 
+                      className={cn(
+                        "text-[10px] px-2 py-0.5 font-medium border-0",
+                        tool.badge === "Popular" && "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-sm",
+                        tool.badge === "New" && "bg-accent/20 text-accent border border-accent/30"
+                      )}
+                    >
+                      {tool.badge}
+                    </Badge>
+                  )}
+                  {!tool.available && (
+                    <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-muted-foreground border-muted-foreground/30">
+                      Soon
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                  {tool.description}
+                </p>
+              </div>
+            </button>
+          ))
+        )}
       </div>
     </div>
   );
