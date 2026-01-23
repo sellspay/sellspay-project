@@ -5,8 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCredits } from "@/hooks/useCredits";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MainLayout from "@/components/layout/MainLayout";
-import { Wallet, Check, Zap, Music, Mic, Wand2, Loader2, Sparkles, Crown, Star, ArrowRight, Volume2 } from "lucide-react";
+import { Check, Loader2, Sparkles, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -22,18 +23,58 @@ interface CreditPackage {
 
 // Mapping to monthly recurring price IDs based on actual DB credits
 const MONTHLY_PRICE_MAP: Record<number, string> = {
-  15: "price_1SssVIE5Ga1Ha0QbMRTCVK4R",   // Starter
-  50: "price_1SssVSE5Ga1Ha0Qb0fUFWDk9",   // Basic
-  150: "price_1SssVhE5Ga1Ha0Qbt8oDdKvc",  // Pro
-  350: "price_1SssWzE5Ga1Ha0QbGjeeSuID",  // Power
-  800: "price_1SssXEE5Ga1Ha0QbgDYnF7Ds",  // Enterprise
+  15: "price_1SssVIE5Ga1Ha0QbMRTCVK4R",
+  50: "price_1SssVSE5Ga1Ha0Qb0fUFWDk9",
+  150: "price_1SssVhE5Ga1Ha0Qbt8oDdKvc",
+  350: "price_1SssWzE5Ga1Ha0QbGjeeSuID",
+  800: "price_1SssXEE5Ga1Ha0QbgDYnF7Ds",
 };
 
-const proTools = [
-  { icon: Volume2, name: "SFX Generator" },
-  { icon: Mic, name: "Voice Isolator" },
-  { icon: Music, name: "Music Splitter" },
-  { icon: Zap, name: "SFX Isolator" },
+// Tier definitions
+const TIERS = [
+  {
+    id: "starter",
+    name: "Starter",
+    description: "Perfect for trying out our AI audio tools",
+    color: "from-blue-500/20 to-cyan-500/20",
+    borderColor: "border-blue-500/30",
+    features: [
+      "All Pro AI tools access",
+      "Voice Isolator",
+      "Music Splitter",
+      "SFX Generator",
+      "Priority processing",
+    ],
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    description: "For creators who need more power and flexibility",
+    color: "from-primary/20 to-purple-500/20",
+    borderColor: "border-primary/50",
+    popular: true,
+    features: [
+      "Everything in Starter, plus:",
+      "Higher quality exports",
+      "Batch processing",
+      "Priority support",
+      "Early access to new tools",
+    ],
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    description: "Built for teams and high-volume creators",
+    color: "from-amber-500/20 to-orange-500/20",
+    borderColor: "border-amber-500/30",
+    features: [
+      "Everything in Pro, plus:",
+      "Dedicated support",
+      "Custom integrations",
+      "Team collaboration",
+      "Volume discounts",
+    ],
+  },
 ];
 
 const faqs = [
@@ -63,12 +104,18 @@ export default function Pricing() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { creditBalance, isLoading: creditsLoading, startCheckout, verifyPurchase, subscription } = useCredits();
+  const { startCheckout, verifyPurchase, subscription } = useCredits();
   
   const [packages, setPackages] = useState<CreditPackage[]>([]);
-  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [purchasing, setPurchasing] = useState(false);
+  const [purchasing, setPurchasing] = useState<string | null>(null);
+  
+  // Selected package per tier
+  const [selectedCredits, setSelectedCredits] = useState<Record<string, number>>({
+    starter: 15,
+    pro: 150,
+    enterprise: 800,
+  });
 
   useEffect(() => {
     fetchPackages();
@@ -97,16 +144,7 @@ export default function Pricing() {
         .order("display_order", { ascending: true });
 
       if (error) throw error;
-      
-      const pkgs = data || [];
-      setPackages(pkgs);
-      
-      const popularPkg = pkgs.find(p => p.is_popular);
-      if (popularPkg) {
-        setSelectedPackageId(popularPkg.id);
-      } else if (pkgs.length > 0) {
-        setSelectedPackageId(pkgs[Math.floor(pkgs.length / 2)]?.id || pkgs[0].id);
-      }
+      setPackages(data || []);
     } catch (error) {
       console.error("Error fetching packages:", error);
       toast.error("Failed to load pricing");
@@ -115,15 +153,30 @@ export default function Pricing() {
     }
   };
 
-  const selectedPackage = packages.find(p => p.id === selectedPackageId);
+  const getPackagesForTier = (tierId: string) => {
+    // Map tiers to credit ranges
+    const tierRanges: Record<string, number[]> = {
+      starter: [15, 50],
+      pro: [150, 350],
+      enterprise: [800],
+    };
+    const range = tierRanges[tierId] || [];
+    return packages.filter(pkg => range.includes(pkg.credits));
+  };
 
-  const handleSubscribe = async () => {
+  const getSelectedPackage = (tierId: string) => {
+    const credits = selectedCredits[tierId];
+    return packages.find(pkg => pkg.credits === credits);
+  };
+
+  const handleSubscribe = async (tierId: string) => {
     if (!user) {
       toast.error("Please sign in to subscribe");
       navigate("/login");
       return;
     }
 
+    const selectedPackage = getSelectedPackage(tierId);
     if (!selectedPackage) {
       toast.error("Please select a package");
       return;
@@ -135,32 +188,19 @@ export default function Pricing() {
       return;
     }
 
-    setPurchasing(true);
+    setPurchasing(tierId);
     try {
       await startCheckout(selectedPackage.id, monthlyPriceId);
     } catch (error) {
       console.error("Checkout error:", error);
       toast.error("Failed to start checkout");
     } finally {
-      setPurchasing(false);
+      setPurchasing(null);
     }
   };
 
   const formatPrice = (cents: number) => {
     return (cents / 100).toFixed(0);
-  };
-
-  const calculatePerCredit = (pkg: CreditPackage) => {
-    return (pkg.price_cents / pkg.credits / 100).toFixed(2);
-  };
-
-  const calculateSavings = (pkg: CreditPackage) => {
-    const starterPkg = packages.find(p => p.display_order === 1);
-    if (!starterPkg || pkg.id === starterPkg.id) return 0;
-    const baselineRate = starterPkg.price_cents / starterPkg.credits;
-    const actualRate = pkg.price_cents / pkg.credits;
-    const savings = Math.round((1 - actualRate / baselineRate) * 100);
-    return savings > 0 ? savings : 0;
   };
 
   if (loading) {
@@ -178,22 +218,21 @@ export default function Pricing() {
       <div className="min-h-screen bg-background relative overflow-hidden">
         {/* Background effects */}
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-br from-primary/20 via-purple-500/10 to-transparent rounded-full blur-3xl opacity-50" />
         
-        <div className="relative max-w-5xl mx-auto px-4 py-12 sm:py-16">
+        <div className="relative max-w-6xl mx-auto px-4 py-12 sm:py-16">
           {/* Header */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-purple-500/20 border border-primary/20 mb-6">
               <Crown className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-                Unlock Pro Tools
+                Pricing Plans
               </span>
             </div>
             <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
-              Create <span className="bg-gradient-to-r from-primary via-purple-400 to-pink-400 bg-clip-text text-transparent">Unlimited</span> Audio
+              Choose Your <span className="bg-gradient-to-r from-primary via-purple-400 to-pink-400 bg-clip-text text-transparent">Plan</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Professional AI-powered audio tools at your fingertips. Choose your plan and start creating.
+              Professional AI-powered audio tools. Simple pricing, powerful results.
             </p>
           </div>
 
@@ -218,153 +257,119 @@ export default function Pricing() {
             </div>
           )}
 
-          {/* Pricing Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
-            {packages.slice(0, 5).map((pkg) => {
-              const isSelected = pkg.id === selectedPackageId;
-              const isPopular = pkg.is_popular;
-              const savings = calculateSavings(pkg);
+          {/* Pricing Cards - Side by Side */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+            {TIERS.map((tier) => {
+              const tierPackages = getPackagesForTier(tier.id);
+              const selectedPkg = getSelectedPackage(tier.id);
+              const isCurrentPlan = subscription && tierPackages.some(p => p.credits === subscription.credits);
               
               return (
-                <button
-                  key={pkg.id}
-                  onClick={() => setSelectedPackageId(pkg.id)}
+                <div
+                  key={tier.id}
                   className={cn(
-                    "relative p-6 rounded-2xl text-left transition-all duration-300 group",
-                    "border-2",
-                    isSelected
-                      ? "border-primary bg-gradient-to-br from-primary/10 via-purple-500/5 to-transparent scale-[1.02] shadow-xl shadow-primary/20"
-                      : "border-border/50 bg-card/50 hover:border-primary/50 hover:bg-card/80"
+                    "relative flex flex-col rounded-2xl border bg-card/50 backdrop-blur-sm p-6",
+                    tier.popular ? "border-primary/50 shadow-lg shadow-primary/10" : "border-border/50"
                   )}
                 >
                   {/* Popular badge */}
-                  {isPopular && (
+                  {tier.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <div className="px-4 py-1 rounded-full bg-gradient-to-r from-primary to-purple-500 text-xs font-bold text-white shadow-lg shadow-primary/30">
+                      <div className="px-4 py-1 rounded-full bg-gradient-to-r from-primary to-purple-500 text-xs font-bold text-white">
                         MOST POPULAR
                       </div>
                     </div>
                   )}
 
-                  {/* Selection indicator */}
-                  <div className={cn(
-                    "absolute top-4 right-4 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
-                    isSelected
-                      ? "border-primary bg-primary"
-                      : "border-muted-foreground/30"
-                  )}>
-                    {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
+                  {/* Tier header */}
+                  <div className="mb-6">
+                    <h3 className="text-xl font-bold mb-2">{tier.name}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {tier.description}
+                    </p>
                   </div>
 
-                  {/* Content */}
+                  {/* Price display */}
                   <div className="mb-4">
-                    <h3 className="text-lg font-bold mb-1">{pkg.name}</h3>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold">${formatPrice(pkg.price_cents)}</span>
-                      <span className="text-muted-foreground">/mo</span>
+                      <span className={cn(
+                        "text-4xl font-bold",
+                        tier.popular && "bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent"
+                      )}>
+                        ${selectedPkg ? formatPrice(selectedPkg.price_cents) : "—"}
+                      </span>
+                      <span className="text-muted-foreground">per month</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className={cn(
-                      "px-3 py-1.5 rounded-lg font-bold text-sm",
-                      isSelected
-                        ? "bg-primary/20 text-primary"
-                        : "bg-secondary text-foreground"
-                    )}>
-                      {pkg.credits} Credits
+                  {/* Credit selector dropdown */}
+                  {tierPackages.length > 0 && (
+                    <div className="mb-6">
+                      <Select
+                        value={String(selectedCredits[tier.id])}
+                        onValueChange={(value) => setSelectedCredits(prev => ({
+                          ...prev,
+                          [tier.id]: Number(value)
+                        }))}
+                      >
+                        <SelectTrigger className="w-full bg-secondary/50 border-border/50">
+                          <SelectValue placeholder="Select credits" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tierPackages.map((pkg) => (
+                            <SelectItem key={pkg.id} value={String(pkg.credits)}>
+                              {pkg.credits} credits / month
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    {savings > 0 && (
-                      <div className="px-2 py-1 rounded-md bg-green-500/10 text-green-500 text-xs font-semibold">
-                        Save {savings}%
-                      </div>
+                  )}
+
+                  {/* CTA Button */}
+                  <Button
+                    className={cn(
+                      "w-full mb-6",
+                      tier.popular
+                        ? "bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white"
+                        : "bg-secondary hover:bg-secondary/80"
                     )}
-                  </div>
+                    onClick={() => handleSubscribe(tier.id)}
+                    disabled={purchasing === tier.id || !selectedPkg}
+                  >
+                    {purchasing === tier.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Processing...
+                      </>
+                    ) : isCurrentPlan ? (
+                      "Current Plan"
+                    ) : (
+                      "Upgrade"
+                    )}
+                  </Button>
 
-                  <p className="text-sm text-muted-foreground">
-                    ${calculatePerCredit(pkg)} per credit
-                  </p>
-                </button>
+                  {/* Features list */}
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {tier.id === "starter" ? "All features:" : `All features in ${tier.id === "pro" ? "Starter" : "Pro"}, plus:`}
+                    </p>
+                    <ul className="space-y-3">
+                      {tier.features.map((feature, index) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <span className="text-sm">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               );
             })}
           </div>
 
-          {/* CTA Section */}
-          {selectedPackage && (
-            <div className="max-w-lg mx-auto">
-              <div className="relative">
-                {/* Glow */}
-                <div className="absolute -inset-2 bg-gradient-to-r from-primary via-purple-500 to-pink-500 rounded-3xl blur-xl opacity-30 animate-pulse" />
-                
-                <div className="relative p-8 rounded-2xl bg-gradient-to-br from-card via-card to-card/90 border border-primary/30 shadow-2xl">
-                  {/* Selected plan summary */}
-                  <div className="text-center mb-6">
-                    <p className="text-sm text-muted-foreground mb-1">Selected Plan</p>
-                    <h3 className="text-2xl font-bold">{selectedPackage.name}</h3>
-                    <div className="flex items-baseline justify-center gap-1 mt-2">
-                      <span className="text-4xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-                        ${formatPrice(selectedPackage.price_cents)}
-                      </span>
-                      <span className="text-muted-foreground">/month</span>
-                    </div>
-                    <p className="text-primary font-semibold mt-1">{selectedPackage.credits} Credits</p>
-                  </div>
-
-                  {/* Pro tools grid */}
-                  <div className="grid grid-cols-2 gap-2 mb-6">
-                    {proTools.map((tool) => (
-                      <div key={tool.name} className="flex items-center gap-2 p-2.5 rounded-lg bg-secondary/50">
-                        <tool.icon className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium">{tool.name}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Benefits */}
-                  <div className="flex flex-wrap justify-center gap-4 mb-6 text-sm">
-                    <span className="flex items-center gap-1.5">
-                      <Check className="h-4 w-4 text-green-500" />
-                      Monthly credits
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Check className="h-4 w-4 text-green-500" />
-                      Cancel anytime
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Check className="h-4 w-4 text-green-500" />
-                      Priority support
-                    </span>
-                  </div>
-
-                  {/* Subscribe Button */}
-                  <Button 
-                    className="w-full h-14 text-lg font-bold bg-gradient-to-r from-primary via-purple-500 to-primary bg-[length:200%_100%] hover:bg-[length:100%_100%] transition-all duration-500"
-                    onClick={handleSubscribe}
-                    disabled={purchasing}
-                  >
-                    {purchasing ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        {subscription ? "Change Plan" : "Get Started"}
-                        <ArrowRight className="h-5 w-5 ml-2" />
-                      </>
-                    )}
-                  </Button>
-
-                  <p className="text-xs text-center text-muted-foreground mt-4">
-                    Secure payment via Stripe • Cancel anytime
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Free Credits Notice */}
-          <div className="mt-12 text-center">
+          <div className="text-center mb-16">
             <div className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-gradient-to-r from-primary/10 via-purple-500/10 to-pink-500/10 border border-primary/20">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center">
                 <Sparkles className="h-4 w-4 text-white" />
@@ -376,7 +381,7 @@ export default function Pricing() {
           </div>
 
           {/* FAQ Section */}
-          <div className="mt-16">
+          <div>
             <h2 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
             <Accordion type="single" collapsible className="max-w-2xl mx-auto">
               {faqs.map((faq, index) => (
