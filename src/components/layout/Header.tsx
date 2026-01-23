@@ -9,8 +9,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, X, ChevronDown, User, Settings, LogOut, ShieldCheck } from 'lucide-react';
-import { useState } from 'react';
+import { Menu, X, ChevronDown, User, Settings, LogOut, ShieldCheck, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const navItems = [
   { name: 'Store', path: '/products' },
@@ -28,6 +29,24 @@ export default function Header() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
+
+  // Check if user is a creator
+  useEffect(() => {
+    async function checkCreatorStatus() {
+      if (!user) {
+        setIsCreator(false);
+        return;
+      }
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_creator')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      setIsCreator(data?.is_creator || false);
+    }
+    checkCreatorStatus();
+  }, [user]);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -104,6 +123,14 @@ export default function Header() {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
+                  {isCreator && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/create-product" className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Create Product
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link to="/profile" className="flex items-center gap-2">
                       <User className="h-4 w-4" />
