@@ -93,15 +93,7 @@ export type Database = {
           updated_at?: string | null
           youtube_url?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "products_creator_id_fkey"
-            columns: ["creator_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {
