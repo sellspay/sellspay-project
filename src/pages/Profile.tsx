@@ -881,12 +881,22 @@ const ProfilePage: React.FC = () => {
               {profile.verified && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" />
+                    <div 
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        isAdmin 
+                          ? 'border-current animate-hue-rotate' 
+                          : 'border-blue-500'
+                      }`}
+                      style={isAdmin ? { animation: 'hue-rotate 3s linear infinite' } : undefined}
+                    >
+                      <Check 
+                        className={`w-3 h-3 ${isAdmin ? 'animate-hue-rotate' : 'text-blue-500'}`}
+                        style={isAdmin ? { animation: 'hue-rotate 3s linear infinite' } : undefined}
+                      />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Verified Creator</p>
+                    <p>{isAdmin ? 'Verified Creator / Owner' : 'Verified Creator'}</p>
                   </TooltipContent>
                 </Tooltip>
               )}

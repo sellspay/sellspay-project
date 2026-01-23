@@ -112,3 +112,35 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
 }
+
+/* Rainbow hue rotation animation for admin badge */
+@keyframes hue-rotate {
+  0% {
+    color: hsl(0, 100%, 60%);
+    border-color: hsl(0, 100%, 60%);
+  }
+  16.67% {
+    color: hsl(60, 100%, 50%);
+    border-color: hsl(60, 100%, 50%);
+  }
+  33.33% {
+    color: hsl(120, 100%, 45%);
+    border-color: hsl(120, 100%, 45%);
+  }
+  50% {
+    color: hsl(180, 100%, 50%);
+    border-color: hsl(180, 100%, 50%);
+  }
+  66.67% {
+    color: hsl(240, 100%, 65%);
+    border-color: hsl(240, 100%, 65%);
+  }
+  83.33% {
+    color: hsl(300, 100%, 60%);
+    border-color: hsl(300, 100%, 60%);
+  }
+  100% {
+    color: hsl(360, 100%, 60%);
+    border-color: hsl(360, 100%, 60%);
+  }
+}
