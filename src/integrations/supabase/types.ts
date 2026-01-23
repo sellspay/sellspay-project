@@ -452,6 +452,7 @@ export type Database = {
           is_visible: boolean
           profile_id: string
           section_type: string
+          style_options: Json
           updated_at: string
         }
         Insert: {
@@ -462,6 +463,7 @@ export type Database = {
           is_visible?: boolean
           profile_id: string
           section_type: string
+          style_options?: Json
           updated_at?: string
         }
         Update: {
@@ -472,6 +474,7 @@ export type Database = {
           is_visible?: boolean
           profile_id?: string
           section_type?: string
+          style_options?: Json
           updated_at?: string
         }
         Relationships: [
