@@ -54,22 +54,22 @@ serve(async (req) => {
 
     switch (mode) {
       case "voice":
-        // Voice isolation: returns vocals + instrumental
+        // Voice isolation: returns vocals + instrumental (no_vocals)
         requestBody = {
           audio_url,
           model: "htdemucs",
-          stems: "vocals",
+          stems: ["vocals"],
           output_format,
           shifts: 1,
           overlap: 0.25,
         };
         break;
       case "sfx":
-        // SFX isolation: need full separation to get "other" stem
+        // SFX isolation: full separation to get "other" stem
         requestBody = {
           audio_url,
           model: "htdemucs",
-          stems: "all",
+          stems: ["vocals", "drums", "bass", "other"],
           output_format,
           shifts: 1,
           overlap: 0.25,
@@ -80,7 +80,7 @@ serve(async (req) => {
         requestBody = {
           audio_url,
           model: "htdemucs_6s",
-          stems: "all",
+          stems: ["vocals", "drums", "bass", "guitar", "piano", "other"],
           output_format,
           shifts: 1,
           overlap: 0.25,
