@@ -209,6 +209,81 @@ export type Database = {
           },
         ]
       }
+      credit_packages: {
+        Row: {
+          created_at: string | null
+          credits: number
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          is_popular: boolean | null
+          name: string
+          price_cents: number
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          credits: number
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_popular?: boolean | null
+          name: string
+          price_cents: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          credits?: number
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_popular?: boolean | null
+          name?: string
+          price_cents?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+        }
+        Relationships: []
+      }
+      credit_transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string | null
+          id: string
+          package_id: string | null
+          stripe_session_id: string | null
+          tool_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          package_id?: string | null
+          stripe_session_id?: string | null
+          tool_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          package_id?: string | null
+          stripe_session_id?: string | null
+          tool_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       editor_applications: {
         Row: {
           about_me: string
@@ -537,6 +612,7 @@ export type Database = {
           banner_url: string | null
           bio: string | null
           created_at: string | null
+          credit_balance: number | null
           editor_about: string | null
           editor_city: string | null
           editor_country: string | null
@@ -567,6 +643,7 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
+          credit_balance?: number | null
           editor_about?: string | null
           editor_city?: string | null
           editor_country?: string | null
@@ -597,6 +674,7 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
+          credit_balance?: number | null
           editor_about?: string | null
           editor_city?: string | null
           editor_country?: string | null
