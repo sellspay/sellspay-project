@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,14 +8,14 @@ import {
   Video, 
   FileAudio, 
   AudioWaveform,
-  Sparkles,
   Image,
   Wand2,
   Volume2,
   Search,
   X,
   Layers,
-  Zap
+  Zap,
+  SlidersHorizontal
 } from "lucide-react";
 
 export interface Tool {
@@ -53,7 +52,7 @@ export const tools: Tool[] = [
     id: "sfx-isolator",
     title: "SFX Isolator",
     description: "Isolate sound effects from your audio",
-    icon: Sparkles,
+    icon: SlidersHorizontal,
     category: "audio",
     available: true,
   },
@@ -208,7 +207,7 @@ export function ToolsSidebar({
       </div>
 
       {/* Category Tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {(["all", "audio", "generators"] as const).map((cat) => {
           const Icon = categoryIcons[cat];
           return (
@@ -216,13 +215,13 @@ export function ToolsSidebar({
               key={cat}
               onClick={() => onSelectCategory(cat)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
                 selectedCategory === cat
                   ? "bg-gradient-to-r from-primary/20 to-accent/20 text-foreground border border-primary/30 shadow-lg shadow-primary/10"
                   : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground border border-transparent"
               )}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className="w-3.5 h-3.5 flex-shrink-0" />
               <span>{cat === "all" ? "All" : cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
               <span className={cn(
                 "text-xs px-1.5 py-0.5 rounded-md",

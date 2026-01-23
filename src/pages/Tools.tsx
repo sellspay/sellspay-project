@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ToolsSidebar } from "@/components/tools/ToolsSidebar";
 import { ToolContent } from "@/components/tools/ToolContent";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AudioWaveform, Sparkles } from "lucide-react";
+import { AudioWaveform, Wand2 } from "lucide-react";
 
 export default function Tools() {
   const [selectedTool, setSelectedTool] = useState<string | null>("sfx-generator");
@@ -23,7 +23,7 @@ export default function Tools() {
           <div className="max-w-3xl mx-auto text-center">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-6">
-              <Sparkles className="w-4 h-4 text-primary" />
+              <AudioWaveform className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-primary">Professional Audio Suite</span>
             </div>
             
@@ -49,7 +49,7 @@ export default function Tools() {
                 <AudioWaveform className="w-6 h-6 text-primary" />
               </div>
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 flex items-center justify-center animate-float" style={{ animationDelay: "1s" }}>
-                <Sparkles className="w-6 h-6 text-accent" />
+                <Wand2 className="w-6 h-6 text-accent" />
               </div>
             </div>
           </div>
