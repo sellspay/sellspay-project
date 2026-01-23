@@ -3,6 +3,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -23,7 +25,10 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { X, Plus, Save, Undo, GripVertical, Eye, EyeOff, Trash2, Pencil } from 'lucide-react';
+import { 
+  X, Plus, Save, Undo, GripVertical, Eye, EyeOff, Trash2, Pencil,
+  Link as LinkIcon, Settings, User, Download, Bookmark
+} from 'lucide-react';
 import { ProfileSection, SectionType, SECTION_TEMPLATES } from './types';
 import { AddSectionDialog } from './AddSectionDialog';
 import { EditSectionDialog } from './EditSectionDialog';
@@ -39,6 +44,8 @@ interface Profile {
   background_url?: string | null;
   bio?: string | null;
   verified?: boolean | null;
+  is_creator?: boolean | null;
+  social_links?: unknown;
 }
 
 interface ProfileEditorDialogProps {
@@ -49,7 +56,7 @@ interface ProfileEditorDialogProps {
   collections: { id: string; name: string }[];
 }
 
-// Sortable section item for the canvas
+// Sortable section item
 const SortableSectionCard = memo(({
   section,
   onEdit,
@@ -85,14 +92,12 @@ const SortableSectionCard = memo(({
         !section.is_visible && 'opacity-50'
       )}
     >
-      {/* Section content preview */}
       <div className="p-4 min-h-[80px]">
         <SectionPreviewContent section={section} />
       </div>
 
       {/* Hover controls */}
       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-        {/* Drag handle */}
         <div
           className="p-2 rounded-lg bg-white/10 cursor-grab hover:bg-white/20 transition-colors"
           {...attributes}
@@ -148,20 +153,17 @@ export function ProfileEditorDialog({
   const [hasChanges, setHasChanges] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingSection, setEditingSection] = useState<ProfileSection | null>(null);
+  const [productCount, setProductCount] = useState(0);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Fetch sections on open
   useEffect(() => {
     if (open && profileId) {
       fetchSections();
+      fetchProductCount();
     }
   }, [open, profileId]);
 
@@ -182,6 +184,15 @@ export function ProfileEditorDialog({
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchProductCount = async () => {
+    const { count } = await supabase
+      .from('products')
+      .select('*', { count: 'exact', head: true })
+      .eq('creator_id', profileId)
+      .eq('status', 'published');
+    setProductCount(count || 0);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -238,9 +249,7 @@ export function ProfileEditorDialog({
   const deleteSection = async (sectionId: string) => {
     try {
       const { error } = await supabase.from('profile_sections').delete().eq('id', sectionId);
-
       if (error) throw error;
-
       setSections(sections.filter((s) => s.id !== sectionId));
       setEditingSection(null);
       toast.success('Section deleted');
@@ -253,7 +262,6 @@ export function ProfileEditorDialog({
   const toggleVisibility = (sectionId: string) => {
     const section = sections.find((s) => s.id === sectionId);
     if (!section) return;
-
     const updated = { ...section, is_visible: !section.is_visible };
     setSections(sections.map((s) => (s.id === sectionId ? updated : s)));
     setHasChanges(true);
@@ -271,10 +279,8 @@ export function ProfileEditorDialog({
             is_visible: section.is_visible,
           })
           .eq('id', section.id);
-
         if (error) throw error;
       }
-
       setHasChanges(false);
       toast.success('All changes saved');
     } catch (error) {
@@ -294,34 +300,24 @@ export function ProfileEditorDialog({
     setEditingSection(null);
   };
 
+  // Parse social links
+  const socialLinks = profile.social_links && typeof profile.social_links === 'object' 
+    ? profile.social_links as Record<string, string> 
+    : {};
+
   return (
-    <>
+    <TooltipProvider>
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="max-w-[100vw] w-[100vw] h-[100vh] max-h-[100vh] p-0 gap-0 rounded-none border-0 [&>button]:hidden">
           {/* Header toolbar */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-card/95 backdrop-blur-sm">
-            <div className="flex items-center gap-4">
-              <h2 className="text-lg font-semibold text-foreground">Profile Editor</h2>
-              {hasChanges && (
-                <span className="text-sm text-primary">(unsaved changes)</span>
-              )}
-            </div>
+          <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background/95 backdrop-blur-sm z-50">
+            <h2 className="text-lg font-semibold">Profile Editor</h2>
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => fetchSections()}
-                disabled={loading}
-              >
+              <Button variant="ghost" size="sm" onClick={() => fetchSections()} disabled={loading}>
                 <Undo className="w-4 h-4 mr-2" />
                 Reset
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={saveAllChanges}
-                disabled={saving || !hasChanges}
-              >
+              <Button variant="default" size="sm" onClick={saveAllChanges} disabled={saving || !hasChanges}>
                 <Save className="w-4 h-4 mr-2" />
                 Save
               </Button>
@@ -331,7 +327,7 @@ export function ProfileEditorDialog({
             </div>
           </div>
 
-          {/* Main canvas area */}
+          {/* Main canvas with background */}
           <ScrollArea className="flex-1 h-[calc(100vh-57px)]">
             <div 
               className="min-h-full"
@@ -343,116 +339,198 @@ export function ProfileEditorDialog({
                 backgroundColor: profile.background_url ? undefined : 'hsl(var(--background))',
               }}
             >
-              {/* Fixed Profile Header (read-only preview) */}
-              <div className="relative">
-                {/* Banner */}
-                <div className="relative h-48 bg-gradient-to-b from-primary/20 to-background overflow-hidden">
-                  {profile.banner_url && (
-                    <img
-                      src={profile.banner_url}
-                      alt="Banner"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  
-                  {/* Edit hint */}
-                  <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded">
-                    Edit in Settings
+              {/* Profile Card - matching actual profile layout */}
+              <div className="max-w-4xl mx-auto px-4 py-8">
+                <div className="bg-card/90 backdrop-blur-md rounded-2xl border border-border/50 overflow-hidden">
+                  {/* Banner */}
+                  <div className="relative h-40 bg-gradient-to-b from-primary/20 to-background overflow-hidden">
+                    {profile.banner_url && (
+                      <img
+                        src={profile.banner_url}
+                        alt="Banner"
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   </div>
-                </div>
 
-                {/* Profile info */}
-                <div className="relative px-6 pb-6 -mt-16">
-                  <div className="flex items-end gap-4">
-                    <Avatar className="h-28 w-28 border-4 border-background shadow-lg">
-                      <AvatarImage src={profile.avatar_url || undefined} />
-                      <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                        {profile.full_name?.charAt(0) || profile.username?.charAt(0) || '?'}
-                      </AvatarFallback>
-                    </Avatar>
+                  {/* Profile content */}
+                  <div className="px-6 pb-6">
+                    {/* Avatar & Actions row */}
+                    <div className="flex justify-between items-end -mt-16">
+                      <Avatar className="w-32 h-32 border-4 border-card shadow-xl">
+                        <AvatarImage src={profile.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary/20 text-primary text-3xl">
+                          {(profile.full_name || profile.username || 'U').charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
 
-                    <div className="flex-1 pb-2">
-                      <div className="flex items-center gap-2">
-                        <h1 className="text-2xl font-bold text-foreground">
-                          {profile.full_name || profile.username || 'Creator'}
-                        </h1>
-                        {profile.verified && <VerifiedBadge size="md" />}
+                      <div className="flex gap-2 pb-2">
+                        <Button variant="outline" size="sm" disabled>
+                          <LinkIcon className="w-4 h-4 mr-2" />
+                          Copy link
+                        </Button>
+                        <Button variant="outline" size="icon" disabled>
+                          <Settings className="w-4 h-4" />
+                        </Button>
                       </div>
-                      {profile.username && (
-                        <p className="text-muted-foreground">@{profile.username}</p>
+                    </div>
+
+                    {/* Info Section */}
+                    <div className="mt-4">
+                      {/* Username with badges */}
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h1 className="text-xl font-bold">@{profile.username || 'user'}</h1>
+                        {profile.verified && <VerifiedBadge size="md" />}
+                        {profile.is_creator && (
+                          <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
+                            Owner
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Display name */}
+                      {profile.full_name && (
+                        <p className="text-muted-foreground mb-2">{profile.full_name}</p>
+                      )}
+
+                      {/* Bio */}
+                      {profile.bio && (
+                        <p className="text-foreground whitespace-pre-line mb-3 max-w-lg">{profile.bio}</p>
+                      )}
+
+                      {/* Social Links */}
+                      {Object.keys(socialLinks).length > 0 && (
+                        <div className="flex items-center gap-3 mb-3">
+                          {socialLinks.instagram && (
+                            <div className="text-muted-foreground">
+                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                              </svg>
+                            </div>
+                          )}
+                          {socialLinks.youtube && (
+                            <div className="text-muted-foreground">
+                              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Stats row */}
+                      <div className="flex items-center gap-4 text-sm">
+                        <span>
+                          <strong>{productCount}</strong>{' '}
+                          <span className="text-muted-foreground">products</span>
+                        </span>
+                        <span>
+                          <strong>0</strong>{' '}
+                          <span className="text-muted-foreground">followers</span>
+                        </span>
+                        <span>
+                          <strong>0</strong>{' '}
+                          <span className="text-muted-foreground">following</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tabs - Instagram style */}
+                    <div className="mt-6 flex justify-center border-t border-border">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button className="flex items-center gap-2 px-8 py-3 border-t-2 border-foreground text-foreground">
+                            <User className="w-5 h-5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Collections</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button className="flex items-center gap-2 px-8 py-3 border-t-2 border-transparent text-muted-foreground">
+                            <Download className="w-5 h-5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Downloads</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button className="flex items-center gap-2 px-8 py-3 border-t-2 border-transparent text-muted-foreground">
+                            <Bookmark className="w-5 h-5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Saved</TooltipContent>
+                      </Tooltip>
+                    </div>
+
+                    {/* YOUR SECTIONS area */}
+                    <div className="mt-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Your Sections
+                        </h3>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowAddDialog(true)}
+                          className="gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Section
+                        </Button>
+                      </div>
+
+                      {/* Sections list */}
+                      {loading ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          Loading sections...
+                        </div>
+                      ) : sections.length === 0 ? (
+                        <div className="text-center py-16 border-2 border-dashed border-muted-foreground/25 rounded-lg bg-background/50">
+                          <p className="text-muted-foreground mb-4">
+                            No sections yet. Start building your profile!
+                          </p>
+                          <Button 
+                            onClick={() => setShowAddDialog(true)}
+                            className="bg-primary hover:bg-primary/90"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Your First Section
+                          </Button>
+                        </div>
+                      ) : (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <SortableContext
+                            items={sections.map((s) => s.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-4">
+                              {sections.map((section) => (
+                                <SortableSectionCard
+                                  key={section.id}
+                                  section={section}
+                                  onEdit={() => setEditingSection(section)}
+                                  onDelete={() => {
+                                    if (window.confirm('Delete this section?')) {
+                                      deleteSection(section.id);
+                                    }
+                                  }}
+                                  onToggleVisibility={() => toggleVisibility(section.id)}
+                                />
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
                       )}
                     </div>
                   </div>
-
-                  {profile.bio && (
-                    <p className="mt-4 text-muted-foreground max-w-2xl">{profile.bio}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Sections canvas - the card container */}
-              <div className="px-6 pb-6">
-                <div className="max-w-4xl mx-auto bg-card/80 backdrop-blur-sm rounded-2xl border border-border/50 p-6">
-                  {/* Add section button (top) */}
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                      Your Sections
-                    </h3>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowAddDialog(true)}
-                      className="gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Section
-                    </Button>
-                  </div>
-
-                  {/* Sections grid/list */}
-                  {loading ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      Loading sections...
-                    </div>
-                  ) : sections.length === 0 ? (
-                    <div className="text-center py-16 border-2 border-dashed border-muted-foreground/25 rounded-lg">
-                      <p className="text-muted-foreground mb-4">
-                        No sections yet. Start building your profile!
-                      </p>
-                      <Button onClick={() => setShowAddDialog(true)}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Your First Section
-                      </Button>
-                    </div>
-                  ) : (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <SortableContext
-                        items={sections.map((s) => s.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <div className="space-y-4">
-                          {sections.map((section) => (
-                            <SortableSectionCard
-                              key={section.id}
-                              section={section}
-                              onEdit={() => setEditingSection(section)}
-                              onDelete={() => {
-                                if (window.confirm('Delete this section?')) {
-                                  deleteSection(section.id);
-                                }
-                              }}
-                              onToggleVisibility={() => toggleVisibility(section.id)}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
-                    </DndContext>
-                  )}
                 </div>
               </div>
             </div>
@@ -460,14 +538,14 @@ export function ProfileEditorDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Add Section Dialog (popup) */}
+      {/* Add Section Dialog */}
       <AddSectionDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
         onAddSection={addSection}
       />
 
-      {/* Edit Section Dialog (popup) */}
+      {/* Edit Section Dialog */}
       <EditSectionDialog
         section={editingSection}
         collections={collections}
@@ -475,6 +553,6 @@ export function ProfileEditorDialog({
         onDelete={deleteSection}
         onClose={() => setEditingSection(null)}
       />
-    </>
+    </TooltipProvider>
   );
 }
