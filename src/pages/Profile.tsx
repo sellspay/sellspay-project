@@ -11,25 +11,37 @@ import {
   BadgeCheck,
   Plus,
   Link as LinkIcon, 
-  Grid3X3, 
   Heart,
   MessageCircle,
   Play,
   UserPlus,
   UserMinus,
   Layers,
-  Film,
+  Download,
   Bookmark,
-  UserSquare2,
   Pencil,
-  ChevronUp,
-  ChevronDown,
   Check,
-  X
+  User
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import CollectionRow from '@/components/profile/CollectionRow';
+import SortableCollectionItem from '@/components/profile/SortableCollectionItem';
 import CreateCollectionDialog from '@/components/profile/CreateCollectionDialog';
 
 interface Profile {
@@ -75,10 +87,27 @@ interface Purchase {
   } | null;
 }
 
+interface SavedProduct {
+  id: string;
+  product_id: string;
+  created_at: string;
+  product: {
+    id: string;
+    name: string;
+    cover_image_url: string | null;
+    youtube_url: string | null;
+    preview_video_url: string | null;
+    pricing_type: string | null;
+    price_cents: number | null;
+    currency: string | null;
+  } | null;
+}
+
 interface Collection {
   id: string;
   name: string;
   cover_image_url: string | null;
+  is_visible?: boolean;
   products: {
     id: string;
     name: string;
@@ -87,6 +116,10 @@ interface Collection {
     preview_video_url: string | null;
     price_cents: number | null;
     currency: string | null;
+    pricing_type?: string | null;
+    created_at?: string | null;
+    likeCount?: number;
+    commentCount?: number;
   }[];
   totalCount: number;
 }
@@ -232,9 +265,10 @@ const ProfilePage: React.FC = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [savedProducts, setSavedProducts] = useState<SavedProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
-  const [activeTab, setActiveTab] = useState<'posts' | 'videos' | 'collections' | 'tagged'>('posts');
+  const [activeTab, setActiveTab] = useState<'collections' | 'downloads' | 'saved'>('collections');
   const [isAdmin, setIsAdmin] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -244,14 +278,28 @@ const ProfilePage: React.FC = () => {
   const [showCreateCollection, setShowCreateCollection] = useState(false);
   const [isEditingCollections, setIsEditingCollections] = useState(false);
 
-  const fetchCollections = async (profileId: string) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const fetchCollections = async (profileId: string, isOwn: boolean) => {
     try {
       // Fetch collections for this profile
-      const { data: collectionsData, error: collectionsError } = await supabase
+      let query = supabase
         .from('collections')
-        .select('id, name, cover_image_url')
+        .select('id, name, cover_image_url, is_visible')
         .eq('creator_id', profileId)
         .order('display_order', { ascending: true });
+
+      // If not own profile, only show visible collections
+      if (!isOwn) {
+        query = query.eq('is_visible', true);
+      }
+
+      const { data: collectionsData, error: collectionsError } = await query;
 
       if (collectionsError) throw collectionsError;
 
@@ -272,15 +320,45 @@ const ProfilePage: React.FC = () => {
 
             // Fetch product details
             const productIds = items.map((item) => item.product_id);
-            const { data: products } = await supabase
+            const { data: productsData } = await supabase
               .from('products')
-              .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency')
+              .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency, pricing_type, created_at')
               .in('id', productIds)
               .eq('status', 'published');
 
+            // Get like and comment counts for products
+            let likeMap = new Map<string, number>();
+            let commentMap = new Map<string, number>();
+
+            if (productsData && productsData.length > 0) {
+              const pIds = productsData.map(p => p.id);
+              
+              const { data: likeCounts } = await supabase
+                .from('product_likes')
+                .select('product_id')
+                .in('product_id', pIds);
+              
+              const { data: commentCounts } = await supabase
+                .from('comments')
+                .select('product_id')
+                .in('product_id', pIds);
+
+              likeCounts?.forEach(like => {
+                likeMap.set(like.product_id, (likeMap.get(like.product_id) || 0) + 1);
+              });
+              
+              commentCounts?.forEach(comment => {
+                commentMap.set(comment.product_id, (commentMap.get(comment.product_id) || 0) + 1);
+              });
+            }
+
             return {
               ...collection,
-              products: products || [],
+              products: (productsData || []).map(p => ({
+                ...p,
+                likeCount: likeMap.get(p.id) || 0,
+                commentCount: commentMap.get(p.id) || 0,
+              })),
               totalCount: count || 0,
             };
           })
@@ -455,10 +533,40 @@ const ProfilePage: React.FC = () => {
           })) as Purchase[];
           
           setPurchases(typedPurchases);
+
+          // Fetch saved products
+          const { data: savedData } = await supabase
+            .from('saved_products')
+            .select(`
+              id,
+              product_id,
+              created_at,
+              product:products (
+                id,
+                name,
+                cover_image_url,
+                youtube_url,
+                preview_video_url,
+                pricing_type,
+                price_cents,
+                currency
+              )
+            `)
+            .eq('user_id', data.id)
+            .order('created_at', { ascending: false });
+
+          const typedSaved = (savedData || []).map(s => ({
+            id: s.id,
+            product_id: s.product_id,
+            created_at: s.created_at,
+            product: Array.isArray(s.product) ? s.product[0] : s.product
+          })) as SavedProduct[];
+
+          setSavedProducts(typedSaved);
         }
 
         // Fetch collections for the profile
-        fetchCollections(data.id);
+        fetchCollections(data.id, ownProfile);
       }
 
       setLoading(false);
@@ -519,35 +627,55 @@ const ProfilePage: React.FC = () => {
   };
 
   const filteredProducts = products.filter(p => p.status === 'published');
-  const draftProducts = products.filter(p => p.status === 'draft');
 
   const publishedCount = filteredProducts.length;
-  const draftsCount = draftProducts.length;
-  const downloadsCount = purchases.length;
 
-  // Move collection up/down
-  const moveCollection = async (index: number, direction: 'up' | 'down') => {
-    if (!profile) return;
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= collections.length) return;
+  // Handle drag end for collection reordering
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    const newCollections = [...collections];
-    [newCollections[index], newCollections[newIndex]] = [newCollections[newIndex], newCollections[index]];
-    setCollections(newCollections);
+    if (over && active.id !== over.id) {
+      const oldIndex = collections.findIndex(c => c.id === active.id);
+      const newIndex = collections.findIndex(c => c.id === over.id);
 
-    // Update display_order in database
+      const newCollections = arrayMove(collections, oldIndex, newIndex);
+      setCollections(newCollections);
+
+      // Update display_order in database
+      try {
+        await Promise.all(
+          newCollections.map((col, idx) =>
+            supabase
+              .from('collections')
+              .update({ display_order: idx })
+              .eq('id', col.id)
+          )
+        );
+      } catch (error) {
+        console.error('Error updating collection order:', error);
+        toast.error('Failed to update order');
+      }
+    }
+  };
+
+  // Toggle collection visibility
+  const toggleCollectionVisibility = async (collectionId: string, isVisible: boolean) => {
     try {
-      await Promise.all(
-        newCollections.map((col, idx) =>
-          supabase
-            .from('collections')
-            .update({ display_order: idx })
-            .eq('id', col.id)
-        )
+      const { error } = await supabase
+        .from('collections')
+        .update({ is_visible: isVisible })
+        .eq('id', collectionId);
+
+      if (error) throw error;
+
+      setCollections(prev => 
+        prev.map(c => c.id === collectionId ? { ...c, is_visible: isVisible } : c)
       );
+
+      toast.success(isVisible ? 'Collection is now visible' : 'Collection hidden');
     } catch (error) {
-      console.error('Error updating collection order:', error);
-      toast.error('Failed to update order');
+      console.error('Error updating visibility:', error);
+      toast.error('Failed to update visibility');
     }
   };
 
@@ -746,56 +874,59 @@ const ProfilePage: React.FC = () => {
         {/* Instagram-style Icon Tabs */}
         <div className="mt-8 max-w-4xl mx-auto px-4">
           <div className="flex justify-center border-t border-border">
-            {/* Posts/Collections Tab */}
-            <button
-              onClick={() => setActiveTab('posts')}
-              className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
-                activeTab === 'posts'
-                  ? 'border-foreground text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Grid3X3 className="w-5 h-5" />
-            </button>
+            {/* Collections Tab (Person icon - public) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setActiveTab('collections')}
+                  className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
+                    activeTab === 'collections'
+                      ? 'border-foreground text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <User className="w-5 h-5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Collections</TooltipContent>
+            </Tooltip>
 
-            {/* Videos Tab */}
-            <button
-              onClick={() => setActiveTab('videos')}
-              className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
-                activeTab === 'videos'
-                  ? 'border-foreground text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Film className="w-5 h-5" />
-            </button>
-
-            {/* Saved/Bookmarks Tab - only for own profile */}
+            {/* Downloads Tab - only for own profile */}
             {isOwnProfile && (
-              <button
-                onClick={() => setActiveTab('collections')}
-                className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
-                  activeTab === 'collections'
-                    ? 'border-foreground text-foreground'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Bookmark className="w-5 h-5" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setActiveTab('downloads')}
+                    className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
+                      activeTab === 'downloads'
+                        ? 'border-foreground text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Download className="w-5 h-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Purchases</TooltipContent>
+              </Tooltip>
             )}
 
-            {/* Tagged/Downloads Tab - only for own profile */}
+            {/* Saved Products Tab - only for own profile */}
             {isOwnProfile && (
-              <button
-                onClick={() => setActiveTab('tagged')}
-                className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
-                  activeTab === 'tagged'
-                    ? 'border-foreground text-foreground'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <UserSquare2 className="w-5 h-5" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setActiveTab('saved')}
+                    className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
+                      activeTab === 'saved'
+                        ? 'border-foreground text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Bookmark className="w-5 h-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Saved</TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -803,8 +934,8 @@ const ProfilePage: React.FC = () => {
         {/* Content Section */}
         <div className="mt-6 max-w-5xl mx-auto px-4 pb-12">
           
-          {/* Posts Tab - Collections layout (public) */}
-          {activeTab === 'posts' && (
+          {/* Collections Tab - public view */}
+          {activeTab === 'collections' && (
             <>
               {/* Edit Controls for own profile */}
               {isOwnProfile && profile.is_creator && (
@@ -863,50 +994,38 @@ const ProfilePage: React.FC = () => {
                       currency: p.currency,
                       pricing_type: p.pricing_type,
                       created_at: p.created_at,
+                      likeCount: p.likeCount,
+                      commentCount: p.commentCount,
                     }))}
                     totalCount={filteredProducts.length}
                   />
                 </div>
               )}
 
-              {/* User Created Collections */}
+              {/* User Created Collections with Drag & Drop */}
               {collections.length > 0 && (
-                <div className="space-y-10">
-                  {collections.map((collection, index) => (
-                    <div key={collection.id} className="relative">
-                      {/* Reorder controls when editing */}
-                      {isEditingCollections && isOwnProfile && (
-                        <div className="absolute -left-12 top-0 flex flex-col gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => moveCollection(index, 'up')}
-                            disabled={index === 0}
-                          >
-                            <ChevronUp className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => moveCollection(index, 'down')}
-                            disabled={index === collections.length - 1}
-                          >
-                            <ChevronDown className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
-                      <CollectionRow
-                        id={collection.id}
-                        name={collection.name}
-                        coverImage={collection.cover_image_url}
-                        products={collection.products}
-                        totalCount={collection.totalCount}
-                      />
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={collections.map(c => c.id)}
+                    strategy={verticalListSortingStrategy}
+                    disabled={!isEditingCollections}
+                  >
+                    <div className="space-y-10 pl-14">
+                      {collections.map((collection) => (
+                        <SortableCollectionItem
+                          key={collection.id}
+                          collection={collection}
+                          isEditing={isEditingCollections && isOwnProfile}
+                          onToggleVisibility={toggleCollectionVisibility}
+                        />
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                </DndContext>
               )}
 
               {/* Empty state */}
@@ -930,51 +1049,17 @@ const ProfilePage: React.FC = () => {
             </>
           )}
 
-          {/* Videos Tab - Products with videos */}
-          {activeTab === 'videos' && (
-            <>
-              {(() => {
-                const videoProducts = filteredProducts.filter(p => p.youtube_url || p.preview_video_url);
-                return videoProducts.length > 0 ? (
-                  <div className="mb-10">
-                    <CollectionRow
-                      id="videos"
-                      name="Videos"
-                      coverImage={null}
-                      products={videoProducts.slice(0, 9).map(p => ({
-                        id: p.id,
-                        name: p.name,
-                        cover_image_url: p.cover_image_url,
-                        youtube_url: p.youtube_url,
-                        preview_video_url: p.preview_video_url,
-                        price_cents: p.price_cents,
-                        currency: p.currency,
-                        pricing_type: p.pricing_type,
-                        created_at: p.created_at,
-                      }))}
-                      totalCount={videoProducts.length}
-                    />
-                  </div>
-                ) : (
-                  <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
-                    <p className="text-muted-foreground">No videos yet.</p>
-                  </div>
-                );
-              })()}
-            </>
-          )}
-
-          {/* Saved/Bookmarks Tab - Private downloads/purchases */}
-          {activeTab === 'collections' && isOwnProfile && (
+          {/* Downloads/Purchases Tab */}
+          {activeTab === 'downloads' && isOwnProfile && (
             <>
               <p className="text-sm text-muted-foreground mb-6">
-                Only you can see what you've saved
+                Products you've purchased
               </p>
               {purchases.length > 0 ? (
                 <div className="mb-10">
                   <CollectionRow
-                    id="saved"
-                    name="Saved Items"
+                    id="downloads"
+                    name="My Purchases"
                     coverImage={null}
                     products={purchases.filter(p => p.product).slice(0, 9).map(p => ({
                       id: p.product!.id,
@@ -992,8 +1077,8 @@ const ProfilePage: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
-                  <Bookmark className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">No saved items yet.</p>
+                  <Download className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">No purchases yet.</p>
                   <Button onClick={() => navigate('/products')}>
                     Browse Products
                   </Button>
@@ -1002,32 +1087,39 @@ const ProfilePage: React.FC = () => {
             </>
           )}
 
-          {/* Tagged/Downloads Tab */}
-          {activeTab === 'tagged' && isOwnProfile && (
+          {/* Saved Products Tab */}
+          {activeTab === 'saved' && isOwnProfile && (
             <>
-              {purchases.length > 0 ? (
+              <p className="text-sm text-muted-foreground mb-6">
+                Products you've saved for later
+              </p>
+              {savedProducts.length > 0 ? (
                 <div className="mb-10">
                   <CollectionRow
-                    id="downloads"
-                    name="My Downloads"
+                    id="saved"
+                    name="Saved Products"
                     coverImage={null}
-                    products={purchases.filter(p => p.product).slice(0, 9).map(p => ({
-                      id: p.product!.id,
-                      name: p.product!.name,
-                      cover_image_url: p.product!.cover_image_url,
-                      youtube_url: p.product!.youtube_url,
-                      preview_video_url: p.product!.preview_video_url,
-                      price_cents: null,
-                      currency: null,
-                      pricing_type: p.product!.pricing_type,
-                      created_at: p.created_at,
+                    products={savedProducts.filter(s => s.product).slice(0, 9).map(s => ({
+                      id: s.product!.id,
+                      name: s.product!.name,
+                      cover_image_url: s.product!.cover_image_url,
+                      youtube_url: s.product!.youtube_url,
+                      preview_video_url: s.product!.preview_video_url,
+                      price_cents: s.product!.price_cents,
+                      currency: s.product!.currency,
+                      pricing_type: s.product!.pricing_type,
+                      created_at: s.created_at,
                     }))}
-                    totalCount={purchases.length}
+                    totalCount={savedProducts.length}
                   />
                 </div>
               ) : (
                 <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
-                  <p className="text-muted-foreground mb-4">No downloads yet.</p>
+                  <Bookmark className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">No saved products yet.</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Save products to purchase later by clicking the bookmark icon.
+                  </p>
                   <Button onClick={() => navigate('/products')}>
                     Browse Products
                   </Button>
@@ -1049,7 +1141,7 @@ const ProfilePage: React.FC = () => {
             name: p.name,
             cover_image_url: p.cover_image_url,
           }))}
-          onCreated={() => fetchCollections(profile.id)}
+          onCreated={() => fetchCollections(profile.id, isOwnProfile)}
         />
       )}
     </TooltipProvider>

@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ChevronRight as ArrowIcon, Layers, Lock, Play, Heart, MessageCircle, Youtube } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronRight as ArrowIcon, Layers, Lock, Play, Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -15,6 +15,8 @@ interface Product {
   pricing_type?: string | null;
   locked?: boolean | null;
   created_at?: string | null;
+  likeCount?: number;
+  commentCount?: number;
 }
 
 interface CollectionRowProps {
@@ -130,7 +132,6 @@ export default function CollectionRow({ id, name, coverImage, products, totalCou
             const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
             const isLocked = product.locked || product.pricing_type === 'paid';
             const hasVideo = product.preview_video_url || product.youtube_url;
-            const hasYoutube = !!product.youtube_url;
             
             return (
               <button
@@ -166,14 +167,6 @@ export default function CollectionRow({ id, name, coverImage, products, totalCou
                     </div>
                   )}
                   
-                  {/* YouTube Badge */}
-                  {hasYoutube && !isLocked && (
-                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded text-xs text-white font-medium">
-                      <Youtube className="w-3 h-3 text-red-500" />
-                      YouTube
-                    </div>
-                  )}
-                  
                   {/* Play Button */}
                   {hasVideo && (
                     <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
@@ -188,14 +181,14 @@ export default function CollectionRow({ id, name, coverImage, products, totalCou
                     {product.name}
                   </h4>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                    <span>{formatDate(product.created_at)}</span>
+                    {product.created_at && <span>{formatDate(product.created_at)}</span>}
                     <span className="flex items-center gap-1">
                       <Heart className="w-3 h-3" />
-                      0
+                      {product.likeCount ?? 0}
                     </span>
                     <span className="flex items-center gap-1">
                       <MessageCircle className="w-3 h-3" />
-                      0
+                      {product.commentCount ?? 0}
                     </span>
                   </div>
                 </div>
@@ -273,9 +266,17 @@ export default function CollectionRow({ id, name, coverImage, products, totalCou
                     <h4 className="text-sm font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors">
                       {product.name}
                     </h4>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(product.created_at)}
-                    </p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                      {product.created_at && <span>{formatDate(product.created_at)}</span>}
+                      <span className="flex items-center gap-1">
+                        <Heart className="w-3 h-3" />
+                        {product.likeCount ?? 0}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MessageCircle className="w-3 h-3" />
+                        {product.commentCount ?? 0}
+                      </span>
+                    </div>
                   </div>
                 </button>
               );
