@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, CheckCircle, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, BadgeCheck, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -54,6 +55,8 @@ interface RelatedProduct {
   id: string;
   name: string;
   cover_image_url: string | null;
+  youtube_url: string | null;
+  preview_video_url: string | null;
   price_cents: number | null;
   currency: string | null;
 }
@@ -79,6 +82,22 @@ const productTypeLabels: Record<string, string> = {
   other: "Other",
 };
 
+// Helper to generate YouTube thumbnail URL
+const getYouTubeThumbnail = (youtubeUrl: string | null): string | null => {
+  if (!youtubeUrl) return null;
+  let videoId = youtubeUrl;
+  if (youtubeUrl.includes('youtube.com/watch')) {
+    const url = new URL(youtubeUrl);
+    videoId = url.searchParams.get('v') || youtubeUrl;
+  } else if (youtubeUrl.includes('youtu.be/')) {
+    videoId = youtubeUrl.split('youtu.be/')[1]?.split('?')[0] || youtubeUrl;
+  } else if (youtubeUrl.includes('youtube.com/embed/')) {
+    videoId = youtubeUrl.split('embed/')[1]?.split('?')[0] || youtubeUrl;
+  }
+  videoId = videoId.split('?')[0].split('&')[0];
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+};
+
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -94,6 +113,9 @@ export default function ProductDetail() {
   const [deleting, setDeleting] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [isFollowingCreator, setIsFollowingCreator] = useState(false);
+  const [showFollowDialog, setShowFollowDialog] = useState(false);
+  const [followingCreator, setFollowingCreator] = useState(false);
   
   // Comments
   const [comments, setComments] = useState<Comment[]>([]);
@@ -144,6 +166,26 @@ export default function ProductDetail() {
     }
   }, [id, userProfileId]);
 
+  // Check if user follows the creator
+  useEffect(() => {
+    const checkFollowStatus = async () => {
+      if (!userProfileId || !product?.creator?.id || isOwner) {
+        setIsFollowingCreator(false);
+        return;
+      }
+      
+      const { data } = await supabase
+        .from("followers")
+        .select("id")
+        .eq("follower_id", userProfileId)
+        .eq("following_id", product.creator.id)
+        .maybeSingle();
+      
+      setIsFollowingCreator(!!data);
+    };
+    checkFollowStatus();
+  }, [userProfileId, product?.creator?.id, isOwner]);
+
   const fetchProduct = async () => {
     try {
       const { data: productData, error: productError } = await supabase
@@ -190,7 +232,7 @@ export default function ProductDetail() {
     try {
       const { data } = await supabase
         .from("products")
-        .select("id, name, cover_image_url, price_cents, currency")
+        .select("id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency")
         .eq("status", "published")
         .neq("id", excludeId)
         .limit(5);
@@ -372,6 +414,58 @@ export default function ProductDetail() {
     } catch {
       await navigator.clipboard.writeText(window.location.href);
       toast.success("Link copied to clipboard!");
+    }
+  };
+
+  // Handle following the creator
+  const handleFollowCreator = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    
+    if (!userProfileId || !product?.creator?.id) return;
+
+    setFollowingCreator(true);
+    try {
+      const { error } = await supabase
+        .from("followers")
+        .insert({
+          follower_id: userProfileId,
+          following_id: product.creator.id,
+        });
+
+      if (error) throw error;
+
+      setIsFollowingCreator(true);
+      setShowFollowDialog(false);
+      toast.success(`You're now following @${product.creator.username}!`);
+    } catch (error) {
+      console.error("Error following creator:", error);
+      toast.error("Failed to follow creator");
+    } finally {
+      setFollowingCreator(false);
+    }
+  };
+
+  // Handle access button click
+  const handleAccessClick = () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    
+    if (!isFollowingCreator && !isOwner) {
+      setShowFollowDialog(true);
+      return;
+    }
+    
+    // User follows creator or is owner - proceed with download/purchase
+    if (product?.pricing_type === "free") {
+      // Handle free download
+      toast.success("Download starting...");
+    } else {
+      handlePurchase();
     }
   };
 
@@ -561,9 +655,56 @@ export default function ProductDetail() {
             )}
           </div>
 
-          {/* Title & Meta */}
+          {/* Title & Meta with Download Button */}
           <div>
-            <h1 className="text-2xl font-bold mb-3">{product.name}</h1>
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <h1 className="text-2xl font-bold">{product.name}</h1>
+              
+              {/* Primary Action Button - Right next to title */}
+              {!isOwner && (
+                <div className="flex-shrink-0">
+                  {hasPurchased ? (
+                    <Button className="bg-emerald-600 hover:bg-emerald-700">
+                      <Download className="w-4 h-4 mr-2" />
+                      Download
+                    </Button>
+                  ) : isFollowingCreator || !product.creator ? (
+                    product.pricing_type === "free" ? (
+                      <Button 
+                        className="bg-gradient-to-r from-primary to-accent"
+                        onClick={handleAccessClick}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Free
+                      </Button>
+                    ) : (
+                      <Button 
+                        className="bg-gradient-to-r from-primary to-accent"
+                        onClick={handleAccessClick}
+                        disabled={purchasing}
+                      >
+                        {purchasing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>Buy {formatPrice(product.price_cents, product.pricing_type, product.currency)}</>
+                        )}
+                      </Button>
+                    )
+                  ) : (
+                    <Button 
+                      className="bg-gradient-to-r from-primary to-accent"
+                      onClick={handleAccessClick}
+                    >
+                      <Lock className="w-4 h-4 mr-2" />
+                      Get Access
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
             
             <div className="flex items-center gap-4 mb-4">
               {/* Creator Mini - Shows @username with verified badge */}
@@ -578,7 +719,7 @@ export default function ProductDetail() {
                   <span className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
                     @{product.creator.username || "unknown"}
                     {product.creator.verified && (
-                      <CheckCircle className="w-4 h-4 text-primary fill-primary" />
+                      <BadgeCheck className="w-4 h-4 text-primary" />
                     )}
                   </span>
                 </Link>
@@ -649,7 +790,7 @@ export default function ProductDetail() {
                       <span className="text-sm font-medium flex items-center gap-1">
                         @{comment.user?.username || "anonymous"}
                         {comment.user?.verified && (
-                          <CheckCircle className="w-3 h-3 text-primary fill-primary" />
+                          <BadgeCheck className="w-3 h-3 text-primary" />
                         )}
                       </span>
                       <span className="text-xs text-muted-foreground">
@@ -734,51 +875,17 @@ export default function ProductDetail() {
 
           <Separator />
 
-          {/* Purchase Section */}
-          <Card className="bg-card border-2 border-primary/20">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold">
-                    {formatPrice(product.price_cents, product.pricing_type, product.currency)}
-                  </p>
-                  {product.product_type && (
-                    <Badge variant="secondary" className="mt-1">
-                      {productTypeLabels[product.product_type] || product.product_type}
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  {hasPurchased ? (
-                    <Button className="bg-emerald-600/90 hover:bg-emerald-600" disabled>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Purchased
-                    </Button>
-                  ) : product.pricing_type === "free" ? (
-                    <Button className="bg-gradient-to-r from-primary to-accent">
-                      <Download className="w-4 h-4 mr-2" />
-                      Download Free
-                    </Button>
-                  ) : (
-                    <Button 
-                      className="bg-gradient-to-r from-primary to-accent"
-                      onClick={handlePurchase}
-                      disabled={purchasing}
-                    >
-                      {purchasing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>Buy for {formatPrice(product.price_cents, product.pricing_type, product.currency)}</>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Product Type Badge */}
+          {product.product_type && !isOwner && (
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">
+                {productTypeLabels[product.product_type] || product.product_type}
+              </Badge>
+              <span className="text-lg font-semibold">
+                {formatPrice(product.price_cents, product.pricing_type, product.currency)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Sidebar - Right Side */}
@@ -796,7 +903,7 @@ export default function ProductDetail() {
                 <h3 className="font-semibold flex items-center justify-center gap-1">
                   @{product.creator.username || "unknown"}
                   {product.creator.verified && (
-                    <CheckCircle className="w-4 h-4 text-primary fill-primary" />
+                    <BadgeCheck className="w-4 h-4 text-primary" />
                   )}
                 </h3>
                 {product.creator.bio && (
@@ -819,31 +926,40 @@ export default function ProductDetail() {
               <CardContent className="p-4">
                 <h3 className="font-semibold mb-4">Related Products</h3>
                 <div className="space-y-3">
-                  {relatedProducts.slice(0, 5).map((prod) => (
-                    <Link 
-                      key={prod.id} 
-                      to={`/product/${prod.id}`}
-                      className="flex items-center gap-3 hover:bg-secondary/30 rounded-lg p-2 -mx-2 transition-colors"
-                    >
-                      {prod.cover_image_url ? (
-                        <img 
-                          src={prod.cover_image_url} 
-                          alt={prod.name} 
-                          className="w-12 h-12 rounded object-cover flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
-                          <Play className="w-4 h-4 text-muted-foreground" />
+                  {relatedProducts.slice(0, 5).map((prod) => {
+                    const thumbnail = prod.cover_image_url || getYouTubeThumbnail(prod.youtube_url);
+                    return (
+                      <Link 
+                        key={prod.id} 
+                        to={`/product/${prod.id}`}
+                        className="flex items-center gap-3 hover:bg-secondary/30 rounded-lg p-2 -mx-2 transition-colors"
+                      >
+                        {thumbnail ? (
+                          <img 
+                            src={thumbnail} 
+                            alt={prod.name} 
+                            className="w-12 h-12 rounded object-cover flex-shrink-0"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              if (target.src.includes('hqdefault')) {
+                                target.src = target.src.replace('hqdefault', 'default');
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                            <Play className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{prod.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatPrice(prod.price_cents, null, prod.currency)}
+                          </p>
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{prod.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatPrice(prod.price_cents, null, prod.currency)}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -871,7 +987,7 @@ export default function ProductDetail() {
                         <p className="text-sm font-medium truncate flex items-center gap-1">
                           {creator.full_name || creator.username}
                           {creator.verified && (
-                            <CheckCircle className="w-3 h-3 text-primary fill-primary" />
+                            <BadgeCheck className="w-3 h-3 text-primary" />
                           )}
                         </p>
                         <p className="text-xs text-muted-foreground">@{creator.username}</p>
@@ -884,6 +1000,47 @@ export default function ProductDetail() {
           )}
         </div>
       </div>
+
+      {/* Follow Creator Dialog */}
+      <Dialog open={showFollowDialog} onOpenChange={setShowFollowDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center">Follow Required</DialogTitle>
+            <DialogDescription className="text-center">
+              You must follow @{product?.creator?.username} to access this content.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            {product?.creator && (
+              <Avatar className="w-20 h-20">
+                <AvatarImage src={product.creator.avatar_url || undefined} />
+                <AvatarFallback className="text-2xl">
+                  {product.creator.username?.[0]?.toUpperCase() || "?"}
+                </AvatarFallback>
+              </Avatar>
+            )}
+          </div>
+          <DialogFooter className="sm:justify-center">
+            <Button
+              onClick={handleFollowCreator}
+              disabled={followingCreator}
+              className="w-full bg-gradient-to-r from-primary to-accent"
+            >
+              {followingCreator ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Following...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Follow Now
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
