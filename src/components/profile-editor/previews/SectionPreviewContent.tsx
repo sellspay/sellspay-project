@@ -48,9 +48,18 @@ const ImagePreview = memo(({ content }: { content: ImageContent }) => {
 });
 ImagePreview.displayName = 'ImagePreview';
 
-// Image With Text Preview - handles all 4 layout types
-const ImageWithTextPreview = memo(({ content }: { content: ImageWithTextContent }) => {
-  const layout = content.layout || 'side-by-side';
+// Image With Text Preview - uses preset to guarantee the correct layout is rendered
+const ImageWithTextPreview = memo(({ section }: { section: ProfileSection }) => {
+  const content = section.content as ImageWithTextContent;
+  const preset = section.style_options?.preset;
+
+  const resolvedLayout: ImageWithTextContent['layout'] =
+    (preset === 'style1' ? 'hero' : preset === 'style4' ? 'overlay' : 'side-by-side');
+  const resolvedImagePosition: ImageWithTextContent['imagePosition'] =
+    (preset === 'style3' ? 'right' : 'left');
+
+  const layout = content.layout || resolvedLayout || 'side-by-side';
+  const imagePosition = content.imagePosition || resolvedImagePosition;
   
   // Hero Banner layout (style1)
   if (layout === 'hero') {
@@ -86,7 +95,7 @@ const ImageWithTextPreview = memo(({ content }: { content: ImageWithTextContent 
   
   // Side-by-side layout (style2 & style3)
   return (
-    <div className={`flex flex-col md:flex-row gap-8 items-center ${content.imagePosition === 'right' ? 'md:flex-row-reverse' : ''}`}>
+    <div className={`flex flex-col md:flex-row gap-8 items-center ${imagePosition === 'right' ? 'md:flex-row-reverse' : ''}`}>
       <div className="flex-1">
         {content.imageUrl ? (
           <img src={content.imageUrl} alt="" className="w-full h-auto rounded-lg" />
@@ -483,18 +492,18 @@ ContactUsPreview.displayName = 'ContactUsPreview';
 
 // Footer Preview
 const FooterPreview = memo(({ content }: { content: FooterContent }) => (
-  <div className="bg-slate-900 text-white rounded-lg p-6">
+  <div className="bg-card text-foreground rounded-lg p-6 border border-border">
     {content.columns.length > 0 && (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         {content.columns.map((column) => (
           <div key={column.id}>
-            <h4 className="font-semibold mb-3 text-white">{column.title}</h4>
+            <h4 className="font-semibold mb-3">{column.title}</h4>
             <ul className="space-y-2">
               {column.links.map((link) => (
                 <li key={link.id}>
                   <a 
                     href={link.url} 
-                    className="text-sm text-white/60 hover:text-white transition-colors"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {link.label}
                   </a>
@@ -509,12 +518,12 @@ const FooterPreview = memo(({ content }: { content: FooterContent }) => (
     {content.showSocialLinks && (
       <div className="flex justify-center gap-4 mb-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition-colors" />
+          <div key={i} className="w-8 h-8 rounded-full bg-muted hover:bg-muted/80 transition-colors" />
         ))}
       </div>
     )}
     
-    <div className="text-center text-sm text-white/50 border-t border-white/10 pt-4">
+    <div className="text-center text-sm text-muted-foreground border-t border-border pt-4">
       {content.text}
     </div>
   </div>
@@ -529,7 +538,7 @@ export const SectionPreviewContent = memo(({ section }: SectionPreviewContentPro
     case 'image':
       return <ImagePreview content={section.content as ImageContent} />;
     case 'image_with_text':
-      return <ImageWithTextPreview content={section.content as ImageWithTextContent} />;
+      return <ImageWithTextPreview section={section} />;
     case 'gallery':
       return <GalleryPreview content={section.content as GalleryContent} />;
     case 'video':
