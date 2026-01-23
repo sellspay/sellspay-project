@@ -116,43 +116,28 @@ body {
 /* Rainbow hue rotation animation for admin badge on hover */
 @keyframes hue-rotate {
   0% {
-    color: hsl(0, 100%, 60%);
-    border-color: hsl(0, 100%, 60%);
-    stroke: hsl(0, 100%, 60%);
+    background-color: hsl(0, 100%, 50%);
   }
   16.67% {
-    color: hsl(60, 100%, 50%);
-    border-color: hsl(60, 100%, 50%);
-    stroke: hsl(60, 100%, 50%);
+    background-color: hsl(60, 100%, 45%);
   }
   33.33% {
-    color: hsl(120, 100%, 45%);
-    border-color: hsl(120, 100%, 45%);
-    stroke: hsl(120, 100%, 45%);
+    background-color: hsl(120, 100%, 40%);
   }
   50% {
-    color: hsl(180, 100%, 50%);
-    border-color: hsl(180, 100%, 50%);
-    stroke: hsl(180, 100%, 50%);
+    background-color: hsl(180, 100%, 45%);
   }
   66.67% {
-    color: hsl(240, 100%, 65%);
-    border-color: hsl(240, 100%, 65%);
-    stroke: hsl(240, 100%, 65%);
+    background-color: hsl(240, 100%, 55%);
   }
   83.33% {
-    color: hsl(300, 100%, 60%);
-    border-color: hsl(300, 100%, 60%);
-    stroke: hsl(300, 100%, 60%);
+    background-color: hsl(300, 100%, 50%);
   }
   100% {
-    color: hsl(360, 100%, 60%);
-    border-color: hsl(360, 100%, 60%);
-    stroke: hsl(360, 100%, 60%);
+    background-color: hsl(360, 100%, 50%);
   }
 }
 
-.group:hover .group-hover\:animate-hue-rotate,
 .hover\:animate-hue-rotate:hover {
   animation: hue-rotate 2s linear infinite;
 }

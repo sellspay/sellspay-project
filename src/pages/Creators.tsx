@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { useAuth } from '@/lib/auth';
 
 interface Creator {
@@ -160,32 +161,7 @@ export default function Creators() {
                           @{creator.username || 'creator'}
                         </h3>
                         {creator.verified && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div 
-                                className={`w-4 h-4 rounded-full border-[1.5px] flex items-center justify-center transition-all duration-300 border-blue-500 ${
-                                  creatorIsAdmin ? 'hover:animate-hue-rotate group/badge' : ''
-                                }`}
-                              >
-                                <svg 
-                                  viewBox="0 0 24 24" 
-                                  fill="none" 
-                                  className={`w-2.5 h-2.5 transition-all duration-300 text-blue-500 ${
-                                    creatorIsAdmin ? 'group-hover/badge:animate-hue-rotate' : ''
-                                  }`}
-                                  stroke="currentColor" 
-                                  strokeWidth="3.5" 
-                                  strokeLinecap="round" 
-                                  strokeLinejoin="round"
-                                >
-                                  <polyline points="20 6 9 17 4 12" />
-                                </svg>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{creatorIsAdmin ? 'Verified Creator / Owner' : 'Verified Creator'}</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <VerifiedBadge isAdmin={creatorIsAdmin} size="sm" />
                         )}
                       </div>
                       
