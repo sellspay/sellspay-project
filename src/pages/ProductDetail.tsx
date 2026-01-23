@@ -133,6 +133,7 @@ export default function ProductDetail() {
   const [isFollowingCreator, setIsFollowingCreator] = useState(false);
   const [showFollowDialog, setShowFollowDialog] = useState(false);
   const [followingCreator, setFollowingCreator] = useState(false);
+  const [isCreatorAdmin, setIsCreatorAdmin] = useState(false);
   
   // Comments
   const [comments, setComments] = useState<Comment[]>([]);
@@ -225,13 +226,24 @@ export default function ProductDetail() {
       if (productData.creator_id) {
         const { data: creatorData } = await supabase
           .from("profiles")
-          .select("id, username, full_name, avatar_url, bio, verified")
+          .select("id, username, full_name, avatar_url, bio, verified, user_id")
           .eq("id", productData.creator_id)
           .maybeSingle();
         creator = creatorData;
         
         if (userProfileId && productData.creator_id === userProfileId) {
           setIsOwner(true);
+        }
+        
+        // Check if creator is admin
+        if (creatorData?.user_id) {
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", creatorData.user_id)
+            .eq("role", "admin")
+            .maybeSingle();
+          setIsCreatorAdmin(!!roleData);
         }
       }
 
@@ -891,7 +903,7 @@ export default function ProductDetail() {
                   <span className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
                     @{product.creator.username || "unknown"}
                     {product.creator.verified && (
-                      <VerifiedBadge size="sm" />
+                      <VerifiedBadge size="sm" isAdmin={isCreatorAdmin} />
                     )}
                   </span>
                 </Link>
@@ -1334,7 +1346,7 @@ export default function ProductDetail() {
                 <h3 className="font-semibold flex items-center justify-center gap-1">
                   @{product.creator.username || "unknown"}
                   {product.creator.verified && (
-                    <VerifiedBadge size="sm" />
+                    <VerifiedBadge size="sm" isAdmin={isCreatorAdmin} />
                   )}
                 </h3>
                 {product.creator.bio && (
