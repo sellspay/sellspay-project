@@ -10,7 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Search, Star, X, Loader2, Plus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Star, X, Loader2, Plus, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -19,10 +26,19 @@ interface Product {
   name: string;
   cover_image_url: string | null;
   featured: boolean | null;
+  product_type: string | null;
+  creator_id: string | null;
   creator?: {
+    id: string;
     username: string | null;
     full_name: string | null;
   };
+}
+
+interface Creator {
+  id: string;
+  username: string | null;
+  full_name: string | null;
 }
 
 interface ManageFeaturedDialogProps {
@@ -30,6 +46,16 @@ interface ManageFeaturedDialogProps {
   onOpenChange: (open: boolean) => void;
   onFeaturedChanged: () => void;
 }
+
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  preset: "Preset",
+  lut: "LUT",
+  sfx: "SFX",
+  motion_graphics: "Motion Graphics",
+  tutorial: "Tutorial",
+  project_file: "Project File",
+  other: "Other",
+};
 
 export default function ManageFeaturedDialog({
   open,
@@ -39,7 +65,10 @@ export default function ManageFeaturedDialog({
   const [loading, setLoading] = useState(true);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [creators, setCreators] = useState<Creator[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [creatorFilter, setCreatorFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [updating, setUpdating] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,18 +80,19 @@ export default function ManageFeaturedDialog({
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // Fetch all published products
+      // Fetch 20 most recent published products
       const { data: productsData, error: productsError } = await supabase
         .from("products")
-        .select("id, name, cover_image_url, featured, creator_id")
+        .select("id, name, cover_image_url, featured, product_type, creator_id")
         .eq("status", "published")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(50);
 
       if (productsError) throw productsError;
 
       // Fetch creator info
       const creatorIds = [...new Set(productsData?.map(p => p.creator_id).filter(Boolean) || [])];
-      let creatorsMap: Record<string, { username: string | null; full_name: string | null }> = {};
+      let creatorsMap: Record<string, Creator> = {};
 
       if (creatorIds.length > 0) {
         const { data: creatorsData } = await supabase
@@ -70,9 +100,12 @@ export default function ManageFeaturedDialog({
           .select("id, username, full_name")
           .in("id", creatorIds);
 
+        const creatorsList: Creator[] = [];
         creatorsData?.forEach(c => {
-          creatorsMap[c.id] = { username: c.username, full_name: c.full_name };
+          creatorsMap[c.id] = { id: c.id, username: c.username, full_name: c.full_name };
+          creatorsList.push({ id: c.id, username: c.username, full_name: c.full_name });
         });
+        setCreators(creatorsList);
       }
 
       const productsWithCreators = productsData?.map(p => ({
@@ -111,22 +144,37 @@ export default function ManageFeaturedDialog({
     }
   };
 
-  const filteredProducts = allProducts.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.creator?.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.creator?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const clearFilters = () => {
+    setSearchQuery("");
+    setCreatorFilter("all");
+    setTypeFilter("all");
+  };
+
+  const filteredProducts = allProducts.filter(p => {
+    const matchesSearch = 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.creator?.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.creator?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesCreator = creatorFilter === "all" || p.creator_id === creatorFilter;
+    const matchesType = typeFilter === "all" || p.product_type === typeFilter;
+
+    return matchesSearch && matchesCreator && matchesType;
+  });
+
+  const hasActiveFilters = searchQuery || creatorFilter !== "all" || typeFilter !== "all";
+  const productTypes = [...new Set(allProducts.map(p => p.product_type).filter(Boolean))];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh]">
+      <DialogContent className="sm:max-w-[700px] max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Star className="w-5 h-5 text-yellow-500" />
             Manage Featured Products
           </DialogTitle>
           <DialogDescription>
-            Products marked as featured will appear on the homepage
+            Products marked as featured will appear on the homepage "Popular Picks" section
           </DialogDescription>
         </DialogHeader>
 
@@ -145,10 +193,10 @@ export default function ManageFeaturedDialog({
               
               {featuredProducts.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground border border-dashed rounded-lg">
-                  No featured products yet
+                  No featured products yet. Add products below to feature them on the homepage.
                 </div>
               ) : (
-                <ScrollArea className="max-h-[200px]">
+                <ScrollArea className="max-h-[180px]">
                   <div className="space-y-2">
                     {featuredProducts.map((product) => (
                       <div
@@ -169,9 +217,16 @@ export default function ManageFeaturedDialog({
                           )}
                           <div>
                             <p className="font-medium text-sm">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              by {product.creator?.full_name || product.creator?.username || "Unknown"}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-muted-foreground">
+                                by {product.creator?.full_name || product.creator?.username || "Unknown"}
+                              </p>
+                              {product.product_type && (
+                                <Badge variant="outline" className="text-[10px] h-4 px-1">
+                                  {PRODUCT_TYPE_LABELS[product.product_type] || product.product_type}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <Button
@@ -197,26 +252,65 @@ export default function ManageFeaturedDialog({
 
             {/* Add Products */}
             <div>
-              <h3 className="font-medium mb-3">Add Products to Featured</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium">Add Products to Featured</h3>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs h-7">
+                    <X className="w-3 h-3 mr-1" />
+                    Clear filters
+                  </Button>
+                )}
+              </div>
               
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products..."
-                  className="pl-9"
-                />
+              {/* Filters Row */}
+              <div className="flex gap-2 mb-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by keyword..."
+                    className="pl-9"
+                  />
+                </div>
+                
+                <Select value={creatorFilter} onValueChange={setCreatorFilter}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="All Creators" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Creators</SelectItem>
+                    {creators.map((creator) => (
+                      <SelectItem key={creator.id} value={creator.id}>
+                        {creator.full_name || creator.username || "Unknown"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {productTypes.map((type) => (
+                      <SelectItem key={type} value={type!}>
+                        {PRODUCT_TYPE_LABELS[type!] || type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <ScrollArea className="max-h-[250px]">
+              <ScrollArea className="max-h-[280px]">
                 {filteredProducts.length === 0 ? (
-                  <div className="text-center py-6 text-muted-foreground">
-                    {searchQuery ? "No products found" : "All products are featured"}
+                  <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
+                    {hasActiveFilters ? "No products match your filters" : "All products are featured"}
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {filteredProducts.map((product) => (
+                    {filteredProducts.slice(0, 20).map((product) => (
                       <div
                         key={product.id}
                         className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
@@ -235,9 +329,16 @@ export default function ManageFeaturedDialog({
                           )}
                           <div>
                             <p className="font-medium text-sm">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              by {product.creator?.full_name || product.creator?.username || "Unknown"}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-muted-foreground">
+                                by {product.creator?.full_name || product.creator?.username || "Unknown"}
+                              </p>
+                              {product.product_type && (
+                                <Badge variant="outline" className="text-[10px] h-4 px-1">
+                                  {PRODUCT_TYPE_LABELS[product.product_type] || product.product_type}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <Button
@@ -245,11 +346,12 @@ export default function ManageFeaturedDialog({
                           size="sm"
                           onClick={() => handleToggleFeatured(product.id, true)}
                           disabled={updating === product.id}
+                          className="bg-yellow-500/10 border-yellow-500/30 hover:bg-yellow-500/20 text-yellow-600"
                         >
                           {updating === product.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
-                            <Plus className="w-4 h-4" />
+                            <Star className="w-4 h-4" />
                           )}
                           <span className="ml-1">Feature</span>
                         </Button>
@@ -258,6 +360,10 @@ export default function ManageFeaturedDialog({
                   </div>
                 )}
               </ScrollArea>
+              
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Showing up to 20 most recent products
+              </p>
             </div>
           </div>
         )}

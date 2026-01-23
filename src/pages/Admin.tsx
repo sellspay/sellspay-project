@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -476,6 +476,10 @@ export default function Admin() {
         <TabsList>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="featured" className="relative">
+            <Star className="w-4 h-4 mr-1.5" />
+            Featured
+          </TabsTrigger>
           <TabsTrigger value="editor-applications" className="relative">
             Editor Applications
             {pendingApplicationsCount > 0 && (
@@ -696,6 +700,116 @@ export default function Admin() {
               {filteredProducts.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   No products found
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Featured Tab */}
+        <TabsContent value="featured">
+          <Card className="bg-card/50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    Featured Products
+                  </CardTitle>
+                  <CardDescription>
+                    Manage which products appear on the homepage "Popular Picks" section
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setShowFeaturedDialog(true)} className="gap-2">
+                  <Star className="w-4 h-4" />
+                  Manage Featured
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Quick Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                  <div className="flex items-center gap-3">
+                    <Star className="w-8 h-8 text-yellow-500" />
+                    <div>
+                      <p className="text-2xl font-bold">{products.filter(p => p.featured).length}</p>
+                      <p className="text-sm text-muted-foreground">Featured Products</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary/50 border">
+                  <div className="flex items-center gap-3">
+                    <Package className="w-8 h-8 text-muted-foreground" />
+                    <div>
+                      <p className="text-2xl font-bold">{products.filter(p => p.status === 'published').length}</p>
+                      <p className="text-sm text-muted-foreground">Published Products</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary/50 border">
+                  <div className="flex items-center gap-3">
+                    <Eye className="w-8 h-8 text-muted-foreground" />
+                    <div>
+                      <p className="text-2xl font-bold">
+                        {products.filter(p => p.featured).length > 0 ? "Active" : "Inactive"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Homepage Display</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Featured Products Table */}
+              <h3 className="font-medium mb-4">Currently Featured</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Creator</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Featured Date</TableHead>
+                    <TableHead className="w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {products.filter(p => p.featured).map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                          <span className="font-medium">{product.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {product.creator?.full_name || product.creator?.username || "Unknown"}
+                      </TableCell>
+                      <TableCell>
+                        {formatPrice(product.price_cents, product.pricing_type)}
+                      </TableCell>
+                      <TableCell>{formatDate(product.created_at)}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleFeatured(product)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {products.filter(p => p.featured).length === 0 && (
+                <div className="text-center py-12 border border-dashed rounded-lg mt-4">
+                  <Star className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground mb-4">No featured products yet</p>
+                  <Button onClick={() => setShowFeaturedDialog(true)} variant="outline">
+                    Add Featured Products
+                  </Button>
                 </div>
               )}
             </CardContent>
