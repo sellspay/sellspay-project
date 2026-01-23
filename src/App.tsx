@@ -26,7 +26,7 @@ import AudioConverter from "./pages/tools/AudioConverter";
 import WaveformGenerator from "./pages/tools/WaveformGenerator";
 import Community from "./pages/Community";
 import HireEditors from "./pages/HireEditors";
-import WorkWithEditors from "./pages/WorkWithEditors";
+import Dashboard from "./pages/Dashboard";
 import Notifications from "./pages/Notifications";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -77,7 +77,7 @@ const App = () => (
             <Route path="/admin" element={<MainLayout><Admin /></MainLayout>} />
             <Route path="/community" element={<MainLayout><Community /></MainLayout>} />
             <Route path="/hire-editors" element={<MainLayout><HireEditors /></MainLayout>} />
-            <Route path="/work-with-editors" element={<MainLayout><WorkWithEditors /></MainLayout>} />
+            <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
             <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
             <Route path="/terms" element={<MainLayout><Terms /></MainLayout>} />
             <Route path="/privacy" element={<MainLayout><Privacy /></MainLayout>} />

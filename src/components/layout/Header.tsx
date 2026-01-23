@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, X, ChevronDown, User, Settings, LogOut, ShieldCheck, Plus } from 'lucide-react';
+import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -20,16 +20,12 @@ const navItems = [
   { name: 'Community', path: '/community' },
 ];
 
-const moreItems = [
-  { name: 'Hire Editors', path: '/hire-editors' },
-  { name: 'Work with Editors', path: '/work-with-editors' },
-];
-
 export default function Header() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [fullName, setFullName] = useState<string | null>(null);
@@ -39,6 +35,7 @@ export default function Header() {
     async function fetchProfile() {
       if (!user) {
         setIsCreator(false);
+        setIsEditor(false);
         setAvatarUrl(null);
         setUsername(null);
         setFullName(null);
@@ -46,11 +43,12 @@ export default function Header() {
       }
       const { data } = await supabase
         .from('profiles')
-        .select('is_creator, avatar_url, username, full_name')
+        .select('is_creator, is_editor, avatar_url, username, full_name')
         .eq('user_id', user.id)
         .maybeSingle();
       
       setIsCreator(data?.is_creator || false);
+      setIsEditor(data?.is_editor || false);
       setAvatarUrl(data?.avatar_url || null);
       setUsername(data?.username || null);
       setFullName(data?.full_name || null);
@@ -87,22 +85,10 @@ export default function Header() {
               </Link>
             ))}
 
-            {/* More Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-full hover:bg-secondary/50 transition-colors">
-                  More
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {moreItems.map((item) => (
-                  <DropdownMenuItem key={item.path} asChild>
-                    <Link to={item.path}>{item.name}</Link>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Hire Editors Button - Standout */}
+            <Button asChild className="ml-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
+              <Link to="/hire-editors">Hire Editors</Link>
+            </Button>
           </nav>
 
           {/* Right Side */}
@@ -133,6 +119,14 @@ export default function Header() {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
+                  {(isCreator || isEditor) && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/dashboard" className="flex items-center gap-2">
+                        <LayoutDashboard className="h-4 w-4" />
+                        Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   {isCreator && (
                     <DropdownMenuItem asChild>
                       <Link to="/create-product" className="flex items-center gap-2">
@@ -207,16 +201,13 @@ export default function Header() {
                   {item.name}
                 </Link>
               ))}
-              {moreItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-lg transition-colors"
-                >
-                  {item.name}
-                </Link>
-              ))}
+              <Link
+                to="/hire-editors"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg transition-colors"
+              >
+                Hire Editors
+              </Link>
             </nav>
           </div>
         )}
