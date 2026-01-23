@@ -99,7 +99,8 @@ export default function Header() {
             {/* Hire Editors Button - Standout with animated gradient */}
             <Button 
               asChild 
-              className="ml-2 rounded-full text-white font-medium relative overflow-hidden bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-[gradient-wave_3s_ease-in-out_infinite] hover:shadow-lg hover:shadow-primary/25 transition-shadow"
+              size="sm"
+              className="ml-2 rounded-full text-white text-xs font-medium relative overflow-hidden bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 bg-[length:200%_100%] animate-[gradient-wave_2s_ease-in-out_infinite] hover:shadow-lg hover:shadow-fuchsia-500/40 transition-shadow"
             >
               <Link to="/hire-editors">Hire Editors</Link>
             </Button>
@@ -226,7 +227,7 @@ export default function Header() {
               <Link
                 to="/hire-editors"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-white rounded-lg bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient-wave"
+                className="px-3 py-1.5 text-xs font-medium text-white rounded-lg bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 bg-[length:200%_100%] animate-gradient-wave"
               >
                 Hire Editors
               </Link>
