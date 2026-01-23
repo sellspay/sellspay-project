@@ -16,14 +16,20 @@ export type Database = {
     Tables: {
       products: {
         Row: {
+          attachments: Json | null
+          benefits: string[] | null
           cover_image_url: string | null
           created_at: string | null
+          created_by: string | null
           creator_id: string | null
           currency: string | null
           description: string | null
           download_url: string | null
+          duration_label: string | null
+          excerpt: string | null
           featured: boolean | null
           id: string
+          locked: boolean | null
           name: string
           preview_video_url: string | null
           price_cents: number | null
@@ -36,14 +42,20 @@ export type Database = {
           youtube_url: string | null
         }
         Insert: {
+          attachments?: Json | null
+          benefits?: string[] | null
           cover_image_url?: string | null
           created_at?: string | null
+          created_by?: string | null
           creator_id?: string | null
           currency?: string | null
           description?: string | null
           download_url?: string | null
+          duration_label?: string | null
+          excerpt?: string | null
           featured?: boolean | null
           id?: string
+          locked?: boolean | null
           name: string
           preview_video_url?: string | null
           price_cents?: number | null
@@ -56,14 +68,20 @@ export type Database = {
           youtube_url?: string | null
         }
         Update: {
+          attachments?: Json | null
+          benefits?: string[] | null
           cover_image_url?: string | null
           created_at?: string | null
+          created_by?: string | null
           creator_id?: string | null
           currency?: string | null
           description?: string | null
           download_url?: string | null
+          duration_label?: string | null
+          excerpt?: string | null
           featured?: boolean | null
           id?: string
+          locked?: boolean | null
           name?: string
           preview_video_url?: string | null
           price_cents?: number | null
