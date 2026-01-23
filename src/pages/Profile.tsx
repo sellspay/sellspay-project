@@ -881,7 +881,9 @@ const ProfilePage: React.FC = () => {
               {profile.verified && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <BadgeCheck className="w-5 h-5 text-primary" />
+                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Verified Creator</p>
@@ -889,7 +891,7 @@ const ProfilePage: React.FC = () => {
                 </Tooltip>
               )}
               {isAdmin && (
-                <Badge className="bg-primary/20 text-primary border-primary/30">
+                <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
                   Admin
                 </Badge>
               )}
