@@ -121,15 +121,19 @@ export function AudioProcessingView({
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Processing failed");
-      }
-
       const data = await response.json();
+      console.log("Edge function response:", data);
+
+      if (!response.ok) {
+        throw new Error(data.error || `Processing failed with status ${response.status}`);
+      }
 
       if (!data.success) {
         throw new Error(data.error || "Processing failed");
+      }
+
+      if (!data.stems || Object.keys(data.stems).length === 0) {
+        throw new Error("No audio stems returned from processing");
       }
 
       setResult(data.stems);
@@ -145,7 +149,8 @@ export function AudioProcessingView({
       toast.success("Audio processed successfully!");
     } catch (error) {
       console.error("Processing error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to process audio");
+      const errorMessage = error instanceof Error ? error.message : "Failed to process audio";
+      toast.error(errorMessage);
       setFile(null);
     } finally {
       setIsProcessing(false);
