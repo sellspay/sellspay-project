@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import { ArrowRight, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import heroCosmicBg from '@/assets/hero-cosmic-bg.png';
 
 const floatingWords = ['Presets', 'LUTs', 'SFX', 'Templates', 'Overlays', 'Fonts'];
 
@@ -19,27 +20,20 @@ export default function HeroSection() {
 
   return (
     <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-      {/* Animated gradient background */}
+      {/* Cosmic background image */}
       <div className="absolute inset-0 -z-10">
-        {/* Intense purple gradient base */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/40 via-background to-background" />
-        
-        {/* Large visible gradient orbs */}
-        <div className="absolute -top-[200px] left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-primary/50 rounded-full blur-[180px]" />
-        <div className="absolute top-1/4 -left-[200px] w-[600px] h-[600px] bg-purple-500/40 rounded-full blur-[150px]" />
-        <div className="absolute top-1/4 -right-[200px] w-[600px] h-[600px] bg-accent/30 rounded-full blur-[150px]" />
-        <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] bg-primary/25 rounded-full blur-[120px]" />
-        
-        {/* Grain texture overlay */}
-        <div 
-          className="absolute inset-0 opacity-[0.25] mix-blend-overlay pointer-events-none"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-          }}
+        {/* Background image */}
+        <img 
+          src={heroCosmicBg} 
+          alt="" 
+          className="absolute inset-0 w-full h-full object-cover"
         />
         
-        {/* Bottom vignette only */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+        {/* Bottom fade to background */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+        
+        {/* Top subtle vignette */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/30 to-transparent" />
       </div>
 
       {/* Floating decorative elements */}
