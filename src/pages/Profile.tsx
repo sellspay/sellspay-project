@@ -48,6 +48,7 @@ import SortableCollectionItem from '@/components/profile/SortableCollectionItem'
 import CreateCollectionDialog from '@/components/profile/CreateCollectionDialog';
 import EditCollectionDialog from '@/components/profile/EditCollectionDialog';
 import SubscribeDialog from '@/components/profile/SubscribeDialog';
+import { ProfileEditorDialog } from '@/components/profile-editor';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -313,6 +314,7 @@ const ProfilePage: React.FC = () => {
   const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);
   const [showSubscribeDialog, setShowSubscribeDialog] = useState(false);
   const [creatorHasPlans, setCreatorHasPlans] = useState(false);
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1160,6 +1162,15 @@ const ProfilePage: React.FC = () => {
                   ) : (
                     <>
                       <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => setShowProfileEditor(true)}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Launch Editor
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setShowCreateCollection(true)}
@@ -1174,8 +1185,8 @@ const ProfilePage: React.FC = () => {
                           size="sm"
                           onClick={() => setIsEditingCollections(true)}
                         >
-                          <Pencil className="w-4 h-4 mr-1" />
-                          Edit
+                          <Layers className="w-4 h-4 mr-1" />
+                          Manage
                         </Button>
                       )}
                     </>
@@ -1427,6 +1438,16 @@ const ProfilePage: React.FC = () => {
           onOpenChange={setShowSubscribeDialog}
           creatorId={profile.id}
           creatorName={profile.full_name || profile.username || 'Creator'}
+        />
+      )}
+
+      {/* Profile Editor Dialog */}
+      {profile && (
+        <ProfileEditorDialog
+          open={showProfileEditor}
+          onOpenChange={setShowProfileEditor}
+          profileId={profile.id}
+          collections={collections.map(c => ({ id: c.id, name: c.name }))}
         />
       )}
     </TooltipProvider>
