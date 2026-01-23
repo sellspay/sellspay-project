@@ -251,7 +251,7 @@ export function ToolsSidebar({
               onClick={() => tool.available && onSelectTool(tool.id)}
               disabled={!tool.available}
               className={cn(
-                "w-full flex items-start gap-3.5 p-3.5 rounded-xl text-left transition-all group",
+                "w-full flex items-center gap-3.5 p-3.5 rounded-xl text-left transition-all group",
                 selectedTool === tool.id
                   ? "bg-gradient-to-r from-primary/15 to-accent/10 border border-primary/40 shadow-lg shadow-primary/5"
                   : tool.available 
@@ -260,7 +260,7 @@ export function ToolsSidebar({
               )}
             >
               <div className={cn(
-                "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all",
+                "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
                 selectedTool === tool.id
                   ? "bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-lg shadow-primary/30"
                   : tool.available
@@ -269,10 +269,10 @@ export function ToolsSidebar({
               )}>
                 <tool.icon className="w-5 h-5" />
               </div>
-              <div className="flex-1 min-w-0 py-0.5">
-                <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
                   <span className={cn(
-                    "font-semibold transition-colors",
+                    "font-semibold transition-colors leading-tight",
                     selectedTool === tool.id ? "text-foreground" : "text-foreground/90"
                   )}>
                     {tool.title}
@@ -280,21 +280,21 @@ export function ToolsSidebar({
                   {tool.badge && (
                     <Badge 
                       className={cn(
-                        "text-[10px] px-2 py-0.5 font-medium border-0",
+                        "text-[10px] px-1.5 py-0 font-medium border-0 h-4 leading-none",
                         tool.badge === "Popular" && "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-sm",
-                        tool.badge === "New" && "bg-accent/20 text-accent border border-accent/30"
+                        tool.badge === "New" && "bg-accent/20 text-accent-foreground"
                       )}
                     >
                       {tool.badge}
                     </Badge>
                   )}
                   {!tool.available && (
-                    <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-muted-foreground border-muted-foreground/30">
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground border-muted-foreground/30 h-4 leading-none">
                       Soon
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                   {tool.description}
                 </p>
               </div>
