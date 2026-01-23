@@ -166,6 +166,14 @@ const getPreviewVideoUrl = (path: string | null): string | null => {
 };
 
 // Product Card with Video Preview
+// Helper to format price
+function formatPrice(cents: number | null, currency: string | null): string {
+  if (!cents || cents === 0) return 'Free';
+  const amount = cents / 100;
+  const cur = currency?.toUpperCase() || 'USD';
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(amount);
+}
+
 function ProductCard({ 
   product, 
   onClick 
@@ -240,6 +248,11 @@ function ProductCard({
           </div>
         )}
 
+        {/* Price Badge */}
+        <div className="absolute top-2 left-2 rounded bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground backdrop-blur-sm">
+          {formatPrice(product.price_cents, product.currency)}
+        </div>
+
         {/* Title overlay at bottom */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
           <h3 className="text-sm font-medium text-white line-clamp-1">
@@ -249,7 +262,7 @@ function ProductCard({
 
         {/* Play indicator on hover */}
         {!isHovering && previewVideoUrl && !videoError && (
-          <div className="absolute top-2 left-2 bg-background/80 rounded-full p-1.5">
+          <div className="absolute top-2 right-2 bg-background/80 rounded-full p-1.5">
             <Play className="w-3 h-3 text-foreground" fill="currentColor" />
           </div>
         )}

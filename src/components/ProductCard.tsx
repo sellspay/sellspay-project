@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, Star } from 'lucide-react';
+import { Play, Star, Flame, Heart, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Product {
@@ -20,14 +20,14 @@ interface ProductCardProps {
   product: Product;
   showFeaturedBadge?: boolean;
   showType?: boolean;
+  likeCount?: number;
+  commentCount?: number;
+  showEngagement?: boolean;
+  isHot?: boolean;
 }
 
 function getYouTubeThumbnail(youtubeUrl: string | null): string | null {
   if (!youtubeUrl) return null;
-  // Support:
-  // - full URLs
-  // - short URLs
-  // - raw 11-char video IDs (common when people paste just the ID)
   const raw = youtubeUrl.trim();
   const idLike = /^[a-zA-Z0-9_-]{11}$/;
   if (idLike.test(raw)) return `https://img.youtube.com/vi/${raw}/hqdefault.jpg`;
@@ -63,7 +63,15 @@ function formatPrice(cents: number | null, currency: string | null): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(amount);
 }
 
-export default function ProductCard({ product, showFeaturedBadge = true, showType = true }: ProductCardProps) {
+export default function ProductCard({ 
+  product, 
+  showFeaturedBadge = true, 
+  showType = true,
+  likeCount,
+  commentCount,
+  showEngagement = false,
+  isHot = false
+}: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoError, setVideoError] = useState(false);
@@ -78,7 +86,6 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
   );
 
   const canShowVideo = Boolean(videoUrl) && !videoError;
-  // Only show video on hover if we have a thumbnail; otherwise show video as default
   const hasThumbnail = Boolean(thumbnail);
   const showVideo = canShowVideo && (isHovered || !hasThumbnail);
 
@@ -97,7 +104,6 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
     }
   };
 
-  // If there's no thumbnail, show the video by default (muted autoplay is generally allowed).
   useEffect(() => {
     if (!thumbnail && canShowVideo && videoRef.current) {
       videoRef.current.play().catch(() => {});
@@ -112,7 +118,7 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
       onMouseLeave={handleMouseLeave}
     >
       <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
-        {/* Video Preview (default when no thumbnail; on-hover when both exist) */}
+        {/* Video Preview */}
         {canShowVideo && (
           <video
             ref={videoRef}
@@ -128,7 +134,7 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
           />
         )}
 
-        {/* Thumbnail Image (only if available) */}
+        {/* Thumbnail Image */}
         {thumbnail ? (
           <img
             src={thumbnail}
@@ -148,6 +154,14 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
           {formatPrice(product.price_cents, product.currency)}
         </div>
 
+        {/* Hot Badge */}
+        {isHot && (
+          <div className="absolute top-2 left-16 flex items-center gap-1 rounded bg-orange-500/90 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
+            <Flame className="h-3 w-3" />
+            Hot
+          </div>
+        )}
+
         {/* Featured Badge */}
         {showFeaturedBadge && product.featured && (
           <div className="absolute top-2 right-2 flex items-center gap-1 rounded bg-primary/90 px-2 py-0.5 text-xs font-medium text-primary-foreground backdrop-blur-sm">
@@ -157,7 +171,7 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
         )}
 
         {/* Product Type Badge */}
-        {product.product_type && (
+        {showType && product.product_type && (
           <div className="absolute bottom-2 left-2 rounded bg-secondary/90 px-2 py-0.5 text-xs font-medium text-secondary-foreground backdrop-blur-sm">
             {productTypeLabels[product.product_type] || product.product_type}
           </div>
@@ -172,6 +186,24 @@ export default function ProductCard({ product, showFeaturedBadge = true, showTyp
         <h3 className="truncate text-sm font-medium text-foreground group-hover:text-primary transition-colors">
           {product.name}
         </h3>
+        
+        {/* Engagement Stats */}
+        {showEngagement && (likeCount !== undefined || commentCount !== undefined) && (
+          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+            {likeCount !== undefined && (
+              <span className="flex items-center gap-1">
+                <Heart className="h-3 w-3" />
+                {likeCount}
+              </span>
+            )}
+            {commentCount !== undefined && (
+              <span className="flex items-center gap-1">
+                <MessageCircle className="h-3 w-3" />
+                {commentCount}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </Link>
   );

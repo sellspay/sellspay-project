@@ -6,7 +6,14 @@ import HeroSection from '@/components/home/HeroSection';
 import SlidingBanner from '@/components/home/SlidingBanner';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, TrendingUp, Zap } from 'lucide-react';
+import { ArrowRight, Sparkles, TrendingUp, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
 
 interface Product {
   id: string;
@@ -21,19 +28,27 @@ interface Product {
   currency: string | null;
   youtube_url: string | null;
   tags: string[] | null;
+  created_at: string | null;
+}
+
+interface FeaturedProduct extends Product {
+  likeCount: number;
+  commentCount: number;
+  isHot: boolean;
 }
 
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const [featuredWithStats, setFeaturedWithStats] = useState<FeaturedProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchProducts() {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, price_cents, currency, youtube_url, tags')
+        .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, price_cents, currency, youtube_url, tags, created_at')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
 
@@ -42,6 +57,60 @@ export default function Home() {
         setProducts([]);
       } else {
         setProducts(data || []);
+        
+        // Fetch engagement stats for featured products
+        const featured = (data || []).filter(p => p.featured === true);
+        if (featured.length > 0) {
+          const productIds = featured.map(p => p.id);
+          
+          // Get like counts
+          const { data: likes } = await supabase
+            .from('product_likes')
+            .select('product_id')
+            .in('product_id', productIds);
+          
+          // Get comment counts
+          const { data: comments } = await supabase
+            .from('comments')
+            .select('product_id')
+            .in('product_id', productIds);
+          
+          // Build count maps
+          const likeMap = new Map<string, number>();
+          const commentMap = new Map<string, number>();
+          
+          likes?.forEach(like => {
+            likeMap.set(like.product_id, (likeMap.get(like.product_id) || 0) + 1);
+          });
+          
+          comments?.forEach(comment => {
+            commentMap.set(comment.product_id, (commentMap.get(comment.product_id) || 0) + 1);
+          });
+          
+          // Calculate "hot" threshold (top 20% of likes or recent with engagement)
+          const allLikeCounts = featured.map(p => likeMap.get(p.id) || 0);
+          const maxLikes = Math.max(...allLikeCounts, 1);
+          const hotThreshold = maxLikes * 0.5; // Products with at least 50% of max likes
+          
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          
+          const featuredWithEngagement: FeaturedProduct[] = featured.map(p => {
+            const likes = likeMap.get(p.id) || 0;
+            const commentsCount = commentMap.get(p.id) || 0;
+            const isRecent = p.created_at ? new Date(p.created_at) > sevenDaysAgo : false;
+            const isHot = likes >= hotThreshold || (isRecent && (likes > 0 || commentsCount > 0));
+            
+            return {
+              ...p,
+              likeCount: likes,
+              commentCount: commentsCount,
+              isHot
+            };
+          });
+          
+          setFeaturedWithStats(featuredWithEngagement);
+        }
       }
       setLoading(false);
     }
@@ -49,7 +118,6 @@ export default function Home() {
     fetchProducts();
   }, []);
 
-  const featuredProducts = products.filter(p => p.featured === true);
   const tutorials = products.filter(p => p.product_type === 'tutorial');
   const projectFiles = products.filter(p => p.product_type === 'project_file');
   const presets = products.filter(p => p.product_type === 'preset');
@@ -89,7 +157,7 @@ export default function Home() {
               <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mb-4" />
               <p className="text-muted-foreground">Loading products...</p>
             </div>
-          ) : featuredProducts.length === 0 ? (
+          ) : featuredWithStats.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-6">
                 <Sparkles className="h-10 w-10 text-muted-foreground" />
@@ -104,16 +172,38 @@ export default function Home() {
             </div>
           ) : (
             <>
-              {/* Featured Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-                {featuredProducts.slice(0, 8).map((product) => (
-                  <ProductCard key={product.id} product={product} showFeaturedBadge={false} showType={true} />
-                ))}
+              {/* Featured Carousel */}
+              <div className="relative px-12">
+                <Carousel
+                  opts={{
+                    align: 'start',
+                    loop: featuredWithStats.length > 7,
+                  }}
+                  className="w-full"
+                >
+                  <CarouselContent className="-ml-4">
+                    {featuredWithStats.map((product) => (
+                      <CarouselItem key={product.id} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-[14.28%]">
+                        <ProductCard 
+                          product={product} 
+                          showFeaturedBadge={false} 
+                          showType={true}
+                          likeCount={product.likeCount}
+                          commentCount={product.commentCount}
+                          showEngagement={true}
+                          isHot={product.isHot}
+                        />
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="-left-4 lg:-left-6" />
+                  <CarouselNext className="-right-4 lg:-right-6" />
+                </Carousel>
               </div>
 
               {/* View All Button */}
-              {featuredProducts.length > 8 && (
-                <div className="text-center">
+              {featuredWithStats.length > 7 && (
+                <div className="text-center mt-12">
                   <Button 
                     onClick={() => navigate('/products?featured=true')} 
                     size="lg"
