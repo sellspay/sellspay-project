@@ -1,156 +1,182 @@
 
-# Fix Plan: Admin Dashboard Functions & Stripe Connect
+# Implementation Plan: Hire Editors, Home Page & Profile Enhancements
 
-## Problem Summary
-1. **Stripe Connect fails** because the API key lacks required permissions
-2. **Admin panel buttons** (Users, Products, Featured management) have no click handlers
-3. **Featured products management** UI needs to be built
-
----
-
-## Phase 1: Fix Stripe Connect API Key Permissions
-
-### What's Wrong
-Your Stripe restricted API key doesn't have permissions for Connect operations. The logs show it needs:
-- `rak_accounts_kyc_basic_read`
-- `rak_connected_account_write`
-
-### How to Fix
-You need to update your Stripe API key in the Stripe Dashboard:
-
-1. Go to Stripe Dashboard → Developers → API Keys
-2. Find or create a new restricted key with these permissions:
-   - **Connect** → Write (`connected_account_write`)
-   - **Connect** → Read (`accounts_kyc_basic_read`) 
-   - Plus your existing permissions (Checkout Sessions, Customers, Products, Prices, Payment Intents, Webhook Endpoints, Transfers)
-3. Update the `STRIPE_SECRET_KEY` secret in your project with the new key
-
-Alternatively, you can use your **full secret key** (`sk_live_...`) instead of a restricted key, which has all permissions.
+## Overview
+This plan covers three main areas of improvement:
+1. **Hire Editors Page** - Expandable editor cards with detailed view, username-first ordering, and social media icons
+2. **Home Page Featured Section** - Carousel with arrows, like/comment stats, and "Hot" popularity badges
+3. **Profile Page** - Add price labels to product cards
 
 ---
 
-## Phase 2: Implement Admin Users Tab Actions
+## 1. Hire Editors Page Enhancements
 
-### Changes to Admin.tsx
+### 1.1 Create Editor Detail Dialog
+**New Component: `src/components/hire/EditorDetailDialog.tsx`**
 
-Add functional handlers for user management:
+A modal dialog that opens when clicking an editor card, showing:
+- Full profile picture (larger)
+- Username prominently displayed, full name below
+- Complete "About Me" section
+- All services offered (not truncated)
+- All languages spoken
+- Location details
+- Hourly rate
+- Social media icons (Instagram, YouTube, Twitter/X, TikTok)
+- "Hire Now" button
 
+### 1.2 Update Editor Card Display
+**Modify: `src/pages/HireEditors.tsx`**
+
+- **Reorder name display**: Show `@username` first (prominent), then `full_name` below in smaller text
+- **Add social media icons row** with clickable links:
+  - Instagram icon (if linked)
+  - YouTube icon (if linked)
+  - Twitter/X icon (if linked)
+  - TikTok icon (if linked)
+- **Make card clickable** to open the detail dialog
+- **Fetch `editor_social_links`** from the profiles table (JSONB field already exists)
+
+### 1.3 Social Media Icons
+Icons will be sourced from Lucide React:
+- Instagram: Custom SVG or external icon
+- YouTube: `Youtube` from lucide-react
+- Twitter/X: Custom SVG (X logo)
+- TikTok: Custom SVG
+
+---
+
+## 2. Home Page Featured Section
+
+### 2.1 Convert to Horizontal Carousel
+**Modify: `src/pages/Home.tsx`**
+
+- Replace the grid layout with a horizontal scrollable carousel
+- Display 7 products per visible row
+- Add left/right arrow buttons for navigation
+- Use the existing `HorizontalProductRow.tsx` pattern or Embla carousel
+
+### 2.2 Add Like/Comment Stats
+**Modify: `src/components/ProductCard.tsx` and `src/pages/Home.tsx`**
+
+- Extend `ProductCard` to accept and display `likeCount` and `commentCount`
+- Fetch like/comment counts when loading featured products
+- Display stats below or on the product card (heart icon + count, message icon + count)
+
+### 2.3 Add "Hot" Popularity Badge
+**Modify: `src/components/ProductCard.tsx`**
+
+- Add a new prop `showHotBadge?: boolean`
+- Calculate "hot" status based on:
+  - High like count (threshold TBD, e.g., top 20% of likes)
+  - Recent creation date (within last 7 days with engagement)
+- Display flame icon badge with "Hot" or "Trending" label
+
+---
+
+## 3. Profile Page Price Labels
+
+### 3.1 Update Profile ProductCard
+**Modify: `src/pages/Profile.tsx`**
+
+The internal `ProductCard` component (lines 169-271) needs to display price:
+- Add price badge overlay (top-left) showing:
+  - "Free" for free products
+  - Formatted price for paid products (e.g., "$9.99")
+- Use the same formatting function as the main `ProductCard` component
+
+---
+
+## Technical Details
+
+### Database Fields Used
+- `profiles.editor_social_links` (JSONB) - Contains social links like `{instagram: "url", youtube: "url", twitter: "url", tiktok: "url"}`
+- `product_likes` table - For counting likes
+- `comments` table - For counting comments
+- `products.featured` - Boolean for featured status
+
+### New Interfaces
+
+```typescript
+// EditorProfile extended with social links
+interface EditorProfile {
+  // ...existing fields
+  editor_social_links: {
+    instagram?: string;
+    youtube?: string;
+    twitter?: string;
+    tiktok?: string;
+    website?: string;
+  } | null;
+}
+
+// Product extended with engagement stats
+interface FeaturedProduct extends Product {
+  likeCount: number;
+  commentCount: number;
+  isHot?: boolean;
+}
+```
+
+### File Changes Summary
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/hire/EditorDetailDialog.tsx` | Create | Full editor profile modal |
+| `src/pages/HireEditors.tsx` | Modify | Add social icons, reorder names, add dialog trigger |
+| `src/pages/Home.tsx` | Modify | Convert to carousel, fetch engagement stats |
+| `src/components/ProductCard.tsx` | Modify | Add likeCount, commentCount, hotBadge props |
+| `src/pages/Profile.tsx` | Modify | Add price badge to internal ProductCard |
+
+### Social Media Icon Components
+Will create small SVG components for platforms not in Lucide:
+- Instagram (Lucide has this)
+- YouTube (Lucide has this)
+- Twitter/X (custom SVG needed)
+- TikTok (custom SVG needed)
+
+---
+
+## UI Mockups
+
+### Editor Card (Updated)
 ```text
-┌─────────────────────────────────────────┐
-│ View Profile → Navigate to /@username   │
-│ Edit User   → Open edit modal           │
-│ Suspend User → Toggle suspended status  │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────┐
+│ [Gradient Bar]                  │
+├─────────────────────────────────┤
+│  [Avatar]  @username ✓          │
+│            Daniel Visuals       │
+│            📍 Los Angeles, USA  │
+│                                 │
+│  "Professional video editor..." │
+│                                 │
+│  [Video Editing] [Color] +2     │
+│                                 │
+│  🌐 English, Spanish            │
+│                                 │
+│  [IG] [YT] [X] [TikTok]        │
+│                                 │
+│  ⏱ $50/hr        [Hire Now]    │
+└─────────────────────────────────┘
 ```
 
-**Implementation:**
-- Create `handleViewProfile(profile)` - navigates to `/@username`
-- Create `handleEditUser(profile)` - opens a dialog to edit user details
-- Create `handleSuspendUser(profile)` - updates profile with suspended status (requires adding `suspended` column)
-- Add `onClick` handlers to all dropdown menu items
-
----
-
-## Phase 3: Implement Admin Products Tab Actions
-
-### Changes to Admin.tsx
-
-Add functional handlers for product management:
-
+### Featured Carousel (Home Page)
 ```text
-┌──────────────────────────────────────────────┐
-│ View Product   → Navigate to /products/:id   │
-│ Edit Product   → Navigate to /edit-product   │
-│ Feature Product → Toggle featured status     │
-│ Remove Product → Delete with confirmation    │
-└──────────────────────────────────────────────┘
-```
-
-**Implementation:**
-- `handleViewProduct(product)` - navigates to `/products/:id`
-- `handleEditProduct(product)` - navigates to `/edit-product/:id`
-- `handleToggleFeatured(product)` - toggles `featured` boolean in database
-- `handleRemoveProduct(product)` - shows confirmation dialog, then deletes
-
----
-
-## Phase 4: Build Featured Products Management
-
-### Create a "Manage Featured" Dialog
-
-A modal that shows:
-1. Currently featured products (with ability to remove)
-2. Search/browse all products to add to featured
-3. Drag-to-reorder featured products (optional)
-
-```text
-┌────────────────────────────────────────────────────┐
-│ Manage Featured Products                      [X]  │
-├────────────────────────────────────────────────────┤
-│ Currently Featured:                                │
-│ ┌──────────────────────────────────────────────┐  │
-│ │ 🌟 Product Name 1           [Remove]         │  │
-│ │ 🌟 Product Name 2           [Remove]         │  │
-│ └──────────────────────────────────────────────┘  │
-│                                                    │
-│ Add Products:                                      │
-│ [🔍 Search products...]                           │
-│ ┌──────────────────────────────────────────────┐  │
-│ │ Product A                   [Add to Featured]│  │
-│ │ Product B                   [Add to Featured]│  │
-│ └──────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│           ✨ Curated Selection              │
+│           Featured Products                 │
+│                                             │
+│  [◀]  [Card][Card][Card][Card][Card]  [▶]  │
+│        🔥Hot  $9.99          Free           │
+│        ❤️12 💬3              ❤️5 💬1        │
+└─────────────────────────────────────────────┘
 ```
 
 ---
 
-## Phase 5: Database Migration (Optional)
-
-If you want user suspension functionality, add a `suspended` column:
-
-```sql
-ALTER TABLE public.profiles 
-ADD COLUMN suspended boolean DEFAULT false;
-```
-
----
-
-## Technical Implementation Details
-
-### Files to Create
-1. `src/components/admin/EditUserDialog.tsx` - Modal for editing user profiles
-2. `src/components/admin/ManageFeaturedDialog.tsx` - Modal for managing featured products
-
-### Files to Modify
-1. `src/pages/Admin.tsx` - Add all click handlers and integrate dialogs
-
-### New State Variables in Admin.tsx
-- `editingUser: Profile | null`
-- `showFeaturedDialog: boolean`
-- `deletingProduct: Product | null`
-
-### New Functions in Admin.tsx
-- `handleViewProfile(profile: Profile)`
-- `handleEditUser(profile: Profile)` 
-- `handleSuspendUser(profileId: string, suspended: boolean)`
-- `handleViewProduct(product: Product)`
-- `handleEditProduct(product: Product)`
-- `handleToggleFeatured(productId: string, featured: boolean)`
-- `handleRemoveProduct(productId: string)`
-
----
-
-## Summary of Deliverables
-
-| Item | Action |
-|------|--------|
-| Stripe Connect | Update API key permissions in Stripe Dashboard |
-| Users - View Profile | Navigate to profile page |
-| Users - Edit User | Edit dialog for user details |
-| Users - Suspend User | Toggle suspension status |
-| Products - View | Navigate to product detail |
-| Products - Edit | Navigate to edit page |
-| Products - Feature | Toggle featured status |
-| Products - Remove | Delete with confirmation |
-| Manage Featured | Full featured products management dialog |
-
+## Implementation Order
+1. Create EditorDetailDialog component
+2. Update HireEditors page with social icons and dialog
+3. Update ProductCard with engagement stats and hot badge
+4. Update Home page with carousel and stats fetching
+5. Update Profile page ProductCard with price labels
