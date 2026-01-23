@@ -3,7 +3,7 @@ import { Loader2, Lock, Wand2 } from "lucide-react";
 import { tools, Tool } from "./ToolsSidebar";
 import { Button } from "@/components/ui/button";
 import { ProToolsGate } from "./ProToolsGate";
-import { useProToolsSubscription } from "@/hooks/useProToolsSubscription";
+import { useCredits } from "@/hooks/useCredits";
 
 // Lazy load tool components
 const AudioCutter = lazy(() => import("@/pages/tools/AudioCutter"));
@@ -59,7 +59,7 @@ function WelcomeContent() {
       </div>
       <h2 className="text-2xl font-bold mb-3">Select a Tool</h2>
       <p className="text-muted-foreground max-w-md">
-        Choose a tool from the sidebar to get started. Free tools are available to all users. Pro tools require a subscription.
+        Choose a tool from the sidebar to get started. Free tools are unlimited. Pro tools use 1 credit per use.
       </p>
     </div>
   );
@@ -67,13 +67,10 @@ function WelcomeContent() {
 
 export function ToolContent({ toolId }: ToolContentProps) {
   const { 
-    subscribed, 
-    usageCount, 
-    usageLimit, 
-    remainingUses, 
+    creditBalance,
     isProTool, 
-    startCheckout 
-  } = useProToolsSubscription();
+    goToPricing
+  } = useCredits();
 
   if (!toolId) {
     return <WelcomeContent />;
@@ -116,17 +113,13 @@ export function ToolContent({ toolId }: ToolContentProps) {
     }
   };
 
-  // Render available tools with gate
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <div className="p-6 md:p-8">
         <ProToolsGate
           isProTool={isProTool(toolId)}
-          subscribed={subscribed}
-          usageCount={usageCount}
-          usageLimit={usageLimit}
-          remainingUses={remainingUses}
-          onSubscribe={startCheckout}
+          creditBalance={creditBalance}
+          onTopUp={goToPricing}
         >
           {renderToolContent()}
         </ProToolsGate>

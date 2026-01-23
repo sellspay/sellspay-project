@@ -1,4 +1,4 @@
-import { Lock, Zap, Crown } from "lucide-react";
+import { Lock, Coins, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
@@ -6,21 +6,15 @@ import { useNavigate } from "react-router-dom";
 
 interface ProToolsGateProps {
   isProTool: boolean;
-  subscribed: boolean;
-  usageCount: number;
-  usageLimit: number;
-  remainingUses: number;
-  onSubscribe: () => void;
+  creditBalance: number;
+  onTopUp: () => void;
   children: React.ReactNode;
 }
 
 export function ProToolsGate({
   isProTool,
-  subscribed,
-  usageCount,
-  usageLimit,
-  remainingUses,
-  onSubscribe,
+  creditBalance,
+  onTopUp,
   children,
 }: ProToolsGateProps) {
   const { user } = useAuth();
@@ -35,7 +29,7 @@ export function ProToolsGate({
         </div>
         <h2 className="text-2xl font-bold mb-3">Sign in to Use Tools</h2>
         <p className="text-muted-foreground max-w-md mb-6">
-          Create a free account to access our audio tools. Pro tools require a subscription.
+          Create a free account to access our audio tools. New users get 5 free credits!
         </p>
         <div className="flex gap-3">
           <Button onClick={() => navigate("/login")}>
@@ -49,73 +43,75 @@ export function ProToolsGate({
     );
   }
 
-  // Pro tool without subscription - show upgrade prompt
-  if (isProTool && !subscribed) {
+  // Pro tool without credits - show upgrade prompt
+  if (isProTool && creditBalance <= 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/20 flex items-center justify-center mb-6">
-          <Crown className="w-10 h-10 text-amber-500" />
+          <Coins className="w-10 h-10 text-amber-500" />
         </div>
         <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white mb-4">
           Pro Feature
         </Badge>
-        <h2 className="text-2xl font-bold mb-3">Upgrade to Pro Tools</h2>
+        <h2 className="text-2xl font-bold mb-3">You're Out of Credits</h2>
         <p className="text-muted-foreground max-w-md mb-6">
-          Unlock AI-powered audio tools including Voice Isolator, SFX Generator, Music Splitter, and more.
+          This AI-powered tool requires credits to use. Top up your balance to continue creating amazing audio.
         </p>
         
-        <div className="bg-gradient-to-br from-primary/10 to-accent/5 border border-primary/20 rounded-2xl p-6 mb-6 max-w-sm">
-          <div className="text-3xl font-bold mb-1">$9.99<span className="text-lg font-normal text-muted-foreground">/month</span></div>
-          <p className="text-sm text-muted-foreground mb-4">50 uses per month</p>
+        <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20 rounded-2xl p-6 mb-6 max-w-sm">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Coins className="w-6 h-6 text-amber-500" />
+            <span className="text-2xl font-bold text-amber-500">{creditBalance}</span>
+            <span className="text-muted-foreground">credits remaining</span>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Pro tools use 1 credit per generation. Purchase more credits to continue.
+          </p>
           <ul className="text-sm text-left space-y-2">
             <li className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" />
-              <span>Voice Isolator</span>
+              <Crown className="w-4 h-4 text-amber-500" />
+              <span>15 credits from $4.99</span>
             </li>
             <li className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" />
-              <span>SFX Generator</span>
+              <Crown className="w-4 h-4 text-amber-500" />
+              <span>Credits never expire</span>
             </li>
             <li className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" />
-              <span>Music Splitter</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" />
-              <span>SFX Isolator</span>
+              <Crown className="w-4 h-4 text-amber-500" />
+              <span>Bulk discounts available</span>
             </li>
           </ul>
         </div>
 
         <Button 
-          onClick={onSubscribe}
+          onClick={onTopUp}
           className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
         >
-          <Crown className="w-4 h-4 mr-2" />
-          Subscribe Now
+          <Coins className="w-4 h-4 mr-2" />
+          View Plans
         </Button>
       </div>
     );
   }
 
-  // Pro tool with subscription but no remaining uses
-  if (isProTool && subscribed && remainingUses <= 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-500/20 to-orange-500/10 border border-red-500/20 flex items-center justify-center mb-6">
-          <Zap className="w-10 h-10 text-red-500" />
+  // All good - show the tool (with credit indicator for pro tools)
+  return (
+    <div>
+      {isProTool && (
+        <div className="mb-4 flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-orange-500/5 border border-amber-500/20">
+          <div className="flex items-center gap-2">
+            <Coins className="w-4 h-4 text-amber-500" />
+            <span className="text-sm">
+              <span className="font-semibold text-amber-500">{creditBalance}</span>
+              <span className="text-muted-foreground"> credits available</span>
+            </span>
+          </div>
+          <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/30">
+            1 credit per use
+          </Badge>
         </div>
-        <h2 className="text-2xl font-bold mb-3">Monthly Limit Reached</h2>
-        <p className="text-muted-foreground max-w-md mb-6">
-          You've used all {usageLimit} of your monthly Pro Tools uses. Your limit will reset at the start of next month.
-        </p>
-        <div className="text-sm text-muted-foreground">
-          <span className="font-semibold text-red-500">{usageCount}</span> / {usageLimit} uses this month
-        </div>
-      </div>
-    );
-  }
-
-  // All good - show the tool
-  return <>{children}</>;
+      )}
+      {children}
+    </div>
+  );
 }
