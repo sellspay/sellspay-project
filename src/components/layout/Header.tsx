@@ -25,7 +25,6 @@ export default function Header() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
-  const [isEditor, setIsEditor] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [fullName, setFullName] = useState<string | null>(null);
@@ -35,7 +34,6 @@ export default function Header() {
     async function fetchProfile() {
       if (!user) {
         setIsCreator(false);
-        setIsEditor(false);
         setAvatarUrl(null);
         setUsername(null);
         setFullName(null);
@@ -43,12 +41,11 @@ export default function Header() {
       }
       const { data } = await supabase
         .from('profiles')
-        .select('is_creator, is_editor, avatar_url, username, full_name')
+        .select('is_creator, avatar_url, username, full_name')
         .eq('user_id', user.id)
         .maybeSingle();
       
       setIsCreator(data?.is_creator || false);
-      setIsEditor(data?.is_editor || false);
       setAvatarUrl(data?.avatar_url || null);
       setUsername(data?.username || null);
       setFullName(data?.full_name || null);
@@ -119,7 +116,7 @@ export default function Header() {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
-                  {(isCreator || isEditor) && (
+                  {isCreator && (
                     <DropdownMenuItem asChild>
                       <Link to="/dashboard" className="flex items-center gap-2">
                         <LayoutDashboard className="h-4 w-4" />
