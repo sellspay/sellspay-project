@@ -778,7 +778,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background relative">
+      <div className="bg-background relative">
         {/* Steam-style full-page background - using img for better quality */}
         {profile.background_url && (
           <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -798,7 +798,7 @@ const ProfilePage: React.FC = () => {
         )}
         
         {/* Content wrapper - solid card when background is present */}
-        <div className={`relative z-10 ${profile.background_url ? 'py-6 min-h-screen' : ''}`}>
+        <div className={`relative z-10 ${profile.background_url ? 'py-6' : ''}`}>
           <div className={`max-w-4xl mx-auto ${profile.background_url ? 'bg-background/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-border/50 mx-4 md:mx-auto pb-6' : ''}`}>
             {/* Banner - contained width like Twitter/X */}
             <div className={`px-4 ${profile.background_url ? 'pt-4' : 'pt-4'}`}>
