@@ -45,22 +45,32 @@ export default function ProductDetail() {
 
   const fetchProduct = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch product first
+      const { data: productData, error: productError } = await supabase
         .from("products")
-        .select(`
-          *,
-          creator:profiles!products_creator_id_fkey (
-            id,
-            username,
-            full_name,
-            avatar_url
-          )
-        `)
+        .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
-      setProduct(data);
+      if (productError) throw productError;
+      if (!productData) {
+        setProduct(null);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch creator separately since FK was removed for migration
+      let creator = null;
+      if (productData.creator_id) {
+        const { data: creatorData } = await supabase
+          .from("profiles")
+          .select("id, username, full_name, avatar_url")
+          .eq("id", productData.creator_id)
+          .maybeSingle();
+        creator = creatorData;
+      }
+
+      setProduct({ ...productData, creator });
     } catch (error) {
       console.error("Error fetching product:", error);
       toast.error("Failed to load product");
@@ -102,8 +112,20 @@ export default function ProductDetail() {
 
   const getYouTubeEmbedUrl = (url: string | null) => {
     if (!url) return null;
+    // Handle both full URLs and just video IDs
+    if (url.length === 11 && !url.includes('/')) {
+      return `https://www.youtube.com/embed/${url}`;
+    }
     const videoId = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/)?.[1];
     return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+  };
+
+  // Build full storage URL for preview videos from source Supabase
+  const getVideoUrl = (path: string | null) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    // Path is relative to source Supabase storage
+    return `https://ocwvpzvbnepqmqkkrqcv.supabase.co/storage/v1/object/public/product-media/${path}`;
   };
 
   if (loading) {
@@ -166,7 +188,7 @@ export default function ProductDetail() {
               </div>
             ) : product.preview_video_url ? (
               <video
-                src={product.preview_video_url}
+                src={getVideoUrl(product.preview_video_url)}
                 className="w-full aspect-video object-cover"
                 controls
                 poster={product.cover_image_url || undefined}

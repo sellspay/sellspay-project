@@ -73,25 +73,35 @@ export default function Admin() {
       setTotalUsers(usersData?.length || 0);
       setTotalCreators(usersData?.filter(u => u.is_creator).length || 0);
 
-      // Fetch products
+      // Fetch products with creator info
       const { data: productsData, error: productsError } = await supabase
         .from("products")
-        .select(`
-          id,
-          name,
-          status,
-          pricing_type,
-          price_cents,
-          created_at,
-          creator:profiles!products_creator_id_fkey (
-            username,
-            full_name
-          )
-        `)
+        .select("id, name, status, pricing_type, price_cents, created_at, creator_id")
         .order("created_at", { ascending: false });
 
       if (productsError) throw productsError;
-      setProducts(productsData || []);
+
+      // Fetch creators for products
+      const creatorIds = [...new Set(productsData?.map(p => p.creator_id).filter(Boolean) || [])];
+      let creatorsMap: Record<string, { username: string | null; full_name: string | null }> = {};
+      
+      if (creatorIds.length > 0) {
+        const { data: creatorsData } = await supabase
+          .from("profiles")
+          .select("id, username, full_name")
+          .in("id", creatorIds);
+        
+        creatorsData?.forEach(c => {
+          creatorsMap[c.id] = { username: c.username, full_name: c.full_name };
+        });
+      }
+
+      const productsWithCreators = productsData?.map(p => ({
+        ...p,
+        creator: p.creator_id ? creatorsMap[p.creator_id] || null : null
+      })) || [];
+
+      setProducts(productsWithCreators);
       setTotalProducts(productsData?.length || 0);
     } catch (error) {
       console.error("Error fetching data:", error);
