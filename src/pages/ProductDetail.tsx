@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, CheckCircle, Pencil, Trash2, FileIcon, Send } from "lucide-react";
+import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, CheckCircle, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +33,7 @@ interface Product {
     full_name: string | null;
     avatar_url: string | null;
     bio: string | null;
+    verified: boolean | null;
   } | null;
 }
 
@@ -45,6 +46,7 @@ interface Comment {
     username: string | null;
     full_name: string | null;
     avatar_url: string | null;
+    verified: boolean | null;
   } | null;
 }
 
@@ -61,6 +63,7 @@ interface RelatedCreator {
   username: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  verified: boolean | null;
 }
 
 const productTypeLabels: Record<string, string> = {
@@ -90,6 +93,7 @@ export default function ProductDetail() {
   const [userProfileId, setUserProfileId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   
   // Comments
   const [comments, setComments] = useState<Comment[]>([]);
@@ -159,7 +163,7 @@ export default function ProductDetail() {
       if (productData.creator_id) {
         const { data: creatorData } = await supabase
           .from("profiles")
-          .select("id, username, full_name, avatar_url, bio")
+          .select("id, username, full_name, avatar_url, bio, verified")
           .eq("id", productData.creator_id)
           .maybeSingle();
         creator = creatorData;
@@ -201,7 +205,7 @@ export default function ProductDetail() {
     try {
       const { data } = await supabase
         .from("profiles")
-        .select("id, username, full_name, avatar_url")
+        .select("id, username, full_name, avatar_url, verified")
         .eq("is_creator", true)
         .limit(5);
       
@@ -230,7 +234,7 @@ export default function ProductDetail() {
           data.map(async (comment) => {
             const { data: profile } = await supabase
               .from("profiles")
-              .select("username, full_name, avatar_url")
+              .select("username, full_name, avatar_url, verified")
               .eq("id", comment.user_id)
               .maybeSingle();
             return { ...comment, user: profile };
@@ -350,6 +354,14 @@ export default function ProductDetail() {
     });
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (!bytes) return "Unknown size";
+    const mb = bytes / (1024 * 1024);
+    if (mb >= 1) return `${mb.toFixed(2)} MB`;
+    const kb = bytes / 1024;
+    return `${kb.toFixed(2)} KB`;
+  };
+
   const handleShare = async () => {
     try {
       await navigator.share({
@@ -429,6 +441,9 @@ export default function ProductDetail() {
       setDeleting(false);
     }
   };
+
+  // Check if description needs truncation (more than 5 lines ~ 400 chars)
+  const shouldTruncateDescription = (product?.description?.length || 0) > 400;
 
   if (loading) {
     return (
@@ -551,17 +566,20 @@ export default function ProductDetail() {
             <h1 className="text-2xl font-bold mb-3">{product.name}</h1>
             
             <div className="flex items-center gap-4 mb-4">
-              {/* Creator Mini */}
+              {/* Creator Mini - Shows @username with verified badge */}
               {product.creator && (
                 <Link to={`/@${product.creator.username}`} className="flex items-center gap-2">
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={product.creator.avatar_url || undefined} />
                     <AvatarFallback className="text-xs">
-                      {product.creator.full_name?.[0] || product.creator.username?.[0] || "?"}
+                      {product.creator.username?.[0]?.toUpperCase() || "?"}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium hover:text-primary transition-colors">
-                    {product.creator.full_name || product.creator.username}
+                  <span className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
+                    @{product.creator.username || "unknown"}
+                    {product.creator.verified && (
+                      <CheckCircle className="w-4 h-4 text-primary fill-primary" />
+                    )}
                   </span>
                 </Link>
               )}
@@ -592,32 +610,129 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          <Separator />
-
-          {/* Description */}
+          {/* Comments Section - Moved right under action buttons */}
           <div>
-            <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-              {product.description || "No description provided."}
-            </p>
+            <h3 className="font-semibold mb-4">Comments</h3>
+            
+            {/* New Comment Input */}
+            {user && (
+              <div className="flex gap-3 mb-4">
+                <Textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Add a comment..."
+                  className="min-h-[60px]"
+                />
+                <Button 
+                  onClick={handleSubmitComment} 
+                  disabled={submittingComment || !newComment.trim()}
+                  size="sm"
+                  className="h-auto"
+                >
+                  {submittingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : "Post"}
+                </Button>
+              </div>
+            )}
+
+            {/* Comments List */}
+            <div className="space-y-3">
+              {displayedComments.map((comment) => (
+                <div key={comment.id} className="flex gap-3">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={comment.user?.avatar_url || undefined} />
+                    <AvatarFallback className="text-xs">
+                      {comment.user?.username?.[0]?.toUpperCase() || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium flex items-center gap-1">
+                        @{comment.user?.username || "anonymous"}
+                        {comment.user?.verified && (
+                          <CheckCircle className="w-3 h-3 text-primary fill-primary" />
+                        )}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(comment.created_at)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{comment.content}</p>
+                  </div>
+                </div>
+              ))}
+              
+              {comments.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No comments yet. Be the first to comment!
+                </p>
+              )}
+              
+              {comments.length > 4 && !showAllComments && (
+                <Button 
+                  variant="ghost" 
+                  className="w-full text-primary hover:text-primary"
+                  onClick={() => setShowAllComments(true)}
+                >
+                  Show more ({comments.length - 4} more)
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* Attachments */}
+          <Separator />
+
+          {/* Attachments Section - Purple style with lock icon */}
           {product.attachments && Array.isArray(product.attachments) && product.attachments.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h3 className="font-semibold mb-3">Attachments</h3>
-                <div className="space-y-2">
-                  {product.attachments.map((attachment: any, index: number) => (
-                    <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border">
-                      <FileIcon className="w-5 h-5 text-muted-foreground" />
-                      <span className="text-sm">{attachment.name || `Attachment ${index + 1}`}</span>
+            <div>
+              <h3 className="font-semibold mb-3">Attachments</h3>
+              <div className="space-y-2">
+                {product.attachments.map((attachment: any, index: number) => (
+                  <div 
+                    key={index} 
+                    className="flex items-center gap-3 p-4 rounded-lg bg-primary/10 border border-primary/20"
+                  >
+                    <div className="w-10 h-10 rounded bg-primary/20 flex items-center justify-center">
+                      <FileIcon className="w-5 h-5 text-primary" />
                     </div>
-                  ))}
-                </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-primary truncate">
+                        {attachment.name || `Attachment ${index + 1}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(attachment.size || 0)}
+                      </p>
+                    </div>
+                    <Lock className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                ))}
               </div>
-            </>
+            </div>
           )}
+
+          {/* Description - Collapsible */}
+          {product.description && (
+            <div>
+              <div className={`text-muted-foreground whitespace-pre-wrap leading-relaxed ${!descriptionExpanded && shouldTruncateDescription ? 'line-clamp-5' : ''}`}>
+                {product.description}
+              </div>
+              {shouldTruncateDescription && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary hover:text-primary p-0 h-auto mt-2"
+                  onClick={() => setDescriptionExpanded(!descriptionExpanded)}
+                >
+                  {descriptionExpanded ? (
+                    <>Show less <ChevronUp className="w-4 h-4 ml-1" /></>
+                  ) : (
+                    <>Show more <ChevronDown className="w-4 h-4 ml-1" /></>
+                  )}
+                </Button>
+              )}
+            </div>
+          )}
+
+          <Separator />
 
           {/* Purchase Section */}
           <Card className="bg-card border-2 border-primary/20">
@@ -664,72 +779,6 @@ export default function ProductDetail() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Comments Section */}
-          <div>
-            <h3 className="font-semibold mb-4">Comments ({commentCount})</h3>
-            
-            {/* New Comment Input */}
-            {user && (
-              <div className="flex gap-3 mb-6">
-                <Textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Write a comment..."
-                  className="min-h-[80px]"
-                />
-                <Button 
-                  onClick={handleSubmitComment} 
-                  disabled={submittingComment || !newComment.trim()}
-                  size="icon"
-                  className="h-auto"
-                >
-                  {submittingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                </Button>
-              </div>
-            )}
-
-            {/* Comments List */}
-            <div className="space-y-4">
-              {displayedComments.map((comment) => (
-                <div key={comment.id} className="flex gap-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={comment.user?.avatar_url || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {comment.user?.full_name?.[0] || comment.user?.username?.[0] || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {comment.user?.full_name || comment.user?.username || "Anonymous"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(comment.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">{comment.content}</p>
-                  </div>
-                </div>
-              ))}
-              
-              {comments.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No comments yet. Be the first to comment!
-                </p>
-              )}
-              
-              {comments.length > 4 && !showAllComments && (
-                <Button 
-                  variant="ghost" 
-                  className="w-full"
-                  onClick={() => setShowAllComments(true)}
-                >
-                  Show more comments ({comments.length - 4} more)
-                </Button>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Sidebar - Right Side */}
@@ -741,11 +790,14 @@ export default function ProductDetail() {
                 <Avatar className="w-16 h-16 mx-auto mb-3">
                   <AvatarImage src={product.creator.avatar_url || undefined} />
                   <AvatarFallback>
-                    {product.creator.full_name?.[0] || product.creator.username?.[0] || "?"}
+                    {product.creator.username?.[0]?.toUpperCase() || "?"}
                   </AvatarFallback>
                 </Avatar>
-                <h3 className="font-semibold">
-                  {product.creator.full_name || product.creator.username}
+                <h3 className="font-semibold flex items-center justify-center gap-1">
+                  @{product.creator.username || "unknown"}
+                  {product.creator.verified && (
+                    <CheckCircle className="w-4 h-4 text-primary fill-primary" />
+                  )}
                 </h3>
                 {product.creator.bio && (
                   <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
@@ -777,10 +829,10 @@ export default function ProductDetail() {
                         <img 
                           src={prod.cover_image_url} 
                           alt={prod.name} 
-                          className="w-12 h-12 rounded object-cover"
+                          className="w-12 h-12 rounded object-cover flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                        <div className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
                           <Play className="w-4 h-4 text-muted-foreground" />
                         </div>
                       )}
@@ -812,12 +864,15 @@ export default function ProductDetail() {
                       <Avatar className="w-10 h-10">
                         <AvatarImage src={creator.avatar_url || undefined} />
                         <AvatarFallback className="text-xs">
-                          {creator.full_name?.[0] || creator.username?.[0] || "?"}
+                          {creator.username?.[0]?.toUpperCase() || "?"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
+                        <p className="text-sm font-medium truncate flex items-center gap-1">
                           {creator.full_name || creator.username}
+                          {creator.verified && (
+                            <CheckCircle className="w-3 h-3 text-primary fill-primary" />
+                          )}
                         </p>
                         <p className="text-xs text-muted-foreground">@{creator.username}</p>
                       </div>
