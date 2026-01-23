@@ -53,7 +53,7 @@ export default function Home() {
   const projectFiles = products.filter(p => p.product_type === 'project_file');
 
   return (
-    <>
+    <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <HeroSection />
 
@@ -61,33 +61,37 @@ export default function Home() {
       <SlidingBanner />
 
       {/* Products Section */}
-      <section className="relative z-10 py-20">
+      <section className="relative py-20 lg:py-24">
         {/* Background glow */}
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.08),transparent_55%)]" />
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.06),transparent_60%)]" />
 
-        <div className="mx-auto w-full max-w-6xl px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-2">
+        <div className="max-w-7xl mx-auto px-6">
+          {/* Section Header */}
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
               Tools to power your best work
             </h2>
-            <p className="text-base text-muted-foreground">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Browse by product type and discover community favorites.
             </p>
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-20">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <div className="flex flex-col items-center justify-center py-24">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent mb-4" />
+              <p className="text-muted-foreground">Loading products...</p>
             </div>
           ) : products.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-muted-foreground mb-4">No products available yet.</p>
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <p className="text-muted-foreground mb-6">No products available yet.</p>
               {user && (
-                <Button onClick={() => navigate('/create-product')}>Create Product</Button>
+                <Button onClick={() => navigate('/create-product')} size="lg">
+                  Create Product
+                </Button>
               )}
             </div>
           ) : (
-            <div className="space-y-12">
+            <div className="space-y-16">
               {popularPicks.length > 0 && (
                 <HorizontalProductRow title="Popular Picks" products={popularPicks} />
               )}
@@ -104,6 +108,6 @@ export default function Home() {
           )}
         </div>
       </section>
-    </>
+    </div>
   );
 }

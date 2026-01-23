@@ -40,14 +40,14 @@ export default function HorizontalProductRow({ title, products, limit = 12 }: Ho
   if (displayProducts.length === 0) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold text-foreground">{title}</h3>
+        <h3 className="text-2xl font-semibold text-foreground">{title}</h3>
         <div className="flex gap-2">
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8 rounded-full"
+            className="h-9 w-9 rounded-full border-border/50 hover:bg-accent"
             onClick={() => scroll('left')}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -55,7 +55,7 @@ export default function HorizontalProductRow({ title, products, limit = 12 }: Ho
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8 rounded-full"
+            className="h-9 w-9 rounded-full border-border/50 hover:bg-accent"
             onClick={() => scroll('right')}
           >
             <ChevronRight className="h-4 w-4" />
@@ -65,7 +65,7 @@ export default function HorizontalProductRow({ title, products, limit = 12 }: Ho
 
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4"
+        className="flex gap-5 overflow-x-auto scrollbar-hide pb-4 -mx-6 px-6"
       >
         {displayProducts.map((product) => (
           <div key={product.id} className="flex-shrink-0 w-[280px]">
