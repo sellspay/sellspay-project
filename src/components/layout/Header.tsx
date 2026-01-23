@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, CreditCard } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import navbarLogo from '@/assets/navbar-logo.png';
 
 const navItems = [
   { name: 'Store', path: '/products' },
@@ -25,20 +26,24 @@ export default function Header() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [fullName, setFullName] = useState<string | null>(null);
 
-  // Fetch user profile data
+  // Fetch user profile data and admin status
   useEffect(() => {
     async function fetchProfile() {
       if (!user) {
         setIsCreator(false);
+        setIsAdmin(false);
         setAvatarUrl(null);
         setUsername(null);
         setFullName(null);
         return;
       }
+      
+      // Fetch profile data
       const { data } = await supabase
         .from('profiles')
         .select('is_creator, avatar_url, username, full_name')
@@ -49,6 +54,13 @@ export default function Header() {
       setAvatarUrl(data?.avatar_url || null);
       setUsername(data?.username || null);
       setFullName(data?.full_name || null);
+      
+      // Check if user is admin
+      const { data: hasAdminRole } = await supabase.rpc('has_role', { 
+        _user_id: user.id, 
+        _role: 'admin' 
+      });
+      setIsAdmin(hasAdminRole || false);
     }
     fetchProfile();
   }, [user]);
@@ -60,10 +72,12 @@ export default function Header() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              EditorsParadise
-            </span>
+          <Link to="/" className="flex items-center">
+            <img 
+              src={navbarLogo} 
+              alt="EditorsParadise" 
+              className="h-8 sm:h-9 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -132,7 +146,7 @@ export default function Header() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  {isCreator && (
+                  {(isCreator || isAdmin) && (
                     <DropdownMenuItem asChild>
                       <Link to="/subscription-plans" className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4" />
