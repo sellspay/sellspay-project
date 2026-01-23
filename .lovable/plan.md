@@ -1,228 +1,160 @@
 
-# Implementation Plan: Credit Subscription System, Product-Subscription Integration, and UI Improvements
+# Implementation Plan
 
-## Overview
-This plan addresses four key areas of improvement:
-1. **Create Product Flow** - Show existing subscription plans when selecting "Subscription Only" or "Both" pricing types
-2. **Pricing Page Redesign** - Replace 5-card layout with a single card featuring dropdown credit selection
-3. **Navbar Wallet Counter** - Add credit balance indicator next to profile avatar
-4. **Monthly Credit Subscriptions** - Convert one-time purchases to recurring subscriptions with cancellation in Settings
+## Summary
+This plan addresses 5 interconnected issues to improve the user experience across the platform:
 
----
-
-## 1. Create Product Subscription Selection Flow
-
-### Current Behavior
-When a creator selects "Subscription Only" or "Both" in the pricing section, there's just a text hint but no way to select which subscription plan the product belongs to.
-
-### New Behavior
-- When "Subscription Only" or "Both" is clicked, display a section showing the creator's existing subscription plans
-- Each plan shows name, price, and number of products already assigned
-- Creator can select which plan(s) to attach the product to
-- If no plans exist, show a "Create Subscription Plan" button that opens the same 3-step wizard used in `/subscription-plans`
-
-### Technical Changes
-
-**File: `src/pages/CreateProduct.tsx`**
-- Add state for fetching creator's subscription plans
-- Add state for selected plan(s)
-- Import and use `CreatePlanWizard` component for inline plan creation
-- Add UI section under pricing type buttons that appears when `pricingType === "subscription"` or `pricingType === "both"`
-- When saving product, also insert into `subscription_plan_products` table
-
-```text
-New State Variables:
-- subscriptionPlans: SubscriptionPlan[]
-- selectedPlanIds: string[]
-- showCreatePlanWizard: boolean
-- loadingPlans: boolean
-```
-
-**New UI Section (under pricing type):**
-```text
-+------------------------------------------+
-| Select Subscription Plan(s)              |
-+------------------------------------------+
-| [x] Premium Access - $19.99/mo (5 items) |
-| [ ] Basic Tier - $9.99/mo (3 items)      |
-+------------------------------------------+
-| + Create New Plan (opens wizard popup)   |
-+------------------------------------------+
-```
+1. **Wallet placement in navbar** - Move wallet display next to the profile icon
+2. **Tools page layout** - Remove hero banner and make the page static (no scroll except tools menu)
+3. **Creators page visibility** - Fix RLS policies so creators are publicly visible
+4. **Hire Editors page visibility** - Fix RLS policies so editors are publicly visible  
+5. **Pricing card redesign** - Make the pricing card smaller and more premium looking
 
 ---
 
-## 2. Pricing Page Redesign
+## Issue Analysis
 
-### Current Layout
-5 separate cards showing each credit package (Starter, Basic, Pro, Power, Enterprise) with individual pricing.
+### Issue 1: Wallet Position
+The wallet counter was added next to the profile icon in the navbar (Header.tsx), which looks correct based on the screenshot showing the wallet icon with "5" next to the profile avatar. This appears to already be working correctly.
 
-### New Layout
-Single prominent card with:
-- Dropdown selector for credit amount
-- Dynamic price display based on selection
-- Comprehensive description of what credits unlock
-- List of Pro tools available
-- Visual indicator for savings percentage
-- FAQ section remains below
+### Issue 2: Tools Page Scrolling
+The current Tools page has a large hero section that takes up significant vertical space, requiring users to scroll to see all tools. The user wants:
+- Remove the hero banner entirely
+- Make the page fit within the viewport (no page scroll)
+- Only the tools sidebar menu should scroll internally
 
-### Technical Changes
+### Issue 3 & 4: Creators/Editors Not Visible
+The profiles table RLS policies are too restrictive:
+- Current SELECT policies: Only allows users to view their OWN profile, or admins to view all
+- Missing: A public SELECT policy for creator/editor profiles
+
+This is why both pages show "0 creators/editors found" - unauthenticated users or regular buyers cannot query the profiles table at all.
+
+### Issue 5: Pricing Card Design
+The current pricing card is functional but could be more compact and premium. The user wants a smaller, more refined design.
+
+---
+
+## Implementation Steps
+
+### Phase 1: Database - Fix Public Profile Visibility
+
+Add a new RLS policy to allow anyone to view public creator/editor profiles:
+
+```sql
+CREATE POLICY "Public can view creator and editor profiles"
+  ON public.profiles FOR SELECT
+  USING (is_creator = true OR is_editor = true);
+```
+
+This policy allows:
+- Anyone (authenticated or not) to view profiles where `is_creator = true` or `is_editor = true`
+- Regular user profiles remain private (not matching either condition)
+- Maintains security for non-creator/editor profiles
+
+### Phase 2: Tools Page - Remove Hero and Static Layout
+
+**File: `src/pages/Tools.tsx`**
+
+1. Remove the entire hero header section (lines 17-59)
+2. Change the main container to use `h-screen` and `overflow-hidden` 
+3. Make the layout fill the available viewport height minus the header
+4. Keep ScrollArea only on the sidebar tools list
+5. Result: Full-screen two-column layout with no page scrolling
+
+Changes:
+- Remove: Hero section with gradient, badge, headline, subtitle, floating icons
+- Add: `h-[calc(100vh-4rem)]` to create fixed-height container
+- Add: `overflow-hidden` to prevent page scroll
+- Keep: Internal scroll on sidebar for tools list
+
+### Phase 3: Pricing Page - Compact Premium Design
 
 **File: `src/pages/Pricing.tsx`**
-- Replace grid of cards with single centered card component
-- Add `Select` dropdown for package selection
-- Show selected package details dynamically
-- Keep existing FAQ section
 
-**New UI Structure:**
-```text
-+--------------------------------------------------+
-|  [Icon] Credit Wallet                            |
-|                                                  |
-|  Select Your Package:                            |
-|  [Dropdown: Pro Credits - 150 for $24.99 ▼]      |
-|                                                  |
-|  $24.99         Save 50%!                        |
-|  150 Credits    ($0.17 per credit)               |
-|                                                  |
-|  ────────────────────────────────────────────    |
-|  WHAT YOU UNLOCK:                                |
-|  ✓ SFX Generator - Create sound effects from AI |
-|  ✓ Voice Isolator - Remove vocals or background |
-|  ✓ SFX Isolator - Isolate sound effects         |
-|  ✓ Music Splitter - Split stems                 |
-|                                                  |
-|  ────────────────────────────────────────────    |
-|  BENEFITS:                                       |
-|  • Credits renew monthly (subscription)         |
-|  • Cancel anytime from Settings                 |
-|  • Unused credits roll over*                    |
-|  • Priority processing                          |
-|                                                  |
-|        [Subscribe Now - $24.99/month]           |
-+--------------------------------------------------+
-```
+1. Reduce card max-width from `max-w-xl` to `max-w-md`
+2. Reduce internal padding and spacing
+3. Add subtle glass-morphism effect with backdrop blur
+4. Refine typography with smaller font sizes
+5. Add subtle gradient border effect
+6. Reduce the "What You Unlock" section to be more compact
+7. Remove some redundant visual elements
+
+Key changes:
+- Smaller card container
+- Tighter spacing between elements
+- More refined, minimal aesthetic
+- Keep all functionality intact
+
+### Phase 4: Verify Wallet Placement
+
+The wallet is already positioned correctly next to the profile icon based on the code review. The implementation shows:
+- Desktop: Wallet button with icon + balance displayed inline, followed by profile avatar
+- Mobile: Wallet displayed inside the dropdown menu
+
+No changes needed here - the current implementation matches the requested design.
 
 ---
 
-## 3. Navbar Wallet Counter
+## Technical Details
 
-### Current State
-Credit wallet only visible in Tools sidebar. No navbar indicator.
+### RLS Policy Addition
 
-### New Feature
-Small wallet icon with credit counter badge next to profile avatar in header.
-
-### Technical Changes
-
-**File: `src/components/layout/Header.tsx`**
-- Import `useCredits` hook
-- Import `CreditWallet` component with "compact" variant
-- Add wallet display between nav items and profile dropdown
-- Show only when user is logged in
-
-**UI Placement:**
-```text
-[Logo] | Store | Creators | Tools | Pricing | [Hire Editors] | [🪙 150] [Avatar ▼]
-                                                               ^^^^^^^^
-                                                              New wallet
+```sql
+-- Allow public viewing of creator/editor profiles
+CREATE POLICY "Public can view creator and editor profiles"
+  ON public.profiles FOR SELECT
+  USING (is_creator = true OR is_editor = true);
 ```
 
----
+This is safe because:
+- Only exposes profiles explicitly marked as creators or editors
+- Regular user profiles remain protected
+- Sensitive fields should be handled at the application level if needed
 
-## 4. Monthly Credit Subscriptions
+### Tools Page Structure
 
-### Current Flow
-Credits are one-time purchases (`mode: "payment"`).
-
-### New Flow
-- Credits become monthly subscriptions (`mode: "subscription"`)
-- Credits renew each month automatically
-- Users can cancel from Settings page
-- Both buyers and creators can manage subscriptions
-
-### Technical Changes
-
-**A. Edge Function: `supabase/functions/create-credit-checkout/index.ts`**
-- Change `mode: "payment"` to `mode: "subscription"`
-- Add `recurring_interval: "month"` to price configuration (or use existing recurring prices)
-
-**B. Edge Function: Create `supabase/functions/manage-credit-subscription/index.ts`**
-- Handle subscription status checking
-- Handle subscription cancellation via Stripe Customer Portal
-
-**C. Edge Function: Update `supabase/functions/add-credits/index.ts`**
-- Modify to work with subscription renewal webhooks
-- Add credits on each successful subscription payment
-
-**D. Frontend: `src/pages/Settings.tsx`**
-- Add "Credit Subscriptions" section in Billing tab
-- Show active credit subscription details (plan name, renewal date)
-- Add "Cancel Subscription" button that opens Stripe portal
-
-**E. Database Update**
-- Add column to track credit subscription status in profiles or new table
-- Alternative: Query Stripe directly for subscription status (simpler approach)
-
-### New Settings UI (Billing Tab):
 ```text
-+--------------------------------------------------+
-| Credit Subscription                              |
-+--------------------------------------------------+
-| Plan: Pro Credits (150 credits/month)            |
-| Status: Active                                   |
-| Next Renewal: Feb 23, 2026                       |
-| Amount: $24.99/month                             |
-|                                                  |
-| [Manage Subscription]  [Cancel Subscription]     |
-+--------------------------------------------------+
++------------------+
+|     Header       |  (fixed, 4rem)
++--------+---------+
+|        |         |
+| Tools  | Content |
+| List   | Area    |
+|(scroll)|         |
+|        |         |
++--------+---------+
 ```
 
+- Total height: `100vh - header height`
+- Sidebar: Internal scroll for tool items only
+- Content: Fixed, no scroll needed
+
+### Pricing Card Refinements
+
+- Width: `max-w-md` (448px) instead of `max-w-xl` (576px)
+- Padding reduced by ~25%
+- Glass effect: `bg-card/80 backdrop-blur-xl`
+- Border: Gradient or subtle glow effect
+- Typography: Slightly smaller headings
+
 ---
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `supabase/functions/manage-credit-subscription/index.ts` | Check subscription status and create portal sessions |
-| `src/components/product/SubscriptionPlanSelector.tsx` | Reusable component for selecting plans in product creation |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/CreateProduct.tsx` | Add subscription plan selector when pricing is subscription/both |
-| `src/pages/Pricing.tsx` | Redesign to single card with dropdown |
-| `src/components/layout/Header.tsx` | Add wallet counter next to profile |
-| `src/pages/Settings.tsx` | Add credit subscription management section |
-| `src/hooks/useCredits.ts` | Add subscription status checking |
-| `supabase/functions/create-credit-checkout/index.ts` | Change to subscription mode |
-| `supabase/config.toml` | Register new edge function |
+| Database (migration) | Add public SELECT policy for creator/editor profiles |
+| `src/pages/Tools.tsx` | Remove hero, add fixed-height layout |
+| `src/pages/Pricing.tsx` | Smaller card, refined styling |
 
 ---
 
-## Implementation Sequence
+## Expected Results
 
-1. **Phase 1: Navbar Wallet** (quick win)
-   - Add compact wallet to Header
-
-2. **Phase 2: Pricing Page Redesign**
-   - Create single-card layout with dropdown
-   - Update edge function to subscription mode
-
-3. **Phase 3: Subscription Management**
-   - Create portal edge function
-   - Add cancellation UI to Settings
-
-4. **Phase 4: Product Subscription Integration**
-   - Create plan selector component
-   - Integrate into CreateProduct page
-   - Add inline CreatePlanWizard popup
-
----
-
-## Notes
-
-- The credit packages already exist in Stripe with price IDs - these need to be recreated as recurring prices OR we create new recurring prices alongside existing ones
-- Stripe Customer Portal must be configured by the user to allow subscription management
-- The existing `CreatePlanWizard` component can be reused directly in the product creation flow
+After implementation:
+1. **Creators page**: Will display all creator profiles to any visitor
+2. **Hire Editors page**: Will display all editor profiles to any visitor
+3. **Tools page**: Clean, full-viewport layout with no page scrolling
+4. **Pricing page**: Compact, premium-looking subscription card
+5. **Navbar wallet**: Already correctly positioned (no change needed)
