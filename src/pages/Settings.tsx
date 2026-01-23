@@ -31,6 +31,7 @@ export default function Settings() {
   const [website, setWebsite] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
   
   // Stripe Connect status
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
@@ -80,6 +81,7 @@ export default function Settings() {
         setWebsite(data.website || "");
         setAvatarUrl(data.avatar_url);
         setBannerUrl((data as Record<string, unknown>).banner_url as string | null);
+        setBackgroundUrl((data as Record<string, unknown>).background_url as string | null);
         setStripeAccountId(data.stripe_account_id);
         setStripeOnboardingComplete(data.stripe_onboarding_complete || false);
       }
@@ -142,6 +144,37 @@ export default function Settings() {
     }
   };
 
+  const handleBackgroundChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `backgrounds/${user.id}/${Date.now()}.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("product-media")
+        .upload(path, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrl } = supabase.storage
+        .from("product-media")
+        .getPublicUrl(path);
+
+      setBackgroundUrl(publicUrl.publicUrl);
+      toast.success("Background uploaded!");
+    } catch (error) {
+      console.error("Error uploading background:", error);
+      toast.error("Failed to upload background");
+    }
+  };
+
+  const removeBackground = () => {
+    setBackgroundUrl(null);
+    toast.success("Background removed");
+  };
+
   const saveProfile = async () => {
     if (!user) return;
     
@@ -174,6 +207,7 @@ export default function Settings() {
           website,
           avatar_url: avatarUrl,
           banner_url: bannerUrl,
+          background_url: backgroundUrl,
         } as Record<string, unknown>)
         .eq("user_id", user.id);
 
@@ -324,6 +358,56 @@ export default function Settings() {
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
                   Recommended: 1500x500px. JPG, PNG or GIF.
+                </p>
+              </div>
+
+              {/* Profile Background (Steam-style) */}
+              <div>
+                <Label className="mb-2 block">Profile Background</Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Add a full-page background image to your profile (like Steam profiles)
+                </p>
+                <div className="relative rounded-lg overflow-hidden border border-border">
+                  {backgroundUrl ? (
+                    <div className="relative">
+                      <img
+                        src={backgroundUrl}
+                        alt="Profile background"
+                        className="w-full h-32 object-cover"
+                      />
+                      <div className="absolute inset-0 bg-background/60" />
+                    </div>
+                  ) : (
+                    <div className="w-full h-32 bg-muted flex items-center justify-center">
+                      <span className="text-muted-foreground text-sm">No background set</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
+                    <label className="cursor-pointer">
+                      <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
+                        <Upload className="w-4 h-4" />
+                        {backgroundUrl ? "Change" : "Upload"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBackgroundChange}
+                        className="hidden"
+                      />
+                    </label>
+                    {backgroundUrl && (
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={removeBackground}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Recommended: 1920x1080px or larger. JPG, PNG. This will appear behind your entire profile.
                 </p>
               </div>
 
