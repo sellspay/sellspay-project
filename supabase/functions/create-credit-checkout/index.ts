@@ -48,12 +48,12 @@ serve(async (req) => {
     
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { package_id } = await req.json();
+    const { package_id, price_id } = await req.json();
     if (!package_id) {
       throw new Error("package_id is required");
     }
 
-    logStep("Package requested", { package_id });
+    logStep("Package requested", { package_id, price_id });
 
     // Get the package details
     const { data: packageData, error: packageError } = await supabaseClient
@@ -73,7 +73,9 @@ serve(async (req) => {
       price_cents: packageData.price_cents 
     });
 
-    if (!packageData.stripe_price_id) {
+    // Use provided monthly price_id or fall back to stored stripe_price_id
+    const stripePrice = price_id || packageData.stripe_price_id;
+    if (!stripePrice) {
       throw new Error("Package does not have a Stripe price configured");
     }
 
@@ -96,18 +98,18 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://editorsparadise.com";
 
-    // Create checkout session for one-time payment
+    // Create checkout session for subscription (monthly recurring)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: packageData.stripe_price_id,
+          price: stripePrice,
           quantity: 1,
         },
       ],
-      mode: "payment",
-      success_url: `${origin}/tools?credit_purchase=success&credits=${packageData.credits}`,
+      mode: "subscription",
+      success_url: `${origin}/pricing?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/pricing?canceled=true`,
       metadata: {
         user_id: user.id,
@@ -115,6 +117,15 @@ serve(async (req) => {
         package_id: package_id,
         credits: packageData.credits.toString(),
         package_name: packageData.name,
+      },
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          profile_id: profile?.id || "",
+          package_id: package_id,
+          credits: packageData.credits.toString(),
+          package_name: packageData.name,
+        },
       },
     });
 

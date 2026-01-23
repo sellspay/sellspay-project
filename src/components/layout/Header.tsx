@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,9 +9,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, CreditCard } from 'lucide-react';
+import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, CreditCard, Wallet } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCredits } from '@/hooks/useCredits';
 import navbarLogo from '@/assets/navbar-logo.png';
 
 const navItems = [
@@ -25,12 +26,15 @@ const navItems = [
 export default function Header() {
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [fullName, setFullName] = useState<string | null>(null);
+  
+  const { creditBalance, isLoading: creditsLoading } = useCredits();
 
   // Fetch user profile data and admin status
   useEffect(() => {
@@ -109,6 +113,19 @@ export default function Header() {
 
           {/* Right Side */}
           <div className="flex items-center gap-3">
+            {/* Credit Wallet - Only show when logged in */}
+            {user && (
+              <button
+                onClick={() => navigate('/pricing')}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/80 hover:bg-secondary transition-colors border border-border/50"
+              >
+                <Wallet className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">
+                  {creditsLoading ? '...' : creditBalance}
+                </span>
+              </button>
+            )}
+            
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -134,6 +151,20 @@ export default function Header() {
                       <span className="text-xs text-muted-foreground">{user.email}</span>
                     </div>
                   </div>
+                  
+                  {/* Mobile wallet display */}
+                  <div className="sm:hidden px-2 pb-2">
+                    <button
+                      onClick={() => navigate('/pricing')}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/80 hover:bg-secondary transition-colors border border-border/50"
+                    >
+                      <Wallet className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">
+                        {creditsLoading ? '...' : creditBalance} Credits
+                      </span>
+                    </button>
+                  </div>
+                  
                   <DropdownMenuSeparator />
                   {isCreator && (
                     <DropdownMenuItem asChild>

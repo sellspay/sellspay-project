@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.add-credits]
 verify_jwt = false
+
+[functions.manage-credit-subscription]
+verify_jwt = false
