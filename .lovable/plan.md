@@ -1,254 +1,228 @@
 
-
-# Pro Tools Credit System Redesign Plan
+# Implementation Plan: Credit Subscription System, Product-Subscription Integration, and UI Improvements
 
 ## Overview
-Transform the current subscription-based Pro Tools system into a flexible credit-based wallet system with tiered pricing plans, free starter credits for new users, and clear distinction between free and Pro tools.
+This plan addresses four key areas of improvement:
+1. **Create Product Flow** - Show existing subscription plans when selecting "Subscription Only" or "Both" pricing types
+2. **Pricing Page Redesign** - Replace 5-card layout with a single card featuring dropdown credit selection
+3. **Navbar Wallet Counter** - Add credit balance indicator next to profile avatar
+4. **Monthly Credit Subscriptions** - Convert one-time purchases to recurring subscriptions with cancellation in Settings
 
 ---
 
-## Current State Analysis
-- **Existing System**: Subscription-based ($9.99/month for 50 uses)
-- **Database Tables**: `pro_tool_subscriptions`, `tool_usage`
-- **Edge Functions**: `create-pro-tools-checkout`, `check-pro-tools-subscription`
-- **Pro Tools**: SFX Generator, Voice Isolator, SFX Isolator, Music Splitter
-- **Free Tools**: Audio Cutter, Joiner, Recorder, Converter, Video to Audio, Waveform Generator
+## 1. Create Product Subscription Selection Flow
 
----
+### Current Behavior
+When a creator selects "Subscription Only" or "Both" in the pricing section, there's just a text hint but no way to select which subscription plan the product belongs to.
 
-## New System Architecture
+### New Behavior
+- When "Subscription Only" or "Both" is clicked, display a section showing the creator's existing subscription plans
+- Each plan shows name, price, and number of products already assigned
+- Creator can select which plan(s) to attach the product to
+- If no plans exist, show a "Create Subscription Plan" button that opens the same 3-step wizard used in `/subscription-plans`
 
-### Credit Wallet System
-Users will have a credit balance stored in their profile. Credits are deducted when using Pro tools (1 credit per use). Free tools never deduct credits.
+### Technical Changes
 
-### Pricing Tiers
+**File: `src/pages/CreateProduct.tsx`**
+- Add state for fetching creator's subscription plans
+- Add state for selected plan(s)
+- Import and use `CreatePlanWizard` component for inline plan creation
+- Add UI section under pricing type buttons that appears when `pricingType === "subscription"` or `pricingType === "both"`
+- When saving product, also insert into `subscription_plan_products` table
 
-| Plan | Price | Credits | Value per Credit |
-|------|-------|---------|------------------|
-| Starter | $4.99 | 15 | $0.33 |
-| Basic | $9.99 | 50 | $0.20 |
-| Pro | $24.99 | 150 | $0.17 |
-| Power | $49.99 | 350 | $0.14 |
-| Enterprise | $99.99 | 800 | $0.12 |
-
-### Free Credits
-- All new signups receive **5 free credits** to try Pro tools
-- Credits are granted automatically on first profile creation
-
----
-
-## Database Changes
-
-### 1. Add Credits Column to Profiles Table
-```sql
-ALTER TABLE profiles ADD COLUMN credit_balance integer DEFAULT 5;
-```
-New users automatically get 5 credits.
-
-### 2. Create Credit Transactions Table
-Track all credit purchases and usage for transparency:
-```sql
-CREATE TABLE credit_transactions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id),
-  type TEXT NOT NULL, -- 'purchase', 'usage', 'bonus'
-  amount INTEGER NOT NULL, -- positive for additions, negative for deductions
-  description TEXT,
-  tool_id TEXT, -- for usage transactions
-  stripe_session_id TEXT, -- for purchase transactions
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+```text
+New State Variables:
+- subscriptionPlans: SubscriptionPlan[]
+- selectedPlanIds: string[]
+- showCreatePlanWizard: boolean
+- loadingPlans: boolean
 ```
 
-### 3. Create Credit Packages Table
-Store available credit packages:
-```sql
-CREATE TABLE credit_packages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  credits INTEGER NOT NULL,
-  price_cents INTEGER NOT NULL,
-  stripe_price_id TEXT NOT NULL,
-  is_active BOOLEAN DEFAULT true,
-  display_order INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+**New UI Section (under pricing type):**
+```text
++------------------------------------------+
+| Select Subscription Plan(s)              |
++------------------------------------------+
+| [x] Premium Access - $19.99/mo (5 items) |
+| [ ] Basic Tier - $9.99/mo (3 items)      |
++------------------------------------------+
+| + Create New Plan (opens wizard popup)   |
++------------------------------------------+
 ```
 
 ---
 
-## Edge Functions
+## 2. Pricing Page Redesign
 
-### 1. Update `check-pro-tools-subscription` -> `check-credits`
-Replace subscription check with credit balance check:
-- Return current credit balance from profiles
-- Return usage history (optional)
+### Current Layout
+5 separate cards showing each credit package (Starter, Basic, Pro, Power, Enterprise) with individual pricing.
 
-### 2. Create `create-credit-checkout`
-Create Stripe one-time payment checkout for credit packages:
-- Accept package_id parameter
-- Create Stripe Checkout session with one-time payment mode
-- Store package details in metadata for webhook
+### New Layout
+Single prominent card with:
+- Dropdown selector for credit amount
+- Dynamic price display based on selection
+- Comprehensive description of what credits unlock
+- List of Pro tools available
+- Visual indicator for savings percentage
+- FAQ section remains below
 
-### 3. Create `add-credits` (or update webhook)
-Add credits after successful payment:
-- Called by Stripe webhook or success page verification
-- Add credits to user's balance
-- Create transaction record
+### Technical Changes
 
-### 4. Create `deduct-credit`
-Deduct credits when using Pro tools:
-- Verify user has sufficient balance
-- Deduct 1 credit
-- Create usage transaction record
-- Return new balance
+**File: `src/pages/Pricing.tsx`**
+- Replace grid of cards with single centered card component
+- Add `Select` dropdown for package selection
+- Show selected package details dynamically
+- Keep existing FAQ section
 
----
-
-## Frontend Changes
-
-### 1. Header Navigation Update
-**File**: `src/components/layout/Header.tsx`
-- Add "Pricing" link to `navItems` array
-- Add credit wallet display showing current balance (coin icon + number)
-- Show wallet in user dropdown and/or as standalone element
-
-### 2. New Pricing Page
-**File**: `src/pages/Pricing.tsx`
-- Hero section with value proposition
-- Credit package cards with pricing tiers
-- Feature comparison (what Pro tools include)
-- FAQ section about credits
-- Clear CTAs for each tier
-
-### 3. Update Tools Sidebar
-**File**: `src/components/tools/ToolsSidebar.tsx`
-- Add credit wallet display at top of sidebar
-- Add "Free" badge to non-Pro tools (in addition to existing "Pro" badges)
-- Update tool descriptions to clarify credit usage
-
-### 4. Update ProToolsGate Component
-**File**: `src/components/tools/ProToolsGate.tsx`
-- Replace subscription check with credit balance check
-- Show remaining credits instead of usage count
-- Update upgrade prompt to redirect to Pricing page
-- Show "Get Credits" button instead of "Subscribe Now"
-- Add "Top Up" quick action when credits are low
-
-### 5. Update useProToolsSubscription Hook
-**File**: `src/hooks/useProToolsSubscription.ts`
-Rename to `useCredits.ts` with new logic:
-- Fetch credit balance from profiles table
-- `deductCredit(toolId)`: Call edge function to deduct
-- `canUseTool(toolId)`: Check if free tool OR has credits
-- Remove subscription-related logic
-- Add `topUp()` function to navigate to pricing
-
-### 6. Update ToolContent Component
-**File**: `src/components/tools/ToolContent.tsx`
-- Pass credit-related props to ProToolsGate
-- Call deductCredit after successful Pro tool use
-
-### 7. Credit Wallet Component
-**File**: `src/components/credits/CreditWallet.tsx` (new)
-- Animated coin icon
-- Current balance display
-- "Top Up" button
-- Click to see transaction history (optional)
-
-### 8. Add Route for Pricing Page
-**File**: `src/App.tsx`
-- Add `/pricing` route
-
----
-
-## UI/UX Improvements
-
-### Tools Page Redesign
-1. **Sidebar Header**: Show credit wallet prominently
-2. **Tool Badges**: 
-   - Pro tools: Orange "Pro" badge + "1 credit" indicator
-   - Free tools: Green "Free" badge + "Unlimited" indicator
-3. **Credit Status Bar**: Show at top of content area for Pro tools
-
-### Pricing Page Design
-1. **Hero**: "Power Your Creativity with Credits"
-2. **Package Cards**: 
-   - Highlight best value (Pro tier)
-   - Show savings percentage for larger packages
-3. **Tool Preview**: Icons/names of all Pro tools included
-4. **Trust Elements**: Credit icons, secure payment badges
-
----
-
-## Implementation Order
-
-### Phase 1: Database & Backend
-1. Database migration for profiles (add credit_balance)
-2. Create credit_transactions table
-3. Create credit_packages table with initial data
-4. Create Stripe products/prices for credit packages
-5. Update/create edge functions
-
-### Phase 2: Hook & State Management
-1. Create new `useCredits` hook
-2. Update ProToolsGate component
-3. Update ToolContent to use new hook
-
-### Phase 3: UI Components
-1. Create CreditWallet component
-2. Update ToolsSidebar with wallet and badges
-3. Update Header with Pricing link and wallet
-4. Create Pricing page
-
-### Phase 4: Polish
-1. Add success/error toasts for credit operations
-2. Add loading states
-3. Test edge cases (0 credits, failed payments, etc.)
-
----
-
-## Technical Details
-
-### Stripe Products to Create
-| Package | Stripe Product | Price (cents) |
-|---------|---------------|---------------|
-| Starter 15 | prod_starter_credits | 499 |
-| Basic 50 | prod_basic_credits | 999 |
-| Pro 150 | prod_pro_credits | 2499 |
-| Power 350 | prod_power_credits | 4999 |
-| Enterprise 800 | prod_enterprise_credits | 9999 |
-
-### Credit Balance Logic
-```typescript
-// Check if can use tool
-const canUse = !isProTool(toolId) || creditBalance > 0;
-
-// After successful Pro tool use
-await supabase.functions.invoke('deduct-credit', { 
-  body: { tool_id: toolId } 
-});
+**New UI Structure:**
+```text
++--------------------------------------------------+
+|  [Icon] Credit Wallet                            |
+|                                                  |
+|  Select Your Package:                            |
+|  [Dropdown: Pro Credits - 150 for $24.99 ▼]      |
+|                                                  |
+|  $24.99         Save 50%!                        |
+|  150 Credits    ($0.17 per credit)               |
+|                                                  |
+|  ────────────────────────────────────────────    |
+|  WHAT YOU UNLOCK:                                |
+|  ✓ SFX Generator - Create sound effects from AI |
+|  ✓ Voice Isolator - Remove vocals or background |
+|  ✓ SFX Isolator - Isolate sound effects         |
+|  ✓ Music Splitter - Split stems                 |
+|                                                  |
+|  ────────────────────────────────────────────    |
+|  BENEFITS:                                       |
+|  • Credits renew monthly (subscription)         |
+|  • Cancel anytime from Settings                 |
+|  • Unused credits roll over*                    |
+|  • Priority processing                          |
+|                                                  |
+|        [Subscribe Now - $24.99/month]           |
++--------------------------------------------------+
 ```
 
-### Free Credits on Signup
-The `credit_balance DEFAULT 5` in the profiles table handles this automatically when the trigger creates a new profile on signup.
+---
+
+## 3. Navbar Wallet Counter
+
+### Current State
+Credit wallet only visible in Tools sidebar. No navbar indicator.
+
+### New Feature
+Small wallet icon with credit counter badge next to profile avatar in header.
+
+### Technical Changes
+
+**File: `src/components/layout/Header.tsx`**
+- Import `useCredits` hook
+- Import `CreditWallet` component with "compact" variant
+- Add wallet display between nav items and profile dropdown
+- Show only when user is logged in
+
+**UI Placement:**
+```text
+[Logo] | Store | Creators | Tools | Pricing | [Hire Editors] | [🪙 150] [Avatar ▼]
+                                                               ^^^^^^^^
+                                                              New wallet
+```
 
 ---
 
-## Files to Create/Modify
+## 4. Monthly Credit Subscriptions
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/pages/Pricing.tsx` | Create | New pricing page with credit packages |
-| `src/components/credits/CreditWallet.tsx` | Create | Wallet display component |
-| `src/hooks/useCredits.ts` | Create | New credit management hook |
-| `supabase/functions/check-credits/` | Create | Check user credit balance |
-| `supabase/functions/create-credit-checkout/` | Create | Stripe checkout for credits |
-| `supabase/functions/deduct-credit/` | Create | Deduct credit on Pro tool use |
-| `src/components/layout/Header.tsx` | Modify | Add Pricing nav link, wallet display |
-| `src/components/tools/ToolsSidebar.tsx` | Modify | Add wallet, Free badges |
-| `src/components/tools/ProToolsGate.tsx` | Modify | Use credits instead of subscription |
-| `src/components/tools/ToolContent.tsx` | Modify | Use new useCredits hook |
-| `src/App.tsx` | Modify | Add /pricing route |
-| `supabase/migrations/` | Create | Database schema changes |
+### Current Flow
+Credits are one-time purchases (`mode: "payment"`).
 
+### New Flow
+- Credits become monthly subscriptions (`mode: "subscription"`)
+- Credits renew each month automatically
+- Users can cancel from Settings page
+- Both buyers and creators can manage subscriptions
+
+### Technical Changes
+
+**A. Edge Function: `supabase/functions/create-credit-checkout/index.ts`**
+- Change `mode: "payment"` to `mode: "subscription"`
+- Add `recurring_interval: "month"` to price configuration (or use existing recurring prices)
+
+**B. Edge Function: Create `supabase/functions/manage-credit-subscription/index.ts`**
+- Handle subscription status checking
+- Handle subscription cancellation via Stripe Customer Portal
+
+**C. Edge Function: Update `supabase/functions/add-credits/index.ts`**
+- Modify to work with subscription renewal webhooks
+- Add credits on each successful subscription payment
+
+**D. Frontend: `src/pages/Settings.tsx`**
+- Add "Credit Subscriptions" section in Billing tab
+- Show active credit subscription details (plan name, renewal date)
+- Add "Cancel Subscription" button that opens Stripe portal
+
+**E. Database Update**
+- Add column to track credit subscription status in profiles or new table
+- Alternative: Query Stripe directly for subscription status (simpler approach)
+
+### New Settings UI (Billing Tab):
+```text
++--------------------------------------------------+
+| Credit Subscription                              |
++--------------------------------------------------+
+| Plan: Pro Credits (150 credits/month)            |
+| Status: Active                                   |
+| Next Renewal: Feb 23, 2026                       |
+| Amount: $24.99/month                             |
+|                                                  |
+| [Manage Subscription]  [Cancel Subscription]     |
++--------------------------------------------------+
+```
+
+---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `supabase/functions/manage-credit-subscription/index.ts` | Check subscription status and create portal sessions |
+| `src/components/product/SubscriptionPlanSelector.tsx` | Reusable component for selecting plans in product creation |
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/pages/CreateProduct.tsx` | Add subscription plan selector when pricing is subscription/both |
+| `src/pages/Pricing.tsx` | Redesign to single card with dropdown |
+| `src/components/layout/Header.tsx` | Add wallet counter next to profile |
+| `src/pages/Settings.tsx` | Add credit subscription management section |
+| `src/hooks/useCredits.ts` | Add subscription status checking |
+| `supabase/functions/create-credit-checkout/index.ts` | Change to subscription mode |
+| `supabase/config.toml` | Register new edge function |
+
+---
+
+## Implementation Sequence
+
+1. **Phase 1: Navbar Wallet** (quick win)
+   - Add compact wallet to Header
+
+2. **Phase 2: Pricing Page Redesign**
+   - Create single-card layout with dropdown
+   - Update edge function to subscription mode
+
+3. **Phase 3: Subscription Management**
+   - Create portal edge function
+   - Add cancellation UI to Settings
+
+4. **Phase 4: Product Subscription Integration**
+   - Create plan selector component
+   - Integrate into CreateProduct page
+   - Add inline CreatePlanWizard popup
+
+---
+
+## Notes
+
+- The credit packages already exist in Stripe with price IDs - these need to be recreated as recurring prices OR we create new recurring prices alongside existing ones
+- Stripe Customer Portal must be configured by the user to allow subscription management
+- The existing `CreatePlanWizard` component can be reused directly in the product creation flow
