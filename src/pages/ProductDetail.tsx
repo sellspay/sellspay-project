@@ -38,8 +38,27 @@ export default function ProductDetail() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
   const [purchasing, setPurchasing] = useState(false);
   const [hasPurchased, setHasPurchased] = useState(false);
+  const [userProfileId, setUserProfileId] = useState<string | null>(null);
+
+  // Fetch user's profile ID for likes
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) {
+        setUserProfileId(null);
+        return;
+      }
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setUserProfileId(data?.id || null);
+    };
+    fetchUserProfile();
+  }, [user]);
 
   // Check for purchase success from URL
   useEffect(() => {
@@ -58,8 +77,9 @@ export default function ProductDetail() {
   useEffect(() => {
     if (id) {
       fetchProduct();
+      fetchLikes();
     }
-  }, [id]);
+  }, [id, userProfileId]);
 
   const fetchProduct = async () => {
     try {
@@ -94,6 +114,68 @@ export default function ProductDetail() {
       toast.error("Failed to load product");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLikes = async () => {
+    if (!id) return;
+    
+    try {
+      // Get like count
+      const { count } = await supabase
+        .from("product_likes")
+        .select("*", { count: "exact", head: true })
+        .eq("product_id", id);
+      
+      setLikeCount(count || 0);
+
+      // Check if current user has liked
+      if (userProfileId) {
+        const { data } = await supabase
+          .from("product_likes")
+          .select("id")
+          .eq("product_id", id)
+          .eq("user_id", userProfileId)
+          .maybeSingle();
+        
+        setIsLiked(!!data);
+      }
+    } catch (error) {
+      console.error("Error fetching likes:", error);
+    }
+  };
+
+  const handleLike = async () => {
+    if (!user) {
+      toast.error("Please sign in to like products");
+      return;
+    }
+    
+    if (!userProfileId || !id) return;
+
+    try {
+      if (isLiked) {
+        // Unlike
+        await supabase
+          .from("product_likes")
+          .delete()
+          .eq("product_id", id)
+          .eq("user_id", userProfileId);
+        
+        setIsLiked(false);
+        setLikeCount((prev) => Math.max(0, prev - 1));
+      } else {
+        // Like
+        await supabase
+          .from("product_likes")
+          .insert({ product_id: id, user_id: userProfileId });
+        
+        setIsLiked(true);
+        setLikeCount((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Error toggling like:", error);
+      toast.error("Failed to update like");
     }
   };
 
@@ -327,9 +409,11 @@ export default function ProductDetail() {
                 <Button
                   variant="outline"
                   size="lg"
-                  onClick={() => setIsLiked(!isLiked)}
+                  onClick={handleLike}
+                  className="gap-2"
                 >
                   <Heart className={`w-4 h-4 ${isLiked ? "fill-destructive text-destructive" : ""}`} />
+                  {likeCount > 0 && <span>{likeCount}</span>}
                 </Button>
                 <Button variant="outline" size="lg" onClick={handleShare}>
                   <Share2 className="w-4 h-4" />
