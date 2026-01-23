@@ -319,16 +319,54 @@ export function SectionEditorPanel({
               <Input
                 value={(section.content as any).buttonText || ''}
                 onChange={(e) => updateContent({ buttonText: e.target.value })}
+                placeholder="e.g. Shop Now, Learn More, View"
               />
             </div>
             <div>
-              <Label>Button URL</Label>
-              <Input
-                value={(section.content as any).buttonUrl || ''}
-                onChange={(e) => updateContent({ buttonUrl: e.target.value })}
-                placeholder="https://..."
-              />
+              <Label>Button Link Type</Label>
+              <Select
+                value={(section.content as any).buttonLinkType || 'external'}
+                onValueChange={(value: 'external' | 'product' | 'profile') => updateContent({ buttonLinkType: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose link type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="external">External URL</SelectItem>
+                  <SelectItem value="product">Link to Product</SelectItem>
+                  <SelectItem value="profile">Link to My Profile</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {(section.content as any).buttonLinkType === 'product' ? (
+              <div>
+                <Label>Select Product</Label>
+                <Select
+                  value={(section.content as any).buttonProductId || ''}
+                  onValueChange={(value) => updateContent({ buttonProductId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((prod) => (
+                      <SelectItem key={prod.id} value={prod.id}>
+                        {prod.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (section.content as any).buttonLinkType !== 'profile' && (
+              <div>
+                <Label>Button URL</Label>
+                <Input
+                  value={(section.content as any).buttonUrl || ''}
+                  onChange={(e) => updateContent({ buttonUrl: e.target.value })}
+                  placeholder="https://..."
+                />
+              </div>
+            )}
           </div>
         );
 

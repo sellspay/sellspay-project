@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
-import { Plus, GripVertical } from 'lucide-react';
+import { Plus, GripVertical, Pencil } from 'lucide-react';
 import { ProfileSection, SectionStyleOptions } from './types';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
 import {
@@ -123,7 +123,7 @@ const SortableSectionItem = memo(({
     <div ref={setNodeRef} style={style} className="relative group">
       {/* Add section button above */}
       {isFirst && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
           <Button
             variant="outline"
             size="sm"
@@ -159,16 +159,35 @@ const SortableSectionItem = memo(({
           />
         )}
         
+        {/* Hover dimming overlay - dims content to make buttons visible */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-200 pointer-events-none z-10" />
+        
         {/* Drag handle - visible on hover */}
         <div
           className={cn(
-            'absolute left-2 top-1/2 -translate-y-1/2 p-1 rounded cursor-grab opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 shadow-sm z-10',
+            'absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded cursor-grab opacity-0 group-hover:opacity-100 transition-opacity bg-background shadow-lg z-20 pointer-events-none group-hover:pointer-events-auto',
             isDragging && 'cursor-grabbing'
           )}
           {...attributes}
           {...listeners}
         >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
+          <GripVertical className="h-4 w-4 text-foreground" />
+        </div>
+        
+        {/* Edit button - centered on hover */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="shadow-lg"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+          >
+            <Pencil className="h-3.5 w-3.5 mr-1.5" />
+            Edit
+          </Button>
         </div>
         
         {/* Section content */}
@@ -181,14 +200,14 @@ const SortableSectionItem = memo(({
         
         {/* Selection indicator */}
         {isSelected && (
-          <div className="absolute top-2 right-2 z-10">
+          <div className="absolute top-2 right-2 z-20">
             <Badge variant="default" className="text-xs">Editing</Badge>
           </div>
         )}
       </div>
       
       {/* Add section button below */}
-      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
         <Button
           variant="outline"
           size="sm"

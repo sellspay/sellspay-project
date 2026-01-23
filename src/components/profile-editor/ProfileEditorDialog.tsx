@@ -1037,6 +1037,7 @@ export function ProfileEditorDialog({
       <EditSectionDialog
         section={editingSection}
         collections={initialCollections}
+        products={recentProducts.map(p => ({ id: p.id, name: p.name }))}
         onUpdate={updateSection}
         onDelete={deleteSection}
         onClose={() => setEditingSection(null)}
