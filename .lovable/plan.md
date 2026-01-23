@@ -1,160 +1,186 @@
 
-# Implementation Plan
+# Profile Editor Redesign: Modal Add Section Panel + Footer Section
 
-## Summary
-This plan addresses 5 interconnected issues to improve the user experience across the platform:
+## Overview
+This plan transforms the "Add New Section" panel from a fullscreen overlay to a modal window that appears over the profile editor (similar to the reference images), adds instant preview of presets on the profile background, and introduces a new Footer section type for creators.
 
-1. **Wallet placement in navbar** - Move wallet display next to the profile icon
-2. **Tools page layout** - Remove hero banner and make the page static (no scroll except tools menu)
-3. **Creators page visibility** - Fix RLS policies so creators are publicly visible
-4. **Hire Editors page visibility** - Fix RLS policies so editors are publicly visible  
-5. **Pricing card redesign** - Make the pricing card smaller and more premium looking
+## Key Changes
 
----
+### 1. Convert Add Section Panel to Modal Dialog
 
-## Issue Analysis
+**Current Issue**: The Add Section panel (`AddSectionPanel.tsx`) renders as a fullscreen overlay (`fixed inset-0`), which takes users completely away from the editor context.
 
-### Issue 1: Wallet Position
-The wallet counter was added next to the profile icon in the navbar (Header.tsx), which looks correct based on the screenshot showing the wallet icon with "5" next to the profile avatar. This appears to already be working correctly.
+**Solution**: Convert to a modal dialog using the existing `Dialog` component with a large width (approx. 800-900px), positioned centered over the editor. This keeps the editor visible in the background, matching the reference screenshots.
 
-### Issue 2: Tools Page Scrolling
-The current Tools page has a large hero section that takes up significant vertical space, requiring users to scroll to see all tools. The user wants:
-- Remove the hero banner entirely
-- Make the page fit within the viewport (no page scroll)
-- Only the tools sidebar menu should scroll internally
+**Implementation**:
+- Replace the fullscreen `div` with `Dialog` + `DialogContent` components
+- Use custom sizing: `max-w-4xl w-[95vw] h-[80vh]` for large modal
+- Remove the header X button (Dialog provides its own)
+- Keep the split-panel layout (sidebar + presets) inside the modal
 
-### Issue 3 & 4: Creators/Editors Not Visible
-The profiles table RLS policies are too restrictive:
-- Current SELECT policies: Only allows users to view their OWN profile, or admins to view all
-- Missing: A public SELECT policy for creator/editor profiles
+### 2. Instant Preset Preview on Background
 
-This is why both pages show "0 creators/editors found" - unauthenticated users or regular buyers cannot query the profiles table at all.
+**Current Issue**: When clicking a preset, the section is added immediately and the panel closes. Users cannot preview how different presets will look before committing.
 
-### Issue 5: Pricing Card Design
-The current pricing card is functional but could be more compact and premium. The user wants a smaller, more refined design.
+**Solution**: Add a hover/click preview mode that temporarily shows the preset on the editor canvas before final selection.
 
----
+**Implementation**:
+- Add `hoveredPreset` state to track which preset is being previewed
+- Pass a `onPreviewSection` callback from `ProfileEditorDialog` to `AddSectionPanel`
+- On preset hover, create a temporary preview section and display it in the sections list
+- On preset click, commit the section (current behavior)
+- Visual indicator: highlight the preview section with a dashed border and "Preview" badge
 
-## Implementation Steps
+### 3. Add Footer Section Type
 
-### Phase 1: Database - Fix Public Profile Visibility
+**Purpose**: Allow creators to add a customizable footer to their profile page with links, copyright text, and branding.
 
-Add a new RLS policy to allow anyone to view public creator/editor profiles:
+**New Types** (in `types.ts`):
+```text
+FooterContent {
+  text: string;              // e.g., "2026 Store Name. All rights reserved."
+  showSocialLinks: boolean;
+  columns: FooterColumn[];   // Up to 3 columns with links
+  backgroundColor?: string;
+}
 
-```sql
-CREATE POLICY "Public can view creator and editor profiles"
-  ON public.profiles FOR SELECT
-  USING (is_creator = true OR is_editor = true);
+FooterColumn {
+  id: string;
+  title: string;
+  links: FooterLink[];
+}
+
+FooterLink {
+  id: string;
+  label: string;
+  url: string;
+}
 ```
 
-This policy allows:
-- Anyone (authenticated or not) to view profiles where `is_creator = true` or `is_editor = true`
-- Regular user profiles remain private (not matching either condition)
-- Maintains security for non-creator/editor profiles
+**Template Configuration**:
+- Add `'footer'` to `SectionType` union
+- Add Footer template to `SECTION_TEMPLATES` in `types.ts`
+- Category: `'layout'`
+- Icon: `'LayoutGrid'` or similar
+- Presets: "Simple", "Multi-Column", "Minimal"
 
-### Phase 2: Tools Page - Remove Hero and Static Layout
+**Preview Component** (in `SectionPreviewContent.tsx`):
+- Create `FooterPreview` component showing columns and links
+- Render copyright text centered below columns
 
-**File: `src/pages/Tools.tsx`**
+### 4. Fix Editor Dead Space Issue
 
-1. Remove the entire hero header section (lines 17-59)
-2. Change the main container to use `h-screen` and `overflow-hidden` 
-3. Make the layout fill the available viewport height minus the header
-4. Keep ScrollArea only on the sidebar tools list
-5. Result: Full-screen two-column layout with no page scrolling
+**Current Issue**: The background does not fill the entire viewport and there is visible dead space below the card.
 
-Changes:
-- Remove: Hero section with gradient, badge, headline, subtitle, floating icons
-- Add: `h-[calc(100vh-4rem)]` to create fixed-height container
-- Add: `overflow-hidden` to prevent page scroll
-- Keep: Internal scroll on sidebar for tools list
+**Solution**: Ensure the main content area uses proper height calculations:
+- The dialog content: `h-[100vh]` (full viewport)
+- The scrollable area: `h-[calc(100vh-57px)]` (minus header)
+- The background div: `absolute inset-0` (already correct)
 
-### Phase 3: Pricing Page - Compact Premium Design
+### 5. Section Type Sidebar Structure
 
-**File: `src/pages/Pricing.tsx`**
-
-1. Reduce card max-width from `max-w-xl` to `max-w-md`
-2. Reduce internal padding and spacing
-3. Add subtle glass-morphism effect with backdrop blur
-4. Refine typography with smaller font sizes
-5. Add subtle gradient border effect
-6. Reduce the "What You Unlock" section to be more compact
-7. Remove some redundant visual elements
-
-Key changes:
-- Smaller card container
-- Tighter spacing between elements
-- More refined, minimal aesthetic
-- Keep all functionality intact
-
-### Phase 4: Verify Wallet Placement
-
-The wallet is already positioned correctly next to the profile icon based on the code review. The implementation shows:
-- Desktop: Wallet button with icon + balance displayed inline, followed by profile avatar
-- Mobile: Wallet displayed inside the dropdown menu
-
-No changes needed here - the current implementation matches the requested design.
+Update the sidebar to match reference images with these categories:
+- **Saved Sections** (for user-saved custom sections - future feature placeholder)
+- **Image With Text**
+- **Gallery**
+- **Slideshow**
+- **Image**
+- **Text**
+- **Basic List**
+- **Slider List**
+- **Video**
+- **Featured Product**
+- **Featured Collection**
+- **Featured Collection List**
+- **Featured Blog Posts**
+- **Testimonials**
+- **Logo List**
+- **Contact Us**
+- **Newsletter**
+- **FAQs**
+- **About Me**
+- **Collage**
+- **Embed Code**
+- **Footer** (new)
 
 ---
 
-## Technical Details
+## Technical Implementation
 
-### RLS Policy Addition
+### Files to Modify
 
-```sql
--- Allow public viewing of creator/editor profiles
-CREATE POLICY "Public can view creator and editor profiles"
-  ON public.profiles FOR SELECT
-  USING (is_creator = true OR is_editor = true);
-```
+1. **`src/components/profile-editor/types.ts`**
+   - Add `'footer'` to `SectionType` union
+   - Add `FooterContent`, `FooterColumn`, `FooterLink` interfaces
+   - Add Footer to `SectionContent` union
+   - Add Footer template to `SECTION_TEMPLATES` array
 
-This is safe because:
-- Only exposes profiles explicitly marked as creators or editors
-- Regular user profiles remain protected
-- Sensitive fields should be handled at the application level if needed
+2. **`src/components/profile-editor/AddSectionPanel.tsx`**
+   - Convert from fullscreen div to `Dialog` + `DialogContent`
+   - Update container styling for modal appearance
+   - Add hover preview functionality
+   - Add Footer presets to `PRESET_PREVIEWS`
 
-### Tools Page Structure
+3. **`src/components/profile-editor/ProfileEditorDialog.tsx`**
+   - Add `previewSection` state for temporary preview
+   - Pass `onPreviewSection` callback to AddSectionPanel
+   - Render preview section with visual distinction
+   - Fix any remaining layout issues for full viewport coverage
+
+4. **`src/components/profile-editor/previews/SectionPreviewContent.tsx`**
+   - Add `FooterPreview` component
+   - Add case for `'footer'` in switch statement
+
+### Modal Layout Structure
 
 ```text
-+------------------+
-|     Header       |  (fixed, 4rem)
-+--------+---------+
-|        |         |
-| Tools  | Content |
-| List   | Area    |
-|(scroll)|         |
-|        |         |
-+--------+---------+
++----------------------------------+
+|  Add New Section           [X]  |  <- Dialog Header
++----------------------------------+
+|  Sidebar   |   Preset Cards     |
+|  --------  |   [1] Hero Banner  |
+|  > Text    |   [2] Image Left   |
+|  > Image   |   [3] Image Right  |
+|  > Gallery |   [4] Overlay      |
+|  > Video   |   ...              |
+|  ...       |                    |
+|  > Footer  |                    |
++----------------------------------+
 ```
 
-- Total height: `100vh - header height`
-- Sidebar: Internal scroll for tool items only
-- Content: Fixed, no scroll needed
+### Footer Section Presets
 
-### Pricing Card Refinements
+**Preset 1: Simple Footer**
+- Single line with copyright text
+- Optional social icons
 
-- Width: `max-w-md` (448px) instead of `max-w-xl` (576px)
-- Padding reduced by ~25%
-- Glass effect: `bg-card/80 backdrop-blur-xl`
-- Border: Gradient or subtle glow effect
-- Typography: Slightly smaller headings
+**Preset 2: Multi-Column**
+- 2-3 columns with link lists
+- Column headers
+- Copyright below
+
+**Preset 3: Minimal**
+- Just copyright text centered
+- Clean, minimal design
+
+### State Flow for Preview
+
+1. User opens Add Section modal
+2. User selects section type from sidebar
+3. User hovers over a preset card
+4. `onPreviewSection(type, presetId)` is called
+5. `ProfileEditorDialog` creates temporary section and adds to preview list
+6. Preview section renders with dashed border + "Preview" label
+7. User clicks preset to confirm OR moves away to cancel preview
+8. On confirm: section is saved to database, preview is replaced with real section
+9. On cancel (close modal): preview section is removed
 
 ---
 
-## Files to Modify
+## Summary
 
-| File | Changes |
-|------|---------|
-| Database (migration) | Add public SELECT policy for creator/editor profiles |
-| `src/pages/Tools.tsx` | Remove hero, add fixed-height layout |
-| `src/pages/Pricing.tsx` | Smaller card, refined styling |
-
----
-
-## Expected Results
-
-After implementation:
-1. **Creators page**: Will display all creator profiles to any visitor
-2. **Hire Editors page**: Will display all editor profiles to any visitor
-3. **Tools page**: Clean, full-viewport layout with no page scrolling
-4. **Pricing page**: Compact, premium-looking subscription card
-5. **Navbar wallet**: Already correctly positioned (no change needed)
+This redesign transforms the Add Section experience to match professional store builders like Shopify, with:
+1. A centered modal dialog instead of fullscreen takeover
+2. Live preview of presets on the editor canvas before committing
+3. A new Footer section type for complete store customization
+4. Proper full-viewport editor layout with no dead space
