@@ -21,7 +21,7 @@ export default function HeroSection() {
   return (
     <section className="relative min-h-[90vh] flex items-center overflow-hidden">
       {/* Cosmic background image */}
-      <div className="absolute inset-0 -z-10">
+      <div className="absolute inset-0 z-0">
         {/* Background image */}
         <img 
           src={heroCosmicBg} 
@@ -30,17 +30,14 @@ export default function HeroSection() {
         />
         
         {/* Bottom fade to background */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-        
-        {/* Top subtle vignette */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
       </div>
 
       {/* Floating decorative elements */}
-      <div className="absolute top-20 right-[15%] w-3 h-3 bg-primary rounded-full animate-bounce opacity-60" style={{ animationDuration: '3s' }} />
-      <div className="absolute top-40 left-[10%] w-2 h-2 bg-accent rounded-full animate-bounce opacity-40" style={{ animationDuration: '4s', animationDelay: '1s' }} />
-      <div className="absolute bottom-32 right-[25%] w-4 h-4 bg-primary/50 rounded-full animate-bounce opacity-50" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }} />
-      <div className="absolute bottom-20 left-[20%] w-2 h-2 bg-accent/60 rounded-full animate-bounce opacity-30" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }} />
+      <div className="absolute top-20 right-[15%] w-3 h-3 bg-primary rounded-full animate-bounce opacity-60 z-10" style={{ animationDuration: '3s' }} />
+      <div className="absolute top-40 left-[10%] w-2 h-2 bg-accent rounded-full animate-bounce opacity-40 z-10" style={{ animationDuration: '4s', animationDelay: '1s' }} />
+      <div className="absolute bottom-32 right-[25%] w-4 h-4 bg-primary/50 rounded-full animate-bounce opacity-50 z-10" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }} />
+      <div className="absolute bottom-20 left-[20%] w-2 h-2 bg-accent/60 rounded-full animate-bounce opacity-30 z-10" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }} />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
