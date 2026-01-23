@@ -54,6 +54,7 @@ export type Database = {
           description: string | null
           display_order: number | null
           id: string
+          is_visible: boolean | null
           name: string
           updated_at: string
         }
@@ -64,6 +65,7 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
+          is_visible?: boolean | null
           name: string
           updated_at?: string
         }
@@ -74,6 +76,7 @@ export type Database = {
           description?: string | null
           display_order?: number | null
           id?: string
+          is_visible?: boolean | null
           name?: string
           updated_at?: string
         }
@@ -345,6 +348,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      saved_products: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       stripe_events: {
         Row: {
