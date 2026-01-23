@@ -30,6 +30,7 @@ import {
   CollectionContent,
   AboutMeContent,
   HeadlineContent,
+  SlidingBannerContent,
   DividerContent,
   SECTION_TEMPLATES,
 } from './types';
@@ -153,6 +154,10 @@ export function EditSectionDialog({
       case 'headline':
         return (
           <HeadlineEditor content={section.content as HeadlineContent} onChange={updateContent} />
+        );
+      case 'sliding_banner':
+        return (
+          <SlidingBannerEditor content={section.content as SlidingBannerContent} onChange={updateContent} />
         );
       case 'divider':
         return (
@@ -631,6 +636,47 @@ function HeadlineEditor({
             <SelectItem value="small">Small</SelectItem>
             <SelectItem value="medium">Medium</SelectItem>
             <SelectItem value="large">Large</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
+function SlidingBannerEditor({
+  content,
+  onChange,
+}: {
+  content: SlidingBannerContent;
+  onChange: (updates: Partial<SlidingBannerContent>) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Banner Text</Label>
+        <Textarea
+          value={content.text || ''}
+          onChange={(e) => onChange({ text: e.target.value })}
+          placeholder="✨ Your scrolling message here ✨"
+          rows={2}
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Use emojis and separators like • or ✨ for visual appeal
+        </p>
+      </div>
+      <div>
+        <Label>Scroll Speed</Label>
+        <Select
+          value={content.speed || 'medium'}
+          onValueChange={(value) => onChange({ speed: value as 'slow' | 'medium' | 'fast' })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="slow">Slow</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="fast">Fast</SelectItem>
           </SelectContent>
         </Select>
       </div>

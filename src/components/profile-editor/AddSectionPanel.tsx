@@ -397,6 +397,36 @@ const PRESET_PREVIEWS: Record<string, {
       },
     ],
   },
+  sliding_banner: {
+    thumbnails: [
+      { 
+        id: 'style1', 
+        name: 'Scrolling Text',
+        preview: (
+          <div className="w-full aspect-video bg-muted/30 rounded-lg overflow-hidden flex items-center justify-center">
+            <div className="w-full bg-primary/20 py-1.5 overflow-hidden">
+              <div className="text-[6px] font-medium whitespace-nowrap animate-pulse">
+                ✨ Scrolling text banner • Updates • Announcements ✨
+              </div>
+            </div>
+          </div>
+        )
+      },
+      { 
+        id: 'style2', 
+        name: 'Highlight Banner',
+        preview: (
+          <div className="w-full aspect-video bg-gradient-to-r from-primary/20 to-amber-500/20 rounded-lg overflow-hidden flex items-center justify-center">
+            <div className="w-full py-1.5 overflow-hidden">
+              <div className="text-[6px] font-bold whitespace-nowrap text-center">
+                🔥 SALE NOW ON • LIMITED TIME 🔥
+              </div>
+            </div>
+          </div>
+        )
+      },
+    ],
+  },
   about_me: {
     thumbnails: [
       { 

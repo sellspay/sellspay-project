@@ -9,6 +9,7 @@ export type SectionType =
   | 'collection'
   | 'about_me'
   | 'headline'
+  | 'sliding_banner'
   | 'divider'
   | 'testimonials'
   | 'faq'
@@ -81,6 +82,13 @@ export interface AboutMeContent {
 export interface HeadlineContent {
   text: string;
   size: 'small' | 'medium' | 'large';
+}
+
+export interface SlidingBannerContent {
+  text: string;
+  speed: 'slow' | 'medium' | 'fast';
+  backgroundColor?: string;
+  textColor?: string;
 }
 
 export interface DividerContent {
@@ -203,6 +211,7 @@ export type SectionContent =
   | CollectionContent 
   | AboutMeContent 
   | HeadlineContent 
+  | SlidingBannerContent
   | DividerContent
   | TestimonialsContent
   | FAQContent
@@ -284,6 +293,22 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
     presets: [
       { id: 'style1', name: 'Bold', styleOptions: { colorScheme: 'white', sectionHeight: 'small' } },
       { id: 'style2', name: 'Dark', styleOptions: { colorScheme: 'dark', sectionHeight: 'small' } },
+    ],
+  },
+  {
+    type: 'sliding_banner',
+    name: 'Sliding Banner',
+    description: 'Scrolling text marquee banner',
+    icon: 'MoveHorizontal',
+    category: 'content',
+    defaultContent: {
+      text: '✨ Welcome to my store! ✨ Check out my latest products ✨ Follow for updates ✨',
+      speed: 'medium',
+    } as SlidingBannerContent,
+    presets: [
+      { id: 'style1', name: 'Default', styleOptions: { colorScheme: 'white', sectionHeight: 'small' } },
+      { id: 'style2', name: 'Highlight', styleOptions: { colorScheme: 'highlight', sectionHeight: 'small' } },
+      { id: 'style3', name: 'Dark', styleOptions: { colorScheme: 'dark', sectionHeight: 'small' } },
     ],
   },
   {
