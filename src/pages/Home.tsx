@@ -13,13 +13,6 @@ import { Reveal } from '@/components/home/Reveal';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, TrendingUp, Zap } from 'lucide-react';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
 
 interface Product {
   id: string;
@@ -142,88 +135,72 @@ export default function Home() {
 
       {/* Featured Products Section */}
       <Reveal>
-        <section className="relative py-24 lg:py-32">
-          {/* Background effects */}
+        <section className="relative py-20 lg:py-28 overflow-hidden">
+          {/* Subtle background */}
           <div className="pointer-events-none absolute inset-0 -z-10">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/5 rounded-full blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-gradient-to-r from-primary/3 via-transparent to-primary/3 rounded-full blur-3xl" />
           </div>
 
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-            {/* Section Header */}
-            <div className="text-center mb-16">
-              <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
-                Featured Products
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Hand-picked tools and resources to elevate your creative workflow
-              </p>
+            {/* Minimal Section Header */}
+            <div className="flex items-end justify-between mb-10">
+              <div>
+                <p className="text-xs font-medium text-primary uppercase tracking-[0.2em] mb-2">Curated</p>
+                <h2 className="text-2xl lg:text-3xl font-semibold text-foreground">
+                  Featured Products
+                </h2>
+              </div>
+              {featuredWithStats.length > 4 && (
+                <Link 
+                  to="/products?featured=true"
+                  className="hidden sm:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+                >
+                  View all
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              )}
             </div>
 
             {loading ? (
-              <div className="flex flex-col items-center justify-center py-24">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mb-4" />
-                <p className="text-muted-foreground">Loading products...</p>
+              <div className="flex items-center justify-center py-20">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
             ) : featuredWithStats.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-20 h-20 rounded-full bg-muted/50 flex items-center justify-center mb-6">
-                  <Sparkles className="h-10 w-10 text-muted-foreground" />
-                </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">No featured products yet</h3>
-                <p className="text-muted-foreground mb-6 max-w-md">
-                  Check back soon for hand-picked creator tools and resources.
-                </p>
-                <Button onClick={() => navigate('/products')} size="lg" variant="outline">
-                  Browse All Products
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <p className="text-muted-foreground mb-4">No featured products yet</p>
+                <Button onClick={() => navigate('/products')} variant="outline" size="sm">
+                  Browse Store
                 </Button>
               </div>
             ) : (
               <>
-                {/* Featured Carousel */}
-                <div className="relative">
-                  <Carousel
-                    opts={{
-                      align: 'start',
-                      loop: featuredWithStats.length > 5,
-                    }}
-                    className="w-full"
-                  >
-                    <CarouselContent className="-ml-8">
-                      {featuredWithStats.map((product) => (
-                        <CarouselItem key={product.id} className="pl-8 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
-                          <ProductCard 
-                            product={product} 
-                            showFeaturedBadge={false} 
-                            showType={true}
-                            likeCount={product.likeCount}
-                            commentCount={product.commentCount}
-                            showEngagement={true}
-                            isHot={product.isHot}
-                            size="large"
-                            showCreator={true}
-                          />
-                        </CarouselItem>
-                      ))}
-                    </CarouselContent>
-                    
-                    {/* Navigation arrows centered below carousel */}
-                    <div className="flex items-center justify-center gap-4 mt-8">
-                      <CarouselPrevious className="static translate-x-0 translate-y-0 h-10 w-10" />
-                      <CarouselNext className="static translate-x-0 translate-y-0 h-10 w-10" />
-                    </div>
-                  </Carousel>
+                {/* Clean Grid Layout */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {featuredWithStats.slice(0, 8).map((product) => (
+                    <ProductCard 
+                      key={product.id}
+                      product={product} 
+                      showFeaturedBadge={false} 
+                      showType={true}
+                      likeCount={product.likeCount}
+                      commentCount={product.commentCount}
+                      showEngagement={true}
+                      isHot={product.isHot}
+                      size="default"
+                      showCreator={true}
+                    />
+                  ))}
                 </div>
 
-                {/* View All Button */}
-                {featuredWithStats.length > 5 && (
-                  <div className="text-center mt-12">
+                {/* Mobile View All */}
+                {featuredWithStats.length > 4 && (
+                  <div className="text-center mt-8 sm:hidden">
                     <Button 
                       onClick={() => navigate('/products?featured=true')} 
-                      size="lg"
-                      className="group"
+                      variant="outline"
+                      size="sm"
                     >
                       View All Featured
-                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </Button>
                   </div>
                 )}
