@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { User, Bell, Shield, CreditCard, LogOut, Upload, Loader2, CheckCircle, ExternalLink, RefreshCw, Link2, Plus, X } from "lucide-react";
+import { User, Bell, Shield, CreditCard, LogOut, Upload, Loader2, CheckCircle, ExternalLink, RefreshCw, Link2, Plus, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,6 +15,25 @@ import { AvatarCropper } from "@/components/ui/avatar-cropper";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 // Social platform detection
 const detectSocialPlatform = (url: string): { platform: string; icon: React.ReactNode } | null => {
@@ -73,7 +92,7 @@ interface SocialLink {
 }
 
 export default function Settings() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
@@ -111,6 +130,16 @@ export default function Settings() {
   // Account Type
   const [isSeller, setIsSeller] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
+  
+  // Security
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
+  const [show2FADialog, setShow2FADialog] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [switchingAccountType, setSwitchingAccountType] = useState(false);
 
   // Handle Stripe return URLs
@@ -157,7 +186,7 @@ export default function Settings() {
         setStripeOnboardingComplete(data.stripe_onboarding_complete || false);
         setIsSeller((data as Record<string, unknown>).is_seller as boolean || false);
         setProfileId(data.id);
-        
+        setMfaEnabled(data.mfa_enabled || false);
         
         // Load social links
         if (data.social_links && typeof data.social_links === 'object') {
@@ -218,6 +247,149 @@ export default function Settings() {
       toast.error('Failed to switch account type.');
     } finally {
       setSwitchingAccountType(false);
+    }
+  };
+
+  const handleSwitchToSeller = async () => {
+    if (!profileId) return;
+    setSwitchingAccountType(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_seller: true })
+        .eq('id', profileId);
+      
+      if (error) throw error;
+      
+      setIsSeller(true);
+      toast.success('Your account is now a seller account. You can create products!');
+    } catch (error) {
+      console.error('Error switching to seller:', error);
+      toast.error('Failed to switch account type.');
+    } finally {
+      setSwitchingAccountType(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!user?.email) return;
+    
+    setSendingPasswordReset(true);
+    try {
+      const { error } = await resetPassword(user.email);
+      if (error) throw error;
+      toast.success('Password reset email sent! Check your inbox.');
+    } catch (error) {
+      console.error('Error sending password reset:', error);
+      toast.error('Failed to send password reset email.');
+    } finally {
+      setSendingPasswordReset(false);
+    }
+  };
+
+  const handleToggle2FA = async () => {
+    if (mfaEnabled) {
+      // Disable 2FA
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ mfa_enabled: false })
+          .eq('id', profileId);
+        
+        if (error) throw error;
+        
+        setMfaEnabled(false);
+        toast.success('Two-factor authentication disabled.');
+      } catch (error) {
+        console.error('Error disabling 2FA:', error);
+        toast.error('Failed to disable 2FA.');
+      }
+    } else {
+      // Start 2FA enable flow - send OTP first
+      setShow2FADialog(true);
+      setOtpSent(false);
+      setOtpCode("");
+    }
+  };
+
+  const handleSendOtpFor2FA = async () => {
+    if (!user?.email) return;
+    
+    setSendingOtp(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-verification-otp", {
+        body: { email: user.email }
+      });
+      
+      if (error) throw error;
+      
+      setOtpSent(true);
+      toast.success('Verification code sent to your email.');
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      toast.error('Failed to send verification code.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerify2FA = async () => {
+    if (!user?.id || !otpCode || otpCode.length !== 6) return;
+    
+    setVerifyingOtp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
+        body: { user_id: user.id, code: otpCode }
+      });
+      
+      if (error || !data?.valid) {
+        throw new Error(data?.error || 'Invalid verification code');
+      }
+      
+      // Enable 2FA in profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ mfa_enabled: true })
+        .eq('id', profileId);
+      
+      if (updateError) throw updateError;
+      
+      setMfaEnabled(true);
+      setShow2FADialog(false);
+      setOtpCode("");
+      setOtpSent(false);
+      toast.success('Two-factor authentication enabled!');
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      const message = error instanceof Error ? error.message : 'Failed to verify code.';
+      toast.error(message);
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    
+    setDeletingAccount(true);
+    try {
+      // Delete profile (cascades to related data)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', user.id);
+      
+      if (profileError) throw profileError;
+      
+      // Sign out
+      await signOut();
+      toast.success('Your account has been deleted.');
+      navigate('/');
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast.error('Failed to delete account. Please contact support.');
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -793,19 +965,41 @@ export default function Settings() {
               <div>
                 <h3 className="font-medium mb-2">Change Password</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Update your password to keep your account secure.
+                  We'll send a password reset link to your email address.
                 </p>
-                <Button variant="outline">Change Password</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleChangePassword}
+                  disabled={sendingPasswordReset}
+                >
+                  {sendingPasswordReset && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {sendingPasswordReset ? 'Sending...' : 'Change Password'}
+                </Button>
               </div>
 
               <Separator />
 
               <div>
-                <h3 className="font-medium mb-2">Two-Factor Authentication</h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium">Two-Factor Authentication</h3>
+                  {mfaEnabled && (
+                    <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Enabled
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Add an extra layer of security to your account.
+                  {mfaEnabled 
+                    ? 'Your account is protected with two-factor authentication.'
+                    : 'Add an extra layer of security to your account.'}
                 </p>
-                <Button variant="outline">Enable 2FA</Button>
+                <Button 
+                  variant={mfaEnabled ? "outline" : "default"} 
+                  onClick={handleToggle2FA}
+                >
+                  {mfaEnabled ? 'Disable 2FA' : 'Enable 2FA'}
+                </Button>
               </div>
 
               <Separator />
@@ -824,34 +1018,148 @@ export default function Settings() {
                         : 'You can purchase and save products.'}
                     </p>
                   </div>
-                  {isSeller && (
+                  {isSeller ? (
                     <Button 
                       variant="outline" 
                       onClick={handleSwitchToBuyer}
                       disabled={switchingAccountType}
                     >
-                      {switchingAccountType ? 'Switching...' : 'Switch to Buyer'}
+                      {switchingAccountType ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Switching...</>
+                      ) : (
+                        'Switch to Buyer'
+                      )}
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="default" 
+                      onClick={handleSwitchToSeller}
+                      disabled={switchingAccountType}
+                    >
+                      {switchingAccountType ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Switching...</>
+                      ) : (
+                        'Become a Seller'
+                      )}
                     </Button>
                   )}
                 </div>
-                {isSeller && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Switching to a buyer account will hide your store tab. Your products will remain but won't be visible until you switch back.
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground mt-2">
+                  {isSeller 
+                    ? 'Switching to a buyer account will hide your store tab. Your products will remain but won\'t be visible until you switch back.'
+                    : 'Becoming a seller lets you create and sell products on the platform.'}
+                </p>
               </div>
 
               <Separator />
 
               <div>
-                <h3 className="font-medium mb-2 text-destructive">Danger Zone</h3>
+                <h3 className="font-medium mb-2 text-destructive flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Danger Zone
+                </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Permanently delete your account and all associated data.
+                  Permanently delete your account and all associated data. This action cannot be undone.
                 </p>
-                <Button variant="destructive">Delete Account</Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">Delete Account</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your
+                        account and remove all your data including products, purchases,
+                        and profile information from our servers.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDeleteAccount}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        disabled={deletingAccount}
+                      >
+                        {deletingAccount ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</>
+                        ) : (
+                          'Delete Account'
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </CardContent>
           </Card>
+
+          {/* 2FA Dialog */}
+          <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
+                <DialogDescription>
+                  {otpSent 
+                    ? 'Enter the 6-digit code sent to your email to enable 2FA.'
+                    : 'We\'ll send a verification code to your email to confirm your identity.'}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                {!otpSent ? (
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      A verification code will be sent to: <span className="font-medium text-foreground">{user?.email}</span>
+                    </p>
+                    <Button onClick={handleSendOtpFor2FA} disabled={sendingOtp}>
+                      {sendingOtp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      {sendingOtp ? 'Sending...' : 'Send Verification Code'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex justify-center">
+                      <InputOTP 
+                        value={otpCode} 
+                        onChange={setOtpCode} 
+                        maxLength={6}
+                      >
+                        <InputOTPGroup>
+                          <InputOTPSlot index={0} />
+                          <InputOTPSlot index={1} />
+                          <InputOTPSlot index={2} />
+                          <InputOTPSlot index={3} />
+                          <InputOTPSlot index={4} />
+                          <InputOTPSlot index={5} />
+                        </InputOTPGroup>
+                      </InputOTP>
+                    </div>
+                    
+                    <div className="flex flex-col gap-2">
+                      <Button 
+                        onClick={handleVerify2FA} 
+                        disabled={verifyingOtp || otpCode.length !== 6}
+                        className="w-full"
+                      >
+                        {verifyingOtp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        {verifyingOtp ? 'Verifying...' : 'Enable 2FA'}
+                      </Button>
+                      
+                      <Button 
+                        variant="ghost" 
+                        onClick={handleSendOtpFor2FA} 
+                        disabled={sendingOtp}
+                        className="text-sm"
+                      >
+                        {sendingOtp ? 'Sending...' : 'Resend Code'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Billing Tab */}
