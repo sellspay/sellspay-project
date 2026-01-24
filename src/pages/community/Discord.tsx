@@ -220,56 +220,162 @@ export default function Discord() {
         </div>
       </section>
 
-      {/* Benefits Grid - Premium Cards */}
-      <section className="relative py-24 px-4 sm:px-6 lg:px-8">
-        {/* Background Effects */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-[#5865F2]/5 to-background" />
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-96 h-96 bg-[#5865F2]/10 rounded-full blur-[128px]" />
-        <div className="absolute right-0 top-1/3 w-80 h-80 bg-violet-500/10 rounded-full blur-[100px]" />
+      {/* Benefits Grid - $5 MILLION PREMIUM SECTION */}
+      <section className="relative py-32 lg:py-40 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Ultimate Premium Background System */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_100%_100%_at_50%_50%,rgba(88,101,242,0.15),transparent_70%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
+        
+        {/* Dramatic Floating Orbs */}
+        <div className="absolute left-1/4 top-1/4 w-[600px] h-[600px] bg-[#5865F2]/20 rounded-full blur-[200px] animate-pulse" style={{ animationDuration: '4s' }} />
+        <div className="absolute right-1/4 bottom-1/4 w-[500px] h-[500px] bg-violet-600/15 rounded-full blur-[180px] animate-pulse" style={{ animationDuration: '5s', animationDelay: '1s' }} />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[250px]" />
+        
+        {/* Animated Particles/Stars Effect */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(20)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-white/40 rounded-full animate-pulse"
+              style={{
+                left: `${10 + (i * 17) % 80}%`,
+                top: `${15 + (i * 23) % 70}%`,
+                animationDelay: `${i * 0.3}s`,
+                animationDuration: `${2 + (i % 3)}s`,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Premium Grid Pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(88,101,242,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(88,101,242,0.02)_1px,transparent_1px)] bg-[size:80px_80px]" />
+        
+        {/* Glowing Top Border */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px bg-gradient-to-r from-transparent via-[#5865F2]/50 to-transparent" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-[2px] bg-gradient-to-r from-transparent via-[#5865F2] to-transparent blur-sm" />
 
         <div className="relative mx-auto max-w-7xl">
+          {/* Header Section - Ultra Premium */}
           <Reveal>
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#5865F2]/10 border border-[#5865F2]/20 mb-6">
-                <Crown className="h-4 w-4 text-[#5865F2]" />
-                <span className="text-sm font-medium text-[#5865F2]">Exclusive Benefits</span>
+            <div className="text-center mb-20 lg:mb-28">
+              {/* Animated Badge */}
+              <div className="relative inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-[#5865F2]/20 via-violet-500/20 to-[#5865F2]/20 border border-[#5865F2]/30 backdrop-blur-xl mb-8 group hover:border-[#5865F2]/50 transition-all duration-500 cursor-default overflow-hidden">
+                {/* Shine Effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-[#5865F2] to-violet-600 shadow-lg shadow-[#5865F2]/30">
+                  <Crown className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-sm font-semibold bg-gradient-to-r from-[#5865F2] via-violet-400 to-[#5865F2] bg-clip-text text-transparent tracking-wide uppercase">
+                  Exclusive Benefits
+                </span>
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-lg shadow-emerald-400/50" />
               </div>
-              <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-5">
-                Why Join Our Community?
+
+              {/* Main Headline with Gradient */}
+              <h2 className="relative text-5xl sm:text-6xl lg:text-7xl font-bold mb-8 tracking-tight">
+                <span className="text-foreground">Why Join </span>
+                <span className="relative inline-block">
+                  <span className="bg-gradient-to-r from-[#5865F2] via-violet-400 to-purple-400 bg-clip-text text-transparent">
+                    Our Community
+                  </span>
+                  {/* Underline Glow */}
+                  <div className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#5865F2] to-transparent rounded-full" />
+                  <div className="absolute -bottom-2 left-1/4 right-1/4 h-1 bg-[#5865F2] blur-md rounded-full" />
+                </span>
+                <span className="text-foreground">?</span>
               </h2>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                More than just a chat server — it's your creative home base.
+
+              {/* Subheadline */}
+              <p className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+                More than just a chat server — 
+                <span className="text-foreground font-medium"> it's your creative home base </span>
+                where dreams become reality.
               </p>
+
+              {/* Trust Indicators */}
+              <div className="flex items-center justify-center gap-6 mt-10">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <span>24/7 Active</span>
+                </div>
+                <div className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Heart className="h-4 w-4 text-rose-400" />
+                  <span>10,000+ Creators</span>
+                </div>
+                <div className="w-1 h-1 rounded-full bg-muted-foreground/30 hidden sm:block" />
+                <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+                  <Trophy className="h-4 w-4 text-amber-400" />
+                  <span>Top 1% Community</span>
+                </div>
+              </div>
             </div>
           </Reveal>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Benefits Cards - Staggered Premium Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {benefits.map((benefit, index) => (
-              <Reveal key={benefit.title} delay={index * 80}>
+              <Reveal key={benefit.title} delay={index * 100}>
                 <div className="group relative h-full">
-                  {/* Card Glow */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${benefit.gradient} rounded-3xl blur-xl opacity-0 group-hover:opacity-20 transition-all duration-500`} />
+                  {/* Multi-layer Glow System */}
+                  <div className={`absolute -inset-1 bg-gradient-to-br ${benefit.gradient} rounded-[28px] blur-2xl opacity-0 group-hover:opacity-30 transition-all duration-700`} />
+                  <div className={`absolute -inset-0.5 bg-gradient-to-br ${benefit.gradient} rounded-[26px] opacity-0 group-hover:opacity-20 transition-all duration-500`} />
                   
-                  <div className="relative h-full bg-gradient-to-br from-card/90 to-card/50 backdrop-blur-xl border border-border/50 rounded-3xl p-8 hover:border-[#5865F2]/30 transition-all duration-500 group-hover:-translate-y-2 overflow-hidden">
-                    {/* Subtle Gradient Overlay */}
-                    <div className={`absolute inset-0 bg-gradient-to-br ${benefit.gradient} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500`} />
+                  {/* Main Card */}
+                  <div className="relative h-full bg-gradient-to-br from-card/95 via-card/80 to-card/60 backdrop-blur-2xl border border-border/50 rounded-3xl p-8 lg:p-10 transition-all duration-500 group-hover:-translate-y-3 group-hover:border-[#5865F2]/40 group-hover:shadow-2xl group-hover:shadow-[#5865F2]/10 overflow-hidden">
+                    {/* Interior Gradient Overlay */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${benefit.gradient} opacity-0 group-hover:opacity-[0.04] transition-opacity duration-700`} />
                     
-                    {/* Icon */}
-                    <div className={`relative inline-flex p-4 rounded-2xl bg-gradient-to-br ${benefit.gradient} mb-6 shadow-lg`}>
-                      <benefit.icon className="h-7 w-7 text-white" />
+                    {/* Animated Corner Accent */}
+                    <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${benefit.gradient} opacity-5 rounded-bl-[80px] group-hover:opacity-10 transition-opacity duration-500`} />
+                    
+                    {/* Icon Container with Premium Styling */}
+                    <div className="relative mb-8">
+                      {/* Icon Glow */}
+                      <div className={`absolute -inset-2 bg-gradient-to-br ${benefit.gradient} rounded-2xl blur-xl opacity-40 group-hover:opacity-60 transition-opacity duration-500`} />
+                      
+                      <div className={`relative inline-flex p-5 rounded-2xl bg-gradient-to-br ${benefit.gradient} shadow-xl group-hover:shadow-2xl group-hover:scale-110 transition-all duration-500`}>
+                        <benefit.icon className="h-8 w-8 text-white drop-shadow-lg" />
+                      </div>
                     </div>
                     
-                    <h3 className="relative text-xl font-bold text-foreground mb-3">
+                    {/* Content */}
+                    <h3 className="relative text-2xl font-bold text-foreground mb-4 group-hover:text-foreground transition-colors">
                       {benefit.title}
                     </h3>
-                    <p className="relative text-muted-foreground leading-relaxed">
+                    <p className="relative text-muted-foreground leading-relaxed text-base lg:text-lg">
                       {benefit.description}
                     </p>
+
+                    {/* Bottom Accent Line */}
+                    <div className={`absolute bottom-0 left-8 right-8 h-0.5 bg-gradient-to-r ${benefit.gradient} opacity-0 group-hover:opacity-40 transition-all duration-500 rounded-full`} />
                   </div>
                 </div>
               </Reveal>
             ))}
           </div>
+
+          {/* Bottom CTA within Benefits */}
+          <Reveal delay={700}>
+            <div className="mt-20 text-center">
+              <Button 
+                size="lg" 
+                className="group relative bg-gradient-to-r from-[#5865F2] to-violet-600 hover:from-[#4752C4] hover:to-violet-700 text-white px-12 py-8 text-lg font-semibold rounded-2xl shadow-2xl shadow-[#5865F2]/30 hover:shadow-[#5865F2]/50 transition-all duration-500 hover:scale-105 overflow-hidden"
+                asChild
+              >
+                <a href={DISCORD_LINK} target="_blank" rel="noopener noreferrer">
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                  <Sparkles className="mr-3 h-5 w-5" />
+                  Unlock All Benefits Now
+                  <ArrowRight className="ml-3 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </a>
+              </Button>
+              <p className="mt-6 text-sm text-muted-foreground flex items-center justify-center gap-2">
+                <CheckCircle className="h-4 w-4 text-emerald-400" />
+                Join 10,000+ creators • 100% free • No spam
+              </p>
+            </div>
+          </Reveal>
         </div>
       </section>
 
