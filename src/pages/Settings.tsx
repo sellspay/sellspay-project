@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { SellerEmailSettings } from "@/components/settings/SellerEmailSettings";
+import { PayoutMethodSelector } from "@/components/settings/PayoutMethodSelector";
 
 // Social platform detection
 const detectSocialPlatform = (url: string): { platform: string; icon: React.ReactNode } | null => {
@@ -1400,81 +1401,19 @@ export default function Settings() {
             <CardHeader>
               <CardTitle>Billing & Payments</CardTitle>
               <CardDescription>
-                Manage your Stripe account to receive payments for your products.
+                Manage your payout methods to receive payments for your products and services.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Stripe Connect Status */}
-              <div className={`p-6 rounded-lg border ${stripeOnboardingComplete ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-gradient-to-br from-primary/20 to-accent/20 border-primary/30'}`}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-medium">Stripe Connect</h3>
-                      {stripeOnboardingComplete ? (
-                        <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Connected
-                        </Badge>
-                      ) : stripeAccountId ? (
-                        <Badge variant="secondary" className="bg-amber-500/20 text-amber-400">
-                          Pending
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {stripeOnboardingComplete 
-                        ? "Your Stripe account is connected. You can receive payments for your products."
-                        : stripeAccountId
-                        ? "Your Stripe account setup is incomplete. Please complete onboarding to receive payments."
-                        : "Connect your Stripe account to receive payments for your products. We take a 5% platform fee on each sale."
-                      }
-                    </p>
-                  </div>
-                </div>
-                
-                {stripeOnboardingComplete ? (
-                  <Button variant="outline" onClick={handleConnectStripe} disabled={connectingStripe}>
-                    {connectingStripe ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                    )}
-                    Manage Stripe Account
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button 
-                      className="bg-gradient-to-r from-primary to-accent"
-                      onClick={handleConnectStripe}
-                      disabled={connectingStripe}
-                    >
-                      {connectingStripe ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Connecting...
-                        </>
-                      ) : stripeAccountId ? (
-                        "Complete Onboarding"
-                      ) : (
-                        "Connect Stripe Account"
-                      )}
-                    </Button>
-                    {stripeAccountId && (
-                      <Button 
-                        variant="outline"
-                        onClick={checkStripeStatus}
-                        disabled={checkingStripeStatus}
-                      >
-                        {checkingStripeStatus ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-4 h-4" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
+              {/* Payout Method Selector */}
+              <PayoutMethodSelector
+                stripeConnected={!!stripeAccountId}
+                stripeOnboardingComplete={stripeOnboardingComplete}
+                onConnectStripe={handleConnectStripe}
+                connectingStripe={connectingStripe}
+                checkingStripeStatus={checkingStripeStatus}
+                onCheckStripeStatus={checkStripeStatus}
+              />
 
               <Separator />
 

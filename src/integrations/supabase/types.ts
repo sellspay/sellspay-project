@@ -820,8 +820,12 @@ export type Database = {
           is_seller: boolean | null
           last_username_changed_at: string | null
           mfa_enabled: boolean | null
+          payoneer_email: string | null
+          payoneer_payee_id: string | null
+          payoneer_status: string | null
           pending_email: string | null
           phone: string | null
+          preferred_payout_method: string | null
           previous_username: string | null
           previous_username_available_at: string | null
           resend_vault_secret_id: string | null
@@ -863,8 +867,12 @@ export type Database = {
           is_seller?: boolean | null
           last_username_changed_at?: string | null
           mfa_enabled?: boolean | null
+          payoneer_email?: string | null
+          payoneer_payee_id?: string | null
+          payoneer_status?: string | null
           pending_email?: string | null
           phone?: string | null
+          preferred_payout_method?: string | null
           previous_username?: string | null
           previous_username_available_at?: string | null
           resend_vault_secret_id?: string | null
@@ -906,8 +914,12 @@ export type Database = {
           is_seller?: boolean | null
           last_username_changed_at?: string | null
           mfa_enabled?: boolean | null
+          payoneer_email?: string | null
+          payoneer_payee_id?: string | null
+          payoneer_status?: string | null
           pending_email?: string | null
           phone?: string | null
+          preferred_payout_method?: string | null
           previous_username?: string | null
           previous_username_available_at?: string | null
           resend_vault_secret_id?: string | null
