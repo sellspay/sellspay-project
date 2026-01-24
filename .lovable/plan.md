@@ -1,292 +1,223 @@
 
-# Plan: Fix Profile Editor Section Types & Expand Functionality
+# Plan: Fix Visual Editor Previews to Match Section Menu Thumbnails
 
-## Issues Identified
+## Problem Summary
+The visual editor previews in the Edit Section Dialog don't match the visual representation shown in the Add Section menu. This creates a confusing user experience where:
 
-### 1. Image Position Setting in Wrong Element
-**Problem**: `ImageWithTextEditor` shows "Image Position" (left/right) even for layouts like Hero Banner where it doesn't apply.
-**Fix**: Only show image position for `side-by-side` layout, hide for `hero` and `overlay`.
+1. **Gallery Masonry** shows a simple 3x2 grid instead of the actual masonry layout (one large image spanning 2 rows on the left, smaller images stacked on the right)
+2. **Multiple section types** have basic/generic previews that don't reflect the chosen preset style
+3. **Some sections** show duplicated content or don't render their actual layout
 
-### 2. Gallery Layouts Not Working
-**Problem**: Gallery presets (3x2, 2x3, Masonry) should show empty placeholders for the expected number of images.
-- 3x2 Grid = 6 image slots (3 columns x 2 rows)
-- 2x3 Grid = 6 image slots (2 columns x 3 rows)  
-- Masonry = Variable grid layout with placeholders
+## Root Cause
+The `EditablePreview.tsx` component doesn't account for the `style_options.preset` value when rendering previews, while `AddSectionPanel.tsx` shows accurate stylized thumbnails for each preset.
 
-**Fix**: Update `GalleryPreview` and `GalleryEditablePreview` to show placeholders based on preset layout.
-
-### 3. Slideshow Limited to 3 Slides
-**Problem**: Slideshow currently allows unlimited slides.
-**Fix**: Limit slideshow to max 3 slides.
-
-### 4. New Slideshow Elements Needed
-- **Card Slideshow**: Carousel of cards
-- **Banner Slideshow**: Full-width banner carousel
-
-### 5. Collection Display Styles Not Working
-**Problem**: "Product Grid" and "Product Slider" styles in `CollectionPreview` both show same grid.
-**Fix**: Render actual grid vs horizontal slider based on `displayStyle`.
-
-### 6. Testimonials Incomplete
-**Problem**: 
-- Missing star ratings
-- Missing profile picture upload in editor
-- Missing editable description
-- Missing slideshow variant
-- Missing 6x1 card grid
-
-**Fix**: 
-- Add `rating` (1-5) field to `TestimonialItem`
-- Add avatar upload in editor
-- Add slideshow layout option
-- Add 6x1 cards preset
-
-### 7. Logo List Not Working
-**Problem**: No editor to add logos.
-**Fix**: Add logo upload/management in `EditSectionDialog`.
-
-### 8. Newsletter Not Working/Looking Right
-**Problem**: Missing proper editor controls and styling.
-**Fix**: Add editable preview for newsletter fields + proper styling.
-
-### 9. FAQ Missing "Add Line" Feature
-**Problem**: No way to add FAQ items, max 6 limit needed.
-**Fix**: 
-- Add "Add FAQ" button with max 6 items
-- Add 3x2 layout preset (3 left, 3 right)
-
-### 10. Contact Element Incomplete
-**Problem**: Only one style, missing editor controls.
-**Fix**: Add more contact style presets and proper editor.
-
-### 11. Divider Missing Styles
-**Problem**: Only line, space, dots available.
-**Fix**: Add more divider styles (thick line, gradient, wave, etc.)
-
-### 12. Footer Elements Not Working
-**Problem**: No editor to manage footer columns, links, social links.
-**Fix**: Add full footer editor with column/link management.
-
----
-
-## Implementation Plan
-
-### Phase 1: Fix Existing Editors
-
-#### 1.1 ImageWithTextEditor Fix
-**File**: `src/components/profile-editor/EditSectionDialog.tsx`
-- Conditionally show "Image Position" only when layout is `side-by-side`
-- Pass the section's `style_options.preset` or detected layout to determine visibility
-
-#### 1.2 Gallery Editor Fix  
-**Files**: 
-- `src/components/profile-editor/types.ts` - Add `rows` field to `GalleryContent`
-- `src/components/profile-editor/EditSectionDialog.tsx` - Show placeholder grid
-- `src/components/profile-editor/previews/EditablePreview.tsx` - Show placeholder slots
-
-```text
-+---+ +---+ +---+
-| 1 | | 2 | | 3 |
-+---+ +---+ +---+
-+---+ +---+ +---+
-| 4 | | 5 | | 6 |
-+---+ +---+ +---+
-```
-
-#### 1.3 Collection Preview Fix
-**File**: `src/components/profile-editor/previews/SectionPreviewContent.tsx`
-- Grid: Show 2x2 or 4-up grid
-- Slider: Show horizontal scroll container with cards
-
----
-
-### Phase 2: Expand Section Editors
-
-#### 2.1 Slideshow Editor
-**Files**: `EditSectionDialog.tsx`, `EditablePreview.tsx`
-- Add slide management (max 3 slides)
-- Image upload per slide
-- Caption editing
-
-#### 2.2 Testimonials Editor
-**Files**: 
-- `types.ts` - Add `rating?: 1|2|3|4|5` to `TestimonialItem`
-- `EditSectionDialog.tsx` - Add testimonial management:
-  - Avatar upload
-  - Name input  
-  - Role input
-  - Quote textarea
-  - Star rating selector (1-5)
-  - Add/remove testimonials
-- `SectionPreviewContent.tsx` - Render star ratings
-- Add presets for slideshow and 6x1 grid
-
-#### 2.3 Logo List Editor
-**File**: `EditSectionDialog.tsx`
-- Add logo upload
-- Logo alt text
-- Optional link URL
-- Remove logo button
-
-#### 2.4 Newsletter Editor  
-**File**: `EditSectionDialog.tsx`, `EditablePreview.tsx`
-- Inline edit for title, subtitle, button text, placeholder
-- Proper styled preview
-
-#### 2.5 FAQ Editor
-**Files**: 
-- `types.ts` - Add `layout?: 'accordion' | 'grid'` to `FAQContent`
-- `EditSectionDialog.tsx`:
-  - "Add FAQ" button (max 6)
-  - Question input
-  - Answer textarea  
-  - Remove item button
-- Add 3x2 grid layout preset
-
-#### 2.6 Contact Editor
-**File**: `EditSectionDialog.tsx`
-- Title/subtitle inline edit
-- Email input
-- Toggle: Show form vs email only
-- Toggle: Show social links
-- Add more style presets
-
-#### 2.7 Divider Editor
-**Files**:
-- `types.ts` - Expand `DividerContent.style` to include more styles
-- `EditSectionDialog.tsx` - Add style dropdown
-- `SectionPreviewContent.tsx` - Render new styles
-
-New styles:
-- `line` (existing)
-- `space` (existing)  
-- `dots` (existing)
-- `thick` - Thick line
-- `gradient` - Gradient line
-- `zigzag` - Zigzag pattern
-- `wave` - Wave pattern
-
-#### 2.8 Footer Editor
-**File**: `EditSectionDialog.tsx`
-- Copyright text (inline editable)
-- Toggle: Show social links
-- Column management:
-  - Add/remove columns (max 4)
-  - Column title
-  - Add/remove links per column
-  - Link label + URL
-
----
-
-### Phase 3: Add New Section Types
-
-#### 3.1 Card Slideshow (`card_slideshow`)
-**Files**:
-- `types.ts` - Add `CardSlideshowContent` type
-- `SECTION_TEMPLATES` - Add template
-- `SectionPreviewContent.tsx` - Add preview
-- `EditablePreview.tsx` - Add editable preview
-- `EditSectionDialog.tsx` - Add editor
-
-#### 3.2 Banner Slideshow (`banner_slideshow`)
-**Files**: Same as above for banner carousel variant
+## Solution
+Update `EditablePreview.tsx` to render accurate visual representations that match each preset, using the same layout logic as the thumbnails in `AddSectionPanel.tsx`.
 
 ---
 
 ## Files to Modify
 
-1. `src/components/profile-editor/types.ts`
-   - Add `rating` to `TestimonialItem`
-   - Add `rows` to `GalleryContent`
-   - Expand `DividerContent.style`
-   - Add `layout` to `FAQContent`
-   - Add `CardSlideshowContent` and `BannerSlideshowContent` types
-   - Update `SECTION_TEMPLATES` with new presets
-
-2. `src/components/profile-editor/EditSectionDialog.tsx`
-   - Fix `ImageWithTextEditor` to conditionally show image position
-   - Add `GalleryEditor` placeholder grid
-   - Add `SlideshowEditor` with 3-slide limit
-   - Add `TestimonialsEditor` with avatar upload, star rating
-   - Add `LogoListEditor` with logo management
-   - Add `NewsletterEditor` 
-   - Add `FAQEditor` with add/remove items (max 6)
-   - Add `ContactUsEditor`
-   - Expand `DividerEditor` with more styles
-   - Add `FooterEditor` with column/link management
-
-3. `src/components/profile-editor/previews/EditablePreview.tsx`
-   - Add editable previews for: Slideshow, Testimonials, Newsletter, FAQ, Contact, Footer, Logo List
-
-4. `src/components/profile-editor/previews/SectionPreviewContent.tsx`
-   - Fix `CollectionPreview` to show grid vs slider
-   - Fix `GalleryPreview` to show placeholder slots
-   - Add star ratings to `TestimonialsPreview`
-   - Add new divider style renders
-   - Add card/banner slideshow previews
+1. **`src/components/profile-editor/previews/EditablePreview.tsx`** - Complete overhaul of all preview components
 
 ---
 
-## Technical Details
+## Detailed Changes by Section Type
 
-### Gallery Placeholder Logic
-```typescript
-// Calculate total slots based on preset
-const getSlotCount = (columns: number, preset: string) => {
-  if (preset === 'style1') return 6; // 3x2
-  if (preset === 'style2') return 6; // 2x3  
-  return columns * 2; // Default 2 rows
-};
+### 1. Gallery (`GalleryEditablePreview`)
+**Current Issue**: Shows simple grid regardless of preset
+**Fix**: Implement actual masonry layout for `style3` preset
 
-// Render empty slots when images < slotCount
-const slots = Array.from({ length: slotCount }, (_, i) => images[i] || null);
+```text
+MASONRY LAYOUT (style3):
++-------+---+---+
+|       | 2 | 3 |
+| 1     +---+---+
+|       |   4   |
++-------+-------+
+
+3x2 GRID (style1):
++---+---+---+
+| 1 | 2 | 3 |
++---+---+---+
+| 4 | 5 | 6 |
++---+---+---+
+
+2x3 GRID (style2):
++---+---+
+| 1 | 2 |
++---+---+
+| 3 | 4 |
++---+---+
+| 5 | 6 |
++---+---+
 ```
 
-### Star Rating Component
-```typescript
-const StarRating = ({ rating, onChange }: { rating: number; onChange?: (r: number) => void }) => (
-  <div className="flex gap-1">
-    {[1, 2, 3, 4, 5].map((star) => (
-      <Star
-        key={star}
-        className={cn(
-          "w-4 h-4",
-          star <= rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"
-        )}
-        onClick={() => onChange?.(star)}
-      />
-    ))}
-  </div>
-);
-```
+### 2. Collection (`CollectionEditablePreview`)
+**Current Issue**: Falls to default case, no preview
+**Fix**: Add proper preview showing grid vs slider based on `displayStyle`
 
-### FAQ Add Item (Max 6)
+- **Grid**: Show 2x2 product card placeholders
+- **Slider**: Show horizontal row with scroll arrows
+
+### 3. Testimonials (`TestimonialsEditablePreview`)
+**Current Issue**: Only shows 2 items in a grid regardless of layout preset
+**Fix**: Respect layout setting
+
+- **grid**: 2-3 column grid
+- **slider**: Single card with nav arrows
+- **stacked**: Full-width stacked cards
+- **grid-6**: 6 items in a row
+
+### 4. FAQ (`FAQEditablePreview`)
+**Current Issue**: Falls to default case, no preview
+**Fix**: Add proper preview
+
+- **accordion**: Show expandable accordion items
+- **grid**: Show 3x2 grid of FAQ cards
+
+### 5. Logo List (`LogoListEditablePreview`)
+**Current Issue**: Falls to default case, no preview
+**Fix**: Show row of logos with grayscale effect if enabled
+
+### 6. Footer (`FooterEditablePreview`)
+**Current Issue**: Falls to default case, no preview
+**Fix**: Show footer layout with columns and copyright text
+
+### 7. About Me (`AboutMeEditablePreview`)
+**Current Issue**: Falls to default case, no preview
+**Fix**: Add proper preview with avatar and editable text
+
+### 8. Sliding Banner (`SlidingBannerEditablePreview`)
+**Current Issue**: Falls to default case, no preview
+**Fix**: Show animated marquee preview with editable text
+
+### 9. Slideshow (`SlideshowEditablePreview`)
+**Current Issue**: Falls to default case, no preview
+**Fix**: Show current slide with navigation dots
+
+### 10. Basic List (`BasicListEditablePreview`)
+**Current Issue**: Falls to default case, no preview
+**Fix**: Respect layout setting
+
+- **cards-3col**: 3 column card grid
+- **cards-2col**: 2 column card grid
+- **horizontal**: List items with icons
+- **simple**: Standard bullet/numbered list
+
+### 11. Featured Product (`FeaturedProductEditablePreview`)
+**Current Issue**: Falls to default case, no preview
+**Fix**: Show product card preview
+
+### 12. Card Slideshow (`CardSlideshowEditablePreview`)
+**Current Issue**: Falls to default case, no preview
+**Fix**: Show carousel of content cards
+
+### 13. Banner Slideshow (`BannerSlideshowEditablePreview`)
+**Current Issue**: Falls to default case, no preview
+**Fix**: Show full-width banner with navigation
+
+### 14. Contact (`ContactEditablePreview`)
+**Current Issue**: Basic centered layout only
+**Fix**: Respect style setting
+
+- **centered**: Current layout
+- **split**: Two-column layout
+- **minimal**: Just email/social
+- **card**: Card container style
+
+---
+
+## Technical Implementation
+
+### Gallery Masonry Implementation
 ```typescript
-const addFAQItem = () => {
-  if (content.items.length >= 6) {
-    toast.error("Maximum 6 FAQ items allowed");
-    return;
+function GalleryEditablePreview({ content, section }: Props) {
+  const preset = section.style_options?.preset;
+  const layout = content.layout || 'grid';
+  
+  // Masonry specific layout
+  if (preset === 'style3' || layout === 'masonry') {
+    return (
+      <div className="grid grid-cols-3 gap-2 aspect-video">
+        {/* Slot 1: Large image spanning 2 rows */}
+        <div className="row-span-2 bg-muted rounded-lg">
+          {slots[0]?.url ? <img ... /> : <Placeholder>1</Placeholder>}
+        </div>
+        {/* Slots 2-3: Top right */}
+        <div className="bg-muted rounded-lg">...</div>
+        <div className="bg-muted rounded-lg">...</div>
+        {/* Slot 4: Bottom right, spanning 2 columns */}
+        <div className="col-span-2 bg-muted rounded-lg">...</div>
+      </div>
+    );
   }
-  onChange({
-    items: [...content.items, { id: crypto.randomUUID(), question: '', answer: '' }]
-  });
-};
+  
+  // 2x3 grid
+  if (preset === 'style2') {
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {slots.slice(0, 6).map(...)}
+      </div>
+    );
+  }
+  
+  // Default 3x2 grid
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {slots.slice(0, 6).map(...)}
+    </div>
+  );
+}
+```
+
+### Collection Preview Implementation
+```typescript
+function CollectionEditablePreview({ content }: Props) {
+  if (content.displayStyle === 'slider') {
+    return (
+      <div className="relative">
+        <div className="flex gap-2 overflow-hidden">
+          {[1,2,3].map(i => (
+            <div className="w-1/3 shrink-0 bg-muted rounded-lg aspect-square" />
+          ))}
+        </div>
+        <ChevronLeft className="absolute left-0 top-1/2 ..." />
+        <ChevronRight className="absolute right-0 top-1/2 ..." />
+      </div>
+    );
+  }
+  
+  // Grid layout
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+      {[1,2,3,4].map(i => (
+        <div className="bg-muted rounded-lg aspect-square" />
+      ))}
+    </div>
+  );
+}
 ```
 
 ---
 
-## Summary
+## Summary of Changes
 
-This plan addresses all reported issues:
-1. Removes irrelevant image position setting from non-applicable layouts
-2. Fixes gallery to show proper placeholder grids for 3x2, 2x3, masonry
-3. Limits slideshow to 3 slides max
-4. Adds card slideshow and banner slideshow elements  
-5. Fixes collection grid vs slider rendering
-6. Adds full testimonials editing (avatar, stars, text) + slideshow/6x1 presets
-7. Adds logo list editor
-8. Fixes newsletter editor and styling
-9. Adds FAQ editor with max 6 items + 3x2 layout
-10. Expands contact editor with more styles
-11. Adds more divider styles
-12. Adds full footer editor with column management
+| Section Type | Current State | Fix |
+|-------------|---------------|-----|
+| Gallery | Simple grid for all | Masonry, 3x2, 2x3 layouts |
+| Collection | No preview | Grid vs Slider |
+| Testimonials | Basic 2-col | Grid, Slider, Stacked, 6x1 |
+| FAQ | No preview | Accordion vs 3x2 Grid |
+| Logo List | No preview | Logo row with grayscale |
+| Footer | No preview | Columns + copyright |
+| About Me | No preview | Avatar + text |
+| Sliding Banner | No preview | Marquee animation |
+| Slideshow | No preview | Slide + nav dots |
+| Basic List | No preview | Cards, horizontal, simple |
+| Featured Product | No preview | Product card |
+| Card Slideshow | No preview | Card carousel |
+| Banner Slideshow | No preview | Banner carousel |
+| Contact | Basic only | 4 style variations |
+
+This will ensure the visual editor accurately represents what each section looks like, matching the thumbnails users see in the Add Section menu.
