@@ -15,6 +15,7 @@ import { SalesBreakdown } from '@/components/dashboard/SalesBreakdown';
 import { VisitorSourcesTable } from '@/components/dashboard/VisitorSourcesTable';
 import { ConversionFunnel } from '@/components/dashboard/ConversionFunnel';
 import { VisitsMap } from '@/components/dashboard/VisitsMap';
+import { EarningsCard } from '@/components/dashboard/EarningsCard';
 import { format, subDays, startOfMonth, eachDayOfInterval } from 'date-fns';
 
 interface Product {
@@ -29,12 +30,19 @@ interface Purchase {
   buyer_id: string;
 }
 
+interface EditorBooking {
+  editor_payout_cents: number;
+  created_at: string;
+  status: string;
+}
+
 export default function Dashboard() {
   const { user, profile, profileLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [editorBookings, setEditorBookings] = useState<EditorBooking[]>([]);
   
   // Filters
   const [selectedProduct, setSelectedProduct] = useState('all');
@@ -79,6 +87,15 @@ export default function Dashboard() {
         
         setPurchases(purchasesData || []);
       }
+
+      // Fetch editor bookings (if user is an editor)
+      const { data: bookingsData } = await supabase
+        .from('editor_bookings')
+        .select('editor_payout_cents, created_at, status')
+        .eq('editor_id', profile.id)
+        .eq('status', 'completed');
+      
+      setEditorBookings(bookingsData || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
@@ -180,6 +197,15 @@ export default function Dashboard() {
     return Object.values(breakdown);
   }, [products, filteredPurchases]);
 
+  // Calculate total earnings
+  const totalProductEarnings = useMemo(() => {
+    return purchases.reduce((acc, p) => acc + p.creator_payout_cents, 0) / 100;
+  }, [purchases]);
+
+  const totalEditorEarnings = useMemo(() => {
+    return editorBookings.reduce((acc, b) => acc + b.editor_payout_cents, 0) / 100;
+  }, [editorBookings]);
+
   // Simulated visitor sources (in a real app, you'd track referrers)
   const visitorSources = useMemo(() => {
     const totalViews = summaryStats.totalViews;
@@ -250,6 +276,14 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
+      {/* Earnings Card at Top */}
+      <div className="mb-6">
+        <EarningsCard 
+          productEarnings={totalProductEarnings} 
+          editorEarnings={totalEditorEarnings} 
+        />
+      </div>
+
       {/* Analytics Card */}
       <Card className="bg-card">
         <CardContent className="p-6 space-y-6">
