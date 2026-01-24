@@ -628,11 +628,6 @@ export default function Admin() {
               </span>
             )}
           </TabsTrigger>
-              <span className="ml-2 bg-yellow-500 text-yellow-950 text-xs px-1.5 py-0.5 rounded-full">
-                {pendingApplicationsCount}
-              </span>
-            )}
-          </TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
