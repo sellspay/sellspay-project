@@ -72,6 +72,34 @@ export default function Header() {
       setIsAdmin(hasAdminRole || false);
     }
     fetchProfile();
+
+    // Subscribe to profile changes for real-time updates
+    if (user) {
+      const channel = supabase
+        .channel('header-profile-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newData = payload.new as Record<string, unknown>;
+            setIsCreator(Boolean(newData.is_creator));
+            setIsSeller(Boolean(newData.is_seller));
+            setAvatarUrl((newData.avatar_url as string) || null);
+            setUsername((newData.username as string) || null);
+            setFullName((newData.full_name as string) || null);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   const isActive = (path: string) => location.pathname === path;
