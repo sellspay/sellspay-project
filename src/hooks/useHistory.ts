@@ -47,7 +47,8 @@ export function useHistoryKeyboard(
   redo: () => void,
   canUndo: boolean,
   canRedo: boolean,
-  enabled = true
+  enabled = true,
+  saveNow?: () => void
 ) {
   useEffect(() => {
     if (!enabled) return;
@@ -67,9 +68,14 @@ export function useHistoryKeyboard(
         e.preventDefault();
         redo();
       }
+      // Cmd/Ctrl + S for manual save
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        saveNow?.();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, canUndo, canRedo, enabled]);
+  }, [undo, redo, canUndo, canRedo, enabled, saveNow]);
 }
