@@ -257,38 +257,32 @@ export default function ProductCard({
             </div>
           ) : null}
 
-          {/* Premium Price Badge */}
-          <div className={`absolute top-3 left-3 flex items-center gap-2 rounded-xl backdrop-blur-xl border transition-all duration-300 ${
+          {/* Minimal Price Badge */}
+          <div className={`absolute top-2.5 left-2.5 flex items-center gap-1 rounded-md backdrop-blur-sm border transition-all duration-300 ${
             isFree 
-              ? 'bg-gradient-to-br from-white/15 to-white/5 border-white/20 text-white shadow-[0_0_20px_rgba(255,255,255,0.1)] px-4 py-2' 
-              : 'bg-background/80 border-border/30 text-foreground px-4 py-2 shadow-lg'
-          } ${isLarge ? 'text-sm font-semibold tracking-wide' : 'text-xs font-medium tracking-wide'}`}>
+              ? 'bg-white/10 border-white/20 text-white/90 px-2 py-0.5' 
+              : 'bg-black/50 border-white/10 text-white/90 px-2 py-0.5'
+          } text-[10px] font-medium tracking-wide`}>
             {isFree && (
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-              </span>
+              <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
             )}
-            <span className={isFree ? 'uppercase tracking-widest' : ''}>
+            <span className={isFree ? 'uppercase tracking-wider' : ''}>
               {formatPrice(product.price_cents, product.currency)}
             </span>
           </div>
 
-          {/* Premium "Trending" Badge */}
+          {/* Minimal "Hot" Badge */}
           {isHot && (
-            <div className={`absolute top-3 ${isFree ? 'left-[7rem]' : 'left-24'} group/badge`}>
-              <div className={`relative flex items-center gap-2 rounded-xl bg-gradient-to-br from-amber-400/20 via-orange-500/10 to-amber-600/20 border border-amber-400/30 px-4 py-2 backdrop-blur-xl ${isLarge ? 'text-sm font-semibold' : 'text-xs font-medium'} text-amber-200 shadow-[0_0_30px_rgba(251,191,36,0.15)]`}>
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 opacity-0 group-hover/badge:opacity-100 transition-opacity duration-500" />
-                <Flame className={`${isLarge ? 'h-4 w-4' : 'h-3.5 w-3.5'} text-amber-400 drop-shadow-[0_0_4px_rgba(251,191,36,0.5)]`} />
-                <span className="relative uppercase tracking-widest text-amber-100">Hot</span>
-              </div>
+            <div className="absolute top-2.5 left-[4.5rem] flex items-center gap-1 rounded-md bg-amber-500/20 border border-amber-400/30 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-amber-300 tracking-wider uppercase">
+              <Flame className="h-2.5 w-2.5" />
+              Hot
             </div>
           )}
 
-          {/* Featured Badge */}
+          {/* Minimal Featured Badge */}
           {showFeaturedBadge && product.featured && (
-            <div className={`absolute top-3 right-3 flex items-center gap-1.5 rounded-lg bg-primary/90 border border-primary/50 px-3 py-1.5 backdrop-blur-md ${isLarge ? 'text-sm font-semibold' : 'text-xs font-medium'} text-primary-foreground`}>
-              <Star className={`${isLarge ? 'h-4 w-4' : 'h-3 w-3'}`} />
+            <div className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-md bg-primary/20 border border-primary/30 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-primary tracking-wide">
+              <Star className="h-2.5 w-2.5" />
               Featured
             </div>
           )}
@@ -298,18 +292,18 @@ export default function ProductCard({
             <button
               onClick={handleSave}
               disabled={savingProduct}
-              className={`absolute top-3 right-3 p-2 rounded-lg bg-background/80 backdrop-blur-md border border-border/50 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-background hover:scale-110 ${
-                isSaved ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+              className={`absolute top-2.5 right-2.5 p-1.5 rounded-md bg-black/40 backdrop-blur-sm border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-black/60 ${
+                isSaved ? 'text-primary' : 'text-white/70 hover:text-white'
               }`}
               title={isSaved ? "Remove from saved" : "Save product"}
             >
-              <Bookmark className={`${isLarge ? 'h-5 w-5' : 'h-4 w-4'} ${isSaved ? 'fill-primary' : ''}`} />
+              <Bookmark className={`h-3.5 w-3.5 ${isSaved ? 'fill-primary' : ''}`} />
             </button>
           )}
 
           {/* Product Type Badge */}
           {showType && product.product_type && (
-            <div className={`absolute bottom-3 left-3 rounded-lg bg-secondary/90 border border-border/50 backdrop-blur-md px-3 py-1.5 ${isLarge ? 'text-sm font-medium' : 'text-xs font-medium'} text-secondary-foreground`}>
+            <div className="absolute bottom-2.5 left-2.5 rounded-md bg-black/50 border border-white/10 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white/80 tracking-wide">
               {productTypeLabels[product.product_type] || product.product_type}
             </div>
           )}
