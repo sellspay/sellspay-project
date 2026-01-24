@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Search, Users, Loader2 } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Search, Users, Loader2, Check } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth';
 
 interface Creator {
   id: string;
@@ -25,6 +26,7 @@ interface Creator {
   verified: boolean | null;
   followers_count: number;
   isAdmin?: boolean;
+  hasNominated?: boolean;
 }
 
 interface NominateCreatorDialogProps {
@@ -34,10 +36,28 @@ interface NominateCreatorDialogProps {
 
 export function NominateCreatorDialog({ open, onOpenChange }: NominateCreatorDialogProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [nominatingId, setNominatingId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Get current user's profile ID
+  const { data: currentProfile } = useQuery({
+    queryKey: ['current-profile-for-nomination'],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      return data;
+    },
+    enabled: open && !!user,
+  });
 
   // Fetch top 20 most followed creators
   const { data: creators = [], isLoading } = useQuery({
-    queryKey: ['top-creators-for-nomination'],
+    queryKey: ['top-creators-for-nomination', currentProfile?.id],
     queryFn: async () => {
       // Get all creators
       const { data: creatorsData, error } = await supabase
@@ -69,11 +89,22 @@ export function NominateCreatorDialog({ open, onOpenChange }: NominateCreatorDia
         : { data: [] };
       const adminUserIds = new Set(ownerRoles?.map(r => r.user_id) || []);
 
+      // Check which creators the current user has already nominated
+      let nominatedCreatorIds = new Set<string>();
+      if (currentProfile?.id) {
+        const { data: nominations } = await supabase
+          .from('creator_nominations')
+          .select('creator_id')
+          .eq('nominator_id', currentProfile.id);
+        nominatedCreatorIds = new Set(nominations?.map(n => n.creator_id) || []);
+      }
+
       // Build creators with follower counts and admin status
       const creatorsWithData: Creator[] = creatorsData.map(creator => ({
         ...creator,
         followers_count: followerCountMap.get(creator.id) || 0,
         isAdmin: adminUserIds.has(creator.user_id),
+        hasNominated: nominatedCreatorIds.has(creator.id),
       }));
 
       // Sort by followers (descending) and take top 20
@@ -95,9 +126,64 @@ export function NominateCreatorDialog({ open, onOpenChange }: NominateCreatorDia
     );
   }, [creators, searchQuery]);
 
-  const handleNominate = (creator: Creator) => {
-    toast.success(`You nominated @${creator.username} for spotlight!`);
-    onOpenChange(false);
+  const handleNominate = async (creator: Creator) => {
+    if (!user) {
+      toast.error('Please log in to nominate creators');
+      return;
+    }
+
+    if (!currentProfile?.id) {
+      toast.error('Profile not found');
+      return;
+    }
+
+    if (creator.hasNominated) {
+      // Remove nomination
+      setNominatingId(creator.id);
+      try {
+        const { error } = await supabase
+          .from('creator_nominations')
+          .delete()
+          .eq('creator_id', creator.id)
+          .eq('nominator_id', currentProfile.id);
+
+        if (error) throw error;
+        toast.success(`Removed nomination for @${creator.username}`);
+        queryClient.invalidateQueries({ queryKey: ['top-creators-for-nomination'] });
+      } catch (error) {
+        console.error('Error removing nomination:', error);
+        toast.error('Failed to remove nomination');
+      } finally {
+        setNominatingId(null);
+      }
+    } else {
+      // Add nomination
+      setNominatingId(creator.id);
+      try {
+        const { error } = await supabase
+          .from('creator_nominations')
+          .insert({
+            creator_id: creator.id,
+            nominator_id: currentProfile.id,
+          });
+
+        if (error) {
+          if (error.code === '23505') {
+            toast.error('You have already nominated this creator');
+          } else {
+            throw error;
+          }
+        } else {
+          toast.success(`You nominated @${creator.username} for spotlight!`);
+          queryClient.invalidateQueries({ queryKey: ['top-creators-for-nomination'] });
+        }
+      } catch (error) {
+        console.error('Error nominating:', error);
+        toast.error('Failed to nominate creator');
+      } finally {
+        setNominatingId(null);
+      }
+    }
   };
 
   return (
@@ -179,11 +265,21 @@ export function NominateCreatorDialog({ open, onOpenChange }: NominateCreatorDia
                   {/* Nominate Button */}
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="shrink-0"
+                    variant={creator.hasNominated ? "default" : "outline"}
+                    className={`shrink-0 ${creator.hasNominated ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
                     onClick={() => handleNominate(creator)}
+                    disabled={nominatingId === creator.id}
                   >
-                    Nominate
+                    {nominatingId === creator.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : creator.hasNominated ? (
+                      <>
+                        <Check className="h-4 w-4 mr-1" />
+                        Nominated
+                      </>
+                    ) : (
+                      'Nominate'
+                    )}
                   </Button>
                 </div>
               ))

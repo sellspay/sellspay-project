@@ -34,11 +34,11 @@ export default function Spotlight() {
   const [expandedStory, setExpandedStory] = useState<string | null>(null);
   const [nominateDialogOpen, setNominateDialogOpen] = useState(false);
 
-  // Fetch real creators from the database
+  // Fetch ONLY manually selected spotlights from creator_spotlights table
   const { data: spotlights = [], isLoading } = useQuery({
     queryKey: ['creator-spotlights'],
     queryFn: async () => {
-      // First try to get spotlights from the creator_spotlights table
+      // Get spotlights from the creator_spotlights table only
       const { data: spotlightsData } = await supabase
         .from('creator_spotlights')
         .select(`
@@ -54,100 +54,50 @@ export default function Spotlight() {
         .order('display_order', { ascending: true })
         .limit(10);
 
-      // If we have spotlights, join with profiles
-      if (spotlightsData && spotlightsData.length > 0) {
-        const profileIds = spotlightsData.map(s => s.profile_id);
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, user_id, username, full_name, avatar_url, verified, bio')
-          .in('id', profileIds);
+      // If no spotlights exist, return empty array (no fallback)
+      if (!spotlightsData || spotlightsData.length === 0) return [];
 
-        const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
-
-        // Fetch owner roles for these profiles (for Owner badge)
-        const userIds = (profilesData || []).map((p: any) => p.user_id).filter(Boolean);
-        const { data: ownerRoles } = userIds.length
-          ? await supabase.from('user_roles').select('user_id').eq('role', 'owner').in('user_id', userIds)
-          : { data: [] as any[] };
-        const adminUserIds = new Set((ownerRoles || []).map((r: any) => r.user_id));
-
-        // Get products and followers counts
-        const spotlightsWithData = await Promise.all(spotlightsData.map(async (s) => {
-           const profile = profilesMap.get(s.profile_id);
-           const profileWithAdmin = profile
-             ? { ...profile, isAdmin: adminUserIds.has((profile as any).user_id) }
-             : null;
-          
-          const [productsResult, followersResult] = await Promise.all([
-            supabase.from('products').select('id', { count: 'exact', head: true }).eq('creator_id', s.profile_id),
-            supabase.from('followers').select('id', { count: 'exact', head: true }).eq('following_id', s.profile_id),
-          ]);
-
-          return {
-            id: s.id,
-            headline: s.headline,
-            story: s.story,
-            achievement: s.achievement,
-            quote: s.quote,
-            featured_at: s.featured_at,
-             profile: (profileWithAdmin as any) || null,
-            products_count: productsResult.count || 0,
-            followers_count: followersResult.count || 0,
-          };
-        }));
-
-        return spotlightsWithData as SpotlightCreator[];
-      }
-
-      // Fallback: if no spotlights exist, show real verified creators
-      const { data: creatorsData } = await supabase
+      const profileIds = spotlightsData.map(s => s.profile_id);
+      const { data: profilesData } = await supabase
         .from('profiles')
         .select('id, user_id, username, full_name, avatar_url, verified, bio')
-        .eq('is_creator', true)
-        .eq('verified', true)
-        .limit(20);
+        .in('id', profileIds);
 
-      if (!creatorsData || creatorsData.length === 0) return [];
+      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
-      // Fetch owner roles for all creators (for Owner badge)
-      const userIds = creatorsData.map(c => c.user_id).filter(Boolean);
+      // Fetch owner roles for these profiles (for Owner badge)
+      const userIds = (profilesData || []).map((p: any) => p.user_id).filter(Boolean);
       const { data: ownerRoles } = userIds.length
         ? await supabase.from('user_roles').select('user_id').eq('role', 'owner').in('user_id', userIds)
         : { data: [] as any[] };
       const adminUserIds = new Set((ownerRoles || []).map((r: any) => r.user_id));
 
-      // Sort: owners first, then others
-      const sortedCreators = [...creatorsData].sort((a, b) => {
-        const aIsOwner = adminUserIds.has(a.user_id);
-        const bIsOwner = adminUserIds.has(b.user_id);
-        if (aIsOwner && !bIsOwner) return -1;
-        if (!aIsOwner && bIsOwner) return 1;
-        return 0;
-      }).slice(0, 6);
-
-      // Build spotlights from real creators
-      const creatorSpotlights = await Promise.all(sortedCreators.map(async (creator) => {
-        const isOwner = adminUserIds.has(creator.user_id);
-
+      // Get products and followers counts
+      const spotlightsWithData = await Promise.all(spotlightsData.map(async (s) => {
+        const profile = profilesMap.get(s.profile_id);
+        const profileWithAdmin = profile
+          ? { ...profile, isAdmin: adminUserIds.has((profile as any).user_id) }
+          : null;
+        
         const [productsResult, followersResult] = await Promise.all([
-          supabase.from('products').select('id', { count: 'exact', head: true }).eq('creator_id', creator.id),
-          supabase.from('followers').select('id', { count: 'exact', head: true }).eq('following_id', creator.id),
+          supabase.from('products').select('id', { count: 'exact', head: true }).eq('creator_id', s.profile_id),
+          supabase.from('followers').select('id', { count: 'exact', head: true }).eq('following_id', s.profile_id),
         ]);
 
         return {
-          id: creator.id,
-          headline: isOwner ? 'Building EditorsParadise' : 'Verified Creator',
-          story: creator.bio || 'A passionate creator building amazing content for the community.',
-          achievement: isOwner ? 'Platform Founder' : 'Verified Creator',
-          quote: null,
-          featured_at: new Date().toISOString(),
-          profile: { ...creator, isAdmin: isOwner },
+          id: s.id,
+          headline: s.headline,
+          story: s.story,
+          achievement: s.achievement,
+          quote: s.quote,
+          featured_at: s.featured_at,
+          profile: (profileWithAdmin as any) || null,
           products_count: productsResult.count || 0,
           followers_count: followersResult.count || 0,
-        } as SpotlightCreator;
+        };
       }));
 
-      return creatorSpotlights;
+      return spotlightsWithData as SpotlightCreator[];
     },
   });
 
