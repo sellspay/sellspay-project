@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, Sparkles } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -17,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 const categories = [
   { value: 'discussion', label: 'Discussion' },
@@ -92,37 +92,66 @@ export function ThreadComposer() {
 
   if (!user) {
     return (
-      <Card className="border-border/50">
-        <CardContent className="p-6 text-center">
-          <p className="text-muted-foreground">
-            <a href="/login" className="text-primary hover:underline">Log in</a>
+      <div className="group relative">
+        {/* Glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        
+        <div className="relative bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl border border-border/50 rounded-3xl p-8 text-center hover:border-primary/30 transition-all duration-500">
+          <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4">
+            <Sparkles className="h-8 w-8 text-primary" />
+          </div>
+          <p className="text-muted-foreground text-lg">
+            <Link to="/login" className="text-primary hover:underline font-semibold">Log in</Link>
             {' '}to start a thread
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className={cn(
-      "border-border/50 transition-all duration-200",
-      isFocused && "border-primary/50 shadow-lg shadow-primary/5"
+    <div className={cn(
+      "group relative transition-all duration-500",
+      isFocused && "scale-[1.01]"
     )}>
-      <CardContent className="p-4">
-        <div className="flex gap-3">
-          {/* Avatar */}
-          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-border">
-            <AvatarImage src={profile?.avatar_url || ''} />
-            <AvatarFallback className="bg-muted">
-              {profile?.full_name?.charAt(0) || profile?.username?.charAt(0) || '?'}
-            </AvatarFallback>
-          </Avatar>
+      {/* Premium glow effect */}
+      <div className={cn(
+        "absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-xl transition-opacity duration-500",
+        isFocused ? "opacity-100" : "opacity-0 group-hover:opacity-50"
+      )} />
+      
+      <div className={cn(
+        "relative bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl border rounded-3xl p-5 transition-all duration-500 overflow-hidden",
+        isFocused 
+          ? "border-primary/40 shadow-2xl shadow-primary/10" 
+          : "border-border/50 hover:border-primary/20"
+      )}>
+        {/* Subtle gradient line at top when focused */}
+        <div className={cn(
+          "absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent transition-opacity duration-500",
+          isFocused ? "opacity-100" : "opacity-0"
+        )} />
+
+        <div className="relative flex gap-4">
+          {/* Avatar with glow */}
+          <div className="relative shrink-0">
+            <div className={cn(
+              "absolute -inset-1 rounded-full bg-gradient-to-br from-primary/50 to-accent/50 blur transition-opacity duration-500",
+              isFocused ? "opacity-100" : "opacity-0"
+            )} />
+            <Avatar className="relative h-12 w-12 ring-2 ring-border/50">
+              <AvatarImage src={profile?.avatar_url || ''} />
+              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-foreground font-semibold">
+                {profile?.full_name?.charAt(0) || profile?.username?.charAt(0) || '?'}
+              </AvatarFallback>
+            </Avatar>
+          </div>
 
           {/* Input Area */}
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-4">
             <Textarea
-              placeholder="Start a thread..."
-              className="min-h-[60px] resize-none border-0 p-0 text-base focus-visible:ring-0 placeholder:text-muted-foreground/60"
+              placeholder="What's on your mind? Start a thread..."
+              className="min-h-[60px] resize-none border-0 p-0 text-base focus-visible:ring-0 placeholder:text-muted-foreground/50 bg-transparent"
               value={content}
               onChange={(e) => setContent(e.target.value.slice(0, MAX_LENGTH))}
               onFocus={() => setIsFocused(true)}
@@ -135,12 +164,12 @@ export function ThreadComposer() {
                 <img
                   src={gifUrl}
                   alt="Selected GIF"
-                  className="max-h-40 rounded-lg border border-border"
+                  className="max-h-40 rounded-xl border border-border/30 shadow-lg"
                 />
                 <Button
                   variant="secondary"
                   size="icon"
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                  className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-md hover:bg-destructive hover:text-destructive-foreground transition-colors"
                   onClick={() => setGifUrl(null)}
                 >
                   ×
@@ -150,13 +179,13 @@ export function ThreadComposer() {
 
             {/* Footer */}
             {(isFocused || content) && (
-              <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between pt-4 border-t border-border/30">
+                <div className="flex items-center gap-3">
                   <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="h-9 w-[140px] text-sm">
+                    <SelectTrigger className="h-10 w-[150px] text-sm bg-muted/50 border-border/50 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-card/95 backdrop-blur-xl border-border/50">
                       {categories.map((cat) => (
                         <SelectItem key={cat.value} value={cat.value}>
                           {cat.label}
@@ -168,10 +197,10 @@ export function ThreadComposer() {
                   <GifPicker onSelect={handleGifSelect} />
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   {content.length > 0 && (
                     <span className={cn(
-                      "text-xs",
+                      "text-sm font-medium",
                       content.length > MAX_LENGTH * 0.9 ? "text-destructive" : "text-muted-foreground"
                     )}>
                       {content.length}/{MAX_LENGTH}
@@ -181,7 +210,7 @@ export function ThreadComposer() {
                     size="sm"
                     disabled={!content.trim() || createMutation.isPending}
                     onClick={handleSubmit}
-                    className="rounded-full px-4"
+                    className="rounded-full px-6 h-10 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300"
                   >
                     {createMutation.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -197,7 +226,7 @@ export function ThreadComposer() {
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
