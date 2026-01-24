@@ -42,6 +42,8 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    // Reset forgot password state in case it was accidentally triggered
+    setShowForgotPassword(false);
 
     try {
       let emailToUse = credential.trim();
@@ -67,6 +69,8 @@ export default function Login() {
 
       // Check if user has MFA enabled
       const { data: { user: authUser } } = await supabase.auth.getUser();
+      console.log('[LOGIN] Auth user after sign in:', authUser?.id);
+      
       if (authUser) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -74,21 +78,28 @@ export default function Login() {
           .eq('user_id', authUser.id)
           .single();
 
+        console.log('[LOGIN] Profile MFA status:', profile?.mfa_enabled);
+
         if (profile?.mfa_enabled) {
           // User has MFA enabled - sign them out and show verification
-          setMfaUserId(authUser.id);
-          setMfaEmail(authUser.email || emailToUse);
+          console.log('[LOGIN] MFA enabled - showing verification screen');
+          const userId = authUser.id;
+          const userEmail = authUser.email || emailToUse;
+          
+          setMfaUserId(userId);
+          setMfaEmail(userEmail);
           await signOut();
           setShowMfaVerification(true);
           setLoading(false);
           // Automatically send OTP
-          await sendMfaCode(authUser.id, authUser.email || emailToUse);
+          await sendMfaCode(userId, userEmail);
           return;
         }
       }
       
       // No MFA - redirect handled by useEffect
     } catch (err: any) {
+      console.error('[LOGIN] Error:', err);
       setError('Invalid email/username or password');
     } finally {
       setLoading(false);
