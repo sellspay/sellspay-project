@@ -58,6 +58,21 @@ const formatDate = (dateString: string | null | undefined) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+// Helper to format price
+const formatPrice = (priceCents: number | null, currency: string | null, pricingType?: string | null): string => {
+  if (pricingType === 'free' || priceCents === null || priceCents === 0) {
+    return 'Free';
+  }
+  const amount = priceCents / 100;
+  const currencyCode = currency?.toUpperCase() || 'USD';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
 // Product card with video preview on hover
 function ProductCardWithPreview({ 
   product, 
@@ -133,6 +148,15 @@ function ProductCardWithPreview({
             <Layers className="w-12 h-12 text-muted-foreground" />
           </div>
         )}
+        
+        {/* Price Badge - Top Left */}
+        <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-medium ${
+          product.pricing_type === 'free' || product.price_cents === null || product.price_cents === 0
+            ? 'bg-emerald-500/90 text-white'
+            : 'bg-background/90 backdrop-blur-sm text-foreground border border-border/50'
+        }`}>
+          {formatPrice(product.price_cents, product.currency, product.pricing_type)}
+        </div>
         
         {/* Locked Badge */}
         {isLocked && (
