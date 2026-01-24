@@ -15,8 +15,6 @@ import { AvatarCropper } from "@/components/ui/avatar-cropper";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FontSelector } from "@/components/profile-editor/FontSelector";
-import type { FontOption, CustomFont } from "@/components/profile-editor/types";
 
 // Social platform detection
 const detectSocialPlatform = (url: string): { platform: string; icon: React.ReactNode } | null => {
@@ -97,8 +95,6 @@ export default function Settings() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
-  const [globalFont, setGlobalFont] = useState<FontOption>('default');
-  const [globalCustomFont, setGlobalCustomFont] = useState<CustomFont | undefined>(undefined);
   
   // Stripe Connect status
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
@@ -155,11 +151,6 @@ export default function Settings() {
         setStripeAccountId(data.stripe_account_id);
         setStripeOnboardingComplete(data.stripe_onboarding_complete || false);
         
-        // Load global font settings
-        const globalFontData = (data as Record<string, unknown>).global_font as string | null;
-        const globalCustomFontData = (data as Record<string, unknown>).global_custom_font as { name: string; url: string } | null;
-        if (globalFontData) setGlobalFont(globalFontData as FontOption);
-        if (globalCustomFontData) setGlobalCustomFont(globalCustomFontData);
         
         // Load social links
         if (data.social_links && typeof data.social_links === 'object') {
@@ -357,8 +348,6 @@ export default function Settings() {
           banner_url: bannerUrl,
           background_url: backgroundUrl,
           social_links: socialLinksObj,
-          global_font: globalFont,
-          global_custom_font: globalCustomFont || null,
         } as Record<string, unknown>)
         .eq("user_id", user.id);
 
@@ -599,21 +588,6 @@ export default function Settings() {
                 </p>
               </div>
 
-              {/* Global Font Setting */}
-              <div>
-                <Label className="mb-2 block">Global Profile Font</Label>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Set a default font for all text sections on your profile page
-                </p>
-                <FontSelector
-                  font={globalFont}
-                  customFont={globalCustomFont}
-                  onChange={(updates) => {
-                    if (updates.font !== undefined) setGlobalFont(updates.font);
-                    if (updates.customFont !== undefined) setGlobalCustomFont(updates.customFont);
-                  }}
-                />
-              </div>
 
               <Separator />
 
