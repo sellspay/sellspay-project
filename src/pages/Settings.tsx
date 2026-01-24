@@ -339,21 +339,15 @@ export default function Settings() {
     setVerifyingOtp(true);
     try {
       const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { user_id: user.id, code: otpCode }
+        body: { userId: user.id, code: otpCode }
       });
       
-      if (error || !data?.valid) {
+      if (error) throw new Error(error.message || 'Failed to verify code');
+      if (!data?.success) {
         throw new Error(data?.error || 'Invalid verification code');
       }
       
-      // Enable 2FA in profile
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ mfa_enabled: true })
-        .eq('id', profileId);
-      
-      if (updateError) throw updateError;
-      
+      // The edge function already updates mfa_enabled, just update local state
       setMfaEnabled(true);
       setShow2FADialog(false);
       setOtpCode("");
