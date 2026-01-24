@@ -766,6 +766,18 @@ export function SectionEditorPanel({
 
   const renderBackgroundTab = () => (
     <div className="space-y-6">
+      {/* Show Container Background Toggle */}
+      <div className="flex items-center justify-between">
+        <div>
+          <Label>Show Container</Label>
+          <p className="text-xs text-muted-foreground">Add a background card behind this section</p>
+        </div>
+        <Switch
+          checked={section.style_options?.showBackground ?? false}
+          onCheckedChange={(checked) => updateStyleOptions({ showBackground: checked })}
+        />
+      </div>
+
       <div>
         <Label className="mb-2 block">Background Image</Label>
         {section.style_options?.backgroundImage ? (
