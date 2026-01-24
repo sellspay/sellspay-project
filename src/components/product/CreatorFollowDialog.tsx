@@ -13,6 +13,7 @@ interface CreatorInfo {
   avatar_url: string | null;
   bio: string | null;
   verified: boolean | null;
+  user_id?: string | null;
 }
 
 interface CreatorFollowDialogProps {
@@ -31,6 +32,7 @@ export function CreatorFollowDialog({
   isFollowing,
 }: CreatorFollowDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
   const [stats, setStats] = useState({
     productCount: 0,
     followerCount: 0,
@@ -40,8 +42,38 @@ export function CreatorFollowDialog({
   useEffect(() => {
     if (open && creator?.id) {
       fetchCreatorStats();
+      checkOwnerStatus();
     }
   }, [open, creator?.id]);
+
+  const checkOwnerStatus = async () => {
+    if (!creator?.user_id) {
+      // Try to get user_id from profiles if not provided
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("id", creator?.id || "")
+        .maybeSingle();
+      
+      if (profile?.user_id) {
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", profile.user_id)
+          .eq("role", "owner")
+          .maybeSingle();
+        setIsOwner(!!roleData);
+      }
+    } else {
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", creator.user_id)
+        .eq("role", "owner")
+        .maybeSingle();
+      setIsOwner(!!roleData);
+    }
+  };
 
   const fetchCreatorStats = async () => {
     if (!creator?.id) return;
@@ -106,7 +138,7 @@ export function CreatorFollowDialog({
           {/* Username & Verified Badge */}
           <div className="flex items-center gap-2 mt-4">
             <h3 className="text-lg font-semibold">@{creator.username || "user"}</h3>
-            {creator.verified && <VerifiedBadge size="md" />}
+            {creator.verified && <VerifiedBadge size="md" isOwner={isOwner} />}
           </div>
 
           {/* Full Name */}
