@@ -46,12 +46,12 @@ interface ThreadCardProps {
   onReplyClick?: (thread: Thread) => void;
 }
 
-const categoryStyles: Record<string, { bg: string; text: string }> = {
-  help: { bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
-  showcase: { bg: 'bg-violet-500/10', text: 'text-violet-400' },
-  discussion: { bg: 'bg-sky-500/10', text: 'text-sky-400' },
-  promotion: { bg: 'bg-amber-500/10', text: 'text-amber-400' },
-  feedback: { bg: 'bg-rose-500/10', text: 'text-rose-400' },
+const categoryStyles: Record<string, { bg: string; text: string; gradient: string }> = {
+  help: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', gradient: 'from-emerald-500 to-teal-600' },
+  showcase: { bg: 'bg-violet-500/10', text: 'text-violet-400', gradient: 'from-violet-500 to-purple-600' },
+  discussion: { bg: 'bg-sky-500/10', text: 'text-sky-400', gradient: 'from-sky-500 to-blue-600' },
+  promotion: { bg: 'bg-amber-500/10', text: 'text-amber-400', gradient: 'from-amber-500 to-orange-600' },
+  feedback: { bg: 'bg-rose-500/10', text: 'text-rose-400', gradient: 'from-rose-500 to-pink-600' },
 };
 
 const categoryLabels: Record<string, string> = {
@@ -87,7 +87,6 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
   const { data: authorIsAdmin } = useQuery({
     queryKey: ['user-is-admin', thread.author_id],
     queryFn: async () => {
-      // threads.author_id points to profiles.id (not auth user id)
       const { data: authorProfile, error: profileErr } = await supabase
         .from('profiles')
         .select('user_id')
@@ -113,6 +112,8 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
   const displayContent =
     contentTooLong && !showFullContent ? thread.content.slice(0, 280) + '...' : thread.content;
 
+  const categoryStyle = categoryStyles[thread.category] || { bg: 'bg-muted', text: 'text-muted-foreground', gradient: 'from-muted to-muted' };
+
   // Optimistic like mutation with duplicate prevention
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -126,7 +127,6 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
           .eq('user_id', profile.id);
         if (error) throw error;
       } else {
-        // Use upsert with ignoreDuplicates to prevent duplicate likes
         const { error } = await supabase
           .from('thread_likes')
           .upsert(
@@ -137,9 +137,9 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
       }
     },
     onMutate: async () => {
-      if (isLiking) return; // Prevent rapid clicks
+      if (isLiking) return;
       setIsLiking(true);
-      
+
       await queryClient.cancelQueries({ queryKey: ['threads'] });
 
       const previousThreads = queryClient.getQueryData(['threads']);
@@ -184,45 +184,54 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
   return (
     <div
       className={cn(
-        "group relative rounded-2xl border border-border/40 bg-gradient-to-br from-card via-card to-card/80 p-5 transition-all duration-300 hover:border-border/60 hover:shadow-lg hover:shadow-primary/5",
-        thread.is_pinned && "border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card"
+        "group relative rounded-3xl border border-border/40 bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl p-6 transition-all duration-500 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1 overflow-hidden",
+        thread.is_pinned && "border-primary/40 bg-gradient-to-br from-primary/10 via-card/70 to-card/50"
       )}
     >
-      {/* Subtle glow effect on hover */}
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+      {/* Premium Glow Effect on Hover */}
+      <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      
+      {/* Subtle gradient line at top */}
+      <div className={cn(
+        "absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+        categoryStyle.gradient && `via-${categoryStyle.gradient.split(' ')[0].replace('from-', '')}`
+      )} style={{ backgroundImage: `linear-gradient(to right, transparent, hsl(var(--primary) / 0.5), transparent)` }} />
 
       <div className="relative flex gap-4">
-        {/* Avatar */}
+        {/* Avatar with ring */}
         <Link to={thread.author?.username ? `/@${thread.author.username}` : '#'} className="shrink-0">
-          <Avatar className="h-11 w-11 ring-2 ring-border/50 hover:ring-primary/50 transition-all">
-            <AvatarImage src={thread.author?.avatar_url || ''} />
-            <AvatarFallback className="bg-muted text-muted-foreground font-medium">
-              {thread.author?.full_name?.charAt(0) || thread.author?.username?.charAt(0) || '?'}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary/50 to-accent/50 opacity-0 group-hover:opacity-100 blur transition-opacity duration-500" />
+            <Avatar className="relative h-12 w-12 ring-2 ring-border/50 hover:ring-primary/50 transition-all">
+              <AvatarImage src={thread.author?.avatar_url || ''} />
+              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-foreground font-semibold">
+                {thread.author?.full_name?.charAt(0) || thread.author?.username?.charAt(0) || '?'}
+              </AvatarFallback>
+            </Avatar>
+          </div>
         </Link>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-start justify-between gap-2 mb-3">
             <div className="flex items-center gap-2 flex-wrap">
               <Link
                 to={thread.author?.username ? `/@${thread.author.username}` : '#'}
-                className="font-semibold text-foreground hover:text-primary transition-colors"
+                className="font-bold text-foreground hover:text-primary transition-colors"
               >
                 {thread.author?.full_name || thread.author?.username || 'Unknown'}
               </Link>
               {thread.author?.verified && <VerifiedBadge size="sm" isOwner={authorIsAdmin} />}
               {thread.is_pinned && (
-                <Badge variant="secondary" className="text-xs gap-1 bg-primary/10 text-primary border-0">
+                <Badge variant="secondary" className="text-xs gap-1 bg-gradient-to-r from-primary/20 to-accent/20 text-primary border-0 shadow-sm">
                   <Pin className="h-3 w-3" />
                   Pinned
                 </Badge>
               )}
               <span className="text-muted-foreground text-sm">@{thread.author?.username || 'unknown'}</span>
-              <span className="text-muted-foreground/50 text-sm">·</span>
-              <span className="text-muted-foreground text-sm">
+              <span className="text-muted-foreground/30 text-sm">·</span>
+              <span className="text-muted-foreground/70 text-sm">
                 {formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}
               </span>
             </div>
@@ -233,22 +242,22 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-8 w-8 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10"
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuContent align="end" className="w-40 bg-card/95 backdrop-blur-xl border-border/50">
                 {isOwner ? (
                   <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
+                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
                     onClick={() => deleteMutation.mutate()}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
                   </DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem>
+                  <DropdownMenuItem className="focus:bg-muted">
                     <Flag className="h-4 w-4 mr-2" />
                     Report
                   </DropdownMenuItem>
@@ -257,32 +266,34 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
             </DropdownMenu>
           </div>
 
-          {/* Category Badge */}
-          <Badge
-            variant="secondary"
-            className={cn(
-              "text-xs mb-3 border-0 font-medium",
-              categoryStyles[thread.category]?.bg || 'bg-muted',
-              categoryStyles[thread.category]?.text || 'text-muted-foreground'
-            )}
-          >
-            {categoryLabels[thread.category] || thread.category}
-          </Badge>
+          {/* Category Badge - Premium Gradient Style */}
+          <div className="mb-3">
+            <Badge
+              variant="secondary"
+              className={cn(
+                "text-xs border-0 font-semibold tracking-wide uppercase px-3 py-1 shadow-sm",
+                categoryStyle.bg,
+                categoryStyle.text
+              )}
+            >
+              {categoryLabels[thread.category] || thread.category}
+            </Badge>
+          </div>
 
           {/* Content */}
-          <p className="text-foreground/90 whitespace-pre-wrap break-words leading-relaxed">{displayContent}</p>
+          <p className="text-foreground whitespace-pre-wrap break-words leading-relaxed text-[15px]">{displayContent}</p>
           {contentTooLong && !showFullContent && (
             <button
               onClick={() => setShowFullContent(true)}
-              className="text-primary text-sm hover:underline mt-1 font-medium"
+              className="text-primary text-sm hover:underline mt-2 font-semibold"
             >
               Read more
             </button>
           )}
 
-          {/* GIF/Image */}
+          {/* GIF/Image with premium border */}
           {(thread.gif_url || thread.image_url) && (
-            <div className="mt-4 rounded-xl overflow-hidden border border-border/50 max-w-md bg-muted/30">
+            <div className="mt-4 rounded-2xl overflow-hidden border border-border/30 max-w-md bg-gradient-to-br from-muted/50 to-muted/30 shadow-lg">
               <img
                 src={thread.gif_url || thread.image_url || ''}
                 alt=""
@@ -291,15 +302,15 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex items-center gap-1 mt-4 -ml-2">
+          {/* Actions - Premium Style */}
+          <div className="flex items-center gap-2 mt-5 -ml-3">
             <Button
               variant="ghost"
               size="sm"
               className={cn(
-                "gap-2 h-9 px-3 rounded-full transition-all",
+                "gap-2 h-10 px-4 rounded-full transition-all duration-300",
                 thread.is_liked
-                  ? "text-rose-500 hover:text-rose-500 hover:bg-rose-500/10"
+                  ? "text-rose-500 hover:text-rose-500 hover:bg-rose-500/10 bg-rose-500/5"
                   : "text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
               )}
               onClick={() => {
@@ -310,18 +321,18 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
                 likeMutation.mutate();
               }}
             >
-              <Heart className={cn("h-[18px] w-[18px]", thread.is_liked && "fill-current")} />
-              {thread.likes_count > 0 && <span className="text-sm font-medium">{thread.likes_count}</span>}
+              <Heart className={cn("h-5 w-5 transition-transform", thread.is_liked && "fill-current scale-110")} />
+              {thread.likes_count > 0 && <span className="text-sm font-semibold">{thread.likes_count}</span>}
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
-              className="gap-2 h-9 px-3 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+              className="gap-2 h-10 px-4 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
               onClick={() => onReplyClick?.(thread)}
             >
-              <MessageCircle className="h-[18px] w-[18px]" />
-              {thread.replies_count > 0 && <span className="text-sm font-medium">{thread.replies_count}</span>}
+              <MessageCircle className="h-5 w-5" />
+              {thread.replies_count > 0 && <span className="text-sm font-semibold">{thread.replies_count}</span>}
             </Button>
           </div>
         </div>
