@@ -17,12 +17,6 @@ import { ConversionFunnel } from '@/components/dashboard/ConversionFunnel';
 import { VisitsMap } from '@/components/dashboard/VisitsMap';
 import { format, subDays, startOfMonth, eachDayOfInterval } from 'date-fns';
 
-interface ProfileData {
-  id: string;
-  is_creator: boolean | null;
-  is_seller: boolean | null;
-}
-
 interface Product {
   id: string;
   name: string;
@@ -36,10 +30,9 @@ interface Purchase {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, profile, profileLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   
@@ -47,54 +40,44 @@ export default function Dashboard() {
   const [selectedProduct, setSelectedProduct] = useState('all');
   const [dateRange, setDateRange] = useState('this_month');
 
+  // Derive seller status from centralized auth
+  const isSeller = profile?.is_seller || false;
+  const isCreator = profile?.is_creator || false;
+  const hasAccess = isSeller || isCreator;
+
   useEffect(() => {
-    if (user) {
+    if (user && profile && hasAccess) {
       fetchDashboardData();
-    } else {
+    } else if (!profileLoading) {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, profile, hasAccess, profileLoading]);
 
   const fetchDashboardData = async () => {
+    if (!profile) return;
+    
     try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, is_creator, is_seller')
-        .eq('user_id', user!.id)
-        .maybeSingle();
+      // Fetch products
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('id, name')
+        .eq('creator_id', profile.id)
+        .order('created_at', { ascending: false });
 
-      if (profileError) throw profileError;
+      if (productsError) throw productsError;
+      setProducts(productsData || []);
+
+      // Fetch all purchases for these products
+      const productIds = productsData?.map(p => p.id) || [];
       
-      if (!profileData) {
-        setLoading(false);
-        return;
-      }
-      
-      setProfile(profileData);
-
-      if (profileData.is_creator || profileData.is_seller) {
-        // Fetch products
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select('id, name')
-          .eq('creator_id', profileData.id)
-          .order('created_at', { ascending: false });
-
-        if (productsError) throw productsError;
-        setProducts(productsData || []);
-
-        // Fetch all purchases for these products
-        const productIds = productsData?.map(p => p.id) || [];
+      if (productIds.length > 0) {
+        const { data: purchasesData } = await supabase
+          .from('purchases')
+          .select('product_id, creator_payout_cents, created_at, buyer_id')
+          .in('product_id', productIds)
+          .eq('status', 'completed');
         
-        if (productIds.length > 0) {
-          const { data: purchasesData } = await supabase
-            .from('purchases')
-            .select('product_id, creator_payout_cents, created_at, buyer_id')
-            .in('product_id', productIds)
-            .eq('status', 'completed');
-          
-          setPurchases(purchasesData || []);
-        }
+        setPurchases(purchasesData || []);
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -229,7 +212,7 @@ export default function Dashboard() {
     return { countries, maxVisits };
   }, [summaryStats]);
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -250,7 +233,7 @@ export default function Dashboard() {
     );
   }
 
-  if (!profile?.is_creator && !profile?.is_seller) {
+  if (!hasAccess) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <BarChart3 className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
