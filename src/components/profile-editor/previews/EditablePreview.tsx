@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, HeadlineContent, DividerContent, NewsletterContent, TestimonialsContent, ContactContent, FAQContent, AboutMeContent, SlidingBannerContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, CollectionContent, FooterContent, CardSlideshowContent, BannerSlideshowContent } from '../types';
+import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, HeadlineContent, DividerContent, NewsletterContent, TestimonialsContent, ContactUsContent, FAQContent, AboutMeContent, SlidingBannerContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, CollectionContent, FooterContent, CardSlideshowContent, BannerSlideshowContent } from '../types';
 import { cn } from '@/lib/utils';
 import { Image, Play, ChevronLeft, ChevronRight, Star, Mail, Phone, MessageSquare, ArrowRight, Check, Quote } from 'lucide-react';
 
@@ -144,8 +144,8 @@ function ImageEditablePreview({ content, onUpdate }: { content: ImageContent; on
   return (
     <div className="space-y-2">
       <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-        {content.url ? (
-          <img src={content.url} alt={content.alt || ''} className="w-full h-full object-cover" />
+        {content.imageUrl ? (
+          <img src={content.imageUrl} alt={content.altText || ''} className="w-full h-full object-cover" />
         ) : (
           <ImagePlaceholder className="w-full h-full" />
         )}
@@ -180,7 +180,7 @@ function ImageWithTextEditablePreview({ content, section, onUpdate }: { content:
               <InlineEdit value={content.title || ''} onChange={(v) => onUpdate({ title: v })} placeholder="Hero Title" className="text-white" />
             </h2>
             <p className="text-sm opacity-90">
-              <InlineEdit value={content.description || ''} onChange={(v) => onUpdate({ description: v })} placeholder="Hero description" className="text-white" />
+              <InlineEdit value={content.body || ''} onChange={(v) => onUpdate({ body: v })} placeholder="Hero description" className="text-white" />
             </p>
           </div>
         </div>
@@ -202,7 +202,7 @@ function ImageWithTextEditablePreview({ content, section, onUpdate }: { content:
             <InlineEdit value={content.title || ''} onChange={(v) => onUpdate({ title: v })} placeholder="Title" className="text-white" />
           </h3>
           <p className="text-white/80 text-sm">
-            <InlineEdit value={content.description || ''} onChange={(v) => onUpdate({ description: v })} placeholder="Description" className="text-white/80" />
+            <InlineEdit value={content.body || ''} onChange={(v) => onUpdate({ body: v })} placeholder="Description" className="text-white/80" />
           </p>
         </div>
       </div>
@@ -225,7 +225,7 @@ function ImageWithTextEditablePreview({ content, section, onUpdate }: { content:
           <InlineEdit value={content.title || ''} onChange={(v) => onUpdate({ title: v })} placeholder="Title" />
         </h3>
         <p className="text-sm text-muted-foreground">
-          <InlineEdit value={content.description || ''} onChange={(v) => onUpdate({ description: v })} placeholder="Description" multiline />
+          <InlineEdit value={content.body || ''} onChange={(v) => onUpdate({ body: v })} placeholder="Description" multiline />
         </p>
         {content.buttonText && (
           <span className="inline-block text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded">
@@ -250,7 +250,7 @@ function GalleryEditablePreview({ content, section }: { content: GalleryContent;
         {/* Large image spanning 2 rows on left */}
         <div className="row-span-2 rounded-lg overflow-hidden">
           {slots[0]?.url ? (
-            <img src={slots[0].url} alt={slots[0].alt || ''} className="w-full h-full object-cover" />
+            <img src={slots[0].url} alt={slots[0].altText || ''} className="w-full h-full object-cover" />
           ) : (
             <ImagePlaceholder label={1} className="w-full h-full" />
           )}
@@ -258,14 +258,14 @@ function GalleryEditablePreview({ content, section }: { content: GalleryContent;
         {/* Top right images */}
         <div className="rounded-lg overflow-hidden">
           {slots[1]?.url ? (
-            <img src={slots[1].url} alt={slots[1].alt || ''} className="w-full h-full object-cover" />
+            <img src={slots[1].url} alt={slots[1].altText || ''} className="w-full h-full object-cover" />
           ) : (
             <ImagePlaceholder label={2} className="w-full h-full" />
           )}
         </div>
         <div className="rounded-lg overflow-hidden">
           {slots[2]?.url ? (
-            <img src={slots[2].url} alt={slots[2].alt || ''} className="w-full h-full object-cover" />
+            <img src={slots[2].url} alt={slots[2].altText || ''} className="w-full h-full object-cover" />
           ) : (
             <ImagePlaceholder label={3} className="w-full h-full" />
           )}
@@ -273,7 +273,7 @@ function GalleryEditablePreview({ content, section }: { content: GalleryContent;
         {/* Bottom right spanning 2 columns */}
         <div className="col-span-2 rounded-lg overflow-hidden">
           {slots[3]?.url ? (
-            <img src={slots[3].url} alt={slots[3].alt || ''} className="w-full h-full object-cover" />
+            <img src={slots[3].url} alt={slots[3].altText || ''} className="w-full h-full object-cover" />
           ) : (
             <ImagePlaceholder label={4} className="w-full h-full" />
           )}
@@ -290,7 +290,7 @@ function GalleryEditablePreview({ content, section }: { content: GalleryContent;
         {slots.map((img, i) => (
           <div key={i} className="aspect-square rounded-lg overflow-hidden">
             {img?.url ? (
-              <img src={img.url} alt={img.alt || ''} className="w-full h-full object-cover" />
+              <img src={img.url} alt={img.altText || ''} className="w-full h-full object-cover" />
             ) : (
               <ImagePlaceholder label={i + 1} className="w-full h-full" />
             )}
@@ -307,7 +307,7 @@ function GalleryEditablePreview({ content, section }: { content: GalleryContent;
       {slots.map((img, i) => (
         <div key={i} className="aspect-square rounded-lg overflow-hidden">
           {img?.url ? (
-            <img src={img.url} alt={img.alt || ''} className="w-full h-full object-cover" />
+            <img src={img.url} alt={img.altText || ''} className="w-full h-full object-cover" />
           ) : (
             <ImagePlaceholder label={i + 1} className="w-full h-full" />
           )}
@@ -319,10 +319,18 @@ function GalleryEditablePreview({ content, section }: { content: GalleryContent;
 
 // Video Preview
 function VideoEditablePreview({ content }: { content: VideoContent }) {
+  // Extract thumbnail from YouTube URL if possible
+  const getYoutubeThumbnail = (url: string) => {
+    const match = url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
+    return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : null;
+  };
+  
+  const thumbnailUrl = getYoutubeThumbnail(content.videoUrl || '');
+  
   return (
     <div className="aspect-video bg-muted rounded-lg overflow-hidden relative">
-      {content.thumbnailUrl ? (
-        <img src={content.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+      {thumbnailUrl ? (
+        <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full bg-gradient-to-br from-muted to-muted-foreground/20" />
       )}
@@ -418,7 +426,7 @@ function NewsletterEditablePreview({ content, onUpdate }: { content: NewsletterC
 function TestimonialsEditablePreview({ content, section }: { content: TestimonialsContent; section: ProfileSection }) {
   const preset = section.style_options?.preset || 'style1';
   const layout = content.layout || 'grid';
-  const items = content.items || [];
+  const items = content.testimonials || [];
 
   // Grid 6 (6 items in a row)
   if (preset === 'style4' || layout === 'grid-6') {
@@ -444,7 +452,7 @@ function TestimonialsEditablePreview({ content, section }: { content: Testimonia
 
   // Slider Layout
   if (preset === 'style2' || layout === 'slider') {
-    const currentItem = items[0] || { name: 'Customer Name', role: 'Customer', quote: 'Amazing product!', rating: 5 };
+    const currentItem = items[0] || { name: 'Customer Name', role: 'Customer', quote: 'Amazing product!', rating: 5 as const, avatar: undefined };
     return (
       <div className="relative">
         <div className="bg-muted/30 rounded-lg p-6 text-center max-w-md mx-auto">
@@ -476,8 +484,8 @@ function TestimonialsEditablePreview({ content, section }: { content: Testimonia
 
   // Stacked Layout
   if (preset === 'style3' || layout === 'stacked') {
-    const displayItems = items.length > 0 ? items.slice(0, 3) : [
-      { name: 'Customer', role: 'Verified Buyer', quote: 'Great experience!', rating: 5 }
+  const displayItems = items.length > 0 ? items.slice(0, 3) : [
+      { name: 'Customer', role: 'Verified Buyer', quote: 'Great experience!', rating: 5 as const, avatar: undefined }
     ];
     return (
       <div className="space-y-3">
@@ -533,7 +541,7 @@ function TestimonialsEditablePreview({ content, section }: { content: Testimonia
 }
 
 // Contact Preview - FIXED with all style variants
-function ContactEditablePreview({ content, section, onUpdate }: { content: ContactContent; section: ProfileSection; onUpdate: (c: Partial<ContactContent>) => void }) {
+function ContactEditablePreview({ content, section, onUpdate }: { content: ContactUsContent; section: ProfileSection; onUpdate: (c: Partial<ContactUsContent>) => void }) {
   const preset = section.style_options?.preset || 'style1';
 
   // Split Layout
@@ -549,7 +557,6 @@ function ContactEditablePreview({ content, section, onUpdate }: { content: Conta
           </p>
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2"><Mail className="w-4 h-4" /> {content.email || 'email@example.com'}</div>
-            {content.phone && <div className="flex items-center gap-2"><Phone className="w-4 h-4" /> {content.phone}</div>}
           </div>
         </div>
         <div className="bg-muted/30 rounded-lg p-4 space-y-2">
@@ -571,7 +578,6 @@ function ContactEditablePreview({ content, section, onUpdate }: { content: Conta
         </h3>
         <div className="flex items-center justify-center gap-4 text-sm">
           <span className="flex items-center gap-1"><Mail className="w-4 h-4" /> {content.email || 'email@example.com'}</span>
-          {content.phone && <span className="flex items-center gap-1"><Phone className="w-4 h-4" /> {content.phone}</span>}
         </div>
       </div>
     );
@@ -656,21 +662,19 @@ function FAQEditablePreview({ content, section }: { content: FAQContent; section
 function AboutMeEditablePreview({ content, onUpdate }: { content: AboutMeContent; onUpdate: (c: Partial<AboutMeContent>) => void }) {
   return (
     <div className="flex gap-4 items-start">
-      <div className="w-20 h-20 rounded-full bg-muted shrink-0 overflow-hidden">
-        {content.avatarUrl ? (
-          <img src={content.avatarUrl} alt="" className="w-full h-full object-cover" />
-        ) : (
+      {content.showAvatar && (
+        <div className="w-20 h-20 rounded-full bg-muted shrink-0 overflow-hidden">
           <div className="w-full h-full bg-muted-foreground/20 flex items-center justify-center">
             <Image className="w-8 h-8 text-muted-foreground/30" />
           </div>
-        )}
-      </div>
+        </div>
+      )}
       <div className="flex-1 space-y-2">
         <h3 className="font-semibold">
-          <InlineEdit value={content.name || 'Your Name'} onChange={(v) => onUpdate({ name: v })} placeholder="Your Name" />
+          <InlineEdit value={content.title || 'About Me'} onChange={(v) => onUpdate({ title: v })} placeholder="Title" />
         </h3>
         <p className="text-sm text-muted-foreground">
-          <InlineEdit value={content.bio || 'Tell your story...'} onChange={(v) => onUpdate({ bio: v })} placeholder="Your bio" multiline />
+          <InlineEdit value={content.description || 'Tell your story...'} onChange={(v) => onUpdate({ description: v })} placeholder="Your bio" multiline />
         </p>
       </div>
     </div>
@@ -743,8 +747,7 @@ function BasicListEditablePreview({ content, section }: { content: BasicListCont
             <div className="w-10 h-10 rounded-full bg-primary/10 mx-auto mb-2 flex items-center justify-center">
               <Check className="w-5 h-5 text-primary" />
             </div>
-            <h4 className="font-medium text-sm mb-1">{item?.title || `Item ${i + 1}`}</h4>
-            <p className="text-xs text-muted-foreground">{item?.description || 'Description'}</p>
+            <h4 className="font-medium text-sm mb-1">{item?.text || `Item ${i + 1}`}</h4>
           </div>
         ))}
       </div>
@@ -762,8 +765,7 @@ function BasicListEditablePreview({ content, section }: { content: BasicListCont
               <Check className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h4 className="font-medium text-sm">{item?.title || `Item ${i + 1}`}</h4>
-              <p className="text-xs text-muted-foreground">{item?.description || 'Description'}</p>
+              <h4 className="font-medium text-sm">{item?.text || `Item ${i + 1}`}</h4>
             </div>
           </div>
         ))}
@@ -779,7 +781,7 @@ function BasicListEditablePreview({ content, section }: { content: BasicListCont
         {slots.map((item, i) => (
           <div key={i} className="flex items-center gap-2">
             <Check className="w-4 h-4 text-primary" />
-            <span className="text-sm">{item?.title || `Item ${i + 1}`}</span>
+            <span className="text-sm">{item?.text || `Item ${i + 1}`}</span>
           </div>
         ))}
       </div>
@@ -788,16 +790,16 @@ function BasicListEditablePreview({ content, section }: { content: BasicListCont
 
   // Simple List (default)
   const displayItems = items.length > 0 ? items.slice(0, 5) : [
-    { title: 'First item' },
-    { title: 'Second item' },
-    { title: 'Third item' },
+    { text: 'First item' },
+    { text: 'Second item' },
+    { text: 'Third item' },
   ];
   return (
     <ul className="space-y-2 pl-4">
       {displayItems.map((item, i) => (
         <li key={i} className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          <span className="text-sm">{item.title}</span>
+          <span className="text-sm">{item.text}</span>
         </li>
       ))}
     </ul>
@@ -809,17 +811,15 @@ function FeaturedProductEditablePreview({ content }: { content: FeaturedProductC
   return (
     <div className="bg-muted/30 rounded-lg p-4 flex gap-4">
       <div className="w-24 h-24 bg-muted rounded-lg shrink-0 overflow-hidden">
-        {content.imageUrl ? (
-          <img src={content.imageUrl} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <ImagePlaceholder className="w-full h-full" />
-        )}
+        <ImagePlaceholder className="w-full h-full" />
       </div>
       <div className="flex-1 space-y-2">
-        <h3 className="font-semibold">{content.title || 'Product Name'}</h3>
-        <p className="text-sm text-muted-foreground line-clamp-2">{content.description || 'Product description here'}</p>
+        <h3 className="font-semibold">Product Name</h3>
+        {content.showDescription && (
+          <p className="text-sm text-muted-foreground line-clamp-2">Product description here</p>
+        )}
         <div className="flex items-center gap-3">
-          <span className="font-bold text-primary">${content.price || '29.99'}</span>
+          {content.showPrice && <span className="font-bold text-primary">$29.99</span>}
           <button className="bg-primary text-primary-foreground px-3 py-1 rounded text-sm">
             {content.buttonText || 'Buy Now'}
           </button>
@@ -845,8 +845,8 @@ function LogoListEditablePreview({ content }: { content: LogoListContent }) {
               content.grayscale && "grayscale opacity-60"
             )}
           >
-            {logo?.url ? (
-              <img src={logo.url} alt={logo.alt || ''} className="max-w-full max-h-full object-contain" />
+            {logo?.imageUrl ? (
+              <img src={logo.imageUrl} alt={logo.altText || ''} className="max-w-full max-h-full object-contain" />
             ) : (
               <span className="text-[10px] text-muted-foreground">Logo {i + 1}</span>
             )}
@@ -921,7 +921,7 @@ function FooterEditablePreview({ content, onUpdate }: { content: FooterContent; 
       </div>
       <div className="border-t pt-4 flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          <InlineEdit value={content.copyright || '© 2024 Your Company'} onChange={(v) => onUpdate({ copyright: v })} placeholder="Copyright text" />
+          <InlineEdit value={content.text || '© 2024 Your Company'} onChange={(v) => onUpdate({ text: v })} placeholder="Copyright text" />
         </p>
         {content.showSocialLinks && (
           <div className="flex gap-2">
@@ -937,24 +937,24 @@ function FooterEditablePreview({ content, onUpdate }: { content: FooterContent; 
 
 // Card Slideshow Preview
 function CardSlideshowEditablePreview({ content }: { content: CardSlideshowContent }) {
-  const slides = content.slides || [];
+  const cards = content.cards || [];
 
   return (
     <div className="relative">
       <div className="flex gap-4 overflow-hidden">
         {Array.from({ length: 3 }).map((_, i) => {
-          const slide = slides[i] || { title: `Card ${i + 1}`, description: 'Card description' };
+          const card = cards[i] || { title: `Card ${i + 1}`, description: 'Card description', imageUrl: undefined };
           return (
             <div key={i} className="w-1/3 shrink-0 bg-muted/30 rounded-lg p-4">
               <div className="aspect-video bg-muted rounded-lg mb-3 overflow-hidden">
-                {slide.imageUrl ? (
-                  <img src={slide.imageUrl} alt="" className="w-full h-full object-cover" />
+                {card.imageUrl ? (
+                  <img src={card.imageUrl} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <ImagePlaceholder className="w-full h-full" />
                 )}
               </div>
-              <h4 className="font-medium text-sm mb-1">{slide.title}</h4>
-              <p className="text-xs text-muted-foreground">{slide.description}</p>
+              <h4 className="font-medium text-sm mb-1">{card.title}</h4>
+              <p className="text-xs text-muted-foreground">{card.description}</p>
             </div>
           );
         })}
@@ -972,7 +972,7 @@ function CardSlideshowEditablePreview({ content }: { content: CardSlideshowConte
 // Banner Slideshow Preview
 function BannerSlideshowEditablePreview({ content }: { content: BannerSlideshowContent }) {
   const slides = content.slides || [];
-  const currentSlide = slides[0] || { title: 'Banner Title', subtitle: 'Banner subtitle' };
+  const currentSlide = slides[0] || { title: 'Banner Title', subtitle: 'Banner subtitle', imageUrl: '' };
 
   return (
     <div className="relative">
@@ -1028,9 +1028,8 @@ export function EditablePreview({ section, onUpdate }: EditablePreviewProps) {
       return <NewsletterEditablePreview content={content as NewsletterContent} onUpdate={onUpdate} />;
     case 'testimonials':
       return <TestimonialsEditablePreview content={content as TestimonialsContent} section={section} />;
-    case 'contact':
     case 'contact_us':
-      return <ContactEditablePreview content={content as ContactContent} section={section} onUpdate={onUpdate} />;
+      return <ContactEditablePreview content={content as ContactUsContent} section={section} onUpdate={onUpdate} />;
     case 'faq':
       return <FAQEditablePreview content={content as FAQContent} section={section} />;
     case 'about_me':
