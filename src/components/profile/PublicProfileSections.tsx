@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SectionPreviewContent } from "@/components/profile-editor/previews/SectionPreviewContent";
 import CollectionRow from "@/components/profile/CollectionRow";
-import type { ProfileSection, FontOption, CustomFont } from "@/components/profile-editor/types";
+import { AnimatedSection } from "@/components/profile/AnimatedSection";
+import type { ProfileSection, FontOption, CustomFont, AnimationType } from "@/components/profile-editor/types";
 import { getFontClassName, getCustomFontStyle, useCustomFont } from "@/components/profile-editor/hooks/useCustomFont";
 import { cn } from "@/lib/utils";
 
@@ -243,6 +244,7 @@ export function PublicProfileSections({
         } else {
           const styleOpts = item.data.style_options;
           const showBg = styleOpts?.showBackground === true;
+          const animation = (styleOpts?.animation || 'none') as AnimationType;
           
           // Build container styles
           const containerStyle: React.CSSProperties = {};
@@ -274,13 +276,14 @@ export function PublicProfileSections({
             : '';
           
           return (
-            <div 
-              key={`section-${item.id}`} 
+            <AnimatedSection
+              key={`section-${item.id}`}
+              animation={animation}
               className={containerClasses}
               style={containerStyle}
             >
               <SectionPreviewContent section={item.data} />
-            </div>
+            </AnimatedSection>
           );
         }
       })}

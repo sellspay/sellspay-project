@@ -23,6 +23,16 @@ export type SectionType =
   | 'card_slideshow'
   | 'banner_slideshow';
 
+// Animation type for scroll-triggered effects
+export type AnimationType = 
+  | 'none'
+  | 'fade-in'
+  | 'slide-up'
+  | 'slide-left'
+  | 'slide-right'
+  | 'scale-up'
+  | 'blur-in';
+
 // Style options for each section
 export interface SectionStyleOptions {
   preset?: string;           // e.g., 'style1', 'style2', 'style3'
@@ -36,6 +46,7 @@ export interface SectionStyleOptions {
   containerBackgroundColor?: string; // Custom container background color
   borderStyle?: 'none' | 'solid' | 'dashed'; // Container border style
   borderColor?: string; // Container border color
+  animation?: AnimationType; // Scroll-triggered animation effect
 }
 
 export type FontOption = 
