@@ -9,7 +9,7 @@ import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
-import { formatDistanceToNow } from 'date-fns';
+
 import {
   DndContext,
   closestCenter,
@@ -50,7 +50,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { useAutoSave } from '@/hooks/useAutoSave';
+
 import { useHistory, useHistoryKeyboard } from '@/hooks/useHistory';
 
 interface Profile {
@@ -402,14 +402,11 @@ export function ProfileEditorDialog({
     reset: resetHistory,
   } = useHistory<EditorState>({ sections: [], collections: [], showRecentUploads: true });
 
-  // Autosave - only enabled when data is ready and dialog is open
-  const autoSaveData = useMemo(() => ({
-    sections,
-    collections: editorCollections,
-    showRecentUploads,
-  }), [sections, editorCollections, showRecentUploads]);
+  // Manual save state
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const saveAllChanges = useCallback(async () => {
+    setSaveStatus('saving');
     try {
       // Save sections
       for (const section of sections) {
@@ -443,22 +440,21 @@ export function ProfileEditorDialog({
         .update({ show_recent_uploads: showRecentUploads })
         .eq('id', profileId);
 
+      setSaveStatus('saved');
+      toast.success('Changes saved');
       onCollectionsChange?.();
+      
+      // Reset to idle after 2s
+      setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
       console.error('Error saving changes:', error);
-      throw error;
+      setSaveStatus('error');
+      toast.error('Failed to save changes');
     }
   }, [sections, editorCollections, showRecentUploads, profileId, onCollectionsChange]);
 
-  const { saveStatus, lastSaved, saveNow, resetDataRef } = useAutoSave(
-    autoSaveData,
-    saveAllChanges,
-    1500,
-    dataReady && open
-  );
-
-  // Enable keyboard shortcuts for undo/redo/save (after saveNow is defined)
-  useHistoryKeyboard(undo, redo, canUndo, canRedo, open, saveNow);
+  // Enable keyboard shortcuts for undo/redo/save
+  useHistoryKeyboard(undo, redo, canUndo, canRedo, open, saveAllChanges);
 
   // Sensors for drag and drop
   const sensors = useSensors(
@@ -604,17 +600,14 @@ export function ProfileEditorDialog({
       setRecentProducts(productsData);
       setShowRecentUploads(profile.show_recent_uploads !== false);
 
-      // Reset autosave reference to prevent immediate save
+      // Reset history to initial state
       const initialState = {
         sections: sectionsData,
         collections: collectionsData,
         showRecentUploads: profile.show_recent_uploads !== false,
       };
-      resetDataRef(initialState);
       resetHistory(initialState);
-      
-      // Enable autosave after a short delay
-      setTimeout(() => setDataReady(true), 500);
+      setDataReady(true);
     } finally {
       setLoading(false);
     }
@@ -869,9 +862,7 @@ export function ProfileEditorDialog({
                     Save failed
                   </span>
                 )}
-                {saveStatus === 'idle' && lastSaved && (
-                  <span>Saved {formatDistanceToNow(lastSaved)} ago</span>
-                )}
+                {saveStatus === 'idle' && 'Ready to save'}
               </span>
 
               {/* Undo/Redo buttons */}
@@ -912,7 +903,7 @@ export function ProfileEditorDialog({
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={saveNow}
+                    onClick={saveAllChanges}
                     disabled={saveStatus === 'saving'}
                     className="gap-2"
                   >
