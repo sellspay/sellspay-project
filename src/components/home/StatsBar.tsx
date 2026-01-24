@@ -60,27 +60,27 @@ export function StatsBar() {
 
   useEffect(() => {
     async function fetchStats() {
-      // Fetch creators count
+      // Fetch creators count using public_profiles view (no RLS restrictions)
       const { count: creatorsCount } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('is_seller', true);
+        .eq('is_creator', true);
 
-      // Fetch products count
+      // Fetch products count (published products are viewable by everyone per RLS)
       const { count: productsCount } = await supabase
         .from('products')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'published');
 
-      // Fetch total users count
+      // Fetch total users count using public_profiles view
       const { count: usersCount } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('*', { count: 'exact', head: true });
 
       setStats([
-        { label: 'Verified Creators', value: creatorsCount || 2, suffix: '+', icon: <UserCheck className="h-5 w-5" /> },
-        { label: 'Premium Products', value: productsCount || 2, suffix: '+', icon: <Package className="h-5 w-5" /> },
-        { label: 'Community Members', value: usersCount || 5, suffix: '+', icon: <Users className="h-5 w-5" /> },
+        { label: 'Verified Creators', value: creatorsCount || 0, suffix: '+', icon: <UserCheck className="h-5 w-5" /> },
+        { label: 'Premium Products', value: productsCount || 0, suffix: '+', icon: <Package className="h-5 w-5" /> },
+        { label: 'Community Members', value: usersCount || 0, suffix: '+', icon: <Users className="h-5 w-5" /> },
         { label: 'Instant Downloads', value: 100, suffix: '%', icon: <Download className="h-5 w-5" /> },
       ]);
     }
