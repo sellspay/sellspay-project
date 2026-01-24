@@ -588,22 +588,42 @@ export function ProfileEditorDialog({
     setLoading(true);
     setDataReady(false);
     try {
-      const [sectionsData, collectionsData, productsData] = await Promise.all([
+      // Fetch profile's show_recent_uploads from the database directly
+      const fetchShowRecentUploads = async (): Promise<boolean> => {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('show_recent_uploads')
+            .eq('id', profileId)
+            .single();
+          
+          if (error || !data) {
+            // Fallback to prop value or default true
+            return profile.show_recent_uploads !== false;
+          }
+          return data.show_recent_uploads !== false;
+        } catch {
+          return profile.show_recent_uploads !== false;
+        }
+      };
+
+      const [sectionsData, collectionsData, productsData, showRecentFromDB] = await Promise.all([
         fetchSections(),
         fetchCollections(),
         fetchRecentProducts(),
+        fetchShowRecentUploads(),
       ]);
 
       setSections(sectionsData);
       setEditorCollections(collectionsData);
       setRecentProducts(productsData);
-      setShowRecentUploads(profile.show_recent_uploads !== false);
+      setShowRecentUploads(showRecentFromDB);
 
-      // Reset history to initial state
+      // Reset history to initial state using fetched database value
       const initialState = {
         sections: sectionsData,
         collections: collectionsData,
-        showRecentUploads: profile.show_recent_uploads !== false,
+        showRecentUploads: showRecentFromDB,
       };
       resetHistory(initialState);
       setDataReady(true);
