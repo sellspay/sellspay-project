@@ -968,7 +968,7 @@ export default function ProductDetail() {
                   <span className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
                     @{product.creator.username || "unknown"}
                     {product.creator.verified && (
-                      <VerifiedBadge size="sm" isAdmin={isCreatorAdmin} />
+                      <VerifiedBadge size="sm" isOwner={isCreatorAdmin} />
                     )}
                   </span>
                 </Link>
@@ -1384,7 +1384,7 @@ export default function ProductDetail() {
                 <h3 className="font-semibold flex items-center justify-center gap-1">
                   @{product.creator.username || "unknown"}
                   {product.creator.verified && (
-                    <VerifiedBadge size="sm" isAdmin={isCreatorAdmin} />
+                    <VerifiedBadge size="sm" isOwner={isCreatorAdmin} />
                   )}
                 </h3>
                 {product.creator.bio && (

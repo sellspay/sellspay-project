@@ -11,6 +11,7 @@ import { useAuth, checkUserRole } from '@/lib/auth';
 
 interface Creator {
   id: string;
+  user_id: string | null;
   username: string | null;
   full_name: string | null;
   avatar_url: string | null;
@@ -20,6 +21,7 @@ interface Creator {
   productCount?: number;
   followersCount?: number;
   followingCount?: number;
+  isOwner?: boolean;
 }
 
 export default function Creators() {
@@ -43,7 +45,7 @@ export default function Creators() {
       // Use public_profiles view for public access (no RLS restrictions)
       const { data, error } = await supabase
         .from('public_profiles')
-        .select('id, username, full_name, avatar_url, bio, is_creator, verified')
+        .select('id, user_id, username, full_name, avatar_url, bio, is_creator, verified')
         .eq('is_creator', true)
         .order('created_at', { ascending: false });
 
@@ -52,6 +54,19 @@ export default function Creators() {
         setCreators([]);
         setLoading(false);
         return;
+      }
+
+      // Get admin status for all creators
+      const userIds = (data || []).map(c => c.user_id).filter(Boolean) as string[];
+      let adminUserIds: string[] = [];
+      
+      if (userIds.length > 0) {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'admin')
+          .in('user_id', userIds);
+        adminUserIds = (roles || []).map(r => r.user_id);
       }
 
       // Fetch counts for each creator
@@ -81,6 +96,7 @@ export default function Creators() {
             productCount: productCount || 0,
             followersCount: followersCount || 0,
             followingCount: followingCount || 0,
+            isOwner: creator.user_id ? adminUserIds.includes(creator.user_id) : false,
           };
         })
       );
@@ -101,11 +117,6 @@ export default function Creators() {
     );
   });
 
-  // Check if a creator is the admin
-  const isCreatorAdmin = (creatorId: string) => {
-    // This is a simple check - in production you'd check against user_id
-    return creators.find(c => c.id === creatorId)?.username?.toLowerCase() === 'yaboyvis';
-  };
 
   return (
     <TooltipProvider>
@@ -161,10 +172,7 @@ export default function Creators() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredCreators.map((creator) => {
-                const creatorIsAdmin = isCreatorAdmin(creator.id);
-                
-                return (
+              {filteredCreators.map((creator) => (
                   <Link
                     key={creator.id}
                     to={`/@${creator.username || creator.id}`}
@@ -184,7 +192,7 @@ export default function Creators() {
                           {creator.full_name || creator.username || 'Creator'}
                         </h3>
                         {creator.verified && (
-                          <VerifiedBadge isAdmin={creatorIsAdmin} size="sm" />
+                          <VerifiedBadge isOwner={creator.isOwner} size="sm" />
                         )}
                       </div>
                       
@@ -240,8 +248,7 @@ export default function Creators() {
                       </Badge>
                     </div>
                   </Link>
-                );
-              })}
+                ))}
             </div>
           )}
         </div>

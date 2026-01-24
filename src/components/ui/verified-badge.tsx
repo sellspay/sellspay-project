@@ -1,12 +1,12 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface VerifiedBadgeProps {
-  isAdmin?: boolean;
+  isOwner?: boolean; // Whether the profile being viewed belongs to a site owner/admin
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-export function VerifiedBadge({ isAdmin = false, size = 'md', className = '' }: VerifiedBadgeProps) {
+export function VerifiedBadge({ isOwner = false, size = 'md', className = '' }: VerifiedBadgeProps) {
   const sizeClasses = {
     sm: 'w-4 h-4',
     md: 'w-5 h-5',
@@ -23,11 +23,12 @@ export function VerifiedBadge({ isAdmin = false, size = 'md', className = '' }: 
     <Tooltip>
       <TooltipTrigger asChild>
         <div 
-          className={`${sizeClasses[size]} rounded-full bg-blue-500 flex items-center justify-center transition-all duration-300 shrink-0 ${
-            isAdmin ? 'hover:animate-hue-rotate cursor-pointer' : ''
+          className={`${sizeClasses[size]} rounded-full flex items-center justify-center transition-all duration-300 shrink-0 ${
+            isOwner ? 'animate-hue-rotate' : 'bg-blue-500'
           } ${className}`}
-          style={isAdmin ? { 
-            ['--tw-bg-opacity' as string]: 1,
+          style={isOwner ? { 
+            background: 'linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3, #54a0ff)',
+            backgroundSize: '400% 400%',
           } : undefined}
         >
           <svg 
@@ -44,7 +45,7 @@ export function VerifiedBadge({ isAdmin = false, size = 'md', className = '' }: 
         </div>
       </TooltipTrigger>
       <TooltipContent>
-        <p>{isAdmin ? 'Verified Creator / Owner' : 'Verified Creator'}</p>
+        <p>{isOwner ? 'Verified Creator / Owner' : 'Verified Creator'}</p>
       </TooltipContent>
     </Tooltip>
   );

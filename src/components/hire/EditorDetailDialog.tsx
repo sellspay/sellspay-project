@@ -90,7 +90,7 @@ export default function EditorDetailDialog({
                 <h2 className="text-xl font-bold text-foreground">
                   @{editor.username || 'editor'}
                 </h2>
-                {editor.verified && <VerifiedBadge size="md" isAdmin={editor.isAdmin} />}
+                {editor.verified && <VerifiedBadge size="md" isOwner={editor.isAdmin} />}
               </div>
               {editor.full_name && (
                 <p className="text-muted-foreground">{editor.full_name}</p>
