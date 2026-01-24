@@ -1,186 +1,96 @@
 
-# Profile Editor Redesign: Modal Add Section Panel + Footer Section
+# Plan: Context-Aware Section Editor with Live Preview
 
-## Overview
-This plan transforms the "Add New Section" panel from a fullscreen overlay to a modal window that appears over the profile editor (similar to the reference images), adds instant preview of presets on the profile background, and introduces a new Footer section type for creators.
+## Problem
+When clicking "Edit" on a section in the Profile Editor, users see a generic form popup that doesn't visually connect to the element they clicked. For example, clicking "Edit" on an "Image With Text" section showing "Make It Happen" opens a form with fields, not a representation of that actual element.
 
-## Key Changes
+## Solution
+Redesign the Edit Section Dialog to show a **live preview of the exact element** at the top, with editing controls below. Changes update the preview in real-time, making users feel they're directly editing the section.
 
-### 1. Convert Add Section Panel to Modal Dialog
+## Implementation
 
-**Current Issue**: The Add Section panel (`AddSectionPanel.tsx`) renders as a fullscreen overlay (`fixed inset-0`), which takes users completely away from the editor context.
+### 1. Restructure EditSectionDialog Layout
+**File**: `src/components/profile-editor/EditSectionDialog.tsx`
 
-**Solution**: Convert to a modal dialog using the existing `Dialog` component with a large width (approx. 800-900px), positioned centered over the editor. This keeps the editor visible in the background, matching the reference screenshots.
-
-**Implementation**:
-- Replace the fullscreen `div` with `Dialog` + `DialogContent` components
-- Use custom sizing: `max-w-4xl w-[95vw] h-[80vh]` for large modal
-- Remove the header X button (Dialog provides its own)
-- Keep the split-panel layout (sidebar + presets) inside the modal
-
-### 2. Instant Preset Preview on Background
-
-**Current Issue**: When clicking a preset, the section is added immediately and the panel closes. Users cannot preview how different presets will look before committing.
-
-**Solution**: Add a hover/click preview mode that temporarily shows the preset on the editor canvas before final selection.
-
-**Implementation**:
-- Add `hoveredPreset` state to track which preset is being previewed
-- Pass a `onPreviewSection` callback from `ProfileEditorDialog` to `AddSectionPanel`
-- On preset hover, create a temporary preview section and display it in the sections list
-- On preset click, commit the section (current behavior)
-- Visual indicator: highlight the preview section with a dashed border and "Preview" badge
-
-### 3. Add Footer Section Type
-
-**Purpose**: Allow creators to add a customizable footer to their profile page with links, copyright text, and branding.
-
-**New Types** (in `types.ts`):
-```text
-FooterContent {
-  text: string;              // e.g., "2026 Store Name. All rights reserved."
-  showSocialLinks: boolean;
-  columns: FooterColumn[];   // Up to 3 columns with links
-  backgroundColor?: string;
-}
-
-FooterColumn {
-  id: string;
-  title: string;
-  links: FooterLink[];
-}
-
-FooterLink {
-  id: string;
-  label: string;
-  url: string;
-}
-```
-
-**Template Configuration**:
-- Add `'footer'` to `SectionType` union
-- Add Footer template to `SECTION_TEMPLATES` in `types.ts`
-- Category: `'layout'`
-- Icon: `'LayoutGrid'` or similar
-- Presets: "Simple", "Multi-Column", "Minimal"
-
-**Preview Component** (in `SectionPreviewContent.tsx`):
-- Create `FooterPreview` component showing columns and links
-- Render copyright text centered below columns
-
-### 4. Fix Editor Dead Space Issue
-
-**Current Issue**: The background does not fill the entire viewport and there is visible dead space below the card.
-
-**Solution**: Ensure the main content area uses proper height calculations:
-- The dialog content: `h-[100vh]` (full viewport)
-- The scrollable area: `h-[calc(100vh-57px)]` (minus header)
-- The background div: `absolute inset-0` (already correct)
-
-### 5. Section Type Sidebar Structure
-
-Update the sidebar to match reference images with these categories:
-- **Saved Sections** (for user-saved custom sections - future feature placeholder)
-- **Image With Text**
-- **Gallery**
-- **Slideshow**
-- **Image**
-- **Text**
-- **Basic List**
-- **Slider List**
-- **Video**
-- **Featured Product**
-- **Featured Collection**
-- **Featured Collection List**
-- **Featured Blog Posts**
-- **Testimonials**
-- **Logo List**
-- **Contact Us**
-- **Newsletter**
-- **FAQs**
-- **About Me**
-- **Collage**
-- **Embed Code**
-- **Footer** (new)
-
----
-
-## Technical Implementation
-
-### Files to Modify
-
-1. **`src/components/profile-editor/types.ts`**
-   - Add `'footer'` to `SectionType` union
-   - Add `FooterContent`, `FooterColumn`, `FooterLink` interfaces
-   - Add Footer to `SectionContent` union
-   - Add Footer template to `SECTION_TEMPLATES` array
-
-2. **`src/components/profile-editor/AddSectionPanel.tsx`**
-   - Convert from fullscreen div to `Dialog` + `DialogContent`
-   - Update container styling for modal appearance
-   - Add hover preview functionality
-   - Add Footer presets to `PRESET_PREVIEWS`
-
-3. **`src/components/profile-editor/ProfileEditorDialog.tsx`**
-   - Add `previewSection` state for temporary preview
-   - Pass `onPreviewSection` callback to AddSectionPanel
-   - Render preview section with visual distinction
-   - Fix any remaining layout issues for full viewport coverage
-
-4. **`src/components/profile-editor/previews/SectionPreviewContent.tsx`**
-   - Add `FooterPreview` component
-   - Add case for `'footer'` in switch statement
-
-### Modal Layout Structure
+- Add a live preview section at the top of the dialog using `SectionPreviewContent`
+- The preview updates in real-time as users modify content
+- Editing controls appear below the preview in a scrollable area
+- Increase dialog width to accommodate both preview and controls
 
 ```text
-+----------------------------------+
-|  Add New Section           [X]  |  <- Dialog Header
-+----------------------------------+
-|  Sidebar   |   Preset Cards     |
-|  --------  |   [1] Hero Banner  |
-|  > Text    |   [2] Image Left   |
-|  > Image   |   [3] Image Right  |
-|  > Gallery |   [4] Overlay      |
-|  > Video   |   ...              |
-|  ...       |                    |
-|  > Footer  |                    |
-+----------------------------------+
++------------------------------------------+
+|  [x] Edit: Image With Text               |
++------------------------------------------+
+|  +------------------------------------+  |
+|  |                                    |  |
+|  |     LIVE PREVIEW OF SECTION        |  |
+|  |     (exactly as it appears)        |  |
+|  |                                    |  |
+|  +------------------------------------+  |
++------------------------------------------+
+|  EDITING CONTROLS                        |
+|  - Image upload                          |
+|  - Title input                           |
+|  - Body textarea                         |
+|  - Button settings                       |
+|  - etc.                                  |
++------------------------------------------+
+|  [Delete]                    [Done]      |
++------------------------------------------+
 ```
 
-### Footer Section Presets
+### 2. Changes to EditSectionDialog
 
-**Preset 1: Simple Footer**
-- Single line with copyright text
-- Optional social icons
+- Import `SectionPreviewContent` from `./previews/SectionPreviewContent`
+- Create a temporary section state that updates in real-time for preview
+- Render the `SectionPreviewContent` component at the top of the dialog
+- Wrap the preview in a styled container with a subtle border/background to frame it
+- Keep the existing form editors below, but now changes reflect immediately in the preview above
 
-**Preset 2: Multi-Column**
-- 2-3 columns with link lists
-- Column headers
-- Copyright below
+### 3. Dialog Sizing
+- Increase `max-w-lg` to `max-w-2xl` or `max-w-3xl` to fit both preview and controls comfortably
+- Ensure the dialog remains scrollable for smaller screens
 
-**Preset 3: Minimal**
-- Just copyright text centered
-- Clean, minimal design
+## Technical Details
 
-### State Flow for Preview
+### Key Code Changes
 
-1. User opens Add Section modal
-2. User selects section type from sidebar
-3. User hovers over a preset card
-4. `onPreviewSection(type, presetId)` is called
-5. `ProfileEditorDialog` creates temporary section and adds to preview list
-6. Preview section renders with dashed border + "Preview" label
-7. User clicks preset to confirm OR moves away to cancel preview
-8. On confirm: section is saved to database, preview is replaced with real section
-9. On cancel (close modal): preview section is removed
+**EditSectionDialog.tsx**:
+```tsx
+import { SectionPreviewContent } from './previews/SectionPreviewContent';
 
----
+// Inside the dialog content:
+<DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+  <DialogHeader>
+    <DialogTitle>{template?.name || 'Edit Section'}</DialogTitle>
+  </DialogHeader>
+  
+  {/* Live Preview */}
+  <div className="bg-background border border-border rounded-lg p-4 mb-4">
+    <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">Preview</div>
+    <div className="bg-card rounded-lg overflow-hidden">
+      <SectionPreviewContent section={section} />
+    </div>
+  </div>
+  
+  {/* Editing Controls */}
+  <ScrollArea className="flex-1">
+    <div className="space-y-4">{renderEditor()}</div>
+  </ScrollArea>
+  
+  {/* Footer */}
+  <div className="flex justify-between pt-4 border-t">
+    <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+    <Button onClick={onClose}>Done</Button>
+  </div>
+</DialogContent>
+```
 
-## Summary
+## Files to Modify
+1. `src/components/profile-editor/EditSectionDialog.tsx` - Add live preview, restructure layout
 
-This redesign transforms the Add Section experience to match professional store builders like Shopify, with:
-1. A centered modal dialog instead of fullscreen takeover
-2. Live preview of presets on the editor canvas before committing
-3. A new Footer section type for complete store customization
-4. Proper full-viewport editor layout with no dead space
+## User Experience
+- When clicking "Edit" on any section, users immediately see what they're editing
+- Changes to form fields update the preview in real-time
+- Creates a direct visual connection between the canvas element and the editor
+- Feels like "in-place" editing rather than abstract form filling
