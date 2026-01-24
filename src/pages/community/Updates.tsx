@@ -17,19 +17,13 @@ interface PlatformUpdate {
   is_pinned: boolean;
   created_at: string;
   updated_at: string;
-  author?: {
-    id: string;
-    username: string | null;
-    avatar_url: string | null;
-    verified: boolean | null;
-  };
 }
 
 export default function Updates() {
   const { user, isOwner } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch updates with author info
+  // Fetch updates (no author fetching needed - displayed as bot)
   const { data: updates, isLoading } = useQuery({
     queryKey: ['platform-updates'],
     queryFn: async () => {
@@ -40,24 +34,7 @@ export default function Updates() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      // Fetch author details for each update
-      const updatesWithAuthors = await Promise.all(
-        (data || []).map(async (update) => {
-          const { data: author } = await supabase
-            .from('profiles')
-            .select('id, username, avatar_url, verified')
-            .eq('id', update.author_id)
-            .single();
-
-          return {
-            ...update,
-            author: author || undefined,
-          };
-        })
-      );
-
-      return updatesWithAuthors as PlatformUpdate[];
+      return data as PlatformUpdate[];
     },
   });
 

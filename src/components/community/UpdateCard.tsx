@@ -27,8 +27,10 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  Bot,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import navbarLogo from '@/assets/navbar-logo.png';
 
 interface UpdateCardProps {
   update: {
@@ -39,12 +41,6 @@ interface UpdateCardProps {
     category: string;
     is_pinned: boolean;
     created_at: string;
-    author?: {
-      id: string;
-      username: string | null;
-      avatar_url: string | null;
-      verified: boolean | null;
-    };
   };
   isOwner?: boolean;
 }
@@ -116,17 +112,26 @@ export function UpdateCard({ update, isOwner }: UpdateCardProps) {
           {/* Header */}
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10 ring-2 ring-amber-500/30">
-                <AvatarImage src={update.author?.avatar_url || undefined} />
+              {/* Bot Avatar with amber glow */}
+              <Avatar className="h-10 w-10 ring-2 ring-amber-500/50 shadow-lg shadow-amber-500/20">
+                <AvatarImage src={navbarLogo} className="object-contain p-0.5" />
                 <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-500 text-white font-bold">
-                  {update.author?.username?.[0]?.toUpperCase() || 'O'}
+                  EP
                 </AvatarFallback>
               </Avatar>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-foreground">
-                    {update.author?.username || 'Owner'}
+                    EditorsParadise
                   </span>
+                  {/* BOT Badge */}
+                  <Badge 
+                    variant="outline" 
+                    className="px-1.5 py-0 text-[10px] font-semibold bg-amber-500/20 text-amber-400 border-amber-500/40 uppercase tracking-wide"
+                  >
+                    <Bot className="h-2.5 w-2.5 mr-0.5" />
+                    Bot
+                  </Badge>
                   <VerifiedBadge isOwner />
                 </div>
                 <span className="text-xs text-muted-foreground">
