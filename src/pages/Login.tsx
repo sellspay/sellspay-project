@@ -28,21 +28,22 @@ export default function Login() {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const [checkingMfa, setCheckingMfa] = useState(false); // Prevents redirect during MFA check
 
   useEffect(() => {
-    // Only redirect if user is logged in AND not in MFA verification flow
-    if (user && !showMfaVerification) {
+    // Only redirect if user is logged in AND not in MFA verification flow AND not currently checking MFA
+    if (user && !showMfaVerification && !checkingMfa) {
       const params = new URLSearchParams(location.search);
       const next = params.get('next');
       navigate(next || '/');
     }
-  }, [user, navigate, location.search, showMfaVerification]);
+  }, [user, navigate, location.search, showMfaVerification, checkingMfa]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    // Reset forgot password state in case it was accidentally triggered
+    setCheckingMfa(true); // Prevent redirect while we check MFA
     setShowForgotPassword(false);
 
     try {
@@ -58,6 +59,7 @@ export default function Login() {
         if (!email) {
           setError('Username not found');
           setLoading(false);
+          setCheckingMfa(false);
           return;
         }
         
@@ -69,7 +71,6 @@ export default function Login() {
 
       // Check if user has MFA enabled
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      console.log('[LOGIN] Auth user after sign in:', authUser?.id);
       
       if (authUser) {
         const { data: profile } = await supabase
@@ -78,11 +79,8 @@ export default function Login() {
           .eq('user_id', authUser.id)
           .single();
 
-        console.log('[LOGIN] Profile MFA status:', profile?.mfa_enabled);
-
         if (profile?.mfa_enabled) {
           // User has MFA enabled - sign them out and show verification
-          console.log('[LOGIN] MFA enabled - showing verification screen');
           const userId = authUser.id;
           const userEmail = authUser.email || emailToUse;
           
@@ -90,6 +88,7 @@ export default function Login() {
           setMfaEmail(userEmail);
           await signOut();
           setShowMfaVerification(true);
+          setCheckingMfa(false);
           setLoading(false);
           // Automatically send OTP
           await sendMfaCode(userId, userEmail);
@@ -97,10 +96,11 @@ export default function Login() {
         }
       }
       
-      // No MFA - redirect handled by useEffect
+      // No MFA - allow redirect by clearing checkingMfa
+      setCheckingMfa(false);
     } catch (err: any) {
-      console.error('[LOGIN] Error:', err);
       setError('Invalid email/username or password');
+      setCheckingMfa(false);
     } finally {
       setLoading(false);
     }
