@@ -187,7 +187,7 @@ export default function Signup() {
       {/* Back to Home */}
       <Link 
         to="/" 
-        className="absolute top-6 left-6 flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors z-10"
+        className="absolute top-6 left-6 flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors z-20 pointer-events-auto"
       >
         <ChevronLeft className="h-4 w-4" />
         <span className="text-sm">Home</span>
@@ -217,7 +217,7 @@ export default function Signup() {
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-[#0a0a0a] border border-white/10 text-white font-medium transition-all duration-300 hover:bg-gradient-to-r hover:from-purple-600 hover:via-violet-500 hover:to-purple-600 hover:border-purple-400/60 hover:shadow-[0_0_30px_rgba(147,51,234,0.6),0_0_60px_rgba(147,51,234,0.3)]"
+            className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-card/40 border border-border/50 text-white font-medium transition-all duration-300 hover:bg-gradient-to-r hover:from-primary hover:via-accent hover:to-primary hover:border-primary/60 hover:shadow-[0_0_30px_hsl(var(--primary)/0.6),0_0_60px_hsl(var(--primary)/0.3)]"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -248,7 +248,7 @@ export default function Signup() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
-                className="w-full h-12 px-4 rounded-lg bg-[#0a0a0a] border border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                className="w-full h-12 px-4 rounded-lg bg-card/40 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
 
@@ -261,7 +261,7 @@ export default function Signup() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
-                  className={`w-full h-12 px-4 pr-12 rounded-lg bg-[#0a0a0a] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all ${getInputBorderClass(usernameStatus)}`}
+                  className={`w-full h-12 px-4 pr-12 rounded-lg bg-card/40 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${getInputBorderClass(usernameStatus)}`}
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2">
                   {renderValidationIcon(usernameStatus)}
@@ -281,7 +281,7 @@ export default function Signup() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className={`w-full h-12 px-4 pr-12 rounded-lg bg-[#0a0a0a] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all ${getInputBorderClass(emailStatus)}`}
+                  className={`w-full h-12 px-4 pr-12 rounded-lg bg-card/40 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all ${getInputBorderClass(emailStatus)}`}
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2">
                   {renderValidationIcon(emailStatus)}
@@ -299,7 +299,7 @@ export default function Signup() {
                 placeholder="+1 (555) 000-0000"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-12 px-4 rounded-lg bg-[#0a0a0a] border border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                className="w-full h-12 px-4 rounded-lg bg-card/40 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
 
@@ -313,7 +313,7 @@ export default function Signup() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
-                  className="w-full h-12 px-4 pr-12 rounded-lg bg-[#0a0a0a] border border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  className="w-full h-12 px-4 pr-12 rounded-lg bg-card/40 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
                 />
                 <button
                   type="button"
@@ -332,7 +332,7 @@ export default function Signup() {
             <button
               type="submit"
               disabled={loading || usernameStatus === 'taken' || emailStatus === 'taken'}
-              className="w-full h-12 rounded-lg bg-[#0a0a0a] border border-white/10 text-white font-medium transition-all duration-300 hover:bg-gradient-to-r hover:from-purple-600 hover:via-violet-500 hover:to-purple-600 hover:border-purple-400/60 hover:shadow-[0_0_30px_rgba(147,51,234,0.6),0_0_60px_rgba(147,51,234,0.3)] disabled:opacity-50"
+              className="w-full h-12 rounded-lg bg-card/40 border border-border/50 text-white font-medium transition-all duration-300 hover:bg-gradient-to-r hover:from-primary hover:via-accent hover:to-primary hover:border-primary/60 hover:shadow-[0_0_30px_hsl(var(--primary)/0.6),0_0_60px_hsl(var(--primary)/0.3)] disabled:opacity-50"
             >
               {loading ? 'Creating Account...' : 'Sign Up'}
             </button>
