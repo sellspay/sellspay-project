@@ -1,143 +1,314 @@
 
 
-# Seller Custom Email Integration Plan
+# Plan: Add Payoneer and Direct Bank Transfer Withdrawal Options
 
 ## Overview
-Enable sellers to connect their own Resend account for sending emails to customers. This includes purchase receipts, support replies, and product update announcements - all sent from the seller's own verified domain.
 
-## How It Works
-
-Sellers will go to Settings and enter their Resend API key. When they send emails to customers (purchase confirmations, support replies, product updates), the system will use their API key to send from their verified domain instead of the platform's default.
+This plan addresses adding **Payoneer** as an alternative payout method alongside Stripe for international users, and implementing direct **bank/debit account routing** for withdrawals. This is a significant feature that requires careful consideration of technical implementation, compliance, and legal requirements.
 
 ---
 
-## Implementation Steps
+## Current Architecture Assessment
 
-### Step 1: Database Schema Update
-Add secure storage for seller email configuration in the `profiles` table:
-- `resend_api_key_encrypted` (text) - Encrypted API key using Supabase Vault
-- `seller_support_email` (text) - The email address for sending (must match their Resend verified domain)
-- `seller_email_verified` (boolean) - Whether their email setup has been verified
+Your platform currently uses:
+- **Stripe Connect Express** for seller/editor payments
+- 5% platform fee on all transactions
+- Withdrawals via Stripe with standard (free, 1-3 days) and instant (3% fee) options
+- Edge functions: `create-payout`, `get-stripe-balance`, `create-connect-account`
 
-Create a secure function to store the API key encrypted:
+---
+
+## Solution Architecture
+
 ```text
-┌────────────────────────────────────────────────────────────────┐
-│  vault.create_secret(api_key, 'resend_key_<user_id>')          │
-│                            ↓                                    │
-│  Store secret_id reference in profiles.resend_vault_secret_id  │
-└────────────────────────────────────────────────────────────────┘
++------------------+     +------------------+     +------------------+
+|   User Settings  | --> | Payout Method    | --> | Withdrawal       |
+|   (Billing Tab)  |     | Selection        |     | Execution        |
++------------------+     +------------------+     +------------------+
+                                |
+          +---------------------+---------------------+
+          |                     |                     |
+    +-----v-----+         +-----v-----+         +-----v-----+
+    |  Stripe   |         | Payoneer  |         | Direct    |
+    |  Connect  |         | Mass Pay  |         | Bank/ACH  |
+    +-----+-----+         +-----+-----+         +-----+-----+
+          |                     |                     |
+          v                     v                     v
+    Auto via           API Integration        Stripe External
+    Stripe Dashboard   (Business Account)     Accounts API
 ```
 
-### Step 2: Settings UI - Email Configuration Section
-Add a new "Seller Email" section in Settings (visible only to sellers):
-- Input field for Resend API Key (masked/secure input)
-- Input field for "From" email address (e.g., support@theirbusiness.com)
-- "Verify & Save" button that tests the API key
-- Status indicator showing connection status
-- Help text explaining how to get a Resend API key and verify a domain
-
-### Step 3: API Key Verification Edge Function
-Create `verify-seller-email` edge function that:
-1. Takes the seller's Resend API key and email address
-2. Attempts to send a test email to verify the key works
-3. Stores the encrypted API key in Supabase Vault on success
-4. Returns verification status
-
-### Step 4: Unified Email Sending Function
-Create `send-seller-email` edge function that:
-1. Checks if seller has a configured Resend API key
-2. If yes → use seller's API key and from address
-3. If no → fall back to platform's default Resend account
-4. Supports multiple email types: receipts, support, announcements
-
-### Step 5: Purchase Receipt Emails
-Update the purchase/checkout flow to trigger an email:
-- Sent from seller's configured email (or platform default)
-- Includes: product name, download link, receipt details
-- Branded with seller's name and logo
-
-### Step 6: Support Reply System
-Create infrastructure for seller-to-customer communication:
-- New `support_messages` table for tracking conversations
-- Sellers can view messages in Dashboard
-- Reply sends email via seller's Resend account
-- Track delivery status
-
-### Step 7: Product Update Announcements
-Add ability for sellers to notify customers who purchased:
-- "Notify Customers" button on product edit page
-- Sends to all users who purchased that product
-- Uses seller's email configuration
-
 ---
 
-## Technical Details
+## Part 1: Payoneer Integration
 
-### Database Changes
-```text
-profiles table:
-  + resend_vault_secret_id (uuid)     -- Reference to encrypted API key in Vault
-  + seller_support_email (text)        -- Verified "from" email address
-  + seller_email_verified (boolean)    -- Email setup verification status
+### What You Need to Know
 
-New table - support_messages:
-  - id (uuid)
-  - seller_profile_id (uuid)
-  - customer_profile_id (uuid)
-  - product_id (uuid, nullable)
-  - subject (text)
-  - message (text)
-  - direction ('inbound' | 'outbound')
-  - status ('sent' | 'delivered' | 'failed')
-  - created_at (timestamp)
+Payoneer offers a **Mass Payouts API** designed for marketplaces to pay sellers globally. This requires:
+
+1. **Business Account**: Apply for a Payoneer Business account with Mass Payouts access
+2. **API Credentials**: Partner ID, Username, API Password, Program ID
+3. **Regulatory Approval**: Payoneer requires marketplace verification (KYC/AML compliance)
+
+### Seller Experience
+
+1. Seller chooses "Payoneer" as payout method in Settings > Billing
+2. Seller enters their Payoneer email (existing Payoneer account) or signs up through your platform
+3. Withdrawals route to their Payoneer balance
+4. Seller can then withdraw from Payoneer to local bank, mobile money, etc.
+
+### Technical Implementation
+
+#### Database Changes
+```sql
+-- Add payout method columns to profiles table
+ALTER TABLE profiles ADD COLUMN preferred_payout_method TEXT DEFAULT 'stripe';
+ALTER TABLE profiles ADD COLUMN payoneer_email TEXT;
+ALTER TABLE profiles ADD COLUMN payoneer_payee_id TEXT;
+ALTER TABLE profiles ADD COLUMN payoneer_status TEXT;
 ```
 
-### Edge Functions to Create
-1. `verify-seller-email` - Validate and store API key
-2. `send-seller-email` - Unified email sending with seller key lookup
-3. `send-purchase-receipt` - Triggered after successful purchase
-4. `send-product-announcement` - Notify customers of product updates
+#### New Edge Functions
+- `register-payoneer-payee`: Register seller in your Payoneer program
+- `create-payoneer-payout`: Execute payout via Payoneer API
+- `check-payoneer-status`: Verify payee registration status
 
-### Security Considerations
-- API keys stored encrypted using Supabase Vault (pgsodium)
-- RLS policies ensure sellers can only access their own email settings
-- Edge functions use service role to decrypt keys securely
-- API key never exposed to frontend after initial submission
+#### Required Secrets
+- `PAYONEER_PARTNER_ID`
+- `PAYONEER_API_USERNAME`
+- `PAYONEER_API_PASSWORD`
+- `PAYONEER_PROGRAM_ID`
 
-### Files to Create/Modify
-- **Database migration** - Add columns and support_messages table
-- `src/pages/Settings.tsx` - Add Seller Email configuration section
-- `supabase/functions/verify-seller-email/index.ts` - New function
-- `supabase/functions/send-seller-email/index.ts` - New function  
-- `supabase/functions/send-purchase-receipt/index.ts` - New function
-- `supabase/functions/create-checkout-session/index.ts` - Trigger receipt on purchase
-- `src/pages/Dashboard.tsx` - Add support messages section (optional Phase 2)
+### Fee Structure (Recommended)
+- Standard Payoneer withdrawal: **Free** (1-3 business days)
+- Payoneer itself charges recipients when withdrawing to local bank (~$1.50-3 depending on region)
 
 ---
 
-## User Experience Flow
+## Part 2: Direct Bank/Debit Routing
 
-1. **Seller opens Settings → Seller Email tab**
-2. **Enters their Resend API key** (with link to Resend signup/docs)
-3. **Enters their verified "from" email** (e.g., hello@mystore.com)
-4. **Clicks "Verify & Connect"** → System tests the key
-5. **Success toast** → "Email connected! Customers will receive emails from hello@mystore.com"
-6. **Going forward:**
-   - Purchase receipts sent from their email
-   - Can send product announcements from Dashboard
-   - Support replies use their email
+### Two Approaches
+
+#### Option A: Stripe External Accounts (Recommended)
+Stripe Connect already supports adding bank accounts in 45+ countries. Users can link their bank during Stripe onboarding or add external accounts later.
+
+- **Pros**: No new integration needed, uses existing Stripe infrastructure
+- **Cons**: Limited to Stripe-supported countries
+
+#### Option B: Separate ACH/Wire Integration
+Use services like **Plaid + Moov** or **Dwolla** for direct US ACH transfers.
+
+- **Pros**: More control, potentially lower fees
+- **Cons**: Significant development effort, US-only initially, regulatory complexity
+
+### Recommended Approach: Stripe External Accounts
+
+Stripe Connect Express already allows users to:
+1. Link bank accounts during onboarding
+2. Add/change bank accounts via Customer Portal
+3. Receive payouts directly to their bank
+
+**Enhancement needed**: Add UI in Settings to explain this clearly and link to Stripe dashboard.
 
 ---
 
-## Phased Rollout Suggestion
+## Part 3: Privacy Policy Updates Required
 
-**Phase 1 (This Implementation):**
-- Settings UI for API key configuration
-- Verification edge function
-- Purchase receipt emails from seller's account
+Your Privacy Policy needs these additions:
 
-**Phase 2 (Future):**
-- Support messaging system in Dashboard
-- Product update announcement feature
-- Email analytics/delivery tracking
+### New Sections to Add
+
+```markdown
+## Payment Processing Partners
+
+We use the following third-party payment processors:
+
+### Stripe
+- Purpose: Payment processing and seller payouts
+- Data collected: Name, email, bank account details, tax identification
+- Data location: United States, EU
+- Privacy policy: https://stripe.com/privacy
+
+### Payoneer (if/when implemented)
+- Purpose: Alternative payout method for international sellers
+- Data collected: Name, email, payout preferences, bank details
+- Data location: Various (global presence)
+- Privacy policy: https://www.payoneer.com/legal/privacy-policy/
+
+## Financial Information
+
+We collect and process the following financial data:
+- Bank account details (account numbers, routing numbers)
+- Payment history and transaction records
+- Tax identification numbers (where required by law)
+- Payout preferences and methods
+
+This data is:
+- Encrypted in transit and at rest
+- Shared only with payment processors for transaction execution
+- Retained as required by financial regulations (typically 7 years)
+- Never sold to third parties
+
+## International Data Transfers
+
+For users outside the United States, your payment data may be transferred 
+to and processed in:
+- United States (Stripe headquarters)
+- European Union (Stripe EU operations)
+- Other jurisdictions where Payoneer operates
+
+These transfers are protected by:
+- Standard Contractual Clauses (SCCs)
+- Adequacy decisions where applicable
+- Our payment partners' data protection agreements
+```
+
+---
+
+## Part 4: Terms of Service Updates Required
+
+### New Sections to Add
+
+```markdown
+## 10. Payment Terms for Sellers
+
+### Payout Methods
+Sellers may choose from the following payout methods:
+- **Stripe Connect**: Available in 45+ countries, direct bank deposits
+- **Payoneer**: Available globally, supports local currency withdrawals
+
+### Payout Fees
+- Standard payouts (Stripe): Free, 1-3 business days
+- Instant payouts (Stripe): 3% fee, immediate
+- Payoneer payouts: Free from EditorsParadise; Payoneer may charge 
+  withdrawal fees (see Payoneer terms)
+
+### Payout Eligibility
+To receive payouts, sellers must:
+- Complete identity verification with chosen payment provider
+- Maintain accurate banking/payout information
+- Comply with applicable tax reporting requirements
+
+### Minimum Payout Threshold
+- Minimum withdrawal: $10 USD (or equivalent)
+- Balance below minimum will roll over to next payout period
+
+### Payout Schedule
+- Earnings are available for withdrawal after a 7-day holding period
+- This period allows for refund processing and fraud prevention
+
+## 11. Tax Compliance
+
+### Seller Responsibilities
+Sellers are responsible for:
+- Reporting income to appropriate tax authorities
+- Providing accurate tax identification when required
+- Complying with local tax laws in their jurisdiction
+
+### Platform Reporting (US Sellers)
+- We issue 1099-K forms to US sellers exceeding IRS thresholds
+- Tax information is reported as required by law
+
+### International Sellers
+- We may collect tax identification (VAT, GST) as required
+- Payoneer and Stripe may withhold taxes per local regulations
+```
+
+---
+
+## Part 5: Implementation Phases
+
+### Phase 1: Stripe Bank Account Clarity (1-2 days)
+- Add clear messaging in Settings > Billing about bank account options
+- Add "Manage Bank Account" button linking to Stripe Customer Portal
+- Update documentation/help text
+
+### Phase 2: Payoneer Integration (1-2 weeks)
+- Apply for Payoneer Mass Payouts API access (requires business verification)
+- Create database schema changes
+- Build edge functions for Payoneer API
+- Add Payoneer option in Settings UI
+- Implement withdrawal flow for Payoneer
+
+### Phase 3: Legal Updates (Before going live)
+- Update Privacy Policy
+- Update Terms of Service
+- Add data processing agreements
+- Consider consulting with a fintech-focused attorney
+
+---
+
+## UI/UX Changes Summary
+
+### Settings > Billing Tab Updates
+
+1. **Payout Method Selection Card**
+   - Radio options: Stripe Connect | Payoneer
+   - Show status badge for each (Connected, Pending, Not Set Up)
+
+2. **Stripe Section** (existing, enhanced)
+   - Current connection status
+   - "Manage Account" button (goes to Stripe Express Dashboard)
+   - "Update Bank Account" explanation
+
+3. **Payoneer Section** (new)
+   - Email input for Payoneer account
+   - "Connect Payoneer" button
+   - Status indicator
+
+4. **Withdrawal Card**
+   - Shows balance from selected method
+   - Withdraw button with method-specific options
+   - Fee explanations
+
+---
+
+## Important Considerations
+
+### Regulatory/Compliance
+- **Money Transmitter Licensing**: Using Stripe/Payoneer as processors means they hold the licenses, not you
+- **KYC/AML**: Both processors handle this, but you should:
+  - Store minimal financial data
+  - Have clear audit trails
+  - Report suspicious activity
+
+### Payoneer API Access
+- Requires applying as a **Payoneer for Platforms** partner
+- Application process takes 2-4 weeks
+- Requires business documentation and volume projections
+
+### Currency Handling
+- Stripe: Handles multi-currency automatically
+- Payoneer: Excellent for international payouts, supports 150+ currencies
+
+---
+
+## Technical Considerations Summary
+
+| Component | Technology | Complexity |
+|-----------|-----------|------------|
+| Payoneer API Integration | REST API, OAuth | Medium |
+| Database Schema | 4-5 new columns | Low |
+| Edge Functions | 3 new functions | Medium |
+| UI Updates | Settings billing tab | Medium |
+| Legal Documents | Privacy + Terms | Low (text) |
+
+---
+
+## Files to Create/Modify
+
+### New Files
+- `supabase/functions/register-payoneer-payee/index.ts`
+- `supabase/functions/create-payoneer-payout/index.ts`
+- `supabase/functions/check-payoneer-status/index.ts`
+- `src/components/settings/PayoutMethodSelector.tsx`
+
+### Modified Files
+- `src/pages/Settings.tsx` (Billing tab enhancements)
+- `src/pages/Privacy.tsx` (Legal updates)
+- `src/pages/Terms.tsx` (Legal updates)
+- `src/components/dashboard/EarningsCard.tsx` (Support multiple methods)
+
+### Database Migration
+- Add payout method columns to profiles table
 
