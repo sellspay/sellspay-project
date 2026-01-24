@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
-import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
+import { ChevronLeft, Eye, EyeOff, Shield, Loader2 } from 'lucide-react';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { toast } from 'sonner';
 import authBg from '@/assets/auth-bg.png';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signIn, resetPassword, signInWithGoogle } = useAuth();
+  const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
   const [credential, setCredential] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,13 +20,23 @@ export default function Login() {
   const [resetMessage, setResetMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  // 2FA State
+  const [showMfaVerification, setShowMfaVerification] = useState(false);
+  const [mfaUserId, setMfaUserId] = useState<string | null>(null);
+  const [mfaEmail, setMfaEmail] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+
   useEffect(() => {
-    if (user) {
+    // Only redirect if user is logged in AND not in MFA verification flow
+    if (user && !showMfaVerification) {
       const params = new URLSearchParams(location.search);
       const next = params.get('next');
       navigate(next || '/');
     }
-  }, [user, navigate, location.search]);
+  }, [user, navigate, location.search, showMfaVerification]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,11 +64,109 @@ export default function Login() {
       
       const { error } = await signIn(emailToUse, password);
       if (error) throw error;
+
+      // Check if user has MFA enabled
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('mfa_enabled')
+          .eq('user_id', authUser.id)
+          .single();
+
+        if (profile?.mfa_enabled) {
+          // User has MFA enabled - sign them out and show verification
+          setMfaUserId(authUser.id);
+          setMfaEmail(authUser.email || emailToUse);
+          await signOut();
+          setShowMfaVerification(true);
+          setLoading(false);
+          // Automatically send OTP
+          await sendMfaCode(authUser.id, authUser.email || emailToUse);
+          return;
+        }
+      }
+      
+      // No MFA - redirect handled by useEffect
     } catch (err: any) {
       setError('Invalid email/username or password');
     } finally {
       setLoading(false);
     }
+  };
+
+  const sendMfaCode = async (userId: string, email: string) => {
+    setSendingOtp(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-verification-otp", {
+        body: { email, userId }
+      });
+      
+      if (error) throw error;
+      
+      setOtpSent(true);
+      toast.success('Verification code sent to your email.');
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      toast.error('Failed to send verification code.');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleMfaVerify = async () => {
+    if (!mfaUserId || !otpCode || otpCode.length !== 6) return;
+    
+    setVerifyingOtp(true);
+    setError(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
+        body: { userId: mfaUserId, code: otpCode, purpose: 'login' }
+      });
+      
+      if (error) throw new Error(error.message || 'Verification failed');
+      if (!data?.success) {
+        throw new Error(data?.error || 'Invalid verification code');
+      }
+      
+      // OTP verified - now sign in again
+      let emailToUse = credential.trim();
+      if (!emailToUse.includes('@')) {
+        const { data: email } = await supabase.rpc('get_email_by_username', {
+          p_username: emailToUse
+        });
+        if (email) emailToUse = email;
+      }
+      
+      const { error: signInError } = await signIn(emailToUse, password);
+      if (signInError) throw signInError;
+      
+      toast.success('Successfully verified!');
+      // Redirect will be handled by useEffect
+      setShowMfaVerification(false);
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      const message = error instanceof Error ? error.message : 'Failed to verify code.';
+      setError(message);
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (mfaUserId && mfaEmail) {
+      await sendMfaCode(mfaUserId, mfaEmail);
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setShowMfaVerification(false);
+    setMfaUserId(null);
+    setMfaEmail(null);
+    setOtpCode('');
+    setOtpSent(false);
+    setError(null);
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -113,14 +223,22 @@ export default function Login() {
         {/* Premium Welcome Text */}
         <div className="mb-10 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 tracking-tight">
-            {showForgotPassword ? 'Reset Password' : 'Welcome Back'}
+            {showMfaVerification 
+              ? 'Two-Factor Authentication' 
+              : showForgotPassword 
+                ? 'Reset Password' 
+                : 'Welcome Back'}
           </h1>
           <p className="text-lg text-white/60">
-            {showForgotPassword ? 'Enter your email to reset your password' : 'Sign in to continue your journey'}
+            {showMfaVerification
+              ? 'Enter the code sent to your email'
+              : showForgotPassword 
+                ? 'Enter your email to reset your password' 
+                : 'Sign in to continue your journey'}
           </p>
         </div>
         
-        {!showForgotPassword && (
+        {!showForgotPassword && !showMfaVerification && (
           <p className="text-muted-foreground mb-8">
             Don't have an account?{' '}
             <Link to="/signup" className="text-foreground font-medium hover:underline">
@@ -130,7 +248,66 @@ export default function Login() {
           </p>
         )}
 
-        {showForgotPassword ? (
+        {/* MFA Verification View */}
+        {showMfaVerification ? (
+          <div className="w-full max-w-[400px] space-y-6">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+                <Shield className="w-8 h-8 text-primary" />
+              </div>
+              <p className="text-sm text-muted-foreground text-center">
+                A verification code has been sent to:<br />
+                <span className="font-medium text-foreground">{mfaEmail}</span>
+              </p>
+            </div>
+
+            <div className="flex justify-center">
+              <InputOTP
+                maxLength={6}
+                value={otpCode}
+                onChange={(value) => setOtpCode(value)}
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            {error && (
+              <p className="text-destructive text-sm text-center">{error}</p>
+            )}
+
+            <button
+              onClick={handleMfaVerify}
+              disabled={verifyingOtp || otpCode.length !== 6}
+              className="w-full h-12 rounded-lg bg-gradient-to-r from-primary via-accent to-primary border border-primary/60 text-white font-medium shadow-[0_0_30px_hsl(var(--primary)/0.4)] transition-all duration-300 hover:shadow-[0_0_40px_hsl(var(--primary)/0.6)] disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {verifyingOtp && <Loader2 className="w-4 h-4 animate-spin" />}
+              {verifyingOtp ? 'Verifying...' : 'Verify & Sign In'}
+            </button>
+
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handleBackToLogin}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Back to login
+              </button>
+              <button
+                onClick={handleResendCode}
+                disabled={sendingOtp}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+              >
+                {sendingOtp ? 'Sending...' : 'Resend code'}
+              </button>
+            </div>
+          </div>
+        ) : showForgotPassword ? (
           <div className="w-full max-w-[400px] space-y-6">
             <p className="text-sm text-muted-foreground text-center">
               Enter your email address and we'll send you a link to reset your password.
