@@ -150,11 +150,24 @@
 /* Prevent unnecessary scroll on short content */
 html {
   overflow-x: hidden;
+  /* Reserve space for scrollbar to prevent layout shift when modals/dropdowns open */
+  scrollbar-gutter: stable;
 }
 
 body {
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+/* Prevent layout shift when Radix UI modals/dropdowns modify body overflow */
+body[data-scroll-locked] {
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Ensure dropdowns and popovers don't cause layout shifts */
+[data-radix-popper-content-wrapper] {
+  position: fixed !important;
 }
 
 /* Rainbow hue rotation animation for admin badge on hover */
