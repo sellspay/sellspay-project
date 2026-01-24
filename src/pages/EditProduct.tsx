@@ -209,6 +209,8 @@ export default function EditProduct() {
     return data?.publicUrl || null;
   };
 
+  const [isDeleted, setIsDeleted] = useState(false);
+
   const handleDelete = async () => {
     if (!id) return;
     
@@ -221,12 +223,22 @@ export default function EditProduct() {
 
       if (error) throw error;
 
-      toast.success("Product deleted");
-      navigate("/products");
+      // Mark as deleted for animation
+      setIsDeleted(true);
+      
+      // Show success toast with animation delay
+      toast.success("Product deleted successfully", {
+        description: "Redirecting to your products...",
+        duration: 2000,
+      });
+      
+      // Wait for animation then navigate
+      setTimeout(() => {
+        navigate("/profile");
+      }, 800);
     } catch (error) {
       console.error("Error deleting product:", error);
       toast.error("Failed to delete product");
-    } finally {
       setDeleting(false);
     }
   };
@@ -396,7 +408,20 @@ export default function EditProduct() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+    <div className={`container mx-auto px-4 py-8 max-w-3xl transition-all duration-500 ${isDeleted ? 'opacity-0 scale-95 translate-y-4' : 'opacity-100 scale-100'}`}>
+      {/* Deletion overlay */}
+      {isDeleted && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
+          <div className="text-center animate-scale-in">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
+              <Trash2 className="w-8 h-8 text-destructive" />
+            </div>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Product Deleted</h2>
+            <p className="text-muted-foreground">Redirecting to your profile...</p>
+          </div>
+        </div>
+      )}
+
       <Button variant="ghost" asChild className="mb-6">
         <Link to={`/product/${id}`}>
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -408,7 +433,7 @@ export default function EditProduct() {
         <h1 className="text-3xl font-bold">Edit Product</h1>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" disabled={deleting}>
+            <Button variant="destructive" disabled={deleting || isDeleted}>
               {deleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
               Delete Product
             </Button>
