@@ -32,8 +32,23 @@ interface Thread {
 }
 
 export default function Community() {
-  const { profile } = useAuth();
+  const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState('all');
+
+  // Fetch user profile
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   const { data: threads = [], isLoading, refetch } = useQuery({
     queryKey: ['threads', activeCategory, profile?.id],
