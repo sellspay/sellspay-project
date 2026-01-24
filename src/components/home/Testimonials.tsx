@@ -16,11 +16,12 @@ interface Testimonial {
 const testimonials: Testimonial[] = [
   {
     id: '1',
-    name: 'Marcus Chen',
-    role: 'Lead Editor',
-    company: 'StudioFlow',
+    name: '@shrimpy',
+    role: 'Video Editor & Creator',
+    company: 'Verified Creator',
+    avatar: 'https://base44.app/api/apps/69633972141fd631aab3f377/files/public/69633972141fd631aab3f377/c4b776239_IMG_1579.jpg',
     rating: 5,
-    quote: 'The presets here saved me 40+ hours on my last project. The quality is insane - these are made by people who actually edit professionally.',
+    quote: 'This platform changed how I share my work. The community here actually understands what editors need. Best decision I made for my creative business.',
     featured: true,
   },
   {
