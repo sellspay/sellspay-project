@@ -10,6 +10,7 @@ const corsHeaders = {
 interface VerifyRequest {
   userId: string;
   code: string;
+  purpose?: 'login' | 'enable_mfa'; // Optional: specify the purpose
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -23,7 +24,7 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { userId, code }: VerifyRequest = await req.json();
+    const { userId, code, purpose = 'enable_mfa' }: VerifyRequest = await req.json();
 
     if (!userId || !code) {
       return new Response(
@@ -77,28 +78,35 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Code is valid - delete it and mark MFA as enabled
+    // Code is valid - delete it
     await supabase
       .from('verification_codes')
       .delete()
       .eq('user_id', userId);
 
-    // Update profile to mark MFA as enabled
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ mfa_enabled: true })
-      .eq('user_id', userId);
+    // If purpose is to enable MFA, update the profile
+    if (purpose === 'enable_mfa') {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ mfa_enabled: true })
+        .eq('user_id', userId);
 
-    if (updateError) {
-      console.error("Error updating profile:", updateError);
-      return new Response(
-        JSON.stringify({ error: "Failed to enable 2FA" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      if (updateError) {
+        console.error("Error updating profile:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to enable 2FA" }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: "Two-factor authentication enabled!" }),
+      JSON.stringify({ 
+        success: true, 
+        message: purpose === 'enable_mfa' 
+          ? "Two-factor authentication enabled!" 
+          : "Verification successful!"
+      }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
