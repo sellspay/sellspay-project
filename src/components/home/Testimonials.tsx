@@ -124,11 +124,13 @@ export function Testimonials() {
                         </div>
                       </div>
                     </div>
-                    <Button asChild variant="outline" size="sm" className="hidden sm:flex">
-                      <Link to={`/profile/${featured.username}`}>
-                        View Profile
-                      </Link>
-                    </Button>
+                    {featured.username && (
+                      <Button asChild variant="outline" size="sm" className="hidden sm:flex">
+                        <Link to={`/@${featured.username}`}>
+                          View Profile
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
