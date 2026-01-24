@@ -10,8 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, CreditCard, Wallet } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
 import { useCredits } from '@/hooks/useCredits';
 import navbarLogo from '@/assets/navbar-logo.png';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -25,82 +24,19 @@ const navItems = [
 ];
 
 export default function Header() {
-  const { user, signOut } = useAuth();
+  const { user, profile, isAdmin, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isCreator, setIsCreator] = useState(false);
-  const [isSeller, setIsSeller] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
-  const [fullName, setFullName] = useState<string | null>(null);
   
   const { creditBalance, isLoading: creditsLoading } = useCredits();
 
-  // Fetch user profile data and admin status
-  useEffect(() => {
-    async function fetchProfile() {
-      if (!user) {
-        setIsCreator(false);
-        setIsSeller(false);
-        setIsAdmin(false);
-        setAvatarUrl(null);
-        setUsername(null);
-        setFullName(null);
-        return;
-      }
-      
-      // Fetch profile data
-      const { data } = await supabase
-        .from('profiles')
-        .select('is_creator, is_seller, avatar_url, username, full_name')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      setIsCreator(data?.is_creator || false);
-      setIsSeller(data?.is_seller || false);
-      setAvatarUrl(data?.avatar_url || null);
-      setUsername(data?.username || null);
-      setFullName(data?.full_name || null);
-      
-      // Check if user is admin
-      const { data: hasAdminRole } = await supabase.rpc('has_role', { 
-        _user_id: user.id, 
-        _role: 'admin' 
-      });
-      setIsAdmin(hasAdminRole || false);
-    }
-    fetchProfile();
-
-    // Subscribe to profile changes for real-time updates
-    if (user) {
-      const channel = supabase
-        .channel('header-profile-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles',
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            const newData = payload.new as Record<string, unknown>;
-            setIsCreator(Boolean(newData.is_creator));
-            setIsSeller(Boolean(newData.is_seller));
-            setAvatarUrl((newData.avatar_url as string) || null);
-            setUsername((newData.username as string) || null);
-            setFullName((newData.full_name as string) || null);
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [user]);
+  // Derive values from centralized profile state
+  const isCreator = profile?.is_creator || false;
+  const isSeller = profile?.is_seller || false;
+  const avatarUrl = profile?.avatar_url || null;
+  const username = profile?.username || null;
+  const fullName = profile?.full_name || null;
 
   const isActive = (path: string) => location.pathname === path;
 

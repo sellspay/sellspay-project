@@ -37,16 +37,10 @@ interface Product {
   price_cents: number | null;
 }
 
-interface Profile {
-  id: string;
-  is_creator: boolean | null;
-  is_seller: boolean | null;
-}
-
 export default function SubscriptionPlans() {
-  const { user } = useAuth();
+  const { user, profile: authProfile, isAdmin, profileLoading } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [planProducts, setPlanProducts] = useState<Record<string, string[]>>({});
@@ -64,43 +58,28 @@ export default function SubscriptionPlans() {
   const [planDescription, setPlanDescription] = useState('');
   const [planPrice, setPlanPrice] = useState('');
 
+  // Derive access from centralized auth
+  const hasAccess = authProfile?.is_creator || authProfile?.is_seller || isAdmin;
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
     }
-    fetchProfile();
-  }, [user]);
-
-  useEffect(() => {
-    const hasAccess = profile?.is_creator || profile?.is_seller;
-    if (profile && !hasAccess) {
-      navigate('/');
-      toast.error('You need to be a seller to manage subscription plans');
-    } else if (hasAccess) {
-      fetchData();
+    
+    if (!profileLoading && authProfile) {
+      setProfileId(authProfile.id);
+      if (!hasAccess) {
+        navigate('/');
+        toast.error('You need to be a seller to manage subscription plans');
+      } else {
+        fetchData();
+      }
     }
-  }, [profile]);
-
-  async function fetchProfile() {
-    if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, is_creator, is_seller')
-      .eq('user_id', user.id)
-      .single();
-    
-    if (error) {
-      console.error('Error fetching profile:', error);
-      return;
-    }
-    
-    setProfile(data);
-  }
+  }, [user, authProfile, hasAccess, profileLoading]);
 
   async function fetchData() {
-    if (!profile?.id) return;
+    if (!profileId) return;
     
     setLoading(true);
     try {
@@ -108,7 +87,7 @@ export default function SubscriptionPlans() {
       const { data: plansData, error: plansError } = await supabase
         .from('creator_subscription_plans')
         .select('*')
-        .eq('creator_id', profile.id)
+        .eq('creator_id', profileId)
         .order('created_at', { ascending: false });
       
       if (plansError) throw plansError;
@@ -155,7 +134,7 @@ export default function SubscriptionPlans() {
       const { data: productsData } = await supabase
         .from('products')
         .select('id, name, cover_image_url, pricing_type, subscription_access, price_cents')
-        .eq('creator_id', profile.id)
+        .eq('creator_id', profileId)
         .eq('status', 'published');
       
       setProducts(productsData || []);
@@ -558,11 +537,11 @@ export default function SubscriptionPlans() {
         </Dialog>
 
         {/* Create Plan Wizard */}
-        {profile && (
+        {profileId && (
           <CreatePlanWizard
             open={createWizardOpen}
             onOpenChange={setCreateWizardOpen}
-            creatorId={profile.id}
+            creatorId={profileId}
             products={products}
             onSuccess={fetchData}
           />

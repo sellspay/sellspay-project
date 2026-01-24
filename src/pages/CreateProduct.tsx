@@ -40,10 +40,11 @@ const generateSlug = (title: string): string => {
 };
 
 export default function CreateProduct() {
-  const { user } = useAuth();
+  const { user, profile, profileLoading } = useAuth();
   const navigate = useNavigate();
-  const [isSeller, setIsSeller] = useState<boolean | null>(null);
-  const [checkingCreator, setCheckingCreator] = useState(true);
+  
+  // Derive seller status from centralized auth
+  const isSeller = profile?.is_seller || false;
   
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
@@ -59,27 +60,6 @@ export default function CreateProduct() {
   const [previewVideo, setPreviewVideo] = useState<File | null>(null);
   const [previewVideoPreview, setPreviewVideoPreview] = useState<string | null>(null);
   const [downloadFile, setDownloadFile] = useState<File | null>(null);
-
-  // Check if user is a seller
-  useEffect(() => {
-    const checkSellerStatus = async () => {
-      if (!user) {
-        setCheckingCreator(false);
-        return;
-      }
-      
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_seller')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      setIsSeller(profile?.is_seller || false);
-      setCheckingCreator(false);
-    };
-    
-    checkSellerStatus();
-  }, [user]);
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -270,7 +250,7 @@ export default function CreateProduct() {
     );
   }
 
-  if (checkingCreator) {
+  if (profileLoading) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
