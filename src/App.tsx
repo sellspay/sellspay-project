@@ -27,6 +27,7 @@ import WaveformGenerator from "./pages/tools/WaveformGenerator";
 import Community from "./pages/Community";
 import Discord from "./pages/community/Discord";
 import Spotlight from "./pages/community/Spotlight";
+import Updates from "./pages/community/Updates";
 import FAQ from "./pages/FAQ";
 import HireEditors from "./pages/HireEditors";
 import Dashboard from "./pages/Dashboard";
@@ -82,6 +83,7 @@ const App = () => (
             <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
             <Route path="/admin" element={<MainLayout><Admin /></MainLayout>} />
             <Route path="/community" element={<MainLayout><Community /></MainLayout>} />
+            <Route path="/community/updates" element={<MainLayout><Updates /></MainLayout>} />
             <Route path="/community/discord" element={<MainLayout><Discord /></MainLayout>} />
             <Route path="/community/spotlight" element={<MainLayout><Spotlight /></MainLayout>} />
             <Route path="/faq" element={<MainLayout><FAQ /></MainLayout>} />
