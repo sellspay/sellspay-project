@@ -5,20 +5,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronRight, ChevronLeft, Quote, Mail, Send } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface SectionPreviewContentProps {
   section: ProfileSection;
 }
 
 // Text Section Preview
-const TextPreview = memo(({ content }: { content: TextContent }) => (
-  <div className={`text-${content.alignment || 'left'}`}>
-    {content.title && (
-      <h3 className="text-xl font-semibold mb-2">{content.title}</h3>
-    )}
-    <p className="text-muted-foreground whitespace-pre-wrap">{content.body}</p>
-  </div>
-));
+const TextPreview = memo(({ content }: { content: TextContent }) => {
+  const alignment = content.alignment || 'center';
+  return (
+    <div className={cn(
+      alignment === 'center' && 'text-center',
+      alignment === 'right' && 'text-right',
+      alignment === 'left' && 'text-left'
+    )}>
+      {content.title && (
+        <h3 className="text-xl font-semibold mb-2">{content.title}</h3>
+      )}
+      <p className="text-muted-foreground whitespace-pre-wrap">{content.body}</p>
+    </div>
+  );
+});
 TextPreview.displayName = 'TextPreview';
 
 // Image Section Preview
