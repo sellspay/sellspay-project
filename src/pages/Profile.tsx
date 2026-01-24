@@ -20,7 +20,8 @@ import {
   Bookmark,
   Pencil,
   User,
-  Sparkles
+  Sparkles,
+  Store
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -30,6 +31,7 @@ import SubscribeDialog from '@/components/profile/SubscribeDialog';
 import { ProfileEditorDialog } from '@/components/profile-editor';
 import { PublicProfileSections } from '@/components/profile/PublicProfileSections';
 import CreatorApplicationDialog from '@/components/creator-application/CreatorApplicationDialog';
+import { SellerConfirmDialog } from '@/components/profile/SellerConfirmDialog';
 
 interface Profile {
   id: string;
@@ -286,7 +288,30 @@ const ProfilePage: React.FC = () => {
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [layoutRefreshKey, setLayoutRefreshKey] = useState(0);
   const [showCreatorApplication, setShowCreatorApplication] = useState(false);
+  const [showSellerConfirm, setShowSellerConfirm] = useState(false);
+  const [becomingSellerLoading, setBecomingSellerLoading] = useState(false);
 
+  const handleBecomeSeller = async () => {
+    if (!user || !profile) return;
+    setBecomingSellerLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_creator: true })
+        .eq('id', profile.id);
+      
+      if (error) throw error;
+      
+      setProfile({ ...profile, is_creator: true });
+      setShowSellerConfirm(false);
+      toast.success('Your account is now a seller account! You can create products.');
+    } catch (error) {
+      console.error('Error becoming seller:', error);
+      toast.error('Failed to switch account. Please try again.');
+    } finally {
+      setBecomingSellerLoading(false);
+    }
+  };
   const fetchCollections = async (profileId: string, isOwn: boolean) => {
     try {
       // Fetch collections for this profile
@@ -418,6 +443,11 @@ const ProfilePage: React.FC = () => {
         setShowRecentUploads(data.show_recent_uploads !== false);
         const ownProfile = user?.id === data.user_id;
         setIsOwnProfile(ownProfile);
+        
+        // Set default tab: for non-sellers viewing their own profile, default to downloads
+        if (ownProfile && !data.is_creator) {
+          setActiveTab('downloads');
+        }
 
         // Check if the PROFILE BEING VIEWED is an admin (for special verified badge)
         const { data: roleData } = await supabase
@@ -798,11 +828,21 @@ const ProfilePage: React.FC = () => {
                   {!profile.is_creator && (
                     <Button 
                       variant="default"
+                      onClick={() => setShowSellerConfirm(true)}
+                      className="gap-2"
+                    >
+                      <Store className="w-4 h-4" />
+                      Seller?
+                    </Button>
+                  )}
+                  {!profile.verified && profile.is_creator && (
+                    <Button 
+                      variant="outline"
                       onClick={() => setShowCreatorApplication(true)}
                       className="gap-2"
                     >
                       <Sparkles className="w-4 h-4" />
-                      Become a Creator
+                      Get Verified
                     </Button>
                   )}
                 </>
@@ -979,22 +1019,24 @@ const ProfilePage: React.FC = () => {
         {/* Instagram-style Icon Tabs */}
         <div className="mt-8 max-w-4xl mx-auto px-4">
           <div className="flex justify-center border-t border-border">
-            {/* Collections Tab (Person icon - public) */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setActiveTab('collections')}
-                  className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
-                    activeTab === 'collections'
-                      ? 'border-foreground text-foreground'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <User className="w-5 h-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Collections</TooltipContent>
-            </Tooltip>
+            {/* Store/Collections Tab - only for sellers (is_creator=true) on own profile, or public view */}
+            {(profile.is_creator || !isOwnProfile) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setActiveTab('collections')}
+                    className={`flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
+                      activeTab === 'collections'
+                        ? 'border-foreground text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <User className="w-5 h-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{profile.is_creator ? 'Store' : 'Products'}</TooltipContent>
+              </Tooltip>
+            )}
 
             {/* Downloads Tab - only for own profile */}
             {isOwnProfile && (
@@ -1243,6 +1285,14 @@ const ProfilePage: React.FC = () => {
           }}
         />
       )}
+
+      {/* Seller Confirmation Dialog */}
+      <SellerConfirmDialog
+        open={showSellerConfirm}
+        onOpenChange={setShowSellerConfirm}
+        onConfirm={handleBecomeSeller}
+        loading={becomingSellerLoading}
+      />
     </TooltipProvider>
   );
 };

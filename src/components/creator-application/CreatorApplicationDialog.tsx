@@ -171,7 +171,7 @@ export default function CreatorApplicationDialog({
 
       if (error) throw error;
 
-      toast.success('Application submitted! We\'ll review it soon.');
+      toast.success('Verification application submitted! We\'ll review it soon.');
       onOpenChange(false);
       onApplicationSubmitted?.();
     } catch (error: any) {
@@ -220,9 +220,9 @@ export default function CreatorApplicationDialog({
             <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-4">
               <Loader2 className="w-8 h-8 text-yellow-500 animate-spin" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Your application is under review</h3>
+            <h3 className="text-lg font-semibold mb-2">Your verification request is under review</h3>
             <p className="text-sm text-muted-foreground">
-              We're reviewing your creator application. You'll be notified once a decision is made.
+              We're reviewing your application for verification. You'll be notified once a decision is made.
             </p>
           </div>
           <div className="flex justify-center">
@@ -262,7 +262,7 @@ export default function CreatorApplicationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Become a Creator</DialogTitle>
+          <DialogTitle>Get Verified</DialogTitle>
         </DialogHeader>
 
         {/* Progress */}

@@ -269,11 +269,11 @@ export default function CreateProduct() {
         <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
           <Upload className="w-8 h-8 text-primary" />
         </div>
-        <h1 className="text-2xl font-bold mb-4">Become a Creator First</h1>
+        <h1 className="text-2xl font-bold mb-4">Become a Seller First</h1>
         <p className="text-muted-foreground mb-8">
-          To sell products on our platform, you need to apply and be approved as a creator.
+          To sell products on our platform, you need to switch your account to a seller account from your profile.
         </p>
-        <Button onClick={() => navigate("/profile?apply=creator")}>Apply to Become a Creator</Button>
+        <Button onClick={() => navigate("/profile")}>Go to Profile</Button>
       </div>
     );
   }
