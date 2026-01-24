@@ -47,12 +47,12 @@ interface ThreadCardProps {
   onReplyClick?: (thread: Thread) => void;
 }
 
-const categoryColors: Record<string, string> = {
-  help: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  showcase: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  discussion: 'bg-green-500/10 text-green-500 border-green-500/20',
-  promotion: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
-  feedback: 'bg-pink-500/10 text-pink-500 border-pink-500/20',
+const categoryStyles: Record<string, { bg: string; text: string; border: string }> = {
+  help: { bg: 'bg-primary/10', text: 'text-primary', border: 'border-primary/20' },
+  showcase: { bg: 'bg-accent/20', text: 'text-accent-foreground', border: 'border-accent/30' },
+  discussion: { bg: 'bg-secondary/50', text: 'text-secondary-foreground', border: 'border-secondary' },
+  promotion: { bg: 'bg-muted', text: 'text-muted-foreground', border: 'border-border' },
+  feedback: { bg: 'bg-primary/5', text: 'text-primary', border: 'border-primary/10' },
 };
 
 const categoryLabels: Record<string, string> = {
@@ -215,7 +215,12 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
             {/* Category Badge */}
             <Badge 
               variant="outline" 
-              className={cn("text-xs mb-3", categoryColors[thread.category])}
+              className={cn(
+                "text-xs mb-3",
+                categoryStyles[thread.category]?.bg || 'bg-muted',
+                categoryStyles[thread.category]?.text || 'text-muted-foreground',
+                categoryStyles[thread.category]?.border || 'border-border'
+              )}
             >
               {categoryLabels[thread.category] || thread.category}
             </Badge>
@@ -250,8 +255,8 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "text-muted-foreground hover:text-red-500 gap-1.5 h-9 px-3",
-                  thread.is_liked && "text-red-500"
+                  "text-muted-foreground hover:text-destructive gap-1.5 h-9 px-3",
+                  thread.is_liked && "text-destructive"
                 )}
                 onClick={() => {
                   if (!user) {

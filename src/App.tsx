@@ -25,6 +25,9 @@ import VideoToAudio from "./pages/tools/VideoToAudio";
 import AudioConverter from "./pages/tools/AudioConverter";
 import WaveformGenerator from "./pages/tools/WaveformGenerator";
 import Community from "./pages/Community";
+import Discord from "./pages/community/Discord";
+import Spotlight from "./pages/community/Spotlight";
+import FAQ from "./pages/FAQ";
 import HireEditors from "./pages/HireEditors";
 import Dashboard from "./pages/Dashboard";
 import Notifications from "./pages/Notifications";
@@ -79,6 +82,9 @@ const App = () => (
             <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
             <Route path="/admin" element={<MainLayout><Admin /></MainLayout>} />
             <Route path="/community" element={<MainLayout><Community /></MainLayout>} />
+            <Route path="/community/discord" element={<MainLayout><Discord /></MainLayout>} />
+            <Route path="/community/spotlight" element={<MainLayout><Spotlight /></MainLayout>} />
+            <Route path="/faq" element={<MainLayout><FAQ /></MainLayout>} />
             <Route path="/hire-editors" element={<MainLayout><HireEditors /></MainLayout>} />
             <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
             <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
