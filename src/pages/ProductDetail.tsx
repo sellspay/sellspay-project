@@ -845,6 +845,12 @@ export default function ProductDetail() {
   const handleDownload = async () => {
     if (!product) return;
     
+    // Check if product has a download file
+    if (!product.download_url) {
+      toast.error("This product doesn't have a download file attached yet.");
+      return;
+    }
+    
     setDownloading(true);
     try {
       const { data, error } = await supabase.functions.invoke("get-download-url", {
@@ -852,6 +858,11 @@ export default function ProductDetail() {
       });
 
       if (error) throw error;
+      
+      // Check if the response contains an error message
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       if (data?.url) {
         // Use fetch + blob to download with proper filename
@@ -1097,28 +1108,38 @@ export default function ProductDetail() {
                     <Button 
                       className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600"
                       onClick={handleDownload}
-                      disabled={downloading}
+                      disabled={downloading || (downloadLimitInfo?.remaining === 0)}
                     >
                       {downloading ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       ) : (
                         <Download className="w-4 h-4 mr-2" />
                       )}
-                      Download
+                      {downloadLimitInfo?.remaining === 0 
+                        ? `Limit (${downloadLimitInfo?.daysUntilReset}d)` 
+                        : downloadLimitInfo 
+                          ? `Download (${downloadLimitInfo.remaining}/2)`
+                          : 'Download'
+                      }
                     </Button>
                   ) : isFollowingCreator || !product.creator ? (
                     product.pricing_type === "free" ? (
                       <Button 
                         className="bg-gradient-to-r from-primary to-accent"
                         onClick={handleDownload}
-                        disabled={downloading}
+                        disabled={downloading || (downloadLimitInfo?.remaining === 0)}
                       >
                         {downloading ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         ) : (
                           <Download className="w-4 h-4 mr-2" />
                         )}
-                        Download Free
+                        {downloadLimitInfo?.remaining === 0 
+                          ? `Limit (${downloadLimitInfo?.daysUntilReset}d)` 
+                          : downloadLimitInfo 
+                            ? `Free (${downloadLimitInfo.remaining}/2)`
+                            : 'Download Free'
+                        }
                       </Button>
                     ) : (
                       <Button 
