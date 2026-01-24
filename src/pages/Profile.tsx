@@ -1252,28 +1252,41 @@ const ProfilePage: React.FC = () => {
           {/* Saved Products Tab */}
           {activeTab === 'saved' && isOwnProfile && (
             <>
-              <p className="text-sm text-muted-foreground mb-6">
-                Products you've saved for later
-              </p>
               {savedProducts.length > 0 ? (
-                <div className="mb-10">
-                  <CollectionRow
-                    id="saved"
-                    name="Saved Products"
-                    coverImage={null}
-                    products={savedProducts.filter(s => s.product).slice(0, 9).map(s => ({
-                      id: s.product!.id,
-                      name: s.product!.name,
-                      cover_image_url: s.product!.cover_image_url,
-                      youtube_url: s.product!.youtube_url,
-                      preview_video_url: s.product!.preview_video_url,
-                      price_cents: s.product!.price_cents,
-                      currency: s.product!.currency,
-                      pricing_type: s.product!.pricing_type,
-                      created_at: s.created_at,
-                    }))}
-                    totalCount={savedProducts.length}
-                  />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1">
+                  {savedProducts.filter(s => s.product).map(s => {
+                    const product = s.product!;
+                    const thumbnailUrl = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => navigate(`/product/${product.id}`)}
+                        className="relative aspect-square group overflow-hidden bg-muted"
+                      >
+                        {thumbnailUrl ? (
+                          <img
+                            src={thumbnailUrl}
+                            alt={product.name}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              if (target.src.includes('maxresdefault')) {
+                                target.src = target.src.replace('maxresdefault', 'hqdefault');
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-muted">
+                            <Play className="w-8 h-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Bookmark className="w-6 h-6 text-white" fill="white" />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
