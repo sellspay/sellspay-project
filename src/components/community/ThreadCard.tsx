@@ -64,9 +64,24 @@ const categoryLabels: Record<string, string> = {
 };
 
 export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showFullContent, setShowFullContent] = useState(false);
+
+  // Fetch user profile
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url')
+        .eq('user_id', user.id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
   
   const isOwner = profile?.id === thread.author_id;
   const contentTooLong = thread.content.length > 280;

@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Send, Image, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { Send, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,12 +29,27 @@ const categories = [
 const MAX_LENGTH = 1000;
 
 export function ThreadComposer() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('discussion');
   const [gifUrl, setGifUrl] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
+
+  // Fetch user profile
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url')
+        .eq('user_id', user.id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -63,8 +78,8 @@ export function ThreadComposer() {
     },
   });
 
-  const handleGifSelect = (gif: { url: string }) => {
-    setGifUrl(gif.url);
+  const handleGifSelect = (gifUrl: string) => {
+    setGifUrl(gifUrl);
   };
 
   const handleSubmit = () => {
