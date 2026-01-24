@@ -112,11 +112,13 @@ const getYouTubeThumbnail = (youtubeUrl: string | null): string | null => {
 // Sortable collection item for editor - mirrors CollectionRow display
 const SortableCollectionCard = memo(({
   collection,
+  sortableId,
   onEdit,
   onDelete,
   onToggleVisibility,
 }: {
   collection: Collection;
+  sortableId: string;
   onEdit: () => void;
   onDelete: () => void;
   onToggleVisibility: () => void;
@@ -128,7 +130,7 @@ const SortableCollectionCard = memo(({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: collection.id });
+  } = useSortable({ id: sortableId });
 
   // Simplified style without transition during drag for better performance
   const style = {
@@ -175,7 +177,7 @@ const SortableCollectionCard = memo(({
         {/* Editor Controls - visible on hover */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <div
-            className="p-2 rounded-lg bg-muted/50 cursor-grab hover:bg-muted transition-colors"
+            className="p-2 rounded-lg bg-muted/50 cursor-grab hover:bg-muted transition-colors touch-none select-none"
             {...attributes}
             {...listeners}
           >
@@ -281,11 +283,13 @@ SortableCollectionCard.displayName = 'SortableCollectionCard';
 // Sortable section item
 const SortableSectionCard = memo(({
   section,
+  sortableId,
   onEdit,
   onDelete,
   onToggleVisibility,
 }: {
   section: ProfileSection;
+  sortableId: string;
   onEdit: () => void;
   onDelete: () => void;
   onToggleVisibility: () => void;
@@ -297,7 +301,7 @@ const SortableSectionCard = memo(({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: section.id });
+  } = useSortable({ id: sortableId });
 
   // Simplified style without transition during drag for better performance
   const style = {
@@ -322,7 +326,7 @@ const SortableSectionCard = memo(({
       {/* Hover controls */}
       <div className="absolute inset-0 z-20 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
         <div
-          className="p-2 rounded-lg bg-white/10 cursor-grab hover:bg-white/20 transition-colors"
+          className="p-2 rounded-lg bg-white/10 cursor-grab hover:bg-white/20 transition-colors touch-none select-none"
           onClick={(e) => e.stopPropagation()}
           {...attributes}
           {...listeners}
@@ -396,12 +400,11 @@ export function ProfileEditorDialog({
   const [previewSection, setPreviewSection] = useState<ProfileSection | null>(null);
   const [showCreateCollection, setShowCreateCollection] = useState(false);
 
-  // Optimized sensors with higher distance threshold to reduce accidental drags
+  // Sensors: keep drag responsive even inside the scroll container
   const sensors = useSensors(
     useSensor(PointerSensor, { 
       activationConstraint: { 
-        distance: 10,
-        tolerance: 5,
+        distance: 4,
       } 
     }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -414,9 +417,36 @@ export function ProfileEditorDialog({
     },
   }), []);
 
-  // Memoized IDs for SortableContext to prevent unnecessary re-renders
-  const collectionIds = useMemo(() => editorCollections.map((c) => c.id), [editorCollections]);
-  const sectionIds = useMemo(() => sections.map((s) => s.id), [sections]);
+  // Unified layout items (collections + sections are one sortable list)
+  type LayoutItem =
+    | { kind: 'collection'; sortableId: string; id: string; display_order: number; data: Collection }
+    | { kind: 'section'; sortableId: string; id: string; display_order: number; data: ProfileSection };
+
+  const layoutItems = useMemo<LayoutItem[]>(() => {
+    const collections: LayoutItem[] = editorCollections.map((c) => ({
+      kind: 'collection',
+      sortableId: `collection:${c.id}`,
+      id: c.id,
+      display_order: c.display_order ?? 0,
+      data: c,
+    }));
+
+    const secs: LayoutItem[] = sections.map((s) => ({
+      kind: 'section',
+      sortableId: `section:${s.id}`,
+      id: s.id,
+      display_order: s.display_order ?? 0,
+      data: s,
+    }));
+
+    // Collisions can exist when both streams start at 0; keep stable order.
+    return [...collections, ...secs].sort((a, b) => {
+      if (a.display_order !== b.display_order) return a.display_order - b.display_order;
+      return a.sortableId.localeCompare(b.sortableId);
+    });
+  }, [editorCollections, sections]);
+
+  const layoutIds = useMemo(() => layoutItems.map((i) => i.sortableId), [layoutItems]);
 
   useEffect(() => {
     if (open && profileId) {
@@ -524,60 +554,43 @@ export function ProfileEditorDialog({
     }
   };
 
-  const handleCollectionDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setEditorCollections(prev => {
-        const oldIndex = prev.findIndex((c) => c.id === active.id);
-        const newIndex = prev.findIndex((c) => c.id === over.id);
-        const newCollections = arrayMove(prev, oldIndex, newIndex).map((c, idx) => ({
-          ...c,
-          display_order: idx,
-        }));
-        return newCollections;
-      });
-      setHasChanges(true);
-    }
-  }, []);
-
-  const handleSectionDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setSections(prev => {
-        const oldIndex = prev.findIndex((s) => s.id === active.id);
-        const newIndex = prev.findIndex((s) => s.id === over.id);
-        const newSections = arrayMove(prev, oldIndex, newIndex).map((s, idx) => ({
-          ...s,
-          display_order: idx,
-        }));
-        return newSections;
-      });
-      setHasChanges(true);
-    }
-  }, []);
-
-  // Single drag end handler (multiple DndContexts on the same page can conflict)
-  const handleUnifiedDragEnd = useCallback(
+  const handleLayoutDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
 
-      const activeId = String(active.id);
-      const overId = String(over.id);
+      const oldIndex = layoutItems.findIndex((i) => i.sortableId === String(active.id));
+      const newIndex = layoutItems.findIndex((i) => i.sortableId === String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return;
 
-      const isCollectionDrag = collectionIds.includes(activeId) && collectionIds.includes(overId);
-      const isSectionDrag = sectionIds.includes(activeId) && sectionIds.includes(overId);
+      const moved = arrayMove(layoutItems, oldIndex, newIndex);
 
-      if (isCollectionDrag) {
-        handleCollectionDragEnd(event);
-        return;
-      }
+      const nextCollectionsById = new Map(editorCollections.map((c) => [c.id, { ...c }]));
+      const nextSectionsById = new Map(sections.map((s) => [s.id, { ...s }]));
 
-      if (isSectionDrag) {
-        handleSectionDragEnd(event);
-      }
+      moved.forEach((item, idx) => {
+        if (item.kind === 'collection') {
+          const c = nextCollectionsById.get(item.id);
+          if (c) c.display_order = idx;
+        } else {
+          const s = nextSectionsById.get(item.id);
+          if (s) s.display_order = idx;
+        }
+      });
+
+      setEditorCollections(
+        Array.from(nextCollectionsById.values()).sort(
+          (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
+        )
+      );
+      setSections(
+        Array.from(nextSectionsById.values()).sort(
+          (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
+        )
+      );
+      setHasChanges(true);
     },
-    [collectionIds, sectionIds, handleCollectionDragEnd, handleSectionDragEnd]
+    [layoutItems, editorCollections, sections]
   );
 
   const toggleCollectionVisibility = useCallback((collectionId: string) => {
@@ -975,51 +988,34 @@ export function ProfileEditorDialog({
                           <DndContext
                             sensors={sensors}
                             collisionDetection={closestCenter}
-                            onDragEnd={handleUnifiedDragEnd}
+                            onDragEnd={handleLayoutDragEnd}
                             measuring={measuringConfig}
                           >
-                            {/* Collections - displayed like profile page */}
-                            {editorCollections.length > 0 && (
-                              <SortableContext
-                                items={collectionIds}
-                                strategy={verticalListSortingStrategy}
-                              >
-                                <div className="space-y-10">
-                                  {editorCollections.map((collection) => (
+                            <SortableContext items={layoutIds} strategy={verticalListSortingStrategy}>
+                              <div className="space-y-6">
+                                {layoutItems.map((item) =>
+                                  item.kind === 'collection' ? (
                                     <SortableCollectionCard
-                                      key={collection.id}
-                                      collection={collection}
-                                      onEdit={() => setEditingCollection(collection)}
-                                      onDelete={() => setDeleteCollectionId(collection.id)}
-                                      onToggleVisibility={() => toggleCollectionVisibility(collection.id)}
+                                      key={item.sortableId}
+                                      sortableId={item.sortableId}
+                                      collection={item.data}
+                                      onEdit={() => setEditingCollection(item.data)}
+                                      onDelete={() => setDeleteCollectionId(item.data.id)}
+                                      onToggleVisibility={() => toggleCollectionVisibility(item.data.id)}
                                     />
-                                  ))}
-                                </div>
-                              </SortableContext>
-                            )}
-
-                            {/* Custom Sections */}
-                            {sections.length > 0 && (
-                              <SortableContext
-                                items={sectionIds}
-                                strategy={verticalListSortingStrategy}
-                              >
-                                <div className="space-y-4">
-                                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Custom Sections
-                                  </h4>
-                                  {sections.map((section) => (
+                                  ) : (
                                     <SortableSectionCard
-                                      key={section.id}
-                                      section={section}
-                                      onEdit={() => setEditingSection(section)}
-                                      onDelete={() => setDeleteSectionId(section.id)}
-                                      onToggleVisibility={() => toggleSectionVisibility(section.id)}
+                                      key={item.sortableId}
+                                      sortableId={item.sortableId}
+                                      section={item.data}
+                                      onEdit={() => setEditingSection(item.data)}
+                                      onDelete={() => setDeleteSectionId(item.data.id)}
+                                      onToggleVisibility={() => toggleSectionVisibility(item.data.id)}
                                     />
-                                  ))}
-                                </div>
-                              </SortableContext>
-                            )}
+                                  )
+                                )}
+                              </div>
+                            </SortableContext>
                           </DndContext>
 
                           {/* Preview Section */}
