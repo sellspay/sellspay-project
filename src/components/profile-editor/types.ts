@@ -34,10 +34,26 @@ export interface SectionStyleOptions {
   sectionHeight?: 'small' | 'medium' | 'large';
 }
 
+export type FontOption = 
+  | 'default'
+  | 'serif'
+  | 'mono'
+  | 'display'
+  | 'handwritten'
+  | 'condensed'
+  | 'custom';
+
+export interface CustomFont {
+  name: string;
+  url: string;
+}
+
 export interface TextContent {
   title?: string;
   body: string;
   alignment?: 'left' | 'center' | 'right';
+  font?: FontOption;
+  customFont?: CustomFont;
 }
 
 export interface ImageContent {
