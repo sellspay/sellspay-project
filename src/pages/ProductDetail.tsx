@@ -1018,8 +1018,23 @@ export default function ProductDetail() {
       return;
     }
     
+    // Ensure user is authenticated
+    if (!user) {
+      toast.error("Please log in to download this product.");
+      navigate("/login");
+      return;
+    }
+    
     setDownloading(true);
     try {
+      // Get fresh session to ensure auth token is valid
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast.error("Your session has expired. Please log in again.");
+        navigate("/login");
+        return;
+      }
+      
       const { data, error } = await supabase.functions.invoke("get-download-url", {
         body: { productId: product.id },
       });
