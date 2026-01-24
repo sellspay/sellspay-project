@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useCallback, useMemo } from 'react';
+import { useState, useEffect, memo, useCallback, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,6 +9,7 @@ import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+import { formatDistanceToNow } from 'date-fns';
 import {
   DndContext,
   closestCenter,
@@ -28,9 +29,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { 
-  X, Plus, Save, Undo, GripVertical, Eye, EyeOff, Trash2, Pencil,
+  X, Plus, GripVertical, Eye, EyeOff, Trash2, Pencil,
   Link as LinkIcon, Settings, User, Download, Bookmark, Layers, Play,
-  ChevronRight
+  ChevronRight, Undo2, Redo2, Loader2, Check, AlertCircle
 } from 'lucide-react';
 import { ProfileSection, SectionType, SECTION_TEMPLATES } from './types';
 import { AddSectionPanel } from './AddSectionPanel';
@@ -49,6 +50,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { useHistory, useHistoryKeyboard } from '@/hooks/useHistory';
 
 interface Profile {
   id: string;
@@ -93,6 +96,13 @@ interface ProfileEditorDialogProps {
   onCollectionsChange?: () => void;
 }
 
+// Editor state for history tracking
+interface EditorState {
+  sections: ProfileSection[];
+  collections: Collection[];
+  showRecentUploads: boolean;
+}
+
 // Helper to get YouTube thumbnail
 const getYouTubeThumbnail = (youtubeUrl: string | null): string | null => {
   if (!youtubeUrl) return null;
@@ -132,7 +142,6 @@ const SortableCollectionCard = memo(({
     isDragging,
   } = useSortable({ id: sortableId });
 
-  // Simplified style without transition during drag for better performance
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? undefined : transition,
@@ -148,7 +157,7 @@ const SortableCollectionCard = memo(({
         !collection.is_visible && 'opacity-40'
       )}
     >
-      {/* Collection Header - exactly like CollectionRow */}
+      {/* Collection Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           {collection.cover_image_url ? (
@@ -174,7 +183,7 @@ const SortableCollectionCard = memo(({
           </div>
         </div>
 
-        {/* Editor Controls - visible on hover */}
+        {/* Editor Controls */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <div
             className="p-2 rounded-lg bg-muted/50 cursor-grab hover:bg-muted transition-colors touch-none select-none"
@@ -210,29 +219,21 @@ const SortableCollectionCard = memo(({
         </div>
       </div>
 
-      {/* Products Grid - 3 per row like CollectionRow */}
+      {/* Products Grid */}
       {collection.products.length > 0 ? (
         <div className="grid grid-cols-3 gap-4">
           {collection.products.slice(0, 3).map((product) => {
             const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
             return (
-              <div
-                key={product.id}
-                className="group/card"
-              >
+              <div key={product.id} className="group/card">
                 <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border border-border">
                   {thumbnail ? (
-                    <img
-                      src={thumbnail}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={thumbnail} alt={product.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
                       <Layers className="w-8 h-8 text-muted-foreground" />
                     </div>
                   )}
-                  {/* Play indicator for videos */}
                   {(product.preview_video_url || product.youtube_url) && (
                     <div className="absolute top-2 left-2 bg-background/80 rounded-full p-1.5">
                       <Play className="w-3 h-3 text-foreground" fill="currentColor" />
@@ -240,9 +241,7 @@ const SortableCollectionCard = memo(({
                   )}
                 </div>
                 <div className="mt-2">
-                  <h4 className="font-medium text-foreground text-sm line-clamp-2">
-                    {product.name}
-                  </h4>
+                  <h4 className="font-medium text-foreground text-sm line-clamp-2">{product.name}</h4>
                 </div>
               </div>
             );
@@ -258,14 +257,12 @@ const SortableCollectionCard = memo(({
         </div>
       )}
 
-      {/* Show more indicator */}
       {collection.totalCount > 3 && (
         <p className="text-xs text-muted-foreground mt-3 text-center">
           +{collection.totalCount - 3} more products
         </p>
       )}
 
-      {/* Visibility overlay when hidden */}
       {!collection.is_visible && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-lg pointer-events-none">
           <div className="flex items-center gap-2 text-muted-foreground">
@@ -303,7 +300,6 @@ const SortableSectionCard = memo(({
     isDragging,
   } = useSortable({ id: sortableId });
 
-  // Simplified style without transition during drag for better performance
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? undefined : transition,
@@ -323,7 +319,6 @@ const SortableSectionCard = memo(({
         <SectionPreviewContent section={section} />
       </div>
 
-      {/* Hover controls */}
       <div className="absolute inset-0 z-20 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
         <div
           className="p-2 rounded-lg bg-white/10 cursor-grab hover:bg-white/20 transition-colors touch-none select-none"
@@ -337,10 +332,7 @@ const SortableSectionCard = memo(({
         <Button
           variant="secondary"
           size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
           className="bg-white/10 hover:bg-white/20 text-white border-0"
         >
           <Pencil className="w-4 h-4 mr-1" />
@@ -350,10 +342,7 @@ const SortableSectionCard = memo(({
         <Button
           variant="secondary"
           size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleVisibility();
-          }}
+          onClick={(e) => { e.stopPropagation(); onToggleVisibility(); }}
           className="bg-white/10 hover:bg-white/20 text-white border-0"
         >
           {section.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
@@ -362,10 +351,7 @@ const SortableSectionCard = memo(({
         <Button
           variant="secondary"
           size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
           className="bg-destructive/20 hover:bg-destructive/40 text-destructive border-0"
         >
           <Trash2 className="w-4 h-4" />
@@ -385,13 +371,14 @@ export function ProfileEditorDialog({
   collections: initialCollections,
   onCollectionsChange,
 }: ProfileEditorDialogProps) {
+  // Core state
   const [sections, setSections] = useState<ProfileSection[]>([]);
   const [editorCollections, setEditorCollections] = useState<Collection[]>([]);
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
   const [showRecentUploads, setShowRecentUploads] = useState(profile.show_recent_uploads !== false);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
+  
+  // UI state - completely ephemeral, reset on close
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [editingSection, setEditingSection] = useState<ProfileSection | null>(null);
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
@@ -400,24 +387,90 @@ export function ProfileEditorDialog({
   const [previewSection, setPreviewSection] = useState<ProfileSection | null>(null);
   const [showCreateCollection, setShowCreateCollection] = useState(false);
 
-  // Sensors: keep drag responsive even inside the scroll container
+  // Track if data has been fetched to enable autosave
+  const [dataReady, setDataReady] = useState(false);
+  const initialFetchDone = useRef(false);
+
+  // History management
+  const {
+    current: historyState,
+    push: pushHistory,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    reset: resetHistory,
+  } = useHistory<EditorState>({ sections: [], collections: [], showRecentUploads: true });
+
+  // Enable keyboard shortcuts for undo/redo
+  useHistoryKeyboard(undo, redo, canUndo, canRedo, open);
+
+  // Autosave - only enabled when data is ready and dialog is open
+  const autoSaveData = useMemo(() => ({
+    sections,
+    collections: editorCollections,
+    showRecentUploads,
+  }), [sections, editorCollections, showRecentUploads]);
+
+  const saveAllChanges = useCallback(async () => {
+    try {
+      // Save sections
+      for (const section of sections) {
+        const { error } = await supabase
+          .from('profile_sections')
+          .update({
+            display_order: section.display_order,
+            content: JSON.parse(JSON.stringify(section.content)),
+            style_options: JSON.parse(JSON.stringify(section.style_options || {})),
+            is_visible: section.is_visible,
+          })
+          .eq('id', section.id);
+        if (error) throw error;
+      }
+
+      // Save collections order and visibility
+      for (const collection of editorCollections) {
+        const { error } = await supabase
+          .from('collections')
+          .update({
+            display_order: collection.display_order,
+            is_visible: collection.is_visible,
+          })
+          .eq('id', collection.id);
+        if (error) throw error;
+      }
+
+      // Save recent uploads visibility
+      await supabase
+        .from('profiles')
+        .update({ show_recent_uploads: showRecentUploads })
+        .eq('id', profileId);
+
+      onCollectionsChange?.();
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      throw error;
+    }
+  }, [sections, editorCollections, showRecentUploads, profileId, onCollectionsChange]);
+
+  const { saveStatus, lastSaved, saveNow, resetDataRef } = useAutoSave(
+    autoSaveData,
+    saveAllChanges,
+    1500,
+    dataReady && open
+  );
+
+  // Sensors for drag and drop
   const sensors = useSensors(
-    useSensor(PointerSensor, { 
-      activationConstraint: { 
-        distance: 4,
-      } 
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Optimized measuring configuration to reduce layout recalculations
   const measuringConfig = useMemo(() => ({
-    droppable: {
-      strategy: MeasuringStrategy.Always,
-    },
+    droppable: { strategy: MeasuringStrategy.Always },
   }), []);
 
-  // Unified layout items (collections + sections are one sortable list)
+  // Unified layout items
   type LayoutItem =
     | { kind: 'collection'; sortableId: string; id: string; display_order: number; data: Collection }
     | { kind: 'section'; sortableId: string; id: string; display_order: number; data: ProfileSection };
@@ -439,7 +492,6 @@ export function ProfileEditorDialog({
       data: s,
     }));
 
-    // Collisions can exist when both streams start at 0; keep stable order.
     return [...collections, ...secs].sort((a, b) => {
       if (a.display_order !== b.display_order) return a.display_order - b.display_order;
       return a.sortableId.localeCompare(b.sortableId);
@@ -448,33 +500,7 @@ export function ProfileEditorDialog({
 
   const layoutIds = useMemo(() => layoutItems.map((i) => i.sortableId), [layoutItems]);
 
-  useEffect(() => {
-    if (open && profileId) {
-      // Reset preview section when opening
-      setPreviewSection(null);
-      setHasChanges(false);
-      fetchAllData();
-    } else if (!open) {
-      // Clear all temporary state when closing
-      setPreviewSection(null);
-      setEditingSection(null);
-      setEditingCollection(null);
-    }
-  }, [open, profileId]);
-
-  const fetchAllData = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        fetchSections(),
-        fetchCollections(),
-        fetchRecentProducts(),
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Data fetching functions
   const fetchSections = async () => {
     try {
       const { data, error } = await supabase
@@ -484,9 +510,10 @@ export function ProfileEditorDialog({
         .order('display_order', { ascending: true });
 
       if (error) throw error;
-      setSections((data || []) as unknown as ProfileSection[]);
+      return (data || []) as unknown as ProfileSection[];
     } catch (error) {
       console.error('Error fetching sections:', error);
+      return [];
     }
   };
 
@@ -536,13 +563,12 @@ export function ProfileEditorDialog({
             };
           })
         );
-
-        setEditorCollections(collectionsWithProducts);
-      } else {
-        setEditorCollections([]);
+        return collectionsWithProducts;
       }
+      return [];
     } catch (error) {
       console.error('Error fetching collections:', error);
+      return [];
     }
   };
 
@@ -556,82 +582,148 @@ export function ProfileEditorDialog({
         .order('created_at', { ascending: false })
         .limit(6);
 
-      setRecentProducts(data || []);
+      return data || [];
     } catch (error) {
       console.error('Error fetching products:', error);
+      return [];
     }
   };
 
-  const handleLayoutDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
+  const fetchAllData = async () => {
+    setLoading(true);
+    setDataReady(false);
+    try {
+      const [sectionsData, collectionsData, productsData] = await Promise.all([
+        fetchSections(),
+        fetchCollections(),
+        fetchRecentProducts(),
+      ]);
 
-      const oldIndex = layoutItems.findIndex((i) => i.sortableId === String(active.id));
-      const newIndex = layoutItems.findIndex((i) => i.sortableId === String(over.id));
-      if (oldIndex < 0 || newIndex < 0) return;
+      setSections(sectionsData);
+      setEditorCollections(collectionsData);
+      setRecentProducts(productsData);
+      setShowRecentUploads(profile.show_recent_uploads !== false);
 
-      const moved = arrayMove(layoutItems, oldIndex, newIndex);
+      // Reset autosave reference to prevent immediate save
+      const initialState = {
+        sections: sectionsData,
+        collections: collectionsData,
+        showRecentUploads: profile.show_recent_uploads !== false,
+      };
+      resetDataRef(initialState);
+      resetHistory(initialState);
+      
+      // Enable autosave after a short delay
+      setTimeout(() => setDataReady(true), 500);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      const nextCollectionsById = new Map(editorCollections.map((c) => [c.id, { ...c }]));
-      const nextSectionsById = new Map(sections.map((s) => [s.id, { ...s }]));
+  // Effect to fetch data and reset all UI state when dialog opens/closes
+  useEffect(() => {
+    if (open && profileId) {
+      // Reset ALL UI state on open
+      setPreviewSection(null);
+      setEditingSection(null);
+      setEditingCollection(null);
+      setShowAddPanel(false);
+      setDeleteCollectionId(null);
+      setDeleteSectionId(null);
+      setShowCreateCollection(false);
+      
+      // Only fetch once per open
+      if (!initialFetchDone.current) {
+        initialFetchDone.current = true;
+        fetchAllData();
+      }
+    } else if (!open) {
+      // Reset everything on close
+      setPreviewSection(null);
+      setEditingSection(null);
+      setEditingCollection(null);
+      setShowAddPanel(false);
+      setDataReady(false);
+      initialFetchDone.current = false;
+    }
+  }, [open, profileId]);
 
-      moved.forEach((item, idx) => {
-        if (item.kind === 'collection') {
-          const c = nextCollectionsById.get(item.id);
-          if (c) c.display_order = idx;
-        } else {
-          const s = nextSectionsById.get(item.id);
-          if (s) s.display_order = idx;
-        }
-      });
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      setPreviewSection(null);
+      setEditingSection(null);
+      setEditingCollection(null);
+    };
+  }, []);
 
-      setEditorCollections(
-        Array.from(nextCollectionsById.values()).sort(
-          (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
-        )
-      );
-      setSections(
-        Array.from(nextSectionsById.values()).sort(
-          (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
-        )
-      );
-      setHasChanges(true);
-    },
-    [layoutItems, editorCollections, sections]
-  );
+  // Handle layout drag end
+  const handleLayoutDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = layoutItems.findIndex((i) => i.sortableId === String(active.id));
+    const newIndex = layoutItems.findIndex((i) => i.sortableId === String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const moved = arrayMove(layoutItems, oldIndex, newIndex);
+
+    const nextCollectionsById = new Map(editorCollections.map((c) => [c.id, { ...c }]));
+    const nextSectionsById = new Map(sections.map((s) => [s.id, { ...s }]));
+
+    moved.forEach((item, idx) => {
+      if (item.kind === 'collection') {
+        const c = nextCollectionsById.get(item.id);
+        if (c) c.display_order = idx;
+      } else {
+        const s = nextSectionsById.get(item.id);
+        if (s) s.display_order = idx;
+      }
+    });
+
+    const newCollections = Array.from(nextCollectionsById.values()).sort(
+      (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
+    );
+    const newSections = Array.from(nextSectionsById.values()).sort(
+      (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
+    );
+
+    setEditorCollections(newCollections);
+    setSections(newSections);
+    pushHistory({ sections: newSections, collections: newCollections, showRecentUploads });
+  }, [layoutItems, editorCollections, sections, showRecentUploads, pushHistory]);
 
   const toggleCollectionVisibility = useCallback((collectionId: string) => {
-    setEditorCollections(prev => prev.map((c) => 
-      c.id === collectionId ? { ...c, is_visible: !c.is_visible } : c
-    ));
-    setHasChanges(true);
-  }, []);
+    setEditorCollections(prev => {
+      const updated = prev.map((c) => c.id === collectionId ? { ...c, is_visible: !c.is_visible } : c);
+      pushHistory({ sections, collections: updated, showRecentUploads });
+      return updated;
+    });
+  }, [sections, showRecentUploads, pushHistory]);
 
   const toggleSectionVisibility = useCallback((sectionId: string) => {
-    setSections(prev => prev.map((s) => 
-      s.id === sectionId ? { ...s, is_visible: !s.is_visible } : s
-    ));
-    setHasChanges(true);
-  }, []);
+    setSections(prev => {
+      const updated = prev.map((s) => s.id === sectionId ? { ...s, is_visible: !s.is_visible } : s);
+      pushHistory({ sections: updated, collections: editorCollections, showRecentUploads });
+      return updated;
+    });
+  }, [editorCollections, showRecentUploads, pushHistory]);
+
+  const toggleRecentUploadsVisibility = useCallback(() => {
+    setShowRecentUploads(prev => {
+      const newValue = !prev;
+      pushHistory({ sections, collections: editorCollections, showRecentUploads: newValue });
+      return newValue;
+    });
+  }, [sections, editorCollections, pushHistory]);
 
   const handleDeleteCollection = async (collectionId: string) => {
     try {
-      // Delete collection items first
-      await supabase
-        .from('collection_items')
-        .delete()
-        .eq('collection_id', collectionId);
-
-      // Then delete the collection
-      const { error } = await supabase
-        .from('collections')
-        .delete()
-        .eq('id', collectionId);
-
+      await supabase.from('collection_items').delete().eq('collection_id', collectionId);
+      const { error } = await supabase.from('collections').delete().eq('id', collectionId);
       if (error) throw error;
 
-      setEditorCollections(editorCollections.filter((c) => c.id !== collectionId));
+      setEditorCollections(prev => prev.filter((c) => c.id !== collectionId));
       setDeleteCollectionId(null);
       toast.success('Collection deleted');
       onCollectionsChange?.();
@@ -641,20 +733,12 @@ export function ProfileEditorDialog({
     }
   };
 
-  const toggleRecentUploadsVisibility = async () => {
-    const newVisibility = !showRecentUploads;
-    setShowRecentUploads(newVisibility);
-    setHasChanges(true);
-  };
-
   const addSection = async (type: SectionType, presetId?: string) => {
-    // Clear any preview section immediately
     setPreviewSection(null);
     
     const template = SECTION_TEMPLATES.find((t) => t.type === type);
     if (!template) return;
 
-    // Find the preset and merge content overrides
     const preset = presetId ? template.presets.find(p => p.id === presetId) : template.presets[0];
     const content = {
       ...JSON.parse(JSON.stringify(template.defaultContent)),
@@ -662,18 +746,10 @@ export function ProfileEditorDialog({
     };
     const styleOptions = {
       ...(preset?.styleOptions || {}),
-      // Ensure preset is always persisted so previews can render accurately
-      preset: presetId || preset?.id || (preset ? preset.id : 'style1'),
+      preset: presetId || preset?.id || 'style1',
     };
 
-    const sectionToInsert: {
-      profile_id: string;
-      section_type: string;
-      display_order: number;
-      content: Record<string, unknown>;
-      style_options: Record<string, unknown>;
-      is_visible: boolean;
-    } = {
+    const sectionToInsert = {
       profile_id: profileId,
       section_type: type as string,
       display_order: sections.length,
@@ -702,17 +778,20 @@ export function ProfileEditorDialog({
     }
   };
 
-  const updateSection = (updatedSection: ProfileSection) => {
-    setSections(sections.map((s) => (s.id === updatedSection.id ? updatedSection : s)));
+  const updateSection = useCallback((updatedSection: ProfileSection) => {
+    setSections(prev => {
+      const updated = prev.map((s) => (s.id === updatedSection.id ? updatedSection : s));
+      pushHistory({ sections: updated, collections: editorCollections, showRecentUploads });
+      return updated;
+    });
     setEditingSection(updatedSection);
-    setHasChanges(true);
-  };
+  }, [editorCollections, showRecentUploads, pushHistory]);
 
   const deleteSection = async (sectionId: string) => {
     try {
       const { error } = await supabase.from('profile_sections').delete().eq('id', sectionId);
       if (error) throw error;
-      setSections(sections.filter((s) => s.id !== sectionId));
+      setSections(prev => prev.filter((s) => s.id !== sectionId));
       setEditingSection(null);
       toast.success('Section deleted');
     } catch (error) {
@@ -721,58 +800,16 @@ export function ProfileEditorDialog({
     }
   };
 
-
-  const saveAllChanges = async () => {
-    setSaving(true);
-    try {
-      // Save sections
-      for (const section of sections) {
-        const { error } = await supabase
-          .from('profile_sections')
-          .update({
-            display_order: section.display_order,
-            content: JSON.parse(JSON.stringify(section.content)),
-            style_options: JSON.parse(JSON.stringify(section.style_options || {})),
-            is_visible: section.is_visible,
-          })
-          .eq('id', section.id);
-        if (error) throw error;
-      }
-
-      // Save collections order and visibility
-      for (const collection of editorCollections) {
-        const { error } = await supabase
-          .from('collections')
-          .update({
-            display_order: collection.display_order,
-            is_visible: collection.is_visible,
-          })
-          .eq('id', collection.id);
-        if (error) throw error;
-      }
-
-      // Save recent uploads visibility
-      await supabase
-        .from('profiles')
-        .update({ show_recent_uploads: showRecentUploads })
-        .eq('id', profileId);
-
-      setHasChanges(false);
-      toast.success('All changes saved');
-      onCollectionsChange?.();
-    } catch (error) {
-      console.error('Error saving changes:', error);
-      toast.error('Failed to save changes');
-    } finally {
-      setSaving(false);
+  // Apply undo/redo state
+  useEffect(() => {
+    if (historyState && dataReady) {
+      setSections(historyState.sections);
+      setEditorCollections(historyState.collections);
+      setShowRecentUploads(historyState.showRecentUploads);
     }
-  };
+  }, [historyState, dataReady]);
 
   const handleClose = () => {
-    if (hasChanges) {
-      const confirm = window.confirm('You have unsaved changes. Are you sure you want to close?');
-      if (!confirm) return;
-    }
     // Clear all state before closing
     setPreviewSection(null);
     setEditingSection(null);
@@ -810,15 +847,66 @@ export function ProfileEditorDialog({
           {/* Header toolbar */}
           <div className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
             <h2 className="text-lg font-semibold">Profile Editor</h2>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => fetchAllData()} disabled={loading}>
-                <Undo className="w-4 h-4 mr-2" />
-                Reset
-              </Button>
-              <Button variant="default" size="sm" onClick={saveAllChanges} disabled={saving || !hasChanges}>
-                <Save className="w-4 h-4 mr-2" />
-                Save
-              </Button>
+            
+            <div className="flex items-center gap-3">
+              {/* Save status indicator */}
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                {saveStatus === 'saving' && (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Saving...
+                  </>
+                )}
+                {saveStatus === 'saved' && (
+                  <span className="text-green-600 flex items-center gap-1">
+                    <Check className="w-3 h-3" />
+                    Saved
+                  </span>
+                )}
+                {saveStatus === 'error' && (
+                  <span className="text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Save failed
+                  </span>
+                )}
+                {saveStatus === 'idle' && lastSaved && (
+                  <span>Saved {formatDistanceToNow(lastSaved)} ago</span>
+                )}
+              </span>
+
+              {/* Undo/Redo buttons */}
+              <div className="flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={undo} 
+                      disabled={!canUndo}
+                      className="h-8 w-8"
+                    >
+                      <Undo2 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Undo (⌘Z)</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={redo} 
+                      disabled={!canRedo}
+                      className="h-8 w-8"
+                    >
+                      <Redo2 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Redo (⌘⇧Z)</TooltipContent>
+                </Tooltip>
+              </div>
+
+              {/* Close button */}
               <Button variant="ghost" size="icon" onClick={handleClose}>
                 <X className="w-5 h-5" />
               </Button>
@@ -954,7 +1042,7 @@ export function ProfileEditorDialog({
                         </div>
                       ) : (
                         <div className="space-y-6">
-                          {/* Recent Uploads - toggleable */}
+                          {/* Recent Uploads */}
                           {recentProducts.length > 0 && (
                             <div className={cn(
                               'relative group p-4 rounded-lg border transition-all',
@@ -973,11 +1061,7 @@ export function ProfileEditorDialog({
                                   onClick={toggleRecentUploadsVisibility}
                                   className="h-8 w-8"
                                 >
-                                  {showRecentUploads ? (
-                                    <Eye className="w-4 h-4" />
-                                  ) : (
-                                    <EyeOff className="w-4 h-4" />
-                                  )}
+                                  {showRecentUploads ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                                 </Button>
                               </div>
                               <div className="flex gap-2 overflow-x-auto pb-1">
@@ -1032,7 +1116,7 @@ export function ProfileEditorDialog({
                             </SortableContext>
                           </DndContext>
 
-                          {/* Preview Section - only show when add panel is open AND there's a preview */}
+                          {/* Preview Section - only when add panel is open */}
                           {showAddPanel && previewSection && (
                             <div className="relative bg-card/50 backdrop-blur-sm border-2 border-dashed border-primary rounded-lg overflow-hidden">
                               <div className="absolute top-2 left-2 z-10">
@@ -1060,12 +1144,10 @@ export function ProfileEditorDialog({
       <AddSectionPanel
         open={showAddPanel}
         onClose={() => {
-          // Always clear preview when closing the panel
           setPreviewSection(null);
           setShowAddPanel(false);
         }}
         onAddSection={(type, presetId) => {
-          // Clear preview before adding
           setPreviewSection(null);
           addSection(type, presetId);
         }}
@@ -1089,7 +1171,7 @@ export function ProfileEditorDialog({
         onOpenChange={(open) => !open && setEditingCollection(null)}
         collection={editingCollection}
         onUpdated={() => {
-          fetchCollections();
+          fetchCollections().then(data => setEditorCollections(data));
           onCollectionsChange?.();
           setEditingCollection(null);
         }}
@@ -1151,7 +1233,7 @@ export function ProfileEditorDialog({
           profileId={profileId}
           onCreated={() => {
             setShowCreateCollection(false);
-            fetchCollections();
+            fetchCollections().then(data => setEditorCollections(data));
             onCollectionsChange?.();
           }}
         />
