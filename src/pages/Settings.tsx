@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { SellerEmailSettings } from "@/components/settings/SellerEmailSettings";
 
 // Social platform detection
 const detectSocialPlatform = (url: string): { platform: string; icon: React.ReactNode } | null => {
@@ -805,7 +806,7 @@ export default function Settings() {
       <h1 className="text-3xl font-bold mb-8">Settings</h1>
 
       <Tabs defaultValue="profile" className="space-y-8">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile" className="gap-2">
             <User className="w-4 h-4" />
             Profile
@@ -825,6 +826,10 @@ export default function Settings() {
           <TabsTrigger value="billing" className="gap-2">
             <CreditCard className="w-4 h-4" />
             Billing
+          </TabsTrigger>
+          <TabsTrigger value="seller-email" className="gap-2">
+            <Mail className="w-4 h-4" />
+            Email
           </TabsTrigger>
         </TabsList>
 
@@ -1560,6 +1565,11 @@ export default function Settings() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Seller Email Tab */}
+        <TabsContent value="seller-email">
+          <SellerEmailSettings userId={user.id} isSeller={isSeller} />
         </TabsContent>
       </Tabs>
 
