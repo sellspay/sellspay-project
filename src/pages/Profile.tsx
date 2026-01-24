@@ -463,7 +463,8 @@ const ProfilePage: React.FC = () => {
           .eq('user_id', data.user_id)
           .eq('role', 'admin')
           .maybeSingle();
-        setIsAdmin(!!roleData);
+        const profileIsAdmin = !!roleData;
+        setIsAdmin(profileIsAdmin);
 
         // Fetch followers count
         const { count: followers } = await supabase
@@ -639,8 +640,8 @@ const ProfilePage: React.FC = () => {
         // Fetch collections for the profile
         fetchCollections(data.id, ownProfile);
 
-        // Check if creator has subscription plans (for non-own profiles)
-        if (!ownProfile && data.is_creator) {
+        // Check if creator/owner has subscription plans (for non-own profiles)
+        if (!ownProfile && (data.is_creator || profileIsAdmin)) {
           const { count } = await supabase
             .from('creator_subscription_plans')
             .select('*', { count: 'exact', head: true })
@@ -840,8 +841,8 @@ const ProfilePage: React.FC = () => {
 
             {/* Action buttons on desktop - positioned to the right */}
             <div className="hidden md:flex flex-1 justify-end gap-2 pb-2">
-              {/* Follow button for other profiles - show for sellers or admins */}
-              {!isOwnProfile && (profile.is_seller || isAdmin) && (
+              {/* Follow button for other profiles - show for sellers, creators, or admins/owners */}
+              {!isOwnProfile && (profile.is_seller || profile.is_creator || isAdmin) && (
                 <Button 
                   onClick={handleFollow}
                   variant={isFollowing ? "outline" : "default"}
@@ -861,8 +862,8 @@ const ProfilePage: React.FC = () => {
                 </Button>
               )}
               
-              {/* Subscribe button for sellers with plans */}
-              {!isOwnProfile && profile.is_seller && creatorHasPlans && (
+              {/* Subscribe button for sellers/admins with plans */}
+              {!isOwnProfile && (profile.is_seller || isAdmin) && creatorHasPlans && (
                 <Button 
                   onClick={() => setShowSubscribeDialog(true)}
                   variant="outline"
@@ -1025,8 +1026,8 @@ const ProfilePage: React.FC = () => {
 
             {/* Mobile action buttons */}
             <div className="flex md:hidden flex-wrap gap-2 mb-4">
-              {/* Follow button for other profiles - show for sellers or admins */}
-              {!isOwnProfile && (profile.is_seller || isAdmin) && (
+              {/* Follow button for other profiles - show for sellers, creators, or admins/owners */}
+              {!isOwnProfile && (profile.is_seller || profile.is_creator || isAdmin) && (
                 <Button 
                   onClick={handleFollow}
                   variant={isFollowing ? "outline" : "default"}
@@ -1046,8 +1047,8 @@ const ProfilePage: React.FC = () => {
                 </Button>
               )}
 
-              {/* Subscribe button for sellers with plans (mobile) */}
-              {!isOwnProfile && profile.is_seller && creatorHasPlans && (
+              {/* Subscribe button for sellers/admins with plans (mobile) */}
+              {!isOwnProfile && (profile.is_seller || isAdmin) && creatorHasPlans && (
                 <Button 
                   onClick={() => setShowSubscribeDialog(true)}
                   variant="outline"
@@ -1084,8 +1085,8 @@ const ProfilePage: React.FC = () => {
         {/* Instagram-style Icon Tabs */}
         <div className="mt-8 max-w-4xl mx-auto px-4">
           <div className="flex justify-center border-t border-border">
-            {/* Store/Collections Tab - only for sellers (is_seller=true) on own profile, or public view */}
-            {(profile.is_seller || !isOwnProfile) && (
+            {/* Store/Collections Tab - for sellers, creators, admins, or public view */}
+            {(profile.is_seller || profile.is_creator || isAdmin || !isOwnProfile) && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
