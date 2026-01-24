@@ -175,6 +175,17 @@ serve(async (req) => {
     const origin = req.headers.get("origin") || "https://editorsparadise.org";
 
     // Create checkout session with Stripe Connect
+    // IMPORTANT: Using application_fee_amount with transfer_data means:
+    // - Full amount is collected to the PLATFORM account first
+    // - Net amount (after application_fee) is transferred to the creator
+    // - The application_fee stays with the platform
+    logStep("Creating checkout with Stripe Connect", {
+      destinationAccount: creatorProfile.stripe_account_id,
+      applicationFee: platformFee,
+      creatorGets: creatorPayout,
+      platformKeeps: platformFee,
+    });
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : buyerEmail,
@@ -209,11 +220,13 @@ serve(async (req) => {
       },
     });
 
-    logStep("Checkout session created", { 
+    logStep("Checkout session created successfully", { 
       sessionId: session.id, 
       url: session.url,
-      amountTotal: totalAmount,
-      applicationFee: platformFee
+      totalCharged: totalAmount,
+      applicationFee: platformFee,
+      creatorPayout: creatorPayout,
+      destinationAccount: creatorProfile.stripe_account_id,
     });
 
     return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
