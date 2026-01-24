@@ -30,6 +30,7 @@ export default function Header() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+  const [isSeller, setIsSeller] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export default function Header() {
     async function fetchProfile() {
       if (!user) {
         setIsCreator(false);
+        setIsSeller(false);
         setIsAdmin(false);
         setAvatarUrl(null);
         setUsername(null);
@@ -52,11 +54,12 @@ export default function Header() {
       // Fetch profile data
       const { data } = await supabase
         .from('profiles')
-        .select('is_creator, avatar_url, username, full_name')
+        .select('is_creator, is_seller, avatar_url, username, full_name')
         .eq('user_id', user.id)
         .maybeSingle();
       
       setIsCreator(data?.is_creator || false);
+      setIsSeller(data?.is_seller || false);
       setAvatarUrl(data?.avatar_url || null);
       setUsername(data?.username || null);
       setFullName(data?.full_name || null);
@@ -170,7 +173,7 @@ export default function Header() {
                   </div>
                   
                   <DropdownMenuSeparator />
-                  {isCreator && (
+                  {(isCreator || isSeller) && (
                     <DropdownMenuItem asChild>
                       <Link to="/dashboard" className="flex items-center gap-2">
                         <LayoutDashboard className="h-4 w-4" />
@@ -206,12 +209,14 @@ export default function Header() {
                       Settings
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/admin" className="flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4" />
-                      Admin
-                    </Link>
-                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4" />
+                        Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut()} className="text-destructive">
                     <LogOut className="h-4 w-4 mr-2" />
