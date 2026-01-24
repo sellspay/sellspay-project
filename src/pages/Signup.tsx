@@ -173,7 +173,7 @@ export default function Signup() {
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
       {/* Cosmic Background Image */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 pointer-events-none">
         <img 
           src={authBg} 
           alt="" 
