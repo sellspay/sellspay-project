@@ -151,17 +151,19 @@ export function PublicProfileSections({
               });
             }
 
+            const publishedProducts = (productsData || []).map(p => ({
+              ...p,
+              likeCount: likeMap.get(p.id) || 0,
+              commentCount: commentMap.get(p.id) || 0,
+            }));
+
             return {
               ...collection,
               display_order: collection.display_order ?? 0,
               is_visible: collection.is_visible ?? true,
               style_options: (collection as any).style_options || {},
-              products: (productsData || []).map(p => ({
-                ...p,
-                likeCount: likeMap.get(p.id) || 0,
-                commentCount: commentMap.get(p.id) || 0,
-              })),
-              totalCount: count || 0,
+              products: publishedProducts,
+              totalCount: publishedProducts.length,
             };
           })
         );
