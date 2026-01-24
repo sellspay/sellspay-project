@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, Sparkles, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,81 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+// Premium Publishing Overlay Component
+const PublishingOverlay = ({ isPublishing }: { isPublishing: boolean }) => {
+  const [step, setStep] = useState(0);
+  const steps = [
+    "Uploading media...",
+    "Processing files...",
+    "Creating product...",
+    "Almost there..."
+  ];
+
+  useEffect(() => {
+    if (!isPublishing) {
+      setStep(0);
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      setStep((prev) => (prev < steps.length - 1 ? prev + 1 : prev));
+    }, 1500);
+    
+    return () => clearInterval(interval);
+  }, [isPublishing]);
+
+  if (!isPublishing) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop with blur */}
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-md" />
+      
+      {/* Animated gradient orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
+      </div>
+      
+      {/* Content */}
+      <div className="relative z-10 flex flex-col items-center text-center px-6">
+        {/* Animated icon */}
+        <div className="relative mb-8">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center animate-pulse">
+            <Sparkles className="w-10 h-10 text-white" />
+          </div>
+          {/* Rotating ring */}
+          <div className="absolute inset-0 w-20 h-20 border-2 border-primary/30 border-t-primary rounded-full animate-spin" style={{ animationDuration: '1.5s' }} />
+        </div>
+        
+        {/* Title */}
+        <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          Publishing Your Product
+        </h2>
+        
+        {/* Current step */}
+        <p className="text-muted-foreground mb-8 h-6 animate-fade-in" key={step}>
+          {steps[step]}
+        </p>
+        
+        {/* Progress steps */}
+        <div className="flex items-center gap-2">
+          {steps.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-500 ${
+                i <= step 
+                  ? 'w-8 bg-gradient-to-r from-primary to-accent' 
+                  : 'w-4 bg-muted'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const productTypes = [
   { value: "preset", label: "Preset Pack" },
@@ -61,6 +136,7 @@ export default function CreateProduct() {
   const isSeller = profile?.is_seller || false;
   
   const [loading, setLoading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [customSlug, setCustomSlug] = useState(false);
@@ -113,6 +189,7 @@ export default function CreateProduct() {
     }
 
     setLoading(true);
+    if (publish) setIsPublishing(true);
 
     try {
       // Get user's profile
@@ -251,6 +328,7 @@ export default function CreateProduct() {
       toast.error("Failed to create product");
     } finally {
       setLoading(false);
+      setIsPublishing(false);
     }
   };
 
@@ -290,8 +368,10 @@ export default function CreateProduct() {
   const youtubeVideoId = extractYoutubeId(youtubeUrl);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <h1 className="text-3xl font-bold mb-8">Create New Product</h1>
+    <>
+      <PublishingOverlay isPublishing={isPublishing} />
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <h1 className="text-3xl font-bold mb-8">Create New Product</h1>
 
       <form className="space-y-8">
         {/* YouTube Video - Top Section */}
@@ -640,6 +720,7 @@ export default function CreateProduct() {
           </Button>
         </div>
       </form>
-    </div>
+      </div>
+    </>
   );
 }
