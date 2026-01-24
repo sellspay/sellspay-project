@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, memo, useCallback, useMemo, useRef } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -38,7 +38,7 @@ import { AddSectionPanel } from './AddSectionPanel';
 import { EditSectionDialog } from './EditSectionDialog';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
 import { CreateCollectionInEditor } from './CreateCollectionInEditor';
-import { AnimationPicker } from './AnimationPicker';
+import { AnimationPicker, getAnimationStyles, getAnimatedStyles } from './AnimationPicker';
 import EditCollectionDialog from '@/components/profile/EditCollectionDialog';
 import {
   AlertDialog,
@@ -137,6 +137,7 @@ const SortableCollectionCard = memo(({
   onToggleVisibility: () => void;
   onAnimationChange?: (animation: AnimationType) => void;
 }) => {
+  const contentRef = React.useRef<HTMLDivElement>(null);
   const {
     attributes,
     listeners,
@@ -152,6 +153,25 @@ const SortableCollectionCard = memo(({
   };
 
   const currentAnimation = collection.style_options?.animation || 'none';
+
+  const handlePreviewAnimation = () => {
+    if (currentAnimation === 'none' || !contentRef.current) return;
+    
+    // Reset to initial animation state
+    const initialStyles = getAnimationStyles(currentAnimation as AnimationType);
+    Object.assign(contentRef.current.style, initialStyles);
+    
+    // Trigger reflow to restart animation
+    void contentRef.current.offsetWidth;
+    
+    // Apply animated state after brief delay
+    requestAnimationFrame(() => {
+      if (contentRef.current) {
+        const animatedStyles = getAnimatedStyles(currentAnimation as AnimationType);
+        Object.assign(contentRef.current.style, animatedStyles);
+      }
+    });
+  };
 
   return (
     <div
@@ -169,114 +189,119 @@ const SortableCollectionCard = memo(({
           <AnimationPicker
             value={currentAnimation as AnimationType}
             onChange={onAnimationChange}
+            onPreview={handlePreviewAnimation}
           />
         </div>
       )}
-      {/* Collection Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          {collection.cover_image_url ? (
-            <img
-              src={collection.cover_image_url}
-              alt={collection.name}
-              className="w-12 h-12 rounded-lg object-cover"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-              <Layers className="w-6 h-6 text-muted-foreground" />
-            </div>
-          )}
-          <div className="text-left">
-            <div className="flex items-center gap-1">
-              <h3 className="text-lg font-semibold text-foreground">{collection.name}</h3>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <Layers className="w-3.5 h-3.5" />
-              {collection.totalCount} {collection.totalCount === 1 ? 'post' : 'posts'}
-            </p>
-          </div>
-        </div>
-
-        {/* Editor Controls */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div
-            className="p-2 rounded-lg bg-muted/50 cursor-grab hover:bg-muted transition-colors touch-none select-none"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onEdit}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-          >
-            <Pencil className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleVisibility}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-          >
-            {collection.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onDelete}
-            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Products Grid */}
-      {collection.products.length > 0 ? (
-        <div className="grid grid-cols-3 gap-4">
-          {collection.products.slice(0, 3).map((product) => {
-            const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
-            return (
-              <div key={product.id} className="group/card">
-                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border border-border">
-                  {thumbnail ? (
-                    <img src={thumbnail} alt={product.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
-                      <Layers className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                  )}
-                  {(product.preview_video_url || product.youtube_url) && (
-                    <div className="absolute top-2 left-2 bg-background/80 rounded-full p-1.5">
-                      <Play className="w-3 h-3 text-foreground" fill="currentColor" />
-                    </div>
-                  )}
-                </div>
-                <div className="mt-2">
-                  <h4 className="font-medium text-foreground text-sm line-clamp-2">{product.name}</h4>
-                </div>
+      
+      {/* Content wrapper for animation preview */}
+      <div ref={contentRef} className="transition-all duration-[600ms] ease-out">
+        {/* Collection Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            {collection.cover_image_url ? (
+              <img
+                src={collection.cover_image_url}
+                alt={collection.name}
+                className="w-12 h-12 rounded-lg object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                <Layers className="w-6 h-6 text-muted-foreground" />
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="border-2 border-dashed border-muted-foreground/20 rounded-lg p-8 text-center">
-          <Layers className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No products in this collection</p>
-          <Button variant="ghost" size="sm" onClick={onEdit} className="mt-2 text-primary">
-            Add Products
-          </Button>
-        </div>
-      )}
+            )}
+            <div className="text-left">
+              <div className="flex items-center gap-1">
+                <h3 className="text-lg font-semibold text-foreground">{collection.name}</h3>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <Layers className="w-3.5 h-3.5" />
+                {collection.totalCount} {collection.totalCount === 1 ? 'post' : 'posts'}
+              </p>
+            </div>
+          </div>
 
-      {collection.totalCount > 3 && (
-        <p className="text-xs text-muted-foreground mt-3 text-center">
-          +{collection.totalCount - 3} more products
-        </p>
-      )}
+          {/* Editor Controls */}
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div
+              className="p-2 rounded-lg bg-muted/50 cursor-grab hover:bg-muted transition-colors touch-none select-none"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onEdit}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleVisibility}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            >
+              {collection.is_visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Products Grid */}
+        {collection.products.length > 0 ? (
+          <div className="grid grid-cols-3 gap-4">
+            {collection.products.slice(0, 3).map((product) => {
+              const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
+              return (
+                <div key={product.id} className="group/card">
+                  <div className="relative aspect-video rounded-lg overflow-hidden bg-muted border border-border">
+                    {thumbnail ? (
+                      <img src={thumbnail} alt={product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/50">
+                        <Layers className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    {(product.preview_video_url || product.youtube_url) && (
+                      <div className="absolute top-2 left-2 bg-background/80 rounded-full p-1.5">
+                        <Play className="w-3 h-3 text-foreground" fill="currentColor" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <h4 className="font-medium text-foreground text-sm line-clamp-2">{product.name}</h4>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="border-2 border-dashed border-muted-foreground/20 rounded-lg p-8 text-center">
+            <Layers className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No products in this collection</p>
+            <Button variant="ghost" size="sm" onClick={onEdit} className="mt-2 text-primary">
+              Add Products
+            </Button>
+          </div>
+        )}
+
+        {collection.totalCount > 3 && (
+          <p className="text-xs text-muted-foreground mt-3 text-center">
+            +{collection.totalCount - 3} more products
+          </p>
+        )}
+      </div>
 
       {!collection.is_visible && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-lg pointer-events-none">
