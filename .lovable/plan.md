@@ -1,52 +1,101 @@
 
-# Plan: Display Updates as "EditorsParadise" Bot
+# Plan: Fix Credit Check Flickering with Global Cache
 
-## Overview
+## Problem Analysis
 
-Transform the Updates page so all announcements appear to come from a platform bot called **"EditorsParadise"** instead of showing the owner's personal profile. This creates a more professional, official appearance for platform announcements.
+The current credit system causes flickering because:
+
+1. **Isolated State**: `useCredits` uses `useState` which creates independent state per component
+2. **Multiple Fetch Calls**: Both Header and Tools page call `useCredits()` → each triggers its own API call
+3. **Race Condition**: When navigating to Tools, the hook initializes with `creditBalance: 0` and `isLoading: true`, shows 0 briefly, then updates after API responds
+
+```text
+Current Flow:
+┌──────────────┐     ┌──────────────┐
+│    Header    │     │  Tools Page  │
+│ useCredits() │     │ useCredits() │
+│    ↓         │     │     ↓        │
+│ Fetch API    │     │  Fetch API   │ (separate calls!)
+│    ↓         │     │     ↓        │
+│ State: 50    │     │ State: 0 → 50│ (flicker!)
+└──────────────┘     └──────────────┘
+```
 
 ---
 
-## Current vs. New Behavior
+## Solution: React Query Global Cache
 
-| Aspect | Current | New |
-|--------|---------|-----|
-| **Display Name** | Owner's username | "EditorsParadise" |
-| **Avatar** | Owner's profile picture | Platform logo (navbar-logo.png) |
-| **Badge** | Owner verified badge | "BOT" badge + verified badge |
-| **Author Fetching** | Queries profiles table | Not needed (hardcoded) |
+Convert `useCredits` to use React Query which provides:
+- **Global cache** shared across all components
+- **Stale-while-revalidate** - shows cached data immediately
+- **Single source of truth** - no duplicate API calls
+- **Configurable refetch** - only refresh when needed
+
+```text
+New Flow:
+┌──────────────┐     ┌──────────────┐
+│    Header    │     │  Tools Page  │
+│ useCredits() │     │ useCredits() │
+│    ↓         │     │     ↓        │
+│ Query: credits│←───→│ Query: credits│ (shared cache!)
+│    ↓         │     │     ↓        │
+│ State: 50    │     │ State: 50    │ (instant!)
+└──────────────┘     └──────────────┘
+         ↓
+    ┌────────────┐
+    │ React Query│
+    │   Cache    │
+    └────────────┘
+```
 
 ---
 
 ## Implementation Details
 
-### 1. Update `UpdateCard.tsx`
+### 1. Refactor `useCredits.ts` to Use React Query
 
-Replace the dynamic author display with a hardcoded "EditorsParadise" bot identity:
+Replace `useState` + `useEffect` pattern with `useQuery`:
 
-- **Avatar**: Use the navbar logo (`/src/assets/navbar-logo.png`) 
-- **Name**: Display "EditorsParadise" as the bot name
-- **Badge**: Add a special "BOT" badge (similar to Discord's bot badges) in addition to the verified badge
-- **Remove**: No longer need to pass or display author profile data
-
-### 2. Update `Updates.tsx` 
-
-Simplify the data fetching:
-- Remove the author profile fetching logic since we no longer need it
-- Keep only the platform_updates query without joining profiles
-
-### 3. Visual Design for Bot Identity
-
-```text
-+-------------------------------------------+
-| [Logo]  EditorsParadise  [BOT] [✓]        |
-|         2 hours ago                        |
-+-------------------------------------------+
+```typescript
+// Credit balance query - cached globally
+const { 
+  data: creditData, 
+  isLoading: creditsLoading,
+  refetch: refetchCredits 
+} = useQuery({
+  queryKey: ['user-credits', user?.id],
+  queryFn: async () => {
+    const { data } = await supabase.functions.invoke("check-credits");
+    return data?.credit_balance ?? 0;
+  },
+  enabled: !!user,
+  staleTime: 5 * 60 * 1000, // 5 minutes - don't refetch if data is fresh
+  gcTime: 10 * 60 * 1000,   // 10 minutes cache
+});
 ```
 
-- **BOT Badge**: Small pill badge with "BOT" text in amber/gold color
-- **Verified Badge**: Keep the animated owner verified badge for official status
-- **Avatar Ring**: Amber glow ring around the logo
+### 2. Cache Configuration
+
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| `staleTime` | 5 minutes | Data considered fresh, no background refetch |
+| `gcTime` | 10 minutes | Keep in cache even when unmounted |
+| `enabled` | `!!user` | Only fetch when logged in |
+| `refetchOnMount` | false | Don't refetch if cache exists |
+| `refetchOnWindowFocus` | false | Don't refetch when returning to tab |
+
+### 3. Manual Refresh Only When Needed
+
+Credits should only refresh after:
+- **Deducting a credit** (using a tool)
+- **Purchasing credits** (checkout completion)
+- **Login/logout** (user change)
+
+The `deductCredit` and `verifyPurchase` functions will call `queryClient.invalidateQueries(['user-credits'])` to force refresh.
+
+### 4. Subscription Query (Same Pattern)
+
+Apply the same caching to subscription status.
 
 ---
 
@@ -54,34 +103,29 @@ Simplify the data fetching:
 
 | File | Changes |
 |------|---------|
-| `src/components/community/UpdateCard.tsx` | Replace author display with hardcoded bot identity |
-| `src/pages/community/Updates.tsx` | Remove author fetching logic (simplify query) |
+| `src/hooks/useCredits.ts` | Replace useState/useEffect with useQuery for credits and subscription |
 
 ---
 
-## Code Changes Summary
+## Technical Changes Summary
 
-### UpdateCard.tsx
-- Import the navbar logo
-- Replace Avatar with the platform logo
-- Replace username with "EditorsParadise"
-- Add "BOT" badge next to the name
-- Remove author prop dependency (keep author_id for internal use only)
+```text
+Before:
+- useState({ creditBalance: 0, isLoading: true })
+- useEffect → checkCredits() (runs on every mount)
+- Multiple API calls per page navigation
 
-### Updates.tsx
-- Remove the `Promise.all` author fetching loop
-- Simplify query to just fetch from `platform_updates`
-- Remove author from the interface/type
+After:
+- useQuery(['user-credits'], checkCredits, { staleTime: 5min })
+- Cached globally, shared across components
+- Single API call, instant display on navigation
+```
 
 ---
 
-## Visual Result
+## Result
 
-All updates will display with:
-- **EditorsParadise** platform logo as avatar
-- **"EditorsParadise"** as the display name
-- **"BOT"** badge in amber/gold styling
-- **Verified owner badge** (animated rainbow)
-- Clean, professional, official appearance
-
-This matches the Discord bot style where automated messages come from a clearly identified bot account rather than a personal user.
+- **No flicker**: Cached balance displays instantly when navigating to Tools
+- **One-time fetch**: Initial load fetches, subsequent navigations use cache
+- **Auto-refresh after actions**: Credits update after purchases/usage
+- **Better performance**: Fewer API calls, faster page loads
