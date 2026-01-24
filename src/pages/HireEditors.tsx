@@ -389,7 +389,7 @@ export default function HireEditors() {
                           <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                             @{editor.username || 'editor'}
                           </h3>
-                          {editor.verified && <VerifiedBadge size="sm" isAdmin={editor.isAdmin} />}
+                          {editor.verified && <VerifiedBadge size="sm" isOwner={editor.isAdmin} />}
                         </div>
                         {editor.full_name && (
                           <p className="text-sm text-muted-foreground">{editor.full_name}</p>

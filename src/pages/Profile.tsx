@@ -417,10 +417,14 @@ const ProfilePage: React.FC = () => {
         const ownProfile = user?.id === data.user_id;
         setIsOwnProfile(ownProfile);
 
-        // Check admin status from user_roles table
-        if (user) {
-          checkUserRole('admin').then(setIsAdmin);
-        }
+        // Check if the PROFILE BEING VIEWED is an admin (for special verified badge)
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user_id)
+          .eq('role', 'admin')
+          .maybeSingle();
+        setIsAdmin(!!roleData);
 
         // Fetch followers count
         const { count: followers } = await supabase
@@ -802,7 +806,7 @@ const ProfilePage: React.FC = () => {
                 @{profile.username || 'user'}
               </h1>
               {profile.verified && (
-                <VerifiedBadge isAdmin={isAdmin} size="md" />
+                <VerifiedBadge isOwner={isAdmin} size="md" />
               )}
               {profile.is_creator && (
                 <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
