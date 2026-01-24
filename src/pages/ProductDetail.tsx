@@ -114,8 +114,16 @@ const getYouTubeThumbnail = (youtubeUrl: string | null): string | null => {
   return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 };
 
+// UUID regex for checking if idOrSlug is a UUID
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function ProductDetail() {
-  const { id, slug } = useParams<{ id?: string; slug?: string }>();
+  const { idOrSlug } = useParams<{ idOrSlug?: string }>();
+  
+  // Determine if it's a UUID or a slug
+  const isUUID = idOrSlug ? UUID_REGEX.test(idOrSlug) : false;
+  const id = isUUID ? idOrSlug : undefined;
+  const slug = !isUUID ? idOrSlug : undefined;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
