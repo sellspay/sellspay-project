@@ -1,6 +1,8 @@
+import { Link } from 'react-router-dom';
 import { Reveal } from './Reveal';
 import { Star, Quote, BadgeCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 
 interface Testimonial {
   id: string;
@@ -100,26 +102,33 @@ export function Testimonials() {
                     </p>
                   </blockquote>
 
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-14 w-14 ring-2 ring-primary/20">
-                      <AvatarImage src={featured.avatar} />
-                      <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
-                        {featured.name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-foreground text-lg">
-                          @{featured.username || featured.name.toLowerCase().replace(' ', '')}
-                        </span>
-                        {featured.verified && (
-                          <BadgeCheck className="h-5 w-5 text-primary fill-primary/20" />
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {featured.role}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-14 w-14 ring-2 ring-primary/20">
+                        <AvatarImage src={featured.avatar} />
+                        <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+                          {featured.name[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground text-lg">
+                            @{featured.username || featured.name.toLowerCase().replace(' ', '')}
+                          </span>
+                          {featured.verified && (
+                            <BadgeCheck className="h-5 w-5 text-primary fill-primary/20" />
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {featured.role}
+                        </div>
                       </div>
                     </div>
+                    <Button asChild variant="outline" size="sm" className="hidden sm:flex">
+                      <Link to={`/profile/${featured.username}`}>
+                        View Profile
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               </div>
