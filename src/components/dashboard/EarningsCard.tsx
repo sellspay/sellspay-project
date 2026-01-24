@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Wallet, Zap, Clock, Loader2, RefreshCw } from 'lucide-react';
+import { DollarSign, Wallet, Zap, Clock, Loader2, RefreshCw, Globe, CreditCard, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,10 +11,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface EarningsCardProps {
   productEarnings: number; // in dollars
   editorEarnings: number; // in dollars
+}
+
+type PayoutProvider = 'stripe' | 'payoneer';
+type WithdrawalSpeed = 'standard' | 'instant';
+
+interface PayoutStatus {
+  preferredMethod: PayoutProvider;
+  stripeConnected: boolean;
+  payoneerConnected: boolean;
+  payoneerStatus: string | null;
 }
 
 export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardProps) {
@@ -26,12 +39,42 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [processingPayout, setProcessingPayout] = useState(false);
+  const [payoutStatus, setPayoutStatus] = useState<PayoutStatus | null>(null);
+  
+  // Withdrawal options
+  const [selectedProvider, setSelectedProvider] = useState<PayoutProvider>('stripe');
+  const [selectedSpeed, setSelectedSpeed] = useState<WithdrawalSpeed>('standard');
 
   const totalEarnings = productEarnings + editorEarnings;
+  const MINIMUM_WITHDRAWAL = 10; // $10 minimum per Terms of Service
 
   useEffect(() => {
     fetchStripeBalance();
+    fetchPayoutStatus();
   }, []);
+
+  const fetchPayoutStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke('check-payoneer-status', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (!error && data) {
+        setPayoutStatus({
+          preferredMethod: data.preferredMethod || 'stripe',
+          stripeConnected: data.stripeConnected || false,
+          payoneerConnected: data.payoneerConnected || false,
+          payoneerStatus: data.payoneerStatus,
+        });
+        setSelectedProvider(data.preferredMethod || 'stripe');
+      }
+    } catch (error) {
+      console.error('Failed to fetch payout status:', error);
+    }
+  };
 
   const fetchStripeBalance = async () => {
     setLoadingBalance(true);
@@ -52,7 +95,28 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
     }
   };
 
-  const handleWithdraw = async (instant: boolean) => {
+  const calculateFees = (amount: number, provider: PayoutProvider, speed: WithdrawalSpeed) => {
+    // Fee structure per Terms of Service
+    if (provider === 'stripe') {
+      if (speed === 'instant') {
+        const fee = amount * 0.03; // 3% instant payout fee
+        return { fee, netAmount: amount - fee, feeLabel: '3% instant fee' };
+      }
+      return { fee: 0, netAmount: amount, feeLabel: 'Free' };
+    } else {
+      // Payoneer - platform charges no fee, but Payoneer may charge withdrawal fees
+      return { fee: 0, netAmount: amount, feeLabel: 'Free (Payoneer may charge withdrawal fees)' };
+    }
+  };
+
+  const handleWithdraw = async () => {
+    const availableAmount = availableBalanceDollars;
+    
+    if (availableAmount < MINIMUM_WITHDRAWAL) {
+      toast.error(`Minimum withdrawal amount is $${MINIMUM_WITHDRAWAL}`);
+      return;
+    }
+
     setProcessingPayout(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -61,23 +125,48 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('create-payout', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: { instant },
-      });
+      if (selectedProvider === 'stripe') {
+        const { data, error } = await supabase.functions.invoke('create-payout', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: { instant: selectedSpeed === 'instant' },
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (data.success) {
-        toast.success(
-          instant 
-            ? `$${(data.amount / 100).toFixed(2)} withdrawn instantly! (3% fee: $${(data.fee / 100).toFixed(2)})`
-            : `$${(data.amount / 100).toFixed(2)} withdrawal initiated. Arrives in 1-3 business days.`
-        );
-        setWithdrawDialogOpen(false);
-        fetchStripeBalance(); // Refresh balance
+        if (data.success) {
+          const { fee, netAmount } = calculateFees(data.amount / 100, 'stripe', selectedSpeed);
+          toast.success(
+            selectedSpeed === 'instant'
+              ? `$${netAmount.toFixed(2)} withdrawn instantly! (3% fee: $${fee.toFixed(2)})`
+              : `$${(data.amount / 100).toFixed(2)} withdrawal initiated. Arrives in 1-3 business days.`
+          );
+          setWithdrawDialogOpen(false);
+          fetchStripeBalance();
+        } else {
+          throw new Error(data.error || 'Failed to process withdrawal');
+        }
       } else {
-        throw new Error(data.error || 'Failed to process withdrawal');
+        // Payoneer withdrawal
+        const amountCents = Math.floor(availableAmount * 100);
+        const { data, error } = await supabase.functions.invoke('create-payoneer-payout', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: { amountCents },
+        });
+
+        if (error) throw error;
+
+        if (data.notConfigured) {
+          toast.error('Payoneer integration is coming soon. Please use Stripe for now.');
+          return;
+        }
+
+        if (data.success) {
+          toast.success(data.message || `$${(data.amount / 100).toFixed(2)} withdrawal initiated via Payoneer.`);
+          setWithdrawDialogOpen(false);
+          fetchStripeBalance();
+        } else {
+          throw new Error(data.error || 'Failed to process Payoneer withdrawal');
+        }
       }
     } catch (error: any) {
       console.error('Withdrawal error:', error);
@@ -89,6 +178,13 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
 
   const availableBalanceDollars = (stripeBalance?.availableBalance || 0) / 100;
   const pendingBalanceDollars = (stripeBalance?.pendingBalance || 0) / 100;
+  const { fee, netAmount, feeLabel } = calculateFees(availableBalanceDollars, selectedProvider, selectedSpeed);
+
+  const isStripeAvailable = stripeBalance?.connected || payoutStatus?.stripeConnected;
+  const isPayoneerAvailable = payoutStatus?.payoneerConnected && payoutStatus?.payoneerStatus === 'active';
+  const canWithdraw = availableBalanceDollars >= MINIMUM_WITHDRAWAL && 
+    ((selectedProvider === 'stripe' && isStripeAvailable) || 
+     (selectedProvider === 'payoneer' && isPayoneerAvailable));
 
   return (
     <>
@@ -127,7 +223,7 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
           </div>
 
           {/* Stripe Balance */}
-          {stripeBalance?.connected && (
+          {isStripeAvailable && (
             <div className="pt-2 border-t border-border/50 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Available to Withdraw</span>
@@ -148,7 +244,7 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
               </div>
               {pendingBalanceDollars > 0 && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Pending</span>
+                  <span className="text-muted-foreground">Pending (7-day hold)</span>
                   <span className="text-warning">${pendingBalanceDollars.toFixed(2)}</span>
                 </div>
               )}
@@ -156,15 +252,21 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
           )}
 
           {/* Withdraw Button */}
-          {stripeBalance?.connected && (
+          {isStripeAvailable && (
             <Button 
               className="w-full" 
               onClick={() => setWithdrawDialogOpen(true)}
-              disabled={loadingBalance || availableBalanceDollars <= 0}
+              disabled={loadingBalance || availableBalanceDollars < MINIMUM_WITHDRAWAL}
             >
               <Wallet className="w-4 h-4 mr-2" />
               Withdraw Funds
             </Button>
+          )}
+
+          {availableBalanceDollars > 0 && availableBalanceDollars < MINIMUM_WITHDRAWAL && (
+            <p className="text-xs text-muted-foreground text-center">
+              Minimum withdrawal: ${MINIMUM_WITHDRAWAL}
+            </p>
           )}
 
           {loadingBalance && (
@@ -173,9 +275,9 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
             </div>
           )}
 
-          {!loadingBalance && !stripeBalance?.connected && (
+          {!loadingBalance && !isStripeAvailable && (
             <p className="text-xs text-muted-foreground text-center">
-              Complete Stripe setup in Settings to withdraw funds
+              Complete payout setup in Settings to withdraw funds
             </p>
           )}
         </CardContent>
@@ -183,68 +285,150 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
 
       {/* Withdraw Dialog */}
       <Dialog open={withdrawDialogOpen} onOpenChange={setWithdrawDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Withdraw Funds</DialogTitle>
             <DialogDescription>
-              Choose your withdrawal method. Available balance: ${availableBalanceDollars.toFixed(2)}
+              Choose your payout provider and withdrawal speed. Available: ${availableBalanceDollars.toFixed(2)}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-4">
-            {/* Standard Withdrawal */}
-            <button
-              onClick={() => handleWithdraw(false)}
-              disabled={processingPayout || availableBalanceDollars <= 0}
-              className="w-full p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-full bg-primary/10">
-                  <Clock className="w-5 h-5 text-primary" />
+          <div className="space-y-6 pt-4">
+            {/* Provider Selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Payout Provider</Label>
+              <RadioGroup 
+                value={selectedProvider} 
+                onValueChange={(v) => setSelectedProvider(v as PayoutProvider)}
+                className="space-y-2"
+              >
+                {/* Stripe Option */}
+                <div className={`flex items-center space-x-3 p-3 rounded-lg border transition-colors ${
+                  selectedProvider === 'stripe' ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent/50'
+                } ${!isStripeAvailable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                  <RadioGroupItem value="stripe" id="stripe" disabled={!isStripeAvailable} />
+                  <Label htmlFor="stripe" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-primary" />
+                      <span className="font-medium">Stripe Connect</span>
+                      {isStripeAvailable && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">Connected</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Direct bank deposit in 45+ countries
+                    </p>
+                  </Label>
                 </div>
-                <div className="flex-1">
-                  <div className="font-semibold">Standard Withdrawal</div>
-                  <div className="text-sm text-muted-foreground">
-                    1-3 business days • <span className="text-emerald-500 font-medium">Free</span>
-                  </div>
-                  <div className="text-lg font-bold mt-1">
-                    ${availableBalanceDollars.toFixed(2)}
-                  </div>
-                </div>
-              </div>
-            </button>
 
-            {/* Instant Withdrawal */}
-            <button
-              onClick={() => handleWithdraw(true)}
-              disabled={processingPayout || availableBalanceDollars <= 0}
-              className="w-full p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-full bg-warning/10">
-                  <Zap className="w-5 h-5 text-warning" />
+                {/* Payoneer Option */}
+                <div className={`flex items-center space-x-3 p-3 rounded-lg border transition-colors ${
+                  selectedProvider === 'payoneer' ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent/50'
+                } ${!isPayoneerAvailable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                  <RadioGroupItem value="payoneer" id="payoneer" disabled={!isPayoneerAvailable} />
+                  <Label htmlFor="payoneer" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-orange-500" />
+                      <span className="font-medium">Payoneer</span>
+                      {isPayoneerAvailable ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">Connected</span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                          {payoutStatus?.payoneerStatus === 'pending' ? 'Pending Verification' : 'Not Connected'}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Global payouts, local currency, mobile money
+                    </p>
+                  </Label>
                 </div>
-                <div className="flex-1">
-                  <div className="font-semibold">Instant Withdrawal</div>
-                  <div className="text-sm text-muted-foreground">
-                    Arrives instantly • <span className="text-warning font-medium">3% fee</span>
-                  </div>
-                  <div className="text-lg font-bold mt-1">
-                    ${(availableBalanceDollars * 0.97).toFixed(2)}
-                    <span className="text-sm font-normal text-muted-foreground ml-2">
-                      (fee: ${(availableBalanceDollars * 0.03).toFixed(2)})
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </button>
+              </RadioGroup>
+            </div>
 
-            {processingPayout && (
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Processing withdrawal...
+            {/* Speed Selection (Stripe only) */}
+            {selectedProvider === 'stripe' && (
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Withdrawal Speed</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Standard */}
+                  <button
+                    onClick={() => setSelectedSpeed('standard')}
+                    className={`p-3 rounded-lg border text-left transition-colors ${
+                      selectedSpeed === 'standard' ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="w-4 h-4 text-primary" />
+                      <span className="font-medium text-sm">Standard</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">1-3 business days</p>
+                    <p className="text-xs font-medium text-emerald-500 mt-1">Free</p>
+                  </button>
+
+                  {/* Instant */}
+                  <button
+                    onClick={() => setSelectedSpeed('instant')}
+                    className={`p-3 rounded-lg border text-left transition-colors ${
+                      selectedSpeed === 'instant' ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Zap className="w-4 h-4 text-warning" />
+                      <span className="font-medium text-sm">Instant</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Arrives instantly</p>
+                    <p className="text-xs font-medium text-warning mt-1">3% fee</p>
+                  </button>
+                </div>
               </div>
             )}
+
+            {/* Summary */}
+            <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Withdrawal Amount</span>
+                <span>${availableBalanceDollars.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Platform Fee</span>
+                <span className={fee > 0 ? 'text-warning' : 'text-emerald-500'}>
+                  {fee > 0 ? `-$${fee.toFixed(2)}` : feeLabel}
+                </span>
+              </div>
+              <div className="flex justify-between font-semibold pt-2 border-t border-border">
+                <span>You'll Receive</span>
+                <span className="text-primary">${netAmount.toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* Regulatory Notice */}
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                By withdrawing, you agree to our <a href="/terms" className="underline">Terms of Service</a> and confirm compliance with applicable tax reporting requirements. 
+                Earnings are subject to a 7-day holding period for fraud prevention.
+              </AlertDescription>
+            </Alert>
+
+            {/* Withdraw Button */}
+            <Button 
+              className="w-full" 
+              onClick={handleWithdraw}
+              disabled={processingPayout || !canWithdraw}
+            >
+              {processingPayout ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Withdraw ${netAmount.toFixed(2)} via {selectedProvider === 'stripe' ? 'Stripe' : 'Payoneer'}
+                </>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
