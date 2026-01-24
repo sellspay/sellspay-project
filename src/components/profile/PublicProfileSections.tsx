@@ -29,6 +29,7 @@ interface Collection {
   is_visible: boolean;
   products: CollectionProduct[];
   totalCount: number;
+  style_options?: { animation?: AnimationType };
 }
 
 type LayoutItem =
@@ -88,7 +89,7 @@ export function PublicProfileSections({
         // Fetch collections with display_order
         let collectionsQuery = supabase
           .from("collections")
-          .select("id, name, cover_image_url, is_visible, display_order")
+          .select("id, name, cover_image_url, is_visible, display_order, style_options")
           .eq("creator_id", profileId)
           .order("display_order", { ascending: true });
 
@@ -111,6 +112,7 @@ export function PublicProfileSections({
                 ...collection,
                 display_order: collection.display_order ?? 0,
                 is_visible: collection.is_visible ?? true,
+                style_options: (collection as any).style_options || {},
                 products: [],
                 totalCount: 0,
               };
@@ -153,6 +155,7 @@ export function PublicProfileSections({
               ...collection,
               display_order: collection.display_order ?? 0,
               is_visible: collection.is_visible ?? true,
+              style_options: (collection as any).style_options || {},
               products: (productsData || []).map(p => ({
                 ...p,
                 likeCount: likeMap.get(p.id) || 0,
@@ -231,15 +234,20 @@ export function PublicProfileSections({
       {/* Interleaved sections and collections by display_order */}
       {layoutItems.map((item) => {
         if (item.kind === 'collection') {
+          const collectionAnimation = (item.data.style_options?.animation || 'none') as AnimationType;
           return (
-            <CollectionRow
+            <AnimatedSection
               key={`collection-${item.id}`}
-              id={item.data.id}
-              name={item.data.name}
-              coverImage={item.data.cover_image_url}
-              products={item.data.products}
-              totalCount={item.data.totalCount}
-            />
+              animation={collectionAnimation}
+            >
+              <CollectionRow
+                id={item.data.id}
+                name={item.data.name}
+                coverImage={item.data.cover_image_url}
+                products={item.data.products}
+                totalCount={item.data.totalCount}
+              />
+            </AnimatedSection>
           );
         } else {
           const styleOpts = item.data.style_options;
