@@ -37,6 +37,8 @@ export default function CreatorApplicationDialog({
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [existingApplication, setExistingApplication] = useState<{ status: string; reviewed_at: string | null } | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [dataFetched, setDataFetched] = useState(false);
 
   const [formData, setFormData] = useState<CreatorApplicationFormData>({
     fullName: '',
@@ -52,10 +54,10 @@ export default function CreatorApplicationDialog({
     productTypes: [],
   });
 
-  // Fetch user data and check for existing application
+  // Fetch user data and check for existing application - only once when dialog opens
   useEffect(() => {
     const fetchData = async () => {
-      if (!user || !open) return;
+      if (!user || !open || dataFetched) return;
 
       setLoading(true);
       try {
@@ -90,6 +92,7 @@ export default function CreatorApplicationDialog({
             setExistingApplication(application);
           }
         }
+        setDataFetched(true);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -98,13 +101,15 @@ export default function CreatorApplicationDialog({
     };
 
     fetchData();
-  }, [user, open]);
+  }, [user, open, dataFetched]);
 
   // Reset state when dialog closes
   useEffect(() => {
     if (!open) {
       setStep(1);
       setTermsAccepted(false);
+      setOtpSent(false);
+      setDataFetched(false);
     }
   }, [open]);
 
@@ -293,6 +298,8 @@ export default function CreatorApplicationDialog({
               userEmail={userEmail}
               mfaEnabled={mfaEnabled}
               onMfaEnabled={() => setMfaEnabled(true)}
+              otpSent={otpSent}
+              onOtpSent={() => setOtpSent(true)}
             />
           )}
           {step === 4 && (

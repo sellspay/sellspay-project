@@ -13,10 +13,11 @@ interface Step3Props {
   userEmail: string;
   mfaEnabled: boolean;
   onMfaEnabled: () => void;
+  otpSent: boolean;
+  onOtpSent: () => void;
 }
 
-export default function Step3TwoFactor({ userEmail, mfaEnabled, onMfaEnabled }: Step3Props) {
-  const [otpSent, setOtpSent] = useState(false);
+export default function Step3TwoFactor({ userEmail, mfaEnabled, onMfaEnabled, otpSent, onOtpSent }: Step3Props) {
   const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -36,7 +37,7 @@ export default function Step3TwoFactor({ userEmail, mfaEnabled, onMfaEnabled }: 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setOtpSent(true);
+      onOtpSent();
       toast.success('Verification code sent to your email');
     } catch (err: any) {
       console.error('OTP error:', err);
