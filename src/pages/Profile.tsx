@@ -21,7 +21,8 @@ import {
   Pencil,
   User,
   Sparkles,
-  Store
+  Store,
+  ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -297,6 +298,9 @@ const ProfilePage: React.FC = () => {
   const [becomingSellerLoading, setBecomingSellerLoading] = useState(false);
   const [showUnfollowConfirm, setShowUnfollowConfirm] = useState(false);
   const [unfollowLoading, setUnfollowLoading] = useState(false);
+  const [savedPage, setSavedPage] = useState(0);
+  const savedGridRef = useRef<HTMLDivElement>(null);
+  const SAVED_ITEMS_PER_PAGE = 30; // 6 columns × 5 rows
 
   const handleBecomeSeller = async () => {
     if (!user || !profile) return;
@@ -1253,41 +1257,91 @@ const ProfilePage: React.FC = () => {
           {activeTab === 'saved' && isOwnProfile && (
             <>
               {savedProducts.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1">
-                  {savedProducts.filter(s => s.product).map(s => {
-                    const product = s.product!;
-                    const thumbnailUrl = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
-                    return (
-                      <button
-                        key={s.id}
-                        onClick={() => navigate(`/product/${product.id}`)}
-                        className="relative aspect-square group overflow-hidden bg-muted"
-                      >
-                        {thumbnailUrl ? (
-                          <img
-                            src={thumbnailUrl}
-                            alt={product.name}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              if (target.src.includes('maxresdefault')) {
-                                target.src = target.src.replace('maxresdefault', 'hqdefault');
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-muted">
-                            <Play className="w-8 h-8 text-muted-foreground" />
-                          </div>
-                        )}
-                        {/* Hover overlay */}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Bookmark className="w-6 h-6 text-white" fill="white" />
+                (() => {
+                  const filteredSaved = savedProducts.filter(s => s.product);
+                  const totalPages = Math.ceil(filteredSaved.length / SAVED_ITEMS_PER_PAGE);
+                  const startIdx = savedPage * SAVED_ITEMS_PER_PAGE;
+                  const paginatedItems = filteredSaved.slice(startIdx, startIdx + SAVED_ITEMS_PER_PAGE);
+                  const hasMorePages = savedPage < totalPages - 1;
+
+                  const handleNextPage = () => {
+                    setSavedPage(prev => prev + 1);
+                    // Scroll to top of grid
+                    savedGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  };
+
+                  return (
+                    <div ref={savedGridRef}>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1">
+                        {paginatedItems.map(s => {
+                          const product = s.product!;
+                          const thumbnailUrl = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
+                          return (
+                            <button
+                              key={s.id}
+                              onClick={() => navigate(`/product/${product.id}`)}
+                              className="relative aspect-square group overflow-hidden bg-muted"
+                            >
+                              {thumbnailUrl ? (
+                                <img
+                                  src={thumbnailUrl}
+                                  alt={product.name}
+                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    if (target.src.includes('maxresdefault')) {
+                                      target.src = target.src.replace('maxresdefault', 'hqdefault');
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-muted">
+                                  <Play className="w-8 h-8 text-muted-foreground" />
+                                </div>
+                              )}
+                              {/* Hover overlay */}
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Bookmark className="w-6 h-6 text-white" fill="white" />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Pagination indicator and next page button */}
+                      {totalPages > 1 && (
+                        <div className="flex flex-col items-center mt-6 gap-2">
+                          <span className="text-sm text-muted-foreground">
+                            Page {savedPage + 1} of {totalPages}
+                          </span>
+                          {hasMorePages ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleNextPage}
+                              className="gap-2"
+                            >
+                              <ChevronDown className="w-5 h-5" />
+                              Load More
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSavedPage(0);
+                                savedGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              }}
+                              className="gap-2"
+                            >
+                              Back to Top
+                            </Button>
+                          )}
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                      )}
+                    </div>
+                  );
+                })()
               ) : (
                 <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
                   <Bookmark className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
