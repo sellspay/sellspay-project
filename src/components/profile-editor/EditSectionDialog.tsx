@@ -35,6 +35,7 @@ import {
   SECTION_TEMPLATES,
 } from './types';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
+import { EditablePreview } from './previews/EditablePreview';
 
 interface EditSectionDialogProps {
   section: ProfileSection | null;
@@ -179,11 +180,13 @@ export function EditSectionDialog({
           <DialogTitle>{template?.name || 'Edit Section'}</DialogTitle>
         </DialogHeader>
 
-        {/* Live Preview */}
+        {/* Interactive Editable Preview */}
         <div className="flex-shrink-0 bg-muted/30 border border-border rounded-lg p-4 mb-2">
-          <div className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-medium">Preview</div>
+          <div className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-medium">
+            Preview <span className="text-primary/70">· Click to edit</span>
+          </div>
           <div className="bg-card rounded-lg overflow-hidden p-4 border border-border/50">
-            <SectionPreviewContent section={section} />
+            <EditablePreview section={section} onUpdate={updateContent} />
           </div>
         </div>
 
