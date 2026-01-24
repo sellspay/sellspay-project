@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          applicant_id: string | null
+          application_type: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          redirect_url: string | null
+          type: string
+        }
+        Insert: {
+          applicant_id?: string | null
+          application_type?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          redirect_url?: string | null
+          type: string
+        }
+        Update: {
+          applicant_id?: string | null
+          application_type?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          redirect_url?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       collection_items: {
         Row: {
           collection_id: string
