@@ -16,7 +16,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Helper function to check user roles via database RPC
-export const checkUserRole = async (role: 'admin' | 'moderator' | 'user'): Promise<boolean> => {
+export const checkUserRole = async (role: 'admin' | 'moderator' | 'user' | 'owner'): Promise<boolean> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
   
@@ -31,6 +31,23 @@ export const checkUserRole = async (role: 'admin' | 'moderator' | 'user'): Promi
   }
   
   return data === true;
+};
+
+// Helper to check if a user_id has owner role (for displaying Owner badge)
+export const checkIsOwner = async (userId: string): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'owner')
+    .maybeSingle();
+  
+  if (error) {
+    console.error('Error checking owner status:', error);
+    return false;
+  }
+  
+  return !!data;
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {

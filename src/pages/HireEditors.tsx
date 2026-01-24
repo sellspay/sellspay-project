@@ -123,24 +123,24 @@ export default function HireEditors() {
 
       if (error) throw error;
       
-      // Get admin status for all editors
+      // Get owner status for all editors (for Owner badge)
       const userIds = (data || []).map(e => e.user_id).filter(Boolean);
-      let adminUserIds: string[] = [];
+      let ownerUserIds: string[] = [];
       
       if (userIds.length > 0) {
         const { data: roles } = await supabase
           .from('user_roles')
           .select('user_id')
-          .eq('role', 'admin')
+          .eq('role', 'owner')
           .in('user_id', userIds);
-        adminUserIds = (roles || []).map(r => r.user_id);
+        ownerUserIds = (roles || []).map(r => r.user_id);
       }
       
-      // Cast social links to proper type and add admin status
+      // Cast social links to proper type and add owner status
       const typedData = (data || []).map(editor => ({
         ...editor,
         editor_social_links: editor.editor_social_links as EditorSocialLinks | null,
-        isAdmin: adminUserIds.includes(editor.user_id)
+        isAdmin: ownerUserIds.includes(editor.user_id)
       }));
       
       setEditors(typedData);

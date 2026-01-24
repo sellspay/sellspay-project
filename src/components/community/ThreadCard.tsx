@@ -99,7 +99,7 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
         .from('user_roles')
         .select('user_id')
         .eq('user_id', authorProfile.user_id)
-        .eq('role', 'admin')
+        .eq('role', 'owner')
         .maybeSingle();
       if (roleErr) throw roleErr;
       return !!roleRow;
