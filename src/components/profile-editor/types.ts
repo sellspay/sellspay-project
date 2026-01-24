@@ -60,6 +60,7 @@ export interface TextContent {
   customFont?: CustomFont;
   fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold' | 'extrabold';
   fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl';
+  textColor?: string;
 }
 
 export interface ImageContent {
@@ -115,6 +116,7 @@ export interface HeadlineContent {
   font?: FontOption;
   customFont?: CustomFont;
   fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold' | 'extrabold';
+  textColor?: string;
 }
 
 export interface SlidingBannerContent {
