@@ -80,6 +80,7 @@ interface Purchase {
     youtube_url: string | null;
     preview_video_url: string | null;
     pricing_type: string | null;
+    status?: string | null;
   } | null;
 }
 
@@ -96,6 +97,7 @@ interface SavedProduct {
     pricing_type: string | null;
     price_cents: number | null;
     currency: string | null;
+    status?: string | null;
   } | null;
 }
 
@@ -551,43 +553,58 @@ const ProfilePage: React.FC = () => {
 
         // Fetch purchases for own profile (both creators and non-creators)
         if (ownProfile) {
-          const { data: purchasesData } = await supabase
+          const { data: purchasesData, error: purchasesError } = await supabase
             .from('purchases')
             .select(`
               id,
               product_id,
               created_at,
-              product:products (
+              product:products!inner (
                 id,
                 name,
                 cover_image_url,
                 youtube_url,
                 preview_video_url,
-                pricing_type
+                pricing_type,
+                status
               )
             `)
             .eq('buyer_id', data.id)
             .eq('status', 'completed')
             .order('created_at', { ascending: false });
           
-          // Type assertion for the joined data
-          const typedPurchases = (purchasesData || []).map(p => ({
-            id: p.id,
-            product_id: p.product_id,
-            created_at: p.created_at,
-            product: Array.isArray(p.product) ? p.product[0] : p.product
-          })) as Purchase[];
+          if (purchasesError) {
+            console.error('Error fetching purchases:', purchasesError);
+          }
+
+          // Filter to only show published products and format the data
+          // Also deduplicate by product_id (keep the first occurrence which is most recent)
+          const seenProductIds = new Set<string>();
+          const typedPurchases = (purchasesData || [])
+            .filter(p => {
+              if (!p.product) return false;
+              const productId = p.product_id;
+              if (seenProductIds.has(productId)) return false;
+              seenProductIds.add(productId);
+              return true;
+            })
+            .map(p => ({
+              id: p.id,
+              product_id: p.product_id,
+              created_at: p.created_at,
+              product: Array.isArray(p.product) ? p.product[0] : p.product
+            })) as Purchase[];
           
           setPurchases(typedPurchases);
 
           // Fetch saved products
-          const { data: savedData } = await supabase
+          const { data: savedData, error: savedError } = await supabase
             .from('saved_products')
             .select(`
               id,
               product_id,
               created_at,
-              product:products (
+              product:products!inner (
                 id,
                 name,
                 cover_image_url,
@@ -595,18 +612,26 @@ const ProfilePage: React.FC = () => {
                 preview_video_url,
                 pricing_type,
                 price_cents,
-                currency
+                currency,
+                status
               )
             `)
             .eq('user_id', data.id)
             .order('created_at', { ascending: false });
 
-          const typedSaved = (savedData || []).map(s => ({
-            id: s.id,
-            product_id: s.product_id,
-            created_at: s.created_at,
-            product: Array.isArray(s.product) ? s.product[0] : s.product
-          })) as SavedProduct[];
+          if (savedError) {
+            console.error('Error fetching saved products:', savedError);
+          }
+
+          // Filter to only show published products and format the data
+          const typedSaved = (savedData || [])
+            .filter(s => s.product && (s.product as any).status === 'published')
+            .map(s => ({
+              id: s.id,
+              product_id: s.product_id,
+              created_at: s.created_at,
+              product: Array.isArray(s.product) ? s.product[0] : s.product
+            })) as SavedProduct[];
 
           setSavedProducts(typedSaved);
         }

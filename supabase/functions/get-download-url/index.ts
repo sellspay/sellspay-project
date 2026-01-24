@@ -104,10 +104,22 @@ serve(async (req) => {
       }
     }
 
-    // 3. Is the product free?
+    // 3. Is the product free? If so, check if user follows the creator
     if (!isAuthorized && product.pricing_type === "free") {
-      isAuthorized = true;
-      logStep("Product is free - authorized");
+      // Check if user follows the creator
+      const { data: followData } = await supabaseAdmin
+        .from("followers")
+        .select("id")
+        .eq("follower_id", profile.id)
+        .eq("following_id", product.creator_id)
+        .maybeSingle();
+      
+      if (followData || product.creator_id === profile.id) {
+        isAuthorized = true;
+        logStep("Product is free and user follows creator - authorized");
+      } else {
+        logStep("Product is free but user does not follow creator");
+      }
     }
 
     // 4. Is the user subscribed to a plan that includes this product?
@@ -138,7 +150,40 @@ serve(async (req) => {
     }
 
     if (!isAuthorized) {
-      throw new Error("You are not authorized to download this file. Please purchase the product or subscribe to a qualifying plan.");
+      throw new Error("You are not authorized to download this file. Please follow the creator or purchase the product.");
+    }
+
+    // For free products, create a purchase record if it doesn't exist (to track downloads)
+    if (product.pricing_type === "free" && product.creator_id !== profile.id) {
+      // Check if a purchase record already exists
+      const { data: existingPurchase } = await supabaseAdmin
+        .from("purchases")
+        .select("id")
+        .eq("product_id", productId)
+        .eq("buyer_id", profile.id)
+        .maybeSingle();
+
+      if (!existingPurchase) {
+        // Create a purchase record for the free download
+        const { error: insertError } = await supabaseAdmin
+          .from("purchases")
+          .insert({
+            product_id: productId,
+            buyer_id: profile.id,
+            amount_cents: 0,
+            platform_fee_cents: 0,
+            creator_payout_cents: 0,
+            status: "completed",
+          });
+
+        if (insertError) {
+          logStep("Failed to create purchase record for free download", { error: insertError.message });
+        } else {
+          logStep("Created purchase record for free download");
+        }
+      } else {
+        logStep("Purchase record already exists for this free download");
+      }
     }
 
     // Generate signed URL
