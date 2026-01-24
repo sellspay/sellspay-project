@@ -671,6 +671,67 @@ const ProfilePage: React.FC = () => {
     fetchProfileData();
   }, [username, atUsername, user]);
   
+  // Real-time subscription for products (instant updates on create/delete)
+  useEffect(() => {
+    if (!profile) return;
+
+    const channel = supabase
+      .channel('profile-products')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'products',
+          filter: `creator_id=eq.${profile.id}`,
+        },
+        async (payload) => {
+          if (payload.eventType === 'DELETE') {
+            // Animate removal from products list
+            const deletedId = (payload.old as { id: string }).id;
+            setProducts(prev => prev.map(p => 
+              p.id === deletedId ? { ...p, _deleting: true } as typeof p : p
+            ));
+            // After animation, remove from list
+            setTimeout(() => {
+              setProducts(prev => prev.filter(p => p.id !== deletedId));
+            }, 300);
+          } else if (payload.eventType === 'INSERT') {
+            // Add new product with animation
+            const newProduct = payload.new as Product;
+            // Fetch additional data (likes, comments)
+            const { data: likeCounts } = await supabase
+              .from('product_likes')
+              .select('product_id')
+              .eq('product_id', newProduct.id);
+            const { data: commentCounts } = await supabase
+              .from('comments')
+              .select('product_id')
+              .eq('product_id', newProduct.id);
+            
+            const productWithCounts = {
+              ...newProduct,
+              likeCount: likeCounts?.length || 0,
+              commentCount: commentCounts?.length || 0,
+            };
+            
+            setProducts(prev => [productWithCounts, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            // Update existing product
+            const updatedProduct = payload.new as Product;
+            setProducts(prev => prev.map(p => 
+              p.id === updatedProduct.id ? { ...p, ...updatedProduct } : p
+            ));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.id]);
+  
   // Refetch when navigating back to this page (e.g., after deleting a product)
   useEffect(() => {
     const handleVisibilityChange = () => {
