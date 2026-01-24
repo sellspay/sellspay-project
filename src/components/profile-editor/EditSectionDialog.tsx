@@ -208,7 +208,7 @@ export function EditSectionDialog({
   );
 }
 
-// Individual section editors (compact versions)
+// Individual section editors (only non-inline-editable settings)
 
 function TextEditor({
   content,
@@ -219,23 +219,6 @@ function TextEditor({
 }) {
   return (
     <div className="space-y-4">
-      <div>
-        <Label>Heading</Label>
-        <Input
-          value={content.title || ''}
-          onChange={(e) => onChange({ title: e.target.value })}
-          placeholder="Optional heading"
-        />
-      </div>
-      <div>
-        <Label>Body Text</Label>
-        <Textarea
-          value={content.body || ''}
-          onChange={(e) => onChange({ body: e.target.value })}
-          placeholder="Enter your text..."
-          rows={4}
-        />
-      </div>
       <div>
         <Label>Alignment</Label>
         <div className="flex gap-2 mt-2">
@@ -282,7 +265,7 @@ function ImageEditor({
               <img
                 src={content.imageUrl}
                 alt={content.altText || ''}
-                className="w-full max-h-48 object-cover rounded-lg"
+                className="w-full max-h-32 object-cover rounded-lg"
               />
               <Button
                 variant="destructive"
@@ -297,7 +280,7 @@ function ImageEditor({
             <button
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
-              className="w-full h-32 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-colors"
+              className="w-full h-24 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary/50 transition-colors"
             >
               <Upload className="w-6 h-6 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
@@ -318,14 +301,6 @@ function ImageEditor({
             }}
           />
         </div>
-      </div>
-      <div>
-        <Label>Caption</Label>
-        <Input
-          value={content.caption || ''}
-          onChange={(e) => onChange({ caption: e.target.value })}
-          placeholder="Optional caption"
-        />
       </div>
     </div>
   );
@@ -349,11 +324,11 @@ function ImageWithTextEditor({
   return (
     <div className="space-y-4">
       <div>
-        <Label>Image</Label>
+        <Label>Background Image</Label>
         <div className="mt-2">
           {content.imageUrl ? (
             <div className="relative">
-              <img src={content.imageUrl} alt="" className="w-full max-h-32 object-cover rounded-lg" />
+              <img src={content.imageUrl} alt="" className="w-full max-h-24 object-cover rounded-lg" />
               <Button
                 variant="destructive"
                 size="icon"
@@ -367,11 +342,11 @@ function ImageWithTextEditor({
             <button
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
-              className="w-full h-24 border-2 border-dashed border-border rounded-lg flex items-center justify-center gap-2 hover:border-primary/50"
+              className="w-full h-20 border-2 border-dashed border-border rounded-lg flex items-center justify-center gap-2 hover:border-primary/50"
             >
               <Upload className="w-5 h-5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                {uploading ? 'Uploading...' : 'Upload'}
+                {uploading ? 'Uploading...' : 'Upload Image'}
               </span>
             </button>
           )}
@@ -387,44 +362,27 @@ function ImageWithTextEditor({
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label>Position</Label>
-          <Select
-            value={content.imagePosition}
-            onValueChange={(value) => onChange({ imagePosition: value as 'left' | 'right' })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="left">Left</SelectItem>
-              <SelectItem value="right">Right</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Title</Label>
-          <Input value={content.title} onChange={(e) => onChange({ title: e.target.value })} />
-        </div>
-      </div>
+      
       <div>
-        <Label>Body</Label>
-        <Textarea value={content.body} onChange={(e) => onChange({ body: e.target.value })} rows={3} />
+        <Label>Image Position</Label>
+        <Select
+          value={content.imagePosition}
+          onValueChange={(value) => onChange({ imagePosition: value as 'left' | 'right' })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="left">Left</SelectItem>
+            <SelectItem value="right">Right</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       
-      {/* Button Configuration */}
+      {/* Button Link Settings */}
       <div className="border-t border-border pt-4 mt-4">
-        <Label className="text-sm font-medium">Button Settings</Label>
+        <Label className="text-sm font-medium">Button Link</Label>
         <div className="space-y-3 mt-3">
-          <div>
-            <Label className="text-xs text-muted-foreground">Button Text</Label>
-            <Input
-              value={content.buttonText || ''}
-              onChange={(e) => onChange({ buttonText: e.target.value })}
-              placeholder="e.g. Shop Now, Learn More, View"
-            />
-          </div>
           <div>
             <Label className="text-xs text-muted-foreground">Link Type</Label>
             <Select
@@ -667,24 +625,10 @@ function AboutMeEditor({
   content: AboutMeContent;
   onChange: (updates: Partial<AboutMeContent>) => void;
 }) {
+  // All text is editable inline in preview - no settings needed
   return (
-    <div className="space-y-4">
-      <div>
-        <Label>Title</Label>
-        <Input
-          value={content.title || ''}
-          onChange={(e) => onChange({ title: e.target.value })}
-          placeholder="About Me"
-        />
-      </div>
-      <div>
-        <Label>Description</Label>
-        <Textarea
-          value={content.description || ''}
-          onChange={(e) => onChange({ description: e.target.value })}
-          rows={4}
-        />
-      </div>
+    <div className="text-center text-muted-foreground text-sm py-2">
+      Click on the title or description in the preview above to edit
     </div>
   );
 }
@@ -698,10 +642,6 @@ function HeadlineEditor({
 }) {
   return (
     <div className="space-y-4">
-      <div>
-        <Label>Headline</Label>
-        <Input value={content.text || ''} onChange={(e) => onChange({ text: e.target.value })} />
-      </div>
       <div>
         <Label>Size</Label>
         <Select
@@ -732,18 +672,6 @@ function SlidingBannerEditor({
   return (
     <div className="space-y-4">
       <div>
-        <Label>Banner Text</Label>
-        <Textarea
-          value={content.text || ''}
-          onChange={(e) => onChange({ text: e.target.value })}
-          placeholder="✨ Your scrolling message here ✨"
-          rows={2}
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          Use emojis and separators like • or ✨ for visual appeal
-        </p>
-      </div>
-      <div>
         <Label>Scroll Speed</Label>
         <Select
           value={content.speed || 'medium'}
@@ -759,6 +687,9 @@ function SlidingBannerEditor({
           </SelectContent>
         </Select>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Click on the banner text in the preview above to edit
+      </p>
     </div>
   );
 }
