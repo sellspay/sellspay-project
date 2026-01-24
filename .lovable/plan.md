@@ -1,183 +1,143 @@
 
 
-# Implementation Plan: Professional Price Badge & Admin Notification System
+# Seller Custom Email Integration Plan
 
 ## Overview
-This plan addresses two key improvements:
-1. Fixing the overlapping price badge on product cards to be more professional
-2. Creating a dedicated admin notification system for application reviews
+Enable sellers to connect their own Resend account for sending emails to customers. This includes purchase receipts, support replies, and product update announcements - all sent from the seller's own verified domain.
+
+## How It Works
+
+Sellers will go to Settings and enter their Resend API key. When they send emails to customers (purchase confirmations, support replies, product updates), the system will use their API key to send from their verified domain instead of the platform's default.
 
 ---
 
-## Part 1: Fix Price Badge Positioning
+## Implementation Steps
 
-### Current Issue
-The "Free" badge and play indicator are both positioned at `top-2 left-2`, causing them to overlap visually on product cards.
+### Step 1: Database Schema Update
+Add secure storage for seller email configuration in the `profiles` table:
+- `resend_api_key_encrypted` (text) - Encrypted API key using Supabase Vault
+- `seller_support_email` (text) - The email address for sending (must match their Resend verified domain)
+- `seller_email_verified` (boolean) - Whether their email setup has been verified
 
-### Solution
-- Move the play indicator to the **bottom-left** position
-- Redesign the price badge to be more professional with better styling
-- Add subtle animations and improved visual hierarchy
-
-### Changes
-**File: `src/components/profile/CollectionRow.tsx`**
-- Move play indicator from `top-2 left-2` to `bottom-3 left-3`
-- Redesign price badge with:
-  - Smaller, more refined typography
-  - Gradient background for free items (emerald gradient)
-  - Semi-transparent glass effect for paid items
-  - Rounded pill shape for professional appearance
-
----
-
-## Part 2: Admin Notification System
-
-### Database Changes
-Create a new `admin_notifications` table to store admin-specific notifications:
-
+Create a secure function to store the API key encrypted:
 ```text
-+------------------------+
-|  admin_notifications   |
-+------------------------+
-| id (uuid, PK)          |
-| type (text)            |
-| message (text)         |
-| is_read (boolean)      |
-| redirect_url (text)    |
-| applicant_id (uuid)    |
-| application_type (text)|
-| created_at (timestamp) |
-+------------------------+
+┌────────────────────────────────────────────────────────────────┐
+│  vault.create_secret(api_key, 'resend_key_<user_id>')          │
+│                            ↓                                    │
+│  Store secret_id reference in profiles.resend_vault_secret_id  │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-- **type**: 'editor_application', 'creator_application'
-- **application_type**: 'editor' or 'creator' 
-- **applicant_id**: References the profile who submitted the application
+### Step 2: Settings UI - Email Configuration Section
+Add a new "Seller Email" section in Settings (visible only to sellers):
+- Input field for Resend API Key (masked/secure input)
+- Input field for "From" email address (e.g., support@theirbusiness.com)
+- "Verify & Save" button that tests the API key
+- Status indicator showing connection status
+- Help text explaining how to get a Resend API key and verify a domain
 
-RLS Policy: Only users with admin role can read/update these notifications.
+### Step 3: API Key Verification Edge Function
+Create `verify-seller-email` edge function that:
+1. Takes the seller's Resend API key and email address
+2. Attempts to send a test email to verify the key works
+3. Stores the encrypted API key in Supabase Vault on success
+4. Returns verification status
 
-### Component Changes
+### Step 4: Unified Email Sending Function
+Create `send-seller-email` edge function that:
+1. Checks if seller has a configured Resend API key
+2. If yes → use seller's API key and from address
+3. If no → fall back to platform's default Resend account
+4. Supports multiple email types: receipts, support, announcements
 
-**File: `src/components/notifications/NotificationBell.tsx`**
-- Add admin role check using `checkUserRole('admin')`
-- Fetch admin notifications separately from user notifications
-- Add toggle button in dropdown header: "User | Admin"
-- Maintain separate unread counts for user and admin notifications
-- Bell badge shows total combined unread count
-- Admin toggle shows its own badge when there are unread admin notifications
+### Step 5: Purchase Receipt Emails
+Update the purchase/checkout flow to trigger an email:
+- Sent from seller's configured email (or platform default)
+- Includes: product name, download link, receipt details
+- Branded with seller's name and logo
 
-### UI Design for Admin Toggle
-```text
-+----------------------------------+
-| Notifications          View all  |
-| [User] [Admin (2)]               |
-+----------------------------------+
-| (notification list based on      |
-|  active toggle)                  |
-+----------------------------------+
-```
+### Step 6: Support Reply System
+Create infrastructure for seller-to-customer communication:
+- New `support_messages` table for tracking conversations
+- Sellers can view messages in Dashboard
+- Reply sends email via seller's Resend account
+- Track delivery status
 
-- Toggle buttons styled as pills/segments
-- Admin button shows red counter badge when unread admin notifications exist
-- Smooth transition when switching between views
-
-### Notification Creation on Application Submit
-
-**File: `src/components/editor-application/EditorApplicationDialog.tsx`**
-- After successful application submission, create an admin notification:
-  - Type: 'editor_application'
-  - Message: "New editor application from @{username}"
-  - Redirect URL: '/admin' (to the applications tab)
-
-**File: `src/components/creator-application/CreatorApplicationDialog.tsx`**
-- After successful application submission, create an admin notification:
-  - Type: 'creator_application'  
-  - Message: "New creator application from @{username}"
-  - Redirect URL: '/admin' (to the creator applications tab)
-
-**File: `src/lib/notifications.ts`**
-- Add new function `createAdminNotification()` to insert into the admin_notifications table
+### Step 7: Product Update Announcements
+Add ability for sellers to notify customers who purchased:
+- "Notify Customers" button on product edit page
+- Sends to all users who purchased that product
+- Uses seller's email configuration
 
 ---
 
 ## Technical Details
 
-### Admin Notifications Table Schema
-```sql
-CREATE TABLE admin_notifications (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  type TEXT NOT NULL,
-  message TEXT NOT NULL,
-  is_read BOOLEAN NOT NULL DEFAULT false,
-  redirect_url TEXT,
-  applicant_id UUID,
-  application_type TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+### Database Changes
+```text
+profiles table:
+  + resend_vault_secret_id (uuid)     -- Reference to encrypted API key in Vault
+  + seller_support_email (text)        -- Verified "from" email address
+  + seller_email_verified (boolean)    -- Email setup verification status
 
--- Enable RLS
-ALTER TABLE admin_notifications ENABLE ROW LEVEL SECURITY;
-
--- Only admins can read
-CREATE POLICY "Admins can read admin notifications"
-ON admin_notifications FOR SELECT
-TO authenticated
-USING (public.has_role(auth.uid(), 'admin'));
-
--- Only admins can update (mark as read)
-CREATE POLICY "Admins can update admin notifications"
-ON admin_notifications FOR UPDATE
-TO authenticated
-USING (public.has_role(auth.uid(), 'admin'));
-
--- Anyone authenticated can insert (for application submissions)
-CREATE POLICY "Authenticated users can create admin notifications"
-ON admin_notifications FOR INSERT
-TO authenticated
-WITH CHECK (true);
-
--- Admins can delete
-CREATE POLICY "Admins can delete admin notifications"
-ON admin_notifications FOR DELETE
-TO authenticated
-USING (public.has_role(auth.uid(), 'admin'));
-
--- Enable realtime for instant updates
-ALTER PUBLICATION supabase_realtime ADD TABLE admin_notifications;
+New table - support_messages:
+  - id (uuid)
+  - seller_profile_id (uuid)
+  - customer_profile_id (uuid)
+  - product_id (uuid, nullable)
+  - subject (text)
+  - message (text)
+  - direction ('inbound' | 'outbound')
+  - status ('sent' | 'delivered' | 'failed')
+  - created_at (timestamp)
 ```
 
-### NotificationBell Component Updates
-1. Add state: `isAdmin`, `showAdminView`, `adminNotifications`, `adminUnreadCount`
-2. Check admin role on mount
-3. Fetch admin notifications if user is admin
-4. Subscribe to realtime changes for admin_notifications table
-5. Render toggle buttons conditionally (only if admin)
-6. Combined badge count on bell icon
+### Edge Functions to Create
+1. `verify-seller-email` - Validate and store API key
+2. `send-seller-email` - Unified email sending with seller key lookup
+3. `send-purchase-receipt` - Triggered after successful purchase
+4. `send-product-announcement` - Notify customers of product updates
 
-### Notification Icons
-- Editor application: Briefcase icon or "📋"
-- Creator application: Star icon or "⭐"
+### Security Considerations
+- API keys stored encrypted using Supabase Vault (pgsodium)
+- RLS policies ensure sellers can only access their own email settings
+- Edge functions use service role to decrypt keys securely
+- API key never exposed to frontend after initial submission
 
----
-
-## Files to Create/Modify
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/components/profile/CollectionRow.tsx` | Modify | Fix badge positioning, improve styling |
-| `src/components/notifications/NotificationBell.tsx` | Modify | Add admin toggle, fetch admin notifications |
-| `src/lib/notifications.ts` | Modify | Add createAdminNotification function |
-| `src/components/editor-application/EditorApplicationDialog.tsx` | Modify | Send admin notification on submit |
-| `src/components/creator-application/CreatorApplicationDialog.tsx` | Modify | Send admin notification on submit |
-| Database migration | Create | New admin_notifications table |
+### Files to Create/Modify
+- **Database migration** - Add columns and support_messages table
+- `src/pages/Settings.tsx` - Add Seller Email configuration section
+- `supabase/functions/verify-seller-email/index.ts` - New function
+- `supabase/functions/send-seller-email/index.ts` - New function  
+- `supabase/functions/send-purchase-receipt/index.ts` - New function
+- `supabase/functions/create-checkout-session/index.ts` - Trigger receipt on purchase
+- `src/pages/Dashboard.tsx` - Add support messages section (optional Phase 2)
 
 ---
 
-## Summary
-1. Price badge moves to avoid overlap, gets professional gradient styling
-2. New admin_notifications table stores admin-specific alerts
-3. NotificationBell gains an admin toggle for admins only
-4. Bell icon always shows total unread count (user + admin)
-5. Admin toggle shows its own unread badge
-6. Applications auto-notify admins upon submission
+## User Experience Flow
+
+1. **Seller opens Settings → Seller Email tab**
+2. **Enters their Resend API key** (with link to Resend signup/docs)
+3. **Enters their verified "from" email** (e.g., hello@mystore.com)
+4. **Clicks "Verify & Connect"** → System tests the key
+5. **Success toast** → "Email connected! Customers will receive emails from hello@mystore.com"
+6. **Going forward:**
+   - Purchase receipts sent from their email
+   - Can send product announcements from Dashboard
+   - Support replies use their email
+
+---
+
+## Phased Rollout Suggestion
+
+**Phase 1 (This Implementation):**
+- Settings UI for API key configuration
+- Verification edge function
+- Purchase receipt emails from seller's account
+
+**Phase 2 (Future):**
+- Support messaging system in Dashboard
+- Product update announcement feature
+- Email analytics/delivery tracking
 
