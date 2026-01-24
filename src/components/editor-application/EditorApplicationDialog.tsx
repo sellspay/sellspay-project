@@ -187,6 +187,23 @@ export default function EditorApplicationDialog({ open, onOpenChange }: EditorAp
 
       if (error) throw error;
 
+      // Get username for notification message
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', profile.id)
+        .maybeSingle();
+
+      // Send admin notification
+      const { createAdminNotification } = await import('@/lib/notifications');
+      await createAdminNotification({
+        type: 'editor_application',
+        message: `New editor application from @${profileData?.username || 'Unknown'}`,
+        applicantId: profile.id,
+        applicationType: 'editor',
+        redirectUrl: '/admin',
+      });
+
       toast.success('Application submitted successfully!');
       onOpenChange(false);
       setStep(1);

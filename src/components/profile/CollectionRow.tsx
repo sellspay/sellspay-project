@@ -149,27 +149,27 @@ function ProductCardWithPreview({
           </div>
         )}
         
-        {/* Price Badge - Top Left */}
-        <div className={`absolute top-2 left-2 px-2 py-0.5 rounded text-xs font-medium ${
+        {/* Price Badge - Top Right */}
+        <div className={`absolute top-2 right-2 px-2.5 py-1 rounded-full text-[11px] font-semibold shadow-sm ${
           product.pricing_type === 'free' || product.price_cents === null || product.price_cents === 0
-            ? 'bg-emerald-500/90 text-white'
-            : 'bg-background/90 backdrop-blur-sm text-foreground border border-border/50'
+            ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
+            : 'bg-background/95 backdrop-blur-md text-foreground border border-border/50'
         }`}>
           {formatPrice(product.price_cents, product.currency, product.pricing_type)}
         </div>
         
-        {/* Locked Badge */}
-        {isLocked && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded text-xs text-white font-medium">
-            <Lock className="w-3 h-3" />
-            Locked
+        {/* Play indicator - Bottom Left */}
+        {previewVideoUrl && !videoError && !isHovering && (
+          <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm rounded-full p-1.5">
+            <Play className="w-3.5 h-3.5 text-white" fill="currentColor" />
           </div>
         )}
         
-        {/* Play indicator */}
-        {previewVideoUrl && !videoError && !isHovering && (
-          <div className="absolute top-2 left-2 bg-background/80 rounded-full p-1.5">
-            <Play className="w-3 h-3 text-foreground" fill="currentColor" />
+        {/* Locked Badge - Bottom Left (only if no preview video) */}
+        {isLocked && (!previewVideoUrl || videoError) && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm px-2.5 py-1 rounded-full text-xs text-white font-medium">
+            <Lock className="w-3 h-3" />
+            Locked
           </div>
         )}
         

@@ -91,3 +91,38 @@ export async function recordUnfollow(
     return { success: false, error };
   }
 }
+
+// Admin notification types
+interface CreateAdminNotificationParams {
+  type: "editor_application" | "creator_application";
+  message: string;
+  applicantId?: string;
+  applicationType?: "editor" | "creator";
+  redirectUrl?: string;
+}
+
+// Create admin notification for application submissions
+export async function createAdminNotification({
+  type,
+  message,
+  applicantId,
+  applicationType,
+  redirectUrl,
+}: CreateAdminNotificationParams) {
+  try {
+    const { error } = await supabase.from("admin_notifications").insert({
+      type,
+      message,
+      applicant_id: applicantId,
+      application_type: applicationType,
+      redirect_url: redirectUrl,
+    });
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error creating admin notification:", error);
+    return { success: false, error };
+  }
+}

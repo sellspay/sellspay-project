@@ -176,6 +176,23 @@ export default function CreatorApplicationDialog({
 
       if (error) throw error;
 
+      // Get username for notification message
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', profile.id)
+        .maybeSingle();
+
+      // Send admin notification
+      const { createAdminNotification } = await import('@/lib/notifications');
+      await createAdminNotification({
+        type: 'creator_application',
+        message: `New creator application from @${profileData?.username || 'Unknown'}`,
+        applicantId: profile.id,
+        applicationType: 'creator',
+        redirectUrl: '/admin',
+      });
+
       toast.success('Verification application submitted! We\'ll review it soon.');
       onOpenChange(false);
       onApplicationSubmitted?.();
