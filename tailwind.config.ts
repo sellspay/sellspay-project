@@ -91,11 +91,29 @@ export default {
             backgroundPosition: "0% 50%",
           },
         },
+        "gradient": {
+          "0%": {
+            backgroundPosition: "0% 50%",
+          },
+          "100%": {
+            backgroundPosition: "200% 50%",
+          },
+        },
+        "hue-rotate": {
+          "0%": {
+            filter: "hue-rotate(0deg)",
+          },
+          "100%": {
+            filter: "hue-rotate(360deg)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "gradient-wave": "gradient-wave 3s ease-in-out infinite",
+        "gradient": "gradient 3s linear infinite",
+        "hue-rotate": "hue-rotate 3s linear infinite",
       },
     },
   },
