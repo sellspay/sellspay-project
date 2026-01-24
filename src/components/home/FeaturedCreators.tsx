@@ -62,32 +62,35 @@ export function FeaturedCreators() {
         </Reveal>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 lg:gap-6">
-          {creators.map((creator, index) => (
-            <Reveal key={creator.id} delay={index * 80} blur>
-              <Link
-                to={`/profile/${creator.username || creator.id}`}
-                className="group flex flex-col items-center text-center p-4 rounded-2xl border border-transparent hover:border-border hover:bg-card/50 transition-all duration-300"
-              >
-                <Avatar className="h-20 w-20 lg:h-24 lg:w-24 mb-4 ring-2 ring-transparent group-hover:ring-primary/30 transition-all">
-                  <AvatarImage src={creator.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-xl font-medium">
-                    {(creator.full_name || creator.username || 'U')[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="font-medium text-foreground text-sm lg:text-base truncate max-w-[100px]">
-                    {creator.full_name || creator.username || 'Creator'}
-                  </span>
-                  {creator.verified && <VerifiedBadge size="sm" />}
-                </div>
-                {creator.username && (
+          {creators.map((creator, index) => {
+            // Only render creators with a valid username for proper routing
+            if (!creator.username) return null;
+            
+            return (
+              <Reveal key={creator.id} delay={index * 80} blur>
+                <Link
+                  to={`/@${creator.username}`}
+                  className="group flex flex-col items-center text-center p-4 rounded-2xl border border-transparent hover:border-border hover:bg-card/50 transition-all duration-300"
+                >
+                  <Avatar className="h-20 w-20 lg:h-24 lg:w-24 mb-4 ring-2 ring-transparent group-hover:ring-primary/30 transition-all">
+                    <AvatarImage src={creator.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xl font-medium">
+                      {(creator.full_name || creator.username || 'U')[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="font-medium text-foreground text-sm lg:text-base truncate max-w-[100px]">
+                      {creator.full_name || creator.username || 'Creator'}
+                    </span>
+                    {creator.verified && <VerifiedBadge size="sm" />}
+                  </div>
                   <span className="text-xs text-muted-foreground">
                     @{creator.username}
                   </span>
-                )}
-              </Link>
-            </Reveal>
-          ))}
+                </Link>
+              </Reveal>
+            );
+          })}
         </div>
 
         <div className="mt-8 text-center sm:hidden">
