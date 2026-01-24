@@ -107,6 +107,11 @@ export default function Settings() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [salesNotifications, setSalesNotifications] = useState(true);
   const [marketingEmails, setMarketingEmails] = useState(false);
+  
+  // Account Type
+  const [isCreator, setIsCreator] = useState(false);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [switchingAccountType, setSwitchingAccountType] = useState(false);
 
   // Handle Stripe return URLs
   useEffect(() => {
@@ -150,6 +155,8 @@ export default function Settings() {
         setBackgroundUrl((data as Record<string, unknown>).background_url as string | null);
         setStripeAccountId(data.stripe_account_id);
         setStripeOnboardingComplete(data.stripe_onboarding_complete || false);
+        setIsCreator(data.is_creator || false);
+        setProfileId(data.id);
         
         
         // Load social links
@@ -190,6 +197,27 @@ export default function Settings() {
       console.error("Error checking Stripe status:", error);
     } finally {
       setCheckingStripeStatus(false);
+    }
+  };
+
+  const handleSwitchToBuyer = async () => {
+    if (!profileId) return;
+    setSwitchingAccountType(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_creator: false })
+        .eq('id', profileId);
+      
+      if (error) throw error;
+      
+      setIsCreator(false);
+      toast.success('Your account is now a buyer account.');
+    } catch (error) {
+      console.error('Error switching to buyer:', error);
+      toast.error('Failed to switch account type.');
+    } finally {
+      setSwitchingAccountType(false);
     }
   };
 
@@ -746,6 +774,39 @@ export default function Settings() {
                   Add an extra layer of security to your account.
                 </p>
                 <Button variant="outline">Enable 2FA</Button>
+              </div>
+
+              <Separator />
+
+              {/* Account Type Section */}
+              <div>
+                <h3 className="font-medium mb-2">Account Type</h3>
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      {isCreator ? 'Seller Account' : 'Buyer Account'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {isCreator 
+                        ? 'You can create and sell products on the platform.'
+                        : 'You can purchase and save products.'}
+                    </p>
+                  </div>
+                  {isCreator && (
+                    <Button 
+                      variant="outline" 
+                      onClick={handleSwitchToBuyer}
+                      disabled={switchingAccountType}
+                    >
+                      {switchingAccountType ? 'Switching...' : 'Switch to Buyer'}
+                    </Button>
+                  )}
+                </div>
+                {isCreator && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Switching to a buyer account will hide your store tab. Your products will remain but won't be visible until you switch back.
+                  </p>
+                )}
               </div>
 
               <Separator />
