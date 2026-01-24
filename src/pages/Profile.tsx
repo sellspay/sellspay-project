@@ -815,8 +815,8 @@ const ProfilePage: React.FC = () => {
 
             {/* Action buttons on desktop - positioned to the right */}
             <div className="hidden md:flex flex-1 justify-end gap-2 pb-2">
-              {/* Follow button for other profiles - only show for sellers */}
-              {!isOwnProfile && profile.is_seller && (
+              {/* Follow button for other profiles - show for sellers or admins */}
+              {!isOwnProfile && (profile.is_seller || isAdmin) && (
                 <Button 
                   onClick={handleFollow}
                   variant={isFollowing ? "outline" : "default"}
@@ -900,14 +900,14 @@ const ProfilePage: React.FC = () => {
               {profile.verified && (
                 <VerifiedBadge isOwner={isAdmin} size="md" />
               )}
-              {profile.is_seller && (
+              {profile.is_seller && !isAdmin && (
                 <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
                   Seller
                 </Badge>
               )}
               {isAdmin && (
-                <Badge className="bg-primary/10 text-primary border-primary/20">
-                  Admin
+                <Badge className="bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-gradient text-primary-foreground border-0">
+                  Owner
                 </Badge>
               )}
             </div>
@@ -1000,8 +1000,8 @@ const ProfilePage: React.FC = () => {
 
             {/* Mobile action buttons */}
             <div className="flex md:hidden flex-wrap gap-2 mb-4">
-              {/* Follow button for other profiles - only show for sellers */}
-              {!isOwnProfile && profile.is_seller && (
+              {/* Follow button for other profiles - show for sellers or admins */}
+              {!isOwnProfile && (profile.is_seller || isAdmin) && (
                 <Button 
                   onClick={handleFollow}
                   variant={isFollowing ? "outline" : "default"}
