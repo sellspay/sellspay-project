@@ -203,6 +203,48 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_spotlights: {
+        Row: {
+          achievement: string | null
+          created_at: string
+          display_order: number | null
+          featured_at: string
+          headline: string
+          id: string
+          is_active: boolean | null
+          profile_id: string
+          quote: string | null
+          story: string
+          updated_at: string
+        }
+        Insert: {
+          achievement?: string | null
+          created_at?: string
+          display_order?: number | null
+          featured_at?: string
+          headline: string
+          id?: string
+          is_active?: boolean | null
+          profile_id: string
+          quote?: string | null
+          story: string
+          updated_at?: string
+        }
+        Update: {
+          achievement?: string | null
+          created_at?: string
+          display_order?: number | null
+          featured_at?: string
+          headline?: string
+          id?: string
+          is_active?: boolean | null
+          profile_id?: string
+          quote?: string | null
+          story?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       creator_subscription_plans: {
         Row: {
           created_at: string
@@ -977,6 +1019,148 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      thread_likes: {
+        Row: {
+          created_at: string
+          id: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_likes_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thread_replies: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          gif_url: string | null
+          id: string
+          parent_reply_id: string | null
+          thread_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          gif_url?: string | null
+          id?: string
+          parent_reply_id?: string | null
+          thread_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          gif_url?: string | null
+          id?: string
+          parent_reply_id?: string | null
+          thread_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_replies_parent_reply_id_fkey"
+            columns: ["parent_reply_id"]
+            isOneToOne: false
+            referencedRelation: "thread_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_replies_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thread_reply_likes: {
+        Row: {
+          created_at: string
+          id: string
+          reply_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reply_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reply_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_reply_likes_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "thread_replies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      threads: {
+        Row: {
+          author_id: string
+          category: string
+          content: string
+          created_at: string
+          gif_url: string | null
+          id: string
+          image_url: string | null
+          is_pinned: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          category?: string
+          content: string
+          created_at?: string
+          gif_url?: string | null
+          id?: string
+          image_url?: string | null
+          is_pinned?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          category?: string
+          content?: string
+          created_at?: string
+          gif_url?: string | null
+          id?: string
+          image_url?: string | null
+          is_pinned?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       tool_usage: {
         Row: {
