@@ -1,282 +1,191 @@
 
 
-# Follow-Gated Downloads & Notification System
+# Product Download & Attachments Enhancement Plan
 
 ## Overview
 
-This plan implements two major features:
+This plan addresses four key improvements to the product detail page:
 
-1. **Follow-Gated Product Downloads** with a 7-day re-follow cooldown to prevent follow/unfollow abuse
-2. **Notification Center** with a bell icon in the navbar, supporting various notification types with clickable redirects
+1. **Download Rate Limiting**: Limit downloads to 2 per week per product per user
+2. **Proper Filename Downloads**: Fix the download to use the actual filename instead of random IDs
+3. **Attachments Display**: Add an "Attachments" section in the main content area showing file details with type-specific icons
+4. **Page Layout Restructure**: Reorder the page to show Creator profile at top of sidebar, followed by Related Products, then a new "Featured Products" section
 
 ---
 
-## Part 1: Follow-Gated Downloads with Cooldown
+## Implementation Details
 
-### Current State
-- The system already has a `followers` table with `follower_id`, `following_id`, and `created_at` columns
-- ProductDetail.tsx already checks `isFollowingCreator` and shows a follow dialog
-- Profile.tsx has a basic `handleFollow` function that allows instant follow/unfollow
+### 1. Download Rate Limiting (2 per week per product)
 
-### Database Changes
+**Database Changes:**
+- Create a new `product_downloads` table to track download events:
+  - `id` (UUID, primary key)
+  - `user_id` (UUID, references profiles.id)
+  - `product_id` (UUID, references products.id)
+  - `downloaded_at` (timestamp)
+  - Unique constraint on (user_id, product_id, downloaded_at)
 
-**Add `unfollow_history` table** to track when users unfollow and enforce the 7-day cooldown:
+**Edge Function Changes (`get-download-url/index.ts`):**
+- Before generating the download URL, query the `product_downloads` table
+- Count downloads for this user + product in the last 7 days
+- If count >= 2, return an error: "Download limit reached. You can download this product again in X days."
+- If authorized, insert a new download record and proceed
 
-```text
-Table: unfollow_history
-  - id: uuid (primary key)
-  - unfollower_id: uuid (profile who unfollowed)
-  - unfollowed_id: uuid (profile who was unfollowed)  
-  - unfollowed_at: timestamp (when the unfollow happened)
-  - can_refollow_at: timestamp (unfollowed_at + 7 days)
-  - created_at: timestamp
+**Frontend Changes (`ProductDetail.tsx`):**
+- Show remaining downloads count to users (e.g., "2/2 downloads remaining this week")
+- Display a friendly message when limit is reached with countdown
+
+---
+
+### 2. Proper Filename Downloads
+
+**Edge Function Changes (`get-download-url/index.ts`):**
+- Extract the original filename from the `download_url` path
+- The storage path format is: `{creator_id}/{timestamp}-{original_filename}`
+- Parse out the filename portion after the timestamp prefix
+- Include `filename` in the response alongside the signed URL
+
+**Frontend Changes (`ProductDetail.tsx`):**
+- Update `handleDownload` to use the returned filename
+- Instead of `window.open(data.url, '_blank')`, use the Fetch API:
+  ```javascript
+  const response = await fetch(data.url);
+  const blob = await response.blob();
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = data.filename || 'download';
+  link.click();
+  ```
+
+---
+
+### 3. Attachments Display Section
+
+**UI Component Changes (`ProductDetail.tsx`):**
+- Move the Attachments section from the sidebar to the main content area (left column)
+- Position it below the description section
+- Style it similar to the reference image:
+  - "Attachments" header in cyan/teal color
+  - Each attachment in a rounded pill/card with:
+    - File type icon (different icons for zip, rar, mp4, mp3, etc.)
+    - Filename displayed
+  - Lock icon for users without access
+  - Multiple attachments supported in a list
+
+**File Type Icon Mapping:**
+- `.zip`, `.rar`, `.7z` - Archive icon
+- `.mp4`, `.mov`, `.avi` - Video icon  
+- `.mp3`, `.wav`, `.aac` - Audio/Music icon
+- `.pdf` - Document icon
+- `.aex`, `.prproj`, `.aep` - Project file icon
+- Default - Generic file icon
+
+**Access Logic:**
+- Show lock icon for locked attachments (user hasn't purchased/followed)
+- Show download icon for accessible attachments
+
+---
+
+### 4. Page Layout Restructure
+
+**Current Layout:**
+```
+[Main Content - Left 2/3]     [Sidebar - Right 1/3]
+- Media                        - Creator Card
+- Title + Actions              - Attachments (purple)
+- Comments                     - Related Products
+- Description                  - Related Creators
+- Product Type Badge
 ```
 
-**Add `notifications` table** for the notification system:
-
-```text
-Table: notifications
-  - id: uuid (primary key)
-  - user_id: uuid (recipient profile_id)
-  - type: text ('purchase', 'follow', 'comment', 'subscription', 'product_like', 'comment_like', 'comment_reply')
-  - actor_id: uuid (who triggered the notification - profile_id)
-  - product_id: uuid (optional - for product-related notifications)
-  - comment_id: uuid (optional - for comment-related notifications)
-  - message: text
-  - is_read: boolean (default false)
-  - redirect_url: text (where clicking should navigate)
-  - created_at: timestamp
+**New Layout:**
+```
+[Main Content - Left 2/3]     [Sidebar - Right 1/3]
+- Media                        - Creator Card (top)
+- Title + Actions              - Related Products
+- Comments                     - Featured Products (NEW)
+- Description
+- Attachments (NEW - moved here)
+- Product Type Badge
 ```
 
-### UI/UX Flow Changes
+**Remove from Sidebar:**
+- Related Creators section (declutter)
+- Attachments section (moving to main content)
 
-#### Enhanced Follow Dialog (ProductDetail.tsx)
-
-When user clicks "Get Access" (renamed from current button):
-1. Check if user follows the seller/creator
-2. If NOT following, show enhanced popup with:
-   - Creator's avatar (centered, larger)
-   - Username below avatar
-   - Bio text
-   - Stats row: Product count | Follower count | Following count
-   - "Follow" button at the bottom
-3. On follow success, dialog closes and product unlocks
-
-#### Unfollow Confirmation Dialog
-
-When user attempts to unfollow (from Profile.tsx):
-1. Show confirmation dialog with warning:
-   - Title: "Are you sure you want to unfollow?"
-   - Message: "If you unfollow, you won't be able to follow back for 7 days, locking the store away."
-   - Subtext explaining this prevents abuse
-   - Two buttons: "Cancel" and "Unfollow Anyway"
-2. If confirmed:
-   - Delete from `followers` table
-   - Insert record into `unfollow_history` with `can_refollow_at = NOW() + 7 days`
-3. Toast notification confirms unfollow
-
-#### Re-follow Cooldown Check
-
-When user tries to follow someone again:
-1. Query `unfollow_history` for recent unfollow
-2. If `can_refollow_at > NOW()`, show error toast with remaining time
-3. If cooldown passed or no history, allow follow
+**Add to Sidebar:**
+- Featured Products section (query products where `featured = true`, limit 5)
 
 ---
 
-## Part 2: Notification System
+## Technical Implementation
 
-### Notification Bell in Header
-
-Add to Header.tsx:
-- Bell icon with unread count badge (red dot or number)
-- Click opens dropdown or navigates to `/notifications`
-- Positioned between credit wallet and avatar
-
-### Notification Types & Triggers
-
-| Type | Trigger | Message Format | Redirect |
-|------|---------|----------------|----------|
-| `purchase` | Someone buys your product | "purchased your [product]" | /product/:id |
-| `follow` | Someone follows you | "started following you" | /@username |
-| `comment` | Comment on your product | "commented on [product]" | /product/:id |
-| `product_like` | Like on your product | "liked [product]" | /product/:id |
-| `comment_like` | Like on your comment | "liked your comment" | /product/:id |
-| `comment_reply` | Reply to your comment | "replied to your comment" | /product/:id |
-| `subscription` | Someone subscribes to your plan | "subscribed to [plan]" | /subscription-plans |
-
-### Notification Card Design
-
-```text
-+-----------------------------------------------+
-| [Avatar] @username                    [time]  |
-|          [message: purchased your Preset Pack]|
-|          ↳ Click to view                      |
-+-----------------------------------------------+
-```
-
-### Creating Notifications
-
-Notifications will be created in the following locations:
-
-1. **Purchases**: `create-checkout-session` edge function or `stripe-webhook`
-2. **Follows**: `handleFollow` in Profile.tsx and `handleFollowCreator` in ProductDetail.tsx
-3. **Comments**: `handleSubmitComment` in ProductDetail.tsx
-4. **Product Likes**: `handleLike` in ProductDetail.tsx
-5. **Comment Likes**: `handleCommentLike` in ProductDetail.tsx
-6. **Subscriptions**: `create-subscription-checkout` or `stripe-webhook`
-
----
-
-## Implementation Files
-
-### New Files
-1. `supabase/migrations/[timestamp]_follow_cooldown_and_notifications.sql` - Database schema
-2. `src/components/notifications/NotificationBell.tsx` - Header bell icon component
-3. `src/components/notifications/NotificationDropdown.tsx` - Dropdown with recent notifications
-4. `src/components/profile/UnfollowConfirmDialog.tsx` - Unfollow warning dialog
-5. `src/components/product/CreatorFollowDialog.tsx` - Enhanced follow popup with creator info
-
-### Modified Files
-1. `src/components/layout/Header.tsx` - Add notification bell
-2. `src/pages/ProductDetail.tsx` - Update follow dialog with enhanced UI, rename button to "Get Access"
-3. `src/pages/Profile.tsx` - Add unfollow confirmation with cooldown logic
-4. `src/pages/Notifications.tsx` - Replace mock data with real database queries
-5. `src/integrations/supabase/types.ts` - Will auto-update with new tables
-
----
-
-## Technical Details
-
-### Database Migration SQL
+### Database Migration
 
 ```sql
--- Unfollow history for 7-day cooldown
-CREATE TABLE unfollow_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  unfollower_id UUID NOT NULL,
-  unfollowed_id UUID NOT NULL,
-  unfollowed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  can_refollow_at TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '7 days'),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Notifications table
-CREATE TABLE notifications (
+-- Create product_downloads table for rate limiting
+CREATE TABLE IF NOT EXISTS public.product_downloads (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
-  type TEXT NOT NULL,
-  actor_id UUID,
-  product_id UUID,
-  comment_id UUID,
-  message TEXT NOT NULL,
-  is_read BOOLEAN NOT NULL DEFAULT false,
-  redirect_url TEXT,
+  product_id UUID NOT NULL,
+  downloaded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- RLS policies for unfollow_history
-ALTER TABLE unfollow_history ENABLE ROW LEVEL SECURITY;
+-- Index for efficient querying
+CREATE INDEX idx_product_downloads_user_product 
+ON public.product_downloads(user_id, product_id, downloaded_at);
 
-CREATE POLICY "Users can view their own unfollow history"
-  ON unfollow_history FOR SELECT
-  USING (unfollower_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+-- Enable RLS
+ALTER TABLE public.product_downloads ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can insert their own unfollow records"
-  ON unfollow_history FOR INSERT
-  WITH CHECK (unfollower_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+-- RLS Policies
+CREATE POLICY "Users can view their own downloads"
+ON public.product_downloads FOR SELECT
+USING (user_id IN (
+  SELECT id FROM public.profiles WHERE user_id = auth.uid()
+));
 
--- RLS policies for notifications
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view their own notifications"
-  ON notifications FOR SELECT
-  USING (user_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
-CREATE POLICY "Users can update their own notifications"
-  ON notifications FOR UPDATE
-  USING (user_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
-CREATE POLICY "Users can delete their own notifications"
-  ON notifications FOR DELETE
-  USING (user_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
-CREATE POLICY "Authenticated users can create notifications"
-  ON notifications FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL);
-
--- Indexes for performance
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_is_read ON notifications(is_read);
-CREATE INDEX idx_unfollow_history_lookup ON unfollow_history(unfollower_id, unfollowed_id);
+CREATE POLICY "Edge functions can insert downloads"
+ON public.product_downloads FOR INSERT
+WITH CHECK (true);
 ```
 
-### Follow Cooldown Check Logic
+### Edge Function Update Summary
 
-```typescript
-const checkFollowCooldown = async (followerProfileId: string, targetProfileId: string) => {
-  const { data } = await supabase
-    .from('unfollow_history')
-    .select('can_refollow_at')
-    .eq('unfollower_id', followerProfileId)
-    .eq('unfollowed_id', targetProfileId)
-    .order('unfollowed_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  
-  if (data && new Date(data.can_refollow_at) > new Date()) {
-    const daysLeft = Math.ceil(
-      (new Date(data.can_refollow_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-    );
-    return { blocked: true, daysLeft };
-  }
-  return { blocked: false, daysLeft: 0 };
-};
-```
+The `get-download-url` function will be updated to:
+1. Check download count in last 7 days
+2. Block if >= 2 downloads
+3. Extract and return the original filename
+4. Record the download event
 
-### Creating Notifications Helper
+### Frontend Changes Summary
 
-```typescript
-const createNotification = async ({
-  userId,
-  type,
-  actorId,
-  productId,
-  commentId,
-  message,
-  redirectUrl
-}: {
-  userId: string;
-  type: string;
-  actorId?: string;
-  productId?: string;
-  commentId?: string;
-  message: string;
-  redirectUrl?: string;
-}) => {
-  await supabase.from('notifications').insert({
-    user_id: userId,
-    type,
-    actor_id: actorId,
-    product_id: productId,
-    comment_id: commentId,
-    message,
-    redirect_url: redirectUrl
-  });
-};
-```
+1. **ProductDetail.tsx**:
+   - Add state for download limit info
+   - Update `handleDownload` to use blob download with proper filename
+   - Move Attachments section to main content area with new styling
+   - Add file type icon helper function
+   - Add Featured Products query and section in sidebar
+   - Remove Related Creators section
+
+2. **New helper function**: `getFileTypeIcon(filename)` to return appropriate Lucide icon
 
 ---
 
-## Summary
+## Files to Modify
 
-This implementation will:
+1. **Database**: New migration for `product_downloads` table
+2. **`supabase/functions/get-download-url/index.ts`**: Add rate limiting, filename extraction, download tracking
+3. **`src/pages/ProductDetail.tsx`**: UI restructure, new Attachments design, Featured Products section, improved download handler
 
-1. Gate product downloads behind a follow requirement for all sellers/creators
-2. Show an enhanced creator profile popup when users need to follow
-3. Warn users about the 7-day cooldown before unfollowing
-4. Track unfollow history to enforce the cooldown
-5. Add a notification bell to the header with unread count
-6. Create real-time notifications for all major user interactions
-7. Make notifications clickable with proper redirects to the relevant content
+---
+
+## User Experience
+
+- Users will see "Attachments" section in main content showing all files with type icons
+- Download button shows remaining downloads (e.g., "Download (2 left)")
+- When limit reached: "Download limit reached. Try again in 3 days"
+- Files download with correct names like "AEPixelSorter2.aex" instead of random UUIDs
+- Sidebar shows Creator profile, Related Products, and Featured Products
 
