@@ -53,6 +53,8 @@ import {
   SECTION_TEMPLATES,
 } from './types';
 import { EditablePreview } from './previews/EditablePreview';
+import { FontSelector } from './FontSelector';
+import { ColorPicker } from './ColorPicker';
 
 interface EditSectionDialogProps {
   section: ProfileSection | null;
@@ -324,6 +326,61 @@ function TextEditor({
 }) {
   return (
     <div className="space-y-4">
+      {/* Font Style */}
+      <FontSelector
+        font={content.font}
+        customFont={content.customFont}
+        onChange={(updates) => onChange(updates)}
+      />
+      
+      {/* Font Size */}
+      <div>
+        <Label>Font Size</Label>
+        <Select
+          value={content.fontSize || 'base'}
+          onValueChange={(value) => onChange({ fontSize: value as TextContent['fontSize'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="sm">Small</SelectItem>
+            <SelectItem value="base">Normal</SelectItem>
+            <SelectItem value="lg">Large</SelectItem>
+            <SelectItem value="xl">Extra Large</SelectItem>
+            <SelectItem value="2xl">2X Large</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Font Weight */}
+      <div>
+        <Label>Font Weight</Label>
+        <Select
+          value={content.fontWeight || 'normal'}
+          onValueChange={(value) => onChange({ fontWeight: value as TextContent['fontWeight'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="semibold">Semibold</SelectItem>
+            <SelectItem value="bold">Bold</SelectItem>
+            <SelectItem value="extrabold">Extra Bold</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Text Color */}
+      <ColorPicker
+        label="Text Color"
+        value={content.textColor || '#000000'}
+        onChange={(color) => onChange({ textColor: color })}
+      />
+
+      {/* Alignment */}
       <div>
         <Label>Alignment</Label>
         <div className="flex gap-2 mt-2">
@@ -773,6 +830,41 @@ function HeadlineEditor({
 }) {
   return (
     <div className="space-y-4">
+      {/* Font Style */}
+      <FontSelector
+        font={content.font}
+        customFont={content.customFont}
+        onChange={(updates) => onChange(updates)}
+      />
+      
+      {/* Font Weight */}
+      <div>
+        <Label>Font Weight</Label>
+        <Select
+          value={content.fontWeight || 'bold'}
+          onValueChange={(value) => onChange({ fontWeight: value as HeadlineContent['fontWeight'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="semibold">Semibold</SelectItem>
+            <SelectItem value="bold">Bold</SelectItem>
+            <SelectItem value="extrabold">Extra Bold</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Text Color */}
+      <ColorPicker
+        label="Text Color"
+        value={content.textColor || '#000000'}
+        onChange={(color) => onChange({ textColor: color })}
+      />
+
+      {/* Size */}
       <div>
         <Label>Size</Label>
         <Select
@@ -802,6 +894,31 @@ function SlidingBannerEditor({
 }) {
   return (
     <div className="space-y-4">
+      {/* Banner Text */}
+      <div>
+        <Label>Banner Text</Label>
+        <Input
+          value={content.text || ''}
+          onChange={(e) => onChange({ text: e.target.value })}
+          placeholder="Enter scrolling text..."
+        />
+      </div>
+
+      {/* Text Color */}
+      <ColorPicker
+        label="Text Color"
+        value={content.textColor || '#000000'}
+        onChange={(color) => onChange({ textColor: color })}
+      />
+
+      {/* Background Color */}
+      <ColorPicker
+        label="Background Color"
+        value={content.backgroundColor || '#f3f4f6'}
+        onChange={(color) => onChange({ backgroundColor: color })}
+      />
+
+      {/* Scroll Speed */}
       <div>
         <Label>Scroll Speed</Label>
         <Select
@@ -818,9 +935,6 @@ function SlidingBannerEditor({
           </SelectContent>
         </Select>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Click on the banner text in the preview above to edit
-      </p>
     </div>
   );
 }

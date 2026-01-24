@@ -150,6 +150,12 @@ function TextEditablePreview({ content, onUpdate }: { content: TextContent; onUp
     bold: 'font-bold',
     extrabold: 'font-extrabold',
   };
+
+  // Merge custom font style with text color
+  const combinedStyle = {
+    ...customFontStyle,
+    color: content.textColor || undefined,
+  };
   
   return (
     <div 
@@ -162,14 +168,14 @@ function TextEditablePreview({ content, onUpdate }: { content: TextContent; onUp
         fontSizeClasses[content.fontSize || 'base'],
         fontWeightClasses[content.fontWeight || 'normal']
       )}
-      style={customFontStyle}
+      style={combinedStyle}
     >
       {content.title && (
         <h3 className="text-lg font-semibold">
           <InlineEdit value={content.title} onChange={(v) => onUpdate({ title: v })} placeholder="Section Title" />
         </h3>
       )}
-      <p className="text-muted-foreground">
+      <p className="text-muted-foreground" style={{ color: content.textColor || undefined }}>
         <InlineEdit value={content.body} onChange={(v) => onUpdate({ body: v })} placeholder="Enter your text here..." multiline />
       </p>
     </div>
@@ -401,6 +407,12 @@ function HeadlineEditablePreview({ content, onUpdate }: { content: HeadlineConte
     bold: 'font-bold',
     extrabold: 'font-extrabold',
   };
+
+  // Merge custom font style with text color
+  const combinedStyle = {
+    ...customFontStyle,
+    color: content.textColor || undefined,
+  };
   
   return (
     <div 
@@ -410,7 +422,7 @@ function HeadlineEditablePreview({ content, onUpdate }: { content: HeadlineConte
         fontClass,
         fontWeightClasses[content.fontWeight || 'bold']
       )}
-      style={customFontStyle}
+      style={combinedStyle}
     >
       <span>
         <InlineEdit value={content.text} onChange={(v) => onUpdate({ text: v })} placeholder="Headline Text" />
@@ -743,19 +755,34 @@ function AboutMeEditablePreview({ content, onUpdate }: { content: AboutMeContent
 
 // Sliding Banner Preview
 function SlidingBannerEditablePreview({ content, onUpdate }: { content: SlidingBannerContent; onUpdate: (c: Partial<SlidingBannerContent>) => void }) {
+  const speedClasses = {
+    slow: 'animate-[marquee_20s_linear_infinite]',
+    medium: 'animate-[marquee_12s_linear_infinite]',
+    fast: 'animate-[marquee_6s_linear_infinite]',
+  };
+
   return (
-    <div className="bg-muted/30 py-3 overflow-hidden rounded-lg">
-      <div className="flex gap-8 whitespace-nowrap animate-[marquee_20s_linear_infinite]">
+    <div 
+      className="py-3 overflow-hidden rounded-lg"
+      style={{ backgroundColor: content.backgroundColor || 'hsl(var(--muted) / 0.3)' }}
+    >
+      <div className={`flex gap-8 whitespace-nowrap ${speedClasses[content.speed || 'medium']}`}>
         {[1, 2, 3].map((i) => (
-          <span key={i} className="text-sm font-medium">
-            <InlineEdit 
-              value={content.text || '✨ Special Announcement • Limited Time Offer • Shop Now'} 
-              onChange={(v) => onUpdate({ text: v })} 
-              placeholder="Banner text" 
-            />
+          <span 
+            key={i} 
+            className="text-sm font-medium"
+            style={{ color: content.textColor || undefined }}
+          >
+            {content.text || '✨ Special Announcement • Limited Time Offer • Shop Now'}
           </span>
         ))}
       </div>
+      <style>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-33.33%); }
+        }
+      `}</style>
     </div>
   );
 }

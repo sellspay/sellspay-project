@@ -389,7 +389,6 @@ export function ProfileEditorDialog({
 
   // Track if data has been fetched to enable autosave
   const [dataReady, setDataReady] = useState(false);
-  const initialFetchDone = useRef(false);
 
   // History management
   const {
@@ -625,11 +624,8 @@ export function ProfileEditorDialog({
       setDeleteSectionId(null);
       setShowCreateCollection(false);
       
-      // Only fetch once per open
-      if (!initialFetchDone.current) {
-        initialFetchDone.current = true;
-        fetchAllData();
-      }
+      // Always fetch fresh data when dialog opens to ensure visibility state is accurate
+      fetchAllData();
     } else if (!open) {
       // Reset everything on close
       setPreviewSection(null);
@@ -637,7 +633,6 @@ export function ProfileEditorDialog({
       setEditingCollection(null);
       setShowAddPanel(false);
       setDataReady(false);
-      initialFetchDone.current = false;
     }
   }, [open, profileId]);
 

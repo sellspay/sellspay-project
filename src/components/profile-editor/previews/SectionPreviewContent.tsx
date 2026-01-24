@@ -38,6 +38,12 @@ const TextPreview = memo(({ content }: { content: TextContent }) => {
     bold: 'font-bold',
     extrabold: 'font-extrabold',
   };
+
+  // Merge custom font style with text color
+  const combinedStyle = {
+    ...customFontStyle,
+    color: content.textColor || undefined,
+  };
   
   return (
     <div 
@@ -49,12 +55,12 @@ const TextPreview = memo(({ content }: { content: TextContent }) => {
         fontSizeClasses[content.fontSize || 'base'],
         fontWeightClasses[content.fontWeight || 'normal']
       )}
-      style={customFontStyle}
+      style={combinedStyle}
     >
       {content.title && (
         <h3 className="text-xl font-semibold mb-2">{content.title}</h3>
       )}
-      <p className="text-muted-foreground whitespace-pre-wrap">{content.body}</p>
+      <p className="whitespace-pre-wrap" style={{ color: content.textColor || 'hsl(var(--muted-foreground))' }}>{content.body}</p>
     </div>
   );
 });
@@ -289,6 +295,12 @@ const HeadlinePreview = memo(({ content }: { content: HeadlineContent }) => {
     bold: 'font-bold',
     extrabold: 'font-extrabold',
   };
+
+  // Merge custom font style with text color
+  const combinedStyle = {
+    ...customFontStyle,
+    color: content.textColor || undefined,
+  };
   
   return (
     <h2 
@@ -298,7 +310,7 @@ const HeadlinePreview = memo(({ content }: { content: HeadlineContent }) => {
         fontClass,
         fontWeightClasses[content.fontWeight || 'bold']
       )}
-      style={customFontStyle}
+      style={combinedStyle}
     >
       {content.text}
     </h2>
@@ -315,12 +327,21 @@ const SlidingBannerPreview = memo(({ content }: { content: SlidingBannerContent 
   };
   
   return (
-    <div className="overflow-hidden py-2 bg-primary/10 rounded-lg">
+    <div 
+      className="overflow-hidden py-2 rounded-lg"
+      style={{ backgroundColor: content.backgroundColor || 'hsl(var(--primary) / 0.1)' }}
+    >
       <div className={`whitespace-nowrap ${speedClasses[content.speed]}`}>
-        <span className="inline-block px-4 text-foreground font-medium">
+        <span 
+          className="inline-block px-4 font-medium"
+          style={{ color: content.textColor || undefined }}
+        >
           {content.text}
         </span>
-        <span className="inline-block px-4 text-foreground font-medium">
+        <span 
+          className="inline-block px-4 font-medium"
+          style={{ color: content.textColor || undefined }}
+        >
           {content.text}
         </span>
       </div>
