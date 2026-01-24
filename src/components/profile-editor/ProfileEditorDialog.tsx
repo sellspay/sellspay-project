@@ -86,6 +86,7 @@ interface Collection {
   display_order: number;
   products: Product[];
   totalCount: number;
+  style_options?: { animation?: AnimationType };
 }
 
 interface ProfileEditorDialogProps {
@@ -127,12 +128,14 @@ const SortableCollectionCard = memo(({
   onEdit,
   onDelete,
   onToggleVisibility,
+  onAnimationChange,
 }: {
   collection: Collection;
   sortableId: string;
   onEdit: () => void;
   onDelete: () => void;
   onToggleVisibility: () => void;
+  onAnimationChange?: (animation: AnimationType) => void;
 }) => {
   const {
     attributes,
@@ -148,16 +151,27 @@ const SortableCollectionCard = memo(({
     transition: isDragging ? undefined : transition,
   };
 
+  const currentAnimation = collection.style_options?.animation || 'none';
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        'relative group',
+        'relative group bg-card/50 backdrop-blur-sm border border-border rounded-lg overflow-hidden p-4',
         isDragging && 'opacity-60 z-50 scale-[1.02]',
         !collection.is_visible && 'opacity-40'
       )}
     >
+      {/* Animation picker button - top left */}
+      {onAnimationChange && (
+        <div className="absolute top-2 left-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+          <AnimationPicker
+            value={currentAnimation as AnimationType}
+            onChange={onAnimationChange}
+          />
+        </div>
+      )}
       {/* Collection Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -436,13 +450,14 @@ export function ProfileEditorDialog({
         if (error) throw error;
       }
 
-      // Save collections order and visibility
+      // Save collections order, visibility, and style_options
       for (const collection of editorCollections) {
         const { error } = await supabase
           .from('collections')
           .update({
             display_order: collection.display_order,
             is_visible: collection.is_visible,
+            style_options: JSON.parse(JSON.stringify(collection.style_options || {})),
           })
           .eq('id', collection.id);
         if (error) throw error;
@@ -531,7 +546,7 @@ export function ProfileEditorDialog({
     try {
       const { data: collectionsData, error } = await supabase
         .from('collections')
-        .select('id, name, cover_image_url, is_visible, display_order')
+        .select('id, name, cover_image_url, is_visible, display_order, style_options')
         .eq('creator_id', profileId)
         .order('display_order', { ascending: true });
 
@@ -552,6 +567,7 @@ export function ProfileEditorDialog({
                 ...collection, 
                 is_visible: collection.is_visible ?? true,
                 display_order: collection.display_order ?? 0,
+                style_options: (collection as any).style_options || {},
                 products: [], 
                 totalCount: 0 
               };
@@ -568,6 +584,7 @@ export function ProfileEditorDialog({
               ...collection,
               is_visible: collection.is_visible ?? true,
               display_order: collection.display_order ?? 0,
+              style_options: (collection as any).style_options || {},
               products: productsData || [],
               totalCount: count || 0,
             };
@@ -743,6 +760,18 @@ export function ProfileEditorDialog({
       return updated;
     });
   }, [editorCollections, showRecentUploads, pushHistory]);
+
+  const updateCollectionAnimation = useCallback((collectionId: string, animation: AnimationType) => {
+    setEditorCollections(prev => {
+      const updated = prev.map((c) => 
+        c.id === collectionId 
+          ? { ...c, style_options: { ...c.style_options, animation } }
+          : c
+      );
+      pushHistory({ sections, collections: updated, showRecentUploads });
+      return updated;
+    });
+  }, [sections, showRecentUploads, pushHistory]);
 
   const toggleRecentUploadsVisibility = useCallback(() => {
     setShowRecentUploads(prev => {
@@ -1154,6 +1183,7 @@ export function ProfileEditorDialog({
                                       onEdit={() => setEditingCollection(item.data)}
                                       onDelete={() => setDeleteCollectionId(item.data.id)}
                                       onToggleVisibility={() => toggleCollectionVisibility(item.data.id)}
+                                      onAnimationChange={(anim) => updateCollectionAnimation(item.data.id, anim)}
                                     />
                                   ) : (
                                     <SortableSectionCard

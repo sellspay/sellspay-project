@@ -56,6 +56,7 @@ export type Database = {
           id: string
           is_visible: boolean | null
           name: string
+          style_options: Json | null
           updated_at: string
         }
         Insert: {
@@ -67,6 +68,7 @@ export type Database = {
           id?: string
           is_visible?: boolean | null
           name: string
+          style_options?: Json | null
           updated_at?: string
         }
         Update: {
@@ -78,6 +80,7 @@ export type Database = {
           id?: string
           is_visible?: boolean | null
           name?: string
+          style_options?: Json | null
           updated_at?: string
         }
         Relationships: []
