@@ -1,400 +1,161 @@
 
-# Plan: Refactor Profile Editor to Payhip-Style Architecture
+# Plan: Fix Font Styling, Add Color Picker, and Fix Visibility Persistence
 
-## Current Problems Identified
+## Issues Identified
 
-### 1. **No Autosave - Changes Get Lost**
-- Currently relies on manual "Save" button
-- User must remember to save before closing
-- Changes feel fragile and unreliable
-- The `hasChanges` flag resets on dialog close but actual data may not persist
+### 1. Visibility State Persistence Issue
+When sections are made invisible and saved, re-opening the editor doesn't reflect the saved visibility state. This happens because:
+- The editor fetches fresh data from the database each time it opens
+- BUT the `initialFetchDone.current` ref prevents re-fetching when the dialog re-opens in the same session
+- The sections and collections state may be stale from a previous session
 
-### 2. **Preview State Leaking Across Sessions**
-- `previewSection` state persists when it shouldn't
-- Elements appear stuck on the canvas even after closing
-- State cleanup is incomplete
+### 2. Missing Font Style Controls
+- **Headline**: The `HeadlineEditor` in `EditSectionDialog.tsx` only has Size control - missing FontSelector
+- **Text**: The `TextEditor` in `EditSectionDialog.tsx` only has Alignment control - missing FontSelector
+- **Sliding Banner**: Missing FontSelector control entirely
 
-### 3. **Inconsistent Data Flow**
-- Local state (sections, collections) gets out of sync with database
-- After saving, the editor doesn't always re-fetch fresh data
-- Public profile may show correct data while editor shows stale data
+### 3. Missing Text Color Controls
+All three section types (Text, Headline, Sliding Banner) need a color picker with:
+- Hue wheel for visual selection
+- Hex code input for precise values
 
-### 4. **Missing Payhip-Style Features**
-- No undo/redo history
-- No auto-save with debounce
-- No clear visual feedback during save operations
-- No "last saved" timestamp display
+### 4. Sliding Banner Text Not Editable
+The `SlidingBannerEditablePreview` component in `EditablePreview.tsx` has an issue where the inline text editor may not be working properly.
 
 ---
 
-## Solution Architecture (Following Payhip Model)
+## Solution
 
-### Mental Model
-```
-+---------------------------+
-|       Header Toolbar      |
-|  [Undo] [Redo] [Save] [X] |
-|  "Last saved 2 min ago"   |
-+---------------------------+
-|                           |
-|     Canvas (Sections)     |
-|  - Drag to reorder        |
-|  - Click to edit inline   |
-|  - Hover for controls     |
-|                           |
-+---------------------------+
-|    [+ Add Section]        |
-+---------------------------+
-```
-
-### Key Architectural Changes
-
-1. **Debounced Autosave**
-   - Save changes automatically after 1.5s of inactivity
-   - Show visual feedback: "Saving..." → "Saved ✓"
-   - Eliminate manual save anxiety
-
-2. **Local History Stack (Undo/Redo)**
-   - Track state changes in a history array
-   - Enable Cmd/Ctrl+Z for undo
-   - Enable Cmd/Ctrl+Shift+Z for redo
-
-3. **Single Source of Truth**
-   - All changes go through a central `dispatch` function
-   - State updates are atomic and predictable
-   - After autosave, update local state with server response
-
-4. **Clean State Management**
-   - Clear preview/editing states on dialog mount (not just on open)
-   - Use `useEffect` cleanup functions properly
-   - Prevent state leakage between sessions
-
----
-
-## Implementation Steps
-
-### Phase 1: Fix State Leakage Issues
+### Part 1: Fix Visibility State Persistence
 
 **File: `src/components/profile-editor/ProfileEditorDialog.tsx`**
 
-1. **Reset all state on dialog mount, not just open**
-```typescript
-useEffect(() => {
-  if (open) {
-    // Reset ALL temporary states
-    setPreviewSection(null);
-    setEditingSection(null);
-    setEditingCollection(null);
-    setShowAddPanel(false);
-    setHasChanges(false);
-    // Fetch fresh data
-    fetchAllData();
-  }
-  
-  // Cleanup on unmount
-  return () => {
-    setPreviewSection(null);
-    setEditingSection(null);
-    setEditingCollection(null);
-  };
-}, [open, profileId]);
+Update the `useEffect` that manages data fetching to always fetch fresh data when the dialog opens:
+
+- Remove the `initialFetchDone.current` guard that prevents re-fetching
+- Ensure `fetchAllData()` is called every time the dialog opens with a valid `profileId`
+
+### Part 2: Create Color Picker Component
+
+**New File: `src/components/profile-editor/ColorPicker.tsx`**
+
+Create a reusable color picker component with:
+- Hue wheel using an HSL color model
+- Saturation/Lightness picker area
+- Hex code input field
+- Real-time preview of selected color
+- Popover-based UI to save space
+
+```text
++----------------------------------+
+|  [ Current Color Preview ]       |
+|  +----------------------------+  |
+|  |     Hue Wheel (circular)   |  |
+|  |                            |  |
+|  |   Saturation/Lightness     |  |
+|  |        picker area         |  |
+|  +----------------------------+  |
+|  Hex: [#FFFFFF]                  |
++----------------------------------+
 ```
 
-2. **Ensure preview section is ONLY shown when AddSectionPanel is active**
+### Part 3: Update Types for Text Color
+
+**File: `src/components/profile-editor/types.ts`**
+
+Add `textColor` field to:
+- `TextContent` interface
+- `HeadlineContent` interface  
+- `SlidingBannerContent` interface (already has `textColor`)
+
+### Part 4: Add Font Style + Color to Text Section
+
+**File: `src/components/profile-editor/EditSectionDialog.tsx`**
+
+Update `TextEditor` component to include:
+- FontSelector component
+- Font Size selector
+- Font Weight selector
+- ColorPicker for text color
+
+### Part 5: Add Font Style + Color to Headline Section
+
+**File: `src/components/profile-editor/EditSectionDialog.tsx`**
+
+Update `HeadlineEditor` component to include:
+- FontSelector component
+- Font Weight selector
+- ColorPicker for text color
+
+### Part 6: Add Font Style + Color to Sliding Banner
+
+**File: `src/components/profile-editor/EditSectionDialog.tsx`**
+
+Update `SlidingBannerEditor` component to include:
+- FontSelector component
+- ColorPicker for text color
+- ColorPicker for background color (already in types)
+
+### Part 7: Update Preview Components to Use Colors
+
+**Files:**
+- `src/components/profile-editor/previews/EditablePreview.tsx`
+- `src/components/profile-editor/previews/SectionPreviewContent.tsx`
+
+Update Text, Headline, and SlidingBanner preview components to:
+- Apply `textColor` as inline style `color`
+- Apply font styling from content
+
+### Part 8: Fix Sliding Banner Inline Editing
+
+**File: `src/components/profile-editor/previews/EditablePreview.tsx`**
+
+Ensure the `SlidingBannerEditablePreview` properly handles the `InlineEdit` component for text editing:
+- Make the InlineEdit clickable and visible
+- Ensure the marquee animation doesn't interfere with editing
+
+---
+
+## Technical Details
+
+### Color Picker Implementation
+
+The color picker will use:
+- Canvas-based hue wheel rendering
+- Mouse/touch event handlers for color selection
+- Conversion utilities between HSL and Hex formats
+- Debounced updates to prevent performance issues
+
 ```typescript
-// Already fixed in previous edit, but verify this logic
-{showAddPanel && previewSection && (
-  <div className="relative bg-card/50 ...">
-    ...
-  </div>
-)}
+// Core utilities needed
+function hslToHex(h: number, s: number, l: number): string
+function hexToHsl(hex: string): { h: number; s: number; l: number }
 ```
 
-3. **Clear preview on ANY panel close action**
+### File Changes Summary
+
+| File | Changes |
+|------|---------|
+| `ProfileEditorDialog.tsx` | Fix visibility persistence by removing fetch guard |
+| `types.ts` | Add `textColor` to Text and Headline interfaces |
+| `ColorPicker.tsx` | New component for hue wheel color selection |
+| `EditSectionDialog.tsx` | Add FontSelector and ColorPicker to Text, Headline, SlidingBanner editors |
+| `EditablePreview.tsx` | Apply textColor styles, fix sliding banner editing |
+| `SectionPreviewContent.tsx` | Apply textColor styles to previews |
+
+### Import Updates
+
+All files using the new ColorPicker will need:
 ```typescript
-const closeAddPanel = useCallback(() => {
-  setPreviewSection(null);
-  setShowAddPanel(false);
-}, []);
-```
-
-### Phase 2: Implement Autosave with Debounce
-
-**New hook: `src/hooks/useAutoSave.ts`**
-
-```typescript
-import { useCallback, useRef, useEffect, useState } from 'react';
-
-export function useAutoSave<T>(
-  data: T,
-  saveFn: (data: T) => Promise<void>,
-  debounceMs = 1500
-) {
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout>();
-  const previousDataRef = useRef<T>(data);
-
-  const save = useCallback(async () => {
-    setSaveStatus('saving');
-    try {
-      await saveFn(data);
-      setSaveStatus('saved');
-      setLastSaved(new Date());
-      // Reset to idle after 2s
-      setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch (error) {
-      setSaveStatus('error');
-      console.error('Autosave failed:', error);
-    }
-  }, [data, saveFn]);
-
-  useEffect(() => {
-    // Only trigger if data actually changed
-    if (JSON.stringify(data) !== JSON.stringify(previousDataRef.current)) {
-      previousDataRef.current = data;
-      
-      // Clear existing timeout
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      
-      // Set new debounced save
-      timeoutRef.current = setTimeout(save, debounceMs);
-    }
-
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [data, save, debounceMs]);
-
-  return { saveStatus, lastSaved };
-}
-```
-
-**Update ProfileEditorDialog.tsx to use autosave:**
-
-```typescript
-const { saveStatus, lastSaved } = useAutoSave(
-  { sections, editorCollections, showRecentUploads },
-  saveAllChanges,
-  1500
-);
-```
-
-### Phase 3: Add Undo/Redo History
-
-**New hook: `src/hooks/useHistory.ts`**
-
-```typescript
-import { useState, useCallback } from 'react';
-
-export function useHistory<T>(initialState: T, maxHistory = 50) {
-  const [history, setHistory] = useState<T[]>([initialState]);
-  const [index, setIndex] = useState(0);
-
-  const current = history[index];
-
-  const push = useCallback((newState: T) => {
-    setHistory(prev => {
-      // Remove any "future" states if we branched
-      const newHistory = prev.slice(0, index + 1);
-      // Add new state
-      newHistory.push(newState);
-      // Limit history size
-      if (newHistory.length > maxHistory) {
-        newHistory.shift();
-      }
-      return newHistory;
-    });
-    setIndex(prev => Math.min(prev + 1, maxHistory - 1));
-  }, [index, maxHistory]);
-
-  const undo = useCallback(() => {
-    setIndex(prev => Math.max(0, prev - 1));
-  }, []);
-
-  const redo = useCallback(() => {
-    setIndex(prev => Math.min(history.length - 1, prev + 1));
-  }, [history.length]);
-
-  const canUndo = index > 0;
-  const canRedo = index < history.length - 1;
-
-  return { current, push, undo, redo, canUndo, canRedo };
-}
-```
-
-**Integrate with ProfileEditorDialog:**
-
-```typescript
-const {
-  current: editorState,
-  push: pushHistory,
-  undo,
-  redo,
-  canUndo,
-  canRedo,
-} = useHistory({ sections: [], collections: [] });
-
-// Listen for keyboard shortcuts
-useEffect(() => {
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
-      e.preventDefault();
-      if (e.shiftKey) {
-        redo();
-      } else {
-        undo();
-      }
-    }
-  };
-  
-  window.addEventListener('keydown', handleKeyDown);
-  return () => window.removeEventListener('keydown', handleKeyDown);
-}, [undo, redo]);
-```
-
-### Phase 4: Update UI with Save Status
-
-**Header toolbar updates:**
-
-```typescript
-<div className="flex items-center gap-3">
-  {/* Save status indicator */}
-  <span className="text-xs text-muted-foreground">
-    {saveStatus === 'saving' && (
-      <span className="flex items-center gap-1">
-        <Loader2 className="w-3 h-3 animate-spin" />
-        Saving...
-      </span>
-    )}
-    {saveStatus === 'saved' && (
-      <span className="flex items-center gap-1 text-green-500">
-        <Check className="w-3 h-3" />
-        Saved
-      </span>
-    )}
-    {saveStatus === 'error' && (
-      <span className="flex items-center gap-1 text-destructive">
-        <AlertCircle className="w-3 h-3" />
-        Save failed
-      </span>
-    )}
-    {saveStatus === 'idle' && lastSaved && (
-      <span>Last saved {formatDistanceToNow(lastSaved)} ago</span>
-    )}
-  </span>
-  
-  {/* Undo/Redo buttons */}
-  <Button 
-    variant="ghost" 
-    size="icon" 
-    onClick={undo} 
-    disabled={!canUndo}
-  >
-    <Undo className="w-4 h-4" />
-  </Button>
-  <Button 
-    variant="ghost" 
-    size="icon" 
-    onClick={redo} 
-    disabled={!canRedo}
-  >
-    <Redo className="w-4 h-4" />
-  </Button>
-  
-  {/* Close button */}
-  <Button variant="ghost" size="icon" onClick={handleClose}>
-    <X className="w-5 h-5" />
-  </Button>
-</div>
-```
-
-### Phase 5: Improve Save Logic Reliability
-
-**Update saveAllChanges to return fresh data:**
-
-```typescript
-const saveAllChanges = async () => {
-  try {
-    // Save sections and get fresh data back
-    const sectionPromises = sections.map(async (section) => {
-      const { data, error } = await supabase
-        .from('profile_sections')
-        .update({
-          display_order: section.display_order,
-          content: JSON.parse(JSON.stringify(section.content)),
-          style_options: JSON.parse(JSON.stringify(section.style_options || {})),
-          is_visible: section.is_visible,
-        })
-        .eq('id', section.id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    });
-    
-    const updatedSections = await Promise.all(sectionPromises);
-    
-    // Update local state with server response
-    setSections(updatedSections as unknown as ProfileSection[]);
-    
-    // ... similar for collections
-    
-    toast.success('Changes saved');
-  } catch (error) {
-    console.error('Save error:', error);
-    toast.error('Failed to save changes');
-    throw error; // Re-throw for autosave error handling
-  }
-};
+import { ColorPicker } from './ColorPicker';
 ```
 
 ---
 
-## Files to Create/Modify
+## Edge Cases Handled
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/hooks/useAutoSave.ts` | Create | Debounced autosave hook |
-| `src/hooks/useHistory.ts` | Create | Undo/redo history management |
-| `src/components/profile-editor/ProfileEditorDialog.tsx` | Modify | Integrate autosave, history, fix state leaks |
-| `src/components/profile-editor/AddSectionPanel.tsx` | Modify | Ensure clean preview state handling |
-
----
-
-## Technical Notes
-
-### Debounce Implementation
-- Use 1500ms delay (Payhip uses similar timing)
-- Skip save if data hasn't changed (deep comparison)
-- Show immediate visual feedback
-
-### History Stack
-- Limit to 50 states to prevent memory issues
-- Clear history when dialog closes
-- Snapshot entire editor state (sections + collections)
-
-### State Cleanup Checklist
-- Clear `previewSection` when AddPanel closes
-- Clear `editingSection` when EditDialog closes
-- Clear all temporary state when main dialog closes
-- Use cleanup functions in useEffect
-
----
-
-## Summary
-
-This refactor transforms the profile editor from a manual-save model to a Payhip-style autosave experience:
-
-1. **Autosave with debounce** - Changes save automatically after 1.5s of inactivity
-2. **Undo/Redo** - Keyboard shortcuts Cmd+Z and Cmd+Shift+Z work
-3. **Visual feedback** - "Saving..." → "Saved ✓" indicators in toolbar
-4. **State isolation** - No more phantom preview elements appearing
-5. **Reliable persistence** - Data syncs properly between editor and public profile
-
-The implementation follows React best practices with custom hooks for reusability and clean separation of concerns.
+1. **Default colors**: If no color is set, fall back to current foreground color
+2. **Invalid hex input**: Validate and sanitize hex codes before applying
+3. **Custom fonts + colors**: Both should work together without conflicts
+4. **Animation interference**: Pause marquee animation during inline editing
+5. **Visibility toggle**: Changes persist immediately in local state AND are saved correctly to database
