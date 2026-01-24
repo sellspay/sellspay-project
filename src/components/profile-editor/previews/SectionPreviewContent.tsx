@@ -21,13 +21,33 @@ const TextPreview = memo(({ content }: { content: TextContent }) => {
   // Inject custom font if needed
   useCustomFont(content.customFont);
   
+  // Font size classes
+  const fontSizeClasses = {
+    sm: 'text-sm',
+    base: 'text-base',
+    lg: 'text-lg',
+    xl: 'text-xl',
+    '2xl': 'text-2xl',
+  };
+  
+  // Font weight classes
+  const fontWeightClasses = {
+    normal: 'font-normal',
+    medium: 'font-medium',
+    semibold: 'font-semibold',
+    bold: 'font-bold',
+    extrabold: 'font-extrabold',
+  };
+  
   return (
     <div 
       className={cn(
         alignment === 'center' && 'text-center',
         alignment === 'right' && 'text-right',
         alignment === 'left' && 'text-left',
-        fontClass
+        fontClass,
+        fontSizeClasses[content.fontSize || 'base'],
+        fontWeightClasses[content.fontWeight || 'normal']
       )}
       style={customFontStyle}
     >
@@ -250,14 +270,36 @@ AboutMePreview.displayName = 'AboutMePreview';
 
 // Headline Preview
 const HeadlinePreview = memo(({ content }: { content: HeadlineContent }) => {
+  const fontClass = getFontClassName(content.font);
+  const customFontStyle = getCustomFontStyle(content.customFont);
+  
+  // Inject custom font if needed
+  useCustomFont(content.customFont);
+  
   const sizeClasses = {
     small: 'text-2xl',
     medium: 'text-3xl md:text-4xl',
     large: 'text-4xl md:text-5xl lg:text-6xl',
   };
   
+  const fontWeightClasses = {
+    normal: 'font-normal',
+    medium: 'font-medium',
+    semibold: 'font-semibold',
+    bold: 'font-bold',
+    extrabold: 'font-extrabold',
+  };
+  
   return (
-    <h2 className={`font-bold text-center ${sizeClasses[content.size]}`}>
+    <h2 
+      className={cn(
+        "text-center",
+        sizeClasses[content.size],
+        fontClass,
+        fontWeightClasses[content.fontWeight || 'bold']
+      )}
+      style={customFontStyle}
+    >
       {content.text}
     </h2>
   );

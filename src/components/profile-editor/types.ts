@@ -33,6 +33,9 @@ export interface SectionStyleOptions {
   colorScheme?: 'white' | 'light' | 'dark' | 'black' | 'highlight';
   sectionHeight?: 'small' | 'medium' | 'large';
   showBackground?: boolean;  // Whether to show the container background (default: false)
+  containerBackgroundColor?: string; // Custom container background color
+  borderStyle?: 'none' | 'solid' | 'dashed'; // Container border style
+  borderColor?: string; // Container border color
 }
 
 export type FontOption = 
@@ -55,6 +58,8 @@ export interface TextContent {
   alignment?: 'left' | 'center' | 'right';
   font?: FontOption;
   customFont?: CustomFont;
+  fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold' | 'extrabold';
+  fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl';
 }
 
 export interface ImageContent {
@@ -107,6 +112,9 @@ export interface AboutMeContent {
 export interface HeadlineContent {
   text: string;
   size: 'small' | 'medium' | 'large';
+  font?: FontOption;
+  customFont?: CustomFont;
+  fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold' | 'extrabold';
 }
 
 export interface SlidingBannerContent {

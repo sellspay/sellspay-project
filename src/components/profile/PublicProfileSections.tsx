@@ -223,11 +223,43 @@ export function PublicProfileSections({
             />
           );
         } else {
-          const showBg = item.data.style_options?.showBackground === true;
+          const styleOpts = item.data.style_options;
+          const showBg = styleOpts?.showBackground === true;
+          
+          // Build container styles
+          const containerStyle: React.CSSProperties = {};
+          if (showBg) {
+            if (styleOpts?.containerBackgroundColor) {
+              containerStyle.backgroundColor = styleOpts.containerBackgroundColor;
+            }
+            if (styleOpts?.borderColor && styleOpts?.borderStyle !== 'none') {
+              containerStyle.borderColor = styleOpts.borderColor;
+            }
+            if (styleOpts?.borderStyle === 'dashed') {
+              containerStyle.borderStyle = 'dashed';
+            }
+          }
+          
+          // Build container classes
+          const containerClasses = showBg 
+            ? `rounded-lg p-4 ${
+                styleOpts?.borderStyle === 'none' 
+                  ? '' 
+                  : styleOpts?.borderStyle === 'dashed' 
+                    ? 'border border-dashed' 
+                    : 'border'
+              } ${
+                !styleOpts?.containerBackgroundColor ? 'bg-card/50' : ''
+              } ${
+                !styleOpts?.borderColor && styleOpts?.borderStyle !== 'none' ? 'border-border' : ''
+              }`
+            : '';
+          
           return (
             <div 
               key={`section-${item.id}`} 
-              className={showBg ? "bg-card/50 border border-border rounded-lg p-4" : ""}
+              className={containerClasses}
+              style={containerStyle}
             >
               <SectionPreviewContent section={item.data} />
             </div>
