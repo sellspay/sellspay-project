@@ -29,6 +29,7 @@ import CreateCollectionDialog from '@/components/profile/CreateCollectionDialog'
 import SubscribeDialog from '@/components/profile/SubscribeDialog';
 import { ProfileEditorDialog } from '@/components/profile-editor';
 import { PublicProfileSections } from '@/components/profile/PublicProfileSections';
+import CreatorApplicationDialog from '@/components/creator-application/CreatorApplicationDialog';
 
 interface Profile {
   id: string;
@@ -284,6 +285,7 @@ const ProfilePage: React.FC = () => {
   const [creatorHasPlans, setCreatorHasPlans] = useState(false);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [layoutRefreshKey, setLayoutRefreshKey] = useState(0);
+  const [showCreatorApplication, setShowCreatorApplication] = useState(false);
 
   const fetchCollections = async (profileId: string, isOwn: boolean) => {
     try {
@@ -793,6 +795,16 @@ const ProfilePage: React.FC = () => {
                   >
                     <Settings className="w-4 h-4" />
                   </Button>
+                  {!profile.is_creator && (
+                    <Button 
+                      variant="default"
+                      onClick={() => setShowCreatorApplication(true)}
+                      className="gap-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Become a Creator
+                    </Button>
+                  )}
                 </>
               )}
             </div>

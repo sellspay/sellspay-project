@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,8 @@ import ViewApplicationDialog from "@/components/admin/ViewApplicationDialog";
 import EditUserDialog from "@/components/admin/EditUserDialog";
 import ManageFeaturedDialog from "@/components/admin/ManageFeaturedDialog";
 import DeleteProductDialog from "@/components/admin/DeleteProductDialog";
+import ViewCreatorApplicationDialog from "@/components/admin/ViewCreatorApplicationDialog";
+import { CreatorApplication, PRODUCT_TYPE_OPTIONS } from "@/components/creator-application/types";
 
 interface Profile {
   id: string;
@@ -92,11 +94,15 @@ export default function Admin() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [editorApplications, setEditorApplications] = useState<EditorApplication[]>([]);
+  const [creatorApplications, setCreatorApplications] = useState<CreatorApplication[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [applicationSearch, setApplicationSearch] = useState("");
+  const [creatorAppSearch, setCreatorAppSearch] = useState("");
   const [viewingApplication, setViewingApplication] = useState<EditorApplication | null>(null);
+  const [viewingCreatorApp, setViewingCreatorApp] = useState<CreatorApplication | null>(null);
   const [applicationTab, setApplicationTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [creatorAppTab, setCreatorAppTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   
   // New dialog states
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
@@ -104,12 +110,14 @@ export default function Admin() {
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deletingApplicationId, setDeletingApplicationId] = useState<string | null>(null);
+  const [deletingCreatorAppId, setDeletingCreatorAppId] = useState<string | null>(null);
   
   // Stats
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalCreators, setTotalCreators] = useState(0);
   const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
+  const [pendingCreatorAppsCount, setPendingCreatorAppsCount] = useState(0);
 
   // Check admin role on mount
   useEffect(() => {
@@ -205,6 +213,36 @@ export default function Admin() {
 
         setEditorApplications(appsWithProfiles);
         setPendingApplicationsCount(applicationsData.filter(a => a.status === 'pending').length);
+      }
+
+      // Fetch creator applications
+      const { data: creatorAppsData, error: creatorAppsError } = await supabase
+        .from("creator_applications")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!creatorAppsError && creatorAppsData) {
+        const creatorAppUserIds = [...new Set(creatorAppsData.map(a => a.user_id))];
+        let creatorProfilesMap: Record<string, { avatar_url: string | null; username: string | null; email: string | null }> = {};
+        
+        if (creatorAppUserIds.length > 0) {
+          const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("id, avatar_url, username, email")
+            .in("id", creatorAppUserIds);
+          
+          profilesData?.forEach(p => {
+            creatorProfilesMap[p.id] = { avatar_url: p.avatar_url, username: p.username, email: p.email };
+          });
+        }
+
+        const creatorAppsWithProfiles = creatorAppsData.map(a => ({
+          ...a,
+          profile: creatorProfilesMap[a.user_id] || null
+        }));
+
+        setCreatorApplications(creatorAppsWithProfiles);
+        setPendingCreatorAppsCount(creatorAppsData.filter(a => a.status === 'pending').length);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -358,6 +396,65 @@ export default function Admin() {
     }
   };
 
+  // Handle creator application actions
+  const handleCreatorAppAction = async (applicationId: string, action: 'approve' | 'reject') => {
+    try {
+      const application = creatorApplications.find(a => a.id === applicationId);
+      if (!application) return;
+
+      // Update application status
+      const { error: updateError } = await supabase
+        .from('creator_applications')
+        .update({ 
+          status: action === 'approve' ? 'approved' : 'rejected',
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', applicationId);
+
+      if (updateError) throw updateError;
+
+      // If approved, update the profile
+      if (action === 'approve') {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            is_creator: true,
+            verified: true
+          })
+          .eq('id', application.user_id);
+
+        if (profileError) throw profileError;
+      }
+
+      toast.success(`Application ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating application:', error);
+      toast.error('Failed to update application');
+    }
+  };
+
+  // Delete creator application
+  const handleDeleteCreatorApp = async (applicationId: string) => {
+    setDeletingCreatorAppId(applicationId);
+    try {
+      const { error } = await supabase
+        .from("creator_applications")
+        .delete()
+        .eq("id", applicationId);
+
+      if (error) throw error;
+
+      toast.success("Application removed");
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting application:", error);
+      toast.error("Failed to delete application");
+    } finally {
+      setDeletingCreatorAppId(null);
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Unknown";
     return new Date(dateString).toLocaleDateString();
@@ -395,6 +492,26 @@ export default function Admin() {
     : applicationTab === 'approved' 
       ? approvedApplications 
       : rejectedApplications;
+
+  // Filter creator applications
+  const searchFilteredCreatorApps = creatorApplications.filter(a =>
+    a.full_name.toLowerCase().includes(creatorAppSearch.toLowerCase()) ||
+    (a.profile?.username?.toLowerCase() || "").includes(creatorAppSearch.toLowerCase())
+  );
+
+  const pendingCreatorApps = searchFilteredCreatorApps.filter(a => a.status === 'pending');
+  const approvedCreatorApps = searchFilteredCreatorApps.filter(a => a.status === 'approved');
+  const rejectedCreatorApps = searchFilteredCreatorApps.filter(a => a.status === 'rejected');
+
+  const currentCreatorApps = creatorAppTab === 'pending'
+    ? pendingCreatorApps
+    : creatorAppTab === 'approved'
+      ? approvedCreatorApps
+      : rejectedCreatorApps;
+
+  const getProductTypeLabel = (value: string) => {
+    return PRODUCT_TYPE_OPTIONS.find(opt => opt.value === value)?.label || value;
+  };
 
   if (loading) {
     return (
@@ -497,6 +614,20 @@ export default function Admin() {
           <TabsTrigger value="editor-applications" className="relative">
             Editor Applications
             {pendingApplicationsCount > 0 && (
+              <span className="ml-2 bg-yellow-500 text-yellow-950 text-xs px-1.5 py-0.5 rounded-full">
+                {pendingApplicationsCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="creator-applications" className="relative">
+            <Briefcase className="w-4 h-4 mr-1.5" />
+            Creator Applications
+            {pendingCreatorAppsCount > 0 && (
+              <span className="ml-2 bg-yellow-500 text-yellow-950 text-xs px-1.5 py-0.5 rounded-full">
+                {pendingCreatorAppsCount}
+              </span>
+            )}
+          </TabsTrigger>
               <span className="ml-2 bg-yellow-500 text-yellow-950 text-xs px-1.5 py-0.5 rounded-full">
                 {pendingApplicationsCount}
               </span>
@@ -1088,6 +1219,122 @@ export default function Admin() {
           isDeleting={isDeleting}
         />
 
+        {/* Creator Applications Tab */}
+        <TabsContent value="creator-applications">
+          <Card className="bg-card/50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Creator Applications</CardTitle>
+                  <CardDescription>Review and manage creator applications</CardDescription>
+                </div>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={creatorAppSearch}
+                    onChange={(e) => setCreatorAppSearch(e.target.value)}
+                    placeholder="Search applications..."
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Status Tabs */}
+              <div className="flex gap-2 mb-6">
+                <Button variant={creatorAppTab === 'pending' ? 'default' : 'outline'} size="sm" onClick={() => setCreatorAppTab('pending')} className="gap-2">
+                  <Clock className="w-4 h-4" /> Pending
+                  {pendingCreatorApps.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5">{pendingCreatorApps.length}</Badge>}
+                </Button>
+                <Button variant={creatorAppTab === 'approved' ? 'default' : 'outline'} size="sm" onClick={() => setCreatorAppTab('approved')} className="gap-2">
+                  <CheckCircle className="w-4 h-4" /> Approved
+                  {approvedCreatorApps.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5">{approvedCreatorApps.length}</Badge>}
+                </Button>
+                <Button variant={creatorAppTab === 'rejected' ? 'default' : 'outline'} size="sm" onClick={() => setCreatorAppTab('rejected')} className="gap-2">
+                  <XCircle className="w-4 h-4" /> Rejected
+                  {rejectedCreatorApps.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5">{rejectedCreatorApps.length}</Badge>}
+                </Button>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Applicant</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Product Types</TableHead>
+                    {creatorAppTab === 'rejected' && <TableHead>Cooldown</TableHead>}
+                    <TableHead>{creatorAppTab === 'pending' ? 'Applied' : 'Reviewed'}</TableHead>
+                    <TableHead className="w-24">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentCreatorApps.map((app) => {
+                    const daysRemaining = app.status === 'rejected' ? getDaysUntilReapply(app.reviewed_at) : 0;
+                    const canBeRemoved = app.status === 'rejected' && isExpiredRejection(app.reviewed_at);
+                    return (
+                      <TableRow key={app.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-8 h-8">
+                              <AvatarImage src={app.profile?.avatar_url || undefined} />
+                              <AvatarFallback>{app.full_name?.[0] || "?"}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{app.full_name}</p>
+                              {app.profile?.username && <p className="text-sm text-muted-foreground">@{app.profile.username}</p>}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{app.state}, {app.country}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1 max-w-[200px]">
+                            {app.product_types.slice(0, 2).map((t) => (
+                              <Badge key={t} variant="secondary" className="text-xs">{getProductTypeLabel(t)}</Badge>
+                            ))}
+                            {app.product_types.length > 2 && <Badge variant="outline" className="text-xs">+{app.product_types.length - 2}</Badge>}
+                          </div>
+                        </TableCell>
+                        {creatorAppTab === 'rejected' && (
+                          <TableCell>
+                            {canBeRemoved ? <Badge variant="outline">Expired</Badge> : <Badge className="bg-destructive/20 text-destructive">{daysRemaining} days</Badge>}
+                          </TableCell>
+                        )}
+                        <TableCell>{formatDate(creatorAppTab === 'pending' ? app.created_at : app.reviewed_at)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setViewingCreatorApp(app)}><Eye className="w-4 h-4" /></Button>
+                            {app.status === 'pending' && (
+                              <>
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => handleCreatorAppAction(app.id, 'approve')}><CheckCircle className="w-4 h-4" /></Button>
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => handleCreatorAppAction(app.id, 'reject')}><XCircle className="w-4 h-4" /></Button>
+                              </>
+                            )}
+                            {app.status === 'rejected' && canBeRemoved && (
+                              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteCreatorApp(app.id)} disabled={deletingCreatorAppId === app.id}>
+                                {deletingCreatorAppId === app.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              {currentCreatorApps.length === 0 && <div className="text-center py-8 text-muted-foreground">No {creatorAppTab} applications found</div>}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* View Creator Application Dialog */}
+        <ViewCreatorApplicationDialog
+          open={!!viewingCreatorApp}
+          onOpenChange={(open) => !open && setViewingCreatorApp(null)}
+          application={viewingCreatorApp}
+          onApprove={(id) => { handleCreatorAppAction(id, 'approve'); setViewingCreatorApp(null); }}
+          onReject={(id) => { handleCreatorAppAction(id, 'reject'); setViewingCreatorApp(null); }}
+        />
+
         {/* Settings Tab */}
         <TabsContent value="settings">
           <Card className="bg-card/50">
@@ -1102,27 +1349,15 @@ export default function Admin() {
                   Set the platform commission rate for all sales.
                 </p>
                 <div className="flex items-center gap-4">
-                  <Input
-                    type="number"
-                    defaultValue="5"
-                    className="w-24"
-                    min="0"
-                    max="100"
-                  />
+                  <Input type="number" defaultValue="5" className="w-24" min="0" max="100" />
                   <span className="text-muted-foreground">%</span>
                   <Button>Update</Button>
                 </div>
               </div>
-
               <div className="p-6 rounded-lg bg-secondary/20">
                 <h3 className="font-medium mb-2">Featured Products</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Manage which products appear on the homepage.
-                </p>
-                <Button variant="outline" onClick={() => setShowFeaturedDialog(true)}>
-                  <Star className="w-4 h-4 mr-2" />
-                  Manage Featured
-                </Button>
+                <p className="text-sm text-muted-foreground mb-4">Manage which products appear on the homepage.</p>
+                <Button variant="outline" onClick={() => setShowFeaturedDialog(true)}><Star className="w-4 h-4 mr-2" />Manage Featured</Button>
               </div>
             </CardContent>
           </Card>
