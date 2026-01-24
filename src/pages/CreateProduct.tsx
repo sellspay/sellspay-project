@@ -188,6 +188,12 @@ export default function CreateProduct() {
       return;
     }
 
+    // Validate minimum price for paid products
+    if ((pricingType === "paid" || pricingType === "both") && parseFloat(price) < 4.99) {
+      toast.error("Minimum price is $4.99 for paid products");
+      return;
+    }
+
     setLoading(true);
     if (publish) setIsPublishing(true);
 
@@ -543,14 +549,22 @@ export default function CreateProduct() {
                   <Input
                     id="price"
                     type="number"
-                    min="0"
+                    min="4.99"
                     step="0.01"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    placeholder="9.99"
+                    placeholder="4.99"
                     className="pl-8"
                   />
                 </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Minimum price is $4.99 to ensure fair payouts after payment processing fees.
+                </p>
+                {price && parseFloat(price) > 0 && parseFloat(price) < 4.99 && (
+                  <p className="text-xs text-destructive mt-1">
+                    Price must be at least $4.99
+                  </p>
+                )}
               </div>
             )}
           </CardContent>

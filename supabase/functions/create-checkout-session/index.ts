@@ -143,8 +143,16 @@ serve(async (req) => {
     // Calculate fees (5% platform commission)
     const totalAmount = product.price_cents || 0;
     
+    // Validate minimum price ($4.99 = 499 cents)
+    if (totalAmount < 499) {
+      return new Response(
+        JSON.stringify({ error: "Minimum product price is $4.99" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     // Validate amount is reasonable (max $10,000)
-    if (totalAmount < 0 || totalAmount > 1000000) {
+    if (totalAmount > 1000000) {
       return new Response(
         JSON.stringify({ error: "Invalid product price" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
