@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
+import { NominateCreatorDialog } from '@/components/community/NominateCreatorDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 
@@ -31,6 +32,7 @@ interface SpotlightCreator {
 
 export default function Spotlight() {
   const [expandedStory, setExpandedStory] = useState<string | null>(null);
+  const [nominateDialogOpen, setNominateDialogOpen] = useState(false);
 
   // Fetch real creators from the database
   const { data: spotlights = [], isLoading } = useQuery({
@@ -98,25 +100,35 @@ export default function Spotlight() {
       }
 
       // Fallback: if no spotlights exist, show real verified creators
+      // Prioritize admin users first, then other verified creators
       const { data: creatorsData } = await supabase
         .from('profiles')
         .select('id, user_id, username, full_name, avatar_url, verified, bio')
         .eq('is_creator', true)
         .eq('verified', true)
-        .limit(6);
+        .limit(20);
 
       if (!creatorsData || creatorsData.length === 0) return [];
 
+      // Fetch admin roles for all creators
+      const userIds = creatorsData.map(c => c.user_id).filter(Boolean);
+      const { data: adminRoles } = userIds.length
+        ? await supabase.from('user_roles').select('user_id').eq('role', 'admin').in('user_id', userIds)
+        : { data: [] as any[] };
+      const adminUserIds = new Set((adminRoles || []).map((r: any) => r.user_id));
+
+      // Sort: admins first, then others
+      const sortedCreators = [...creatorsData].sort((a, b) => {
+        const aIsAdmin = adminUserIds.has(a.user_id);
+        const bIsAdmin = adminUserIds.has(b.user_id);
+        if (aIsAdmin && !bIsAdmin) return -1;
+        if (!aIsAdmin && bIsAdmin) return 1;
+        return 0;
+      }).slice(0, 6);
+
       // Build spotlights from real creators
-      const creatorSpotlights = await Promise.all(creatorsData.map(async (creator, index) => {
-        const { data: roleRow } = creator.user_id
-          ? await supabase
-              .from('user_roles')
-              .select('user_id')
-              .eq('user_id', creator.user_id)
-              .eq('role', 'admin')
-              .maybeSingle()
-          : { data: null as any };
+      const creatorSpotlights = await Promise.all(sortedCreators.map(async (creator, index) => {
+        const isAdmin = adminUserIds.has(creator.user_id);
 
         const [productsResult, followersResult] = await Promise.all([
           supabase.from('products').select('id', { count: 'exact', head: true }).eq('creator_id', creator.id),
@@ -125,12 +137,12 @@ export default function Spotlight() {
 
         return {
           id: creator.id,
-          headline: index === 0 ? 'Building EditorsParadise' : 'Verified Creator',
+          headline: isAdmin ? 'Building EditorsParadise' : 'Verified Creator',
           story: creator.bio || 'A passionate creator building amazing content for the community.',
-          achievement: 'Verified Creator',
+          achievement: isAdmin ? 'Platform Founder' : 'Verified Creator',
           quote: null,
           featured_at: new Date().toISOString(),
-          profile: { ...creator, isAdmin: !!roleRow },
+          profile: { ...creator, isAdmin },
           products_count: productsResult.count || 0,
           followers_count: followersResult.count || 0,
         } as SpotlightCreator;
@@ -165,11 +177,13 @@ export default function Spotlight() {
             and made an impact in our community.
           </p>
           
-          <Button variant="outline" className="rounded-full" asChild>
-            <Link to="/community">
-              Nominate a Creator
-              <ChevronRight className="ml-2 h-4 w-4" />
-            </Link>
+          <Button 
+            variant="outline" 
+            className="rounded-full"
+            onClick={() => setNominateDialogOpen(true)}
+          >
+            Nominate a Creator
+            <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
       </section>
@@ -367,6 +381,9 @@ export default function Spotlight() {
           </div>
         </div>
       </section>
+
+      {/* Nominate Creator Dialog */}
+      <NominateCreatorDialog open={nominateDialogOpen} onOpenChange={setNominateDialogOpen} />
     </div>
   );
 }
