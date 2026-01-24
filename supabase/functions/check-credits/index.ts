@@ -26,21 +26,26 @@ serve(async (req) => {
     );
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("No authorization header provided");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      logStep("No auth header - returning default for unauthenticated user");
+      return new Response(
+        JSON.stringify({ credit_balance: 0, authenticated: false }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     
-    if (userError) {
-      throw new Error(`Authentication error: ${userError.message}`);
+    if (userError || !userData.user) {
+      logStep("Auth failed - returning default for unauthenticated user");
+      return new Response(
+        JSON.stringify({ credit_balance: 0, authenticated: false }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
     }
     
     const user = userData.user;
-    if (!user) {
-      throw new Error("User not authenticated");
-    }
     
     logStep("User authenticated", { userId: user.id });
 
