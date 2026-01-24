@@ -598,47 +598,43 @@ const ProfilePage: React.FC = () => {
           
           setPurchases(typedPurchases);
 
-          // Fetch saved products
-          const { data: savedData, error: savedError } = await supabase
+          // Fetch saved products (two-step fetch because saved_products has no FK relationship,
+          // so PostgREST joins like products!inner won't work reliably).
+          const { data: savedRows, error: savedError } = await supabase
             .from('saved_products')
-            .select(`
-              id,
-              product_id,
-              created_at,
-              product:products!inner (
-                id,
-                name,
-                cover_image_url,
-                youtube_url,
-                preview_video_url,
-                pricing_type,
-                price_cents,
-                currency,
-                status
-              )
-            `)
+            .select('id, product_id, created_at')
             .eq('user_id', data.id)
             .order('created_at', { ascending: false });
 
           if (savedError) {
             console.error('Error fetching saved products:', savedError);
+            setSavedProducts([]);
+          } else if (!savedRows || savedRows.length === 0) {
+            setSavedProducts([]);
+          } else {
+            const savedProductIds = savedRows.map((r) => r.product_id);
+            const { data: savedProductsData, error: productsError } = await supabase
+              .from('products')
+              .select('id, name, cover_image_url, youtube_url, preview_video_url, pricing_type, price_cents, currency, status')
+              .in('id', savedProductIds)
+              .eq('status', 'published');
+
+            if (productsError) {
+              console.error('Error fetching saved product details:', productsError);
+              setSavedProducts([]);
+            } else {
+              const productMap = new Map((savedProductsData || []).map((p) => [p.id, p]));
+              const typedSaved = savedRows
+                .map((r) => ({
+                  id: r.id,
+                  product_id: r.product_id,
+                  created_at: r.created_at,
+                  product: productMap.get(r.product_id) ?? null,
+                }))
+                .filter((r) => r.product) as SavedProduct[];
+              setSavedProducts(typedSaved);
+            }
           }
-
-          // Normalize join shape (PostgREST can return joined rows as an object or array)
-          // then filter to only published products.
-          const typedSaved = (savedData || [])
-            .map((s) => {
-              const product = Array.isArray(s.product) ? s.product[0] : s.product;
-              return {
-                id: s.id,
-                product_id: s.product_id,
-                created_at: s.created_at,
-                product,
-              };
-            })
-            .filter((s) => s.product && (s.product as any).status === 'published') as SavedProduct[];
-
-          setSavedProducts(typedSaved);
         }
 
         // Fetch collections for the profile
