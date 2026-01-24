@@ -84,6 +84,36 @@ serve(async (req) => {
 
       const metadata = session.metadata || {};
 
+      // Handle editor booking checkout
+      if (metadata.type === "editor_booking") {
+        const editorId = metadata.editor_id;
+        const buyerId = metadata.buyer_id;
+        const hours = parseInt(metadata.hours || "0");
+        const platformFeeCents = parseInt(metadata.platform_fee_cents || "0");
+        const editorPayoutCents = parseInt(metadata.editor_payout_cents || "0");
+
+        logStep("Processing editor booking", { editorId, buyerId, hours, editorPayoutCents });
+
+        // Update the booking record to completed
+        const { error: bookingError } = await supabaseAdmin
+          .from("editor_bookings")
+          .update({
+            status: "completed",
+            stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
+          })
+          .eq("stripe_checkout_session_id", session.id);
+
+        if (bookingError) {
+          logStep("Failed to update booking record", { error: bookingError.message });
+        } else {
+          logStep("Editor booking completed successfully", { editorId, editorPayoutCents });
+        }
+        
+        return new Response(JSON.stringify({ received: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Handle subscription checkout
       if (session.mode === "subscription") {
         const planId = metadata.plan_id;
@@ -108,16 +138,15 @@ serve(async (req) => {
           }
         }
       } else {
-        // Handle one-time payment checkout
+        // Handle one-time payment checkout (product purchase)
         const productId = metadata.product_id;
         const buyerProfileId = metadata.buyer_profile_id;
         const platformFeeCents = parseInt(metadata.platform_fee_cents || "0");
         const creatorPayoutCents = parseInt(metadata.creator_payout_cents || "0");
 
         if (!productId) {
-          logStep("Missing product_id in metadata");
-          return new Response(JSON.stringify({ error: "Missing product_id" }), {
-            status: 400,
+          logStep("Missing product_id in metadata, not a product purchase");
+          return new Response(JSON.stringify({ received: true }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
