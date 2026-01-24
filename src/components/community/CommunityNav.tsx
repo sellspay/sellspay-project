@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Users, Star, HelpCircle } from 'lucide-react';
+import { MessageSquare, Users, Star, HelpCircle, Megaphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/community', label: 'Threads', icon: MessageSquare, exact: true },
+  { path: '/community/updates', label: 'Updates', icon: Megaphone },
   { path: '/community/discord', label: 'Discord', icon: Users },
   { path: '/community/spotlight', label: 'Spotlight', icon: Star },
   { path: '/faq', label: 'FAQ', icon: HelpCircle },
