@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import navbarLogo from '@/assets/navbar-logo.png';
+import authBg from '@/assets/auth-bg.png';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -87,35 +88,16 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
-      {/* Animated gradient background ribbons */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Primary purple ribbon - top right */}
-        <div 
-          className="absolute -top-[30%] -right-[20%] w-[80%] h-[120%] opacity-40"
-          style={{
-            background: 'linear-gradient(135deg, hsl(270 70% 25% / 0.8), hsl(280 65% 35% / 0.6), hsl(270 70% 20% / 0.4))',
-            transform: 'rotate(-15deg)',
-            borderRadius: '40% 60% 70% 30% / 40% 50% 60% 50%',
-            filter: 'blur(40px)',
-          }}
+      {/* Cosmic Background Image */}
+      <div className="absolute inset-0">
+        <img 
+          src={authBg} 
+          alt="" 
+          className="w-full h-full object-cover"
+          loading="eager"
         />
-        {/* Secondary ribbon - bottom left */}
-        <div 
-          className="absolute -bottom-[40%] -left-[15%] w-[70%] h-[100%] opacity-30"
-          style={{
-            background: 'linear-gradient(45deg, hsl(270 70% 20% / 0.9), hsl(280 65% 30% / 0.5), transparent)',
-            transform: 'rotate(25deg)',
-            borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%',
-            filter: 'blur(60px)',
-          }}
-        />
-        {/* Accent glow */}
-        <div 
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] opacity-20"
-          style={{
-            background: 'radial-gradient(circle, hsl(270 70% 50% / 0.3), transparent 70%)',
-          }}
-        />
+        {/* Dark overlay for readability */}
+        <div className="absolute inset-0 bg-black/40" />
       </div>
 
       {/* Back to Home */}
@@ -129,9 +111,9 @@ export default function Login() {
 
       {/* Main content */}
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-16">
-        {/* Logo */}
+        {/* Logo - 6x larger */}
         <div className="mb-8">
-          <img src={navbarLogo} alt="EditorsParadise" className="h-12 w-auto" />
+          <img src={navbarLogo} alt="EditorsParadise" className="h-48 md:h-64 w-auto mx-auto" />
         </div>
 
         {/* Title */}
@@ -164,7 +146,7 @@ export default function Login() {
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   required
-                  className="w-full h-12 px-4 rounded-lg bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
+                  className="w-full h-12 px-4 rounded-lg bg-[#0a0a0a] border border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
                 />
               </div>
 
@@ -178,7 +160,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 rounded-lg bg-secondary/80 text-foreground font-medium hover:bg-secondary transition-colors disabled:opacity-50"
+                className="w-full h-12 rounded-lg bg-[#0a0a0a] border border-white/10 text-foreground font-medium transition-all duration-300 hover:bg-purple-900/30 hover:border-purple-500/50 hover:shadow-[0_0_25px_rgba(147,51,234,0.5),0_0_50px_rgba(147,51,234,0.2)] disabled:opacity-50"
               >
                 {loading ? 'Sending...' : 'Send Reset Link'}
               </button>
@@ -186,7 +168,7 @@ export default function Login() {
 
             <button
               onClick={() => { setShowForgotPassword(false); setResetMessage(''); setError(null); }}
-              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="w-full text-center text-sm text-muted-foreground transition-all duration-300 hover:text-purple-400 hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]"
             >
               Back to login
             </button>
@@ -197,7 +179,7 @@ export default function Login() {
             <button
               type="button"
               onClick={handleGoogleSignIn}
-              className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-secondary/50 border border-border text-foreground font-medium hover:bg-secondary/70 transition-colors"
+              className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-[#0a0a0a] border border-white/10 text-foreground font-medium transition-all duration-300 hover:bg-[#1a1a1a] hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(147,51,234,0.4)]"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -211,10 +193,10 @@ export default function Login() {
             {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
+                <div className="w-full border-t border-white/10" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-background px-4 text-sm text-muted-foreground">or</span>
+                <span className="bg-transparent backdrop-blur-sm px-4 text-sm text-muted-foreground">or</span>
               </div>
             </div>
 
@@ -228,7 +210,7 @@ export default function Login() {
                   value={credential}
                   onChange={(e) => setCredential(e.target.value)}
                   required
-                  className="w-full h-12 px-4 rounded-lg bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
+                  className="w-full h-12 px-4 rounded-lg bg-[#0a0a0a] border border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
                 />
               </div>
 
@@ -238,7 +220,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-sm text-muted-foreground transition-all duration-300 hover:text-purple-400 hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]"
                   >
                     Forgot your password?
                   </button>
@@ -250,7 +232,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full h-12 px-4 pr-12 rounded-lg bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
+                    className="w-full h-12 px-4 pr-12 rounded-lg bg-[#0a0a0a] border border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
                   />
                   <button
                     type="button"
@@ -269,7 +251,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 rounded-lg bg-secondary/80 text-foreground font-medium hover:bg-secondary transition-colors disabled:opacity-50"
+                className="w-full h-12 rounded-lg bg-[#0a0a0a] border border-white/10 text-foreground font-medium transition-all duration-300 hover:bg-purple-900/30 hover:border-purple-500/50 hover:shadow-[0_0_25px_rgba(147,51,234,0.5),0_0_50px_rgba(147,51,234,0.2)] disabled:opacity-50"
               >
                 {loading ? 'Logging in...' : 'Log In'}
               </button>
