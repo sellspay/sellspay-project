@@ -624,15 +624,19 @@ const ProfilePage: React.FC = () => {
             console.error('Error fetching saved products:', savedError);
           }
 
-          // Filter to only show published products and format the data
+          // Normalize join shape (PostgREST can return joined rows as an object or array)
+          // then filter to only published products.
           const typedSaved = (savedData || [])
-            .filter(s => s.product && (s.product as any).status === 'published')
-            .map(s => ({
-              id: s.id,
-              product_id: s.product_id,
-              created_at: s.created_at,
-              product: Array.isArray(s.product) ? s.product[0] : s.product
-            })) as SavedProduct[];
+            .map((s) => {
+              const product = Array.isArray(s.product) ? s.product[0] : s.product;
+              return {
+                id: s.id,
+                product_id: s.product_id,
+                created_at: s.created_at,
+                product,
+              };
+            })
+            .filter((s) => s.product && (s.product as any).status === 'published') as SavedProduct[];
 
           setSavedProducts(typedSaved);
         }
@@ -1351,6 +1355,16 @@ const ProfilePage: React.FC = () => {
           }}
         />
       )}
+
+      {/* Creator Verification Application */}
+      <CreatorApplicationDialog
+        open={showCreatorApplication}
+        onOpenChange={setShowCreatorApplication}
+        onApplicationSubmitted={() => {
+          // No-op for now; dialog itself handles its own pending/rejected views.
+          // We keep this callback so the caller can optionally refresh profile state later.
+        }}
+      />
 
       {/* Seller Confirmation Dialog */}
       <SellerConfirmDialog
