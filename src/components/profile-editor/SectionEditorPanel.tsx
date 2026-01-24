@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { ProfileSection, SectionStyleOptions, SectionContent, SECTION_TEMPLATES } from './types';
+import { ProfileSection, SectionStyleOptions, SectionContent, SECTION_TEMPLATES, FontOption, CustomFont } from './types';
+import { FontSelector } from './FontSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -117,7 +118,7 @@ export function SectionEditorPanel({
             <div>
               <Label>Alignment</Label>
               <Select
-                value={(section.content as any).alignment || 'left'}
+                value={(section.content as any).alignment || 'center'}
                 onValueChange={(value: 'left' | 'center' | 'right') => updateContent({ alignment: value })}
               >
                 <SelectTrigger>
@@ -127,6 +128,53 @@ export function SectionEditorPanel({
                   <SelectItem value="left">Left</SelectItem>
                   <SelectItem value="center">Center</SelectItem>
                   <SelectItem value="right">Right</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Font Selector */}
+            <FontSelector
+              font={(section.content as any).font}
+              customFont={(section.content as any).customFont}
+              onChange={(updates) => updateContent(updates)}
+            />
+            
+            {/* Font Size */}
+            <div>
+              <Label>Font Size</Label>
+              <Select
+                value={(section.content as any).fontSize || 'base'}
+                onValueChange={(value) => updateContent({ fontSize: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sm">Small</SelectItem>
+                  <SelectItem value="base">Normal</SelectItem>
+                  <SelectItem value="lg">Large</SelectItem>
+                  <SelectItem value="xl">Extra Large</SelectItem>
+                  <SelectItem value="2xl">2X Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Font Weight */}
+            <div>
+              <Label>Font Weight</Label>
+              <Select
+                value={(section.content as any).fontWeight || 'normal'}
+                onValueChange={(value) => updateContent({ fontWeight: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="semibold">Semibold</SelectItem>
+                  <SelectItem value="bold">Bold</SelectItem>
+                  <SelectItem value="extrabold">Extra Bold</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -158,6 +206,33 @@ export function SectionEditorPanel({
                   <SelectItem value="small">Small</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="large">Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Font Selector */}
+            <FontSelector
+              font={(section.content as any).font}
+              customFont={(section.content as any).customFont}
+              onChange={(updates) => updateContent(updates)}
+            />
+            
+            {/* Font Weight */}
+            <div>
+              <Label>Font Weight</Label>
+              <Select
+                value={(section.content as any).fontWeight || 'bold'}
+                onValueChange={(value) => updateContent({ fontWeight: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="semibold">Semibold</SelectItem>
+                  <SelectItem value="bold">Bold</SelectItem>
+                  <SelectItem value="extrabold">Extra Bold</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -777,6 +852,79 @@ export function SectionEditorPanel({
           onCheckedChange={(checked) => updateStyleOptions({ showBackground: checked })}
         />
       </div>
+
+      {/* Container styling options - only show when container is enabled */}
+      {section.style_options?.showBackground && (
+        <>
+          {/* Container Background Color */}
+          <div>
+            <Label className="mb-2 block">Container Background Color</Label>
+            <div className="flex gap-2 items-center">
+              <input
+                type="color"
+                value={section.style_options?.containerBackgroundColor || '#1a1a1a'}
+                onChange={(e) => updateStyleOptions({ containerBackgroundColor: e.target.value })}
+                className="w-10 h-10 rounded border border-border cursor-pointer"
+              />
+              <Input
+                value={section.style_options?.containerBackgroundColor || '#1a1a1a'}
+                onChange={(e) => updateStyleOptions({ containerBackgroundColor: e.target.value })}
+                placeholder="#1a1a1a"
+                className="flex-1"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => updateStyleOptions({ containerBackgroundColor: undefined })}
+              >
+                Reset
+              </Button>
+            </div>
+          </div>
+
+          {/* Border Style */}
+          <div>
+            <Label className="mb-2 block">Border Style</Label>
+            <div className="flex gap-2">
+              {[
+                { id: 'none', label: 'None' },
+                { id: 'solid', label: 'Solid' },
+                { id: 'dashed', label: 'Dashed' },
+              ].map((style) => (
+                <Button
+                  key={style.id}
+                  variant={(section.style_options?.borderStyle || 'solid') === style.id ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => updateStyleOptions({ borderStyle: style.id as any })}
+                >
+                  {style.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Border Color - only show when border is not 'none' */}
+          {section.style_options?.borderStyle !== 'none' && (
+            <div>
+              <Label className="mb-2 block">Border Color</Label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="color"
+                  value={section.style_options?.borderColor || '#333333'}
+                  onChange={(e) => updateStyleOptions({ borderColor: e.target.value })}
+                  className="w-10 h-10 rounded border border-border cursor-pointer"
+                />
+                <Input
+                  value={section.style_options?.borderColor || '#333333'}
+                  onChange={(e) => updateStyleOptions({ borderColor: e.target.value })}
+                  placeholder="#333333"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       <div>
         <Label className="mb-2 block">Background Image</Label>

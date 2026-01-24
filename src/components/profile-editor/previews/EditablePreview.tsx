@@ -133,6 +133,24 @@ function TextEditablePreview({ content, onUpdate }: { content: TextContent; onUp
   // Inject custom font if needed
   useCustomFont(content.customFont);
   
+  // Font size classes
+  const fontSizeClasses = {
+    sm: 'text-sm',
+    base: 'text-base',
+    lg: 'text-lg',
+    xl: 'text-xl',
+    '2xl': 'text-2xl',
+  };
+  
+  // Font weight classes
+  const fontWeightClasses = {
+    normal: 'font-normal',
+    medium: 'font-medium',
+    semibold: 'font-semibold',
+    bold: 'font-bold',
+    extrabold: 'font-extrabold',
+  };
+  
   return (
     <div 
       className={cn(
@@ -140,7 +158,9 @@ function TextEditablePreview({ content, onUpdate }: { content: TextContent; onUp
         alignment === 'center' && "text-center",
         alignment === 'right' && "text-right",
         alignment === 'left' && "text-left",
-        fontClass
+        fontClass,
+        fontSizeClasses[content.fontSize || 'base'],
+        fontWeightClasses[content.fontWeight || 'normal']
       )}
       style={customFontStyle}
     >
@@ -149,7 +169,7 @@ function TextEditablePreview({ content, onUpdate }: { content: TextContent; onUp
           <InlineEdit value={content.title} onChange={(v) => onUpdate({ title: v })} placeholder="Section Title" />
         </h3>
       )}
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground">
         <InlineEdit value={content.body} onChange={(v) => onUpdate({ body: v })} placeholder="Enter your text here..." multiline />
       </p>
     </div>
@@ -362,14 +382,37 @@ function VideoEditablePreview({ content }: { content: VideoContent }) {
 
 // Headline Preview
 function HeadlineEditablePreview({ content, onUpdate }: { content: HeadlineContent; onUpdate: (c: Partial<HeadlineContent>) => void }) {
+  const fontClass = getFontClassName(content.font);
+  const customFontStyle = getCustomFontStyle(content.customFont);
+  
+  // Inject custom font if needed
+  useCustomFont(content.customFont);
+  
   const sizeClasses = {
     small: 'text-lg',
     medium: 'text-2xl',
     large: 'text-4xl',
   };
+  
+  const fontWeightClasses = {
+    normal: 'font-normal',
+    medium: 'font-medium',
+    semibold: 'font-semibold',
+    bold: 'font-bold',
+    extrabold: 'font-extrabold',
+  };
+  
   return (
-    <div className={cn("text-center py-4", sizeClasses[content.size || 'medium'])}>
-      <span className="font-bold">
+    <div 
+      className={cn(
+        "text-center py-4", 
+        sizeClasses[content.size || 'medium'],
+        fontClass,
+        fontWeightClasses[content.fontWeight || 'bold']
+      )}
+      style={customFontStyle}
+    >
+      <span>
         <InlineEdit value={content.text} onChange={(v) => onUpdate({ text: v })} placeholder="Headline Text" />
       </span>
     </div>
