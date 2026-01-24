@@ -6,7 +6,7 @@ import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { Plus, GripVertical, Pencil } from 'lucide-react';
 import { ProfileSection, SectionStyleOptions, AnimationType } from './types';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
-import { AnimationPicker } from './AnimationPicker';
+import { AnimationPicker, getAnimationStyles, getAnimatedStyles } from './AnimationPicker';
 import {
   DndContext,
   closestCenter,
@@ -68,6 +68,8 @@ const SortableSectionItem = memo(({
   isFirst: boolean;
   isLast: boolean;
 }) => {
+  const [isAnimating, setIsAnimating] = React.useState(false);
+  const contentRef = React.useRef<HTMLDivElement>(null);
   const {
     attributes,
     listeners,
@@ -80,6 +82,32 @@ const SortableSectionItem = memo(({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+  };
+
+  const handlePreviewAnimation = () => {
+    const animation = section.style_options?.animation || 'none';
+    if (animation === 'none' || !contentRef.current) return;
+    
+    // Reset to initial animation state
+    const initialStyles = getAnimationStyles(animation);
+    Object.assign(contentRef.current.style, initialStyles);
+    setIsAnimating(true);
+    
+    // Trigger reflow to restart animation
+    void contentRef.current.offsetWidth;
+    
+    // Apply animated state after brief delay
+    requestAnimationFrame(() => {
+      if (contentRef.current) {
+        const animatedStyles = getAnimatedStyles(animation);
+        Object.assign(contentRef.current.style, animatedStyles);
+      }
+    });
+    
+    // Reset after animation completes
+    setTimeout(() => {
+      setIsAnimating(false);
+    }, 700);
   };
 
   const getStyleClasses = (styleOptions: SectionStyleOptions) => {
@@ -174,6 +202,7 @@ const SortableSectionItem = memo(({
             <AnimationPicker
               value={currentAnimation}
               onChange={onAnimationChange}
+              onPreview={handlePreviewAnimation}
             />
           </div>
         )}
@@ -207,10 +236,13 @@ const SortableSectionItem = memo(({
         </div>
         
         {/* Section content */}
-        <div className={cn(
-          'relative z-0 px-6',
-          section.style_options?.backgroundWidth !== 'full' && 'max-w-4xl mx-auto'
-        )}>
+        <div 
+          ref={contentRef}
+          className={cn(
+            'relative z-0 px-6',
+            section.style_options?.backgroundWidth !== 'full' && 'max-w-4xl mx-auto'
+          )}
+        >
           <SectionPreviewContent section={section} />
         </div>
         
