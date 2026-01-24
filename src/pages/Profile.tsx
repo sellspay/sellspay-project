@@ -46,6 +46,7 @@ interface Profile {
   website: string | null;
   social_links: unknown;
   is_creator: boolean | null;
+  is_seller: boolean | null;
   verified: boolean | null;
   show_recent_uploads?: boolean | null;
   global_font?: string | null;
@@ -297,12 +298,12 @@ const ProfilePage: React.FC = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ is_creator: true })
+        .update({ is_seller: true })
         .eq('id', profile.id);
       
       if (error) throw error;
       
-      setProfile({ ...profile, is_creator: true });
+      setProfile({ ...profile, is_seller: true });
       setShowSellerConfirm(false);
       toast.success('Your account is now a seller account! You can create products.');
     } catch (error) {
@@ -445,7 +446,7 @@ const ProfilePage: React.FC = () => {
         setIsOwnProfile(ownProfile);
         
         // Set default tab: for non-sellers viewing their own profile, default to downloads
-        if (ownProfile && !data.is_creator) {
+        if (ownProfile && !data.is_seller) {
           setActiveTab('downloads');
         }
 
@@ -775,8 +776,8 @@ const ProfilePage: React.FC = () => {
 
             {/* Action buttons on desktop - positioned to the right */}
             <div className="hidden md:flex flex-1 justify-end gap-2 pb-2">
-              {/* Follow button for other profiles */}
-              {!isOwnProfile && profile.is_creator && (
+              {/* Follow button for other profiles - only show for sellers */}
+              {!isOwnProfile && profile.is_seller && (
                 <Button 
                   onClick={handleFollow}
                   variant={isFollowing ? "outline" : "default"}
@@ -796,8 +797,8 @@ const ProfilePage: React.FC = () => {
                 </Button>
               )}
               
-              {/* Subscribe button for creators with plans */}
-              {!isOwnProfile && profile.is_creator && creatorHasPlans && (
+              {/* Subscribe button for sellers with plans */}
+              {!isOwnProfile && profile.is_seller && creatorHasPlans && (
                 <Button 
                   onClick={() => setShowSubscribeDialog(true)}
                   variant="outline"
@@ -825,7 +826,7 @@ const ProfilePage: React.FC = () => {
                   >
                     <Settings className="w-4 h-4" />
                   </Button>
-                  {!profile.is_creator && (
+                  {!profile.is_seller && (
                     <Button 
                       variant="default"
                       onClick={() => setShowSellerConfirm(true)}
@@ -835,7 +836,7 @@ const ProfilePage: React.FC = () => {
                       Seller?
                     </Button>
                   )}
-                  {!profile.verified && profile.is_creator && (
+                  {!profile.verified && profile.is_seller && (
                     <Button 
                       variant="outline"
                       onClick={() => setShowCreatorApplication(true)}
@@ -860,9 +861,9 @@ const ProfilePage: React.FC = () => {
               {profile.verified && (
                 <VerifiedBadge isOwner={isAdmin} size="md" />
               )}
-              {profile.is_creator && (
+              {profile.is_seller && (
                 <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
-                  Owner
+                  Seller
                 </Badge>
               )}
               {isAdmin && (
@@ -960,8 +961,8 @@ const ProfilePage: React.FC = () => {
 
             {/* Mobile action buttons */}
             <div className="flex md:hidden flex-wrap gap-2 mb-4">
-              {/* Follow button for other profiles */}
-              {!isOwnProfile && profile.is_creator && (
+              {/* Follow button for other profiles - only show for sellers */}
+              {!isOwnProfile && profile.is_seller && (
                 <Button 
                   onClick={handleFollow}
                   variant={isFollowing ? "outline" : "default"}
@@ -981,8 +982,8 @@ const ProfilePage: React.FC = () => {
                 </Button>
               )}
 
-              {/* Subscribe button for creators with plans (mobile) */}
-              {!isOwnProfile && profile.is_creator && creatorHasPlans && (
+              {/* Subscribe button for sellers with plans (mobile) */}
+              {!isOwnProfile && profile.is_seller && creatorHasPlans && (
                 <Button 
                   onClick={() => setShowSubscribeDialog(true)}
                   variant="outline"
@@ -1019,8 +1020,8 @@ const ProfilePage: React.FC = () => {
         {/* Instagram-style Icon Tabs */}
         <div className="mt-8 max-w-4xl mx-auto px-4">
           <div className="flex justify-center border-t border-border">
-            {/* Store/Collections Tab - only for sellers (is_creator=true) on own profile, or public view */}
-            {(profile.is_creator || !isOwnProfile) && (
+            {/* Store/Collections Tab - only for sellers (is_seller=true) on own profile, or public view */}
+            {(profile.is_seller || !isOwnProfile) && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -1034,7 +1035,7 @@ const ProfilePage: React.FC = () => {
                     <User className="w-5 h-5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>{profile.is_creator ? 'Store' : 'Products'}</TooltipContent>
+                <TooltipContent>{profile.is_seller ? 'Store' : 'Products'}</TooltipContent>
               </Tooltip>
             )}
 
@@ -1085,7 +1086,7 @@ const ProfilePage: React.FC = () => {
           {activeTab === 'collections' && (
             <>
               {/* Edit Controls for own profile */}
-              {isOwnProfile && profile.is_creator && (
+              {isOwnProfile && profile.is_seller && (
                 <div className="flex justify-end items-center mb-6 gap-2">
                   <Button
                     variant="default"

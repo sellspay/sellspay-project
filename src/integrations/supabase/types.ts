@@ -678,6 +678,7 @@ export type Database = {
           id: string
           is_creator: boolean | null
           is_editor: boolean | null
+          is_seller: boolean | null
           mfa_enabled: boolean | null
           phone: string | null
           show_recent_uploads: boolean | null
@@ -712,6 +713,7 @@ export type Database = {
           id?: string
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_seller?: boolean | null
           mfa_enabled?: boolean | null
           phone?: string | null
           show_recent_uploads?: boolean | null
@@ -746,6 +748,7 @@ export type Database = {
           id?: string
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_seller?: boolean | null
           mfa_enabled?: boolean | null
           phone?: string | null
           show_recent_uploads?: boolean | null

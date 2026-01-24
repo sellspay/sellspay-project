@@ -42,7 +42,7 @@ const generateSlug = (title: string): string => {
 export default function CreateProduct() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isCreator, setIsCreator] = useState<boolean | null>(null);
+  const [isSeller, setIsSeller] = useState<boolean | null>(null);
   const [checkingCreator, setCheckingCreator] = useState(true);
   
   const [loading, setLoading] = useState(false);
@@ -60,9 +60,9 @@ export default function CreateProduct() {
   const [previewVideoPreview, setPreviewVideoPreview] = useState<string | null>(null);
   const [downloadFile, setDownloadFile] = useState<File | null>(null);
 
-  // Check if user is an approved creator
+  // Check if user is a seller
   useEffect(() => {
-    const checkCreatorStatus = async () => {
+    const checkSellerStatus = async () => {
       if (!user) {
         setCheckingCreator(false);
         return;
@@ -70,15 +70,15 @@ export default function CreateProduct() {
       
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_creator')
+        .select('is_seller')
         .eq('user_id', user.id)
         .maybeSingle();
       
-      setIsCreator(profile?.is_creator || false);
+      setIsSeller(profile?.is_seller || false);
       setCheckingCreator(false);
     };
     
-    checkCreatorStatus();
+    checkSellerStatus();
   }, [user]);
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,7 +263,7 @@ export default function CreateProduct() {
     );
   }
 
-  if (!isCreator) {
+  if (!isSeller) {
     return (
       <div className="container mx-auto px-4 py-16 text-center max-w-md">
         <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
