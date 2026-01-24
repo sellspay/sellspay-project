@@ -5,6 +5,7 @@ import { ThreadCard } from '@/components/community/ThreadCard';
 import { ThreadComposer } from '@/components/community/ThreadComposer';
 import { CategoryFilter } from '@/components/community/CategoryFilter';
 import { CommunityNav } from '@/components/community/CommunityNav';
+import { ThreadReplyDialog } from '@/components/community/ThreadReplyDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 
@@ -34,23 +35,25 @@ interface Thread {
 export default function Community() {
   const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState('all');
+  const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
+  const [replyDialogOpen, setReplyDialogOpen] = useState(false);
 
   // Fetch user profile
   const { data: profile } = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+      const { data } = await supabase.from('profiles').select('id').eq('user_id', user.id).single();
       return data;
     },
     enabled: !!user?.id,
   });
 
-  const { data: threads = [], isLoading, refetch } = useQuery({
+  const {
+    data: threads = [],
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ['threads', activeCategory],
     queryFn: async () => {
       let query = supabase
@@ -126,20 +129,12 @@ export default function Community() {
   useEffect(() => {
     const channel = supabase
       .channel('threads-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'threads' },
-        () => {
-          refetch();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'thread_likes' },
-        () => {
-          refetch();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'threads' }, () => {
+        refetch();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'thread_replies' }, () => {
+        refetch();
+      })
       .subscribe();
 
     return () => {
@@ -147,22 +142,25 @@ export default function Community() {
     };
   }, [refetch]);
 
+  const handleReplyClick = (thread: Thread) => {
+    setSelectedThread(thread);
+    setReplyDialogOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="relative py-16 px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-accent/10" />
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
-        
+
         <div className="relative mx-auto max-w-4xl text-center mb-10">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium text-primary">Community Hub</span>
           </div>
-          
-          <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
-            Join the Conversation
-          </h1>
+
+          <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">Join the Conversation</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Ask questions, share your work, get feedback, and connect with thousands of creators.
           </p>
@@ -182,10 +180,7 @@ export default function Community() {
 
           {/* Category Filter */}
           <div className="flex justify-center">
-            <CategoryFilter
-              activeCategory={activeCategory}
-              onCategoryChange={setActiveCategory}
-            />
+            <CategoryFilter activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
           </div>
 
           {/* Threads List */}
@@ -197,19 +192,20 @@ export default function Community() {
             <div className="text-center py-16">
               <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-foreground mb-2">No threads yet</h3>
-              <p className="text-muted-foreground">
-                Be the first to start a conversation!
-              </p>
+              <p className="text-muted-foreground">Be the first to start a conversation!</p>
             </div>
           ) : (
             <div className="space-y-4">
               {threads.map((thread) => (
-                <ThreadCard key={thread.id} thread={thread} />
+                <ThreadCard key={thread.id} thread={thread} onReplyClick={handleReplyClick} />
               ))}
             </div>
           )}
         </div>
       </section>
+
+      {/* Reply Dialog */}
+      <ThreadReplyDialog thread={selectedThread} open={replyDialogOpen} onOpenChange={setReplyDialogOpen} />
     </div>
   );
 }
