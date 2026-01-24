@@ -236,6 +236,27 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_nominations: {
+        Row: {
+          created_at: string | null
+          creator_id: string
+          id: string
+          nominator_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          creator_id: string
+          id?: string
+          nominator_id: string
+        }
+        Update: {
+          created_at?: string | null
+          creator_id?: string
+          id?: string
+          nominator_id?: string
+        }
+        Relationships: []
+      }
       creator_spotlights: {
         Row: {
           achievement: string | null

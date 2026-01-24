@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import EditUserDialog from "@/components/admin/EditUserDialog";
 import ManageFeaturedDialog from "@/components/admin/ManageFeaturedDialog";
 import DeleteProductDialog from "@/components/admin/DeleteProductDialog";
 import ViewCreatorApplicationDialog from "@/components/admin/ViewCreatorApplicationDialog";
+import SpotlightNominationsDialog from "@/components/admin/SpotlightNominationsDialog";
 import { CreatorApplication, PRODUCT_TYPE_OPTIONS } from "@/components/creator-application/types";
 
 interface Profile {
@@ -111,6 +112,7 @@ export default function Admin() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deletingApplicationId, setDeletingApplicationId] = useState<string | null>(null);
   const [deletingCreatorAppId, setDeletingCreatorAppId] = useState<string | null>(null);
+  const [showSpotlightDialog, setShowSpotlightDialog] = useState(false);
   
   // Stats
   const [totalUsers, setTotalUsers] = useState(0);
@@ -604,12 +606,16 @@ export default function Admin() {
 
       {/* Data Tables */}
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="featured" className="relative">
             <Star className="w-4 h-4 mr-1.5" />
             Featured
+          </TabsTrigger>
+          <TabsTrigger value="spotlight" className="relative">
+            <Crown className="w-4 h-4 mr-1.5 text-amber-500" />
+            Spotlight
           </TabsTrigger>
           <TabsTrigger value="editor-applications" className="relative">
             Editor Applications
@@ -952,6 +958,65 @@ export default function Admin() {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Spotlight Tab */}
+        <TabsContent value="spotlight">
+          <Card className="bg-card/50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Crown className="w-5 h-5 text-amber-500" />
+                    Creator Spotlight Nominations
+                  </CardTitle>
+                  <CardDescription>
+                    View community nominations and select featured creators for the Spotlight page
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={() => setShowSpotlightDialog(true)} 
+                  className="gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
+                >
+                  <Crown className="w-4 h-4" />
+                  Manage Spotlight
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-6 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <div className="flex items-center gap-3">
+                    <Crown className="w-8 h-8 text-amber-500" />
+                    <div>
+                      <p className="text-lg font-bold">Creator Spotlight</p>
+                      <p className="text-sm text-muted-foreground">
+                        Review nominations from the community and select creators to feature on the Spotlight page.
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => setShowSpotlightDialog(true)} 
+                    className="mt-4 w-full"
+                    variant="outline"
+                  >
+                    View Nominations
+                  </Button>
+                </div>
+                <div className="p-6 rounded-lg bg-secondary/50 border">
+                  <div className="flex items-center gap-3">
+                    <Star className="w-8 h-8 text-muted-foreground" />
+                    <div>
+                      <p className="text-lg font-bold">How It Works</p>
+                      <p className="text-sm text-muted-foreground">
+                        Users nominate creators → You review nominations → Select winners to feature on Spotlight page.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1358,6 +1423,12 @@ export default function Admin() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <SpotlightNominationsDialog 
+        open={showSpotlightDialog} 
+        onOpenChange={setShowSpotlightDialog} 
+      />
     </div>
   );
 }
