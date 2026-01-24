@@ -20,6 +20,7 @@ import { format, subDays, startOfMonth, eachDayOfInterval } from 'date-fns';
 interface ProfileData {
   id: string;
   is_creator: boolean | null;
+  is_seller: boolean | null;
 }
 
 interface Product {
@@ -58,7 +59,7 @@ export default function Dashboard() {
     try {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('id, is_creator')
+        .select('id, is_creator, is_seller')
         .eq('user_id', user!.id)
         .maybeSingle();
 
@@ -71,7 +72,7 @@ export default function Dashboard() {
       
       setProfile(profileData);
 
-      if (profileData.is_creator) {
+      if (profileData.is_creator || profileData.is_seller) {
         // Fetch products
         const { data: productsData, error: productsError } = await supabase
           .from('products')
@@ -249,16 +250,16 @@ export default function Dashboard() {
     );
   }
 
-  if (!profile?.is_creator) {
+  if (!profile?.is_creator && !profile?.is_seller) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <BarChart3 className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
         <h1 className="text-2xl font-bold mb-4">Dashboard Not Available</h1>
         <p className="text-muted-foreground mb-8">
-          The dashboard is available for creators. Become a creator to access it.
+          The dashboard is available for sellers. Become a seller to access it.
         </p>
         <Button variant="outline" onClick={() => navigate('/settings')}>
-          Become a Creator
+          Become a Seller
         </Button>
       </div>
     );
