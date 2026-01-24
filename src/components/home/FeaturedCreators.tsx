@@ -25,7 +25,7 @@ export function FeaturedCreators() {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, full_name, avatar_url, verified, bio')
-        .eq('is_seller', true)
+        .eq('is_creator', true)
         .limit(6);
 
       if (error) {
