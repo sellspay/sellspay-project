@@ -258,20 +258,30 @@ export default function ProductCard({
           ) : null}
 
           {/* Premium Price Badge */}
-          <div className={`absolute top-3 left-3 flex items-center gap-1.5 rounded-lg backdrop-blur-md border transition-all duration-300 ${
+          <div className={`absolute top-3 left-3 flex items-center gap-2 rounded-xl backdrop-blur-xl border transition-all duration-300 ${
             isFree 
-              ? 'bg-emerald-500/90 border-emerald-400/50 text-white px-3 py-1.5' 
-              : 'bg-background/90 border-border/50 text-foreground px-3 py-1.5'
-          } ${isLarge ? 'text-sm font-semibold' : 'text-xs font-medium'}`}>
-            {isFree && <Sparkles className={`${isLarge ? 'h-4 w-4' : 'h-3 w-3'}`} />}
-            {formatPrice(product.price_cents, product.currency)}
+              ? 'bg-gradient-to-br from-white/15 to-white/5 border-white/20 text-white shadow-[0_0_20px_rgba(255,255,255,0.1)] px-4 py-2' 
+              : 'bg-background/80 border-border/30 text-foreground px-4 py-2 shadow-lg'
+          } ${isLarge ? 'text-sm font-semibold tracking-wide' : 'text-xs font-medium tracking-wide'}`}>
+            {isFree && (
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+              </span>
+            )}
+            <span className={isFree ? 'uppercase tracking-widest' : ''}>
+              {formatPrice(product.price_cents, product.currency)}
+            </span>
           </div>
 
-          {/* Premium "Trending" Badge (replaces Hot) */}
+          {/* Premium "Trending" Badge */}
           {isHot && (
-            <div className={`absolute top-3 ${isFree ? 'left-24' : 'left-20'} flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 border border-amber-400/50 px-3 py-1.5 backdrop-blur-md ${isLarge ? 'text-sm font-semibold' : 'text-xs font-medium'} text-white shadow-lg shadow-orange-500/25`}>
-              <Crown className={`${isLarge ? 'h-4 w-4' : 'h-3 w-3'}`} />
-              Trending
+            <div className={`absolute top-3 ${isFree ? 'left-[7rem]' : 'left-24'} group/badge`}>
+              <div className={`relative flex items-center gap-2 rounded-xl bg-gradient-to-br from-amber-400/20 via-orange-500/10 to-amber-600/20 border border-amber-400/30 px-4 py-2 backdrop-blur-xl ${isLarge ? 'text-sm font-semibold' : 'text-xs font-medium'} text-amber-200 shadow-[0_0_30px_rgba(251,191,36,0.15)]`}>
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 opacity-0 group-hover/badge:opacity-100 transition-opacity duration-500" />
+                <Flame className={`${isLarge ? 'h-4 w-4' : 'h-3.5 w-3.5'} text-amber-400 drop-shadow-[0_0_4px_rgba(251,191,36,0.5)]`} />
+                <span className="relative uppercase tracking-widest text-amber-100">Hot</span>
+              </div>
             </div>
           )}
 
