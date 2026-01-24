@@ -313,12 +313,12 @@ export default function Settings() {
   };
 
   const handleSendOtpFor2FA = async () => {
-    if (!user?.email) return;
+    if (!user?.email || !user?.id) return;
     
     setSendingOtp(true);
     try {
       const { error } = await supabase.functions.invoke("send-verification-otp", {
-        body: { email: user.email }
+        body: { email: user.email, userId: user.id }
       });
       
       if (error) throw error;
