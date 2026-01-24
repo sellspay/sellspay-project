@@ -274,6 +274,37 @@ export default function Home() {
       {/* Featured Creators */}
       <FeaturedCreators />
 
+      {/* CTA Section */}
+      <Reveal>
+        <section className="py-24 lg:py-32">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl text-center">
+            <div className="relative p-12 lg:p-16 rounded-3xl bg-gradient-to-br from-primary/10 via-background to-accent/10 border border-border overflow-hidden">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-accent/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+              
+              <div className="relative z-10">
+                <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
+                  Ready to create something amazing?
+                </h2>
+                <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
+                  Join thousands of creators using EditorsParadise to level up their content.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button asChild size="lg" className="rounded-full px-8">
+                    <Link to="/products">Browse Store</Link>
+                  </Button>
+                  {!user && (
+                    <Button asChild size="lg" variant="outline" className="rounded-full px-8">
+                      <Link to="/signup">Create Account</Link>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </Reveal>
     </div>
   );
 }
