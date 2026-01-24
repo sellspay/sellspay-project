@@ -1210,6 +1210,7 @@ export type Database = {
           community_members: number
           premium_products: number
           verified_creators: number
+          verified_sellers: number
         }[]
       }
       get_monthly_tool_usage: { Args: { p_user_id: string }; Returns: number }
