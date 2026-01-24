@@ -62,12 +62,12 @@ export function NominateCreatorDialog({ open, onOpenChange }: NominateCreatorDia
         followerCountMap.set(f.following_id, (followerCountMap.get(f.following_id) || 0) + 1);
       });
 
-      // Fetch admin roles
+      // Fetch owner roles (for Owner badge)
       const userIds = creatorsData.map(c => c.user_id).filter(Boolean);
-      const { data: adminRoles } = userIds.length
-        ? await supabase.from('user_roles').select('user_id').eq('role', 'admin').in('user_id', userIds)
+      const { data: ownerRoles } = userIds.length
+        ? await supabase.from('user_roles').select('user_id').eq('role', 'owner').in('user_id', userIds)
         : { data: [] };
-      const adminUserIds = new Set(adminRoles?.map(r => r.user_id) || []);
+      const adminUserIds = new Set(ownerRoles?.map(r => r.user_id) || []);
 
       // Build creators with follower counts and admin status
       const creatorsWithData: Creator[] = creatorsData.map(creator => ({

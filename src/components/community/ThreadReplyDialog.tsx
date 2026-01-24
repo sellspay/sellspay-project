@@ -109,12 +109,12 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
 
       const authorsMap = new Map(authorsData?.map((a) => [a.id, a]) || []);
 
-      // Fetch admin roles
+      // Fetch owner roles (for Owner badge)
       const userIds = (authorsData || []).map((p: any) => p.user_id).filter(Boolean);
-      const { data: adminRoles } = userIds.length
-        ? await supabase.from('user_roles').select('user_id').eq('role', 'admin').in('user_id', userIds)
+      const { data: ownerRoles } = userIds.length
+        ? await supabase.from('user_roles').select('user_id').eq('role', 'owner').in('user_id', userIds)
         : { data: [] as any[] };
-      const adminUserIds = new Set((adminRoles || []).map((r: any) => r.user_id));
+      const adminUserIds = new Set((ownerRoles || []).map((r: any) => r.user_id));
 
       // Fetch likes counts
       const replyIds = repliesData.map((r) => r.id);
@@ -152,9 +152,9 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
     enabled: !!thread?.id && open,
   });
 
-  // Check if thread author is admin
+  // Check if thread author is owner (for Owner badge)
   const { data: threadAuthorIsAdmin } = useQuery({
-    queryKey: ['user-is-admin', thread?.author_id],
+    queryKey: ['user-is-owner', thread?.author_id],
     queryFn: async () => {
       if (!thread?.author_id) return false;
       // threads.author_id points to profiles.id (not auth user id)
@@ -169,7 +169,7 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
         .from('user_roles')
         .select('user_id')
         .eq('user_id', authorProfile.user_id)
-        .eq('role', 'admin')
+        .eq('role', 'owner')
         .maybeSingle();
       return !!roleRow;
     },

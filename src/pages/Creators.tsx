@@ -64,7 +64,7 @@ export default function Creators() {
         const { data: roles } = await supabase
           .from('user_roles')
           .select('user_id')
-          .eq('role', 'admin')
+          .eq('role', 'owner')
           .in('user_id', userIds);
         adminUserIds = (roles || []).map(r => r.user_id);
       }
@@ -242,10 +242,12 @@ export default function Creators() {
                         </Tooltip>
                       </div>
                       
-                      {/* Owner badge */}
-                      <Badge variant="outline" className="mt-3 text-xs text-muted-foreground border-muted-foreground/30">
-                        Owner
-                      </Badge>
+                      {/* Owner badge - only show for owner */}
+                      {creator.isOwner && (
+                        <Badge variant="outline" className="mt-3 text-xs text-muted-foreground border-muted-foreground/30">
+                          Owner
+                        </Badge>
+                      )}
                     </div>
                   </Link>
                 ))}

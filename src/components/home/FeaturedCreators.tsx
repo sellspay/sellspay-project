@@ -37,15 +37,15 @@ export function FeaturedCreators() {
       }
 
       if (data && data.length > 0) {
-        // Fetch admin status for all creators
+        // Fetch owner status for all creators (for Owner badge)
         const userIds = data.map(c => c.user_id);
-        const { data: adminRoles } = await supabase
+        const { data: ownerRoles } = await supabase
           .from('user_roles')
           .select('user_id')
-          .eq('role', 'admin')
+          .eq('role', 'owner')
           .in('user_id', userIds);
 
-        const adminUserIds = new Set(adminRoles?.map(r => r.user_id) || []);
+        const adminUserIds = new Set(ownerRoles?.map(r => r.user_id) || []);
         
         setCreators(data.map(creator => ({
           ...creator,

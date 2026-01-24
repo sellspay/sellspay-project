@@ -461,15 +461,15 @@ const ProfilePage: React.FC = () => {
         setActiveTab('downloads');
       }
 
-      // Check if the PROFILE BEING VIEWED is an admin (for special verified badge)
+      // Check if the PROFILE BEING VIEWED is an owner (for special Owner badge)
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', data.user_id)
-        .eq('role', 'admin')
+        .eq('role', 'owner')
         .maybeSingle();
-      const profileIsAdmin = !!roleData;
-      setIsAdmin(profileIsAdmin);
+      const profileIsOwner = !!roleData;
+      setIsAdmin(profileIsOwner);
 
       // Fetch followers count
       const { count: followers } = await supabase
@@ -654,7 +654,7 @@ const ProfilePage: React.FC = () => {
       fetchCollections(data.id, ownProfile);
 
       // Check if creator/owner has subscription plans (for non-own profiles)
-      if (!ownProfile && (data.is_creator || profileIsAdmin)) {
+      if (!ownProfile && (data.is_creator || profileIsOwner)) {
         const { count } = await supabase
           .from('creator_subscription_plans')
           .select('*', { count: 'exact', head: true })

@@ -370,13 +370,13 @@ export default function ProductDetail() {
           setIsOwner(true);
         }
         
-        // Check if creator is admin
+        // Check if creator is owner (for Owner badge)
         if (creatorData?.user_id) {
           const { data: roleData } = await supabase
             .from("user_roles")
             .select("role")
             .eq("user_id", creatorData.user_id)
-            .eq("role", "admin")
+            .eq("role", "owner")
             .maybeSingle();
           setIsCreatorAdmin(!!roleData);
         }
