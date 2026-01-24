@@ -186,13 +186,75 @@ serve(async (req) => {
       }
     }
 
-    // Generate signed URL
-    // The download_url is stored as a path like "user-id/timestamp-filename.zip"
-    const filePath = product.download_url;
+    // Generate signed URL or return public URL
+    // The download_url can be:
+    // 1. A relative path for product-files bucket (e.g., "user-id/timestamp-filename.zip")
+    // 2. A full URL from product-media bucket (legacy public storage)
+    const downloadUrl = product.download_url;
     
+    // Check if it's a full URL (legacy public storage)
+    if (downloadUrl.startsWith("http://") || downloadUrl.startsWith("https://")) {
+      // Check if it's from product-media bucket (public) or product-files bucket
+      if (downloadUrl.includes("/product-media/")) {
+        // Legacy public URL - return as-is
+        logStep("Returning public URL directly (legacy product-media)");
+        return new Response(
+          JSON.stringify({ 
+            url: downloadUrl,
+            expiresIn: 0 // No expiry for public URLs
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          }
+        );
+      } else if (downloadUrl.includes("/product-files/")) {
+        // Extract the path from the full URL for product-files bucket
+        const pathMatch = downloadUrl.match(/\/product-files\/(.+)$/);
+        if (pathMatch && pathMatch[1]) {
+          const filePath = decodeURIComponent(pathMatch[1]);
+          logStep("Extracted path from full URL", { filePath });
+          
+          const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
+            .from("product-files")
+            .createSignedUrl(filePath, 300);
+
+          if (signedUrlError || !signedUrlData) {
+            logStep("Failed to generate signed URL", { error: signedUrlError?.message });
+            throw new Error("Failed to generate download URL");
+          }
+          
+          logStep("Signed URL generated successfully");
+          return new Response(
+            JSON.stringify({ 
+              url: signedUrlData.signedUrl,
+              expiresIn: 300 
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 200,
+            }
+          );
+        }
+      }
+      // Unknown full URL format - return as-is
+      logStep("Unknown URL format, returning as-is");
+      return new Response(
+        JSON.stringify({ 
+          url: downloadUrl,
+          expiresIn: 0
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+    
+    // Relative path - generate signed URL from product-files bucket
     const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
       .from("product-files")
-      .createSignedUrl(filePath, 300); // 5 minutes expiry
+      .createSignedUrl(downloadUrl, 300); // 5 minutes expiry
 
     if (signedUrlError || !signedUrlData) {
       logStep("Failed to generate signed URL", { error: signedUrlError?.message });
