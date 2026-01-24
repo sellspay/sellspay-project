@@ -1039,53 +1039,26 @@ const ProfilePage: React.FC = () => {
                 </div>
               )}
 
-              {/* Automatic "Recent Uploads" Collection */}
-              {filteredProducts.length > 0 && showRecentUploads && (
-                <div className="mb-10">
-                  <CollectionRow
-                    id="recent-uploads"
-                    name="Recent Uploads"
-                    coverImage={null}
-                    products={filteredProducts.slice(0, 9).map(p => ({
-                      id: p.id,
-                      name: p.name,
-                      cover_image_url: p.cover_image_url,
-                      youtube_url: p.youtube_url,
-                      preview_video_url: p.preview_video_url,
-                      price_cents: p.price_cents,
-                      currency: p.currency,
-                      pricing_type: p.pricing_type,
-                      created_at: p.created_at,
-                      likeCount: p.likeCount,
-                      commentCount: p.commentCount,
-                    }))}
-                    totalCount={filteredProducts.length}
-                  />
-                </div>
-              )}
-
-              {/* User Created Collections */}
-              {collections.length > 0 && (
-                <div className="space-y-10">
-                  {collections.map((collection) => (
-                    <CollectionRow
-                      key={collection.id}
-                      id={collection.id}
-                      name={collection.name}
-                      coverImage={collection.cover_image_url}
-                      products={collection.products}
-                      totalCount={collection.totalCount}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Saved custom sections from the Profile Editor */}
+              {/* Unified layout: Recent Uploads + Collections + Sections interleaved */}
               {profile?.id && (
                 <PublicProfileSections
                   profileId={profile.id}
                   isOwnProfile={isOwnProfile}
                   refreshKey={layoutRefreshKey}
+                  recentUploadsVisible={showRecentUploads && filteredProducts.length > 0}
+                  recentProducts={filteredProducts.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    cover_image_url: p.cover_image_url,
+                    youtube_url: p.youtube_url,
+                    preview_video_url: p.preview_video_url,
+                    price_cents: p.price_cents,
+                    currency: p.currency,
+                    pricing_type: p.pricing_type,
+                    created_at: p.created_at,
+                    likeCount: p.likeCount,
+                    commentCount: p.commentCount,
+                  }))}
                 />
               )}
 
