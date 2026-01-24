@@ -10,51 +10,90 @@ interface ColorPickerProps {
   label?: string;
 }
 
-// HSL to Hex conversion
-function hslToHex(h: number, s: number, l: number): string {
-  s /= 100;
-  l /= 100;
-  const a = s * Math.min(l, 1 - l);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, '0');
+// HSV to RGB conversion (more intuitive for color pickers)
+function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: number } {
+  h = h / 360;
+  s = s / 100;
+  v = v / 100;
+  
+  let r = 0, g = 0, b = 0;
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+  
+  switch (i % 6) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    case 5: r = v; g = p; b = q; break;
+  }
+  
+  return {
+    r: Math.round(r * 255),
+    g: Math.round(g * 255),
+    b: Math.round(b * 255),
   };
-  return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-// Hex to HSL conversion
-function hexToHsl(hex: string): { h: number; s: number; l: number } {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  if (!result) return { h: 0, s: 100, l: 50 };
-
-  let r = parseInt(result[1], 16) / 255;
-  let g = parseInt(result[2], 16) / 255;
-  let b = parseInt(result[3], 16) / 255;
-
+// RGB to HSV conversion
+function rgbToHsv(r: number, g: number, b: number): { h: number; s: number; v: number } {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
+  const d = max - min;
+  
   let h = 0;
-  let s = 0;
-  const l = (max + min) / 2;
-
+  const s = max === 0 ? 0 : d / max;
+  const v = max;
+  
   if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
     switch (max) {
-      case r:
-        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-        break;
-      case g:
-        h = ((b - r) / d + 2) / 6;
-        break;
-      case b:
-        h = ((r - g) / d + 4) / 6;
-        break;
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
     }
   }
+  
+  return {
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    v: Math.round(v * 100),
+  };
+}
 
-  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+// Hex to RGB conversion
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16),
+  } : null;
+}
+
+// RGB to Hex conversion
+function rgbToHex(r: number, g: number, b: number): string {
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+// Hex to HSV
+function hexToHsv(hex: string): { h: number; s: number; v: number } {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return { h: 0, s: 100, v: 100 };
+  return rgbToHsv(rgb.r, rgb.g, rgb.b);
+}
+
+// HSV to Hex
+function hsvToHex(h: number, s: number, v: number): string {
+  const rgb = hsvToRgb(h, s, v);
+  return rgbToHex(rgb.r, rgb.g, rgb.b);
 }
 
 // Validate hex color
@@ -65,23 +104,23 @@ function isValidHex(hex: string): boolean {
 export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
   const [open, setOpen] = useState(false);
   const [hexInput, setHexInput] = useState(value || '#000000');
-  const [hsl, setHsl] = useState(() => hexToHsl(value || '#000000'));
-  const wheelRef = useRef<HTMLDivElement>(null);
-  const slRef = useRef<HTMLDivElement>(null);
-  const [isDraggingWheel, setIsDraggingWheel] = useState(false);
-  const [isDraggingSL, setIsDraggingSL] = useState(false);
+  const [hsv, setHsv] = useState(() => hexToHsv(value || '#FF0000'));
+  const svPickerRef = useRef<HTMLDivElement>(null);
+  const hueSliderRef = useRef<HTMLDivElement>(null);
+  const [isDraggingSV, setIsDraggingSV] = useState(false);
+  const [isDraggingHue, setIsDraggingHue] = useState(false);
 
   // Sync internal state when external value changes
   useEffect(() => {
     if (value && isValidHex(value)) {
       setHexInput(value);
-      setHsl(hexToHsl(value));
+      setHsv(hexToHsv(value));
     }
   }, [value]);
 
-  const updateColor = useCallback((newHsl: { h: number; s: number; l: number }) => {
-    setHsl(newHsl);
-    const hex = hslToHex(newHsl.h, newHsl.s, newHsl.l);
+  const updateColor = useCallback((newHsv: { h: number; s: number; v: number }) => {
+    setHsv(newHsv);
+    const hex = hsvToHex(newHsv.h, newHsv.s, newHsv.v);
     setHexInput(hex);
     onChange(hex);
   }, [onChange]);
@@ -96,47 +135,42 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
     }
     
     if (isValidHex(hex)) {
-      setHsl(hexToHsl(hex));
+      setHsv(hexToHsv(hex));
       onChange(hex);
     }
   };
 
-  // Handle hue wheel interaction
-  const handleWheelInteraction = useCallback((e: React.MouseEvent | MouseEvent) => {
-    if (!wheelRef.current) return;
+  // Handle saturation/value picker interaction
+  const handleSVInteraction = useCallback((e: React.MouseEvent | MouseEvent) => {
+    if (!svPickerRef.current) return;
     
-    const rect = wheelRef.current.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    const x = e.clientX - rect.left - centerX;
-    const y = e.clientY - rect.top - centerY;
-    
-    let angle = Math.atan2(y, x) * (180 / Math.PI) + 90;
-    if (angle < 0) angle += 360;
-    
-    updateColor({ ...hsl, h: Math.round(angle) });
-  }, [hsl, updateColor]);
-
-  // Handle saturation/lightness interaction
-  const handleSLInteraction = useCallback((e: React.MouseEvent | MouseEvent) => {
-    if (!slRef.current) return;
-    
-    const rect = slRef.current.getBoundingClientRect();
+    const rect = svPickerRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
     const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
     
     const s = Math.round((x / rect.width) * 100);
-    const l = Math.round(100 - (y / rect.height) * 100);
+    const v = Math.round(100 - (y / rect.height) * 100);
     
-    updateColor({ ...hsl, s, l });
-  }, [hsl, updateColor]);
+    updateColor({ ...hsv, s, v });
+  }, [hsv, updateColor]);
 
-  // Mouse event handlers for wheel
-  useEffect(() => {
-    if (!isDraggingWheel) return;
+  // Handle hue slider interaction
+  const handleHueInteraction = useCallback((e: React.MouseEvent | MouseEvent) => {
+    if (!hueSliderRef.current) return;
     
-    const handleMouseMove = (e: MouseEvent) => handleWheelInteraction(e);
-    const handleMouseUp = () => setIsDraggingWheel(false);
+    const rect = hueSliderRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+    const h = Math.round((x / rect.width) * 360);
+    
+    updateColor({ ...hsv, h });
+  }, [hsv, updateColor]);
+
+  // Mouse event handlers for SV picker
+  useEffect(() => {
+    if (!isDraggingSV) return;
+    
+    const handleMouseMove = (e: MouseEvent) => handleSVInteraction(e);
+    const handleMouseUp = () => setIsDraggingSV(false);
     
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -145,14 +179,14 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDraggingWheel, handleWheelInteraction]);
+  }, [isDraggingSV, handleSVInteraction]);
 
-  // Mouse event handlers for SL picker
+  // Mouse event handlers for Hue slider
   useEffect(() => {
-    if (!isDraggingSL) return;
+    if (!isDraggingHue) return;
     
-    const handleMouseMove = (e: MouseEvent) => handleSLInteraction(e);
-    const handleMouseUp = () => setIsDraggingSL(false);
+    const handleMouseMove = (e: MouseEvent) => handleHueInteraction(e);
+    const handleMouseUp = () => setIsDraggingHue(false);
     
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -161,7 +195,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDraggingSL, handleSLInteraction]);
+  }, [isDraggingHue, handleHueInteraction]);
 
   // Preset colors for quick selection
   const presetColors = [
@@ -169,6 +203,9 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
     '#FFFF00', '#FF00FF', '#00FFFF', '#FF6B6B', '#4ECDC4',
     '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8',
   ];
+
+  // Get the pure hue color for the SV picker background
+  const pureHueColor = hsvToHex(hsv.h, 100, 100);
 
   return (
     <div className="space-y-2">
@@ -186,65 +223,69 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
             <span className="text-sm font-mono uppercase">{value || '#000000'}</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-64 p-4" align="start">
+        <PopoverContent className="w-72 p-4" align="start">
           <div className="space-y-4">
-            {/* Hue Wheel */}
-            <div 
-              ref={wheelRef}
-              className="relative w-full aspect-square cursor-crosshair"
-              onMouseDown={(e) => {
-                setIsDraggingWheel(true);
-                handleWheelInteraction(e);
-              }}
+            {/* Saturation/Value Picker */}
+            <div
+              ref={svPickerRef}
+              className="relative w-full h-40 rounded-lg cursor-crosshair"
               style={{
-                background: `conic-gradient(
-                  hsl(0, 100%, 50%),
-                  hsl(60, 100%, 50%),
-                  hsl(120, 100%, 50%),
-                  hsl(180, 100%, 50%),
-                  hsl(240, 100%, 50%),
-                  hsl(300, 100%, 50%),
-                  hsl(360, 100%, 50%)
-                )`,
-                borderRadius: '50%',
+                backgroundColor: pureHueColor,
+              }}
+              onMouseDown={(e) => {
+                setIsDraggingSV(true);
+                handleSVInteraction(e);
+              }}
+            >
+              {/* White gradient (left to right) */}
+              <div 
+                className="absolute inset-0 rounded-lg"
+                style={{
+                  background: 'linear-gradient(to right, white, transparent)',
+                }}
+              />
+              {/* Black gradient (top to bottom) */}
+              <div 
+                className="absolute inset-0 rounded-lg"
+                style={{
+                  background: 'linear-gradient(to bottom, transparent, black)',
+                }}
+              />
+              {/* Picker indicator */}
+              <div
+                className="absolute w-4 h-4 rounded-full border-2 border-white shadow-lg pointer-events-none"
+                style={{
+                  backgroundColor: value || '#000000',
+                  left: `${hsv.s}%`,
+                  top: `${100 - hsv.v}%`,
+                  transform: 'translate(-50%, -50%)',
+                  boxShadow: '0 0 0 1px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.3)',
+                }}
+              />
+            </div>
+
+            {/* Hue Slider */}
+            <div
+              ref={hueSliderRef}
+              className="relative w-full h-4 rounded-full cursor-pointer"
+              style={{
+                background: 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)',
+              }}
+              onMouseDown={(e) => {
+                setIsDraggingHue(true);
+                handleHueInteraction(e);
               }}
             >
               {/* Hue indicator */}
               <div
-                className="absolute w-4 h-4 rounded-full border-2 border-white shadow-lg pointer-events-none"
+                className="absolute top-1/2 w-4 h-4 rounded-full border-2 border-white shadow-lg pointer-events-none"
                 style={{
-                  backgroundColor: hslToHex(hsl.h, 100, 50),
-                  left: '50%',
-                  top: '50%',
-                  transform: `rotate(${hsl.h - 90}deg) translateX(70px) translate(-50%, -50%)`,
-                  transformOrigin: '0 0',
+                  backgroundColor: hsvToHex(hsv.h, 100, 100),
+                  left: `${(hsv.h / 360) * 100}%`,
+                  transform: 'translate(-50%, -50%)',
+                  boxShadow: '0 0 0 1px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.3)',
                 }}
               />
-              {/* Inner white circle for SL picker */}
-              <div 
-                ref={slRef}
-                className="absolute inset-[25%] rounded-lg cursor-crosshair overflow-hidden"
-                style={{
-                  background: `linear-gradient(to bottom, white, transparent, black), linear-gradient(to right, gray, hsl(${hsl.h}, 100%, 50%))`,
-                  backgroundBlendMode: 'multiply',
-                }}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                  setIsDraggingSL(true);
-                  handleSLInteraction(e);
-                }}
-              >
-                {/* SL indicator */}
-                <div
-                  className="absolute w-3 h-3 rounded-full border-2 border-white shadow-lg pointer-events-none"
-                  style={{
-                    backgroundColor: value || '#000000',
-                    left: `${hsl.s}%`,
-                    top: `${100 - hsl.l}%`,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                />
-              </div>
             </div>
 
             {/* Hex Input */}
@@ -273,7 +314,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
                     style={{ backgroundColor: color }}
                     onClick={() => {
                       setHexInput(color);
-                      setHsl(hexToHsl(color));
+                      setHsv(hexToHsv(color));
                       onChange(color);
                     }}
                   />
