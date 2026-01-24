@@ -1055,7 +1055,9 @@ export default function ProductDetail() {
       if (error) throw error;
 
       if (data?.url) {
-        window.location.href = data.url;
+        // Open in new tab to avoid iframe redirect issues
+        window.open(data.url, "_blank");
+        toast.success("Checkout opened in a new tab");
       } else {
         throw new Error("No checkout URL returned");
       }
