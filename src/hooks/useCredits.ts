@@ -1,13 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
-
-interface CreditStatus {
-  creditBalance: number;
-  isLoading: boolean;
-  error: string | null;
-}
 
 interface CreditSubscription {
   id: string;
@@ -28,73 +23,74 @@ export const PRO_TOOLS = [
   "music-splitter",
 ];
 
+// Query keys for cache management
+const CREDIT_QUERY_KEY = "user-credits";
+const SUBSCRIPTION_QUERY_KEY = "user-credit-subscription";
+
 export function useCredits() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<CreditStatus>({
-    creditBalance: 0,
-    isLoading: true,
-    error: null,
-  });
-  const [subscription, setSubscription] = useState<CreditSubscription | null>(null);
-  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const queryClient = useQueryClient();
 
-  const checkCredits = useCallback(async () => {
-    if (!user) {
-      setStatus({
-        creditBalance: 0,
-        isLoading: false,
-        error: null,
-      });
-      return;
-    }
-
-    try {
+  // Credit balance query - globally cached
+  const {
+    data: creditBalance = 0,
+    isLoading,
+    error: creditError,
+    refetch: refetchCredits,
+  } = useQuery({
+    queryKey: [CREDIT_QUERY_KEY, user?.id],
+    queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("check-credits");
-      
       if (error) throw error;
-      
-      setStatus({
-        creditBalance: data.credit_balance ?? 0,
-        isLoading: false,
-        error: null,
-      });
-    } catch (err) {
-      console.error("Error checking credits:", err);
-      setStatus((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: err instanceof Error ? err.message : "Failed to check credits",
-      }));
-    }
-  }, [user]);
+      return data?.credit_balance ?? 0;
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
+    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache
+    refetchOnMount: false, // Don't refetch if cache exists
+    refetchOnWindowFocus: false, // Don't refetch on tab focus
+  });
 
-  const checkSubscription = useCallback(async () => {
-    if (!user) {
-      setSubscription(null);
-      return;
-    }
-
-    setSubscriptionLoading(true);
-    try {
+  // Subscription status query - globally cached
+  const {
+    data: subscription = null,
+    isLoading: subscriptionLoading,
+    refetch: refetchSubscription,
+  } = useQuery({
+    queryKey: [SUBSCRIPTION_QUERY_KEY, user?.id],
+    queryFn: async (): Promise<CreditSubscription | null> => {
       const { data, error } = await supabase.functions.invoke("manage-credit-subscription", {
         body: { action: "check" },
       });
-      
       if (error) throw error;
-      
-      if (data.hasSubscription && data.subscription) {
-        setSubscription(data.subscription);
-      } else {
-        setSubscription(null);
+      if (data?.hasSubscription && data?.subscription) {
+        return data.subscription;
       }
-    } catch (err) {
-      console.error("Error checking subscription:", err);
-      setSubscription(null);
-    } finally {
-      setSubscriptionLoading(false);
-    }
-  }, [user]);
+      return null;
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const checkCredits = useCallback(async () => {
+    await refetchCredits();
+  }, [refetchCredits]);
+
+  const checkSubscription = useCallback(async () => {
+    await refetchSubscription();
+  }, [refetchSubscription]);
+
+  const invalidateCredits = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: [CREDIT_QUERY_KEY] });
+  }, [queryClient]);
+
+  const invalidateSubscription = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: [SUBSCRIPTION_QUERY_KEY] });
+  }, [queryClient]);
 
   const deductCredit = useCallback(async (toolId: string) => {
     if (!user) return { success: false, error: "Not authenticated" };
@@ -107,10 +103,8 @@ export function useCredits() {
       if (error) throw error;
       
       if (data.success) {
-        setStatus((prev) => ({
-          ...prev,
-          creditBalance: data.credit_balance,
-        }));
+        // Update cache immediately with new balance
+        queryClient.setQueryData([CREDIT_QUERY_KEY, user.id], data.credit_balance);
         return { success: true, newBalance: data.credit_balance };
       } else {
         return { success: false, error: data.error || "Failed to deduct credit" };
@@ -122,7 +116,7 @@ export function useCredits() {
         error: err instanceof Error ? err.message : "Failed to deduct credit" 
       };
     }
-  }, [user]);
+  }, [user, queryClient]);
 
   const startCheckout = useCallback(async (packageId: string, priceId?: string): Promise<{ url?: string; upgraded?: boolean; message?: string; creditsAdded?: number; error?: string } | null> => {
     if (!user) {
@@ -139,9 +133,9 @@ export function useCredits() {
       
       // Handle upgrade response (no redirect needed)
       if (data.upgraded) {
-        // Refresh credits and subscription status
-        await checkCredits();
-        await checkSubscription();
+        // Invalidate caches to refresh data
+        invalidateCredits();
+        invalidateSubscription();
         return { 
           upgraded: true, 
           message: data.message,
@@ -161,7 +155,7 @@ export function useCredits() {
       const errorMessage = err instanceof Error ? err.message : "Failed to process request";
       return { error: errorMessage };
     }
-  }, [user, navigate, checkCredits, checkSubscription]);
+  }, [user, navigate, invalidateCredits, invalidateSubscription]);
 
   const verifyPurchase = useCallback(async (sessionId: string) => {
     if (!user) return { success: false };
@@ -174,12 +168,10 @@ export function useCredits() {
       if (error) throw error;
       
       if (data.success) {
-        setStatus((prev) => ({
-          ...prev,
-          creditBalance: data.credit_balance,
-        }));
-        // Also refresh subscription status
-        checkSubscription();
+        // Update cache with new balance
+        queryClient.setQueryData([CREDIT_QUERY_KEY, user.id], data.credit_balance);
+        // Invalidate subscription to refresh
+        invalidateSubscription();
         return { 
           success: true, 
           creditsAdded: data.credits_added,
@@ -191,7 +183,7 @@ export function useCredits() {
       console.error("Error verifying purchase:", err);
       return { success: false };
     }
-  }, [user, checkSubscription]);
+  }, [user, queryClient, invalidateSubscription]);
 
   const openCustomerPortal = useCallback(async () => {
     if (!user) return null;
@@ -219,8 +211,8 @@ export function useCredits() {
     if (!PRO_TOOLS.includes(toolId)) return true;
     
     // Pro tools require credits
-    return status.creditBalance > 0;
-  }, [status.creditBalance]);
+    return creditBalance > 0;
+  }, [creditBalance]);
 
   const isProTool = useCallback((toolId: string) => {
     return PRO_TOOLS.includes(toolId);
@@ -230,13 +222,10 @@ export function useCredits() {
     navigate("/pricing");
   }, [navigate]);
 
-  useEffect(() => {
-    checkCredits();
-    checkSubscription();
-  }, [checkCredits, checkSubscription]);
-
   return {
-    ...status,
+    creditBalance,
+    isLoading,
+    error: creditError instanceof Error ? creditError.message : null,
     subscription,
     subscriptionLoading,
     checkCredits,
