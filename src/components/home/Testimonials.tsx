@@ -1,34 +1,35 @@
 import { Reveal } from './Reveal';
-import { Star, Quote } from 'lucide-react';
+import { Star, Quote, BadgeCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface Testimonial {
   id: string;
   name: string;
+  username?: string;
   role: string;
-  company?: string;
   avatar?: string;
   rating: number;
   quote: string;
   featured?: boolean;
+  verified?: boolean;
 }
 
 const testimonials: Testimonial[] = [
   {
     id: '1',
-    name: '@shrimpy',
+    name: 'Matthew',
+    username: 'shrimpy',
     role: 'Video Editor & Creator',
-    company: 'Verified Creator',
     avatar: 'https://base44.app/api/apps/69633972141fd631aab3f377/files/public/69633972141fd631aab3f377/c4b776239_IMG_1579.jpg',
     rating: 5,
     quote: 'This platform changed how I share my work. The community here actually understands what editors need. Best decision I made for my creative business.',
     featured: true,
+    verified: true,
   },
   {
     id: '2',
     name: 'Sarah Mitchell',
     role: 'Content Creator',
-    company: '2.3M subscribers',
     rating: 5,
     quote: 'Finally a marketplace that gets it. Every product I\'ve bought has been exactly as described. No more gambling on quality.',
   },
@@ -103,15 +104,20 @@ export function Testimonials() {
                     <Avatar className="h-14 w-14 ring-2 ring-primary/20">
                       <AvatarImage src={featured.avatar} />
                       <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
-                        {featured.name.split(' ').map(n => n[0]).join('')}
+                        {featured.name[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <div className="font-semibold text-foreground text-lg">
-                        {featured.name}
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground text-lg">
+                          @{featured.username || featured.name.toLowerCase().replace(' ', '')}
+                        </span>
+                        {featured.verified && (
+                          <BadgeCheck className="h-5 w-5 text-primary fill-primary/20" />
+                        )}
                       </div>
-                      <div className="text-muted-foreground">
-                        {featured.role}{featured.company && ` · ${featured.company}`}
+                      <div className="text-sm text-muted-foreground">
+                        {featured.role}
                       </div>
                     </div>
                   </div>
@@ -140,11 +146,11 @@ export function Testimonials() {
                         {testimonial.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="space-y-0.5">
                       <div className="font-medium text-foreground text-sm">
                         {testimonial.name}
                       </div>
-                      <div className="text-muted-foreground text-sm">
+                      <div className="text-muted-foreground text-xs">
                         {testimonial.role}
                       </div>
                     </div>
