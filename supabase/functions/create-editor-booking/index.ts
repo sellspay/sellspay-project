@@ -15,6 +15,11 @@ const logStep = (step: string, details?: any) => {
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// Fee constants
+const PLATFORM_FEE_PERCENT = 0.05; // 5% platform fee
+const STRIPE_PERCENT_FEE = 0.029; // 2.9% Stripe fee
+const STRIPE_FIXED_FEE_CENTS = 30; // $0.30 Stripe fixed fee
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -117,25 +122,44 @@ serve(async (req) => {
 
     // Calculate amounts - use safe integer arithmetic
     // Maximum: 100 hours * $1000/hr = $100,000 = 10,000,000 cents (safe for JS integers)
-    const totalAmountCents = hours * hourlyRateCents;
+    const grossAmount = hours * hourlyRateCents;
     
     // Final safety check on total
-    if (totalAmountCents > 10000000) { // Max $100,000
+    if (grossAmount > 10000000) { // Max $100,000
       return new Response(
         JSON.stringify({ error: "Total amount exceeds maximum allowed" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    const platformFeeCents = Math.round(totalAmountCents * 0.05); // 5% platform fee
-    const editorPayoutCents = totalAmountCents - platformFeeCents; // 95% to editor
+    // Calculate Stripe's processing fee (2.9% + $0.30)
+    const stripeProcessingFee = Math.round(grossAmount * STRIPE_PERCENT_FEE) + STRIPE_FIXED_FEE_CENTS;
+    
+    // Calculate platform's 5% fee
+    const platformFee = Math.round(grossAmount * PLATFORM_FEE_PERCENT);
+    
+    // Total fees that need to be covered (Stripe + Platform)
+    const totalApplicationFee = stripeProcessingFee + platformFee;
+    
+    // Editor receives: gross - Stripe fee - platform fee
+    const editorPayoutCents = grossAmount - totalApplicationFee;
+    
+    // Ensure editor payout is positive
+    if (editorPayoutCents < 0) {
+      return new Response(
+        JSON.stringify({ error: "Total amount too low to cover processing fees" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     logStep("Fee breakdown", { 
-      totalCharged: totalAmountCents, 
-      platformFee: platformFeeCents,
+      grossAmount: grossAmount,
+      stripeProcessingFee: stripeProcessingFee,
+      platformFee: platformFee,
+      totalApplicationFee: totalApplicationFee,
       editorPayout: editorPayoutCents,
       platformFeePercentage: "5%",
-      editorPayoutPercentage: "95%"
+      stripeFeeFormula: "2.9% + $0.30"
     });
 
     // Get editor's profile to check for Stripe account
@@ -195,14 +219,14 @@ serve(async (req) => {
               name: `${hours} hour${hours > 1 ? 's' : ''} of editing services`,
               description: `Editing services from ${editorProfile?.full_name || editorProfile?.username || 'Editor'}`,
             },
-            unit_amount: totalAmountCents,
+            unit_amount: grossAmount,
           },
           quantity: 1,
         },
       ],
       mode: "payment",
       payment_intent_data: {
-        application_fee_amount: platformFeeCents,
+        application_fee_amount: totalApplicationFee,
         transfer_data: {
           destination: editorProfile.stripe_account_id,
         },
@@ -215,7 +239,9 @@ serve(async (req) => {
         buyer_id: buyerId,
         hours: hours.toString(),
         hourly_rate_cents: hourlyRateCents.toString(),
-        platform_fee_cents: platformFeeCents.toString(),
+        gross_amount_cents: grossAmount.toString(),
+        stripe_fee_cents: stripeProcessingFee.toString(),
+        platform_fee_cents: platformFee.toString(),
         editor_payout_cents: editorPayoutCents.toString(),
       },
     });
@@ -223,19 +249,21 @@ serve(async (req) => {
     logStep("Checkout session created", { 
       sessionId: session.id, 
       url: session.url,
-      amountTotal: totalAmountCents,
-      applicationFee: platformFeeCents
+      grossAmount: grossAmount,
+      applicationFee: totalApplicationFee,
+      editorPayout: editorPayoutCents
     });
 
     // Create booking record with pending status
+    // Note: We store the net payout (after all fees) in editor_payout_cents
     const { data: booking, error: bookingError } = await supabaseClient
       .from("editor_bookings")
       .insert({
         editor_id: editorId,
         buyer_id: buyerId,
         hours: hours,
-        total_amount_cents: totalAmountCents,
-        platform_fee_cents: platformFeeCents,
+        total_amount_cents: grossAmount,
+        platform_fee_cents: platformFee + stripeProcessingFee, // Total fees deducted
         editor_payout_cents: editorPayoutCents,
         stripe_checkout_session_id: session.id,
         status: "pending",

@@ -15,6 +15,11 @@ const logStep = (step: string, details?: any) => {
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// Fee constants
+const PLATFORM_FEE_PERCENT = 0.05; // 5% platform fee
+const STRIPE_PERCENT_FEE = 0.029; // 2.9% Stripe fee
+const STRIPE_FIXED_FEE_CENTS = 30; // $0.30 Stripe fixed fee
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -140,11 +145,22 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Calculate fees (5% platform commission)
-    const totalAmount = product.price_cents || 0;
+    // Calculate fees properly:
+    // 1. Buyer pays the full product price
+    // 2. Stripe takes their processing fee (2.9% + $0.30)
+    // 3. Platform takes 5% of gross as application_fee
+    // 4. Creator gets the remainder
+    //
+    // With Stripe Connect using application_fee_amount:
+    // - The application_fee_amount is what the PLATFORM receives
+    // - Stripe's processing fees are deducted from the connected account (creator)
+    // - So we need to set application_fee to include BOTH platform fee AND Stripe fees
+    //   to ensure the platform covers its costs and the creator pays all fees
+    
+    const grossAmount = product.price_cents || 0;
     
     // Validate minimum price ($4.99 = 499 cents)
-    if (totalAmount < 499) {
+    if (grossAmount < 499) {
       return new Response(
         JSON.stringify({ error: "Minimum product price is $4.99" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -152,22 +168,42 @@ serve(async (req) => {
     }
     
     // Validate amount is reasonable (max $10,000)
-    if (totalAmount > 1000000) {
+    if (grossAmount > 1000000) {
       return new Response(
         JSON.stringify({ error: "Invalid product price" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    const platformFee = Math.round(totalAmount * 0.05); // 5% platform fee
-    const creatorPayout = totalAmount - platformFee; // 95% to creator
+    // Calculate Stripe's processing fee (2.9% + $0.30)
+    const stripeProcessingFee = Math.round(grossAmount * STRIPE_PERCENT_FEE) + STRIPE_FIXED_FEE_CENTS;
+    
+    // Calculate platform's 5% fee
+    const platformFee = Math.round(grossAmount * PLATFORM_FEE_PERCENT);
+    
+    // Total fees that need to be covered (Stripe + Platform)
+    // The application_fee_amount needs to include Stripe's fee so the platform doesn't lose money
+    const totalApplicationFee = stripeProcessingFee + platformFee;
+    
+    // Creator receives: gross - Stripe fee - platform fee
+    const creatorPayout = grossAmount - totalApplicationFee;
+    
+    // Ensure creator payout is positive
+    if (creatorPayout < 0) {
+      return new Response(
+        JSON.stringify({ error: "Product price too low to cover processing fees" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     logStep("Fee breakdown", { 
-      totalCharged: totalAmount, 
+      grossAmount: grossAmount,
+      stripeProcessingFee: stripeProcessingFee,
       platformFee: platformFee,
+      totalApplicationFee: totalApplicationFee,
       creatorPayout: creatorPayout,
       platformFeePercentage: "5%",
-      creatorPayoutPercentage: "95%"
+      stripeFeeFormula: "2.9% + $0.30"
     });
 
     // Check if customer exists
@@ -185,13 +221,14 @@ serve(async (req) => {
     // Create checkout session with Stripe Connect
     // IMPORTANT: Using application_fee_amount with transfer_data means:
     // - Full amount is collected to the PLATFORM account first
-    // - Net amount (after application_fee) is transferred to the creator
-    // - The application_fee stays with the platform
+    // - application_fee_amount stays with platform (covers Stripe fees + platform profit)
+    // - Remainder is transferred to the creator
     logStep("Creating checkout with Stripe Connect", {
       destinationAccount: creatorProfile.stripe_account_id,
-      applicationFee: platformFee,
+      applicationFee: totalApplicationFee,
       creatorGets: creatorPayout,
       platformKeeps: platformFee,
+      stripeFee: stripeProcessingFee,
     });
 
     const session = await stripe.checkout.sessions.create({
@@ -205,14 +242,14 @@ serve(async (req) => {
               name: product.name,
               images: product.cover_image_url ? [product.cover_image_url] : [],
             },
-            unit_amount: totalAmount,
+            unit_amount: grossAmount,
           },
           quantity: 1,
         },
       ],
       mode: "payment",
       payment_intent_data: {
-        application_fee_amount: platformFee,
+        application_fee_amount: totalApplicationFee,
         transfer_data: {
           destination: creatorProfile.stripe_account_id,
         },
@@ -223,6 +260,8 @@ serve(async (req) => {
         product_id: product_id,
         buyer_profile_id: buyerProfileId || "",
         creator_profile_id: creatorProfile.id,
+        gross_amount_cents: grossAmount.toString(),
+        stripe_fee_cents: stripeProcessingFee.toString(),
         platform_fee_cents: platformFee.toString(),
         creator_payout_cents: creatorPayout.toString(),
       },
@@ -231,8 +270,8 @@ serve(async (req) => {
     logStep("Checkout session created successfully", { 
       sessionId: session.id, 
       url: session.url,
-      totalCharged: totalAmount,
-      applicationFee: platformFee,
+      grossCharged: grossAmount,
+      applicationFee: totalApplicationFee,
       creatorPayout: creatorPayout,
       destinationAccount: creatorProfile.stripe_account_id,
     });
