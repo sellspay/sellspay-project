@@ -391,14 +391,16 @@ const ProfilePage: React.FC = () => {
               });
             }
 
+            const publishedProducts = (productsData || []).map(p => ({
+              ...p,
+              likeCount: likeMap.get(p.id) || 0,
+              commentCount: commentMap.get(p.id) || 0,
+            }));
+
             return {
               ...collection,
-              products: (productsData || []).map(p => ({
-                ...p,
-                likeCount: likeMap.get(p.id) || 0,
-                commentCount: commentMap.get(p.id) || 0,
-              })),
-              totalCount: count || 0,
+              products: publishedProducts,
+              totalCount: publishedProducts.length,
             };
           })
         );
