@@ -218,7 +218,7 @@ export default function Signup() {
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-[#0a0a0a] border border-white/10 text-foreground font-medium transition-all duration-300 hover:bg-[#1a1a1a] hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(147,51,234,0.4)]"
+            className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-[#0a0a0a] border border-white/10 text-white font-medium transition-all duration-300 hover:bg-gradient-to-r hover:from-purple-600 hover:via-violet-500 hover:to-purple-600 hover:border-purple-400/60 hover:shadow-[0_0_30px_rgba(147,51,234,0.6),0_0_60px_rgba(147,51,234,0.3)]"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -333,7 +333,7 @@ export default function Signup() {
             <button
               type="submit"
               disabled={loading || usernameStatus === 'taken' || emailStatus === 'taken'}
-              className="w-full h-12 rounded-lg bg-[#0a0a0a] border border-white/10 text-foreground font-medium transition-all duration-300 hover:bg-purple-900/30 hover:border-purple-500/50 hover:shadow-[0_0_25px_rgba(147,51,234,0.5),0_0_50px_rgba(147,51,234,0.2)] disabled:opacity-50"
+              className="w-full h-12 rounded-lg bg-[#0a0a0a] border border-white/10 text-white font-medium transition-all duration-300 hover:bg-gradient-to-r hover:from-purple-600 hover:via-violet-500 hover:to-purple-600 hover:border-purple-400/60 hover:shadow-[0_0_30px_rgba(147,51,234,0.6),0_0_60px_rgba(147,51,234,0.3)] disabled:opacity-50"
             >
               {loading ? 'Creating Account...' : 'Sign Up'}
             </button>
