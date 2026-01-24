@@ -33,11 +33,12 @@ import {
   Link as LinkIcon, Settings, User, Download, Bookmark, Layers, Play,
   ChevronRight, Undo2, Redo2, Loader2, Check, AlertCircle, Save
 } from 'lucide-react';
-import { ProfileSection, SectionType, SECTION_TEMPLATES } from './types';
+import { ProfileSection, SectionType, SECTION_TEMPLATES, AnimationType } from './types';
 import { AddSectionPanel } from './AddSectionPanel';
 import { EditSectionDialog } from './EditSectionDialog';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
 import { CreateCollectionInEditor } from './CreateCollectionInEditor';
+import { AnimationPicker } from './AnimationPicker';
 import EditCollectionDialog from '@/components/profile/EditCollectionDialog';
 import {
   AlertDialog,
@@ -284,12 +285,14 @@ const SortableSectionCard = memo(({
   onEdit,
   onDelete,
   onToggleVisibility,
+  onAnimationChange,
 }: {
   section: ProfileSection;
   sortableId: string;
   onEdit: () => void;
   onDelete: () => void;
   onToggleVisibility: () => void;
+  onAnimationChange?: (animation: AnimationType) => void;
 }) => {
   const {
     attributes,
@@ -305,6 +308,8 @@ const SortableSectionCard = memo(({
     transition: isDragging ? undefined : transition,
   };
 
+  const currentAnimation = section.style_options?.animation || 'none';
+
   return (
     <div
       ref={setNodeRef}
@@ -315,6 +320,16 @@ const SortableSectionCard = memo(({
         !section.is_visible && 'opacity-50'
       )}
     >
+      {/* Animation picker button - top left */}
+      {onAnimationChange && (
+        <div className="absolute top-2 left-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+          <AnimationPicker
+            value={currentAnimation as AnimationType}
+            onChange={onAnimationChange}
+          />
+        </div>
+      )}
+      
       <div className="p-4 min-h-[80px]">
         <SectionPreviewContent section={section} />
       </div>
@@ -712,6 +727,18 @@ export function ProfileEditorDialog({
   const toggleSectionVisibility = useCallback((sectionId: string) => {
     setSections(prev => {
       const updated = prev.map((s) => s.id === sectionId ? { ...s, is_visible: !s.is_visible } : s);
+      pushHistory({ sections: updated, collections: editorCollections, showRecentUploads });
+      return updated;
+    });
+  }, [editorCollections, showRecentUploads, pushHistory]);
+
+  const updateSectionAnimation = useCallback((sectionId: string, animation: AnimationType) => {
+    setSections(prev => {
+      const updated = prev.map((s) => 
+        s.id === sectionId 
+          ? { ...s, style_options: { ...s.style_options, animation } }
+          : s
+      );
       pushHistory({ sections: updated, collections: editorCollections, showRecentUploads });
       return updated;
     });
@@ -1136,6 +1163,7 @@ export function ProfileEditorDialog({
                                       onEdit={() => setEditingSection(item.data)}
                                       onDelete={() => setDeleteSectionId(item.data.id)}
                                       onToggleVisibility={() => toggleSectionVisibility(item.data.id)}
+                                      onAnimationChange={(anim) => updateSectionAnimation(item.data.id, anim)}
                                     />
                                   )
                                 )}

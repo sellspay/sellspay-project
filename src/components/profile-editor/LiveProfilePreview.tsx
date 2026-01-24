@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { Plus, GripVertical, Pencil } from 'lucide-react';
-import { ProfileSection, SectionStyleOptions } from './types';
+import { ProfileSection, SectionStyleOptions, AnimationType } from './types';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
+import { AnimationPicker } from './AnimationPicker';
 import {
   DndContext,
   closestCenter,
@@ -44,6 +45,7 @@ interface LiveProfilePreviewProps {
   onSelectSection: (id: string) => void;
   onReorderSections: (sections: ProfileSection[]) => void;
   onAddSectionAt: (index: number) => void;
+  onUpdateSectionAnimation?: (sectionId: string, animation: AnimationType) => void;
 }
 
 // Sortable section wrapper component
@@ -53,6 +55,7 @@ const SortableSectionItem = memo(({
   onSelect,
   onAddAbove,
   onAddBelow,
+  onAnimationChange,
   isFirst,
   isLast,
 }: { 
@@ -61,6 +64,7 @@ const SortableSectionItem = memo(({
   onSelect: () => void;
   onAddAbove: () => void;
   onAddBelow: () => void;
+  onAnimationChange?: (animation: AnimationType) => void;
   isFirst: boolean;
   isLast: boolean;
 }) => {
@@ -119,6 +123,8 @@ const SortableSectionItem = memo(({
     backgroundStyle.backgroundPosition = 'center';
   }
 
+  const currentAnimation = section.style_options?.animation || 'none';
+
   return (
     <div ref={setNodeRef} style={style} className="relative group">
       {/* Add section button above */}
@@ -161,6 +167,16 @@ const SortableSectionItem = memo(({
         
         {/* Hover dimming overlay - dims content to make buttons visible */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-200 pointer-events-none z-10" />
+        
+        {/* Animation picker button - top center above element */}
+        {onAnimationChange && (
+          <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+            <AnimationPicker
+              value={currentAnimation}
+              onChange={onAnimationChange}
+            />
+          </div>
+        )}
         
         {/* Drag handle - visible on hover */}
         <div
@@ -227,6 +243,7 @@ const SortableSectionItem = memo(({
 
 SortableSectionItem.displayName = 'SortableSectionItem';
 
+
 export const LiveProfilePreview = memo(({
   profile,
   sections,
@@ -234,6 +251,7 @@ export const LiveProfilePreview = memo(({
   onSelectSection,
   onReorderSections,
   onAddSectionAt,
+  onUpdateSectionAnimation,
 }: LiveProfilePreviewProps) => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -281,13 +299,13 @@ export const LiveProfilePreview = memo(({
       <div className="relative">
         {/* Non-editable overlay indicator */}
         <div className="absolute inset-0 pointer-events-none z-10">
-          <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+          <div className="absolute top-2 right-2 bg-foreground/60 text-background text-xs px-2 py-1 rounded">
             Edit in Settings
           </div>
         </div>
         
         {/* Banner */}
-        <div className="relative h-48 bg-gradient-to-b from-zinc-800 to-zinc-900 overflow-hidden">
+        <div className="relative h-48 bg-gradient-to-b from-muted to-muted-foreground/20 overflow-hidden">
           {profile.banner_url && (
             <img
               src={profile.banner_url}
@@ -295,7 +313,7 @@ export const LiveProfilePreview = memo(({
               className="w-full h-full object-cover"
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
         </div>
         
         {/* Profile Info */}
@@ -373,6 +391,7 @@ export const LiveProfilePreview = memo(({
                   onSelect={() => onSelectSection(section.id)}
                   onAddAbove={() => onAddSectionAt(index)}
                   onAddBelow={() => onAddSectionAt(index + 1)}
+                  onAnimationChange={onUpdateSectionAnimation ? (anim) => onUpdateSectionAnimation(section.id, anim) : undefined}
                   isFirst={index === 0}
                   isLast={index === sections.length - 1}
                 />
