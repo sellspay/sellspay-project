@@ -74,6 +74,7 @@ interface Purchase {
   id: string;
   product_id: string;
   created_at: string;
+  amount_cents: number;
   product: {
     id: string;
     name: string;
@@ -587,6 +588,7 @@ const ProfilePage: React.FC = () => {
             id,
             product_id,
             created_at,
+            amount_cents,
             product:products!inner (
               id,
               name,
@@ -609,6 +611,7 @@ const ProfilePage: React.FC = () => {
             id: p.id,
             product_id: p.product_id,
             created_at: p.created_at,
+            amount_cents: p.amount_cents,
             product: p.product as unknown as Purchase['product'],
           }));
           setPurchases(typedPurchases);
@@ -1328,9 +1331,9 @@ const ProfilePage: React.FC = () => {
                       cover_image_url: p.product!.cover_image_url,
                       youtube_url: p.product!.youtube_url,
                       preview_video_url: p.product!.preview_video_url,
-                      price_cents: null,
-                      currency: null,
-                      pricing_type: p.product!.pricing_type,
+                      price_cents: p.amount_cents,
+                      currency: 'USD',
+                      pricing_type: p.amount_cents > 0 ? 'paid' : 'free',
                       created_at: p.created_at,
                     }))}
                     totalCount={purchases.length}
