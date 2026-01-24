@@ -373,6 +373,45 @@ function TextEditor({
         </Select>
       </div>
 
+      {/* Letter Spacing */}
+      <div>
+        <Label>Letter Spacing</Label>
+        <Select
+          value={content.letterSpacing || 'normal'}
+          onValueChange={(value) => onChange({ letterSpacing: value as TextContent['letterSpacing'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tighter">Tighter</SelectItem>
+            <SelectItem value="tight">Tight</SelectItem>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="wide">Wide</SelectItem>
+            <SelectItem value="wider">Wider</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Line Height */}
+      <div>
+        <Label>Line Height</Label>
+        <Select
+          value={content.lineHeight || 'normal'}
+          onValueChange={(value) => onChange({ lineHeight: value as TextContent['lineHeight'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tight">Tight</SelectItem>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="relaxed">Relaxed</SelectItem>
+            <SelectItem value="loose">Loose</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Text Color */}
       <ColorPicker
         label="Text Color"
@@ -853,6 +892,65 @@ function HeadlineEditor({
             <SelectItem value="semibold">Semibold</SelectItem>
             <SelectItem value="bold">Bold</SelectItem>
             <SelectItem value="extrabold">Extra Bold</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Letter Spacing */}
+      <div>
+        <Label>Letter Spacing</Label>
+        <Select
+          value={content.letterSpacing || 'normal'}
+          onValueChange={(value) => onChange({ letterSpacing: value as HeadlineContent['letterSpacing'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tighter">Tighter</SelectItem>
+            <SelectItem value="tight">Tight</SelectItem>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="wide">Wide</SelectItem>
+            <SelectItem value="wider">Wider</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Line Height */}
+      <div>
+        <Label>Line Height</Label>
+        <Select
+          value={content.lineHeight || 'normal'}
+          onValueChange={(value) => onChange({ lineHeight: value as HeadlineContent['lineHeight'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tight">Tight</SelectItem>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="relaxed">Relaxed</SelectItem>
+            <SelectItem value="loose">Loose</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Text Shadow */}
+      <div>
+        <Label>Text Shadow</Label>
+        <Select
+          value={content.textShadow || 'none'}
+          onValueChange={(value) => onChange({ textShadow: value as HeadlineContent['textShadow'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            <SelectItem value="soft">Soft</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="strong">Strong</SelectItem>
+            <SelectItem value="glow">Glow</SelectItem>
           </SelectContent>
         </Select>
       </div>

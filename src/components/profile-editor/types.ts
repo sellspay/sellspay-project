@@ -52,6 +52,10 @@ export interface CustomFont {
   url: string;
 }
 
+export type LetterSpacingOption = 'tighter' | 'tight' | 'normal' | 'wide' | 'wider';
+export type LineHeightOption = 'tight' | 'normal' | 'relaxed' | 'loose';
+export type TextShadowOption = 'none' | 'soft' | 'medium' | 'strong' | 'glow';
+
 export interface TextContent {
   title?: string;
   body: string;
@@ -61,6 +65,8 @@ export interface TextContent {
   fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold' | 'extrabold';
   fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl';
   textColor?: string;
+  letterSpacing?: LetterSpacingOption;
+  lineHeight?: LineHeightOption;
 }
 
 export interface ImageContent {
@@ -117,6 +123,9 @@ export interface HeadlineContent {
   customFont?: CustomFont;
   fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold' | 'extrabold';
   textColor?: string;
+  letterSpacing?: LetterSpacingOption;
+  lineHeight?: LineHeightOption;
+  textShadow?: TextShadowOption;
 }
 
 export interface SlidingBannerContent {

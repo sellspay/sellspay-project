@@ -39,10 +39,29 @@ const TextPreview = memo(({ content }: { content: TextContent }) => {
     extrabold: 'font-extrabold',
   };
 
-  // Merge custom font style with text color
+  // Letter spacing map
+  const letterSpacingMap = {
+    tighter: '-0.04em',
+    tight: '-0.02em',
+    normal: '0em',
+    wide: '0.02em',
+    wider: '0.05em',
+  };
+
+  // Line height map
+  const lineHeightMap = {
+    tight: 1.1,
+    normal: 1.35,
+    relaxed: 1.6,
+    loose: 1.9,
+  };
+
+  // Merge custom font style with text color and typography
   const combinedStyle = {
     ...customFontStyle,
     color: content.textColor || undefined,
+    letterSpacing: letterSpacingMap[content.letterSpacing || 'normal'],
+    lineHeight: lineHeightMap[content.lineHeight || 'normal'],
   };
   
   return (
@@ -60,7 +79,7 @@ const TextPreview = memo(({ content }: { content: TextContent }) => {
       {content.title && (
         <h3 className="text-xl font-semibold mb-2">{content.title}</h3>
       )}
-      <p className="whitespace-pre-wrap" style={{ color: content.textColor || 'hsl(var(--muted-foreground))' }}>{content.body}</p>
+      <p className="whitespace-pre-wrap" style={{ color: content.textColor || undefined }}>{content.body}</p>
     </div>
   );
 });
@@ -296,10 +315,39 @@ const HeadlinePreview = memo(({ content }: { content: HeadlineContent }) => {
     extrabold: 'font-extrabold',
   };
 
-  // Merge custom font style with text color
+  // Letter spacing map
+  const letterSpacingMap = {
+    tighter: '-0.04em',
+    tight: '-0.02em',
+    normal: '0em',
+    wide: '0.02em',
+    wider: '0.05em',
+  };
+
+  // Line height map
+  const lineHeightMap = {
+    tight: 1.1,
+    normal: 1.35,
+    relaxed: 1.6,
+    loose: 1.9,
+  };
+
+  // Text shadow map
+  const textShadowMap: Record<string, string | undefined> = {
+    none: undefined,
+    soft: '0 1px 2px rgba(0,0,0,0.25)',
+    medium: '0 4px 10px rgba(0,0,0,0.25)',
+    strong: '0 10px 25px rgba(0,0,0,0.35)',
+    glow: '0 0 14px rgba(255,255,255,0.35)',
+  };
+
+  // Merge custom font style with text color and typography
   const combinedStyle = {
     ...customFontStyle,
     color: content.textColor || undefined,
+    letterSpacing: letterSpacingMap[content.letterSpacing || 'normal'],
+    lineHeight: lineHeightMap[content.lineHeight || 'normal'],
+    textShadow: textShadowMap[content.textShadow || 'none'],
   };
   
   return (
