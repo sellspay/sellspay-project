@@ -3,7 +3,6 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
-import navbarLogo from '@/assets/navbar-logo.png';
 import authBg from '@/assets/auth-bg.png';
 
 export default function Login() {
@@ -111,15 +110,15 @@ export default function Login() {
 
       {/* Main content */}
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-16">
-        {/* Logo - 6x larger */}
-        <div className="mb-8">
-          <img src={navbarLogo} alt="EditorsParadise" className="h-48 md:h-64 w-auto mx-auto" />
+        {/* Premium Welcome Text */}
+        <div className="mb-10 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 tracking-tight">
+            {showForgotPassword ? 'Reset Password' : 'Welcome Back'}
+          </h1>
+          <p className="text-lg text-white/60">
+            {showForgotPassword ? 'Enter your email to reset your password' : 'Sign in to continue your journey'}
+          </p>
         </div>
-
-        {/* Title */}
-        <h1 className="text-2xl font-semibold text-foreground mb-2">
-          {showForgotPassword ? 'Reset your password' : 'Log in to EditorsParadise'}
-        </h1>
         
         {!showForgotPassword && (
           <p className="text-muted-foreground mb-8">

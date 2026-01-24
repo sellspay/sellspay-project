@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { ChevronLeft, Eye, EyeOff, Loader2, Check, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
-import navbarLogo from '@/assets/navbar-logo.png';
 import authBg from '@/assets/auth-bg.png';
 
 export default function Signup() {
@@ -196,21 +195,21 @@ export default function Signup() {
 
       {/* Main content */}
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-16">
-        {/* Logo - 6x larger */}
-        <div className="mb-8">
-          <img src={navbarLogo} alt="EditorsParadise" className="h-48 md:h-64 w-auto mx-auto" />
+        {/* Premium Welcome Text */}
+        <div className="mb-10 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 tracking-tight">
+            Join the Community
+          </h1>
+          <p className="text-lg text-white/60">
+            Create your account and start your journey
+          </p>
         </div>
 
-        {/* Title */}
-        <h1 className="text-2xl font-semibold text-foreground mb-2">
-          Create your account
-        </h1>
-        <p className="text-muted-foreground mb-8">
+        <p className="text-white/50 mb-8">
           Already have an account?{' '}
-          <Link to="/login" className="text-foreground font-medium hover:underline">
+          <Link to="/login" className="text-white font-medium hover:underline">
             Log in
           </Link>
-          .
         </p>
 
         <div className="w-full max-w-[400px] space-y-6">
