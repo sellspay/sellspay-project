@@ -66,6 +66,7 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showFullContent, setShowFullContent] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
 
   // Fetch user profile
   const { data: profile } = useQuery({
@@ -82,12 +83,27 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
     enabled: !!user?.id,
   });
 
+  // Check if thread author is admin
+  const { data: authorIsAdmin } = useQuery({
+    queryKey: ['user-is-admin', thread.author_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', thread.author_id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      return !!data;
+    },
+    enabled: !!thread.author_id,
+  });
+
   const isOwner = profile?.id === thread.author_id;
   const contentTooLong = thread.content.length > 280;
   const displayContent =
     contentTooLong && !showFullContent ? thread.content.slice(0, 280) + '...' : thread.content;
 
-  // Optimistic like mutation
+  // Optimistic like mutation with duplicate prevention
   const likeMutation = useMutation({
     mutationFn: async () => {
       if (!profile?.id) throw new Error('Must be logged in');
@@ -100,13 +116,20 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
           .eq('user_id', profile.id);
         if (error) throw error;
       } else {
+        // Use upsert with ignoreDuplicates to prevent duplicate likes
         const { error } = await supabase
           .from('thread_likes')
-          .insert({ thread_id: thread.id, user_id: profile.id });
+          .upsert(
+            { thread_id: thread.id, user_id: profile.id },
+            { onConflict: 'thread_id,user_id', ignoreDuplicates: true }
+          );
         if (error) throw error;
       }
     },
     onMutate: async () => {
+      if (isLiking) return; // Prevent rapid clicks
+      setIsLiking(true);
+      
       await queryClient.cancelQueries({ queryKey: ['threads'] });
 
       const previousThreads = queryClient.getQueryData(['threads']);
@@ -128,6 +151,9 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
     onError: (error: any, _, context) => {
       queryClient.setQueriesData({ queryKey: ['threads'] }, context?.previousThreads);
       toast.error(error.message || 'Failed to like thread');
+    },
+    onSettled: () => {
+      setIsLiking(false);
     },
   });
 
@@ -177,7 +203,7 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
               >
                 {thread.author?.full_name || thread.author?.username || 'Unknown'}
               </Link>
-              {thread.author?.verified && <VerifiedBadge size="sm" />}
+              {thread.author?.verified && <VerifiedBadge size="sm" isOwner={authorIsAdmin} />}
               {thread.is_pinned && (
                 <Badge variant="secondary" className="text-xs gap-1 bg-primary/10 text-primary border-0">
                   <Pin className="h-3 w-3" />
