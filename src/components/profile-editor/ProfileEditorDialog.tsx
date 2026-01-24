@@ -31,7 +31,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { 
   X, Plus, GripVertical, Eye, EyeOff, Trash2, Pencil,
   Link as LinkIcon, Settings, User, Download, Bookmark, Layers, Play,
-  ChevronRight, Undo2, Redo2, Loader2, Check, AlertCircle
+  ChevronRight, Undo2, Redo2, Loader2, Check, AlertCircle, Save
 } from 'lucide-react';
 import { ProfileSection, SectionType, SECTION_TEMPLATES } from './types';
 import { AddSectionPanel } from './AddSectionPanel';
@@ -402,9 +402,6 @@ export function ProfileEditorDialog({
     reset: resetHistory,
   } = useHistory<EditorState>({ sections: [], collections: [], showRecentUploads: true });
 
-  // Enable keyboard shortcuts for undo/redo
-  useHistoryKeyboard(undo, redo, canUndo, canRedo, open);
-
   // Autosave - only enabled when data is ready and dialog is open
   const autoSaveData = useMemo(() => ({
     sections,
@@ -459,6 +456,9 @@ export function ProfileEditorDialog({
     1500,
     dataReady && open
   );
+
+  // Enable keyboard shortcuts for undo/redo/save (after saveNow is defined)
+  useHistoryKeyboard(undo, redo, canUndo, canRedo, open, saveNow);
 
   // Sensors for drag and drop
   const sensors = useSensors(
@@ -858,7 +858,7 @@ export function ProfileEditorDialog({
                   </>
                 )}
                 {saveStatus === 'saved' && (
-                  <span className="text-green-600 flex items-center gap-1">
+                  <span className="text-primary flex items-center gap-1">
                     <Check className="w-3 h-3" />
                     Saved
                   </span>
@@ -905,6 +905,27 @@ export function ProfileEditorDialog({
                   <TooltipContent>Redo (⌘⇧Z)</TooltipContent>
                 </Tooltip>
               </div>
+
+              {/* Manual Save button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={saveNow}
+                    disabled={saveStatus === 'saving'}
+                    className="gap-2"
+                  >
+                    {saveStatus === 'saving' ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    Save
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Save changes now (⌘S)</TooltipContent>
+              </Tooltip>
 
               {/* Close button */}
               <Button variant="ghost" size="icon" onClick={handleClose}>
