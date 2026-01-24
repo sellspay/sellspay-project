@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -19,7 +20,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Upload, X, Plus, AlignLeft, AlignCenter, AlignRight, Trash2 } from 'lucide-react';
+import { Upload, X, Plus, AlignLeft, AlignCenter, AlignRight, Trash2, Star } from 'lucide-react';
 import {
   ProfileSection,
   TextContent,
@@ -32,9 +33,25 @@ import {
   HeadlineContent,
   SlidingBannerContent,
   DividerContent,
+  TestimonialsContent,
+  TestimonialItem,
+  FAQContent,
+  FAQItem,
+  NewsletterContent,
+  SlideshowContent,
+  SlideItem,
+  LogoListContent,
+  LogoItem,
+  ContactUsContent,
+  FooterContent,
+  FooterColumn,
+  FooterLink,
+  CardSlideshowContent,
+  CardSlideItem,
+  BannerSlideshowContent,
+  BannerSlideItem,
   SECTION_TEMPLATES,
 } from './types';
-import { SectionPreviewContent } from './previews/SectionPreviewContent';
 import { EditablePreview } from './previews/EditablePreview';
 
 interface EditSectionDialogProps {
@@ -126,6 +143,7 @@ export function EditSectionDialog({
         return (
           <ImageWithTextEditor
             content={section.content as ImageWithTextContent}
+            section={section}
             onChange={updateContent}
             onUpload={handleImageUpload}
             uploading={uploading}
@@ -136,6 +154,7 @@ export function EditSectionDialog({
         return (
           <GalleryEditor
             content={section.content as GalleryContent}
+            section={section}
             onChange={updateContent}
             onUpload={handleImageUpload}
             uploading={uploading}
@@ -167,6 +186,67 @@ export function EditSectionDialog({
       case 'divider':
         return (
           <DividerEditor content={section.content as DividerContent} onChange={updateContent} />
+        );
+      case 'testimonials':
+        return (
+          <TestimonialsEditor
+            content={section.content as TestimonialsContent}
+            onChange={updateContent}
+            onUpload={handleImageUpload}
+            uploading={uploading}
+          />
+        );
+      case 'faq':
+        return (
+          <FAQEditor content={section.content as FAQContent} onChange={updateContent} />
+        );
+      case 'newsletter':
+        return (
+          <NewsletterEditor content={section.content as NewsletterContent} onChange={updateContent} />
+        );
+      case 'slideshow':
+        return (
+          <SlideshowEditor
+            content={section.content as SlideshowContent}
+            onChange={updateContent}
+            onUpload={handleImageUpload}
+            uploading={uploading}
+          />
+        );
+      case 'logo_list':
+        return (
+          <LogoListEditor
+            content={section.content as LogoListContent}
+            onChange={updateContent}
+            onUpload={handleImageUpload}
+            uploading={uploading}
+          />
+        );
+      case 'contact_us':
+        return (
+          <ContactUsEditor content={section.content as ContactUsContent} onChange={updateContent} />
+        );
+      case 'footer':
+        return (
+          <FooterEditor content={section.content as FooterContent} onChange={updateContent} />
+        );
+      case 'card_slideshow':
+        return (
+          <CardSlideshowEditor
+            content={section.content as CardSlideshowContent}
+            onChange={updateContent}
+            onUpload={handleImageUpload}
+            uploading={uploading}
+          />
+        );
+      case 'banner_slideshow':
+        return (
+          <BannerSlideshowEditor
+            content={section.content as BannerSlideshowContent}
+            onChange={updateContent}
+            onUpload={handleImageUpload}
+            uploading={uploading}
+          />
         );
       default:
         return <p className="text-muted-foreground">Editor not available for this section type</p>;
@@ -205,6 +285,31 @@ export function EditSectionDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Star Rating Component
+function StarRating({ 
+  rating, 
+  onChange 
+}: { 
+  rating: number; 
+  onChange?: (r: number) => void;
+}) {
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={`w-4 h-4 cursor-pointer transition-colors ${
+            star <= rating 
+              ? "fill-yellow-400 text-yellow-400" 
+              : "text-muted-foreground hover:text-yellow-300"
+          }`}
+          onClick={() => onChange?.(star)}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -308,18 +413,25 @@ function ImageEditor({
 
 function ImageWithTextEditor({
   content,
+  section,
   onChange,
   onUpload,
   uploading,
   products = [],
 }: {
   content: ImageWithTextContent;
+  section: ProfileSection;
   onChange: (updates: Partial<ImageWithTextContent>) => void;
   onUpload: (file: File, onSuccess: (url: string) => void) => void;
   uploading: boolean;
   products?: { id: string; name: string }[];
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Determine if image position is relevant (only for side-by-side layout)
+  const preset = section.style_options?.preset;
+  const layout = content.layout || (preset === 'style1' ? 'hero' : preset === 'style4' ? 'overlay' : 'side-by-side');
+  const showImagePosition = layout === 'side-by-side';
 
   return (
     <div className="space-y-4">
@@ -363,21 +475,24 @@ function ImageWithTextEditor({
         </div>
       </div>
       
-      <div>
-        <Label>Image Position</Label>
-        <Select
-          value={content.imagePosition}
-          onValueChange={(value) => onChange({ imagePosition: value as 'left' | 'right' })}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="left">Left</SelectItem>
-            <SelectItem value="right">Right</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Only show image position for side-by-side layout */}
+      {showImagePosition && (
+        <div>
+          <Label>Image Position</Label>
+          <Select
+            value={content.imagePosition}
+            onValueChange={(value) => onChange({ imagePosition: value as 'left' | 'right' })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="left">Left</SelectItem>
+              <SelectItem value="right">Right</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       
       {/* Button Link Settings */}
       <div className="border-t border-border pt-4 mt-4">
@@ -436,66 +551,74 @@ function ImageWithTextEditor({
 
 function GalleryEditor({
   content,
+  section,
   onChange,
   onUpload,
   uploading,
 }: {
   content: GalleryContent;
+  section: ProfileSection;
   onChange: (updates: Partial<GalleryContent>) => void;
   onUpload: (file: File, onSuccess: (url: string) => void) => void;
   uploading: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Calculate expected slots based on preset
+  const preset = section.style_options?.preset;
+  const columns = content.columns || 3;
+  const rows = content.rows || 2;
+  const layout = content.layout || 'grid';
+  
+  // Calculate total slots needed
+  const getSlotCount = () => {
+    if (preset === 'style1') return 6; // 3x2
+    if (preset === 'style2') return 6; // 2x3
+    if (preset === 'style3' || layout === 'masonry') return 6; // masonry
+    return columns * rows;
+  };
+  
+  const slotCount = getSlotCount();
+  const slots = Array.from({ length: slotCount }, (_, i) => content.images[i] || null);
 
   return (
     <div className="space-y-4">
       <div>
-        <Label>Columns</Label>
-        <Select
-          value={String(content.columns)}
-          onValueChange={(value) => onChange({ columns: parseInt(value) as 2 | 3 | 4 })}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="2">2 Columns</SelectItem>
-            <SelectItem value="3">3 Columns</SelectItem>
-            <SelectItem value="4">4 Columns</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label>Images</Label>
+        <Label>Gallery Images ({content.images.length}/{slotCount})</Label>
         <div
           className="grid gap-2 mt-2"
-          style={{ gridTemplateColumns: `repeat(${Math.min(content.columns, 3)}, 1fr)` }}
+          style={{ gridTemplateColumns: `repeat(${Math.min(columns, 3)}, 1fr)` }}
         >
-          {content.images.map((img, idx) => (
-            <div key={idx} className="relative group">
-              <img
-                src={img.url}
-                alt={img.altText || ''}
-                className="w-full aspect-square object-cover rounded-lg"
-              />
-              <Button
-                variant="destructive"
-                size="icon"
-                className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
-                onClick={() => onChange({ images: content.images.filter((_, i) => i !== idx) })}
-              >
-                <X className="w-3 h-3" />
-              </Button>
+          {slots.map((img, idx) => (
+            <div key={idx} className="relative group aspect-square">
+              {img ? (
+                <>
+                  <img
+                    src={img.url}
+                    alt={img.altText || ''}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
+                    onClick={() => onChange({ images: content.images.filter((_, i) => i !== idx) })}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </>
+              ) : (
+                <button
+                  onClick={() => inputRef.current?.click()}
+                  disabled={uploading}
+                  className="w-full h-full border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary/50 bg-muted/30"
+                >
+                  <Plus className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">{idx + 1}</span>
+                </button>
+              )}
             </div>
           ))}
-          <button
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading}
-            className="aspect-square border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary/50"
-          >
-            <Plus className="w-5 h-5 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Add</span>
-          </button>
         </div>
         <input
           ref={inputRef}
@@ -504,7 +627,7 @@ function GalleryEditor({
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) {
+            if (file && content.images.length < slotCount) {
               onUpload(file, (url) => onChange({ images: [...content.images, { url, altText: '' }] }));
             }
           }}
@@ -595,8 +718,8 @@ function CollectionEditor({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="grid">Grid</SelectItem>
-                <SelectItem value="slider">Slider</SelectItem>
+                <SelectItem value="grid">Product Grid</SelectItem>
+                <SelectItem value="slider">Product Slider</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -625,10 +748,18 @@ function AboutMeEditor({
   content: AboutMeContent;
   onChange: (updates: Partial<AboutMeContent>) => void;
 }) {
-  // All text is editable inline in preview - no settings needed
   return (
-    <div className="text-center text-muted-foreground text-sm py-2">
-      Click on the title or description in the preview above to edit
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label>Show Avatar</Label>
+        <Switch
+          checked={content.showAvatar}
+          onCheckedChange={(checked) => onChange({ showAvatar: checked })}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Click on the title or description in the preview above to edit
+      </p>
     </div>
   );
 }
@@ -707,7 +838,7 @@ function DividerEditor({
         <Label>Style</Label>
         <Select
           value={content.style || 'line'}
-          onValueChange={(value) => onChange({ style: value as 'line' | 'space' | 'dots' })}
+          onValueChange={(value) => onChange({ style: value as DividerContent['style'] })}
         >
           <SelectTrigger>
             <SelectValue />
@@ -716,9 +847,981 @@ function DividerEditor({
             <SelectItem value="line">Line</SelectItem>
             <SelectItem value="space">Space</SelectItem>
             <SelectItem value="dots">Dots</SelectItem>
+            <SelectItem value="thick">Thick Line</SelectItem>
+            <SelectItem value="gradient">Gradient</SelectItem>
+            <SelectItem value="wave">Wave</SelectItem>
           </SelectContent>
         </Select>
       </div>
+    </div>
+  );
+}
+
+function TestimonialsEditor({
+  content,
+  onChange,
+  onUpload,
+  uploading,
+}: {
+  content: TestimonialsContent;
+  onChange: (updates: Partial<TestimonialsContent>) => void;
+  onUpload: (file: File, onSuccess: (url: string) => void) => void;
+  uploading: boolean;
+}) {
+  const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
+  const addTestimonial = () => {
+    const newTestimonial: TestimonialItem = {
+      id: crypto.randomUUID(),
+      name: 'Customer Name',
+      role: 'Role/Company',
+      quote: 'Their testimonial goes here...',
+      rating: 5,
+    };
+    onChange({ testimonials: [...content.testimonials, newTestimonial] });
+  };
+
+  const updateTestimonial = (id: string, updates: Partial<TestimonialItem>) => {
+    onChange({
+      testimonials: content.testimonials.map((t) =>
+        t.id === id ? { ...t, ...updates } : t
+      ),
+    });
+  };
+
+  const removeTestimonial = (id: string) => {
+    onChange({ testimonials: content.testimonials.filter((t) => t.id !== id) });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Layout</Label>
+        <Select
+          value={content.layout || 'grid'}
+          onValueChange={(value) => onChange({ layout: value as TestimonialsContent['layout'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="grid">Cards Grid</SelectItem>
+            <SelectItem value="slider">Slideshow</SelectItem>
+            <SelectItem value="stacked">Stacked</SelectItem>
+            <SelectItem value="grid-6">6x1 Grid</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="space-y-3">
+        <Label>Testimonials</Label>
+        {content.testimonials.map((testimonial) => (
+          <div key={testimonial.id} className="border border-border rounded-lg p-3 space-y-3">
+            <div className="flex items-start gap-3">
+              {/* Avatar upload */}
+              <div className="flex-shrink-0">
+                {testimonial.avatar ? (
+                  <div className="relative">
+                    <img
+                      src={testimonial.avatar}
+                      alt=""
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-1 -right-1 h-4 w-4"
+                      onClick={() => updateTestimonial(testimonial.id, { avatar: '' })}
+                    >
+                      <X className="w-2 h-2" />
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => inputRefs.current[testimonial.id]?.click()}
+                    className="w-12 h-12 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80"
+                    disabled={uploading}
+                  >
+                    <Upload className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                )}
+                <input
+                  ref={(el) => (inputRefs.current[testimonial.id] = el)}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      onUpload(file, (url) => updateTestimonial(testimonial.id, { avatar: url }));
+                    }
+                  }}
+                />
+              </div>
+              
+              <div className="flex-1 space-y-2">
+                <Input
+                  value={testimonial.name}
+                  onChange={(e) => updateTestimonial(testimonial.id, { name: e.target.value })}
+                  placeholder="Name"
+                  className="h-8"
+                />
+                <Input
+                  value={testimonial.role || ''}
+                  onChange={(e) => updateTestimonial(testimonial.id, { role: e.target.value })}
+                  placeholder="Role / Company"
+                  className="h-8"
+                />
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+                onClick={() => removeTestimonial(testimonial.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <div>
+              <Label className="text-xs text-muted-foreground">Rating</Label>
+              <StarRating
+                rating={testimonial.rating || 5}
+                onChange={(rating) => updateTestimonial(testimonial.id, { rating: rating as 1 | 2 | 3 | 4 | 5 })}
+              />
+            </div>
+            
+            <Textarea
+              value={testimonial.quote}
+              onChange={(e) => updateTestimonial(testimonial.id, { quote: e.target.value })}
+              placeholder="Their testimonial..."
+              rows={2}
+            />
+          </div>
+        ))}
+        
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addTestimonial}
+          className="w-full gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add Testimonial
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function FAQEditor({
+  content,
+  onChange,
+}: {
+  content: FAQContent;
+  onChange: (updates: Partial<FAQContent>) => void;
+}) {
+  const addFAQItem = () => {
+    if (content.items.length >= 6) {
+      toast.error('Maximum 6 FAQ items allowed');
+      return;
+    }
+    const newItem: FAQItem = {
+      id: crypto.randomUUID(),
+      question: 'New Question?',
+      answer: 'Answer goes here...',
+    };
+    onChange({ items: [...content.items, newItem] });
+  };
+
+  const updateFAQItem = (id: string, updates: Partial<FAQItem>) => {
+    onChange({
+      items: content.items.map((item) =>
+        item.id === id ? { ...item, ...updates } : item
+      ),
+    });
+  };
+
+  const removeFAQItem = (id: string) => {
+    onChange({ items: content.items.filter((item) => item.id !== id) });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Layout</Label>
+        <Select
+          value={content.layout || 'accordion'}
+          onValueChange={(value) => onChange({ layout: value as 'accordion' | 'grid' })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="accordion">Accordion</SelectItem>
+            <SelectItem value="grid">3x2 Grid</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label>FAQ Items ({content.items.length}/6)</Label>
+        </div>
+        
+        {content.items.map((item, index) => (
+          <div key={item.id} className="border border-border rounded-lg p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground w-5">{index + 1}.</span>
+              <Input
+                value={item.question}
+                onChange={(e) => updateFAQItem(item.id, { question: e.target.value })}
+                placeholder="Question"
+                className="flex-1"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+                onClick={() => removeFAQItem(item.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+            <Textarea
+              value={item.answer}
+              onChange={(e) => updateFAQItem(item.id, { answer: e.target.value })}
+              placeholder="Answer"
+              rows={2}
+              className="ml-7"
+            />
+          </div>
+        ))}
+        
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addFAQItem}
+          disabled={content.items.length >= 6}
+          className="w-full gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add FAQ
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function NewsletterEditor({
+  content,
+  onChange,
+}: {
+  content: NewsletterContent;
+  onChange: (updates: Partial<NewsletterContent>) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Click on the title, subtitle, and button in the preview above to edit
+      </p>
+      <div>
+        <Label>Email Placeholder</Label>
+        <Input
+          value={content.placeholder || ''}
+          onChange={(e) => onChange({ placeholder: e.target.value })}
+          placeholder="Enter your email"
+        />
+      </div>
+      <div>
+        <Label>Success Message</Label>
+        <Input
+          value={content.successMessage || ''}
+          onChange={(e) => onChange({ successMessage: e.target.value })}
+          placeholder="Thanks for subscribing!"
+        />
+      </div>
+    </div>
+  );
+}
+
+function SlideshowEditor({
+  content,
+  onChange,
+  onUpload,
+  uploading,
+}: {
+  content: SlideshowContent;
+  onChange: (updates: Partial<SlideshowContent>) => void;
+  onUpload: (file: File, onSuccess: (url: string) => void) => void;
+  uploading: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const MAX_SLIDES = 3;
+
+  const addSlide = () => {
+    if (content.slides.length >= MAX_SLIDES) {
+      toast.error(`Maximum ${MAX_SLIDES} slides allowed`);
+      return;
+    }
+    inputRef.current?.click();
+  };
+
+  const removeSlide = (id: string) => {
+    onChange({ slides: content.slides.filter((s) => s.id !== id) });
+  };
+
+  const updateSlide = (id: string, updates: Partial<SlideItem>) => {
+    onChange({
+      slides: content.slides.map((s) => (s.id === id ? { ...s, ...updates } : s)),
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label>Slides ({content.slides.length}/{MAX_SLIDES})</Label>
+        <div className="flex items-center gap-2">
+          <Label className="text-xs text-muted-foreground">Auto-play</Label>
+          <Switch
+            checked={content.autoPlay}
+            onCheckedChange={(checked) => onChange({ autoPlay: checked })}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {content.slides.map((slide) => (
+          <div key={slide.id} className="relative aspect-video group">
+            <img
+              src={slide.imageUrl}
+              alt=""
+              className="w-full h-full object-cover rounded-lg"
+            />
+            <Button
+              variant="destructive"
+              size="icon"
+              className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
+              onClick={() => removeSlide(slide.id)}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+        ))}
+        {content.slides.length < MAX_SLIDES && (
+          <button
+            onClick={addSlide}
+            disabled={uploading}
+            className="aspect-video border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary/50"
+          >
+            <Plus className="w-5 h-5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">
+              {uploading ? 'Uploading...' : 'Add Slide'}
+            </span>
+          </button>
+        )}
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            onUpload(file, (url) => {
+              const newSlide: SlideItem = {
+                id: crypto.randomUUID(),
+                imageUrl: url,
+              };
+              onChange({ slides: [...content.slides, newSlide] });
+            });
+          }
+        }}
+      />
+
+      {content.autoPlay && (
+        <div>
+          <Label>Interval (seconds)</Label>
+          <Select
+            value={String(content.interval)}
+            onValueChange={(value) => onChange({ interval: parseInt(value) })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3">3 seconds</SelectItem>
+              <SelectItem value="5">5 seconds</SelectItem>
+              <SelectItem value="7">7 seconds</SelectItem>
+              <SelectItem value="10">10 seconds</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LogoListEditor({
+  content,
+  onChange,
+  onUpload,
+  uploading,
+}: {
+  content: LogoListContent;
+  onChange: (updates: Partial<LogoListContent>) => void;
+  onUpload: (file: File, onSuccess: (url: string) => void) => void;
+  uploading: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const addLogo = () => {
+    inputRef.current?.click();
+  };
+
+  const removeLogo = (id: string) => {
+    onChange({ logos: content.logos.filter((l) => l.id !== id) });
+  };
+
+  const updateLogo = (id: string, updates: Partial<LogoItem>) => {
+    onChange({
+      logos: content.logos.map((l) => (l.id === id ? { ...l, ...updates } : l)),
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label>Grayscale Effect</Label>
+        <Switch
+          checked={content.grayscale}
+          onCheckedChange={(checked) => onChange({ grayscale: checked })}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Label>Logos</Label>
+        {content.logos.map((logo) => (
+          <div key={logo.id} className="flex items-center gap-3 border border-border rounded-lg p-2">
+            <img
+              src={logo.imageUrl}
+              alt={logo.altText || ''}
+              className={`h-10 w-16 object-contain ${content.grayscale ? 'grayscale' : ''}`}
+            />
+            <div className="flex-1 space-y-1">
+              <Input
+                value={logo.altText || ''}
+                onChange={(e) => updateLogo(logo.id, { altText: e.target.value })}
+                placeholder="Alt text"
+                className="h-7 text-xs"
+              />
+              <Input
+                value={logo.linkUrl || ''}
+                onChange={(e) => updateLogo(logo.id, { linkUrl: e.target.value })}
+                placeholder="Link URL (optional)"
+                className="h-7 text-xs"
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground"
+              onClick={() => removeLogo(logo.id)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        ))}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addLogo}
+          disabled={uploading}
+          className="w-full gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          {uploading ? 'Uploading...' : 'Add Logo'}
+        </Button>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            onUpload(file, (url) => {
+              const newLogo: LogoItem = {
+                id: crypto.randomUUID(),
+                imageUrl: url,
+              };
+              onChange({ logos: [...content.logos, newLogo] });
+            });
+          }
+        }}
+      />
+    </div>
+  );
+}
+
+function ContactUsEditor({
+  content,
+  onChange,
+}: {
+  content: ContactUsContent;
+  onChange: (updates: Partial<ContactUsContent>) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Style</Label>
+        <Select
+          value={content.style || 'centered'}
+          onValueChange={(value) => onChange({ style: value as ContactUsContent['style'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="centered">Centered</SelectItem>
+            <SelectItem value="split">Split Layout</SelectItem>
+            <SelectItem value="minimal">Minimal</SelectItem>
+            <SelectItem value="card">Card</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label>Email Address</Label>
+        <Input
+          value={content.email || ''}
+          onChange={(e) => onChange({ email: e.target.value })}
+          placeholder="your@email.com"
+          type="email"
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <Label>Show Contact Form</Label>
+        <Switch
+          checked={content.showForm}
+          onCheckedChange={(checked) => onChange({ showForm: checked })}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <Label>Show Social Links</Label>
+        <Switch
+          checked={content.socialLinks}
+          onCheckedChange={(checked) => onChange({ socialLinks: checked })}
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Click on the title and subtitle in the preview above to edit
+      </p>
+    </div>
+  );
+}
+
+function FooterEditor({
+  content,
+  onChange,
+}: {
+  content: FooterContent;
+  onChange: (updates: Partial<FooterContent>) => void;
+}) {
+  const addColumn = () => {
+    if (content.columns.length >= 4) {
+      toast.error('Maximum 4 columns allowed');
+      return;
+    }
+    const newColumn: FooterColumn = {
+      id: crypto.randomUUID(),
+      title: 'New Column',
+      links: [],
+    };
+    onChange({ columns: [...content.columns, newColumn] });
+  };
+
+  const updateColumn = (id: string, updates: Partial<FooterColumn>) => {
+    onChange({
+      columns: content.columns.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+    });
+  };
+
+  const removeColumn = (id: string) => {
+    onChange({ columns: content.columns.filter((c) => c.id !== id) });
+  };
+
+  const addLink = (columnId: string) => {
+    const column = content.columns.find((c) => c.id === columnId);
+    if (!column) return;
+    const newLink: FooterLink = {
+      id: crypto.randomUUID(),
+      label: 'New Link',
+      url: '/',
+    };
+    updateColumn(columnId, { links: [...column.links, newLink] });
+  };
+
+  const updateLink = (columnId: string, linkId: string, updates: Partial<FooterLink>) => {
+    const column = content.columns.find((c) => c.id === columnId);
+    if (!column) return;
+    updateColumn(columnId, {
+      links: column.links.map((l) => (l.id === linkId ? { ...l, ...updates } : l)),
+    });
+  };
+
+  const removeLink = (columnId: string, linkId: string) => {
+    const column = content.columns.find((c) => c.id === columnId);
+    if (!column) return;
+    updateColumn(columnId, { links: column.links.filter((l) => l.id !== linkId) });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Copyright Text</Label>
+        <Input
+          value={content.text}
+          onChange={(e) => onChange({ text: e.target.value })}
+          placeholder="© 2026 Your Store. All rights reserved."
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <Label>Show Social Links</Label>
+        <Switch
+          checked={content.showSocialLinks}
+          onCheckedChange={(checked) => onChange({ showSocialLinks: checked })}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label>Footer Columns ({content.columns.length}/4)</Label>
+        </div>
+
+        {content.columns.map((column) => (
+          <div key={column.id} className="border border-border rounded-lg p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                value={column.title}
+                onChange={(e) => updateColumn(column.id, { title: e.target.value })}
+                placeholder="Column Title"
+                className="flex-1"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+                onClick={() => removeColumn(column.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-1 ml-2">
+              {column.links.map((link) => (
+                <div key={link.id} className="flex items-center gap-1">
+                  <Input
+                    value={link.label}
+                    onChange={(e) => updateLink(column.id, link.id, { label: e.target.value })}
+                    placeholder="Label"
+                    className="h-7 text-xs flex-1"
+                  />
+                  <Input
+                    value={link.url}
+                    onChange={(e) => updateLink(column.id, link.id, { url: e.target.value })}
+                    placeholder="URL"
+                    className="h-7 text-xs flex-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => removeLink(column.id, link.id)}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => addLink(column.id)}
+                className="w-full h-7 text-xs"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add Link
+              </Button>
+            </div>
+          </div>
+        ))}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addColumn}
+          disabled={content.columns.length >= 4}
+          className="w-full gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add Column
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CardSlideshowEditor({
+  content,
+  onChange,
+  onUpload,
+  uploading,
+}: {
+  content: CardSlideshowContent;
+  onChange: (updates: Partial<CardSlideshowContent>) => void;
+  onUpload: (file: File, onSuccess: (url: string) => void) => void;
+  uploading: boolean;
+}) {
+  const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const MAX_CARDS = 5;
+
+  const addCard = () => {
+    if (content.cards.length >= MAX_CARDS) {
+      toast.error(`Maximum ${MAX_CARDS} cards allowed`);
+      return;
+    }
+    const newCard: CardSlideItem = {
+      id: crypto.randomUUID(),
+      title: 'Card Title',
+      description: 'Card description...',
+    };
+    onChange({ cards: [...content.cards, newCard] });
+  };
+
+  const removeCard = (id: string) => {
+    onChange({ cards: content.cards.filter((c) => c.id !== id) });
+  };
+
+  const updateCard = (id: string, updates: Partial<CardSlideItem>) => {
+    onChange({
+      cards: content.cards.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label>Auto-play</Label>
+        <Switch
+          checked={content.autoPlay}
+          onCheckedChange={(checked) => onChange({ autoPlay: checked })}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Label>Cards ({content.cards.length}/{MAX_CARDS})</Label>
+        {content.cards.map((card) => (
+          <div key={card.id} className="border border-border rounded-lg p-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0">
+                {card.imageUrl ? (
+                  <div className="relative">
+                    <img src={card.imageUrl} alt="" className="w-16 h-16 object-cover rounded" />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-1 -right-1 h-4 w-4"
+                      onClick={() => updateCard(card.id, { imageUrl: '' })}
+                    >
+                      <X className="w-2 h-2" />
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => inputRefs.current[card.id]?.click()}
+                    className="w-16 h-16 bg-muted rounded flex items-center justify-center"
+                    disabled={uploading}
+                  >
+                    <Upload className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                )}
+                <input
+                  ref={(el) => (inputRefs.current[card.id] = el)}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      onUpload(file, (url) => updateCard(card.id, { imageUrl: url }));
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex-1 space-y-2">
+                <Input
+                  value={card.title}
+                  onChange={(e) => updateCard(card.id, { title: e.target.value })}
+                  placeholder="Title"
+                  className="h-8"
+                />
+                <Input
+                  value={card.description || ''}
+                  onChange={(e) => updateCard(card.id, { description: e.target.value })}
+                  placeholder="Description"
+                  className="h-8"
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => removeCard(card.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addCard}
+          disabled={content.cards.length >= MAX_CARDS}
+          className="w-full gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add Card
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function BannerSlideshowEditor({
+  content,
+  onChange,
+  onUpload,
+  uploading,
+}: {
+  content: BannerSlideshowContent;
+  onChange: (updates: Partial<BannerSlideshowContent>) => void;
+  onUpload: (file: File, onSuccess: (url: string) => void) => void;
+  uploading: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const MAX_SLIDES = 5;
+
+  const addSlide = () => {
+    if (content.slides.length >= MAX_SLIDES) {
+      toast.error(`Maximum ${MAX_SLIDES} slides allowed`);
+      return;
+    }
+    inputRef.current?.click();
+  };
+
+  const removeSlide = (id: string) => {
+    onChange({ slides: content.slides.filter((s) => s.id !== id) });
+  };
+
+  const updateSlide = (id: string, updates: Partial<BannerSlideItem>) => {
+    onChange({
+      slides: content.slides.map((s) => (s.id === id ? { ...s, ...updates } : s)),
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label>Auto-play</Label>
+        <Switch
+          checked={content.autoPlay}
+          onCheckedChange={(checked) => onChange({ autoPlay: checked })}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Label>Banner Slides ({content.slides.length}/{MAX_SLIDES})</Label>
+        {content.slides.map((slide) => (
+          <div key={slide.id} className="border border-border rounded-lg p-3 space-y-2">
+            <div className="relative aspect-[3/1] bg-muted rounded overflow-hidden">
+              <img src={slide.imageUrl} alt="" className="w-full h-full object-cover" />
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute top-2 right-2 h-6 w-6"
+                onClick={() => removeSlide(slide.id)}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+            <Input
+              value={slide.title || ''}
+              onChange={(e) => updateSlide(slide.id, { title: e.target.value })}
+              placeholder="Title (optional)"
+              className="h-8"
+            />
+            <Input
+              value={slide.buttonText || ''}
+              onChange={(e) => updateSlide(slide.id, { buttonText: e.target.value })}
+              placeholder="Button text (optional)"
+              className="h-8"
+            />
+            <Input
+              value={slide.buttonUrl || ''}
+              onChange={(e) => updateSlide(slide.id, { buttonUrl: e.target.value })}
+              placeholder="Button URL"
+              className="h-8"
+            />
+          </div>
+        ))}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addSlide}
+          disabled={uploading || content.slides.length >= MAX_SLIDES}
+          className="w-full gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          {uploading ? 'Uploading...' : 'Add Banner Slide'}
+        </Button>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            onUpload(file, (url) => {
+              const newSlide: BannerSlideItem = {
+                id: crypto.randomUUID(),
+                imageUrl: url,
+              };
+              onChange({ slides: [...content.slides, newSlide] });
+            });
+          }
+        }}
+      />
     </div>
   );
 }

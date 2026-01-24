@@ -19,7 +19,9 @@ export type SectionType =
   | 'featured_product'
   | 'logo_list'
   | 'contact_us'
-  | 'footer';
+  | 'footer'
+  | 'card_slideshow'
+  | 'banner_slideshow';
 
 // Style options for each section
 export interface SectionStyleOptions {
@@ -64,6 +66,7 @@ export interface GalleryContent {
     altText?: string;
   }[];
   columns: 2 | 3 | 4;
+  rows?: 2 | 3; // Added rows for proper grid layouts
   layout?: 'grid' | 'masonry';
 }
 
@@ -97,7 +100,7 @@ export interface SlidingBannerContent {
 }
 
 export interface DividerContent {
-  style: 'line' | 'space' | 'dots';
+  style: 'line' | 'space' | 'dots' | 'thick' | 'gradient' | 'zigzag' | 'wave';
 }
 
 // New section content types
@@ -107,12 +110,13 @@ export interface TestimonialItem {
   name: string;
   role?: string;
   quote: string;
+  rating?: 1 | 2 | 3 | 4 | 5; // Added star rating
 }
 
 export interface TestimonialsContent {
   title?: string;
   testimonials: TestimonialItem[];
-  layout: 'grid' | 'slider' | 'stacked';
+  layout: 'grid' | 'slider' | 'stacked' | 'grid-6';
 }
 
 export interface FAQItem {
@@ -124,6 +128,7 @@ export interface FAQItem {
 export interface FAQContent {
   title?: string;
   items: FAQItem[];
+  layout?: 'accordion' | 'grid'; // Added layout option for 3x2 grid
 }
 
 export interface NewsletterContent {
@@ -145,6 +150,38 @@ export interface SlideshowContent {
   slides: SlideItem[];
   autoPlay: boolean;
   interval: number; // seconds
+}
+
+// Card Slideshow - carousel of content cards
+export interface CardSlideItem {
+  id: string;
+  imageUrl?: string;
+  title: string;
+  description?: string;
+  buttonText?: string;
+  buttonUrl?: string;
+}
+
+export interface CardSlideshowContent {
+  cards: CardSlideItem[];
+  autoPlay: boolean;
+  interval: number;
+}
+
+// Banner Slideshow - full-width banner carousel
+export interface BannerSlideItem {
+  id: string;
+  imageUrl: string;
+  title?: string;
+  subtitle?: string;
+  buttonText?: string;
+  buttonUrl?: string;
+}
+
+export interface BannerSlideshowContent {
+  slides: BannerSlideItem[];
+  autoPlay: boolean;
+  interval: number;
 }
 
 export interface ListItem {
@@ -186,6 +223,7 @@ export interface ContactUsContent {
   email?: string;
   showForm: boolean;
   socialLinks: boolean;
+  style?: 'centered' | 'split' | 'minimal' | 'card';
 }
 
 // Footer section types
@@ -227,7 +265,9 @@ export type SectionContent =
   | FeaturedProductContent
   | LogoListContent
   | ContactUsContent
-  | FooterContent;
+  | FooterContent
+  | CardSlideshowContent
+  | BannerSlideshowContent;
 
 export interface ProfileSection {
   id: string;
@@ -408,11 +448,12 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
     defaultContent: {
       images: [],
       columns: 3,
+      rows: 2,
       layout: 'grid',
     } as GalleryContent,
     presets: [
-      { id: 'style1', name: '3x2 Grid', styleOptions: { preset: 'style1' }, contentOverrides: { columns: 3, layout: 'grid' } },
-      { id: 'style2', name: '2x3 Grid', styleOptions: { preset: 'style2' }, contentOverrides: { columns: 2, layout: 'grid' } },
+      { id: 'style1', name: '3x2 Grid', styleOptions: { preset: 'style1' }, contentOverrides: { columns: 3, rows: 2, layout: 'grid' } },
+      { id: 'style2', name: '2x3 Grid', styleOptions: { preset: 'style2' }, contentOverrides: { columns: 2, rows: 3, layout: 'grid' } },
       { id: 'style3', name: 'Masonry', styleOptions: { preset: 'style3' }, contentOverrides: { columns: 3, layout: 'masonry' } },
     ],
   },
@@ -435,7 +476,7 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
   {
     type: 'slideshow',
     name: 'Slideshow',
-    description: 'Auto-rotating image carousel',
+    description: 'Auto-rotating image carousel (max 3 slides)',
     icon: 'Images',
     category: 'media',
     defaultContent: {
@@ -446,6 +487,38 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
     presets: [
       { id: 'style1', name: 'Full Width', styleOptions: { backgroundWidth: 'full' } },
       { id: 'style2', name: 'Contained', styleOptions: { backgroundWidth: 'contained' } },
+    ],
+  },
+  {
+    type: 'card_slideshow',
+    name: 'Card Slideshow',
+    description: 'Carousel of content cards',
+    icon: 'Layers',
+    category: 'media',
+    defaultContent: {
+      cards: [],
+      autoPlay: true,
+      interval: 5,
+    } as CardSlideshowContent,
+    presets: [
+      { id: 'style1', name: 'Default', styleOptions: { colorScheme: 'white' } },
+      { id: 'style2', name: 'Dark', styleOptions: { colorScheme: 'dark' } },
+    ],
+  },
+  {
+    type: 'banner_slideshow',
+    name: 'Banner Slideshow',
+    description: 'Full-width banner carousel',
+    icon: 'Film',
+    category: 'media',
+    defaultContent: {
+      slides: [],
+      autoPlay: true,
+      interval: 5,
+    } as BannerSlideshowContent,
+    presets: [
+      { id: 'style1', name: 'Full Width', styleOptions: { backgroundWidth: 'full', sectionHeight: 'large' } },
+      { id: 'style2', name: 'Compact', styleOptions: { sectionHeight: 'medium' } },
     ],
   },
   // Products
@@ -460,8 +533,8 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
       displayStyle: 'grid',
     } as CollectionContent,
     presets: [
-      { id: 'style1', name: 'Grid', styleOptions: { colorScheme: 'white' } },
-      { id: 'style2', name: 'Slider', styleOptions: { colorScheme: 'white' } },
+      { id: 'style1', name: 'Grid', styleOptions: { colorScheme: 'white' }, contentOverrides: { displayStyle: 'grid' } },
+      { id: 'style2', name: 'Slider', styleOptions: { colorScheme: 'white' }, contentOverrides: { displayStyle: 'slider' } },
     ],
   },
   {
@@ -485,7 +558,7 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
   {
     type: 'testimonials',
     name: 'Testimonials',
-    description: 'Customer testimonials with avatar',
+    description: 'Customer testimonials with avatar and ratings',
     icon: 'Quote',
     category: 'social',
     defaultContent: {
@@ -494,9 +567,10 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
       layout: 'grid',
     } as TestimonialsContent,
     presets: [
-      { id: 'style1', name: 'Cards', styleOptions: { colorScheme: 'white' } },
-      { id: 'style2', name: 'Slider', styleOptions: { colorScheme: 'light' } },
-      { id: 'style3', name: 'Stacked', styleOptions: { colorScheme: 'white' } },
+      { id: 'style1', name: 'Cards Grid', styleOptions: { colorScheme: 'white' }, contentOverrides: { layout: 'grid' } },
+      { id: 'style2', name: 'Slider', styleOptions: { colorScheme: 'light' }, contentOverrides: { layout: 'slider' } },
+      { id: 'style3', name: 'Stacked', styleOptions: { colorScheme: 'white' }, contentOverrides: { layout: 'stacked' } },
+      { id: 'style4', name: '6x1 Grid', styleOptions: { colorScheme: 'white' }, contentOverrides: { layout: 'grid-6' } },
     ],
   },
   {
@@ -511,8 +585,8 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
       grayscale: true,
     } as LogoListContent,
     presets: [
-      { id: 'style1', name: 'Grayscale', styleOptions: { colorScheme: 'white' } },
-      { id: 'style2', name: 'Color', styleOptions: { colorScheme: 'white' } },
+      { id: 'style1', name: 'Grayscale', styleOptions: { colorScheme: 'white' }, contentOverrides: { grayscale: true } },
+      { id: 'style2', name: 'Color', styleOptions: { colorScheme: 'white' }, contentOverrides: { grayscale: false } },
     ],
   },
   // Engagement
@@ -537,16 +611,17 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
   {
     type: 'faq',
     name: 'FAQ',
-    description: 'Expandable FAQ items',
+    description: 'Expandable FAQ items (max 6)',
     icon: 'HelpCircle',
     category: 'engagement',
     defaultContent: {
       title: 'Frequently Asked Questions',
       items: [],
+      layout: 'accordion',
     } as FAQContent,
     presets: [
-      { id: 'style1', name: 'Accordion', styleOptions: { colorScheme: 'white' } },
-      { id: 'style2', name: 'Cards', styleOptions: { colorScheme: 'light' } },
+      { id: 'style1', name: 'Accordion', styleOptions: { colorScheme: 'white' }, contentOverrides: { layout: 'accordion' } },
+      { id: 'style2', name: '3x2 Grid', styleOptions: { colorScheme: 'light' }, contentOverrides: { layout: 'grid' } },
     ],
   },
   {
@@ -561,10 +636,13 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
       email: '',
       showForm: true,
       socialLinks: true,
+      style: 'centered',
     } as ContactUsContent,
     presets: [
-      { id: 'style1', name: 'Form', styleOptions: { colorScheme: 'white' } },
-      { id: 'style2', name: 'Info Only', styleOptions: { colorScheme: 'light' } },
+      { id: 'style1', name: 'Centered Form', styleOptions: { colorScheme: 'white' }, contentOverrides: { style: 'centered', showForm: true } },
+      { id: 'style2', name: 'Split Layout', styleOptions: { colorScheme: 'light' }, contentOverrides: { style: 'split', showForm: true } },
+      { id: 'style3', name: 'Minimal', styleOptions: { colorScheme: 'white' }, contentOverrides: { style: 'minimal', showForm: false } },
+      { id: 'style4', name: 'Card', styleOptions: { colorScheme: 'dark' }, contentOverrides: { style: 'card', showForm: true } },
     ],
   },
   // Layout
@@ -578,9 +656,12 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
       style: 'line',
     } as DividerContent,
     presets: [
-      { id: 'style1', name: 'Line', styleOptions: {} },
-      { id: 'style2', name: 'Space', styleOptions: {} },
-      { id: 'style3', name: 'Dots', styleOptions: {} },
+      { id: 'style1', name: 'Line', styleOptions: {}, contentOverrides: { style: 'line' } },
+      { id: 'style2', name: 'Space', styleOptions: {}, contentOverrides: { style: 'space' } },
+      { id: 'style3', name: 'Dots', styleOptions: {}, contentOverrides: { style: 'dots' } },
+      { id: 'style4', name: 'Thick', styleOptions: {}, contentOverrides: { style: 'thick' } },
+      { id: 'style5', name: 'Gradient', styleOptions: {}, contentOverrides: { style: 'gradient' } },
+      { id: 'style6', name: 'Wave', styleOptions: {}, contentOverrides: { style: 'wave' } },
     ],
   },
   {
