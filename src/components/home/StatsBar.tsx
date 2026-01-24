@@ -60,27 +60,20 @@ export function StatsBar() {
 
   useEffect(() => {
     async function fetchStats() {
-      // Fetch creators count using public_profiles view (no RLS restrictions)
-      const { count: creatorsCount } = await supabase
-        .from('public_profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_creator', true);
+      // Use security definer RPC to get accurate counts (bypasses RLS)
+      const { data, error } = await supabase.rpc('get_home_stats');
+      
+      if (error) {
+        console.error('Error fetching stats:', error);
+        return;
+      }
 
-      // Fetch products count (published products are viewable by everyone per RLS)
-      const { count: productsCount } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'published');
-
-      // Fetch total users count using public_profiles view
-      const { count: usersCount } = await supabase
-        .from('public_profiles')
-        .select('*', { count: 'exact', head: true });
+      const statsData = data?.[0] || { verified_creators: 0, premium_products: 0, community_members: 0 };
 
       setStats([
-        { label: 'Verified Creators', value: creatorsCount || 0, suffix: '+', icon: <UserCheck className="h-5 w-5" /> },
-        { label: 'Premium Products', value: productsCount || 0, suffix: '+', icon: <Package className="h-5 w-5" /> },
-        { label: 'Community Members', value: usersCount || 0, suffix: '+', icon: <Users className="h-5 w-5" /> },
+        { label: 'Verified Creators', value: Number(statsData.verified_creators) || 0, suffix: '+', icon: <UserCheck className="h-5 w-5" /> },
+        { label: 'Premium Products', value: Number(statsData.premium_products) || 0, suffix: '+', icon: <Package className="h-5 w-5" /> },
+        { label: 'Community Members', value: Number(statsData.community_members) || 0, suffix: '+', icon: <Users className="h-5 w-5" /> },
         { label: 'Instant Downloads', value: 100, suffix: '%', icon: <Download className="h-5 w-5" /> },
       ]);
     }

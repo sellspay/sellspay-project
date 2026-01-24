@@ -1204,6 +1204,14 @@ export type Database = {
     }
     Functions: {
       get_email_by_username: { Args: { p_username: string }; Returns: string }
+      get_home_stats: {
+        Args: never
+        Returns: {
+          community_members: number
+          premium_products: number
+          verified_creators: number
+        }[]
+      }
       get_monthly_tool_usage: { Args: { p_user_id: string }; Returns: number }
       has_pro_subscription: { Args: { p_user_id: string }; Returns: boolean }
       has_role: {
