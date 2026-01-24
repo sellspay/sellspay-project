@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply, Bookmark, Flame, TrendingUp } from "lucide-react";
+import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply, Bookmark, Flame, TrendingUp, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 import { CreatorFollowDialog } from "@/components/product/CreatorFollowDialog";
 import { createNotification, checkFollowCooldown } from "@/lib/notifications";
 import { getFileTypeIcon, getFileTypeLabel } from "@/lib/fileTypeIcons";
+import { SubscriptionPromotion } from "@/components/product/SubscriptionPromotion";
+
 interface Product {
   id: string;
   name: string;
@@ -136,6 +138,20 @@ export default function ProductDetail() {
   const [savingProduct, setSavingProduct] = useState(false);
   const [downloadLimitInfo, setDownloadLimitInfo] = useState<{ remaining: number; daysUntilReset?: number } | null>(null);
   
+  // Subscription benefits state
+  const [planBenefits, setPlanBenefits] = useState<{
+    planId: string;
+    planName: string;
+    planPriceCents: number;
+    planCurrency: string;
+    isFree: boolean;
+    discountPercent: number | null;
+    discountType: string | null;
+  }[]>([]);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [activeSubscriptionPlanId, setActiveSubscriptionPlanId] = useState<string | null>(null);
+  const [isSubscriptionOnly, setIsSubscriptionOnly] = useState(false);
+  
   // Featured Products
   const [featuredProducts, setFeaturedProducts] = useState<RelatedProduct[]>([]);
   
@@ -211,6 +227,111 @@ export default function ProductDetail() {
     };
     checkFollowStatus();
   }, [userProfileId, product?.creator?.id, isOwner]);
+
+  // Fetch subscription plan benefits for this product
+  useEffect(() => {
+    const fetchSubscriptionBenefits = async () => {
+      const productId = id || product?.id;
+      if (!productId) return;
+
+      try {
+        // Check if product is subscription_only
+        setIsSubscriptionOnly(product?.pricing_type === 'subscription_only');
+
+        // Fetch all plans that include this product with their benefits
+        const { data: planProducts, error } = await supabase
+          .from('subscription_plan_products')
+          .select(`
+            plan_id,
+            is_free,
+            discount_percent,
+            discount_type,
+            creator_subscription_plans!inner (
+              id,
+              name,
+              price_cents,
+              currency,
+              is_active,
+              creator_id
+            )
+          `)
+          .eq('product_id', productId);
+
+        if (error) {
+          console.error('Error fetching subscription benefits:', error);
+          return;
+        }
+
+        if (planProducts && planProducts.length > 0) {
+          const benefits = planProducts
+            .filter((pp: any) => pp.creator_subscription_plans?.is_active)
+            .map((pp: any) => ({
+              planId: pp.plan_id,
+              planName: pp.creator_subscription_plans.name,
+              planPriceCents: pp.creator_subscription_plans.price_cents,
+              planCurrency: pp.creator_subscription_plans.currency,
+              isFree: pp.is_free || false,
+              discountPercent: pp.discount_percent,
+              discountType: pp.discount_type,
+            }));
+          setPlanBenefits(benefits);
+        }
+      } catch (error) {
+        console.error('Error fetching subscription benefits:', error);
+      }
+    };
+
+    fetchSubscriptionBenefits();
+  }, [id, product?.id, product?.pricing_type]);
+
+  // Check if user has active subscription to creator
+  useEffect(() => {
+    const checkUserSubscription = async () => {
+      if (!userProfileId || !product?.creator?.id) {
+        setHasActiveSubscription(false);
+        setActiveSubscriptionPlanId(null);
+        return;
+      }
+
+      try {
+        // Get creator's subscription plans
+        const { data: creatorPlans } = await supabase
+          .from('creator_subscription_plans')
+          .select('id')
+          .eq('creator_id', product.creator.id)
+          .eq('is_active', true);
+
+        if (!creatorPlans || creatorPlans.length === 0) {
+          setHasActiveSubscription(false);
+          return;
+        }
+
+        const planIds = creatorPlans.map(p => p.id);
+
+        // Check if user has active subscription to any of these plans
+        const { data: subscription } = await supabase
+          .from('user_subscriptions')
+          .select('plan_id, status, current_period_end')
+          .eq('user_id', userProfileId)
+          .in('plan_id', planIds)
+          .eq('status', 'active')
+          .gt('current_period_end', new Date().toISOString())
+          .maybeSingle();
+
+        if (subscription) {
+          setHasActiveSubscription(true);
+          setActiveSubscriptionPlanId(subscription.plan_id);
+        } else {
+          setHasActiveSubscription(false);
+          setActiveSubscriptionPlanId(null);
+        }
+      } catch (error) {
+        console.error('Error checking user subscription:', error);
+      }
+    };
+
+    checkUserSubscription();
+  }, [userProfileId, product?.creator?.id]);
 
   const fetchProduct = async () => {
     try {
@@ -1104,6 +1225,7 @@ export default function ProductDetail() {
               {/* Primary Action Button - Right next to title */}
               {!isOwner && (
                 <div className="flex-shrink-0">
+                  {/* User has purchased */}
                   {hasPurchased ? (
                     <Button 
                       className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600"
@@ -1121,6 +1243,33 @@ export default function ProductDetail() {
                           ? `Download (${downloadLimitInfo.remaining}/2)`
                           : 'Download'
                       }
+                    </Button>
+                  ) : hasActiveSubscription ? (
+                    // User has active subscription to this creator
+                    <Button 
+                      className="bg-gradient-to-r from-primary to-accent"
+                      onClick={handleDownload}
+                      disabled={downloading || (downloadLimitInfo?.remaining === 0)}
+                    >
+                      {downloading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Crown className="w-4 h-4 mr-2" />
+                      )}
+                      {downloadLimitInfo?.remaining === 0 
+                        ? `Limit (${downloadLimitInfo?.daysUntilReset}d)` 
+                        : 'Download (Subscriber)'
+                      }
+                    </Button>
+                  ) : isSubscriptionOnly ? (
+                    // Subscription-only product - cannot buy, must subscribe
+                    <Button 
+                      variant="outline"
+                      className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                      disabled
+                    >
+                      <Crown className="w-4 h-4 mr-2" />
+                      Subscribers Only
                     </Button>
                   ) : isFollowingCreator || !product.creator ? (
                     product.pricing_type === "free" ? (
@@ -1224,6 +1373,21 @@ export default function ProductDetail() {
               </Button>
             </div>
           </div>
+
+          {/* Subscription Promotion Banner */}
+          {!isOwner && !hasPurchased && !hasActiveSubscription && planBenefits.length > 0 && product.creator && (
+            <SubscriptionPromotion
+              creatorId={product.creator.id}
+              creatorName={product.creator.username || 'creator'}
+              productName={product.name}
+              productPriceCents={product.price_cents}
+              productCurrency={product.currency}
+              planBenefits={planBenefits}
+              isSubscriptionOnly={isSubscriptionOnly}
+              hasActiveSubscription={hasActiveSubscription}
+              activeSubscriptionPlanId={activeSubscriptionPlanId}
+            />
+          )}
 
           {/* Comments Section - Moved right under action buttons */}
           <div>
