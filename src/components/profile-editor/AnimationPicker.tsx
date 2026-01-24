@@ -36,9 +36,10 @@ const ANIMATION_OPTIONS: AnimationOption[] = [
 interface AnimationPickerProps {
   value: AnimationType;
   onChange: (value: AnimationType) => void;
+  onPreview?: () => void;
 }
 
-export function AnimationPicker({ value, onChange }: AnimationPickerProps) {
+export function AnimationPicker({ value, onChange, onPreview }: AnimationPickerProps) {
   const [open, setOpen] = React.useState(false);
   const selectedOption = ANIMATION_OPTIONS.find(opt => opt.value === value) || ANIMATION_OPTIONS[0];
 
@@ -90,6 +91,21 @@ export function AnimationPicker({ value, onChange }: AnimationPickerProps) {
             </button>
           ))}
         </div>
+        {value !== 'none' && onPreview && (
+          <div className="border-t pt-1.5 mt-1.5">
+            <button
+              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPreview();
+                setOpen(false);
+              }}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Preview Animation
+            </button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
