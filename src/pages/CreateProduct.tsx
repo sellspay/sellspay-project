@@ -39,6 +39,20 @@ const generateSlug = (title: string): string => {
     .substring(0, 100);       // Limit length
 };
 
+// Helper to extract YouTube video ID from various URL formats
+const extractYoutubeId = (url: string): string | null => {
+  if (!url) return null;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&\n?#]+)/,
+    /^([a-zA-Z0-9_-]{11})$/
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return null;
+};
+
 export default function CreateProduct() {
   const { user, profile, profileLoading } = useAuth();
   const navigate = useNavigate();
@@ -273,11 +287,50 @@ export default function CreateProduct() {
     );
   }
 
+  const youtubeVideoId = extractYoutubeId(youtubeUrl);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <h1 className="text-3xl font-bold mb-8">Create New Product</h1>
 
       <form className="space-y-8">
+        {/* YouTube Video - Top Section */}
+        <Card className="bg-card/50">
+          <CardHeader>
+            <CardTitle>YouTube Video</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="youtube">YouTube Video URL (Optional)</Label>
+              <Input
+                id="youtube"
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                placeholder="https://youtube.com/watch?v=..."
+                className="mt-2"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Paste a YouTube link to showcase your product with a video
+              </p>
+            </div>
+            
+            {/* Live YouTube Preview */}
+            {youtubeVideoId && (
+              <div className="mt-4">
+                <Label className="text-sm text-muted-foreground mb-2 block">Preview</Label>
+                <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black/20">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+                    title="YouTube video preview"
+                    className="absolute inset-0 w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
         {/* Basic Info */}
         <Card className="bg-card/50">
           <CardHeader>
@@ -518,17 +571,6 @@ export default function CreateProduct() {
               </div>
             </div>
 
-            {/* YouTube URL */}
-            <div>
-              <Label htmlFor="youtube">YouTube Video URL (Optional)</Label>
-              <Input
-                id="youtube"
-                value={youtubeUrl}
-                onChange={(e) => setYoutubeUrl(e.target.value)}
-                placeholder="https://youtube.com/watch?v=..."
-                className="mt-2"
-              />
-            </div>
 
             {/* Download File */}
             <div>
