@@ -1,5 +1,4 @@
-import { useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
@@ -23,74 +22,132 @@ export const PRO_TOOLS = [
   "music-splitter",
 ];
 
-// Query keys for cache management
-const CREDIT_QUERY_KEY = "user-credits";
-const SUBSCRIPTION_QUERY_KEY = "user-credit-subscription";
+// Global cache to persist across component mounts
+let creditsCache: { userId: string; balance: number; timestamp: number } | null = null;
+let subscriptionCache: { userId: string; subscription: CreditSubscription | null; timestamp: number } | null = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+function isCacheValid(cache: { timestamp: number; userId: string } | null, userId: string): boolean {
+  if (!cache) return false;
+  if (cache.userId !== userId) return false;
+  return Date.now() - cache.timestamp < CACHE_DURATION;
+}
+
+// Clear cache (used when user logs out)
+export function clearCreditsCache() {
+  creditsCache = null;
+  subscriptionCache = null;
+}
 
 export function useCredits() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  // Credit balance query - globally cached
-  const {
-    data: creditBalance = 0,
-    isLoading,
-    error: creditError,
-    refetch: refetchCredits,
-  } = useQuery({
-    queryKey: [CREDIT_QUERY_KEY, user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("check-credits");
-      if (error) throw error;
-      return data?.credit_balance ?? 0;
-    },
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
-    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache
-    refetchOnMount: false, // Don't refetch if cache exists
-    refetchOnWindowFocus: false, // Don't refetch on tab focus
+  const fetchedRef = useRef(false);
+  
+  const [creditBalance, setCreditBalance] = useState<number>(() => {
+    // Initialize from cache if valid and same user
+    if (user && isCacheValid(creditsCache, user.id)) {
+      return creditsCache!.balance;
+    }
+    return 0;
   });
+  
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    // Skip loading if we have valid cache
+    if (user && isCacheValid(creditsCache, user.id)) {
+      return false;
+    }
+    return !!user; // Only show loading if user exists
+  });
+  
+  const [error, setError] = useState<string | null>(null);
+  
+  const [subscription, setSubscription] = useState<CreditSubscription | null>(() => {
+    if (user && isCacheValid(subscriptionCache, user.id)) {
+      return subscriptionCache!.subscription;
+    }
+    return null;
+  });
+  
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
-  // Subscription status query - globally cached
-  const {
-    data: subscription = null,
-    isLoading: subscriptionLoading,
-    refetch: refetchSubscription,
-  } = useQuery({
-    queryKey: [SUBSCRIPTION_QUERY_KEY, user?.id],
-    queryFn: async (): Promise<CreditSubscription | null> => {
+  const checkCredits = useCallback(async (forceRefresh = false) => {
+    if (!user) {
+      setCreditBalance(0);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    // Use cache if valid and not forcing refresh
+    if (!forceRefresh && isCacheValid(creditsCache, user.id)) {
+      setCreditBalance(creditsCache!.balance);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase.functions.invoke("check-credits");
+      
+      if (error) throw error;
+      
+      const balance = data?.credit_balance ?? 0;
+      
+      // Update global cache
+      creditsCache = {
+        userId: user.id,
+        balance,
+        timestamp: Date.now(),
+      };
+      
+      setCreditBalance(balance);
+      setError(null);
+    } catch (err) {
+      console.error("Error checking credits:", err);
+      setError(err instanceof Error ? err.message : "Failed to check credits");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  const checkSubscription = useCallback(async (forceRefresh = false) => {
+    if (!user) {
+      setSubscription(null);
+      return;
+    }
+
+    // Use cache if valid and not forcing refresh
+    if (!forceRefresh && isCacheValid(subscriptionCache, user.id)) {
+      setSubscription(subscriptionCache!.subscription);
+      return;
+    }
+
+    setSubscriptionLoading(true);
+    try {
       const { data, error } = await supabase.functions.invoke("manage-credit-subscription", {
         body: { action: "check" },
       });
+      
       if (error) throw error;
-      if (data?.hasSubscription && data?.subscription) {
-        return data.subscription;
-      }
-      return null;
-    },
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-  });
-
-  const checkCredits = useCallback(async () => {
-    await refetchCredits();
-  }, [refetchCredits]);
-
-  const checkSubscription = useCallback(async () => {
-    await refetchSubscription();
-  }, [refetchSubscription]);
-
-  const invalidateCredits = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: [CREDIT_QUERY_KEY] });
-  }, [queryClient]);
-
-  const invalidateSubscription = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: [SUBSCRIPTION_QUERY_KEY] });
-  }, [queryClient]);
+      
+      const sub = data?.hasSubscription && data?.subscription ? data.subscription : null;
+      
+      // Update global cache
+      subscriptionCache = {
+        userId: user.id,
+        subscription: sub,
+        timestamp: Date.now(),
+      };
+      
+      setSubscription(sub);
+    } catch (err) {
+      console.error("Error checking subscription:", err);
+      setSubscription(null);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  }, [user]);
 
   const deductCredit = useCallback(async (toolId: string) => {
     if (!user) return { success: false, error: "Not authenticated" };
@@ -103,8 +160,13 @@ export function useCredits() {
       if (error) throw error;
       
       if (data.success) {
-        // Update cache immediately with new balance
-        queryClient.setQueryData([CREDIT_QUERY_KEY, user.id], data.credit_balance);
+        // Update local state and cache
+        setCreditBalance(data.credit_balance);
+        creditsCache = {
+          userId: user.id,
+          balance: data.credit_balance,
+          timestamp: Date.now(),
+        };
         return { success: true, newBalance: data.credit_balance };
       } else {
         return { success: false, error: data.error || "Failed to deduct credit" };
@@ -116,7 +178,7 @@ export function useCredits() {
         error: err instanceof Error ? err.message : "Failed to deduct credit" 
       };
     }
-  }, [user, queryClient]);
+  }, [user]);
 
   const startCheckout = useCallback(async (packageId: string, priceId?: string): Promise<{ url?: string; upgraded?: boolean; message?: string; creditsAdded?: number; error?: string } | null> => {
     if (!user) {
@@ -133,9 +195,9 @@ export function useCredits() {
       
       // Handle upgrade response (no redirect needed)
       if (data.upgraded) {
-        // Invalidate caches to refresh data
-        invalidateCredits();
-        invalidateSubscription();
+        // Force refresh caches
+        await checkCredits(true);
+        await checkSubscription(true);
         return { 
           upgraded: true, 
           message: data.message,
@@ -155,7 +217,7 @@ export function useCredits() {
       const errorMessage = err instanceof Error ? err.message : "Failed to process request";
       return { error: errorMessage };
     }
-  }, [user, navigate, invalidateCredits, invalidateSubscription]);
+  }, [user, navigate, checkCredits, checkSubscription]);
 
   const verifyPurchase = useCallback(async (sessionId: string) => {
     if (!user) return { success: false };
@@ -168,10 +230,15 @@ export function useCredits() {
       if (error) throw error;
       
       if (data.success) {
-        // Update cache with new balance
-        queryClient.setQueryData([CREDIT_QUERY_KEY, user.id], data.credit_balance);
-        // Invalidate subscription to refresh
-        invalidateSubscription();
+        // Update local state and cache
+        setCreditBalance(data.credit_balance);
+        creditsCache = {
+          userId: user.id,
+          balance: data.credit_balance,
+          timestamp: Date.now(),
+        };
+        // Force refresh subscription
+        await checkSubscription(true);
         return { 
           success: true, 
           creditsAdded: data.credits_added,
@@ -183,7 +250,7 @@ export function useCredits() {
       console.error("Error verifying purchase:", err);
       return { success: false };
     }
-  }, [user, queryClient, invalidateSubscription]);
+  }, [user, checkSubscription]);
 
   const openCustomerPortal = useCallback(async () => {
     if (!user) return null;
@@ -222,10 +289,44 @@ export function useCredits() {
     navigate("/pricing");
   }, [navigate]);
 
+  // Initial fetch - only once per user session
+  useEffect(() => {
+    if (!user) {
+      setCreditBalance(0);
+      setIsLoading(false);
+      setSubscription(null);
+      fetchedRef.current = false;
+      return;
+    }
+
+    // Check if we already have valid cache for this user
+    const hasValidCreditsCache = isCacheValid(creditsCache, user.id);
+    const hasValidSubCache = isCacheValid(subscriptionCache, user.id);
+
+    if (hasValidCreditsCache) {
+      setCreditBalance(creditsCache!.balance);
+      setIsLoading(false);
+    }
+    
+    if (hasValidSubCache) {
+      setSubscription(subscriptionCache!.subscription);
+    }
+
+    // Only fetch if cache is invalid
+    if (!hasValidCreditsCache || !hasValidSubCache) {
+      if (!hasValidCreditsCache) {
+        checkCredits();
+      }
+      if (!hasValidSubCache) {
+        checkSubscription();
+      }
+    }
+  }, [user?.id]); // Only depend on user ID
+
   return {
     creditBalance,
     isLoading,
-    error: creditError instanceof Error ? creditError.message : null,
+    error,
     subscription,
     subscriptionLoading,
     checkCredits,
