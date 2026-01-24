@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Search, ChevronDown, ExternalLink, MessageCircle, Mail, HelpCircle, Sparkles, CreditCard, Users, Store, Wrench, Shield, BookOpen, Headphones } from 'lucide-react';
+import { Search, ChevronDown, ExternalLink, MessageCircle, Mail, HelpCircle, Sparkles, CreditCard, Users, Store, Wrench, Shield, BookOpen, Headphones, ArrowRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { Reveal } from '@/components/home/Reveal';
 
 interface FAQItem {
   question: string;
@@ -18,6 +18,7 @@ interface FAQCategory {
   title: string;
   icon: typeof HelpCircle;
   description: string;
+  gradient: string;
   items: FAQItem[];
 }
 
@@ -27,6 +28,7 @@ const faqCategories: FAQCategory[] = [
     title: 'Getting Started',
     icon: BookOpen,
     description: 'Learn the basics of the platform',
+    gradient: 'from-emerald-500 to-teal-600',
     items: [
       {
         question: 'What is EditorsParadise?',
@@ -59,6 +61,7 @@ const faqCategories: FAQCategory[] = [
     title: 'For Creators',
     icon: Users,
     description: 'Start selling your digital products',
+    gradient: 'from-violet-500 to-purple-600',
     items: [
       {
         question: 'How do I become a creator?',
@@ -91,6 +94,7 @@ const faqCategories: FAQCategory[] = [
     title: 'Selling & Store',
     icon: Store,
     description: 'Manage your products and sales',
+    gradient: 'from-sky-500 to-blue-600',
     items: [
       {
         question: 'How do I create and list products?',
@@ -123,6 +127,7 @@ const faqCategories: FAQCategory[] = [
     title: 'Subscriptions & Billing',
     icon: CreditCard,
     description: 'Recurring revenue and subscriber management',
+    gradient: 'from-amber-500 to-orange-600',
     items: [
       {
         question: 'What are subscription plans?',
@@ -155,6 +160,7 @@ const faqCategories: FAQCategory[] = [
     title: 'AI Tools & Credits',
     icon: Sparkles,
     description: 'Powerful AI-powered editing tools',
+    gradient: 'from-pink-500 to-rose-600',
     items: [
       {
         question: 'What are AI Tools?',
@@ -187,6 +193,7 @@ const faqCategories: FAQCategory[] = [
     title: 'For Buyers',
     icon: Store,
     description: 'Purchasing and downloading products',
+    gradient: 'from-cyan-500 to-blue-600',
     items: [
       {
         question: 'How do I purchase products?',
@@ -219,6 +226,7 @@ const faqCategories: FAQCategory[] = [
     title: 'Account & Security',
     icon: Shield,
     description: 'Manage your account settings',
+    gradient: 'from-indigo-500 to-violet-600',
     items: [
       {
         question: 'How do I reset my password?',
@@ -247,6 +255,7 @@ const faqCategories: FAQCategory[] = [
     title: 'Community',
     icon: Users,
     description: 'Connect with other creators',
+    gradient: 'from-fuchsia-500 to-pink-600',
     items: [
       {
         question: 'How do I join the Discord?',
@@ -271,6 +280,7 @@ const faqCategories: FAQCategory[] = [
     title: 'Technical Support',
     icon: Headphones,
     description: 'Troubleshooting common issues',
+    gradient: 'from-slate-500 to-slate-700',
     items: [
       {
         question: 'My download isn\'t working',
@@ -321,6 +331,8 @@ export default function FAQ() {
     return filteredCategories.find((cat) => cat.id === activeCategory)?.items || [];
   }, [filteredCategories, activeCategory, searchQuery]);
 
+  const activeCategoryData = faqCategories.find((cat) => cat.id === activeCategory);
+
   const highlightText = (text: string, query: string) => {
     if (!query.trim()) return text;
     const parts = text.split(new RegExp(`(${query})`, 'gi'));
@@ -336,187 +348,350 @@ export default function FAQ() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-primary/5" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-3xl" />
-        
-        <div className="relative mx-auto max-w-3xl text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
-            <HelpCircle className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Help Center</span>
-          </div>
-          
-          <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-6">
-            How can we help?
-          </h1>
-          <p className="text-xl text-muted-foreground mb-10">
-            Find answers to common questions about our platform
-          </p>
-          
-          <div className="relative max-w-xl mx-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search for answers..."
-              className="pl-12 pr-4 py-6 text-lg rounded-full border-border/50 bg-card/80 backdrop-blur-sm focus-visible:ring-primary"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+    <div className="min-h-screen bg-background overflow-hidden">
+      {/* Hero Section - Immersive Premium Design */}
+      <section className="relative min-h-[70vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Layered Background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(var(--primary)/0.3),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,hsl(var(--accent)/0.15),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,hsl(var(--primary)/0.1),transparent_50%)]" />
+
+        {/* Floating Orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[128px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-primary/10 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '2s' }} />
+
+        {/* Grid Pattern Overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--primary)/0.03)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--primary)/0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
+
+        <div className="relative z-10 mx-auto max-w-4xl text-center">
+          <Reveal>
+            {/* Floating Badge */}
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-sm mb-8 hover:bg-primary/15 hover:border-primary/30 transition-all duration-300 cursor-default">
+              <div className="relative">
+                <HelpCircle className="h-4 w-4 text-primary" />
+                <div className="absolute inset-0 animate-ping">
+                  <HelpCircle className="h-4 w-4 text-primary opacity-50" />
+                </div>
+              </div>
+              <span className="text-sm font-medium bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Help Center
+              </span>
+            </div>
+          </Reveal>
+
+          <Reveal delay={100}>
+            {/* Icon - Floating Style */}
+            <div className="mb-10 flex justify-center">
+              <div className="relative group">
+                {/* Glow layers */}
+                <div className="absolute inset-0 blur-[60px] bg-primary/50 rounded-full scale-150 group-hover:scale-[1.75] transition-transform duration-700" />
+                <div className="absolute inset-0 blur-3xl bg-gradient-to-br from-primary to-accent opacity-40 rounded-full scale-125 group-hover:opacity-60 transition-all duration-500" />
+
+                {/* Main Icon Container */}
+                <div className="relative bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-8 shadow-2xl shadow-primary/30 group-hover:shadow-primary/50 transition-all duration-500 group-hover:scale-105">
+                  <HelpCircle className="h-16 w-16 text-primary-foreground drop-shadow-lg" />
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={200}>
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-foreground mb-6 tracking-tight">
+              How can we{' '}
+              <span className="relative inline-block">
+                <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent bg-[length:200%_auto] animate-[gradient_3s_linear_infinite]">
+                  help?
+                </span>
+                <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-accent/20 blur-lg opacity-50" />
+              </span>
+            </h1>
+          </Reveal>
+
+          <Reveal delay={300}>
+            <p className="text-xl sm:text-2xl text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">
+              Find answers to common questions about
+              <span className="text-foreground font-medium"> our platform.</span>
+            </p>
+          </Reveal>
+
+          <Reveal delay={400}>
+            {/* Search Bar - Premium Style */}
+            <div className="relative max-w-2xl mx-auto">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-accent/20 rounded-2xl blur-xl opacity-50" />
+              <div className="relative">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search for answers..."
+                  className="pl-16 pr-6 py-8 text-lg rounded-2xl border-border/50 bg-card/80 backdrop-blur-xl focus-visible:ring-primary shadow-2xl shadow-background/50"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+          </Reveal>
+        </div>
+
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+          <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-2">
+            <div className="w-1 h-2 bg-muted-foreground/50 rounded-full animate-pulse" />
           </div>
         </div>
       </section>
 
-      {/* Quick Links */}
-      <section className="py-8 px-4 sm:px-6 lg:px-8 border-b border-border/40">
+      {/* Category Quick Links */}
+      <section className="relative py-8 px-4 sm:px-6 lg:px-8">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+
         <div className="mx-auto max-w-6xl">
-          <div className="flex flex-wrap justify-center gap-3">
-            {faqCategories.slice(0, 5).map((cat) => (
-              <Button
-                key={cat.id}
-                variant={activeCategory === cat.id && !searchQuery ? 'default' : 'outline'}
-                size="sm"
-                className="rounded-full"
-                onClick={() => {
-                  setActiveCategory(cat.id);
-                  setSearchQuery('');
-                }}
-              >
-                <cat.icon className="h-4 w-4 mr-2" />
-                {cat.title}
-              </Button>
-            ))}
-          </div>
+          <Reveal>
+            <div className="flex flex-wrap justify-center gap-3">
+              {faqCategories.slice(0, 6).map((cat) => {
+                const isActive = activeCategory === cat.id && !searchQuery;
+                const Icon = cat.icon;
+
+                return (
+                  <Button
+                    key={cat.id}
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "relative rounded-xl px-5 h-11 font-medium transition-all duration-300 overflow-hidden",
+                      isActive
+                        ? "text-white shadow-lg"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                    onClick={() => {
+                      setActiveCategory(cat.id);
+                      setSearchQuery('');
+                    }}
+                  >
+                    {isActive && (
+                      <div className={cn("absolute inset-0 bg-gradient-to-r", cat.gradient)} />
+                    )}
+                    <span className="relative flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      {cat.title}
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Main Content */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid lg:grid-cols-4 gap-8">
+      <section className="relative py-16 px-4 sm:px-6 lg:px-8">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-[128px]" />
+        <div className="absolute right-0 top-1/3 w-80 h-80 bg-accent/10 rounded-full blur-[100px]" />
+
+        <div className="relative mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-4 gap-10">
             {/* Sidebar */}
             <div className="lg:col-span-1">
-              <nav className="sticky top-24 space-y-1">
-                {faqCategories.map((category) => {
-                  const isActive = activeCategory === category.id && !searchQuery;
-                  const matchCount = searchQuery
-                    ? filteredCategories.find((c) => c.id === category.id)?.items.length || 0
-                    : 0;
+              <Reveal>
+                <nav className="sticky top-24 space-y-2">
+                  {faqCategories.map((category) => {
+                    const isActive = activeCategory === category.id && !searchQuery;
+                    const matchCount = searchQuery
+                      ? filteredCategories.find((c) => c.id === category.id)?.items.length || 0
+                      : 0;
+                    const Icon = category.icon;
 
-                  return (
-                    <button
-                      key={category.id}
-                      onClick={() => {
-                        setActiveCategory(category.id);
-                        setSearchQuery('');
-                      }}
-                      className={cn(
-                        'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all',
-                        isActive
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                      )}
-                    >
-                      <category.icon className="h-5 w-5 flex-shrink-0" />
-                      <span className="font-medium text-sm">{category.title}</span>
-                      {searchQuery && matchCount > 0 && (
-                        <Badge variant="secondary" className="ml-auto">
-                          {matchCount}
-                        </Badge>
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
+                    return (
+                      <button
+                        key={category.id}
+                        onClick={() => {
+                          setActiveCategory(category.id);
+                          setSearchQuery('');
+                        }}
+                        className={cn(
+                          'group w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-left transition-all duration-300',
+                          isActive
+                            ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/25'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        )}
+                      >
+                        <div className={cn(
+                          "p-2 rounded-xl transition-all",
+                          isActive
+                            ? "bg-white/20"
+                            : "bg-muted group-hover:bg-primary/10"
+                        )}>
+                          <Icon className="h-5 w-5 flex-shrink-0" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-semibold text-sm block truncate">{category.title}</span>
+                          {!isActive && (
+                            <span className="text-xs text-muted-foreground">{category.items.length} articles</span>
+                          )}
+                        </div>
+                        {searchQuery && matchCount > 0 && (
+                          <Badge variant="secondary" className="bg-primary/20 text-primary border-0">
+                            {matchCount}
+                          </Badge>
+                        )}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </Reveal>
             </div>
 
             {/* FAQ Content */}
             <div className="lg:col-span-3">
               {searchQuery && (
-                <div className="mb-6">
-                  <p className="text-muted-foreground">
-                    {activeItems.length} result{activeItems.length !== 1 ? 's' : ''} for "{searchQuery}"
-                  </p>
-                </div>
+                <Reveal>
+                  <div className="mb-8">
+                    <p className="text-muted-foreground text-lg">
+                      <span className="text-foreground font-semibold">{activeItems.length}</span> result{activeItems.length !== 1 ? 's' : ''} for "<span className="text-primary">{searchQuery}</span>"
+                    </p>
+                  </div>
+                </Reveal>
+              )}
+
+              {!searchQuery && activeCategoryData && (
+                <Reveal>
+                  <div className="mb-8">
+                    <div className={cn(
+                      "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r text-white mb-4",
+                      activeCategoryData.gradient
+                    )}>
+                      <activeCategoryData.icon className="h-4 w-4" />
+                      <span className="text-sm font-medium">{activeCategoryData.title}</span>
+                    </div>
+                    <p className="text-muted-foreground text-lg">{activeCategoryData.description}</p>
+                  </div>
+                </Reveal>
               )}
 
               {activeItems.length === 0 ? (
-                <Card className="text-center py-12">
-                  <CardContent>
-                    <HelpCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">No results found</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Try a different search term or browse categories
-                    </p>
-                    <Button variant="outline" onClick={() => setSearchQuery('')}>
-                      Clear search
-                    </Button>
-                  </CardContent>
-                </Card>
+                <Reveal>
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative text-center py-20 px-8 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border border-border/50 rounded-3xl">
+                      <div className="inline-flex p-6 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 mb-6">
+                        <HelpCircle className="h-12 w-12 text-primary" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-foreground mb-3">No results found</h3>
+                      <p className="text-muted-foreground text-lg mb-6">
+                        Try a different search term or browse categories
+                      </p>
+                      <Button variant="outline" onClick={() => setSearchQuery('')} className="rounded-xl">
+                        Clear search
+                      </Button>
+                    </div>
+                  </div>
+                </Reveal>
               ) : (
-                <Card className="border-border/50 overflow-hidden">
-                  <Accordion type="single" collapsible className="divide-y divide-border">
-                    {activeItems.map((item, index) => (
-                      <AccordionItem key={index} value={`item-${index}`} className="border-0">
-                        <AccordionTrigger className="px-6 py-5 text-left hover:no-underline hover:bg-muted/50 transition-colors [&[data-state=open]]:bg-muted/30">
-                          <span className="font-medium text-foreground pr-4">
-                            {highlightText(item.question, searchQuery)}
-                          </span>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 pt-2">
-                          <p className="text-muted-foreground leading-relaxed">
-                            {highlightText(item.answer, searchQuery)}
-                          </p>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </Card>
+                <Reveal delay={100}>
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl border border-border/50 rounded-3xl overflow-hidden">
+                      <Accordion type="single" collapsible className="divide-y divide-border/30">
+                        {activeItems.map((item, index) => (
+                          <AccordionItem key={index} value={`item-${index}`} className="border-0">
+                            <AccordionTrigger className="px-8 py-6 text-left hover:no-underline hover:bg-muted/30 transition-colors [&[data-state=open]]:bg-primary/5">
+                              <span className="font-semibold text-foreground pr-4 text-lg">
+                                {highlightText(item.question, searchQuery)}
+                              </span>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-8 pb-8 pt-2">
+                              <p className="text-muted-foreground leading-relaxed text-base">
+                                {highlightText(item.answer, searchQuery)}
+                              </p>
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    </div>
+                  </div>
+                </Reveal>
               )}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Contact Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30">
-        <div className="mx-auto max-w-4xl text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-4">
-            Still need help?
-          </h2>
-          <p className="text-muted-foreground mb-8">
-            Our team and community are here to support you
-          </p>
-          
-          <div className="grid sm:grid-cols-2 gap-4 max-w-lg mx-auto">
-            <Card className="p-6 hover:border-primary/50 transition-colors">
-              <MessageCircle className="h-8 w-8 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold text-foreground mb-2">Discord Community</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Get help from our active community
-              </p>
-              <Button variant="outline" size="sm" asChild>
-                <a href="https://discord.gg/xQAzE4bWgu" target="_blank" rel="noopener noreferrer">
-                  Join Discord
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
-            </Card>
-            
-            <Card className="p-6 hover:border-primary/50 transition-colors">
-              <Mail className="h-8 w-8 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold text-foreground mb-2">Email Support</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                For account-specific issues
-              </p>
-              <Button variant="outline" size="sm" asChild>
-                <a href="mailto:support@editorsparadise.com">
-                  Send Email
-                </a>
-              </Button>
-            </Card>
-          </div>
+      {/* Contact Section - Premium Design */}
+      <section className="relative py-24 px-4 sm:px-6 lg:px-8">
+        {/* Section Divider */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/30 to-background" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[128px]" />
+
+        <div className="relative mx-auto max-w-4xl text-center">
+          <Reveal>
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+              Still need help?
+            </h2>
+          </Reveal>
+
+          <Reveal delay={100}>
+            <p className="text-xl text-muted-foreground mb-12">
+              Our team and community are here to support you
+            </p>
+          </Reveal>
+
+          <Reveal delay={200}>
+            <div className="grid sm:grid-cols-2 gap-6 max-w-xl mx-auto">
+              {/* Discord Card */}
+              <div className="group relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#5865F2]/20 to-[#5865F2]/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl border border-border/50 rounded-3xl p-8 hover:border-[#5865F2]/30 transition-all duration-500 group-hover:-translate-y-1">
+                  <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-[#5865F2]/20 to-[#5865F2]/5 mb-4">
+                    <MessageCircle className="h-8 w-8 text-[#5865F2]" />
+                  </div>
+                  <h3 className="font-bold text-foreground text-lg mb-2">Discord Community</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Get help from our active community
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="rounded-xl border-[#5865F2]/30 hover:bg-[#5865F2]/10 hover:border-[#5865F2]/50"
+                    asChild
+                  >
+                    <a href="https://discord.gg/xQAzE4bWgu" target="_blank" rel="noopener noreferrer">
+                      Join Discord
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Email Card */}
+              <div className="group relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl border border-border/50 rounded-3xl p-8 hover:border-primary/30 transition-all duration-500 group-hover:-translate-y-1">
+                  <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4">
+                    <Mail className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="font-bold text-foreground text-lg mb-2">Email Support</h3>
+                  <p className="text-muted-foreground mb-6">
+                    For account-specific issues
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="rounded-xl border-primary/30 hover:bg-primary/10 hover:border-primary/50"
+                    asChild
+                  >
+                    <a href="mailto:support@editorsparadise.com">
+                      Send Email
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
     </div>

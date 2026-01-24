@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, MessageSquare, Sparkles, Users, Heart, TrendingUp, Zap, ArrowRight } from 'lucide-react';
+import { Loader2, MessageSquare, Sparkles, Zap } from 'lucide-react';
 import { ThreadCard } from '@/components/community/ThreadCard';
 import { ThreadComposer } from '@/components/community/ThreadComposer';
 import { CategoryFilter } from '@/components/community/CategoryFilter';
@@ -32,13 +32,6 @@ interface Thread {
   replies_count: number;
   is_liked: boolean;
 }
-
-const stats = [
-  { label: 'Active Threads', value: '500+', icon: MessageSquare },
-  { label: 'Community Members', value: '10,000+', icon: Users },
-  { label: 'Daily Interactions', value: '5,000+', icon: Heart },
-  { label: 'Topics Trending', value: '50+', icon: TrendingUp },
-];
 
 export default function Community() {
   const { user } = useAuth();
@@ -240,43 +233,11 @@ export default function Community() {
         </div>
       </section>
 
-      {/* Stats Section - Floating Cards */}
-      <section className="relative py-16 px-4 sm:px-6 lg:px-8">
+      {/* Main Content - Thread Feed */}
+      <section className="relative py-12 px-4 sm:px-6 lg:px-8">
         {/* Section Divider Gradient */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
-        <div className="mx-auto max-w-5xl">
-          <Reveal>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-              {stats.map((stat, index) => (
-                <Reveal key={stat.label} delay={index * 100}>
-                  <div className="group relative">
-                    {/* Glow on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                    <div className="relative bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border border-border/50 rounded-3xl p-6 lg:p-8 text-center hover:border-primary/30 transition-all duration-500 group-hover:-translate-y-1">
-                      <div className="flex justify-center mb-4">
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 group-hover:from-primary/30 group-hover:to-primary/10 transition-all duration-500">
-                          <stat.icon className="h-7 w-7 text-primary" />
-                        </div>
-                      </div>
-                      <div className="text-3xl sm:text-4xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
-                        {stat.value}
-                      </div>
-                      <div className="text-sm text-muted-foreground font-medium tracking-wide uppercase">
-                        {stat.label}
-                      </div>
-                    </div>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* Main Content - Thread Feed */}
-      <section className="relative py-12 px-4 sm:px-6 lg:px-8">
         {/* Background Effects */}
         <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-[128px]" />
