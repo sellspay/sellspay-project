@@ -155,6 +155,54 @@ export type Database = {
           },
         ]
       }
+      creator_applications: {
+        Row: {
+          country: string
+          created_at: string
+          full_name: string
+          id: string
+          languages: string[]
+          product_types: string[]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          social_links: Json
+          state: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          country: string
+          created_at?: string
+          full_name: string
+          id?: string
+          languages: string[]
+          product_types: string[]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          social_links?: Json
+          state: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          languages?: string[]
+          product_types?: string[]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          social_links?: Json
+          state?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       creator_subscription_plans: {
         Row: {
           created_at: string
@@ -630,6 +678,7 @@ export type Database = {
           id: string
           is_creator: boolean | null
           is_editor: boolean | null
+          mfa_enabled: boolean | null
           phone: string | null
           show_recent_uploads: boolean | null
           social_links: Json | null
@@ -663,6 +712,7 @@ export type Database = {
           id?: string
           is_creator?: boolean | null
           is_editor?: boolean | null
+          mfa_enabled?: boolean | null
           phone?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
@@ -696,6 +746,7 @@ export type Database = {
           id?: string
           is_creator?: boolean | null
           is_editor?: boolean | null
+          mfa_enabled?: boolean | null
           phone?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null

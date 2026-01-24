@@ -42,6 +42,8 @@ const generateSlug = (title: string): string => {
 export default function CreateProduct() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [isCreator, setIsCreator] = useState<boolean | null>(null);
+  const [checkingCreator, setCheckingCreator] = useState(true);
   
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
@@ -57,6 +59,27 @@ export default function CreateProduct() {
   const [previewVideo, setPreviewVideo] = useState<File | null>(null);
   const [previewVideoPreview, setPreviewVideoPreview] = useState<string | null>(null);
   const [downloadFile, setDownloadFile] = useState<File | null>(null);
+
+  // Check if user is an approved creator
+  useEffect(() => {
+    const checkCreatorStatus = async () => {
+      if (!user) {
+        setCheckingCreator(false);
+        return;
+      }
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_creator')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      setIsCreator(profile?.is_creator || false);
+      setCheckingCreator(false);
+    };
+    
+    checkCreatorStatus();
+  }, [user]);
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -226,10 +249,31 @@ export default function CreateProduct() {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold mb-4">Sign In Required</h1>
-        <p className="text-muted-foreground mb-8">
-          Please sign in to create products.
-        </p>
+        <p className="text-muted-foreground mb-8">Please sign in to create products.</p>
         <Button onClick={() => navigate("/login")}>Sign In</Button>
+      </div>
+    );
+  }
+
+  if (checkingCreator) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
+    );
+  }
+
+  if (!isCreator) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center max-w-md">
+        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+          <Upload className="w-8 h-8 text-primary" />
+        </div>
+        <h1 className="text-2xl font-bold mb-4">Become a Creator First</h1>
+        <p className="text-muted-foreground mb-8">
+          To sell products on our platform, you need to apply and be approved as a creator.
+        </p>
+        <Button onClick={() => navigate("/profile?apply=creator")}>Apply to Become a Creator</Button>
       </div>
     );
   }
