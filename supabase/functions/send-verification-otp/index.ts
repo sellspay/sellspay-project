@@ -101,7 +101,7 @@ const handler = async (req: Request): Promise<Response> => {
       const resend = new Resend(resendApiKey);
       
       const { error: emailError } = await resend.emails.send({
-        from: "EditorsParadise <onboarding@resend.dev>",
+        from: "EditorsParadise <noreply@editorsparadise.org>",
         to: [email],
         subject: "Your EditorsParadise Verification Code",
         html: emailHtml,
