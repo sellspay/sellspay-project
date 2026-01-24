@@ -181,7 +181,7 @@ export default function Header() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  {isCreator && (
+                  {(isCreator || isSeller) && (
                     <DropdownMenuItem asChild>
                       <Link to="/create-product" className="flex items-center gap-2">
                         <Plus className="h-4 w-4" />
