@@ -51,7 +51,7 @@ export default function Community() {
   });
 
   const { data: threads = [], isLoading, refetch } = useQuery({
-    queryKey: ['threads', activeCategory, profile?.id],
+    queryKey: ['threads', activeCategory],
     queryFn: async () => {
       let query = supabase
         .from('threads')

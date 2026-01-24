@@ -28,75 +28,95 @@ interface SpotlightCreator {
   followers_count: number;
 }
 
-// Sample spotlights for display when DB is empty
-const sampleSpotlights: SpotlightCreator[] = [
-  {
-    id: '1',
-    headline: 'From Hobbyist to Full-Time Creator',
-    story: 'Starting with just a passion for video editing and a laptop, Jordan built a thriving business selling LUTs and presets. Today, they\'ve helped over 50,000 creators enhance their content with professional color grading tools.',
-    achievement: 'Generated $100K+ in sales',
-    quote: 'The platform gave me the tools and community I needed to turn my passion into a career. The support from other creators here is unmatched.',
-    featured_at: new Date().toISOString(),
-    profile: {
-      id: '1',
-      username: 'jordanedits',
-      full_name: 'Jordan Mitchell',
-      avatar_url: null,
-      verified: true,
-      bio: 'Color grading specialist & LUT creator',
-    },
-    products_count: 47,
-    followers_count: 12500,
-  },
-  {
-    id: '2',
-    headline: 'Building a Sound Design Empire',
-    story: 'Maya started uploading free sound effects to the community. Her unique approach to foley and SFX design quickly caught attention. Now she runs one of the most successful audio product lines on the platform.',
-    achievement: 'Top-rated SFX creator 3 years running',
-    quote: 'Every creator here is incredibly generous with knowledge. That\'s what makes this community special.',
-    featured_at: new Date(Date.now() - 86400000 * 7).toISOString(),
-    profile: {
-      id: '2',
-      username: 'mayasounds',
-      full_name: 'Maya Rodriguez',
-      avatar_url: null,
-      verified: true,
-      bio: 'Sound designer & audio engineer',
-    },
-    products_count: 89,
-    followers_count: 8200,
-  },
-  {
-    id: '3',
-    headline: 'Motion Graphics Mastery',
-    story: 'After years of freelancing, Chris discovered the platform and started sharing motion graphics templates. The recurring revenue from subscriptions allowed them to focus entirely on creating high-quality assets.',
-    achievement: '500+ subscribers in first year',
-    quote: 'The subscription model changed everything for me. Predictable income means I can invest in better content.',
-    featured_at: new Date(Date.now() - 86400000 * 30).toISOString(),
-    profile: {
-      id: '3',
-      username: 'chrismotion',
-      full_name: 'Chris Park',
-      avatar_url: null,
-      verified: true,
-      bio: 'Motion graphics & After Effects templates',
-    },
-    products_count: 156,
-    followers_count: 15700,
-  },
-];
-
 export default function Spotlight() {
   const [expandedStory, setExpandedStory] = useState<string | null>(null);
 
-  // In production, this would fetch from creator_spotlights table joined with profiles
-  const { data: spotlights = sampleSpotlights, isLoading } = useQuery({
+  // Fetch real creators from the database
+  const { data: spotlights = [], isLoading } = useQuery({
     queryKey: ['creator-spotlights'],
     queryFn: async () => {
-      // For now, return sample data since table might be empty
-      // Real implementation would be:
-      // const { data } = await supabase.from('creator_spotlights')...
-      return sampleSpotlights;
+      // First try to get spotlights from the creator_spotlights table
+      const { data: spotlightsData } = await supabase
+        .from('creator_spotlights')
+        .select(`
+          id,
+          headline,
+          story,
+          achievement,
+          quote,
+          featured_at,
+          profile_id
+        `)
+        .eq('is_active', true)
+        .order('display_order', { ascending: true })
+        .limit(10);
+
+      // If we have spotlights, join with profiles
+      if (spotlightsData && spotlightsData.length > 0) {
+        const profileIds = spotlightsData.map(s => s.profile_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url, verified, bio')
+          .in('id', profileIds);
+
+        const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+
+        // Get products and followers counts
+        const spotlightsWithData = await Promise.all(spotlightsData.map(async (s) => {
+          const profile = profilesMap.get(s.profile_id);
+          
+          const [productsResult, followersResult] = await Promise.all([
+            supabase.from('products').select('id', { count: 'exact', head: true }).eq('creator_id', s.profile_id),
+            supabase.from('followers').select('id', { count: 'exact', head: true }).eq('following_id', s.profile_id),
+          ]);
+
+          return {
+            id: s.id,
+            headline: s.headline,
+            story: s.story,
+            achievement: s.achievement,
+            quote: s.quote,
+            featured_at: s.featured_at,
+            profile: profile || null,
+            products_count: productsResult.count || 0,
+            followers_count: followersResult.count || 0,
+          };
+        }));
+
+        return spotlightsWithData as SpotlightCreator[];
+      }
+
+      // Fallback: if no spotlights exist, show real verified creators
+      const { data: creatorsData } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url, verified, bio')
+        .eq('is_creator', true)
+        .eq('verified', true)
+        .limit(6);
+
+      if (!creatorsData || creatorsData.length === 0) return [];
+
+      // Build spotlights from real creators
+      const creatorSpotlights = await Promise.all(creatorsData.map(async (creator, index) => {
+        const [productsResult, followersResult] = await Promise.all([
+          supabase.from('products').select('id', { count: 'exact', head: true }).eq('creator_id', creator.id),
+          supabase.from('followers').select('id', { count: 'exact', head: true }).eq('following_id', creator.id),
+        ]);
+
+        return {
+          id: creator.id,
+          headline: index === 0 ? 'Building EditorsParadise' : 'Verified Creator',
+          story: creator.bio || 'A passionate creator building amazing content for the community.',
+          achievement: 'Verified Creator',
+          quote: null,
+          featured_at: new Date().toISOString(),
+          profile: creator,
+          products_count: productsResult.count || 0,
+          followers_count: followersResult.count || 0,
+        } as SpotlightCreator;
+      }));
+
+      return creatorSpotlights;
     },
   });
 
