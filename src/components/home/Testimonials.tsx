@@ -30,7 +30,8 @@ const testimonials: Testimonial[] = [
   },
   {
     id: '2',
-    name: 'Sarah Mitchell',
+    name: 'Deadeye',
+    username: 'deadeye',
     role: 'Content Creator',
     rating: 5,
     quote: 'Finally a marketplace that gets it. Every product I\'ve bought has been exactly as described. No more gambling on quality.',
@@ -141,32 +142,63 @@ export function Testimonials() {
           <div className="lg:col-span-5 space-y-6">
             {others.map((testimonial, index) => (
               <Reveal key={testimonial.id} delay={200 + index * 100}>
-                <div className="relative p-6 lg:p-8 rounded-2xl bg-card/80 border border-border/50 hover:border-border transition-colors">
-                  <StarRating rating={testimonial.rating} />
-                  
-                  <blockquote className="mt-5 mb-6">
-                    <p className="text-foreground/90 leading-relaxed">
-                      "{testimonial.quote}"
-                    </p>
-                  </blockquote>
+                {testimonial.username ? (
+                  <Link to={`/@${testimonial.username}`} className="block">
+                    <div className="relative p-6 lg:p-8 rounded-2xl bg-card/80 border border-border/50 hover:border-primary/50 transition-colors">
+                      <StarRating rating={testimonial.rating} />
+                      
+                      <blockquote className="mt-5 mb-6">
+                        <p className="text-foreground/90 leading-relaxed">
+                          "{testimonial.quote}"
+                        </p>
+                      </blockquote>
 
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={testimonial.avatar} />
-                      <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
-                        {testimonial.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-0.5">
-                      <div className="font-medium text-foreground text-sm">
-                        {testimonial.name}
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={testimonial.avatar} />
+                          <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
+                            {testimonial.name.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="space-y-0.5">
+                          <div className="font-medium text-foreground text-sm">
+                            @{testimonial.username}
+                          </div>
+                          <div className="text-muted-foreground text-xs">
+                            {testimonial.role}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-muted-foreground text-xs">
-                        {testimonial.role}
+                    </div>
+                  </Link>
+                ) : (
+                  <div className="relative p-6 lg:p-8 rounded-2xl bg-card/80 border border-border/50 hover:border-border transition-colors">
+                    <StarRating rating={testimonial.rating} />
+                    
+                    <blockquote className="mt-5 mb-6">
+                      <p className="text-foreground/90 leading-relaxed">
+                        "{testimonial.quote}"
+                      </p>
+                    </blockquote>
+
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={testimonial.avatar} />
+                        <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
+                          {testimonial.name.split(' ').map(n => n[0]).join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="space-y-0.5">
+                        <div className="font-medium text-foreground text-sm">
+                          {testimonial.name}
+                        </div>
+                        <div className="text-muted-foreground text-xs">
+                          {testimonial.role}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
               </Reveal>
             ))}
           </div>
