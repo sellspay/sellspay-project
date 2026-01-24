@@ -824,6 +824,9 @@ export type Database = {
           phone: string | null
           previous_username: string | null
           previous_username_available_at: string | null
+          resend_vault_secret_id: string | null
+          seller_email_verified: boolean | null
+          seller_support_email: string | null
           show_recent_uploads: boolean | null
           social_links: Json | null
           stripe_account_id: string | null
@@ -864,6 +867,9 @@ export type Database = {
           phone?: string | null
           previous_username?: string | null
           previous_username_available_at?: string | null
+          resend_vault_secret_id?: string | null
+          seller_email_verified?: boolean | null
+          seller_support_email?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
           stripe_account_id?: string | null
@@ -904,6 +910,9 @@ export type Database = {
           phone?: string | null
           previous_username?: string | null
           previous_username_available_at?: string | null
+          resend_vault_secret_id?: string | null
+          seller_email_verified?: boolean | null
+          seller_support_email?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
           stripe_account_id?: string | null
@@ -1064,6 +1073,78 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_messages: {
+        Row: {
+          created_at: string
+          customer_profile_id: string
+          direction: string
+          id: string
+          message: string
+          product_id: string | null
+          seller_profile_id: string
+          status: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          customer_profile_id: string
+          direction: string
+          id?: string
+          message: string
+          product_id?: string | null
+          seller_profile_id: string
+          status?: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          customer_profile_id?: string
+          direction?: string
+          id?: string
+          message?: string
+          product_id?: string | null
+          seller_profile_id?: string
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_customer_profile_id_fkey"
+            columns: ["customer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_customer_profile_id_fkey"
+            columns: ["customer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_seller_profile_id_fkey"
+            columns: ["seller_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_seller_profile_id_fkey"
+            columns: ["seller_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1446,6 +1527,14 @@ export type Database = {
         }[]
       }
       get_monthly_tool_usage: { Args: { p_user_id: string }; Returns: number }
+      get_seller_email_config: {
+        Args: { p_seller_user_id: string }
+        Returns: Json
+      }
+      get_seller_resend_key: {
+        Args: { p_seller_user_id: string }
+        Returns: string
+      }
       has_pro_subscription: { Args: { p_user_id: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -1459,6 +1548,14 @@ export type Database = {
       is_username_available_v2: {
         Args: { p_username: string }
         Returns: boolean
+      }
+      mark_seller_email_verified: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
+      store_seller_resend_key: {
+        Args: { p_api_key: string; p_support_email: string }
+        Returns: Json
       }
     }
     Enums: {
