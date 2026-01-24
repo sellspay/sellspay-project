@@ -2,7 +2,9 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SectionPreviewContent } from "@/components/profile-editor/previews/SectionPreviewContent";
 import CollectionRow from "@/components/profile/CollectionRow";
-import type { ProfileSection } from "@/components/profile-editor/types";
+import type { ProfileSection, FontOption, CustomFont } from "@/components/profile-editor/types";
+import { getFontClassName, getCustomFontStyle, useCustomFont } from "@/components/profile-editor/hooks/useCustomFont";
+import { cn } from "@/lib/utils";
 
 interface CollectionProduct {
   id: string;
@@ -38,6 +40,8 @@ export function PublicProfileSections({
   refreshKey,
   recentUploadsVisible,
   recentProducts,
+  globalFont,
+  globalCustomFont,
 }: {
   profileId: string;
   isOwnProfile: boolean;
@@ -47,10 +51,21 @@ export function PublicProfileSections({
   recentUploadsVisible?: boolean;
   /** Recent products to display (passed from profile) */
   recentProducts?: CollectionProduct[];
+  /** Global font setting for the profile */
+  globalFont?: string | null;
+  /** Global custom font for the profile */
+  globalCustomFont?: { name: string; url: string } | null;
 }) {
   const [sections, setSections] = useState<ProfileSection[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Apply global custom font
+  useCustomFont(globalCustomFont ? { name: globalCustomFont.name, url: globalCustomFont.url } : undefined);
+  
+  // Get global font classes and styles
+  const globalFontClass = getFontClassName(globalFont as FontOption);
+  const globalFontStyle = getCustomFontStyle(globalCustomFont ? { name: globalCustomFont.name, url: globalCustomFont.url } : undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,7 +212,10 @@ export function PublicProfileSections({
   if (!hasContent) return null;
 
   return (
-    <div className="space-y-10">
+    <div 
+      className={cn("space-y-10", globalFontClass)}
+      style={globalFontStyle}
+    >
       {/* Recent Uploads - always renders first if visible */}
       {recentUploadsVisible && recentProducts && recentProducts.length > 0 && (
         <CollectionRow

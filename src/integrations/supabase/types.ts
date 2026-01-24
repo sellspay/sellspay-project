@@ -622,6 +622,8 @@ export type Database = {
           editor_social_links: Json | null
           email: string | null
           full_name: string | null
+          global_custom_font: Json | null
+          global_font: string | null
           id: string
           is_creator: boolean | null
           is_editor: boolean | null
@@ -653,6 +655,8 @@ export type Database = {
           editor_social_links?: Json | null
           email?: string | null
           full_name?: string | null
+          global_custom_font?: Json | null
+          global_font?: string | null
           id?: string
           is_creator?: boolean | null
           is_editor?: boolean | null
@@ -684,6 +688,8 @@ export type Database = {
           editor_social_links?: Json | null
           email?: string | null
           full_name?: string | null
+          global_custom_font?: Json | null
+          global_font?: string | null
           id?: string
           is_creator?: boolean | null
           is_editor?: boolean | null

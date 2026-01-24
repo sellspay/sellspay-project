@@ -45,6 +45,8 @@ interface Profile {
   is_creator: boolean | null;
   verified: boolean | null;
   show_recent_uploads?: boolean | null;
+  global_font?: string | null;
+  global_custom_font?: { name: string; url: string } | null;
 }
 
 interface Product {
@@ -1059,6 +1061,8 @@ const ProfilePage: React.FC = () => {
                     likeCount: p.likeCount,
                     commentCount: p.commentCount,
                   }))}
+                  globalFont={profile.global_font}
+                  globalCustomFont={profile.global_custom_font}
                 />
               )}
 
