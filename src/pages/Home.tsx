@@ -35,6 +35,7 @@ interface Product {
   youtube_url: string | null;
   tags: string[] | null;
   created_at: string | null;
+  creator_id: string | null;
 }
 
 interface FeaturedProduct extends Product {
@@ -54,7 +55,7 @@ export default function Home() {
     async function fetchProducts() {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, price_cents, currency, youtube_url, tags, created_at')
+        .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, price_cents, currency, youtube_url, tags, created_at, creator_id')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
 
@@ -133,11 +134,11 @@ export default function Home() {
       {/* Hero Section */}
       <HeroSection />
 
+      {/* Sliding Banner - Right under hero */}
+      <SlidingBanner />
+
       {/* Stats Bar - Social Proof */}
       <StatsBar />
-
-      {/* Sliding Banner */}
-      <SlidingBanner />
 
       {/* Featured Products Section */}
       <Reveal>
@@ -187,9 +188,9 @@ export default function Home() {
                     }}
                     className="w-full"
                   >
-                    <CarouselContent className="-ml-6">
+                    <CarouselContent className="-ml-8">
                       {featuredWithStats.map((product) => (
-                        <CarouselItem key={product.id} className="pl-6 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
+                        <CarouselItem key={product.id} className="pl-8 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
                           <ProductCard 
                             product={product} 
                             showFeaturedBadge={false} 
@@ -198,6 +199,8 @@ export default function Home() {
                             commentCount={product.commentCount}
                             showEngagement={true}
                             isHot={product.isHot}
+                            size="large"
+                            showCreator={true}
                           />
                         </CarouselItem>
                       ))}

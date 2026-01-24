@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, Star, Flame, Heart, MessageCircle, Bookmark } from 'lucide-react';
+import { Play, Star, Flame, Heart, MessageCircle, Bookmark, Sparkles, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
@@ -16,6 +16,12 @@ interface Product {
   currency: string | null;
   product_type: string | null;
   featured?: boolean | null;
+  creator_id?: string | null;
+}
+
+interface Creator {
+  username: string | null;
+  avatar_url: string | null;
 }
 
 interface ProductCardProps {
@@ -26,6 +32,8 @@ interface ProductCardProps {
   commentCount?: number;
   showEngagement?: boolean;
   isHot?: boolean;
+  size?: 'default' | 'large';
+  showCreator?: boolean;
 }
 
 function getYouTubeThumbnail(youtubeUrl: string | null): string | null {
@@ -72,7 +80,9 @@ export default function ProductCard({
   likeCount,
   commentCount,
   showEngagement = false,
-  isHot = false
+  isHot = false,
+  size = 'default',
+  showCreator = false
 }: ProductCardProps) {
   const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
@@ -81,6 +91,7 @@ export default function ProductCard({
   const [isSaved, setIsSaved] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
   const [userProfileId, setUserProfileId] = useState<string | null>(null);
+  const [creator, setCreator] = useState<Creator | null>(null);
 
   const thumbnail = useMemo(
     () => product.cover_image_url || getYouTubeThumbnail(product.youtube_url),
@@ -94,6 +105,25 @@ export default function ProductCard({
   const canShowVideo = Boolean(videoUrl) && !videoError;
   const hasThumbnail = Boolean(thumbnail);
   const showVideo = canShowVideo && (isHovered || !hasThumbnail);
+
+  const isLarge = size === 'large';
+  const isFree = !product.price_cents || product.price_cents === 0;
+
+  // Fetch creator info
+  useEffect(() => {
+    const fetchCreator = async () => {
+      if (!showCreator || !product.creator_id) return;
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('id', product.creator_id)
+        .maybeSingle();
+      
+      if (data) setCreator(data);
+    };
+    fetchCreator();
+  }, [showCreator, product.creator_id]);
 
   // Fetch user profile and saved status
   useEffect(() => {
@@ -193,107 +223,126 @@ export default function ProductCard({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
-        {/* Video Preview */}
-        {canShowVideo && (
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-              showVideo ? 'opacity-100' : 'opacity-0'
-            }`}
-            onError={() => setVideoError(true)}
-          />
-        )}
+      <div className={`relative overflow-hidden rounded-xl bg-card border border-border/50 group-hover:border-primary/30 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-primary/5 ${isLarge ? 'rounded-2xl' : ''}`}>
+        {/* Media Container */}
+        <div className={`relative ${isLarge ? 'aspect-[4/3]' : 'aspect-video'} overflow-hidden`}>
+          {/* Video Preview */}
+          {canShowVideo && (
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className={`absolute inset-0 h-full w-full object-cover transition-all duration-500 ${
+                showVideo ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+              }`}
+              onError={() => setVideoError(true)}
+            />
+          )}
 
-        {/* Thumbnail Image */}
-        {thumbnail ? (
-          <img
-            src={thumbnail}
-            alt={product.name}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-              showVideo ? 'opacity-0' : 'opacity-100'
-            }`}
-          />
-        ) : !canShowVideo ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted">
-            <Play className="h-8 w-8 text-muted-foreground" />
+          {/* Thumbnail Image */}
+          {thumbnail ? (
+            <img
+              src={thumbnail}
+              alt={product.name}
+              className={`absolute inset-0 h-full w-full object-cover transition-all duration-500 group-hover:scale-105 ${
+                showVideo ? 'opacity-0' : 'opacity-100'
+              }`}
+            />
+          ) : !canShowVideo ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted">
+              <Play className="h-8 w-8 text-muted-foreground" />
+            </div>
+          ) : null}
+
+          {/* Premium Price Badge */}
+          <div className={`absolute top-3 left-3 flex items-center gap-1.5 rounded-lg backdrop-blur-md border transition-all duration-300 ${
+            isFree 
+              ? 'bg-emerald-500/90 border-emerald-400/50 text-white px-3 py-1.5' 
+              : 'bg-background/90 border-border/50 text-foreground px-3 py-1.5'
+          } ${isLarge ? 'text-sm font-semibold' : 'text-xs font-medium'}`}>
+            {isFree && <Sparkles className={`${isLarge ? 'h-4 w-4' : 'h-3 w-3'}`} />}
+            {formatPrice(product.price_cents, product.currency)}
           </div>
-        ) : null}
 
-        {/* Price Badge */}
-        <div className="absolute top-2 left-2 rounded bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground backdrop-blur-sm">
-          {formatPrice(product.price_cents, product.currency)}
+          {/* Premium "Trending" Badge (replaces Hot) */}
+          {isHot && (
+            <div className={`absolute top-3 ${isFree ? 'left-24' : 'left-20'} flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 border border-amber-400/50 px-3 py-1.5 backdrop-blur-md ${isLarge ? 'text-sm font-semibold' : 'text-xs font-medium'} text-white shadow-lg shadow-orange-500/25`}>
+              <Crown className={`${isLarge ? 'h-4 w-4' : 'h-3 w-3'}`} />
+              Trending
+            </div>
+          )}
+
+          {/* Featured Badge */}
+          {showFeaturedBadge && product.featured && (
+            <div className={`absolute top-3 right-3 flex items-center gap-1.5 rounded-lg bg-primary/90 border border-primary/50 px-3 py-1.5 backdrop-blur-md ${isLarge ? 'text-sm font-semibold' : 'text-xs font-medium'} text-primary-foreground`}>
+              <Star className={`${isLarge ? 'h-4 w-4' : 'h-3 w-3'}`} />
+              Featured
+            </div>
+          )}
+
+          {/* Save Button - shows on hover */}
+          {!product.featured && (
+            <button
+              onClick={handleSave}
+              disabled={savingProduct}
+              className={`absolute top-3 right-3 p-2 rounded-lg bg-background/80 backdrop-blur-md border border-border/50 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-background hover:scale-110 ${
+                isSaved ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title={isSaved ? "Remove from saved" : "Save product"}
+            >
+              <Bookmark className={`${isLarge ? 'h-5 w-5' : 'h-4 w-4'} ${isSaved ? 'fill-primary' : ''}`} />
+            </button>
+          )}
+
+          {/* Product Type Badge */}
+          {showType && product.product_type && (
+            <div className={`absolute bottom-3 left-3 rounded-lg bg-secondary/90 border border-border/50 backdrop-blur-md px-3 py-1.5 ${isLarge ? 'text-sm font-medium' : 'text-xs font-medium'} text-secondary-foreground`}>
+              {productTypeLabels[product.product_type] || product.product_type}
+            </div>
+          )}
+
+          {/* Premium hover gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
         </div>
 
-        {/* Hot Badge */}
-        {isHot && (
-          <div className="absolute top-2 left-16 flex items-center gap-1 rounded bg-orange-500/90 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
-            <Flame className="h-3 w-3" />
-            Hot
-          </div>
-        )}
-
-        {/* Featured Badge */}
-        {showFeaturedBadge && product.featured && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 rounded bg-primary/90 px-2 py-0.5 text-xs font-medium text-primary-foreground backdrop-blur-sm">
-            <Star className="h-3 w-3" />
-            Featured
-          </div>
-        )}
-
-        {/* Save Button - shows on hover */}
-        {!product.featured && (
-          <button
-            onClick={handleSave}
-            disabled={savingProduct}
-            className={`absolute top-2 right-2 p-1.5 rounded-full bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background ${
-              isSaved ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-            }`}
-            title={isSaved ? "Remove from saved" : "Save product"}
-          >
-            <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-primary' : ''}`} />
-          </button>
-        )}
-
-        {/* Product Type Badge */}
-        {showType && product.product_type && (
-          <div className="absolute bottom-2 left-2 rounded bg-secondary/90 px-2 py-0.5 text-xs font-medium text-secondary-foreground backdrop-blur-sm">
-            {productTypeLabels[product.product_type] || product.product_type}
-          </div>
-        )}
-
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-      </div>
-
-      {/* Product Info */}
-      <div className="mt-2">
-        <h3 className="truncate text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-          {product.name}
-        </h3>
-        
-        {/* Engagement Stats */}
-        {showEngagement && (likeCount !== undefined || commentCount !== undefined) && (
-          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-            {likeCount !== undefined && (
-              <span className="flex items-center gap-1">
-                <Heart className="h-3 w-3" />
-                {likeCount}
-              </span>
-            )}
-            {commentCount !== undefined && (
-              <span className="flex items-center gap-1">
-                <MessageCircle className="h-3 w-3" />
-                {commentCount}
-              </span>
-            )}
-          </div>
-        )}
+        {/* Product Info */}
+        <div className={`${isLarge ? 'p-5' : 'p-3'}`}>
+          <h3 className={`truncate font-semibold text-foreground group-hover:text-primary transition-colors ${isLarge ? 'text-lg' : 'text-sm'}`}>
+            {product.name}
+          </h3>
+          
+          {/* Creator Username */}
+          {showCreator && creator?.username && (
+            <Link
+              to={`/@${creator.username}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-block mt-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              @{creator.username}
+            </Link>
+          )}
+          
+          {/* Engagement Stats */}
+          {showEngagement && (likeCount !== undefined || commentCount !== undefined) && (
+            <div className={`flex items-center gap-4 ${isLarge ? 'mt-3' : 'mt-2'} text-muted-foreground`}>
+              {likeCount !== undefined && (
+                <span className={`flex items-center gap-1.5 ${isLarge ? 'text-sm' : 'text-xs'}`}>
+                  <Heart className={`${isLarge ? 'h-4 w-4' : 'h-3 w-3'}`} />
+                  {likeCount}
+                </span>
+              )}
+              {commentCount !== undefined && (
+                <span className={`flex items-center gap-1.5 ${isLarge ? 'text-sm' : 'text-xs'}`}>
+                  <MessageCircle className={`${isLarge ? 'h-4 w-4' : 'h-3 w-3'}`} />
+                  {commentCount}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </Link>
   );
