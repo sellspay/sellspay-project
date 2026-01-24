@@ -461,6 +461,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          comment_id: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          product_id: string | null
+          redirect_url: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          product_id?: string | null
+          redirect_url?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          product_id?: string | null
+          redirect_url?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pro_tool_subscriptions: {
         Row: {
           created_at: string
@@ -933,6 +972,33 @@ export type Database = {
           tool_id?: string
           used_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      unfollow_history: {
+        Row: {
+          can_refollow_at: string
+          created_at: string
+          id: string
+          unfollowed_at: string
+          unfollowed_id: string
+          unfollower_id: string
+        }
+        Insert: {
+          can_refollow_at?: string
+          created_at?: string
+          id?: string
+          unfollowed_at?: string
+          unfollowed_id: string
+          unfollower_id: string
+        }
+        Update: {
+          can_refollow_at?: string
+          created_at?: string
+          id?: string
+          unfollowed_at?: string
+          unfollowed_id?: string
+          unfollower_id?: string
         }
         Relationships: []
       }

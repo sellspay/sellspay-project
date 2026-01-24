@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCredits } from '@/hooks/useCredits';
 import navbarLogo from '@/assets/navbar-logo.png';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 const navItems = [
   { name: 'Store', path: '/products' },
@@ -125,6 +126,9 @@ export default function Header() {
                 </span>
               </button>
             )}
+
+            {/* Notification Bell - Only show when logged in */}
+            {user && <NotificationBell />}
             
             {user ? (
               <DropdownMenu>

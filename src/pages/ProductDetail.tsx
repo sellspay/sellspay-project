@@ -8,7 +8,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -16,6 +15,8 @@ import { useAuth } from "@/lib/auth";
 import { GifPicker } from "@/components/comments/GifPicker";
 import { VerifiedBadge } from "@/components/ui/verified-badge";
 import { cn } from "@/lib/utils";
+import { CreatorFollowDialog } from "@/components/product/CreatorFollowDialog";
+import { createNotification, checkFollowCooldown } from "@/lib/notifications";
 
 interface Product {
   id: string;
@@ -524,6 +525,18 @@ export default function ProductDetail() {
         
         setIsLiked(true);
         setLikeCount((prev) => prev + 1);
+
+        // Create notification for the product creator
+        if (product?.creator?.id && product.creator.id !== userProfileId) {
+          await createNotification({
+            userId: product.creator.id,
+            type: "product_like",
+            actorId: userProfileId,
+            productId,
+            message: `liked "${product.name}"`,
+            redirectUrl: `/product/${productId}`,
+          });
+        }
       }
     } catch (error) {
       console.error("Error toggling like:", error);
@@ -542,7 +555,7 @@ export default function ProductDetail() {
 
     setSubmittingComment(true);
     try {
-      const { error } = await supabase
+      const { data: insertedComment, error } = await supabase
         .from("comments")
         .insert({
           product_id: productId,
@@ -550,9 +563,40 @@ export default function ProductDetail() {
           content: newComment.trim(),
           gif_url: selectedGif,
           parent_comment_id: replyingTo,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Create notification for the product creator (for new comments)
+      if (!replyingTo && product?.creator?.id && product.creator.id !== userProfileId) {
+        await createNotification({
+          userId: product.creator.id,
+          type: "comment",
+          actorId: userProfileId,
+          productId,
+          commentId: insertedComment.id,
+          message: `commented on "${product.name}"`,
+          redirectUrl: `/product/${productId}`,
+        });
+      }
+
+      // Create notification for reply (to the parent comment author)
+      if (replyingTo) {
+        const parentComment = comments.find(c => c.id === replyingTo);
+        if (parentComment && parentComment.user_id !== userProfileId) {
+          await createNotification({
+            userId: parentComment.user_id,
+            type: "comment_reply",
+            actorId: userProfileId,
+            productId,
+            commentId: insertedComment.id,
+            message: `replied to your comment on "${product?.name}"`,
+            redirectUrl: `/product/${productId}`,
+          });
+        }
+      }
 
       setNewComment("");
       setSelectedGif(null);
@@ -599,6 +643,22 @@ export default function ProductDetail() {
             comment_id: commentId,
             user_id: userProfileId,
           });
+
+        // Find the comment owner to send notification
+        const likedComment = comments.find(c => c.id === commentId) || 
+          comments.flatMap(c => c.replies || []).find(r => r.id === commentId);
+        
+        if (likedComment && likedComment.user_id !== userProfileId) {
+          await createNotification({
+            userId: likedComment.user_id,
+            type: "comment_like",
+            actorId: userProfileId,
+            productId: id || product?.id,
+            commentId,
+            message: `liked your comment on "${product?.name}"`,
+            redirectUrl: `/product/${id || product?.id}`,
+          });
+        }
       }
 
       fetchComments();
@@ -694,6 +754,13 @@ export default function ProductDetail() {
     
     if (!userProfileId || !product?.creator?.id) return;
 
+    // Check for cooldown
+    const cooldownCheck = await checkFollowCooldown(userProfileId, product.creator.id);
+    if (cooldownCheck.blocked) {
+      toast.error(`You can't follow this user for ${cooldownCheck.daysLeft} more day(s) due to a previous unfollow.`);
+      return;
+    }
+
     setFollowingCreator(true);
     try {
       const { error } = await supabase
@@ -708,6 +775,15 @@ export default function ProductDetail() {
       setIsFollowingCreator(true);
       setShowFollowDialog(false);
       toast.success(`You're now following @${product.creator.username}!`);
+
+      // Create notification for the creator
+      await createNotification({
+        userId: product.creator.id,
+        type: "follow",
+        actorId: userProfileId,
+        message: "started following you",
+        redirectUrl: `/@${(await supabase.from("profiles").select("username").eq("id", userProfileId).maybeSingle()).data?.username || "user"}`,
+      });
     } catch (error) {
       console.error("Error following creator:", error);
       toast.error("Failed to follow creator");
@@ -1610,46 +1686,14 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {/* Follow Creator Dialog */}
-      <Dialog open={showFollowDialog} onOpenChange={setShowFollowDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-center">Follow Required</DialogTitle>
-            <DialogDescription className="text-center">
-              You must follow @{product?.creator?.username} to access this content.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-4 py-4">
-            {product?.creator && (
-              <Avatar className="w-20 h-20">
-                <AvatarImage src={product.creator.avatar_url || undefined} />
-                <AvatarFallback className="text-2xl">
-                  {product.creator.username?.[0]?.toUpperCase() || "?"}
-                </AvatarFallback>
-              </Avatar>
-            )}
-          </div>
-          <DialogFooter className="sm:justify-center">
-            <Button
-              onClick={handleFollowCreator}
-              disabled={followingCreator}
-              className="w-full bg-gradient-to-r from-primary to-accent"
-            >
-              {followingCreator ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Following...
-                </>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Follow Now
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Follow Creator Dialog - Enhanced */}
+      <CreatorFollowDialog
+        open={showFollowDialog}
+        onOpenChange={setShowFollowDialog}
+        creator={product?.creator || null}
+        onFollow={handleFollowCreator}
+        isFollowing={isFollowingCreator}
+      />
     </div>
   );
 }

@@ -32,6 +32,8 @@ import { ProfileEditorDialog } from '@/components/profile-editor';
 import { PublicProfileSections } from '@/components/profile/PublicProfileSections';
 import CreatorApplicationDialog from '@/components/creator-application/CreatorApplicationDialog';
 import { SellerConfirmDialog } from '@/components/profile/SellerConfirmDialog';
+import { UnfollowConfirmDialog } from '@/components/profile/UnfollowConfirmDialog';
+import { createNotification, checkFollowCooldown, recordUnfollow } from '@/lib/notifications';
 
 interface Profile {
   id: string;
@@ -291,6 +293,8 @@ const ProfilePage: React.FC = () => {
   const [showCreatorApplication, setShowCreatorApplication] = useState(false);
   const [showSellerConfirm, setShowSellerConfirm] = useState(false);
   const [becomingSellerLoading, setBecomingSellerLoading] = useState(false);
+  const [showUnfollowConfirm, setShowUnfollowConfirm] = useState(false);
+  const [unfollowLoading, setUnfollowLoading] = useState(false);
 
   const handleBecomeSeller = async () => {
     if (!user || !profile) return;
@@ -644,19 +648,16 @@ const ProfilePage: React.FC = () => {
     }
 
     if (isFollowing) {
-      // Unfollow
-      const { error } = await supabase
-        .from('followers')
-        .delete()
-        .eq('follower_id', currentUserProfileId)
-        .eq('following_id', profile.id);
-      
-      if (!error) {
-        setIsFollowing(false);
-        setFollowersCount(prev => prev - 1);
-        toast.success(`Unfollowed @${profile.username}`);
-      }
+      // Show unfollow confirmation dialog
+      setShowUnfollowConfirm(true);
     } else {
+      // Check for cooldown before following
+      const cooldownCheck = await checkFollowCooldown(currentUserProfileId, profile.id);
+      if (cooldownCheck.blocked) {
+        toast.error(`You can't follow this user for ${cooldownCheck.daysLeft} more day(s) due to a previous unfollow.`);
+        return;
+      }
+
       // Follow
       const { error } = await supabase
         .from('followers')
@@ -666,9 +667,47 @@ const ProfilePage: React.FC = () => {
         setIsFollowing(true);
         setFollowersCount(prev => prev + 1);
         toast.success(`Now following @${profile.username}`);
+
+        // Create notification for the followed user
+        await createNotification({
+          userId: profile.id,
+          type: 'follow',
+          actorId: currentUserProfileId,
+          message: 'started following you',
+          redirectUrl: `/@${(await supabase.from('profiles').select('username').eq('id', currentUserProfileId).maybeSingle()).data?.username || 'user'}`,
+        });
       } else {
         toast.error('Failed to follow');
       }
+    }
+  };
+
+  const handleConfirmUnfollow = async () => {
+    if (!currentUserProfileId || !profile) return;
+
+    setUnfollowLoading(true);
+    try {
+      // Delete from followers
+      const { error } = await supabase
+        .from('followers')
+        .delete()
+        .eq('follower_id', currentUserProfileId)
+        .eq('following_id', profile.id);
+
+      if (error) throw error;
+
+      // Record unfollow for cooldown
+      await recordUnfollow(currentUserProfileId, profile.id);
+
+      setIsFollowing(false);
+      setFollowersCount(prev => prev - 1);
+      setShowUnfollowConfirm(false);
+      toast.success(`Unfollowed @${profile.username}. You won't be able to follow back for 7 days.`);
+    } catch (error) {
+      console.error('Error unfollowing:', error);
+      toast.error('Failed to unfollow');
+    } finally {
+      setUnfollowLoading(false);
     }
   };
 
@@ -1293,6 +1332,15 @@ const ProfilePage: React.FC = () => {
         onOpenChange={setShowSellerConfirm}
         onConfirm={handleBecomeSeller}
         loading={becomingSellerLoading}
+      />
+
+      {/* Unfollow Confirmation Dialog */}
+      <UnfollowConfirmDialog
+        open={showUnfollowConfirm}
+        onOpenChange={setShowUnfollowConfirm}
+        username={profile?.username || 'user'}
+        onConfirm={handleConfirmUnfollow}
+        loading={unfollowLoading}
       />
     </TooltipProvider>
   );
