@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply, Bookmark } from "lucide-react";
+import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply, Bookmark, Flame, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import { VerifiedBadge } from "@/components/ui/verified-badge";
 import { cn } from "@/lib/utils";
 import { CreatorFollowDialog } from "@/components/product/CreatorFollowDialog";
 import { createNotification, checkFollowCooldown } from "@/lib/notifications";
-
+import { getFileTypeIcon, getFileTypeLabel } from "@/lib/fileTypeIcons";
 interface Product {
   id: string;
   name: string;
@@ -79,13 +79,6 @@ interface RelatedProduct {
   currency: string | null;
 }
 
-interface RelatedCreator {
-  id: string;
-  username: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-  verified: boolean | null;
-}
 
 const productTypeLabels: Record<string, string> = {
   preset: "Preset Pack",
@@ -141,6 +134,10 @@ export default function ProductDetail() {
   const [downloading, setDownloading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
+  const [downloadLimitInfo, setDownloadLimitInfo] = useState<{ remaining: number; daysUntilReset?: number } | null>(null);
+  
+  // Featured Products
+  const [featuredProducts, setFeaturedProducts] = useState<RelatedProduct[]>([]);
   
   // Comments
   const [comments, setComments] = useState<Comment[]>([]);
@@ -154,7 +151,6 @@ export default function ProductDetail() {
   
   // Related
   const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
-  const [relatedCreators, setRelatedCreators] = useState<RelatedCreator[]>([]);
 
   // Fetch user's profile ID for likes
   useEffect(() => {
@@ -269,8 +265,8 @@ export default function ProductDetail() {
       
       // Fetch related products (same creator or same type)
       fetchRelatedProducts(productData.creator_id, productData.product_type, productData.id);
-      fetchRelatedCreators(productData.creator_id);
-      fetchRelatedCreators(productData.creator_id);
+      fetchFeaturedProducts(productData.id);
+      fetchDownloadLimitInfo(productData.id);
     } catch (error) {
       console.error("Error fetching product:", error);
       toast.error("Failed to load product");
@@ -300,17 +296,50 @@ export default function ProductDetail() {
     }
   };
 
-  const fetchRelatedCreators = async (excludeId: string | null) => {
+  const fetchFeaturedProducts = async (excludeId: string) => {
     try {
       const { data } = await supabase
-        .from("profiles")
-        .select("id, username, full_name, avatar_url, verified")
-        .eq("is_creator", true)
+        .from("products")
+        .select("id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency")
+        .eq("status", "published")
+        .eq("featured", true)
+        .neq("id", excludeId)
         .limit(5);
       
-      setRelatedCreators((data || []).filter(c => c.id !== excludeId));
+      setFeaturedProducts(data || []);
     } catch (error) {
-      console.error("Error fetching related creators:", error);
+      console.error("Error fetching featured products:", error);
+    }
+  };
+
+  const fetchDownloadLimitInfo = async (productId: string) => {
+    if (!userProfileId) return;
+    
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data: downloads } = await supabase
+        .from("product_downloads")
+        .select("downloaded_at")
+        .eq("user_id", userProfileId)
+        .eq("product_id", productId)
+        .gte("downloaded_at", sevenDaysAgo.toISOString())
+        .order("downloaded_at", { ascending: true });
+      
+      const count = downloads?.length || 0;
+      const remaining = Math.max(0, 2 - count);
+      
+      let daysUntilReset: number | undefined;
+      if (count > 0 && downloads) {
+        const oldestDownload = new Date(downloads[0].downloaded_at);
+        const resetDate = new Date(oldestDownload.getTime() + 7 * 24 * 60 * 60 * 1000);
+        daysUntilReset = Math.ceil((resetDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+      }
+      
+      setDownloadLimitInfo({ remaining, daysUntilReset });
+    } catch (error) {
+      console.error("Error fetching download limit info:", error);
     }
   };
 
@@ -825,9 +854,38 @@ export default function ProductDetail() {
       if (error) throw error;
 
       if (data?.url) {
-        // Open download URL in new tab
-        window.open(data.url, '_blank');
-        toast.success("Download started!");
+        // Use fetch + blob to download with proper filename
+        const filename = data.filename || 'download';
+        
+        try {
+          const response = await fetch(data.url);
+          if (!response.ok) throw new Error('Failed to fetch file');
+          
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Cleanup blob URL
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+          
+          toast.success(`Downloading ${filename}`);
+          
+          // Refresh download limit info
+          if (product.id) {
+            fetchDownloadLimitInfo(product.id);
+          }
+        } catch (fetchError) {
+          // Fallback to window.open if fetch fails (e.g., CORS issues)
+          console.warn("Blob download failed, falling back to window.open:", fetchError);
+          window.open(data.url, '_blank');
+          toast.success("Download started!");
+        }
       } else {
         throw new Error("No download URL returned");
       }
@@ -1500,7 +1558,57 @@ export default function ProductDetail() {
             </div>
           )}
 
-          <Separator />
+          {/* Attachments Section - Main Content */}
+          {product.attachments && Array.isArray(product.attachments) && product.attachments.length > 0 && (
+            <div className="mt-6">
+              <h3 className="font-semibold mb-4 text-cyan-400 flex items-center gap-2">
+                <FileIcon className="w-5 h-5" />
+                Attachments
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                {product.attachments.map((attachment: any, index: number) => {
+                  const hasAccess = isOwner || hasPurchased || (product.pricing_type === "free" && isFollowingCreator);
+                  const IconComponent = getFileTypeIcon(attachment.name || '');
+                  const fileLabel = getFileTypeLabel(attachment.name || '');
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      className="flex items-center gap-3 px-4 py-3 rounded-full bg-muted/50 border border-border hover:bg-muted transition-colors"
+                    >
+                      <IconComponent className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+                      <span className="text-sm font-medium truncate max-w-[200px]" title={attachment.name || `Attachment ${index + 1}`}>
+                        {attachment.name || `Attachment ${index + 1}`}
+                      </span>
+                      {hasAccess ? (
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-400/10 rounded-full"
+                          onClick={() => {
+                            if (attachment.url) {
+                              window.open(attachment.url, '_blank');
+                            }
+                          }}
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {!isOwner && !hasPurchased && product.pricing_type !== "free" && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  Purchase to unlock all attachments
+                </p>
+              )}
+            </div>
+          )}
+
+          <Separator className="mt-6" />
 
           {/* Product Type Badge */}
           {product.product_type && !isOwner && (
@@ -1543,64 +1651,6 @@ export default function ProductDetail() {
                     View Profile
                   </Link>
                 </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Attachments Card - Purple themed */}
-          {product.attachments && Array.isArray(product.attachments) && product.attachments.length > 0 && (
-            <Card className="bg-card border-primary/20">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <FileIcon className="w-4 h-4 text-primary" />
-                  Attachments
-                </h3>
-                <div className="space-y-2">
-                  {product.attachments.map((attachment: any, index: number) => {
-                    const hasAccess = isOwner || hasPurchased || product.pricing_type === "free";
-                    return (
-                      <div 
-                        key={index} 
-                        className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20 hover:bg-primary/15 transition-colors"
-                      >
-                        <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                          <FileIcon className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate" title={attachment.name || `Attachment ${index + 1}`}>
-                            {attachment.name || `Attachment ${index + 1}`}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatFileSize(attachment.size || 0)}
-                          </p>
-                        </div>
-                        {hasAccess ? (
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-primary hover:text-primary hover:bg-primary/20"
-                            onClick={() => {
-                              if (attachment.url) {
-                                window.open(attachment.url, '_blank');
-                              } else {
-                                toast.success("Download starting...");
-                              }
-                            }}
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                        ) : (
-                          <Lock className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                {!isOwner && !hasPurchased && product.pricing_type !== "free" && (
-                  <p className="text-xs text-muted-foreground mt-3 text-center">
-                    Purchase to unlock all attachments
-                  </p>
-                )}
               </CardContent>
             </Card>
           )}
@@ -1650,35 +1700,49 @@ export default function ProductDetail() {
             </Card>
           )}
 
-          {/* Related Creators */}
-          {relatedCreators.length > 0 && (
-            <Card className="bg-card">
+          {/* Featured Products */}
+          {featuredProducts.length > 0 && (
+            <Card className="bg-card border-primary/20">
               <CardContent className="p-4">
-                <h3 className="font-semibold mb-4">Related Creators</h3>
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-orange-500" />
+                  Featured Products
+                </h3>
                 <div className="space-y-3">
-                  {relatedCreators.slice(0, 5).map((creator) => (
-                    <Link 
-                      key={creator.id} 
-                      to={`/@${creator.username}`}
-                      className="flex items-center gap-3 hover:bg-secondary/30 rounded-lg p-2 -mx-2 transition-colors"
-                    >
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={creator.avatar_url || undefined} />
-                        <AvatarFallback className="text-xs">
-                          {creator.username?.[0]?.toUpperCase() || "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate flex items-center gap-1">
-                          {creator.full_name || creator.username}
-                          {creator.verified && (
-                            <VerifiedBadge size="sm" />
-                          )}
-                        </p>
-                        <p className="text-xs text-muted-foreground">@{creator.username}</p>
-                      </div>
-                    </Link>
-                  ))}
+                  {featuredProducts.slice(0, 5).map((prod) => {
+                    const thumbnail = prod.cover_image_url || getYouTubeThumbnail(prod.youtube_url);
+                    return (
+                      <Link 
+                        key={prod.id} 
+                        to={`/product/${prod.id}`}
+                        className="flex items-center gap-3 hover:bg-secondary/30 rounded-lg p-2 -mx-2 transition-colors"
+                      >
+                        {thumbnail ? (
+                          <img 
+                            src={thumbnail} 
+                            alt={prod.name} 
+                            className="w-12 h-12 rounded object-cover flex-shrink-0"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              if (target.src.includes('hqdefault')) {
+                                target.src = target.src.replace('hqdefault', 'default');
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                            <Play className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{prod.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatPrice(prod.price_cents, null, prod.currency)}
+                          </p>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

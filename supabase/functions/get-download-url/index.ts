@@ -11,6 +11,49 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GET-DOWNLOAD-URL] ${step}${detailsStr}`);
 };
 
+// Extract original filename from storage path
+// Format: {creator_id}/{timestamp}-{original_filename}
+const extractFilename = (downloadUrl: string): string => {
+  try {
+    // Get the last part of the path
+    let path = downloadUrl;
+    
+    // If it's a full URL, extract the path
+    if (downloadUrl.includes('/product-files/')) {
+      const match = downloadUrl.match(/\/product-files\/(.+)$/);
+      if (match) {
+        path = decodeURIComponent(match[1]);
+      }
+    } else if (downloadUrl.includes('/product-media/')) {
+      const match = downloadUrl.match(/\/product-media\/(.+)$/);
+      if (match) {
+        path = decodeURIComponent(match[1]);
+      }
+    }
+    
+    // Get just the filename portion (after last /)
+    const parts = path.split('/');
+    const filenameWithTimestamp = parts[parts.length - 1];
+    
+    // Remove timestamp prefix if present (format: timestamp-)
+    // Timestamp is typically 13 digits followed by dash
+    const timestampMatch = filenameWithTimestamp.match(/^\d{13}-(.+)$/);
+    if (timestampMatch) {
+      return timestampMatch[1];
+    }
+    
+    // Try another common format: uuid-filename
+    const uuidMatch = filenameWithTimestamp.match(/^[a-f0-9-]{36}-(.+)$/i);
+    if (uuidMatch) {
+      return uuidMatch[1];
+    }
+    
+    return filenameWithTimestamp;
+  } catch {
+    return 'download';
+  }
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -81,9 +124,10 @@ serve(async (req) => {
 
     // Check authorization
     let isAuthorized = false;
+    const isOwner = product.creator_id === profile.id;
 
     // 1. Is the user the product creator?
-    if (product.creator_id === profile.id) {
+    if (isOwner) {
       isAuthorized = true;
       logStep("User is product creator - authorized");
     }
@@ -153,6 +197,37 @@ serve(async (req) => {
       throw new Error("You are not authorized to download this file. Please follow the creator or purchase the product.");
     }
 
+    // Check download rate limit (2 per week per product) - skip for owners
+    if (!isOwner) {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data: recentDownloads, error: downloadCountError } = await supabaseAdmin
+        .from("product_downloads")
+        .select("id, downloaded_at")
+        .eq("user_id", profile.id)
+        .eq("product_id", productId)
+        .gte("downloaded_at", sevenDaysAgo.toISOString())
+        .order("downloaded_at", { ascending: false });
+      
+      if (downloadCountError) {
+        logStep("Error checking download count", { error: downloadCountError.message });
+      } else {
+        const downloadCount = recentDownloads?.length || 0;
+        logStep("Download count check", { count: downloadCount, limit: 2 });
+        
+        if (downloadCount >= 2) {
+          // Calculate when they can download again
+          const oldestDownload = recentDownloads[recentDownloads.length - 1];
+          const oldestDate = new Date(oldestDownload.downloaded_at);
+          const canDownloadAgain = new Date(oldestDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+          const daysLeft = Math.ceil((canDownloadAgain.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+          
+          throw new Error(`Download limit reached (2 per week). You can download again in ${daysLeft} day(s).`);
+        }
+      }
+    }
+
     // For free products, create a purchase record if it doesn't exist (to track downloads)
     if (product.pricing_type === "free" && product.creator_id !== profile.id) {
       // Check if a purchase record already exists
@@ -186,6 +261,26 @@ serve(async (req) => {
       }
     }
 
+    // Extract original filename
+    const filename = extractFilename(product.download_url);
+    logStep("Extracted filename", { filename });
+
+    // Record the download event (only for non-owners)
+    if (!isOwner) {
+      const { error: recordError } = await supabaseAdmin
+        .from("product_downloads")
+        .insert({
+          user_id: profile.id,
+          product_id: productId,
+        });
+      
+      if (recordError) {
+        logStep("Failed to record download", { error: recordError.message });
+      } else {
+        logStep("Download recorded successfully");
+      }
+    }
+
     // Generate signed URL or return public URL
     // The download_url can be:
     // 1. A relative path for product-files bucket (e.g., "user-id/timestamp-filename.zip")
@@ -201,6 +296,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             url: downloadUrl,
+            filename: filename,
             expiresIn: 0 // No expiry for public URLs
           }),
           {
@@ -228,6 +324,7 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               url: signedUrlData.signedUrl,
+              filename: filename,
               expiresIn: 300 
             }),
             {
@@ -242,6 +339,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           url: downloadUrl,
+          filename: filename,
           expiresIn: 0
         }),
         {
@@ -266,6 +364,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         url: signedUrlData.signedUrl,
+        filename: filename,
         expiresIn: 300 
       }),
       {
