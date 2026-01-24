@@ -304,7 +304,7 @@ export default function ProductDetail() {
         .eq("status", "published")
         .eq("featured", true)
         .neq("id", excludeId)
-        .limit(5);
+        .limit(10);
       
       setFeaturedProducts(data || []);
     } catch (error) {
@@ -1730,7 +1730,7 @@ export default function ProductDetail() {
                   Featured Products
                 </h3>
                 <div className="space-y-3">
-                  {featuredProducts.slice(0, 5).map((prod) => {
+                  {featuredProducts.map((prod) => {
                     const thumbnail = prod.cover_image_url || getYouTubeThumbnail(prod.youtube_url);
                     return (
                       <Link 
@@ -1765,6 +1765,13 @@ export default function ProductDetail() {
                     );
                   })}
                 </div>
+                <Button 
+                  variant="ghost" 
+                  className="w-full mt-4 text-primary hover:text-primary/80"
+                  onClick={() => navigate('/products?featured=true')}
+                >
+                  View More Featured
+                </Button>
               </CardContent>
             </Card>
           )}
