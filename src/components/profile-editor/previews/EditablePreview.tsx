@@ -1,38 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, HeadlineContent, DividerContent, AboutMeContent, SlidingBannerContent, NewsletterContent, FAQContent, TestimonialsContent, ContactUsContent, FooterContent } from '../types';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, HeadlineContent, DividerContent, NewsletterContent, TestimonialsContent, ContactContent, FAQContent, AboutMeContent, SlidingBannerContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, CollectionContent, FooterContent, CardSlideshowContent, BannerSlideshowContent } from '../types';
 import { cn } from '@/lib/utils';
-import { Star, Mail, Send } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Image, Play, ChevronLeft, ChevronRight, Star, Mail, Phone, MessageSquare, ArrowRight, Check, Quote } from 'lucide-react';
 
 interface EditablePreviewProps {
   section: ProfileSection;
-  onUpdate: (updates: Partial<ProfileSection['content']>) => void;
+  onUpdate: (content: Partial<ProfileSection['content']>) => void;
 }
 
-// Inline editable text component
-function InlineEdit({
-  value,
-  onChange,
-  placeholder,
-  multiline = false,
-  className,
-  as: Component = 'span',
-}: {
+// Inline Edit Component for editable text fields
+interface InlineEditProps {
   value: string;
   onChange: (value: string) => void;
+  className?: string;
   placeholder?: string;
   multiline?: boolean;
-  className?: string;
-  as?: 'span' | 'h1' | 'h2' | 'h3' | 'p';
-}) {
+}
+
+const InlineEdit: React.FC<InlineEditProps> = ({ value, onChange, className, placeholder, multiline }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value);
+  const [tempValue, setTempValue] = useState(value);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setEditValue(value);
+    setTempValue(value);
   }, [value]);
 
   useEffect(() => {
@@ -44,168 +35,281 @@ function InlineEdit({
 
   const handleBlur = () => {
     setIsEditing(false);
-    if (editValue !== value) {
-      onChange(editValue);
+    if (tempValue !== value) {
+      onChange(tempValue);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !multiline) {
-      e.preventDefault();
       handleBlur();
     }
     if (e.key === 'Escape') {
-      setEditValue(value);
+      setTempValue(value);
       setIsEditing(false);
     }
   };
 
   if (isEditing) {
-    const baseClass = "bg-transparent border-none outline-none ring-2 ring-primary/50 rounded px-1 w-full text-inherit font-inherit";
-    
-    if (multiline) {
-      return (
-        <textarea
-          ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          className={cn(baseClass, "resize-none min-h-[60px]", className)}
-          rows={3}
-        />
-      );
-    }
-
+    const Component = multiline ? 'textarea' : 'input';
     return (
-      <input
-        ref={inputRef as React.RefObject<HTMLInputElement>}
-        type="text"
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
+      <Component
+        ref={inputRef as any}
+        value={tempValue}
+        onChange={(e) => setTempValue(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className={cn(baseClass, className)}
+        className={cn(
+          "bg-transparent border-b border-primary/50 outline-none w-full",
+          multiline && "resize-none min-h-[60px]",
+          className
+        )}
+        placeholder={placeholder}
       />
     );
   }
 
-  const displayValue = value || placeholder;
-  const isEmpty = !value;
-
   return (
-    <Component
+    <span
       onClick={() => setIsEditing(true)}
       className={cn(
-        "cursor-text hover:ring-2 hover:ring-primary/30 rounded px-1 transition-all",
-        isEmpty && "text-muted-foreground/50 italic",
+        "cursor-text hover:bg-muted/50 rounded px-1 -mx-1 transition-colors inline-block",
+        !value && "text-muted-foreground italic",
         className
       )}
-      title="Click to edit"
     >
-      {displayValue}
-    </Component>
+      {value || placeholder || 'Click to edit'}
+    </span>
+  );
+};
+
+// Star Rating Component
+const StarRating: React.FC<{ rating: number; onChange?: (r: number) => void; size?: 'sm' | 'md' }> = ({ 
+  rating, 
+  onChange,
+  size = 'sm'
+}) => {
+  const sizeClass = size === 'sm' ? 'w-3 h-3' : 'w-4 h-4';
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={cn(
+            sizeClass,
+            star <= rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30",
+            onChange && "cursor-pointer hover:scale-110 transition-transform"
+          )}
+          onClick={() => onChange?.(star)}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Image Placeholder Component
+const ImagePlaceholder: React.FC<{ label?: string | number; className?: string }> = ({ label, className }) => (
+  <div className={cn(
+    "bg-muted/50 rounded-lg flex items-center justify-center border border-dashed border-muted-foreground/20",
+    className
+  )}>
+    {label !== undefined ? (
+      <span className="text-muted-foreground/50 text-xs font-medium">{label}</span>
+    ) : (
+      <Image className="w-6 h-6 text-muted-foreground/30" />
+    )}
+  </div>
+);
+
+// ============ SECTION PREVIEWS ============
+
+// Text Preview
+function TextEditablePreview({ content, onUpdate }: { content: TextContent; onUpdate: (c: Partial<TextContent>) => void }) {
+  return (
+    <div className={cn("space-y-2 p-4", content.alignment === 'center' && "text-center", content.alignment === 'right' && "text-right")}>
+      {content.title && (
+        <h3 className="text-lg font-semibold">
+          <InlineEdit value={content.title} onChange={(v) => onUpdate({ title: v })} placeholder="Section Title" />
+        </h3>
+      )}
+      <p className="text-sm text-muted-foreground">
+        <InlineEdit value={content.body} onChange={(v) => onUpdate({ body: v })} placeholder="Enter your text here..." multiline />
+      </p>
+    </div>
   );
 }
 
-// Image With Text Editable Preview
-function ImageWithTextEditablePreview({ 
-  section, 
-  onUpdate 
-}: { 
-  section: ProfileSection; 
-  onUpdate: (updates: Partial<ImageWithTextContent>) => void;
-}) {
-  const content = section.content as ImageWithTextContent;
-  const preset = section.style_options?.preset;
-  const resolvedLayout: ImageWithTextContent['layout'] =
-    (preset === 'style1' ? 'hero' : preset === 'style4' ? 'overlay' : 'side-by-side');
-  const layout = content.layout || resolvedLayout || 'side-by-side';
-
-  if (layout === 'hero') {
-    return (
-      <div className="relative min-h-[200px] rounded-lg overflow-hidden bg-gradient-to-br from-primary/20 to-secondary/20">
-        {content.imageUrl && (
-          <img src={content.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+// Image Preview
+function ImageEditablePreview({ content, onUpdate }: { content: ImageContent; onUpdate: (c: Partial<ImageContent>) => void }) {
+  return (
+    <div className="space-y-2">
+      <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+        {content.url ? (
+          <img src={content.url} alt={content.alt || ''} className="w-full h-full object-cover" />
+        ) : (
+          <ImagePlaceholder className="w-full h-full" />
         )}
-        <div className="relative z-10 flex flex-col items-center justify-center min-h-[200px] text-center p-6">
-          <InlineEdit value={content.title} onChange={(title) => onUpdate({ title })} placeholder="Enter title..." className="text-2xl font-bold mb-3 block w-full" as="h3" />
-          <InlineEdit value={content.body} onChange={(body) => onUpdate({ body })} placeholder="Enter description..." multiline className="text-muted-foreground mb-4 max-w-lg block" as="p" />
-          {content.buttonText && (
-            <Button size="sm"><InlineEdit value={content.buttonText} onChange={(buttonText) => onUpdate({ buttonText })} placeholder="Button text" /></Button>
+      </div>
+      {content.caption && (
+        <p className="text-xs text-muted-foreground text-center">
+          <InlineEdit value={content.caption} onChange={(v) => onUpdate({ caption: v })} placeholder="Image caption" />
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Image With Text Preview
+function ImageWithTextEditablePreview({ content, section, onUpdate }: { content: ImageWithTextContent; section: ProfileSection; onUpdate: (c: Partial<ImageWithTextContent>) => void }) {
+  const preset = section.style_options?.preset || 'style1';
+  const layout = content.layout || 'side-by-side';
+  const imagePosition = content.imagePosition || 'left';
+
+  // Hero Banner Layout
+  if (preset === 'style1' || layout === 'hero') {
+    return (
+      <div className="relative aspect-[16/9] bg-muted rounded-lg overflow-hidden">
+        {content.imageUrl ? (
+          <img src={content.imageUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-muted to-muted-foreground/10" />
+        )}
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+          <div className="text-center text-white p-4 max-w-md">
+            <h2 className="text-xl font-bold mb-2">
+              <InlineEdit value={content.title || ''} onChange={(v) => onUpdate({ title: v })} placeholder="Hero Title" className="text-white" />
+            </h2>
+            <p className="text-sm opacity-90">
+              <InlineEdit value={content.description || ''} onChange={(v) => onUpdate({ description: v })} placeholder="Hero description" className="text-white" />
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Overlay Text Layout
+  if (preset === 'style4' || layout === 'overlay') {
+    return (
+      <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
+        {content.imageUrl ? (
+          <img src={content.imageUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-muted to-muted-foreground/10" />
+        )}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+          <h3 className="text-white font-semibold">
+            <InlineEdit value={content.title || ''} onChange={(v) => onUpdate({ title: v })} placeholder="Title" className="text-white" />
+          </h3>
+          <p className="text-white/80 text-sm">
+            <InlineEdit value={content.description || ''} onChange={(v) => onUpdate({ description: v })} placeholder="Description" className="text-white/80" />
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Side by Side Layout (style2 = Image Left, style3 = Image Right)
+  const isImageRight = preset === 'style3' || imagePosition === 'right';
+  return (
+    <div className={cn("grid grid-cols-2 gap-4 items-center", isImageRight && "direction-rtl")}>
+      <div className="aspect-square bg-muted rounded-lg overflow-hidden" style={{ direction: 'ltr' }}>
+        {content.imageUrl ? (
+          <img src={content.imageUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <ImagePlaceholder className="w-full h-full" />
+        )}
+      </div>
+      <div className="space-y-2" style={{ direction: 'ltr' }}>
+        <h3 className="font-semibold">
+          <InlineEdit value={content.title || ''} onChange={(v) => onUpdate({ title: v })} placeholder="Title" />
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          <InlineEdit value={content.description || ''} onChange={(v) => onUpdate({ description: v })} placeholder="Description" multiline />
+        </p>
+        {content.buttonText && (
+          <span className="inline-block text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded">
+            <InlineEdit value={content.buttonText} onChange={(v) => onUpdate({ buttonText: v })} placeholder="Button" className="text-primary-foreground" />
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Gallery Preview - FIXED to match menu thumbnails
+function GalleryEditablePreview({ content, section }: { content: GalleryContent; section: ProfileSection }) {
+  const preset = section.style_options?.preset || 'style1';
+  const images = content.images || [];
+
+  // Masonry Layout (style3) - One large left, smaller right
+  if (preset === 'style3') {
+    const slots = Array.from({ length: 4 }, (_, i) => images[i] || null);
+    return (
+      <div className="grid grid-cols-3 grid-rows-2 gap-2 aspect-[16/10]">
+        {/* Large image spanning 2 rows on left */}
+        <div className="row-span-2 rounded-lg overflow-hidden">
+          {slots[0]?.url ? (
+            <img src={slots[0].url} alt={slots[0].alt || ''} className="w-full h-full object-cover" />
+          ) : (
+            <ImagePlaceholder label={1} className="w-full h-full" />
+          )}
+        </div>
+        {/* Top right images */}
+        <div className="rounded-lg overflow-hidden">
+          {slots[1]?.url ? (
+            <img src={slots[1].url} alt={slots[1].alt || ''} className="w-full h-full object-cover" />
+          ) : (
+            <ImagePlaceholder label={2} className="w-full h-full" />
+          )}
+        </div>
+        <div className="rounded-lg overflow-hidden">
+          {slots[2]?.url ? (
+            <img src={slots[2].url} alt={slots[2].alt || ''} className="w-full h-full object-cover" />
+          ) : (
+            <ImagePlaceholder label={3} className="w-full h-full" />
+          )}
+        </div>
+        {/* Bottom right spanning 2 columns */}
+        <div className="col-span-2 rounded-lg overflow-hidden">
+          {slots[3]?.url ? (
+            <img src={slots[3].url} alt={slots[3].alt || ''} className="w-full h-full object-cover" />
+          ) : (
+            <ImagePlaceholder label={4} className="w-full h-full" />
           )}
         </div>
       </div>
     );
   }
 
-  const imagePosition = content.imagePosition || 'left';
-  return (
-    <div className={cn("flex gap-4 items-center", imagePosition === 'right' && "flex-row-reverse")}>
-      <div className="w-1/3 flex-shrink-0">
-        {content.imageUrl ? (
-          <img src={content.imageUrl} alt="" className="w-full h-24 object-cover rounded-lg" />
-        ) : (
-          <div className="w-full h-24 bg-muted rounded-lg flex items-center justify-center text-xs text-muted-foreground">No image</div>
-        )}
+  // 2x3 Grid (style2) - 2 columns, 3 rows
+  if (preset === 'style2') {
+    const slots = Array.from({ length: 6 }, (_, i) => images[i] || null);
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {slots.map((img, i) => (
+          <div key={i} className="aspect-square rounded-lg overflow-hidden">
+            {img?.url ? (
+              <img src={img.url} alt={img.alt || ''} className="w-full h-full object-cover" />
+            ) : (
+              <ImagePlaceholder label={i + 1} className="w-full h-full" />
+            )}
+          </div>
+        ))}
       </div>
-      <div className="flex-1 space-y-2">
-        <InlineEdit value={content.title} onChange={(title) => onUpdate({ title })} placeholder="Enter title..." className="text-lg font-semibold block" as="h3" />
-        <InlineEdit value={content.body} onChange={(body) => onUpdate({ body })} placeholder="Enter description..." multiline className="text-sm text-muted-foreground block" as="p" />
-        {content.buttonText && (
-          <Button size="sm" variant="outline"><InlineEdit value={content.buttonText} onChange={(buttonText) => onUpdate({ buttonText })} placeholder="Button" /></Button>
-        )}
-      </div>
-    </div>
-  );
-}
+    );
+  }
 
-function TextEditablePreview({ content, onUpdate }: { content: TextContent; onUpdate: (updates: Partial<TextContent>) => void; }) {
+  // Default 3x2 Grid (style1) - 3 columns, 2 rows
+  const slots = Array.from({ length: 6 }, (_, i) => images[i] || null);
   return (
-    <div className={`text-${content.alignment || 'left'}`}>
-      <InlineEdit value={content.title || ''} onChange={(title) => onUpdate({ title })} placeholder="Add a heading..." className="text-xl font-semibold mb-2 block" as="h3" />
-      <InlineEdit value={content.body || ''} onChange={(body) => onUpdate({ body })} placeholder="Enter your text..." multiline className="text-muted-foreground block" as="p" />
-    </div>
-  );
-}
-
-function ImageEditablePreview({ content, onUpdate }: { content: ImageContent; onUpdate: (updates: Partial<ImageContent>) => void; }) {
-  return (
-    <figure className="text-center">
-      {content.imageUrl ? (
-        <img src={content.imageUrl} alt={content.altText || ''} className="w-full max-h-40 object-cover rounded-lg" />
-      ) : (
-        <div className="w-full h-32 bg-muted rounded-lg flex items-center justify-center text-muted-foreground">No image - use settings below to upload</div>
-      )}
-      <InlineEdit value={content.caption || ''} onChange={(caption) => onUpdate({ caption })} placeholder="Add a caption..." className="mt-2 text-sm text-muted-foreground block" as="p" />
-    </figure>
-  );
-}
-
-function HeadlineEditablePreview({ content, onUpdate }: { content: HeadlineContent; onUpdate: (updates: Partial<HeadlineContent>) => void; }) {
-  const sizeClasses = { small: 'text-xl', medium: 'text-2xl', large: 'text-3xl' };
-  return (
-    <div className="text-center py-2">
-      <InlineEdit value={content.text} onChange={(text) => onUpdate({ text })} placeholder="Enter headline..." className={cn("font-bold block", sizeClasses[content.size || 'medium'])} as="h2" />
-    </div>
-  );
-}
-
-function GalleryEditablePreview({ content, section }: { content: GalleryContent; section: ProfileSection; }) {
-  const preset = section.style_options?.preset;
-  const columns = content.columns || 3;
-  const rows = content.rows || 2;
-  const slotCount = preset === 'style1' || preset === 'style2' ? 6 : columns * rows;
-  const slots = Array.from({ length: slotCount }, (_, i) => content.images[i] || null);
-
-  return (
-    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
-      {slots.map((img, idx) => (
-        <div key={idx} className="aspect-square bg-muted rounded overflow-hidden">
+    <div className="grid grid-cols-3 gap-2">
+      {slots.map((img, i) => (
+        <div key={i} className="aspect-square rounded-lg overflow-hidden">
           {img?.url ? (
-            <img src={img.url} alt={img.altText || ''} className="w-full h-full object-cover" />
+            <img src={img.url} alt={img.alt || ''} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground border-2 border-dashed border-border">{idx + 1}</div>
+            <ImagePlaceholder label={i + 1} className="w-full h-full" />
           )}
         </div>
       ))}
@@ -213,54 +317,334 @@ function GalleryEditablePreview({ content, section }: { content: GalleryContent;
   );
 }
 
-function VideoEditablePreview({ content }: { content: VideoContent; }) {
-  const getYouTubeId = (url: string) => url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1];
-  const videoId = content.videoUrl ? getYouTubeId(content.videoUrl) : null;
+// Video Preview
+function VideoEditablePreview({ content }: { content: VideoContent }) {
   return (
-    <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-      {videoId ? (
-        <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+    <div className="aspect-video bg-muted rounded-lg overflow-hidden relative">
+      {content.thumbnailUrl ? (
+        <img src={content.thumbnailUrl} alt="" className="w-full h-full object-cover" />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-muted-foreground">No video - enter YouTube URL in settings</div>
+        <div className="w-full h-full bg-gradient-to-br from-muted to-muted-foreground/20" />
       )}
-    </div>
-  );
-}
-
-function DividerEditablePreview({ content }: { content: DividerContent; }) {
-  if (content.style === 'space') return <div className="h-8" />;
-  if (content.style === 'dots') return <div className="flex justify-center gap-2 py-4">{[1,2,3].map(i => <span key={i} className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />)}</div>;
-  if (content.style === 'thick') return <hr className="border-t-4 border-border my-4" />;
-  if (content.style === 'gradient') return <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent my-4" />;
-  if (content.style === 'wave') return <div className="h-4 my-4 flex items-center"><svg viewBox="0 0 100 10" className="w-full h-4 text-muted-foreground/30"><path d="M0 5 Q 12.5 0 25 5 T 50 5 T 75 5 T 100 5" fill="none" stroke="currentColor" strokeWidth="1" /></svg></div>;
-  return <hr className="border-border my-4" />;
-}
-
-function NewsletterEditablePreview({ content, onUpdate }: { content: NewsletterContent; onUpdate: (updates: Partial<NewsletterContent>) => void; }) {
-  return (
-    <div className="text-center max-w-md mx-auto">
-      <Mail className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-      <InlineEdit value={content.title} onChange={(title) => onUpdate({ title })} placeholder="Title..." className="text-lg font-semibold mb-1 block" as="h3" />
-      <InlineEdit value={content.subtitle || ''} onChange={(subtitle) => onUpdate({ subtitle })} placeholder="Subtitle..." className="text-sm text-muted-foreground mb-4 block" as="p" />
-      <div className="flex gap-2">
-        <Input placeholder={content.placeholder} className="flex-1" disabled />
-        <Button size="sm"><InlineEdit value={content.buttonText} onChange={(buttonText) => onUpdate({ buttonText })} placeholder="Subscribe" /></Button>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+          <Play className="w-5 h-5 text-foreground ml-0.5" />
+        </div>
       </div>
     </div>
   );
 }
 
-function TestimonialsEditablePreview({ content }: { content: TestimonialsContent; }) {
-  if (content.testimonials.length === 0) return <div className="text-center py-4 text-muted-foreground">No testimonials - add them in settings</div>;
+// Headline Preview
+function HeadlineEditablePreview({ content, onUpdate }: { content: HeadlineContent; onUpdate: (c: Partial<HeadlineContent>) => void }) {
+  const sizeClasses = {
+    small: 'text-lg',
+    medium: 'text-2xl',
+    large: 'text-4xl',
+  };
   return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {content.testimonials.slice(0, 2).map((t) => (
-        <div key={t.id} className="bg-muted/50 rounded-lg p-3 text-sm">
-          <div className="flex gap-1 mb-2">{[1,2,3,4,5].map(s => <Star key={s} className={cn("w-3 h-3", s <= (t.rating || 5) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground")} />)}</div>
-          <p className="text-muted-foreground mb-2 line-clamp-2">{t.quote}</p>
-          <div className="flex items-center gap-2">
-            <Avatar className="h-6 w-6">{t.avatar ? <AvatarImage src={t.avatar} /> : <AvatarFallback className="text-xs">{t.name[0]}</AvatarFallback>}</Avatar>
-            <span className="text-xs font-medium">{t.name}</span>
+    <div className={cn("text-center py-4", sizeClasses[content.size || 'medium'])}>
+      <span className="font-bold">
+        <InlineEdit value={content.text} onChange={(v) => onUpdate({ text: v })} placeholder="Headline Text" />
+      </span>
+    </div>
+  );
+}
+
+// Divider Preview
+function DividerEditablePreview({ content, section }: { content: DividerContent; section: ProfileSection }) {
+  const preset = section.style_options?.preset || 'style1';
+  const style = content.style || 'line';
+
+  if (style === 'space' || preset === 'style2') {
+    return <div className="h-8" />;
+  }
+
+  if (style === 'dots' || preset === 'style3') {
+    return (
+      <div className="flex justify-center gap-2 py-4">
+        <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+        <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+        <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+      </div>
+    );
+  }
+
+  if (style === 'thick') {
+    return <hr className="border-t-4 border-muted-foreground/20 my-4" />;
+  }
+
+  if (style === 'gradient') {
+    return <div className="h-1 my-4 bg-gradient-to-r from-transparent via-primary/50 to-transparent rounded-full" />;
+  }
+
+  if (style === 'wave') {
+    return (
+      <div className="py-4 flex justify-center">
+        <svg viewBox="0 0 200 20" className="w-full h-5 text-muted-foreground/30">
+          <path d="M0,10 Q25,0 50,10 T100,10 T150,10 T200,10" fill="none" stroke="currentColor" strokeWidth="2" />
+        </svg>
+      </div>
+    );
+  }
+
+  // Default line
+  return <hr className="border-t border-muted-foreground/20 my-4" />;
+}
+
+// Newsletter Preview
+function NewsletterEditablePreview({ content, onUpdate }: { content: NewsletterContent; onUpdate: (c: Partial<NewsletterContent>) => void }) {
+  return (
+    <div className="bg-muted/30 rounded-lg p-6 text-center space-y-3">
+      <h3 className="font-semibold text-lg">
+        <InlineEdit value={content.title || 'Subscribe to our newsletter'} onChange={(v) => onUpdate({ title: v })} placeholder="Newsletter Title" />
+      </h3>
+      <p className="text-sm text-muted-foreground">
+        <InlineEdit value={content.subtitle || 'Get updates delivered to your inbox'} onChange={(v) => onUpdate({ subtitle: v })} placeholder="Subtitle" />
+      </p>
+      <div className="flex gap-2 max-w-sm mx-auto">
+        <div className="flex-1 bg-background border rounded-md px-3 py-2 text-sm text-muted-foreground text-left">
+          {content.placeholder || 'Enter your email'}
+        </div>
+        <span className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium">
+          <InlineEdit value={content.buttonText || 'Subscribe'} onChange={(v) => onUpdate({ buttonText: v })} placeholder="Button" className="text-primary-foreground" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Testimonials Preview - FIXED with all layout variants
+function TestimonialsEditablePreview({ content, section }: { content: TestimonialsContent; section: ProfileSection }) {
+  const preset = section.style_options?.preset || 'style1';
+  const layout = content.layout || 'grid';
+  const items = content.items || [];
+
+  // Grid 6 (6 items in a row)
+  if (preset === 'style4' || layout === 'grid-6') {
+    const slots = Array.from({ length: 6 }, (_, i) => items[i] || null);
+    return (
+      <div className="grid grid-cols-6 gap-2">
+        {slots.map((item, i) => (
+          <div key={i} className="bg-muted/30 rounded-lg p-2 text-center">
+            <div className="w-8 h-8 rounded-full bg-muted mx-auto mb-1 overflow-hidden">
+              {item?.avatar ? (
+                <img src={item.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-muted-foreground/20" />
+              )}
+            </div>
+            <StarRating rating={item?.rating || 5} size="sm" />
+            <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{item?.quote || 'Review'}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Slider Layout
+  if (preset === 'style2' || layout === 'slider') {
+    const currentItem = items[0] || { name: 'Customer Name', role: 'Customer', quote: 'Amazing product!', rating: 5 };
+    return (
+      <div className="relative">
+        <div className="bg-muted/30 rounded-lg p-6 text-center max-w-md mx-auto">
+          <Quote className="w-8 h-8 text-primary/30 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground mb-3">"{currentItem.quote}"</p>
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
+              {currentItem.avatar ? (
+                <img src={currentItem.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-muted-foreground/20" />
+              )}
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-medium">{currentItem.name}</p>
+              <StarRating rating={currentItem.rating || 5} size="sm" />
+            </div>
+          </div>
+        </div>
+        <button className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background shadow flex items-center justify-center">
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <button className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background shadow flex items-center justify-center">
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+
+  // Stacked Layout
+  if (preset === 'style3' || layout === 'stacked') {
+    const displayItems = items.length > 0 ? items.slice(0, 3) : [
+      { name: 'Customer', role: 'Verified Buyer', quote: 'Great experience!', rating: 5 }
+    ];
+    return (
+      <div className="space-y-3">
+        {displayItems.map((item, i) => (
+          <div key={i} className="bg-muted/30 rounded-lg p-4 flex gap-3">
+            <div className="w-12 h-12 rounded-full bg-muted shrink-0 overflow-hidden">
+              {item.avatar ? (
+                <img src={item.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-muted-foreground/20" />
+              )}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-medium text-sm">{item.name || 'Customer'}</span>
+                <StarRating rating={item.rating || 5} size="sm" />
+              </div>
+              <p className="text-sm text-muted-foreground">{item.quote || 'Review text here'}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Default Grid Layout (2 columns)
+  const displayItems = items.length > 0 ? items.slice(0, 4) : [
+    { name: 'John Doe', role: 'Customer', quote: 'Amazing product!', rating: 5 },
+    { name: 'Jane Smith', role: 'Verified Buyer', quote: 'Highly recommend!', rating: 5 }
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {displayItems.map((item, i) => (
+        <div key={i} className="bg-muted/30 rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-full bg-muted overflow-hidden">
+              {item.avatar ? (
+                <img src={item.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-muted-foreground/20" />
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-medium">{item.name}</p>
+              <StarRating rating={item.rating || 5} size="sm" />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground line-clamp-2">{item.quote}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Contact Preview - FIXED with all style variants
+function ContactEditablePreview({ content, section, onUpdate }: { content: ContactContent; section: ProfileSection; onUpdate: (c: Partial<ContactContent>) => void }) {
+  const preset = section.style_options?.preset || 'style1';
+
+  // Split Layout
+  if (preset === 'style2') {
+    return (
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <h3 className="font-semibold">
+            <InlineEdit value={content.title || 'Get in Touch'} onChange={(v) => onUpdate({ title: v })} placeholder="Title" />
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            <InlineEdit value={content.subtitle || 'We\'d love to hear from you'} onChange={(v) => onUpdate({ subtitle: v })} placeholder="Subtitle" />
+          </p>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2"><Mail className="w-4 h-4" /> {content.email || 'email@example.com'}</div>
+            {content.phone && <div className="flex items-center gap-2"><Phone className="w-4 h-4" /> {content.phone}</div>}
+          </div>
+        </div>
+        <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+          <div className="bg-background rounded border px-3 py-2 text-sm text-muted-foreground">Your name</div>
+          <div className="bg-background rounded border px-3 py-2 text-sm text-muted-foreground">Your email</div>
+          <div className="bg-background rounded border px-3 py-2 text-sm text-muted-foreground h-16">Message</div>
+          <button className="w-full bg-primary text-primary-foreground rounded py-2 text-sm">Send</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Minimal Layout
+  if (preset === 'style3') {
+    return (
+      <div className="text-center py-4 space-y-2">
+        <h3 className="font-semibold">
+          <InlineEdit value={content.title || 'Contact'} onChange={(v) => onUpdate({ title: v })} placeholder="Title" />
+        </h3>
+        <div className="flex items-center justify-center gap-4 text-sm">
+          <span className="flex items-center gap-1"><Mail className="w-4 h-4" /> {content.email || 'email@example.com'}</span>
+          {content.phone && <span className="flex items-center gap-1"><Phone className="w-4 h-4" /> {content.phone}</span>}
+        </div>
+      </div>
+    );
+  }
+
+  // Card Layout
+  if (preset === 'style4') {
+    return (
+      <div className="bg-muted/30 rounded-lg p-6 max-w-md mx-auto text-center space-y-3">
+        <MessageSquare className="w-10 h-10 text-primary mx-auto" />
+        <h3 className="font-semibold">
+          <InlineEdit value={content.title || 'Get in Touch'} onChange={(v) => onUpdate({ title: v })} placeholder="Title" />
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          <InlineEdit value={content.subtitle || 'We\'d love to hear from you'} onChange={(v) => onUpdate({ subtitle: v })} placeholder="Subtitle" />
+        </p>
+        <a className="inline-flex items-center gap-2 text-primary text-sm">
+          {content.email || 'email@example.com'} <ArrowRight className="w-4 h-4" />
+        </a>
+      </div>
+    );
+  }
+
+  // Default Centered Layout
+  return (
+    <div className="text-center py-6 space-y-3">
+      <h3 className="text-xl font-semibold">
+        <InlineEdit value={content.title || 'Contact Us'} onChange={(v) => onUpdate({ title: v })} placeholder="Title" />
+      </h3>
+      <p className="text-sm text-muted-foreground">
+        <InlineEdit value={content.subtitle || 'We\'d love to hear from you'} onChange={(v) => onUpdate({ subtitle: v })} placeholder="Subtitle" />
+      </p>
+      <div className="flex items-center justify-center gap-2 text-sm">
+        <Mail className="w-4 h-4" />
+        <span>{content.email || 'email@example.com'}</span>
+      </div>
+    </div>
+  );
+}
+
+// FAQ Preview - FIXED with accordion and grid layouts
+function FAQEditablePreview({ content, section }: { content: FAQContent; section: ProfileSection }) {
+  const preset = section.style_options?.preset || 'style1';
+  const layout = content.layout || 'accordion';
+  const items = content.items || [];
+
+  // Grid Layout (3x2)
+  if (preset === 'style2' || layout === 'grid') {
+    const slots = Array.from({ length: 6 }, (_, i) => items[i] || null);
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        {slots.map((item, i) => (
+          <div key={i} className="bg-muted/30 rounded-lg p-3">
+            <h4 className="font-medium text-sm mb-1">{item?.question || `Question ${i + 1}`}</h4>
+            <p className="text-xs text-muted-foreground line-clamp-2">{item?.answer || 'Answer text here...'}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Default Accordion Layout
+  const displayItems = items.length > 0 ? items.slice(0, 4) : [
+    { question: 'How does this work?', answer: 'It\'s simple and easy to use.' },
+    { question: 'What are the features?', answer: 'Many great features included.' },
+  ];
+  return (
+    <div className="space-y-2">
+      {displayItems.map((item, i) => (
+        <div key={i} className="border rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 bg-muted/30">
+            <span className="font-medium text-sm">{item.question}</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </div>
         </div>
       ))}
@@ -268,29 +652,412 @@ function TestimonialsEditablePreview({ content }: { content: TestimonialsContent
   );
 }
 
-function ContactEditablePreview({ content, onUpdate }: { content: ContactUsContent; onUpdate: (updates: Partial<ContactUsContent>) => void; }) {
+// About Me Preview
+function AboutMeEditablePreview({ content, onUpdate }: { content: AboutMeContent; onUpdate: (c: Partial<AboutMeContent>) => void }) {
   return (
-    <div className="text-center max-w-sm mx-auto">
-      <Send className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-      <InlineEdit value={content.title} onChange={(title) => onUpdate({ title })} placeholder="Title..." className="text-lg font-semibold mb-1 block" as="h3" />
-      <InlineEdit value={content.subtitle || ''} onChange={(subtitle) => onUpdate({ subtitle })} placeholder="Subtitle..." className="text-sm text-muted-foreground mb-3 block" as="p" />
-      {content.showForm && <Button size="sm" className="w-full">Send Message</Button>}
+    <div className="flex gap-4 items-start">
+      <div className="w-20 h-20 rounded-full bg-muted shrink-0 overflow-hidden">
+        {content.avatarUrl ? (
+          <img src={content.avatarUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-muted-foreground/20 flex items-center justify-center">
+            <Image className="w-8 h-8 text-muted-foreground/30" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 space-y-2">
+        <h3 className="font-semibold">
+          <InlineEdit value={content.name || 'Your Name'} onChange={(v) => onUpdate({ name: v })} placeholder="Your Name" />
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          <InlineEdit value={content.bio || 'Tell your story...'} onChange={(v) => onUpdate({ bio: v })} placeholder="Your bio" multiline />
+        </p>
+      </div>
     </div>
   );
 }
 
+// Sliding Banner Preview
+function SlidingBannerEditablePreview({ content, onUpdate }: { content: SlidingBannerContent; onUpdate: (c: Partial<SlidingBannerContent>) => void }) {
+  return (
+    <div className="bg-muted/30 py-3 overflow-hidden rounded-lg">
+      <div className="flex gap-8 whitespace-nowrap animate-[marquee_20s_linear_infinite]">
+        {[1, 2, 3].map((i) => (
+          <span key={i} className="text-sm font-medium">
+            <InlineEdit 
+              value={content.text || '✨ Special Announcement • Limited Time Offer • Shop Now'} 
+              onChange={(v) => onUpdate({ text: v })} 
+              placeholder="Banner text" 
+            />
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Slideshow Preview
+function SlideshowEditablePreview({ content }: { content: SlideshowContent }) {
+  const slides = content.slides || [];
+  const currentSlide = slides[0] || { imageUrl: '', caption: 'Slide 1' };
+
+  return (
+    <div className="relative">
+      <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+        {currentSlide.imageUrl ? (
+          <img src={currentSlide.imageUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <ImagePlaceholder className="w-full h-full" />
+        )}
+      </div>
+      {/* Navigation Arrows */}
+      <button className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow">
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+      <button className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow">
+        <ChevronRight className="w-4 h-4" />
+      </button>
+      {/* Navigation Dots */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+        {Array.from({ length: Math.min(slides.length || 3, 3) }).map((_, i) => (
+          <div key={i} className={cn("w-2 h-2 rounded-full", i === 0 ? "bg-white" : "bg-white/50")} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Basic List Preview
+function BasicListEditablePreview({ content, section }: { content: BasicListContent; section: ProfileSection }) {
+  const preset = section.style_options?.preset || 'style1';
+  const layout = content.layout || 'simple';
+  const items = content.items || [];
+
+  // Cards 3-Column
+  if (preset === 'style1' || layout === 'cards-3col') {
+    const slots = Array.from({ length: 3 }, (_, i) => items[i] || null);
+    return (
+      <div className="grid grid-cols-3 gap-3">
+        {slots.map((item, i) => (
+          <div key={i} className="bg-muted/30 rounded-lg p-4 text-center">
+            <div className="w-10 h-10 rounded-full bg-primary/10 mx-auto mb-2 flex items-center justify-center">
+              <Check className="w-5 h-5 text-primary" />
+            </div>
+            <h4 className="font-medium text-sm mb-1">{item?.title || `Item ${i + 1}`}</h4>
+            <p className="text-xs text-muted-foreground">{item?.description || 'Description'}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Cards 2-Column
+  if (preset === 'style2' || layout === 'cards-2col') {
+    const slots = Array.from({ length: 4 }, (_, i) => items[i] || null);
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        {slots.map((item, i) => (
+          <div key={i} className="bg-muted/30 rounded-lg p-3 flex gap-3 items-start">
+            <div className="w-8 h-8 rounded-full bg-primary/10 shrink-0 flex items-center justify-center">
+              <Check className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h4 className="font-medium text-sm">{item?.title || `Item ${i + 1}`}</h4>
+              <p className="text-xs text-muted-foreground">{item?.description || 'Description'}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Horizontal Layout
+  if (preset === 'style3' || layout === 'horizontal') {
+    const slots = Array.from({ length: 4 }, (_, i) => items[i] || null);
+    return (
+      <div className="flex gap-4 justify-center">
+        {slots.map((item, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Check className="w-4 h-4 text-primary" />
+            <span className="text-sm">{item?.title || `Item ${i + 1}`}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Simple List (default)
+  const displayItems = items.length > 0 ? items.slice(0, 5) : [
+    { title: 'First item' },
+    { title: 'Second item' },
+    { title: 'Third item' },
+  ];
+  return (
+    <ul className="space-y-2 pl-4">
+      {displayItems.map((item, i) => (
+        <li key={i} className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+          <span className="text-sm">{item.title}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Featured Product Preview
+function FeaturedProductEditablePreview({ content }: { content: FeaturedProductContent }) {
+  return (
+    <div className="bg-muted/30 rounded-lg p-4 flex gap-4">
+      <div className="w-24 h-24 bg-muted rounded-lg shrink-0 overflow-hidden">
+        {content.imageUrl ? (
+          <img src={content.imageUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <ImagePlaceholder className="w-full h-full" />
+        )}
+      </div>
+      <div className="flex-1 space-y-2">
+        <h3 className="font-semibold">{content.title || 'Product Name'}</h3>
+        <p className="text-sm text-muted-foreground line-clamp-2">{content.description || 'Product description here'}</p>
+        <div className="flex items-center gap-3">
+          <span className="font-bold text-primary">${content.price || '29.99'}</span>
+          <button className="bg-primary text-primary-foreground px-3 py-1 rounded text-sm">
+            {content.buttonText || 'Buy Now'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Logo List Preview
+function LogoListEditablePreview({ content }: { content: LogoListContent }) {
+  const logos = content.logos || [];
+  const slots = Array.from({ length: 5 }, (_, i) => logos[i] || null);
+
+  return (
+    <div className="py-4">
+      <div className="flex items-center justify-center gap-6">
+        {slots.map((logo, i) => (
+          <div 
+            key={i} 
+            className={cn(
+              "w-16 h-10 bg-muted rounded flex items-center justify-center overflow-hidden",
+              content.grayscale && "grayscale opacity-60"
+            )}
+          >
+            {logo?.url ? (
+              <img src={logo.url} alt={logo.alt || ''} className="max-w-full max-h-full object-contain" />
+            ) : (
+              <span className="text-[10px] text-muted-foreground">Logo {i + 1}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Collection Preview - FIXED to show grid vs slider
+function CollectionEditablePreview({ content }: { content: CollectionContent }) {
+  const displayStyle = content.displayStyle || 'grid';
+
+  // Slider Layout
+  if (displayStyle === 'slider') {
+    return (
+      <div className="relative">
+        <div className="flex gap-3 overflow-hidden">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="w-1/4 shrink-0">
+              <div className="aspect-square bg-muted rounded-lg mb-2" />
+              <div className="h-2 bg-muted rounded w-3/4 mb-1" />
+              <div className="h-2 bg-muted rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+        <button className="absolute left-0 top-1/3 -translate-y-1/2 w-8 h-8 rounded-full bg-background shadow flex items-center justify-center">
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <button className="absolute right-0 top-1/3 -translate-y-1/2 w-8 h-8 rounded-full bg-background shadow flex items-center justify-center">
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+
+  // Grid Layout (default)
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i}>
+          <div className="aspect-square bg-muted rounded-lg mb-2" />
+          <div className="h-2 bg-muted rounded w-3/4 mb-1" />
+          <div className="h-2 bg-muted rounded w-1/2" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Footer Preview
+function FooterEditablePreview({ content, onUpdate }: { content: FooterContent; onUpdate: (c: Partial<FooterContent>) => void }) {
+  const columns = content.columns || [];
+
+  return (
+    <div className="bg-muted/30 rounded-lg p-6">
+      <div className="grid grid-cols-4 gap-4 mb-4">
+        {Array.from({ length: 4 }).map((_, i) => {
+          const col = columns[i];
+          return (
+            <div key={i}>
+              <h4 className="font-semibold text-sm mb-2">{col?.title || `Column ${i + 1}`}</h4>
+              <div className="space-y-1">
+                {(col?.links || [{ label: 'Link 1' }, { label: 'Link 2' }]).slice(0, 3).map((link, j) => (
+                  <p key={j} className="text-xs text-muted-foreground">{link.label}</p>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="border-t pt-4 flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          <InlineEdit value={content.copyright || '© 2024 Your Company'} onChange={(v) => onUpdate({ copyright: v })} placeholder="Copyright text" />
+        </p>
+        {content.showSocialLinks && (
+          <div className="flex gap-2">
+            <div className="w-6 h-6 rounded-full bg-muted" />
+            <div className="w-6 h-6 rounded-full bg-muted" />
+            <div className="w-6 h-6 rounded-full bg-muted" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Card Slideshow Preview
+function CardSlideshowEditablePreview({ content }: { content: CardSlideshowContent }) {
+  const slides = content.slides || [];
+
+  return (
+    <div className="relative">
+      <div className="flex gap-4 overflow-hidden">
+        {Array.from({ length: 3 }).map((_, i) => {
+          const slide = slides[i] || { title: `Card ${i + 1}`, description: 'Card description' };
+          return (
+            <div key={i} className="w-1/3 shrink-0 bg-muted/30 rounded-lg p-4">
+              <div className="aspect-video bg-muted rounded-lg mb-3 overflow-hidden">
+                {slide.imageUrl ? (
+                  <img src={slide.imageUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <ImagePlaceholder className="w-full h-full" />
+                )}
+              </div>
+              <h4 className="font-medium text-sm mb-1">{slide.title}</h4>
+              <p className="text-xs text-muted-foreground">{slide.description}</p>
+            </div>
+          );
+        })}
+      </div>
+      <button className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background shadow flex items-center justify-center">
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+      <button className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background shadow flex items-center justify-center">
+        <ChevronRight className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+// Banner Slideshow Preview
+function BannerSlideshowEditablePreview({ content }: { content: BannerSlideshowContent }) {
+  const slides = content.slides || [];
+  const currentSlide = slides[0] || { title: 'Banner Title', subtitle: 'Banner subtitle' };
+
+  return (
+    <div className="relative">
+      <div className="aspect-[21/9] bg-muted rounded-lg overflow-hidden relative">
+        {currentSlide.imageUrl ? (
+          <img src={currentSlide.imageUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-r from-primary/20 to-primary/5" />
+        )}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+          <div className="text-center text-white">
+            <h2 className="text-2xl font-bold mb-2">{currentSlide.title}</h2>
+            <p className="text-sm opacity-80">{currentSlide.subtitle}</p>
+          </div>
+        </div>
+      </div>
+      <button className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 flex items-center justify-center shadow">
+        <ChevronLeft className="w-5 h-5" />
+      </button>
+      <button className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 flex items-center justify-center shadow">
+        <ChevronRight className="w-5 h-5" />
+      </button>
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+        {Array.from({ length: Math.min(slides.length || 3, 3) }).map((_, i) => (
+          <div key={i} className={cn("w-2 h-2 rounded-full", i === 0 ? "bg-white" : "bg-white/50")} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============ MAIN COMPONENT ============
+
 export function EditablePreview({ section, onUpdate }: EditablePreviewProps) {
+  const content = section.content as any;
+
   switch (section.section_type) {
-    case 'text': return <TextEditablePreview content={section.content as TextContent} onUpdate={onUpdate} />;
-    case 'image': return <ImageEditablePreview content={section.content as ImageContent} onUpdate={onUpdate} />;
-    case 'image_with_text': return <ImageWithTextEditablePreview section={section} onUpdate={onUpdate} />;
-    case 'headline': return <HeadlineEditablePreview content={section.content as HeadlineContent} onUpdate={onUpdate} />;
-    case 'gallery': return <GalleryEditablePreview content={section.content as GalleryContent} section={section} />;
-    case 'video': return <VideoEditablePreview content={section.content as VideoContent} />;
-    case 'divider': return <DividerEditablePreview content={section.content as DividerContent} />;
-    case 'newsletter': return <NewsletterEditablePreview content={section.content as NewsletterContent} onUpdate={onUpdate} />;
-    case 'testimonials': return <TestimonialsEditablePreview content={section.content as TestimonialsContent} />;
-    case 'contact_us': return <ContactEditablePreview content={section.content as ContactUsContent} onUpdate={onUpdate} />;
-    default: return <div className="text-center text-muted-foreground py-4">Use the settings below to edit this section</div>;
+    case 'text':
+      return <TextEditablePreview content={content as TextContent} onUpdate={onUpdate} />;
+    case 'image':
+      return <ImageEditablePreview content={content as ImageContent} onUpdate={onUpdate} />;
+    case 'image_with_text':
+      return <ImageWithTextEditablePreview content={content as ImageWithTextContent} section={section} onUpdate={onUpdate} />;
+    case 'gallery':
+      return <GalleryEditablePreview content={content as GalleryContent} section={section} />;
+    case 'video':
+      return <VideoEditablePreview content={content as VideoContent} />;
+    case 'headline':
+      return <HeadlineEditablePreview content={content as HeadlineContent} onUpdate={onUpdate} />;
+    case 'divider':
+      return <DividerEditablePreview content={content as DividerContent} section={section} />;
+    case 'newsletter':
+      return <NewsletterEditablePreview content={content as NewsletterContent} onUpdate={onUpdate} />;
+    case 'testimonials':
+      return <TestimonialsEditablePreview content={content as TestimonialsContent} section={section} />;
+    case 'contact':
+    case 'contact_us':
+      return <ContactEditablePreview content={content as ContactContent} section={section} onUpdate={onUpdate} />;
+    case 'faq':
+      return <FAQEditablePreview content={content as FAQContent} section={section} />;
+    case 'about_me':
+      return <AboutMeEditablePreview content={content as AboutMeContent} onUpdate={onUpdate} />;
+    case 'sliding_banner':
+      return <SlidingBannerEditablePreview content={content as SlidingBannerContent} onUpdate={onUpdate} />;
+    case 'slideshow':
+      return <SlideshowEditablePreview content={content as SlideshowContent} />;
+    case 'basic_list':
+      return <BasicListEditablePreview content={content as BasicListContent} section={section} />;
+    case 'featured_product':
+      return <FeaturedProductEditablePreview content={content as FeaturedProductContent} />;
+    case 'logo_list':
+      return <LogoListEditablePreview content={content as LogoListContent} />;
+    case 'collection':
+      return <CollectionEditablePreview content={content as CollectionContent} />;
+    case 'footer':
+      return <FooterEditablePreview content={content as FooterContent} onUpdate={onUpdate} />;
+    case 'card_slideshow':
+      return <CardSlideshowEditablePreview content={content as CardSlideshowContent} />;
+    case 'banner_slideshow':
+      return <BannerSlideshowEditablePreview content={content as BannerSlideshowContent} />;
+    default:
+      return (
+        <div className="p-4 bg-muted/30 rounded-lg text-center text-muted-foreground">
+          <p className="text-sm">Preview for "{section.section_type}" section</p>
+        </div>
+      );
   }
 }
