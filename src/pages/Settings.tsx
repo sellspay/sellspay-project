@@ -124,7 +124,9 @@ export default function Settings() {
   
   // Notifications
   const [emailNotifications, setEmailNotifications] = useState(true);
+  const [creatorLaunchEmails, setCreatorLaunchEmails] = useState(true);
   const [salesNotifications, setSalesNotifications] = useState(true);
+  const [savingNotifications, setSavingNotifications] = useState(false);
   const [marketingEmails, setMarketingEmails] = useState(false);
   
   // Account Type
@@ -202,6 +204,7 @@ export default function Settings() {
         setIsSeller((data as Record<string, unknown>).is_seller as boolean || false);
         setProfileId(data.id);
         setMfaEnabled(data.mfa_enabled || false);
+        setCreatorLaunchEmails(data.email_notifications_enabled !== false);
         
         // Username change tracking
         setLastUsernameChangedAt((data as Record<string, unknown>).last_username_changed_at as string | null);
@@ -1129,6 +1132,39 @@ export default function Settings() {
 
               <div className="flex items-center justify-between">
                 <div>
+                  <p className="font-medium">Creator Launch Emails</p>
+                  <p className="text-sm text-muted-foreground">
+                    Get notified via email when creators you follow launch new products
+                  </p>
+                </div>
+                <Switch
+                  checked={creatorLaunchEmails}
+                  onCheckedChange={async (checked) => {
+                    setCreatorLaunchEmails(checked);
+                    setSavingNotifications(true);
+                    try {
+                      const { error } = await supabase
+                        .from('profiles')
+                        .update({ email_notifications_enabled: checked })
+                        .eq('id', profileId);
+                      if (error) throw error;
+                      toast.success(checked ? 'Creator launch emails enabled' : 'Creator launch emails disabled');
+                    } catch (error) {
+                      console.error('Error updating notification preferences:', error);
+                      toast.error('Failed to update preferences');
+                      setCreatorLaunchEmails(!checked);
+                    } finally {
+                      setSavingNotifications(false);
+                    }
+                  }}
+                  disabled={savingNotifications}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="font-medium">Sales Notifications</p>
                   <p className="text-sm text-muted-foreground">
                     Get notified when someone purchases your product
@@ -1139,23 +1175,6 @@ export default function Settings() {
                   onCheckedChange={setSalesNotifications}
                 />
               </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Marketing Emails</p>
-                  <p className="text-sm text-muted-foreground">
-                    Receive updates about new features and promotions
-                  </p>
-                </div>
-                <Switch
-                  checked={marketingEmails}
-                  onCheckedChange={setMarketingEmails}
-                />
-              </div>
-
-              <Button>Save Preferences</Button>
             </CardContent>
           </Card>
         </TabsContent>
