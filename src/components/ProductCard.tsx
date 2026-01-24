@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, Star, Flame, Heart, MessageCircle } from 'lucide-react';
+import { Play, Star, Flame, Heart, MessageCircle, Bookmark } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/lib/auth';
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
@@ -72,9 +74,13 @@ export default function ProductCard({
   showEngagement = false,
   isHot = false
 }: ProductCardProps) {
+  const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoError, setVideoError] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [userProfileId, setUserProfileId] = useState<string | null>(null);
 
   const thumbnail = useMemo(
     () => product.cover_image_url || getYouTubeThumbnail(product.youtube_url),
@@ -88,6 +94,76 @@ export default function ProductCard({
   const canShowVideo = Boolean(videoUrl) && !videoError;
   const hasThumbnail = Boolean(thumbnail);
   const showVideo = canShowVideo && (isHovered || !hasThumbnail);
+
+  // Fetch user profile and saved status
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user) {
+        setUserProfileId(null);
+        setIsSaved(false);
+        return;
+      }
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (profile) {
+        setUserProfileId(profile.id);
+        
+        // Check if product is saved
+        const { data: saved } = await supabase
+          .from("saved_products")
+          .select("id")
+          .eq("product_id", product.id)
+          .eq("user_id", profile.id)
+          .maybeSingle();
+        
+        setIsSaved(!!saved);
+      }
+    };
+    fetchUserData();
+  }, [user, product.id]);
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!user) {
+      toast.error("Please sign in to save products");
+      return;
+    }
+    
+    if (!userProfileId) return;
+
+    setSavingProduct(true);
+    try {
+      if (isSaved) {
+        await supabase
+          .from("saved_products")
+          .delete()
+          .eq("product_id", product.id)
+          .eq("user_id", userProfileId);
+        
+        setIsSaved(false);
+        toast.success("Removed from saved");
+      } else {
+        await supabase
+          .from("saved_products")
+          .insert({ product_id: product.id, user_id: userProfileId });
+        
+        setIsSaved(true);
+        toast.success("Saved! View it in your profile.");
+      }
+    } catch (error) {
+      console.error("Error toggling save:", error);
+      toast.error("Failed to save product");
+    } finally {
+      setSavingProduct(false);
+    }
+  };
 
   const handleMouseEnter = () => {
     setIsHovered(true);
@@ -168,6 +244,20 @@ export default function ProductCard({
             <Star className="h-3 w-3" />
             Featured
           </div>
+        )}
+
+        {/* Save Button - shows on hover */}
+        {!product.featured && (
+          <button
+            onClick={handleSave}
+            disabled={savingProduct}
+            className={`absolute top-2 right-2 p-1.5 rounded-full bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background ${
+              isSaved ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+            }`}
+            title={isSaved ? "Remove from saved" : "Save product"}
+          >
+            <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-primary' : ''}`} />
+          </button>
         )}
 
         {/* Product Type Badge */}

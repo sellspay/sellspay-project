@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply } from "lucide-react";
+import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -138,6 +138,8 @@ export default function ProductDetail() {
   const [followingCreator, setFollowingCreator] = useState(false);
   const [isCreatorAdmin, setIsCreatorAdmin] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savingProduct, setSavingProduct] = useState(false);
   
   // Comments
   const [comments, setComments] = useState<Comment[]>([]);
@@ -189,6 +191,7 @@ export default function ProductDetail() {
       fetchProduct();
       fetchLikes();
       fetchComments();
+      fetchSavedStatus();
     }
   }, [id, slug, userProfileId]);
 
@@ -435,6 +438,63 @@ export default function ProductDetail() {
       }
     } catch (error) {
       console.error("Error fetching likes:", error);
+    }
+  };
+
+  const fetchSavedStatus = async () => {
+    const productId = id || (product?.id);
+    if (!productId || !userProfileId) {
+      setIsSaved(false);
+      return;
+    }
+    
+    try {
+      const { data } = await supabase
+        .from("saved_products")
+        .select("id")
+        .eq("product_id", productId)
+        .eq("user_id", userProfileId)
+        .maybeSingle();
+      
+      setIsSaved(!!data);
+    } catch (error) {
+      console.error("Error fetching saved status:", error);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user) {
+      toast.error("Please sign in to save products");
+      return;
+    }
+    
+    const productId = id || product?.id;
+    if (!userProfileId || !productId) return;
+
+    setSavingProduct(true);
+    try {
+      if (isSaved) {
+        await supabase
+          .from("saved_products")
+          .delete()
+          .eq("product_id", productId)
+          .eq("user_id", userProfileId);
+        
+        setIsSaved(false);
+        toast.success("Product removed from saved");
+      } else {
+        await supabase
+          .from("saved_products")
+          .insert({ product_id: productId, user_id: userProfileId });
+        
+        setIsSaved(true);
+        toast.success("Product saved! View it in your profile.");
+      }
+    } catch (error) {
+      console.error("Error toggling save:", error);
+      toast.error("Failed to update saved status");
+    } finally {
+      setSavingProduct(false);
     }
   };
 
@@ -993,6 +1053,16 @@ export default function ProductDetail() {
               <Button variant="outline" size="sm" className="gap-2">
                 <MessageCircle className="w-4 h-4" />
                 {commentCount}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSave}
+                disabled={savingProduct}
+                className="gap-2"
+              >
+                <Bookmark className={`w-4 h-4 ${isSaved ? "fill-primary text-primary" : ""}`} />
+                {isSaved ? "Saved" : "Save"}
               </Button>
               <Button variant="outline" size="sm" onClick={handleShare}>
                 <Share2 className="w-4 h-4" />
