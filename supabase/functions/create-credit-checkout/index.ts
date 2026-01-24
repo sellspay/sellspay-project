@@ -12,6 +12,15 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[CREATE-CREDIT-CHECKOUT] ${step}${detailsStr}`);
 };
 
+// Credit product IDs for our platform subscriptions
+const CREDIT_PRODUCT_IDS = [
+  "prod_TqZeFehQN2BIE7", // Starter
+  "prod_TqZeeT61BjdEfb", // Basic  
+  "prod_TqZfgqJ9WMMRZi", // Pro
+  "prod_TqZgS5woMKXtj3", // Power
+  "prod_TqZg4fAK1oMjcG", // Enterprise
+];
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -94,11 +103,149 @@ serve(async (req) => {
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       logStep("Found existing Stripe customer", { customerId });
+
+      // Check if user has an existing credit subscription
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "active",
+        limit: 10,
+      });
+
+      // Find existing credit subscription
+      const existingCreditSub = subscriptions.data.find((sub: Stripe.Subscription) => {
+        const productId = sub.items.data[0]?.price?.product;
+        return CREDIT_PRODUCT_IDS.includes(productId as string);
+      });
+
+      if (existingCreditSub) {
+        logStep("Found existing credit subscription", { 
+          subscriptionId: existingCreditSub.id,
+          currentProductId: existingCreditSub.items.data[0]?.price?.product
+        });
+
+        // Get the new price details to compare
+        const newPrice = await stripe.prices.retrieve(stripePrice);
+        const currentPrice = existingCreditSub.items.data[0]?.price;
+        
+        if (!currentPrice) {
+          throw new Error("Could not retrieve current subscription price");
+        }
+
+        const currentAmount = currentPrice.unit_amount || 0;
+        const newAmount = newPrice.unit_amount || 0;
+
+        logStep("Comparing prices", { currentAmount, newAmount });
+
+        // Only allow upgrades (higher price) with proration
+        if (newAmount <= currentAmount) {
+          throw new Error("You can only upgrade to a higher tier. To downgrade, please manage your subscription in Settings.");
+        }
+
+        // Update the existing subscription with proration
+        // This will charge only the difference for the remaining billing period
+        const subscriptionItemId = existingCreditSub.items.data[0].id;
+        
+        const updatedSubscription = await stripe.subscriptions.update(existingCreditSub.id, {
+          items: [
+            {
+              id: subscriptionItemId,
+              price: stripePrice,
+            },
+          ],
+          proration_behavior: "always_invoice", // Immediately charge the prorated difference
+          metadata: {
+            user_id: user.id,
+            profile_id: profile?.id || "",
+            package_id: package_id,
+            credits: packageData.credits.toString(),
+            package_name: packageData.name,
+            upgrade_from_amount: currentAmount.toString(),
+            upgrade_to_amount: newAmount.toString(),
+          },
+        });
+
+        logStep("Subscription upgraded with proration", { 
+          subscriptionId: updatedSubscription.id,
+          status: updatedSubscription.status,
+          proratedCharge: newAmount - currentAmount
+        });
+
+        // Add the new credits to the user's balance
+        // Calculate prorated credits based on remaining time in billing cycle
+        const currentPeriodStart = existingCreditSub.current_period_start;
+        const currentPeriodEnd = existingCreditSub.current_period_end;
+        const now = Math.floor(Date.now() / 1000);
+        
+        // For simplicity, give full new credits on upgrade
+        // (The user already has remaining credits from old tier, we add the difference)
+        const creditsMap: Record<string, number> = {
+          "prod_TqZeFehQN2BIE7": 15,
+          "prod_TqZeeT61BjdEfb": 50,
+          "prod_TqZfgqJ9WMMRZi": 150,
+          "prod_TqZgS5woMKXtj3": 350,
+          "prod_TqZg4fAK1oMjcG": 800,
+        };
+
+        const currentProductId = currentPrice.product as string;
+        const newProductId = newPrice.product as string;
+        const currentCredits = creditsMap[currentProductId] || 0;
+        const newCredits = creditsMap[newProductId] || packageData.credits;
+        const creditsToAdd = newCredits - currentCredits;
+
+        if (creditsToAdd > 0 && profile?.id) {
+          // Get current credit balance
+          const { data: profileData } = await supabaseClient
+            .from("profiles")
+            .select("credit_balance")
+            .eq("id", profile.id)
+            .single();
+
+          const currentBalance = profileData?.credit_balance || 0;
+          const newBalance = currentBalance + creditsToAdd;
+
+          // Update credit balance
+          await supabaseClient
+            .from("profiles")
+            .update({ credit_balance: newBalance })
+            .eq("id", profile.id);
+
+          // Log the transaction
+          await supabaseClient
+            .from("credit_transactions")
+            .insert({
+              user_id: user.id,
+              amount: creditsToAdd,
+              type: "upgrade",
+              description: `Upgrade from ${currentCredits} to ${newCredits} credits/month`,
+              package_id: package_id,
+            });
+
+          logStep("Credits added for upgrade", { 
+            creditsToAdd, 
+            newBalance,
+            from: currentCredits,
+            to: newCredits
+          });
+        }
+
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            upgraded: true,
+            message: `Subscription upgraded! You've been charged $${((newAmount - currentAmount) / 100).toFixed(2)} for the upgrade and received ${creditsToAdd} additional credits.`,
+            creditsAdded: creditsToAdd,
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          }
+        );
+      }
     }
 
     const origin = req.headers.get("origin") || "https://editorsparadise.com";
 
-    // Create checkout session for subscription (monthly recurring)
+    // No existing subscription - create new checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,

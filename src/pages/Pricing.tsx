@@ -190,7 +190,17 @@ export default function Pricing() {
 
     setPurchasing(tierId);
     try {
-      await startCheckout(selectedPackage.id, monthlyPriceId);
+      const result = await startCheckout(selectedPackage.id, monthlyPriceId);
+      
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      
+      // Handle successful upgrade (no redirect, instant update)
+      if (result?.upgraded) {
+        toast.success(result.message || "Subscription upgraded successfully!");
+      }
     } catch (error) {
       console.error("Checkout error:", error);
       toast.error("Failed to start checkout");
@@ -327,27 +337,41 @@ export default function Pricing() {
                   )}
 
                   {/* CTA Button */}
-                  <Button
-                    className={cn(
-                      "w-full mb-6",
-                      tier.popular
-                        ? "bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white"
-                        : "bg-secondary hover:bg-secondary/80"
-                    )}
-                    onClick={() => handleSubscribe(tier.id)}
-                    disabled={purchasing === tier.id || !selectedPkg}
-                  >
-                    {purchasing === tier.id ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Processing...
-                      </>
-                    ) : isCurrentPlan ? (
-                      "Current Plan"
-                    ) : (
-                      "Upgrade"
-                    )}
-                  </Button>
+                  {(() => {
+                    const isHigherTier = subscription && selectedPkg && selectedPkg.price_cents > subscription.priceAmount;
+                    const isLowerTier = subscription && selectedPkg && selectedPkg.price_cents < subscription.priceAmount;
+                    const isSameTier = subscription && selectedPkg && selectedPkg.credits === subscription.credits;
+                    
+                    return (
+                      <Button
+                        className={cn(
+                          "w-full mb-6",
+                          tier.popular
+                            ? "bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white"
+                            : "bg-secondary hover:bg-secondary/80"
+                        )}
+                        onClick={() => handleSubscribe(tier.id)}
+                        disabled={purchasing === tier.id || !selectedPkg || isSameTier || isLowerTier}
+                      >
+                        {purchasing === tier.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Processing...
+                          </>
+                        ) : isSameTier ? (
+                          "Current Plan"
+                        ) : isLowerTier ? (
+                          "Manage in Settings"
+                        ) : isHigherTier ? (
+                          `Upgrade (+$${((selectedPkg.price_cents - subscription.priceAmount) / 100).toFixed(0)}/mo)`
+                        ) : subscription ? (
+                          "Upgrade"
+                        ) : (
+                          "Subscribe"
+                        )}
+                      </Button>
+                    );
+                  })()}
 
                   {/* Features list */}
                   <div className="flex-1">

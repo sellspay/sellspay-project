@@ -124,7 +124,7 @@ export function useCredits() {
     }
   }, [user]);
 
-  const startCheckout = useCallback(async (packageId: string, priceId?: string) => {
+  const startCheckout = useCallback(async (packageId: string, priceId?: string): Promise<{ url?: string; upgraded?: boolean; message?: string; creditsAdded?: number; error?: string } | null> => {
     if (!user) {
       navigate("/login");
       return null;
@@ -137,16 +137,31 @@ export function useCredits() {
       
       if (error) throw error;
       
-      if (data.url) {
-        window.open(data.url, "_blank");
+      // Handle upgrade response (no redirect needed)
+      if (data.upgraded) {
+        // Refresh credits and subscription status
+        await checkCredits();
+        await checkSubscription();
+        return { 
+          upgraded: true, 
+          message: data.message,
+          creditsAdded: data.creditsAdded 
+        };
       }
       
-      return data.url;
+      // Handle new subscription checkout (redirect to Stripe)
+      if (data.url) {
+        window.open(data.url, "_blank");
+        return { url: data.url };
+      }
+      
+      return null;
     } catch (err) {
       console.error("Error starting checkout:", err);
-      return null;
+      const errorMessage = err instanceof Error ? err.message : "Failed to process request";
+      return { error: errorMessage };
     }
-  }, [user, navigate]);
+  }, [user, navigate, checkCredits, checkSubscription]);
 
   const verifyPurchase = useCallback(async (sessionId: string) => {
     if (!user) return { success: false };
