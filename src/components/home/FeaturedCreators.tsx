@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/button';
 
 interface Creator {
   id: string;
+  user_id: string;
   username: string | null;
   full_name: string | null;
   avatar_url: string | null;
   verified: boolean | null;
   bio: string | null;
+  isAdmin?: boolean;
 }
 
 export function FeaturedCreators() {
@@ -24,14 +26,33 @@ export function FeaturedCreators() {
     async function fetchCreators() {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, verified, bio')
+        .select('id, user_id, username, full_name, avatar_url, verified, bio')
         .eq('is_creator', true)
         .limit(6);
 
       if (error) {
         console.error('Failed to fetch creators:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        // Fetch admin status for all creators
+        const userIds = data.map(c => c.user_id);
+        const { data: adminRoles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'admin')
+          .in('user_id', userIds);
+
+        const adminUserIds = new Set(adminRoles?.map(r => r.user_id) || []);
+        
+        setCreators(data.map(creator => ({
+          ...creator,
+          isAdmin: adminUserIds.has(creator.user_id)
+        })));
       } else {
-        setCreators(data || []);
+        setCreators([]);
       }
       setLoading(false);
     }
@@ -82,7 +103,7 @@ export function FeaturedCreators() {
                     <span className="font-medium text-foreground text-sm lg:text-base truncate max-w-[100px]">
                       {creator.full_name || creator.username || 'Creator'}
                     </span>
-                    {creator.verified && <VerifiedBadge size="sm" />}
+                    {creator.verified && <VerifiedBadge size="sm" isOwner={creator.isAdmin} />}
                   </div>
                   <span className="text-xs text-muted-foreground">
                     @{creator.username}
