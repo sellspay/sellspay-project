@@ -125,8 +125,14 @@ const ImagePlaceholder: React.FC<{ label?: string | number; className?: string }
 
 // Text Preview
 function TextEditablePreview({ content, onUpdate }: { content: TextContent; onUpdate: (c: Partial<TextContent>) => void }) {
+  const alignment = content.alignment || 'center';
   return (
-    <div className={cn("space-y-2 p-4", content.alignment === 'center' && "text-center", content.alignment === 'right' && "text-right")}>
+    <div className={cn(
+      "space-y-2 p-4",
+      alignment === 'center' && "text-center",
+      alignment === 'right' && "text-right",
+      alignment === 'left' && "text-left"
+    )}>
       {content.title && (
         <h3 className="text-lg font-semibold">
           <InlineEdit value={content.title} onChange={(v) => onUpdate({ title: v })} placeholder="Section Title" />
