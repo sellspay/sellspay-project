@@ -104,10 +104,17 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
       const authorIds = [...new Set(repliesData.map((r) => r.author_id))];
       const { data: authorsData } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, verified')
+        .select('id, user_id, username, full_name, avatar_url, verified')
         .in('id', authorIds);
 
       const authorsMap = new Map(authorsData?.map((a) => [a.id, a]) || []);
+
+      // Fetch admin roles
+      const userIds = (authorsData || []).map((p: any) => p.user_id).filter(Boolean);
+      const { data: adminRoles } = userIds.length
+        ? await supabase.from('user_roles').select('user_id').eq('role', 'admin').in('user_id', userIds)
+        : { data: [] as any[] };
+      const adminUserIds = new Set((adminRoles || []).map((r: any) => r.user_id));
 
       // Fetch likes counts
       const replyIds = repliesData.map((r) => r.id);
@@ -134,12 +141,39 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
 
       return repliesData.map((reply) => ({
         ...reply,
-        author: authorsMap.get(reply.author_id),
+        author: {
+          ...authorsMap.get(reply.author_id),
+          isAdmin: adminUserIds.has((authorsMap.get(reply.author_id) as any)?.user_id),
+        },
         likes_count: likesCountMap.get(reply.id) || 0,
         is_liked: userLikesSet.has(reply.id),
       })) as Reply[];
     },
     enabled: !!thread?.id && open,
+  });
+
+  // Check if thread author is admin
+  const { data: threadAuthorIsAdmin } = useQuery({
+    queryKey: ['user-is-admin', thread?.author_id],
+    queryFn: async () => {
+      if (!thread?.author_id) return false;
+      // threads.author_id points to profiles.id (not auth user id)
+      const { data: authorProfile } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('id', thread.author_id)
+        .maybeSingle();
+      if (!authorProfile?.user_id) return false;
+
+      const { data: roleRow } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('user_id', authorProfile.user_id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      return !!roleRow;
+    },
+    enabled: !!thread?.author_id && open,
   });
 
   const postReplyMutation = useMutation({
@@ -234,7 +268,7 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
                   <span className="font-semibold text-foreground">
                     {thread.author?.full_name || thread.author?.username}
                   </span>
-                  {thread.author?.verified && <VerifiedBadge size="sm" />}
+                  {thread.author?.verified && <VerifiedBadge size="sm" isOwner={threadAuthorIsAdmin} />}
                   <span className="text-muted-foreground text-sm">
                     · {formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}
                   </span>
@@ -279,7 +313,7 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
                         <span className="font-medium text-sm text-foreground">
                           {reply.author?.full_name || reply.author?.username}
                         </span>
-                        {reply.author?.verified && <VerifiedBadge size="sm" />}
+                        {reply.author?.verified && <VerifiedBadge size="sm" isOwner={(reply.author as any)?.isAdmin} />}
                         <span className="text-muted-foreground text-xs">
                           · {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
                         </span>

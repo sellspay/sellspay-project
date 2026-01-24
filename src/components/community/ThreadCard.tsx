@@ -87,13 +87,23 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
   const { data: authorIsAdmin } = useQuery({
     queryKey: ['user-is-admin', thread.author_id],
     queryFn: async () => {
-      const { data } = await supabase
+      // threads.author_id points to profiles.id (not auth user id)
+      const { data: authorProfile, error: profileErr } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('id', thread.author_id)
+        .maybeSingle();
+      if (profileErr) throw profileErr;
+      if (!authorProfile?.user_id) return false;
+
+      const { data: roleRow, error: roleErr } = await supabase
         .from('user_roles')
-        .select('role')
-        .eq('user_id', thread.author_id)
+        .select('user_id')
+        .eq('user_id', authorProfile.user_id)
         .eq('role', 'admin')
         .maybeSingle();
-      return !!data;
+      if (roleErr) throw roleErr;
+      return !!roleRow;
     },
     enabled: !!thread.author_id,
   });

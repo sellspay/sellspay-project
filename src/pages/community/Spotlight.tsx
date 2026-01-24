@@ -23,6 +23,7 @@ interface SpotlightCreator {
     avatar_url: string | null;
     verified: boolean | null;
     bio: string | null;
+    isAdmin?: boolean;
   } | null;
   products_count: number;
   followers_count: number;
@@ -56,14 +57,24 @@ export default function Spotlight() {
         const profileIds = spotlightsData.map(s => s.profile_id);
         const { data: profilesData } = await supabase
           .from('profiles')
-          .select('id, username, full_name, avatar_url, verified, bio')
+          .select('id, user_id, username, full_name, avatar_url, verified, bio')
           .in('id', profileIds);
 
         const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
 
+        // Fetch admin roles for these profiles
+        const userIds = (profilesData || []).map((p: any) => p.user_id).filter(Boolean);
+        const { data: adminRoles } = userIds.length
+          ? await supabase.from('user_roles').select('user_id').eq('role', 'admin').in('user_id', userIds)
+          : { data: [] as any[] };
+        const adminUserIds = new Set((adminRoles || []).map((r: any) => r.user_id));
+
         // Get products and followers counts
         const spotlightsWithData = await Promise.all(spotlightsData.map(async (s) => {
-          const profile = profilesMap.get(s.profile_id);
+           const profile = profilesMap.get(s.profile_id);
+           const profileWithAdmin = profile
+             ? { ...profile, isAdmin: adminUserIds.has((profile as any).user_id) }
+             : null;
           
           const [productsResult, followersResult] = await Promise.all([
             supabase.from('products').select('id', { count: 'exact', head: true }).eq('creator_id', s.profile_id),
@@ -77,7 +88,7 @@ export default function Spotlight() {
             achievement: s.achievement,
             quote: s.quote,
             featured_at: s.featured_at,
-            profile: profile || null,
+             profile: (profileWithAdmin as any) || null,
             products_count: productsResult.count || 0,
             followers_count: followersResult.count || 0,
           };
@@ -89,7 +100,7 @@ export default function Spotlight() {
       // Fallback: if no spotlights exist, show real verified creators
       const { data: creatorsData } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, verified, bio')
+        .select('id, user_id, username, full_name, avatar_url, verified, bio')
         .eq('is_creator', true)
         .eq('verified', true)
         .limit(6);
@@ -98,6 +109,15 @@ export default function Spotlight() {
 
       // Build spotlights from real creators
       const creatorSpotlights = await Promise.all(creatorsData.map(async (creator, index) => {
+        const { data: roleRow } = creator.user_id
+          ? await supabase
+              .from('user_roles')
+              .select('user_id')
+              .eq('user_id', creator.user_id)
+              .eq('role', 'admin')
+              .maybeSingle()
+          : { data: null as any };
+
         const [productsResult, followersResult] = await Promise.all([
           supabase.from('products').select('id', { count: 'exact', head: true }).eq('creator_id', creator.id),
           supabase.from('followers').select('id', { count: 'exact', head: true }).eq('following_id', creator.id),
@@ -110,7 +130,7 @@ export default function Spotlight() {
           achievement: 'Verified Creator',
           quote: null,
           featured_at: new Date().toISOString(),
-          profile: creator,
+          profile: { ...creator, isAdmin: !!roleRow },
           products_count: productsResult.count || 0,
           followers_count: followersResult.count || 0,
         } as SpotlightCreator;
@@ -182,7 +202,9 @@ export default function Spotlight() {
                           <h2 className="text-2xl font-bold text-foreground">
                             {featuredCreator.profile?.full_name}
                           </h2>
-                          {featuredCreator.profile?.verified && <VerifiedBadge size="md" />}
+                          {featuredCreator.profile?.verified && (
+                            <VerifiedBadge size="md" isOwner={featuredCreator.profile?.isAdmin} />
+                          )}
                         </div>
                         <p className="text-muted-foreground">@{featuredCreator.profile?.username}</p>
                       </div>
@@ -269,7 +291,9 @@ export default function Spotlight() {
                           <h3 className="font-semibold text-foreground truncate">
                             {spotlight.profile?.full_name}
                           </h3>
-                          {spotlight.profile?.verified && <VerifiedBadge size="sm" />}
+                          {spotlight.profile?.verified && (
+                            <VerifiedBadge size="sm" isOwner={spotlight.profile?.isAdmin} />
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">@{spotlight.profile?.username}</p>
                         <p className="font-medium text-foreground mb-2">{spotlight.headline}</p>
