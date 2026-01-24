@@ -40,6 +40,7 @@ interface Product {
 interface Profile {
   id: string;
   is_creator: boolean | null;
+  is_seller: boolean | null;
 }
 
 export default function SubscriptionPlans() {
@@ -72,10 +73,11 @@ export default function SubscriptionPlans() {
   }, [user]);
 
   useEffect(() => {
-    if (profile && !profile.is_creator) {
+    const hasAccess = profile?.is_creator || profile?.is_seller;
+    if (profile && !hasAccess) {
       navigate('/');
-      toast.error('You need to be a creator to manage subscription plans');
-    } else if (profile?.is_creator) {
+      toast.error('You need to be a seller to manage subscription plans');
+    } else if (hasAccess) {
       fetchData();
     }
   }, [profile]);
@@ -85,7 +87,7 @@ export default function SubscriptionPlans() {
     
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, is_creator')
+      .select('id, is_creator, is_seller')
       .eq('user_id', user.id)
       .single();
     
