@@ -189,7 +189,7 @@ export default function Header() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  {(isCreator || isAdmin) && (
+                  {(isCreator || isSeller || isAdmin) && (
                     <DropdownMenuItem asChild>
                       <Link to="/subscription-plans" className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4" />
