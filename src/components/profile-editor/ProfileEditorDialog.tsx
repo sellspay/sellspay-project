@@ -323,7 +323,6 @@ const SortableSectionCard = memo(({
       <div className="absolute inset-0 z-20 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
         <div
           className="p-2 rounded-lg bg-white/10 cursor-grab hover:bg-white/20 transition-colors"
-          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           {...attributes}
           {...listeners}
@@ -393,6 +392,7 @@ export function ProfileEditorDialog({
   const [editingSection, setEditingSection] = useState<ProfileSection | null>(null);
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
   const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);
+  const [deleteSectionId, setDeleteSectionId] = useState<string | null>(null);
   const [previewSection, setPreviewSection] = useState<ProfileSection | null>(null);
   const [showCreateCollection, setShowCreateCollection] = useState(false);
 
@@ -996,11 +996,7 @@ export function ProfileEditorDialog({
                                       key={section.id}
                                       section={section}
                                       onEdit={() => setEditingSection(section)}
-                                      onDelete={() => {
-                                        if (window.confirm('Delete this section?')) {
-                                          deleteSection(section.id);
-                                        }
-                                      }}
+                                      onDelete={() => setDeleteSectionId(section.id)}
                                       onToggleVisibility={() => toggleSectionVisibility(section.id)}
                                     />
                                   ))}
@@ -1081,6 +1077,32 @@ export function ProfileEditorDialog({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteCollectionId && handleDeleteCollection(deleteCollectionId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Section Confirmation */}
+      <AlertDialog open={!!deleteSectionId} onOpenChange={(open) => !open && setDeleteSectionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete section?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this section from your profile layout.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!deleteSectionId) return;
+                const id = deleteSectionId;
+                setDeleteSectionId(null);
+                void deleteSection(id);
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
