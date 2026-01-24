@@ -784,8 +784,12 @@ export type Database = {
           is_creator: boolean | null
           is_editor: boolean | null
           is_seller: boolean | null
+          last_username_changed_at: string | null
           mfa_enabled: boolean | null
+          pending_email: string | null
           phone: string | null
+          previous_username: string | null
+          previous_username_available_at: string | null
           show_recent_uploads: boolean | null
           social_links: Json | null
           stripe_account_id: string | null
@@ -819,8 +823,12 @@ export type Database = {
           is_creator?: boolean | null
           is_editor?: boolean | null
           is_seller?: boolean | null
+          last_username_changed_at?: string | null
           mfa_enabled?: boolean | null
+          pending_email?: string | null
           phone?: string | null
+          previous_username?: string | null
+          previous_username_available_at?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
           stripe_account_id?: string | null
@@ -854,8 +862,12 @@ export type Database = {
           is_creator?: boolean | null
           is_editor?: boolean | null
           is_seller?: boolean | null
+          last_username_changed_at?: string | null
           mfa_enabled?: boolean | null
+          pending_email?: string | null
           phone?: string | null
+          previous_username?: string | null
+          previous_username_available_at?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
           stripe_account_id?: string | null
@@ -1408,6 +1420,10 @@ export type Database = {
       }
       is_email_available: { Args: { p_email: string }; Returns: boolean }
       is_username_available: { Args: { p_username: string }; Returns: boolean }
+      is_username_available_v2: {
+        Args: { p_username: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

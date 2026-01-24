@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { User, Bell, Shield, CreditCard, LogOut, Upload, Loader2, CheckCircle, ExternalLink, RefreshCw, Link2, Plus, X, AlertTriangle } from "lucide-react";
+import { User, Bell, Shield, CreditCard, LogOut, Upload, Loader2, CheckCircle, ExternalLink, RefreshCw, Link2, Plus, X, AlertTriangle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -141,6 +141,20 @@ export default function Settings() {
   const [otpSent, setOtpSent] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [switchingAccountType, setSwitchingAccountType] = useState(false);
+  
+  // Email change
+  const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailOtpCode, setEmailOtpCode] = useState("");
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [sendingEmailOtp, setSendingEmailOtp] = useState(false);
+  const [verifyingEmailChange, setVerifyingEmailChange] = useState(false);
+  
+  // Username change tracking
+  const [originalUsername, setOriginalUsername] = useState("");
+  const [lastUsernameChangedAt, setLastUsernameChangedAt] = useState<string | null>(null);
+  const [previousUsername, setPreviousUsername] = useState<string | null>(null);
+  const [previousUsernameAvailableAt, setPreviousUsernameAvailableAt] = useState<string | null>(null);
 
   // Handle Stripe return URLs
   useEffect(() => {
@@ -177,6 +191,7 @@ export default function Settings() {
       if (data) {
         setFullName(data.full_name || "");
         setUsername(data.username || "");
+        setOriginalUsername(data.username || "");
         setBio(data.bio || "");
         setWebsite(data.website || "");
         setAvatarUrl(data.avatar_url);
@@ -187,6 +202,11 @@ export default function Settings() {
         setIsSeller((data as Record<string, unknown>).is_seller as boolean || false);
         setProfileId(data.id);
         setMfaEnabled(data.mfa_enabled || false);
+        
+        // Username change tracking
+        setLastUsernameChangedAt((data as Record<string, unknown>).last_username_changed_at as string | null);
+        setPreviousUsername((data as Record<string, unknown>).previous_username as string | null);
+        setPreviousUsernameAvailableAt((data as Record<string, unknown>).previous_username_available_at as string | null);
         
         // Load social links
         if (data.social_links && typeof data.social_links === 'object') {
@@ -362,6 +382,139 @@ export default function Settings() {
     }
   };
 
+  // Email change handlers
+  const handleStartEmailChange = () => {
+    setNewEmail("");
+    setEmailOtpCode("");
+    setEmailOtpSent(false);
+    setShowEmailChangeDialog(true);
+  };
+
+  const handleSendEmailChangeOtp = async () => {
+    if (!user?.email || !user?.id) return;
+    
+    // Validate new email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!newEmail || !emailRegex.test(newEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    
+    if (newEmail.toLowerCase() === user.email.toLowerCase()) {
+      toast.error('New email must be different from current email');
+      return;
+    }
+    
+    setSendingEmailOtp(true);
+    try {
+      // Send OTP to ORIGINAL email for verification
+      const { error } = await supabase.functions.invoke("send-verification-otp", {
+        body: { email: user.email, userId: user.id }
+      });
+      
+      if (error) throw error;
+      
+      setEmailOtpSent(true);
+      toast.success('Verification code sent to your current email.');
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      toast.error('Failed to send verification code.');
+    } finally {
+      setSendingEmailOtp(false);
+    }
+  };
+
+  const handleVerifyEmailChange = async () => {
+    if (!user?.id || !emailOtpCode || emailOtpCode.length !== 6 || !newEmail) return;
+    
+    setVerifyingEmailChange(true);
+    try {
+      // Verify OTP
+      const { data, error } = await supabase.functions.invoke("verify-otp", {
+        body: { userId: user.id, code: emailOtpCode, purpose: 'login' }
+      });
+      
+      if (error) throw new Error(error.message || 'Verification failed');
+      if (!data?.success) {
+        throw new Error(data?.error || 'Invalid verification code');
+      }
+      
+      // Update email in Supabase Auth
+      const { error: updateError } = await supabase.auth.updateUser({
+        email: newEmail
+      });
+      
+      if (updateError) throw updateError;
+      
+      toast.success('Email updated! Please check your new email for a confirmation link.');
+      setShowEmailChangeDialog(false);
+      setNewEmail("");
+      setEmailOtpCode("");
+      setEmailOtpSent(false);
+    } catch (error) {
+      console.error('Error changing email:', error);
+      const message = error instanceof Error ? error.message : 'Failed to change email.';
+      toast.error(message);
+    } finally {
+      setVerifyingEmailChange(false);
+    }
+  };
+
+  // Username change helpers
+  const canChangeUsername = (): { allowed: boolean; reason?: string; daysRemaining?: number } => {
+    if (!lastUsernameChangedAt) return { allowed: true };
+    
+    const lastChanged = new Date(lastUsernameChangedAt);
+    const now = new Date();
+    const daysSinceChange = Math.floor((now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24));
+    const daysRemaining = 60 - daysSinceChange;
+    
+    if (daysRemaining > 0) {
+      return { 
+        allowed: false, 
+        reason: `You can change your username again in ${daysRemaining} days`,
+        daysRemaining 
+      };
+    }
+    
+    return { allowed: true };
+  };
+
+  const canRevertToPreviousUsername = (): boolean => {
+    if (!previousUsername || !previousUsernameAvailableAt) return false;
+    return new Date() < new Date(previousUsernameAvailableAt);
+  };
+
+  const handleRevertUsername = async () => {
+    if (!previousUsername || !user) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          username: previousUsername,
+          previous_username: null,
+          previous_username_available_at: null,
+          // Don't update last_username_changed_at when reverting
+        } as Record<string, unknown>)
+        .eq("user_id", user.id);
+      
+      if (error) throw error;
+      
+      setUsername(previousUsername);
+      setOriginalUsername(previousUsername);
+      setPreviousUsername(null);
+      setPreviousUsernameAvailableAt(null);
+      toast.success('Username reverted successfully!');
+    } catch (error) {
+      console.error('Error reverting username:', error);
+      toast.error('Failed to revert username');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (!user) return;
     
@@ -512,19 +665,24 @@ export default function Settings() {
     
     setSaving(true);
     try {
-      // Check username availability if changed
-      if (username) {
-        const { data: available } = await supabase
-          .rpc("is_username_available", { p_username: username });
+      const usernameChanged = username.toLowerCase() !== originalUsername.toLowerCase();
+      
+      // Check if username is being changed
+      if (usernameChanged) {
+        // Check 60-day restriction
+        const usernameCheck = canChangeUsername();
+        if (!usernameCheck.allowed) {
+          toast.error(usernameCheck.reason || 'Cannot change username yet');
+          setSaving(false);
+          return;
+        }
         
-        const { data: currentProfile } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("user_id", user.id)
-          .single();
-
-        if (!available && currentProfile?.username?.toLowerCase() !== username.toLowerCase()) {
-          toast.error("Username is already taken");
+        // Check username availability using the new v2 function that checks reserved names
+        const { data: available } = await supabase
+          .rpc("is_username_available_v2", { p_username: username });
+        
+        if (!available) {
+          toast.error("Username is already taken or reserved");
           setSaving(false);
           return;
         }
@@ -541,22 +699,47 @@ export default function Settings() {
         }
       });
 
+      // Build update object
+      const updateData: Record<string, unknown> = {
+        full_name: fullName,
+        username,
+        bio,
+        website,
+        avatar_url: avatarUrl,
+        banner_url: bannerUrl,
+        background_url: backgroundUrl,
+        social_links: socialLinksObj,
+      };
+      
+      // If username changed, update tracking fields
+      if (usernameChanged && originalUsername) {
+        updateData.last_username_changed_at = new Date().toISOString();
+        updateData.previous_username = originalUsername;
+        // 14 days from now
+        const availableAt = new Date();
+        availableAt.setDate(availableAt.getDate() + 14);
+        updateData.previous_username_available_at = availableAt.toISOString();
+      }
+
       const { error } = await supabase
         .from("profiles")
-        .update({
-          full_name: fullName,
-          username,
-          bio,
-          website,
-          avatar_url: avatarUrl,
-          banner_url: bannerUrl,
-          background_url: backgroundUrl,
-          social_links: socialLinksObj,
-        } as Record<string, unknown>)
+        .update(updateData)
         .eq("user_id", user.id);
 
       if (error) throw error;
-      toast.success("Profile saved!");
+      
+      if (usernameChanged) {
+        setLastUsernameChangedAt(new Date().toISOString());
+        setPreviousUsername(originalUsername);
+        const availableAt = new Date();
+        availableAt.setDate(availableAt.getDate() + 14);
+        setPreviousUsernameAvailableAt(availableAt.toISOString());
+        setOriginalUsername(username);
+        toast.success("Profile saved! Your old username will be reserved for 14 days.");
+      } else {
+        toast.success("Profile saved!");
+      }
+      
       // Redirect to profile page
       navigate(`/@${username || 'profile'}`);
     } catch (error) {
@@ -840,8 +1023,34 @@ export default function Settings() {
                       onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
                       placeholder="johndoe"
                       className="rounded-l-none"
+                      disabled={!canChangeUsername().allowed}
                     />
                   </div>
+                  {!canChangeUsername().allowed && (
+                    <p className="text-sm text-amber-500 mt-2">
+                      {canChangeUsername().reason}
+                    </p>
+                  )}
+                  {canRevertToPreviousUsername() && previousUsername && (
+                    <div className="mt-2 p-3 rounded-lg border border-border bg-muted/30">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Your previous username <span className="font-medium text-foreground">@{previousUsername}</span> is reserved until {new Date(previousUsernameAvailableAt!).toLocaleDateString()}.
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleRevertUsername}
+                        disabled={saving}
+                      >
+                        Revert to @{previousUsername}
+                      </Button>
+                    </div>
+                  )}
+                  {lastUsernameChangedAt && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Usernames can only be changed once every 60 days.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -870,13 +1079,18 @@ export default function Settings() {
 
               <div>
                 <Label>Email</Label>
-                <Input
-                  value={user.email || ""}
-                  disabled
-                  className="mt-2 bg-muted"
-                />
+                <div className="flex items-center gap-3 mt-2">
+                  <Input
+                    value={user.email || ""}
+                    disabled
+                    className="bg-muted flex-1"
+                  />
+                  <Button variant="outline" onClick={handleStartEmailChange}>
+                    Change Email
+                  </Button>
+                </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Contact support to change your email address.
+                  A verification code will be sent to your current email address.
                 </p>
               </div>
 
@@ -1363,6 +1577,105 @@ export default function Settings() {
           onCropComplete={handleAvatarCropComplete}
         />
       )}
+
+      {/* Email Change Dialog */}
+      <Dialog open={showEmailChangeDialog} onOpenChange={setShowEmailChangeDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Email Address</DialogTitle>
+            <DialogDescription>
+              {emailOtpSent 
+                ? 'Enter the 6-digit code sent to your current email to verify your identity.'
+                : 'Enter your new email address. We\'ll send a verification code to your current email for security.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {!emailOtpSent ? (
+              <div className="space-y-4">
+                <div>
+                  <Label>Current Email</Label>
+                  <Input
+                    value={user?.email || ""}
+                    disabled
+                    className="mt-2 bg-muted"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="newEmail">New Email Address</Label>
+                  <Input
+                    id="newEmail"
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value.trim())}
+                    placeholder="newemail@example.com"
+                    className="mt-2"
+                  />
+                </div>
+                <Button 
+                  onClick={handleSendEmailChangeOtp} 
+                  disabled={sendingEmailOtp || !newEmail}
+                  className="w-full"
+                >
+                  {sendingEmailOtp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {sendingEmailOtp ? 'Sending...' : 'Send Verification Code'}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground text-center">
+                  Verification code sent to: <span className="font-medium text-foreground">{user?.email}</span>
+                </p>
+                <div className="flex justify-center">
+                  <InputOTP 
+                    value={emailOtpCode} 
+                    onChange={setEmailOtpCode} 
+                    maxLength={6}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+                
+                <div className="space-y-2">
+                  <Button 
+                    onClick={handleVerifyEmailChange} 
+                    disabled={verifyingEmailChange || emailOtpCode.length !== 6}
+                    className="w-full"
+                  >
+                    {verifyingEmailChange && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    {verifyingEmailChange ? 'Changing Email...' : 'Verify & Change Email'}
+                  </Button>
+                  
+                  <div className="flex justify-between">
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setEmailOtpSent(false)}
+                      className="text-sm"
+                    >
+                      ← Change email address
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={handleSendEmailChangeOtp} 
+                      disabled={sendingEmailOtp}
+                      className="text-sm"
+                    >
+                      {sendingEmailOtp ? 'Sending...' : 'Resend Code'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
