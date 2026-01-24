@@ -109,7 +109,7 @@ export default function Settings() {
   const [marketingEmails, setMarketingEmails] = useState(false);
   
   // Account Type
-  const [isCreator, setIsCreator] = useState(false);
+  const [isSeller, setIsSeller] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [switchingAccountType, setSwitchingAccountType] = useState(false);
 
@@ -155,7 +155,7 @@ export default function Settings() {
         setBackgroundUrl((data as Record<string, unknown>).background_url as string | null);
         setStripeAccountId(data.stripe_account_id);
         setStripeOnboardingComplete(data.stripe_onboarding_complete || false);
-        setIsCreator(data.is_creator || false);
+        setIsSeller((data as Record<string, unknown>).is_seller as boolean || false);
         setProfileId(data.id);
         
         
@@ -206,12 +206,12 @@ export default function Settings() {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ is_creator: false })
+        .update({ is_seller: false })
         .eq('id', profileId);
       
       if (error) throw error;
       
-      setIsCreator(false);
+      setIsSeller(false);
       toast.success('Your account is now a buyer account.');
     } catch (error) {
       console.error('Error switching to buyer:', error);
@@ -784,15 +784,15 @@ export default function Settings() {
                 <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">
                   <div className="flex-1">
                     <p className="font-medium">
-                      {isCreator ? 'Seller Account' : 'Buyer Account'}
+                      {isSeller ? 'Seller Account' : 'Buyer Account'}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {isCreator 
+                      {isSeller 
                         ? 'You can create and sell products on the platform.'
                         : 'You can purchase and save products.'}
                     </p>
                   </div>
-                  {isCreator && (
+                  {isSeller && (
                     <Button 
                       variant="outline" 
                       onClick={handleSwitchToBuyer}
@@ -802,7 +802,7 @@ export default function Settings() {
                     </Button>
                   )}
                 </div>
-                {isCreator && (
+                {isSeller && (
                   <p className="text-xs text-muted-foreground mt-2">
                     Switching to a buyer account will hide your store tab. Your products will remain but won't be visible until you switch back.
                   </p>
