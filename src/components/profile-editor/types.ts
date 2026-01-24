@@ -319,7 +319,7 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
     defaultContent: {
       title: 'Your Heading',
       body: 'Add your text here...',
-      alignment: 'left',
+      alignment: 'center',
     } as TextContent,
     presets: [
       { id: 'style1', name: 'Clean', styleOptions: { colorScheme: 'white', sectionHeight: 'medium' } },
