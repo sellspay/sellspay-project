@@ -68,26 +68,29 @@ export default function SubscriptionPlans() {
     }
     
     if (!profileLoading && authProfile) {
-      setProfileId(authProfile.id);
       if (!hasAccess) {
         navigate('/');
         toast.error('You need to be a seller to manage subscription plans');
-      } else {
-        fetchData();
       }
     }
-  }, [user, authProfile, hasAccess, profileLoading]);
+  }, [user, authProfile, hasAccess, profileLoading, navigate]);
 
-  async function fetchData() {
-    if (!profileId) return;
-    
+  // Fetch data when authProfile.id is available
+  useEffect(() => {
+    if (authProfile?.id && hasAccess) {
+      setProfileId(authProfile.id);
+      fetchDataWithId(authProfile.id);
+    }
+  }, [authProfile?.id, hasAccess]);
+
+  async function fetchDataWithId(creatorId: string) {
     setLoading(true);
     try {
       // Fetch plans
       const { data: plansData, error: plansError } = await supabase
         .from('creator_subscription_plans')
         .select('*')
-        .eq('creator_id', profileId)
+        .eq('creator_id', creatorId)
         .order('created_at', { ascending: false });
       
       if (plansError) throw plansError;
@@ -134,7 +137,7 @@ export default function SubscriptionPlans() {
       const { data: productsData } = await supabase
         .from('products')
         .select('id, name, cover_image_url, pricing_type, subscription_access, price_cents')
-        .eq('creator_id', profileId)
+        .eq('creator_id', creatorId)
         .eq('status', 'published');
       
       setProducts(productsData || []);
@@ -143,6 +146,12 @@ export default function SubscriptionPlans() {
       toast.error('Failed to load subscription plans');
     } finally {
       setLoading(false);
+    }
+  }
+  // Wrapper function for refetching data
+  function fetchData() {
+    if (authProfile?.id) {
+      fetchDataWithId(authProfile.id);
     }
   }
 
