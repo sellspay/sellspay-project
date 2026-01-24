@@ -298,6 +298,7 @@ const ProfilePage: React.FC = () => {
   const [becomingSellerLoading, setBecomingSellerLoading] = useState(false);
   const [showUnfollowConfirm, setShowUnfollowConfirm] = useState(false);
   const [unfollowLoading, setUnfollowLoading] = useState(false);
+  const [unfollowCooldownEnds, setUnfollowCooldownEnds] = useState<Date | null>(null);
   const [savedPage, setSavedPage] = useState(0);
   const savedGridRef = useRef<HTMLDivElement>(null);
   const SAVED_ITEMS_PER_PAGE = 30; // 6 columns × 5 rows
@@ -413,252 +414,283 @@ const ProfilePage: React.FC = () => {
 
   const bumpLayoutRefresh = () => setLayoutRefreshKey((k) => k + 1);
 
-  useEffect(() => {
-    async function fetchProfile() {
-      // Supports:
-      // - /profile (no username in URL)
-      // - /@username via route param ":atUsername" where value starts with '@'
-      const raw = atUsername ?? username;
-      const cleanUsername = raw?.replace('@', '');
+  // Function to fetch profile data - extracted for reuse
+  const fetchProfileData = async () => {
+    // Supports:
+    // - /profile (no username in URL)
+    // - /@username via route param ":atUsername" where value starts with '@'
+    const raw = atUsername ?? username;
+    const cleanUsername = raw?.replace('@', '');
+    
+    let data = null;
+    let error = null;
+    
+    if (cleanUsername) {
+      // Use case-insensitive matching via ilike
+      const result = await supabase
+        .from('profiles')
+        .select('*')
+        .ilike('username', cleanUsername)
+        .maybeSingle();
+      data = result.data;
+      error = result.error;
+    } else if (user) {
+      const result = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      data = result.data;
+      error = result.error;
+    } else {
+      setLoading(false);
+      return;
+    }
+
+    if (error) {
+      console.error('Failed to load profile:', error);
+    } else if (data) {
+      setProfile(data);
+      // Set initial recent uploads visibility from profile data
+      setShowRecentUploads(data.show_recent_uploads !== false);
+      const ownProfile = user?.id === data.user_id;
+      setIsOwnProfile(ownProfile);
       
-      let data = null;
-      let error = null;
-      
-      if (cleanUsername) {
-        // Use case-insensitive matching via ilike
-        const result = await supabase
-          .from('profiles')
-          .select('*')
-          .ilike('username', cleanUsername)
-          .maybeSingle();
-        data = result.data;
-        error = result.error;
-      } else if (user) {
-        const result = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        data = result.data;
-        error = result.error;
-      } else {
-        setLoading(false);
-        return;
+      // Set default tab: for non-sellers viewing their own profile, default to downloads
+      if (ownProfile && !data.is_seller) {
+        setActiveTab('downloads');
       }
 
-      if (error) {
-        console.error('Failed to load profile:', error);
-      } else if (data) {
-        setProfile(data);
-        // Set initial recent uploads visibility from profile data
-        setShowRecentUploads(data.show_recent_uploads !== false);
-        const ownProfile = user?.id === data.user_id;
-        setIsOwnProfile(ownProfile);
-        
-        // Set default tab: for non-sellers viewing their own profile, default to downloads
-        if (ownProfile && !data.is_seller) {
-          setActiveTab('downloads');
-        }
+      // Check if the PROFILE BEING VIEWED is an admin (for special verified badge)
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user_id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      const profileIsAdmin = !!roleData;
+      setIsAdmin(profileIsAdmin);
 
-        // Check if the PROFILE BEING VIEWED is an admin (for special verified badge)
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', data.user_id)
-          .eq('role', 'admin')
+      // Fetch followers count
+      const { count: followers } = await supabase
+        .from('followers')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', data.id);
+      setFollowersCount(followers || 0);
+
+      // Fetch following count
+      const { count: following } = await supabase
+        .from('followers')
+        .select('*', { count: 'exact', head: true })
+        .eq('follower_id', data.id);
+      setFollowingCount(following || 0);
+
+      // Check if current user is following this profile
+      if (user && !ownProfile) {
+        const { data: currentUserProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
           .maybeSingle();
-        const profileIsAdmin = !!roleData;
-        setIsAdmin(profileIsAdmin);
-
-        // Fetch followers count
-        const { count: followers } = await supabase
-          .from('followers')
-          .select('*', { count: 'exact', head: true })
-          .eq('following_id', data.id);
-        setFollowersCount(followers || 0);
-
-        // Fetch following count
-        const { count: following } = await supabase
-          .from('followers')
-          .select('*', { count: 'exact', head: true })
-          .eq('follower_id', data.id);
-        setFollowingCount(following || 0);
-
-        // Check if current user is following this profile
-        if (user && !ownProfile) {
-          const { data: currentUserProfile } = await supabase
-            .from('profiles')
+        
+        if (currentUserProfile) {
+          setCurrentUserProfileId(currentUserProfile.id);
+          const { data: followData } = await supabase
+            .from('followers')
             .select('id')
-            .eq('user_id', user.id)
+            .eq('follower_id', currentUserProfile.id)
+            .eq('following_id', data.id)
+            .maybeSingle();
+          setIsFollowing(!!followData);
+          
+          // Check for unfollow cooldown
+          const { data: unfollowHistory } = await supabase
+            .from('unfollow_history')
+            .select('can_refollow_at')
+            .eq('unfollower_id', currentUserProfile.id)
+            .eq('unfollowed_id', data.id)
+            .order('unfollowed_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
           
-          if (currentUserProfile) {
-            setCurrentUserProfileId(currentUserProfile.id);
-            const { data: followData } = await supabase
-              .from('followers')
-              .select('id')
-              .eq('follower_id', currentUserProfile.id)
-              .eq('following_id', data.id)
-              .maybeSingle();
-            setIsFollowing(!!followData);
-          }
-        }
-
-        // Fetch all products if own profile, only published for others
-        const productQuery = supabase
-          .from('products')
-          .select('id, name, cover_image_url, youtube_url, preview_video_url, pricing_type, price_cents, currency, status, created_at')
-          .eq('creator_id', data.id)
-          .order('created_at', { ascending: false });
-
-        if (!ownProfile) {
-          productQuery.eq('status', 'published');
-        }
-
-        const { data: productsData } = await productQuery;
-        
-        // Fetch like counts for each product
-        if (productsData && productsData.length > 0) {
-          const productIds = productsData.map(p => p.id);
-          
-          // Get like counts
-          const { data: likeCounts } = await supabase
-            .from('product_likes')
-            .select('product_id')
-            .in('product_id', productIds);
-          
-          // Get comment counts
-          const { data: commentCounts } = await supabase
-            .from('comments')
-            .select('product_id')
-            .in('product_id', productIds);
-          
-          // Map counts to products
-          const likeMap = new Map<string, number>();
-          const commentMap = new Map<string, number>();
-          
-          likeCounts?.forEach(like => {
-            likeMap.set(like.product_id, (likeMap.get(like.product_id) || 0) + 1);
-          });
-          
-          commentCounts?.forEach(comment => {
-            commentMap.set(comment.product_id, (commentMap.get(comment.product_id) || 0) + 1);
-          });
-          
-          const productsWithCounts = productsData.map(p => ({
-            ...p,
-            likeCount: likeMap.get(p.id) || 0,
-            commentCount: commentMap.get(p.id) || 0,
-          }));
-          
-          setProducts(productsWithCounts);
-        } else {
-          setProducts([]);
-        }
-
-        // Fetch purchases for own profile (both creators and non-creators)
-        if (ownProfile) {
-          const { data: purchasesData, error: purchasesError } = await supabase
-            .from('purchases')
-            .select(`
-              id,
-              product_id,
-              created_at,
-              product:products!inner (
-                id,
-                name,
-                cover_image_url,
-                youtube_url,
-                preview_video_url,
-                pricing_type,
-                status
-              )
-            `)
-            .eq('buyer_id', data.id)
-            .eq('status', 'completed')
-            .order('created_at', { ascending: false });
-          
-          if (purchasesError) {
-            console.error('Error fetching purchases:', purchasesError);
-          }
-
-          // Filter to only show published products and format the data
-          // Also deduplicate by product_id (keep the first occurrence which is most recent)
-          const seenProductIds = new Set<string>();
-          const typedPurchases = (purchasesData || [])
-            .filter(p => {
-              if (!p.product) return false;
-              const productId = p.product_id;
-              if (seenProductIds.has(productId)) return false;
-              seenProductIds.add(productId);
-              return true;
-            })
-            .map(p => ({
-              id: p.id,
-              product_id: p.product_id,
-              created_at: p.created_at,
-              product: Array.isArray(p.product) ? p.product[0] : p.product
-            })) as Purchase[];
-          
-          setPurchases(typedPurchases);
-
-          // Fetch saved products (two-step fetch because saved_products has no FK relationship,
-          // so PostgREST joins like products!inner won't work reliably).
-          const { data: savedRows, error: savedError } = await supabase
-            .from('saved_products')
-            .select('id, product_id, created_at')
-            .eq('user_id', data.id)
-            .order('created_at', { ascending: false });
-
-          if (savedError) {
-            console.error('Error fetching saved products:', savedError);
-            setSavedProducts([]);
-          } else if (!savedRows || savedRows.length === 0) {
-            setSavedProducts([]);
-          } else {
-            const savedProductIds = savedRows.map((r) => r.product_id);
-            const { data: savedProductsData, error: productsError } = await supabase
-              .from('products')
-              .select('id, name, cover_image_url, youtube_url, preview_video_url, pricing_type, price_cents, currency, status')
-              .in('id', savedProductIds)
-              .eq('status', 'published');
-
-            if (productsError) {
-              console.error('Error fetching saved product details:', productsError);
-              setSavedProducts([]);
-            } else {
-              const productMap = new Map((savedProductsData || []).map((p) => [p.id, p]));
-              const typedSaved = savedRows
-                .map((r) => ({
-                  id: r.id,
-                  product_id: r.product_id,
-                  created_at: r.created_at,
-                  product: productMap.get(r.product_id) ?? null,
-                }))
-                .filter((r) => r.product) as SavedProduct[];
-              setSavedProducts(typedSaved);
+          if (unfollowHistory) {
+            const canRefollowAt = new Date(unfollowHistory.can_refollow_at);
+            if (canRefollowAt > new Date()) {
+              setUnfollowCooldownEnds(canRefollowAt);
             }
           }
         }
+      } else if (ownProfile) {
+        // For own profile, set the currentUserProfileId
+        setCurrentUserProfileId(data.id);
+      }
 
-        // Fetch collections for the profile
-        fetchCollections(data.id, ownProfile);
+      // Fetch all products if own profile, only published for others
+      const productQuery = supabase
+        .from('products')
+        .select('id, name, cover_image_url, youtube_url, preview_video_url, pricing_type, price_cents, currency, status, created_at')
+        .eq('creator_id', data.id)
+        .order('created_at', { ascending: false });
 
-        // Check if creator/owner has subscription plans (for non-own profiles)
-        if (!ownProfile && (data.is_creator || profileIsAdmin)) {
-          const { count } = await supabase
-            .from('creator_subscription_plans')
-            .select('*', { count: 'exact', head: true })
-            .eq('creator_id', data.id)
-            .eq('is_active', true);
-          setCreatorHasPlans((count || 0) > 0);
+      if (!ownProfile) {
+        productQuery.eq('status', 'published');
+      }
+
+      const { data: productsData } = await productQuery;
+      
+      // Fetch like counts for each product
+      if (productsData && productsData.length > 0) {
+        const productIds = productsData.map(p => p.id);
+        
+        // Get like counts
+        const { data: likeCounts } = await supabase
+          .from('product_likes')
+          .select('product_id')
+          .in('product_id', productIds);
+        
+        // Get comment counts
+        const { data: commentCounts } = await supabase
+          .from('comments')
+          .select('product_id')
+          .in('product_id', productIds);
+        
+        // Map counts to products
+        const likeMap = new Map<string, number>();
+        const commentMap = new Map<string, number>();
+        
+        likeCounts?.forEach(like => {
+          likeMap.set(like.product_id, (likeMap.get(like.product_id) || 0) + 1);
+        });
+        
+        commentCounts?.forEach(comment => {
+          commentMap.set(comment.product_id, (commentMap.get(comment.product_id) || 0) + 1);
+        });
+        
+        const productsWithCounts = productsData.map(p => ({
+          ...p,
+          likeCount: likeMap.get(p.id) || 0,
+          commentCount: commentMap.get(p.id) || 0,
+        }));
+        
+        setProducts(productsWithCounts);
+      } else {
+        setProducts([]);
+      }
+
+      // Fetch purchases for own profile (both creators and non-creators)
+      if (ownProfile) {
+        const { data: purchasesData, error: purchasesError } = await supabase
+          .from('purchases')
+          .select(`
+            id,
+            product_id,
+            created_at,
+            product:products!inner (
+              id,
+              name,
+              cover_image_url,
+              youtube_url,
+              preview_video_url,
+              pricing_type,
+              status
+            )
+          `)
+          .eq('buyer_id', data.id)
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false });
+        
+        if (purchasesError) {
+          console.error('Error fetching purchases:', purchasesError);
+        } else {
+          // Type-cast and transform purchases data
+          const typedPurchases = (purchasesData || []).map(p => ({
+            id: p.id,
+            product_id: p.product_id,
+            created_at: p.created_at,
+            product: p.product as unknown as Purchase['product'],
+          }));
+          setPurchases(typedPurchases);
+        }
+
+        // Fetch saved products for own profile
+        const { data: savedRows, error: savedError } = await supabase
+          .from('saved_products')
+          .select('id, product_id, created_at')
+          .eq('user_id', data.id)
+          .order('created_at', { ascending: false });
+
+        if (savedError) {
+          console.error('Error fetching saved products:', savedError);
+          setSavedProducts([]);
+        } else if (!savedRows || savedRows.length === 0) {
+          setSavedProducts([]);
+        } else {
+          const savedProductIds = savedRows.map((r) => r.product_id);
+          const { data: savedProductsData, error: productsError } = await supabase
+            .from('products')
+            .select('id, name, cover_image_url, youtube_url, preview_video_url, pricing_type, price_cents, currency, status')
+            .in('id', savedProductIds)
+            .eq('status', 'published');
+
+          if (productsError) {
+            console.error('Error fetching saved product details:', productsError);
+            setSavedProducts([]);
+          } else {
+            const productMap = new Map((savedProductsData || []).map((p) => [p.id, p]));
+            const typedSaved = savedRows
+              .map((r) => ({
+                id: r.id,
+                product_id: r.product_id,
+                created_at: r.created_at,
+                product: productMap.get(r.product_id) ?? null,
+              }))
+              .filter((r) => r.product) as SavedProduct[];
+            setSavedProducts(typedSaved);
+          }
         }
       }
 
-      setLoading(false);
+      // Fetch collections for the profile
+      fetchCollections(data.id, ownProfile);
+
+      // Check if creator/owner has subscription plans (for non-own profiles)
+      if (!ownProfile && (data.is_creator || profileIsAdmin)) {
+        const { count } = await supabase
+          .from('creator_subscription_plans')
+          .select('*', { count: 'exact', head: true })
+          .eq('creator_id', data.id)
+          .eq('is_active', true);
+        setCreatorHasPlans((count || 0) > 0);
+      }
     }
 
-    fetchProfile();
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchProfileData();
+  }, [username, atUsername, user]);
+  
+  // Refetch when navigating back to this page (e.g., after deleting a product)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchProfileData();
+      }
+    };
+    
+    // Also refetch on focus (for single-page navigation)
+    const handleFocus = () => {
+      fetchProfileData();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [username, atUsername, user]);
 
   const handleFollow = async () => {
