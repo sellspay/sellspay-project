@@ -107,6 +107,24 @@ export default {
             filter: "hue-rotate(360deg)",
           },
         },
+        "reveal-up": {
+          "0%": {
+            opacity: "0",
+            transform: "translateY(20px)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateY(0)",
+          },
+        },
+        "marquee": {
+          "0%": {
+            transform: "translateX(0)",
+          },
+          "100%": {
+            transform: "translateX(-50%)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -114,6 +132,8 @@ export default {
         "gradient-wave": "gradient-wave 3s ease-in-out infinite",
         "gradient": "gradient 3s linear infinite",
         "hue-rotate": "hue-rotate 3s linear infinite",
+        "reveal-up": "reveal-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+        "marquee": "marquee 30s linear infinite",
       },
     },
   },
