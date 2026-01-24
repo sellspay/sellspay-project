@@ -235,6 +235,21 @@ export default function CreateProduct() {
 
       if (error) throw error;
 
+      // If publishing, notify all followers
+      if (publish && product) {
+        try {
+          await supabase.functions.invoke('notify-product-launch', {
+            body: {
+              productId: product.id,
+              creatorProfileId: profile.id,
+            }
+          });
+        } catch (notifyError) {
+          console.error('Failed to send launch notifications:', notifyError);
+          // Don't block the user - product was created successfully
+        }
+      }
+
       toast.success(publish ? "Product published!" : "Draft saved!");
       navigate(product.slug ? `/p/${product.slug}` : `/product/${product.id}`);
     } catch (error) {

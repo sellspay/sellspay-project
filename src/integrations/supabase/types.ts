@@ -810,6 +810,7 @@ export type Database = {
           editor_services: string[] | null
           editor_social_links: Json | null
           email: string | null
+          email_notifications_enabled: boolean | null
           full_name: string | null
           global_custom_font: Json | null
           global_font: string | null
@@ -849,6 +850,7 @@ export type Database = {
           editor_services?: string[] | null
           editor_social_links?: Json | null
           email?: string | null
+          email_notifications_enabled?: boolean | null
           full_name?: string | null
           global_custom_font?: Json | null
           global_font?: string | null
@@ -888,6 +890,7 @@ export type Database = {
           editor_services?: string[] | null
           editor_social_links?: Json | null
           email?: string | null
+          email_notifications_enabled?: boolean | null
           full_name?: string | null
           global_custom_font?: Json | null
           global_font?: string | null
