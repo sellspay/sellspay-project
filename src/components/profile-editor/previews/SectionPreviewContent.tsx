@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronRight, ChevronLeft, Quote, Mail, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getFontClassName, getCustomFontStyle, useCustomFont } from '../hooks/useCustomFont';
 
 interface SectionPreviewContentProps {
   section: ProfileSection;
@@ -14,12 +15,22 @@ interface SectionPreviewContentProps {
 // Text Section Preview
 const TextPreview = memo(({ content }: { content: TextContent }) => {
   const alignment = content.alignment || 'center';
+  const fontClass = getFontClassName(content.font);
+  const customFontStyle = getCustomFontStyle(content.customFont);
+  
+  // Inject custom font if needed
+  useCustomFont(content.customFont);
+  
   return (
-    <div className={cn(
-      alignment === 'center' && 'text-center',
-      alignment === 'right' && 'text-right',
-      alignment === 'left' && 'text-left'
-    )}>
+    <div 
+      className={cn(
+        alignment === 'center' && 'text-center',
+        alignment === 'right' && 'text-right',
+        alignment === 'left' && 'text-left',
+        fontClass
+      )}
+      style={customFontStyle}
+    >
       {content.title && (
         <h3 className="text-xl font-semibold mb-2">{content.title}</h3>
       )}

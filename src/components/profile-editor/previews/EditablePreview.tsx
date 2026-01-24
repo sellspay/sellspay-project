@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, HeadlineContent, DividerContent, NewsletterContent, TestimonialsContent, ContactUsContent, FAQContent, AboutMeContent, SlidingBannerContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, CollectionContent, FooterContent, CardSlideshowContent, BannerSlideshowContent } from '../types';
 import { cn } from '@/lib/utils';
 import { Image, Play, ChevronLeft, ChevronRight, Star, Mail, Phone, MessageSquare, ArrowRight, Check, Quote } from 'lucide-react';
+import { getFontClassName, getCustomFontStyle, useCustomFont } from '../hooks/useCustomFont';
 
 interface EditablePreviewProps {
   section: ProfileSection;
@@ -126,13 +127,23 @@ const ImagePlaceholder: React.FC<{ label?: string | number; className?: string }
 // Text Preview
 function TextEditablePreview({ content, onUpdate }: { content: TextContent; onUpdate: (c: Partial<TextContent>) => void }) {
   const alignment = content.alignment || 'center';
+  const fontClass = getFontClassName(content.font);
+  const customFontStyle = getCustomFontStyle(content.customFont);
+  
+  // Inject custom font if needed
+  useCustomFont(content.customFont);
+  
   return (
-    <div className={cn(
-      "space-y-2 p-4",
-      alignment === 'center' && "text-center",
-      alignment === 'right' && "text-right",
-      alignment === 'left' && "text-left"
-    )}>
+    <div 
+      className={cn(
+        "space-y-2 p-4",
+        alignment === 'center' && "text-center",
+        alignment === 'right' && "text-right",
+        alignment === 'left' && "text-left",
+        fontClass
+      )}
+      style={customFontStyle}
+    >
       {content.title && (
         <h3 className="text-lg font-semibold">
           <InlineEdit value={content.title} onChange={(v) => onUpdate({ title: v })} placeholder="Section Title" />
