@@ -34,6 +34,7 @@ import {
   DividerContent,
   SECTION_TEMPLATES,
 } from './types';
+import { SectionPreviewContent } from './previews/SectionPreviewContent';
 
 interface EditSectionDialogProps {
   section: ProfileSection | null;
@@ -173,12 +174,22 @@ export function EditSectionDialog({
 
   return (
     <Dialog open={!!section} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{template?.name || 'Edit Section'}</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        {/* Live Preview */}
+        <div className="flex-shrink-0 bg-muted/30 border border-border rounded-lg p-4 mb-2">
+          <div className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-medium">Preview</div>
+          <div className="bg-card rounded-lg overflow-hidden p-4 border border-border/50">
+            <SectionPreviewContent section={section} />
+          </div>
+        </div>
+
+        {/* Editing Controls */}
+        <div className="flex-shrink-0 text-xs text-muted-foreground uppercase tracking-wider font-medium mb-2">Settings</div>
+        <ScrollArea className="flex-1 -mx-6 px-6 min-h-0">
           <div className="space-y-4 py-2">{renderEditor()}</div>
         </ScrollArea>
 
