@@ -450,7 +450,15 @@ export function ProfileEditorDialog({
 
   useEffect(() => {
     if (open && profileId) {
+      // Reset preview section when opening
+      setPreviewSection(null);
+      setHasChanges(false);
       fetchAllData();
+    } else if (!open) {
+      // Clear all temporary state when closing
+      setPreviewSection(null);
+      setEditingSection(null);
+      setEditingCollection(null);
     }
   }, [open, profileId]);
 
@@ -640,6 +648,9 @@ export function ProfileEditorDialog({
   };
 
   const addSection = async (type: SectionType, presetId?: string) => {
+    // Clear any preview section immediately
+    setPreviewSection(null);
+    
     const template = SECTION_TEMPLATES.find((t) => t.type === type);
     if (!template) return;
 
@@ -762,9 +773,12 @@ export function ProfileEditorDialog({
       const confirm = window.confirm('You have unsaved changes. Are you sure you want to close?');
       if (!confirm) return;
     }
-    onOpenChange(false);
+    // Clear all state before closing
+    setPreviewSection(null);
     setEditingSection(null);
     setEditingCollection(null);
+    setShowAddPanel(false);
+    onOpenChange(false);
   };
 
   const socialLinks = profile.social_links && typeof profile.social_links === 'object' 
@@ -1018,8 +1032,8 @@ export function ProfileEditorDialog({
                             </SortableContext>
                           </DndContext>
 
-                          {/* Preview Section */}
-                          {previewSection && (
+                          {/* Preview Section - only show when add panel is open AND there's a preview */}
+                          {showAddPanel && previewSection && (
                             <div className="relative bg-card/50 backdrop-blur-sm border-2 border-dashed border-primary rounded-lg overflow-hidden">
                               <div className="absolute top-2 left-2 z-10">
                                 <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded font-medium">
@@ -1046,10 +1060,15 @@ export function ProfileEditorDialog({
       <AddSectionPanel
         open={showAddPanel}
         onClose={() => {
-          setShowAddPanel(false);
+          // Always clear preview when closing the panel
           setPreviewSection(null);
+          setShowAddPanel(false);
         }}
-        onAddSection={addSection}
+        onAddSection={(type, presetId) => {
+          // Clear preview before adding
+          setPreviewSection(null);
+          addSection(type, presetId);
+        }}
         onPreviewSection={setPreviewSection}
       />
 
