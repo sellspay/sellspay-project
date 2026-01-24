@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CreditCard, Globe, Loader2, CheckCircle, AlertCircle, ExternalLink, RefreshCw } from "lucide-react";
+import { CreditCard, Globe, Loader2, CheckCircle, AlertCircle, ExternalLink, RefreshCw, Building } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,16 @@ interface PayoutMethodSelectorProps {
   onCheckStripeStatus: () => void;
 }
 
+interface BankAccount {
+  id: string;
+  bank_name: string | null;
+  last4: string;
+  account_type: string | null;
+  currency: string;
+  default_for_currency: boolean;
+  status: string | null;
+}
+
 export function PayoutMethodSelector({
   stripeConnected,
   stripeOnboardingComplete,
@@ -41,10 +51,69 @@ export function PayoutMethodSelector({
   const [showPayoneerDialog, setShowPayoneerDialog] = useState(false);
   const [connectingPayoneer, setConnectingPayoneer] = useState(false);
   const [savingPreference, setSavingPreference] = useState(false);
+  
+  // Bank account state
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [loadingBankAccounts, setLoadingBankAccounts] = useState(false);
+  const [openingDashboard, setOpeningDashboard] = useState(false);
 
   useEffect(() => {
     fetchPayoneerStatus();
   }, []);
+
+  useEffect(() => {
+    if (stripeOnboardingComplete) {
+      fetchBankAccounts();
+    }
+  }, [stripeOnboardingComplete]);
+
+  const fetchBankAccounts = async () => {
+    setLoadingBankAccounts(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke("get-external-accounts", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.accounts) {
+        setBankAccounts(data.accounts);
+      }
+    } catch (error) {
+      console.error("Error fetching bank accounts:", error);
+    } finally {
+      setLoadingBankAccounts(false);
+    }
+  };
+
+  const handleOpenDashboard = async () => {
+    setOpeningDashboard(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("create-login-link", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.url) {
+        window.open(data.url, "_blank");
+        toast.success("Opening your bank account dashboard...");
+      } else {
+        throw new Error(data.error || "Failed to create login link");
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to open dashboard";
+      toast.error(message);
+    } finally {
+      setOpeningDashboard(false);
+    }
+  };
 
   const fetchPayoneerStatus = async () => {
     try {
@@ -151,6 +220,105 @@ export function PayoutMethodSelector({
 
   return (
     <div className="space-y-6">
+      {/* Bank Account Section - Only shown when Stripe is connected */}
+      {stripeOnboardingComplete && (
+        <Card className="border-primary/50 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-500/10">
+                  <Building className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    Bank Account
+                    <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 text-xs">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Connected
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription>Your bank account for receiving payouts</CardDescription>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loadingBankAccounts ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading bank account info...
+              </div>
+            ) : bankAccounts.length > 0 ? (
+              <div className="space-y-3">
+                {bankAccounts.map((account) => (
+                  <div
+                    key={account.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-background">
+                        <Building className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">
+                          {account.bank_name || "Bank Account"} •••• {account.last4}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {account.currency} {account.account_type ? `• ${account.account_type}` : ""}
+                          {account.default_for_currency && (
+                            <span className="ml-1 text-emerald-500">• Default</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    {account.status && (
+                      <Badge variant="secondary" className="text-xs capitalize">
+                        {account.status}
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Your bank account is connected through Stripe. Click "Manage Bank Account" to view or update your banking details.
+              </p>
+            )}
+
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleOpenDashboard}
+                disabled={openingDashboard}
+              >
+                {openingDashboard ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                )}
+                Manage Bank Account
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={fetchBankAccounts}
+                disabled={loadingBankAccounts}
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingBankAccounts ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground pt-2">
+              Your bank account is securely managed through Stripe. All verification and compliance is handled by Stripe.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Separator />
+
+      <p className="text-sm font-medium text-muted-foreground">Payout Providers</p>
+
       {/* Stripe Section */}
       <Card className={`${preferredMethod === "stripe" ? "border-primary" : "border-border"}`}>
         <CardHeader className="pb-3">
@@ -195,8 +363,8 @@ export function PayoutMethodSelector({
           <div className="flex flex-wrap gap-2">
             {stripeOnboardingComplete ? (
               <>
-                <Button variant="outline" onClick={onConnectStripe} disabled={connectingStripe}>
-                  {connectingStripe ? (
+                <Button variant="outline" onClick={handleOpenDashboard} disabled={openingDashboard}>
+                  {openingDashboard ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
                     <ExternalLink className="w-4 h-4 mr-2" />
