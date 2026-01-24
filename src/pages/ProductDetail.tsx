@@ -193,18 +193,31 @@ export default function ProductDetail() {
     fetchUserProfile();
   }, [user]);
 
+  // Track if we just completed a purchase (for triggering download limit refresh)
+  const [justPurchased, setJustPurchased] = useState(false);
+
   // Check for purchase success from URL
   useEffect(() => {
     const purchaseStatus = searchParams.get("purchase");
     if (purchaseStatus === "success") {
       toast.success("Purchase successful! Thank you for your order.");
       setHasPurchased(true);
-      window.history.replaceState({}, "", `/product/${id}`);
+      setJustPurchased(true);
+      // Clear the URL params but keep the current path
+      window.history.replaceState({}, "", window.location.pathname);
     } else if (purchaseStatus === "canceled") {
       toast.info("Purchase was canceled");
-      window.history.replaceState({}, "", `/product/${id}`);
+      window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [searchParams, id]);
+  }, [searchParams]);
+
+  // Refresh download limit info after purchase when product is loaded
+  useEffect(() => {
+    if (justPurchased && product?.id && userProfileId) {
+      fetchDownloadLimitInfo(product.id);
+      setJustPurchased(false);
+    }
+  }, [justPurchased, product?.id, userProfileId]);
 
   useEffect(() => {
     const productIdentifier = id || slug;
@@ -215,6 +228,31 @@ export default function ProductDetail() {
       fetchSavedStatus();
     }
   }, [id, slug, userProfileId]);
+
+  // Check if user has purchased this product (after product is loaded)
+  useEffect(() => {
+    const checkPurchaseStatus = async () => {
+      if (!product?.id || !userProfileId) {
+        return;
+      }
+      
+      try {
+        const { data } = await supabase
+          .from("purchases")
+          .select("id")
+          .eq("product_id", product.id)
+          .eq("buyer_id", userProfileId)
+          .eq("status", "completed")
+          .maybeSingle();
+        
+        setHasPurchased(!!data);
+      } catch (error) {
+        console.error("Error checking purchase status:", error);
+      }
+    };
+    
+    checkPurchaseStatus();
+  }, [product?.id, userProfileId]);
 
   // Check if user follows the creator
   useEffect(() => {
