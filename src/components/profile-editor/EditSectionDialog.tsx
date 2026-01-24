@@ -1002,6 +1002,73 @@ function SlidingBannerEditor({
         />
       </div>
 
+      {/* Font Style */}
+      <FontSelector
+        font={content.font}
+        customFont={content.customFont}
+        onChange={(updates) => onChange(updates)}
+      />
+
+      {/* Font Size */}
+      <div>
+        <Label>Font Size</Label>
+        <Select
+          value={content.fontSize || 'base'}
+          onValueChange={(value) => onChange({ fontSize: value as SlidingBannerContent['fontSize'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="sm">Small</SelectItem>
+            <SelectItem value="base">Normal</SelectItem>
+            <SelectItem value="lg">Large</SelectItem>
+            <SelectItem value="xl">Extra Large</SelectItem>
+            <SelectItem value="2xl">2X Large</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Font Weight */}
+      <div>
+        <Label>Font Weight</Label>
+        <Select
+          value={content.fontWeight || 'medium'}
+          onValueChange={(value) => onChange({ fontWeight: value as SlidingBannerContent['fontWeight'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="semibold">Semibold</SelectItem>
+            <SelectItem value="bold">Bold</SelectItem>
+            <SelectItem value="extrabold">Extra Bold</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Letter Spacing */}
+      <div>
+        <Label>Letter Spacing</Label>
+        <Select
+          value={content.letterSpacing || 'normal'}
+          onValueChange={(value) => onChange({ letterSpacing: value as SlidingBannerContent['letterSpacing'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tighter">Tighter</SelectItem>
+            <SelectItem value="tight">Tight</SelectItem>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="wide">Wide</SelectItem>
+            <SelectItem value="wider">Wider</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Text Color */}
       <ColorPicker
         label="Text Color"

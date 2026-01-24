@@ -133,6 +133,11 @@ export interface SlidingBannerContent {
   speed: 'slow' | 'medium' | 'fast';
   backgroundColor?: string;
   textColor?: string;
+  font?: FontOption;
+  customFont?: CustomFont;
+  fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold' | 'extrabold';
+  fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl';
+  letterSpacing?: LetterSpacingOption;
 }
 
 export interface DividerContent {

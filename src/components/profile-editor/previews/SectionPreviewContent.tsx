@@ -368,10 +368,46 @@ HeadlinePreview.displayName = 'HeadlinePreview';
 
 // Sliding Banner Preview
 const SlidingBannerPreview = memo(({ content }: { content: SlidingBannerContent }) => {
+  const fontClass = getFontClassName(content.font);
+  const customFontStyle = getCustomFontStyle(content.customFont);
+  
+  // Inject custom font if needed
+  useCustomFont(content.customFont);
+  
   const speedClasses = {
     slow: 'animate-[marquee_20s_linear_infinite]',
     medium: 'animate-[marquee_12s_linear_infinite]',
     fast: 'animate-[marquee_6s_linear_infinite]',
+  };
+
+  const fontSizeClasses = {
+    sm: 'text-sm',
+    base: 'text-base',
+    lg: 'text-lg',
+    xl: 'text-xl',
+    '2xl': 'text-2xl',
+  };
+
+  const fontWeightClasses = {
+    normal: 'font-normal',
+    medium: 'font-medium',
+    semibold: 'font-semibold',
+    bold: 'font-bold',
+    extrabold: 'font-extrabold',
+  };
+
+  const letterSpacingMap = {
+    tighter: '-0.04em',
+    tight: '-0.02em',
+    normal: '0em',
+    wide: '0.02em',
+    wider: '0.05em',
+  };
+
+  const combinedStyle = {
+    ...customFontStyle,
+    color: content.textColor || undefined,
+    letterSpacing: letterSpacingMap[content.letterSpacing || 'normal'],
   };
   
   return (
@@ -381,14 +417,24 @@ const SlidingBannerPreview = memo(({ content }: { content: SlidingBannerContent 
     >
       <div className={`whitespace-nowrap ${speedClasses[content.speed]}`}>
         <span 
-          className="inline-block px-4 font-medium"
-          style={{ color: content.textColor || undefined }}
+          className={cn(
+            "inline-block px-4",
+            fontClass,
+            fontSizeClasses[content.fontSize || 'base'],
+            fontWeightClasses[content.fontWeight || 'medium']
+          )}
+          style={combinedStyle}
         >
           {content.text}
         </span>
         <span 
-          className="inline-block px-4 font-medium"
-          style={{ color: content.textColor || undefined }}
+          className={cn(
+            "inline-block px-4",
+            fontClass,
+            fontSizeClasses[content.fontSize || 'base'],
+            fontWeightClasses[content.fontWeight || 'medium']
+          )}
+          style={combinedStyle}
         >
           {content.text}
         </span>
