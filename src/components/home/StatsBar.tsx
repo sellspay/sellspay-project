@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
-import { Users, Package, UserCheck, Download } from 'lucide-react';
+import { Users, Package, UserCheck, Download, Store } from 'lucide-react';
 import { Reveal } from './Reveal';
 
 interface StatItem {
@@ -53,6 +53,7 @@ export function StatsBar() {
 
   const [stats, setStats] = useState<StatItem[]>([
     { label: 'Verified Creators', value: 0, suffix: '+', icon: <UserCheck className="h-5 w-5" /> },
+    { label: 'Verified Sellers', value: 0, suffix: '+', icon: <Store className="h-5 w-5" /> },
     { label: 'Premium Products', value: 0, suffix: '+', icon: <Package className="h-5 w-5" /> },
     { label: 'Community Members', value: 0, suffix: '+', icon: <Users className="h-5 w-5" /> },
     { label: 'Instant Downloads', value: 100, suffix: '%', icon: <Download className="h-5 w-5" /> },
@@ -68,10 +69,11 @@ export function StatsBar() {
         return;
       }
 
-      const statsData = data?.[0] || { verified_creators: 0, premium_products: 0, community_members: 0 };
+      const statsData = data?.[0] || { verified_creators: 0, verified_sellers: 0, premium_products: 0, community_members: 0 };
 
       setStats([
         { label: 'Verified Creators', value: Number(statsData.verified_creators) || 0, suffix: '+', icon: <UserCheck className="h-5 w-5" /> },
+        { label: 'Verified Sellers', value: Number(statsData.verified_sellers) || 0, suffix: '+', icon: <Store className="h-5 w-5" /> },
         { label: 'Premium Products', value: Number(statsData.premium_products) || 0, suffix: '+', icon: <Package className="h-5 w-5" /> },
         { label: 'Community Members', value: Number(statsData.community_members) || 0, suffix: '+', icon: <Users className="h-5 w-5" /> },
         { label: 'Instant Downloads', value: 100, suffix: '%', icon: <Download className="h-5 w-5" /> },
@@ -85,7 +87,7 @@ export function StatsBar() {
     <Reveal>
       <section ref={ref} className="py-16 border-y border-border/50 bg-gradient-to-b from-background via-card/20 to-background">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-12">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 lg:gap-10">
             {stats.map((stat, index) => (
               <div
                 key={stat.label}
