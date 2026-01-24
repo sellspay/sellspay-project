@@ -90,23 +90,32 @@ export function StatsBar() {
 
   return (
     <Reveal>
-      <section ref={ref} className="py-12 border-y border-border bg-card/30 backdrop-blur-sm">
+      <section ref={ref} className="py-16 border-y border-border/50 bg-gradient-to-b from-background via-card/20 to-background">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-12">
             {stats.map((stat, index) => (
               <div
                 key={stat.label}
-                className="flex flex-col items-center text-center gap-3"
+                className="group relative flex flex-col items-center text-center gap-4 p-6 rounded-2xl transition-all duration-500 hover:bg-card/40 hover:shadow-xl hover:shadow-primary/5 cursor-default"
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
-                <div className="p-3 rounded-xl bg-primary/10 text-primary">
-                  {stat.icon}
+                {/* Glow effect on hover */}
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                
+                {/* Icon container with premium styling */}
+                <div className="relative p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 group-hover:border-primary/40 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-primary/20 transition-all duration-500">
+                  <div className="text-primary group-hover:text-primary group-hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-all duration-300">
+                    {stat.icon}
+                  </div>
                 </div>
-                <div>
-                  <div className="text-3xl lg:text-4xl font-bold text-foreground">
+                
+                <div className="relative">
+                  <div className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent group-hover:from-primary group-hover:to-accent transition-all duration-500">
                     <AnimatedCounter target={stat.value} suffix={stat.suffix} isVisible={isVisible} />
                   </div>
-                  <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
+                  <div className="text-sm text-muted-foreground mt-2 group-hover:text-foreground/80 transition-colors duration-300 font-medium tracking-wide uppercase">
+                    {stat.label}
+                  </div>
                 </div>
               </div>
             ))}
