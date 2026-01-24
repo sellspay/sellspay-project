@@ -223,8 +223,12 @@ export function PublicProfileSections({
             />
           );
         } else {
+          const showBg = item.data.style_options?.showBackground === true;
           return (
-            <div key={`section-${item.id}`} className="bg-card/50 border border-border rounded-lg p-4">
+            <div 
+              key={`section-${item.id}`} 
+              className={showBg ? "bg-card/50 border border-border rounded-lg p-4" : ""}
+            >
               <SectionPreviewContent section={item.data} />
             </div>
           );

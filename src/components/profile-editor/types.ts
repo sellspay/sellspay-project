@@ -32,6 +32,7 @@ export interface SectionStyleOptions {
   backgroundWidth?: 'contained' | 'full';
   colorScheme?: 'white' | 'light' | 'dark' | 'black' | 'highlight';
   sectionHeight?: 'small' | 'medium' | 'large';
+  showBackground?: boolean;  // Whether to show the container background (default: false)
 }
 
 export type FontOption = 
