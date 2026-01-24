@@ -24,14 +24,17 @@ export default function Step3TwoFactor({ userEmail, mfaEnabled, onMfaEnabled }: 
   const sendOtp = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: userEmail,
-        options: {
-          shouldCreateUser: false,
-        },
+      // Get current user to pass userId to edge function
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Call our custom edge function that sends a branded 6-digit code
+      const { data, error } = await supabase.functions.invoke('send-verification-otp', {
+        body: { email: userEmail, userId: user.id },
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       setOtpSent(true);
       toast.success('Verification code sent to your email');
@@ -51,24 +54,17 @@ export default function Step3TwoFactor({ userEmail, mfaEnabled, onMfaEnabled }: 
 
     setVerifying(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: userEmail,
-        token: otpCode,
-        type: 'email',
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Call our custom verify edge function
+      const { data, error } = await supabase.functions.invoke('verify-otp', {
+        body: { userId: user.id, code: otpCode },
       });
 
       if (error) throw error;
-
-      // Update the user's profile to mark MFA as enabled
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ mfa_enabled: true })
-          .eq('user_id', user.id);
-
-        if (updateError) throw updateError;
-      }
+      if (data?.error) throw new Error(data.error);
 
       toast.success('Two-factor authentication enabled!');
       onMfaEnabled();

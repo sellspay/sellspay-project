@@ -47,3 +47,9 @@ verify_jwt = false
 
 [functions.manage-credit-subscription]
 verify_jwt = false
+
+[functions.send-verification-otp]
+verify_jwt = false
+
+[functions.verify-otp]
+verify_jwt = false
