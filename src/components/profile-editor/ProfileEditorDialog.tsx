@@ -414,6 +414,10 @@ export function ProfileEditorDialog({
     },
   }), []);
 
+  // Memoized IDs for SortableContext to prevent unnecessary re-renders
+  const collectionIds = useMemo(() => editorCollections.map((c) => c.id), [editorCollections]);
+  const sectionIds = useMemo(() => sections.map((s) => s.id), [sections]);
+
   useEffect(() => {
     if (open && profileId) {
       fetchAllData();
@@ -551,6 +555,30 @@ export function ProfileEditorDialog({
       setHasChanges(true);
     }
   }, []);
+
+  // Single drag end handler (multiple DndContexts on the same page can conflict)
+  const handleUnifiedDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const activeId = String(active.id);
+      const overId = String(over.id);
+
+      const isCollectionDrag = collectionIds.includes(activeId) && collectionIds.includes(overId);
+      const isSectionDrag = sectionIds.includes(activeId) && sectionIds.includes(overId);
+
+      if (isCollectionDrag) {
+        handleCollectionDragEnd(event);
+        return;
+      }
+
+      if (isSectionDrag) {
+        handleSectionDragEnd(event);
+      }
+    },
+    [collectionIds, sectionIds, handleCollectionDragEnd, handleSectionDragEnd]
+  );
 
   const toggleCollectionVisibility = useCallback((collectionId: string) => {
     setEditorCollections(prev => prev.map((c) => 
@@ -731,10 +759,6 @@ export function ProfileEditorDialog({
     : {};
 
   const hasContent = recentProducts.length > 0 || editorCollections.length > 0 || sections.length > 0;
-
-  // Memoized IDs for SortableContext to prevent unnecessary re-renders
-  const collectionIds = useMemo(() => editorCollections.map((c) => c.id), [editorCollections]);
-  const sectionIds = useMemo(() => sections.map((s) => s.id), [sections]);
 
   return (
     <TooltipProvider>
@@ -948,14 +972,14 @@ export function ProfileEditorDialog({
                             </div>
                           )}
 
-                          {/* Collections - displayed like profile page */}
-                          {editorCollections.length > 0 && (
-                            <DndContext
-                              sensors={sensors}
-                              collisionDetection={closestCenter}
-                              onDragEnd={handleCollectionDragEnd}
-                              measuring={measuringConfig}
-                            >
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleUnifiedDragEnd}
+                            measuring={measuringConfig}
+                          >
+                            {/* Collections - displayed like profile page */}
+                            {editorCollections.length > 0 && (
                               <SortableContext
                                 items={collectionIds}
                                 strategy={verticalListSortingStrategy}
@@ -972,17 +996,10 @@ export function ProfileEditorDialog({
                                   ))}
                                 </div>
                               </SortableContext>
-                            </DndContext>
-                          )}
+                            )}
 
-                          {/* Custom Sections */}
-                          {sections.length > 0 && (
-                            <DndContext
-                              sensors={sensors}
-                              collisionDetection={closestCenter}
-                              onDragEnd={handleSectionDragEnd}
-                              measuring={measuringConfig}
-                            >
+                            {/* Custom Sections */}
+                            {sections.length > 0 && (
                               <SortableContext
                                 items={sectionIds}
                                 strategy={verticalListSortingStrategy}
@@ -1002,8 +1019,8 @@ export function ProfileEditorDialog({
                                   ))}
                                 </div>
                               </SortableContext>
-                            </DndContext>
-                          )}
+                            )}
+                          </DndContext>
 
                           {/* Preview Section */}
                           {previewSection && (
