@@ -331,6 +331,16 @@ export default function Settings() {
     toast.success("Background removed");
   };
 
+  const removeAvatar = () => {
+    setAvatarUrl(null);
+    toast.success("Avatar removed");
+  };
+
+  const removeBanner = () => {
+    setBannerUrl(null);
+    toast.success("Banner removed");
+  };
+
   const saveProfile = async () => {
     if (!user) return;
     
@@ -491,7 +501,7 @@ export default function Settings() {
                     </div>
                   )}
                 </div>
-                <div>
+                <div className="flex flex-col gap-2">
                   <label>
                     <Button variant="outline" asChild className="cursor-pointer" disabled={uploadingAvatar}>
                       <span>
@@ -511,7 +521,18 @@ export default function Settings() {
                       disabled={uploadingAvatar}
                     />
                   </label>
-                  <p className="text-sm text-muted-foreground mt-2">
+                  {avatarUrl && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={removeAvatar}
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Remove
+                    </Button>
+                  )}
+                  <p className="text-sm text-muted-foreground">
                     JPG, PNG or GIF. Max 2MB.
                   </p>
                 </div>
@@ -538,18 +559,29 @@ export default function Settings() {
                       </div>
                     </div>
                   ) : (
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
-                      <span className="text-white text-sm flex items-center gap-2">
-                        <Upload className="w-4 h-4" />
-                        Change Banner
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleBannerChange}
-                        className="hidden"
-                      />
-                    </label>
+                    <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
+                      <label className="cursor-pointer">
+                        <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
+                          <Upload className="w-4 h-4" />
+                          {bannerUrl ? "Change" : "Upload"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleBannerChange}
+                          className="hidden"
+                        />
+                      </label>
+                      {bannerUrl && (
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={removeBanner}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
