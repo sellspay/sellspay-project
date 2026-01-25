@@ -38,49 +38,27 @@ export default function Spotlight() {
   const { data: spotlights = [], isLoading } = useQuery({
     queryKey: ['creator-spotlights'],
     queryFn: async () => {
-      // Get spotlights from the creator_spotlights table only
-      const { data: spotlightsData } = await supabase
-        .from('creator_spotlights')
-        .select(`
-          id,
-          headline,
-          story,
-          achievement,
-          quote,
-          featured_at,
-          profile_id
-        `)
-        .eq('is_active', true)
-        .order('display_order', { ascending: true })
-        .limit(10);
-
-      // If no spotlights exist, return empty array (no fallback)
-      if (!spotlightsData || spotlightsData.length === 0) return [];
-
-      const profileIds = spotlightsData.map(s => s.profile_id);
+      // Use SECURITY DEFINER function to bypass RLS and get spotlight data
+      const { data: spotlightsData, error } = await supabase.rpc('get_active_spotlights' as any);
       
-      // Fetch directly from profiles table (has RLS for public creator access)
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, user_id, username, full_name, avatar_url, verified, bio, is_creator')
-        .in('id', profileIds);
-
-      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+      if (error) {
+        console.error('Spotlight fetch error:', error);
+        return [];
+      }
+      
+      if (!spotlightsData || spotlightsData.length === 0) {
+        return [];
+      }
 
       // Fetch owner roles for these profiles (for Owner badge)
-      const userIds = (profilesData || []).map((p: any) => p.user_id).filter(Boolean);
+      const userIds = spotlightsData.map((s: any) => s.profile_user_id).filter(Boolean);
       const { data: ownerRoles } = userIds.length
         ? await supabase.from('user_roles').select('user_id').eq('role', 'owner').in('user_id', userIds)
         : { data: [] as any[] };
       const adminUserIds = new Set((ownerRoles || []).map((r: any) => r.user_id));
 
       // Get products and followers counts
-      const spotlightsWithData = await Promise.all(spotlightsData.map(async (s) => {
-        const profile = profilesMap.get(s.profile_id);
-        const profileWithAdmin = profile
-          ? { ...profile, isAdmin: adminUserIds.has((profile as any).user_id) }
-          : null;
-        
+      const spotlightsWithData = await Promise.all(spotlightsData.map(async (s: any) => {
         const [productsResult, followersResult] = await Promise.all([
           supabase.from('products').select('id', { count: 'exact', head: true }).eq('creator_id', s.profile_id),
           supabase.from('followers').select('id', { count: 'exact', head: true }).eq('following_id', s.profile_id),
@@ -93,7 +71,16 @@ export default function Spotlight() {
           achievement: s.achievement,
           quote: s.quote,
           featured_at: s.featured_at,
-          profile: (profileWithAdmin as any) || null,
+          profile: {
+            id: s.profile_id,
+            user_id: s.profile_user_id,
+            username: s.profile_username,
+            full_name: s.profile_full_name,
+            avatar_url: s.profile_avatar_url,
+            verified: s.profile_verified,
+            bio: s.profile_bio,
+            isAdmin: adminUserIds.has(s.profile_user_id),
+          },
           products_count: productsResult.count || 0,
           followers_count: followersResult.count || 0,
         };
@@ -225,9 +212,7 @@ export default function Spotlight() {
               </div>
             </Reveal>
 
-            <Reveal delay={100}>
-              <div className="group relative">
-                {/* Glow effect */}
+            <div className="group relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-primary/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                 <div className="relative bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl border border-border/50 rounded-3xl overflow-hidden hover:border-amber-500/30 transition-all duration-500">
@@ -322,8 +307,7 @@ export default function Spotlight() {
                   </div>
                 </div>
               </div>
-            </Reveal>
-          </div>
+            </div>
         </section>
       ) : null}
 

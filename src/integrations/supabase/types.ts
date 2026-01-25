@@ -1798,6 +1798,24 @@ export type Database = {
       }
     }
     Functions: {
+      get_active_spotlights: {
+        Args: never
+        Returns: {
+          achievement: string
+          featured_at: string
+          headline: string
+          id: string
+          profile_avatar_url: string
+          profile_bio: string
+          profile_full_name: string
+          profile_id: string
+          profile_user_id: string
+          profile_username: string
+          profile_verified: boolean
+          quote: string
+          story: string
+        }[]
+      }
       get_email_by_username: { Args: { p_username: string }; Returns: string }
       get_home_stats: {
         Args: never
