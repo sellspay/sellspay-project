@@ -34,6 +34,7 @@ interface ProductCardProps {
   isHot?: boolean;
   size?: 'default' | 'large';
   showCreator?: boolean;
+  createdAt?: string | null;
 }
 
 function getYouTubeThumbnail(youtubeUrl: string | null): string | null {
@@ -82,7 +83,8 @@ export default function ProductCard({
   showEngagement = false,
   isHot = false,
   size = 'default',
-  showCreator = false
+  showCreator = false,
+  createdAt
 }: ProductCardProps) {
   const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
@@ -318,15 +320,25 @@ export default function ProductCard({
             {product.name}
           </h3>
           
-          {/* Creator Username */}
-          {showCreator && creator?.username && (
-            <Link
-              to={`/@${creator.username}`}
-              onClick={(e) => e.stopPropagation()}
-              className="inline-block mt-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              @{creator.username}
-            </Link>
+          {/* Creator Username & Date */}
+          {showCreator && (
+            <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+              {creator?.username && (
+                <Link
+                  to={`/@${creator.username}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:text-primary transition-colors"
+                >
+                  @{creator.username}
+                </Link>
+              )}
+              {creator?.username && createdAt && <span className="opacity-50">•</span>}
+              {createdAt && (
+                <span className="opacity-70">
+                  {new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              )}
+            </div>
           )}
           
           {/* Engagement Stats */}

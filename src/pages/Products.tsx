@@ -34,39 +34,34 @@ interface Product {
   price_cents: number | null;
   currency: string | null;
   tags: string[] | null;
+  created_at: string | null;
+  creator_id: string | null;
 }
 
-const productTypeLabels: Record<string, string> = {
-  preset: "Preset Pack",
-  lut: "LUT Pack",
-  sfx: "Sound Effects",
-  music: "Music",
-  template: "Template",
-  overlay: "Overlay",
-  font: "Font",
-  tutorial: "Tutorial",
-  project_file: "Project File",
-  transition: "Transition Pack",
-  color_grading: "Color Grading",
-  motion_graphics: "Motion Graphics",
-  other: "Other",
-};
+// Product types matching CreateProduct.tsx
+const productTypes = [
+  { value: "preset", label: "Preset Pack", icon: "🎨" },
+  { value: "lut", label: "LUT Pack", icon: "🌈" },
+  { value: "sfx", label: "Sound Effects", icon: "🔊" },
+  { value: "music", label: "Music", icon: "🎵" },
+  { value: "template", label: "Template", icon: "📐" },
+  { value: "overlay", label: "Overlay", icon: "✨" },
+  { value: "font", label: "Font", icon: "🔤" },
+  { value: "tutorial", label: "Tutorial", icon: "📚" },
+  { value: "project_file", label: "Project File", icon: "📁" },
+  { value: "transition", label: "Transition Pack", icon: "🎬" },
+  { value: "color_grading", label: "Color Grading", icon: "🎭" },
+  { value: "motion_graphics", label: "Motion Graphics", icon: "🎪" },
+  { value: "other", label: "Other", icon: "📦" },
+];
 
-const productTypeIcons: Record<string, string> = {
-  preset: "🎨",
-  lut: "🌈",
-  sfx: "🔊",
-  music: "🎵",
-  template: "📐",
-  overlay: "✨",
-  font: "🔤",
-  tutorial: "📚",
-  project_file: "📁",
-  transition: "🎬",
-  color_grading: "🎭",
-  motion_graphics: "🎪",
-  other: "📦",
-};
+const productTypeLabels: Record<string, string> = Object.fromEntries(
+  productTypes.map(t => [t.value, t.label])
+);
+
+const productTypeIcons: Record<string, string> = Object.fromEntries(
+  productTypes.map(t => [t.value, t.icon])
+);
 
 // Floating orb component
 const FloatingOrb = ({ className, delay = 0 }: { className?: string; delay?: number }) => (
@@ -99,7 +94,7 @@ export default function Products() {
     async function fetchProducts() {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, status, product_type, featured, cover_image_url, preview_video_url, youtube_url, pricing_type, price_cents, currency, tags')
+        .select('id, name, description, status, product_type, featured, cover_image_url, preview_video_url, youtube_url, pricing_type, price_cents, currency, tags, created_at, creator_id')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
 
@@ -275,9 +270,8 @@ export default function Products() {
             >
               All Products
             </button>
-            {Object.entries(productTypeLabels).map(([value, label]) => {
+            {productTypes.map(({ value, label, icon }) => {
               const count = productTypeCounts[value] || 0;
-              if (count === 0) return null;
               return (
                 <button
                   key={value}
@@ -288,9 +282,9 @@ export default function Products() {
                       : 'bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground border border-white/10'
                   }`}
                 >
-                  <span>{productTypeIcons[value]}</span>
+                  <span>{icon}</span>
                   {label}
-                  <span className="text-xs opacity-60">({count})</span>
+                  {count > 0 && <span className="text-xs opacity-60">({count})</span>}
                 </button>
               );
             })}
@@ -445,6 +439,8 @@ export default function Products() {
                       product={product} 
                       showFeaturedBadge={true} 
                       showType={true}
+                      showCreator={true}
+                      createdAt={product.created_at}
                       size={gridSize === 'large' ? 'large' : 'default'}
                     />
                   </motion.div>
