@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Upload, X, Loader2, Trash2, ArrowLeft } from "lucide-react";
+import { Upload, X, Loader2, Trash2, ArrowLeft, Camera, Check, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,8 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
+import VideoTrimmer from "@/components/product/VideoTrimmer";
+import VideoFrameSelector from "@/components/product/VideoFrameSelector";
 
 const productTypes = [
   { value: "preset", label: "Preset Pack" },
@@ -106,6 +108,19 @@ export default function EditProduct() {
   // Track which existing attachments to remove
   const [removeCover, setRemoveCover] = useState(false);
   const [removePreviewVideo, setRemovePreviewVideo] = useState(false);
+  
+  // Video trimmer and frame selector states
+  const [showTrimmer, setShowTrimmer] = useState(false);
+  const [trimStart, setTrimStart] = useState<number | null>(null);
+  const [trimEnd, setTrimEnd] = useState<number | null>(null);
+  const [showFrameSelector, setShowFrameSelector] = useState(false);
+  
+  // Publishing overlay states
+  const [publishingStep, setPublishingStep] = useState(0);
+  
+  // Drag and drop refs
+  const fileDropRef = useRef<HTMLDivElement>(null);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const [attachmentsToRemove, setAttachmentsToRemove] = useState<string[]>([]);
 
   useEffect(() => {
@@ -209,6 +224,9 @@ export default function EditProduct() {
       setPreviewVideo(file);
       setPreviewVideoPreview(URL.createObjectURL(file));
       setRemovePreviewVideo(false);
+      setShowTrimmer(true);
+      setTrimStart(null);
+      setTrimEnd(null);
     }
   };
 
@@ -218,6 +236,101 @@ export default function EditProduct() {
       setNewDownloadFiles(prev => [...prev, ...Array.from(files)]);
     }
     e.target.value = '';
+  };
+  
+  // Video trim handler
+  const handleTrimConfirm = (start: number, end: number) => {
+    setTrimStart(start);
+    setTrimEnd(end);
+    setShowTrimmer(false);
+    toast.success(`Preview clip set: ${start.toFixed(1)}s - ${end.toFixed(1)}s`);
+  };
+  
+  // Frame selector handler
+  const handleFrameSelect = (blob: Blob, dataUrl: string) => {
+    const file = new File([blob], `cover-frame-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    setCoverImage(file);
+    setCoverPreview(dataUrl);
+    setRemoveCover(false);
+    setShowFrameSelector(false);
+    toast.success("Cover image set from video frame");
+  };
+  
+  // Drag and drop for files/folders
+  const getFilesFromDataTransferItems = async (items: DataTransferItemList): Promise<File[]> => {
+    const files: File[] = [];
+    
+    const traverseDirectory = async (entry: FileSystemEntry): Promise<void> => {
+      if (entry.isFile) {
+        const fileEntry = entry as FileSystemFileEntry;
+        return new Promise((resolve) => {
+          fileEntry.file((file) => {
+            files.push(file);
+            resolve();
+          });
+        });
+      } else if (entry.isDirectory) {
+        const dirEntry = entry as FileSystemDirectoryEntry;
+        const reader = dirEntry.createReader();
+        return new Promise((resolve) => {
+          const readEntries = () => {
+            reader.readEntries(async (entries) => {
+              if (entries.length === 0) {
+                resolve();
+              } else {
+                for (const entry of entries) {
+                  await traverseDirectory(entry);
+                }
+                readEntries();
+              }
+            });
+          };
+          readEntries();
+        });
+      }
+    };
+    
+    const entries: FileSystemEntry[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.webkitGetAsEntry) {
+        const entry = item.webkitGetAsEntry();
+        if (entry) entries.push(entry);
+      }
+    }
+    
+    for (const entry of entries) {
+      await traverseDirectory(entry);
+    }
+    
+    return files;
+  };
+  
+  const handleFileDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFiles(false);
+    
+    const items = e.dataTransfer.items;
+    if (items && items.length > 0) {
+      const files = await getFilesFromDataTransferItems(items);
+      if (files.length > 0) {
+        setNewDownloadFiles(prev => [...prev, ...files]);
+        toast.success(`Added ${files.length} file${files.length > 1 ? 's' : ''}`);
+      }
+    }
+  };
+  
+  const handleFileDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFiles(true);
+  };
+  
+  const handleFileDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFiles(false);
   };
 
   const removeNewDownloadFile = (index: number) => {
@@ -295,6 +408,7 @@ export default function EditProduct() {
     }
 
     setSaving(true);
+    if (publish) setPublishingStep(0);
 
     try {
       // Get user's profile
@@ -310,6 +424,8 @@ export default function EditProduct() {
       let previewVideoPath: string | null = existingPreviewVideoPath;
       let downloadUrl: string | null = existingDownloadUrl;
 
+      if (publish) setPublishingStep(1); // Uploading media
+      
       // Handle cover image
       if (removeCover) {
         coverImageUrl = null;
@@ -348,6 +464,8 @@ export default function EditProduct() {
         }
       }
 
+      if (publish) setPublishingStep(2); // Processing files
+      
       // Handle attachments - combine existing (minus removed) with new uploads
       let finalAttachments: { name: string; path: string; size: number }[] = [];
       
@@ -372,6 +490,8 @@ export default function EditProduct() {
           size: file.size,
         });
       }
+      
+      if (publish) setPublishingStep(3); // Verifying content
       
       // For backward compatibility, set download_url and original_filename to first attachment
       let downloadUrlValue: string | null = null;
@@ -398,6 +518,8 @@ export default function EditProduct() {
         }
       }
 
+      if (publish) setPublishingStep(4); // Updating product
+      
       // Update product
       const priceCents = (pricingType === "free" || pricingType === "subscription") ? 0 : Math.round(parseFloat(price) * 100);
       
@@ -432,6 +554,11 @@ export default function EditProduct() {
 
       if (error) throw error;
 
+      if (publish) {
+        setPublishingStep(5); // Done!
+        await new Promise(resolve => setTimeout(resolve, 1200));
+      }
+      
       toast.success(publish ? "Product published!" : "Changes saved!");
       navigate(slug ? `/p/${slug}` : `/product/${id}`);
     } catch (error) {
@@ -464,8 +591,57 @@ export default function EditProduct() {
     );
   }
 
+  // Publishing overlay component
+  const PublishingOverlay = () => {
+    const steps = [
+      { label: "Uploading media", icon: "📤" },
+      { label: "Processing files", icon: "⚙️" },
+      { label: "Verifying content", icon: "✅" },
+      { label: "Updating product", icon: "🎨" },
+      { label: "Finalizing", icon: "🚀" },
+      { label: "Done!", icon: "🎉" },
+    ];
+    
+    const progress = ((publishingStep + 1) / steps.length) * 100;
+    
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-md">
+        <div className="w-full max-w-md mx-4 text-center">
+          <div className="mb-8">
+            <div className="text-6xl mb-4 animate-bounce">{steps[publishingStep]?.icon}</div>
+            <h2 className="text-2xl font-bold mb-2">{steps[publishingStep]?.label}</h2>
+            <p className="text-muted-foreground">Please wait...</p>
+          </div>
+          
+          <div className="relative h-2 bg-secondary rounded-full overflow-hidden mb-4">
+            <div 
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-accent transition-all duration-500 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          
+          <p className="text-sm text-muted-foreground">{Math.round(progress)}% complete</p>
+          
+          <div className="mt-6 flex justify-center gap-2">
+            {steps.map((step, i) => (
+              <div
+                key={i}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  i <= publishingStep ? 'bg-primary' : 'bg-secondary'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={`container mx-auto px-4 py-8 max-w-3xl transition-all duration-500 ${isDeleted ? 'opacity-0 scale-95 translate-y-4' : 'opacity-100 scale-100'}`}>
+      {/* Publishing overlay */}
+      {saving && publishingStep >= 0 && <PublishingOverlay />}
+      
       {/* Deletion overlay */}
       {isDeleted && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
@@ -667,7 +843,16 @@ export default function EditProduct() {
             {/* Cover Image */}
             <div>
               <Label>Cover Image</Label>
-              <div className="mt-2">
+              <div className="mt-2 space-y-3">
+                {/* Frame selector from video */}
+                {showFrameSelector && (previewVideoPreview || existingPreviewVideoPath) && (
+                  <VideoFrameSelector
+                    videoSrc={previewVideoPreview || getPreviewVideoUrl(existingPreviewVideoPath) || ''}
+                    onFrameSelect={handleFrameSelect}
+                    onCancel={() => setShowFrameSelector(false)}
+                  />
+                )}
+                
                 {coverPreview ? (
                   <div className="relative">
                     <img
@@ -730,6 +915,19 @@ export default function EditProduct() {
                     />
                   </label>
                 )}
+                
+                {/* Option to select frame from video */}
+                {!showFrameSelector && (previewVideoPreview || (existingPreviewVideoPath && !removePreviewVideo)) && !coverPreview && (existingCoverUrl ? removeCover : true) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowFrameSelector(true)}
+                    className="w-full"
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    Select frame from preview video
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -739,7 +937,17 @@ export default function EditProduct() {
               <p className="text-xs text-muted-foreground mb-2">
                 Short video clip that plays when hovering over your product card
               </p>
-              <div className="mt-2">
+              <div className="mt-2 space-y-3">
+                {/* Video Trimmer */}
+                {showTrimmer && previewVideoPreview && (
+                  <VideoTrimmer
+                    videoSrc={previewVideoPreview}
+                    onTrimConfirm={handleTrimConfirm}
+                    maxDuration={5}
+                    minDuration={1}
+                  />
+                )}
+                
                 {previewVideoPreview ? (
                   <div className="relative">
                     <video
@@ -756,10 +964,34 @@ export default function EditProduct() {
                       onClick={() => {
                         setPreviewVideo(null);
                         setPreviewVideoPreview(null);
+                        setShowTrimmer(false);
+                        setTrimStart(null);
+                        setTrimEnd(null);
                       }}
                     >
                       <X className="w-4 h-4" />
                     </Button>
+                    
+                    {/* Show trim info if trimmed */}
+                    {trimStart !== null && trimEnd !== null && !showTrimmer && (
+                      <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-primary/90 text-primary-foreground text-xs font-medium flex items-center gap-1">
+                        <Check className="w-3 h-3" />
+                        Clip: {trimStart.toFixed(1)}s - {trimEnd.toFixed(1)}s
+                      </div>
+                    )}
+                    
+                    {/* Re-trim button */}
+                    {!showTrimmer && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="absolute bottom-2 right-2"
+                        onClick={() => setShowTrimmer(true)}
+                      >
+                        Edit Clip
+                      </Button>
+                    )}
                   </div>
                 ) : existingPreviewVideoPath && !removePreviewVideo ? (
                   <div className="relative">
@@ -822,7 +1054,7 @@ export default function EditProduct() {
               />
             </div>
 
-            {/* Product Files - Multiple */}
+            {/* Product Files - Multiple with Drag & Drop */}
             <div>
               <Label>Product Files</Label>
               <p className="text-xs text-muted-foreground mb-2">
@@ -877,22 +1109,49 @@ export default function EditProduct() {
                   </div>
                 )}
                 
-                {/* Upload button - always visible to add more files */}
-                <label className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-                  <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                  <span className="text-sm text-muted-foreground">
-                    {(getVisibleExistingAttachments().length > 0 || newDownloadFiles.length > 0) ? 'Add more files' : 'Click to upload product files'}
-                  </span>
-                  <span className="text-xs text-muted-foreground mt-1">
-                    ZIP, RAR, 7z, PDF, source files, and more
-                  </span>
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleDownloadChange}
-                    className="hidden"
-                  />
-                </label>
+                {/* Drop zone with drag & drop support */}
+                <div
+                  ref={fileDropRef}
+                  onDrop={handleFileDrop}
+                  onDragOver={handleFileDragOver}
+                  onDragLeave={handleFileDragLeave}
+                  className={`relative transition-all duration-200 ${
+                    isDraggingFiles 
+                      ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' 
+                      : ''
+                  }`}
+                >
+                  <label className={`flex flex-col items-center justify-center w-full py-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                    isDraggingFiles 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-border/50 hover:border-primary/50'
+                  }`}>
+                    {isDraggingFiles ? (
+                      <>
+                        <FolderOpen className="w-10 h-10 text-primary mb-2 animate-pulse" />
+                        <span className="text-sm font-medium text-primary">
+                          Drop files or folders here
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                        <span className="text-sm text-muted-foreground">
+                          {(getVisibleExistingAttachments().length > 0 || newDownloadFiles.length > 0) ? 'Add more files' : 'Click or drag files/folders here'}
+                        </span>
+                        <span className="text-xs text-muted-foreground mt-1">
+                          ZIP, RAR, 7z, PDF, source files, and more
+                        </span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleDownloadChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
             </div>
           </CardContent>
