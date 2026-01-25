@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { User, Bell, Shield, CreditCard, LogOut, Upload, Loader2, CheckCircle, ExternalLink, RefreshCw, Link2, Plus, X, AlertTriangle, Mail } from "lucide-react";
+import { User, Bell, Shield, CreditCard, LogOut, Upload, Loader2, CheckCircle, ExternalLink, RefreshCw, Link2, Plus, X, AlertTriangle, Mail, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +37,7 @@ import {
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { SellerEmailSettings } from "@/components/settings/SellerEmailSettings";
 import { PayoutMethodSelector } from "@/components/settings/PayoutMethodSelector";
+import BannerPositionEditor from "@/components/settings/BannerPositionEditor";
 
 // Social platform detection
 const detectSocialPlatform = (url: string): { platform: string; icon: React.ReactNode } | null => {
@@ -115,6 +116,9 @@ export default function Settings() {
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [bannerPositionY, setBannerPositionY] = useState<number>(50);
+  const [showBannerPositionEditor, setShowBannerPositionEditor] = useState(false);
+  const [pendingBannerUrl, setPendingBannerUrl] = useState<string | null>(null);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
   
   // Stripe Connect status
@@ -641,13 +645,37 @@ export default function Settings() {
         .from("product-media")
         .getPublicUrl(path);
 
-      setBannerUrl(publicUrl.publicUrl);
-      toast.success("Banner uploaded!");
+      // Show position editor after upload
+      setPendingBannerUrl(publicUrl.publicUrl);
+      setShowBannerPositionEditor(true);
+      toast.success("Banner uploaded! Now position it.");
     } catch (error) {
       console.error("Error uploading banner:", error);
       toast.error("Failed to upload banner");
     } finally {
       setUploadingBanner(false);
+    }
+  };
+  
+  const handleBannerPositionConfirm = (positionY: number) => {
+    setBannerPositionY(positionY);
+    if (pendingBannerUrl) {
+      setBannerUrl(pendingBannerUrl);
+      setPendingBannerUrl(null);
+    }
+    setShowBannerPositionEditor(false);
+    toast.success("Banner position saved!");
+  };
+  
+  const handleBannerPositionCancel = () => {
+    setPendingBannerUrl(null);
+    setShowBannerPositionEditor(false);
+  };
+  
+  const handleEditBannerPosition = () => {
+    if (bannerUrl) {
+      setPendingBannerUrl(bannerUrl);
+      setShowBannerPositionEditor(true);
     }
   };
 
@@ -934,52 +962,86 @@ export default function Settings() {
               {/* Banner Upload */}
               <div>
                 <Label className="mb-2 block">Profile Banner</Label>
-                <div className="relative rounded-lg overflow-hidden border border-border">
-                  {bannerUrl ? (
-                    <img
-                      src={bannerUrl}
-                      alt="Profile banner"
-                      className="w-full h-24 object-cover"
+                
+                {/* Banner Position Editor Dialog */}
+                {showBannerPositionEditor && pendingBannerUrl && (
+                  <div className="mb-4 p-4 rounded-lg border border-primary/30 bg-card">
+                    <BannerPositionEditor
+                      imageUrl={pendingBannerUrl}
+                      onConfirm={handleBannerPositionConfirm}
+                      onCancel={handleBannerPositionCancel}
+                      initialPositionY={bannerPositionY}
                     />
-                  ) : (
-                    <div className="w-full h-24 bg-gradient-to-br from-primary/40 to-accent/30" />
-                  )}
-                  {uploadingBanner ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                      <div className="flex items-center gap-2 text-primary">
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span className="text-sm">Uploading...</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
-                      <label className="cursor-pointer">
-                        <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
-                          <Upload className="w-4 h-4" />
-                          {bannerUrl ? "Change" : "Upload"}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleBannerChange}
-                          className="hidden"
-                        />
-                      </label>
-                      {bannerUrl && (
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={removeBanner}
-                        >
-                          Remove
-                        </Button>
+                  </div>
+                )}
+                
+                {!showBannerPositionEditor && (
+                  <>
+                    <div className="relative rounded-lg overflow-hidden border border-border">
+                      {bannerUrl ? (
+                        <div className="relative w-full h-24 overflow-hidden">
+                          <img
+                            src={bannerUrl}
+                            alt="Profile banner"
+                            className="absolute w-full"
+                            style={{
+                              transform: `translateY(${bannerPositionY - 50}%)`,
+                              top: '50%',
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-24 bg-gradient-to-br from-primary/40 to-accent/30" />
+                      )}
+                      {uploadingBanner ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                          <div className="flex items-center gap-2 text-primary">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span className="text-sm">Uploading...</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
+                          <label className="cursor-pointer">
+                            <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
+                              <Upload className="w-4 h-4" />
+                              {bannerUrl ? "Change" : "Upload"}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleBannerChange}
+                              className="hidden"
+                            />
+                          </label>
+                          {bannerUrl && (
+                            <>
+                              <Button 
+                                variant="secondary" 
+                                size="sm"
+                                onClick={handleEditBannerPosition}
+                                className="text-white bg-white/20 hover:bg-white/30"
+                              >
+                                <Move className="w-4 h-4 mr-1" />
+                                Reposition
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={removeBanner}
+                              >
+                                Remove
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Recommended: 1920x1080px (16:9 aspect ratio). JPG, PNG or GIF.
-                </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Recommended: 2560x1440px. Upload and drag to position the visible area.
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Profile Background (Steam-style) */}
