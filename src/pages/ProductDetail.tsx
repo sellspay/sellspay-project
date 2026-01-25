@@ -560,11 +560,12 @@ export default function ProductDetail() {
         };
 
         // Helper function to fetch profile from public_identities view
-        const fetchPublicIdentity = async (userId: string): Promise<ProfileIdentity | null> => {
+        // Note: comments store auth user_id, so we need to query by user_id column, not id (profile id)
+        const fetchPublicIdentity = async (authUserId: string): Promise<ProfileIdentity | null> => {
           const { data } = await supabase
             .from("public_identities" as any)
             .select("id, username, full_name, avatar_url, verified")
-            .eq("id", userId)
+            .eq("user_id", authUserId)
             .maybeSingle();
           return data as unknown as ProfileIdentity | null;
         };
