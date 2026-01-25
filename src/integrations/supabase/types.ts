@@ -153,6 +153,7 @@ export type Database = {
           created_at: string
           gif_url: string | null
           id: string
+          is_pinned: boolean | null
           parent_comment_id: string | null
           product_id: string
           updated_at: string
@@ -163,6 +164,7 @@ export type Database = {
           created_at?: string
           gif_url?: string | null
           id?: string
+          is_pinned?: boolean | null
           parent_comment_id?: string | null
           product_id: string
           updated_at?: string
@@ -173,6 +175,7 @@ export type Database = {
           created_at?: string
           gif_url?: string | null
           id?: string
+          is_pinned?: boolean | null
           parent_comment_id?: string | null
           product_id?: string
           updated_at?: string
