@@ -283,13 +283,22 @@ export default function ProductDetail() {
       if (!productId) return;
 
       try {
-        // Check if product is truly subscription-only
-        // Only set true if explicitly subscription_only pricing OR subscription_access is subscription_only
-        // Products with pricing_type='free' or subscription_access='both' should NOT be flagged
+        // Check if product should be treated as subscription-only
+        // True if:
+        // 1. Explicitly subscription_only pricing type
+        // 2. subscription_access is subscription_only  
+        // 3. pricing_type is 'paid' but has no valid price (< $4.99 minimum)
+        //    AND has subscription_access (meaning subscription is the only valid purchase path)
         const isExplicitlySubscriptionOnly = 
           product?.pricing_type === 'subscription_only' || 
           product?.subscription_access === 'subscription_only';
-        setIsSubscriptionOnly(isExplicitlySubscriptionOnly);
+        
+        // Products with 'both' access but no valid direct price should be treated as subscription-only
+        const hasBothAccessButNoPrice = 
+          product?.subscription_access === 'both' && 
+          (!product?.price_cents || product.price_cents < 499);
+        
+        setIsSubscriptionOnly(isExplicitlySubscriptionOnly || hasBothAccessButNoPrice);
 
         // Fetch all plans that include this product with their benefits
         const { data: planProducts, error } = await supabase
