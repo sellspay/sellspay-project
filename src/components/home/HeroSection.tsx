@@ -43,8 +43,11 @@ export default function HeroSection() {
       <div className="absolute bottom-20 left-[20%] w-2 h-2 bg-accent/60 rounded-full animate-bounce opacity-30 z-10" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }} />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
-        <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
-          {/* Main headline */}
+      <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+          {/* Brand name for Google verification */}
+          <span className="text-sm font-medium text-primary/80 tracking-widest uppercase mb-4">
+            EditorsParadise
+          </span>
 
           {/* Main headline */}
           <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-6">
