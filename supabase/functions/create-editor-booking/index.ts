@@ -140,19 +140,33 @@ serve(async (req) => {
     // Get editor's profile with subscription tier
     const { data: editorProfile, error: editorError } = await supabaseClient
       .from("profiles")
-      .select("stripe_account_id, stripe_onboarding_complete, full_name, username, subscription_tier")
+      .select("id, user_id, full_name, username, subscription_tier")
       .eq("id", editorId)
       .single();
 
-    if (editorError) {
+    if (editorError || !editorProfile) {
       return new Response(
-        JSON.stringify({ error: `Failed to fetch editor profile: ${editorError.message}` }),
+        JSON.stringify({ error: `Failed to fetch editor profile: ${editorError?.message || 'Not found'}` }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // Get editor's seller config from private schema
+    const { data: sellerConfig, error: configError } = await supabaseClient.rpc(
+      "get_seller_config",
+      { p_user_id: editorProfile.user_id }
+    );
+
+    if (configError) {
+      logStep("Error getting seller config", { error: configError.message });
+    }
+
+    // Extract Stripe info from seller config
+    const stripeAccountId = sellerConfig?.[0]?.stripe_account_id || null;
+    const stripeOnboardingComplete = sellerConfig?.[0]?.stripe_onboarding_complete || false;
+
     // Verify editor has completed Stripe onboarding
-    if (!editorProfile?.stripe_account_id || !editorProfile?.stripe_onboarding_complete) {
+    if (!stripeAccountId || !stripeOnboardingComplete) {
       return new Response(
         JSON.stringify({ error: "Editor has not completed Stripe onboarding" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -166,8 +180,8 @@ serve(async (req) => {
       : DEFAULT_FEE_RATE;
 
     logStep("Editor profile fetched", { 
-      hasStripeAccount: !!editorProfile?.stripe_account_id,
-      onboardingComplete: editorProfile?.stripe_onboarding_complete,
+      hasStripeAccount: !!stripeAccountId,
+      onboardingComplete: stripeOnboardingComplete,
       subscriptionTier: editorTier,
       platformFeeRate: `${platformFeeRate * 100}%`
     });
@@ -242,7 +256,7 @@ serve(async (req) => {
       payment_intent_data: {
         application_fee_amount: totalApplicationFee,
         transfer_data: {
-          destination: editorProfile.stripe_account_id,
+          destination: stripeAccountId,
         },
       },
       success_url: `${origin}/dashboard?booking=success`,
