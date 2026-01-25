@@ -351,6 +351,13 @@ export type Database = {
             foreignKeyName: "creator_subscription_plans_creator_id_fkey"
             columns: ["creator_id"]
             isOneToOne: false
+            referencedRelation: "public_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_subscription_plans_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
@@ -675,6 +682,13 @@ export type Database = {
             foreignKeyName: "platform_updates_author_id_fkey"
             columns: ["author_id"]
             isOneToOne: false
+            referencedRelation: "public_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_updates_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
@@ -894,6 +908,13 @@ export type Database = {
             foreignKeyName: "profile_sections_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
+            referencedRelation: "public_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_sections_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
@@ -1101,6 +1122,13 @@ export type Database = {
             foreignKeyName: "purchases_buyer_id_fkey"
             columns: ["buyer_id"]
             isOneToOne: false
+            referencedRelation: "public_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
@@ -1246,6 +1274,13 @@ export type Database = {
             foreignKeyName: "support_messages_customer_profile_id_fkey"
             columns: ["customer_profile_id"]
             isOneToOne: false
+            referencedRelation: "public_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_customer_profile_id_fkey"
+            columns: ["customer_profile_id"]
+            isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
@@ -1261,6 +1296,13 @@ export type Database = {
             columns: ["seller_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_seller_profile_id_fkey"
+            columns: ["seller_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_identities"
             referencedColumns: ["id"]
           },
           {
@@ -1559,6 +1601,39 @@ export type Database = {
       }
     }
     Views: {
+      public_identities: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string | null
+          is_creator: boolean | null
+          is_editor: boolean | null
+          user_id: string | null
+          username: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_creator?: boolean | null
+          is_editor?: boolean | null
+          user_id?: string | null
+          username?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_creator?: boolean | null
+          is_editor?: boolean | null
+          user_id?: string | null
+          username?: string | null
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       public_profiles: {
         Row: {
           avatar_url: string | null
