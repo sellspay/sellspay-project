@@ -113,7 +113,6 @@ export default function Settings() {
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
-  const [website, setWebsite] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
@@ -198,7 +197,6 @@ export default function Settings() {
         setUsername(data.username || "");
         setOriginalUsername(data.username || "");
         setBio(data.bio || "");
-        setWebsite(data.website || "");
         setAvatarUrl(data.avatar_url);
         setBannerUrl((data as Record<string, unknown>).banner_url as string | null);
         setBackgroundUrl((data as Record<string, unknown>).background_url as string | null);
@@ -723,7 +721,6 @@ export default function Settings() {
         full_name: fullName,
         username,
         bio,
-        website,
         avatar_url: avatarUrl,
         banner_url: bannerUrl,
         background_url: backgroundUrl,
@@ -1085,17 +1082,6 @@ export default function Settings() {
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="Tell us about yourself..."
                   rows={4}
-                  className="mt-2"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="website">Website</Label>
-                <Input
-                  id="website"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://yourwebsite.com"
                   className="mt-2"
                 />
               </div>
