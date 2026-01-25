@@ -28,7 +28,8 @@ export default function Login() {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
-  const [checkingMfa, setCheckingMfa] = useState(false); // Prevents redirect during MFA check
+  const [checkingMfa, setCheckingMfa] = useState(false);
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
 
   useEffect(() => {
     // Only redirect if user is logged in AND not in MFA verification flow AND not currently checking MFA
@@ -109,11 +110,16 @@ export default function Login() {
   const sendMfaCode = async (userId: string, email: string) => {
     setSendingOtp(true);
     try {
-      const { error } = await supabase.functions.invoke("send-verification-otp", {
+      const { data, error } = await supabase.functions.invoke("send-verification-otp", {
         body: { email, userId }
       });
       
       if (error) throw error;
+      
+      // Store the verification token (stateless - no DB storage)
+      if (data?.verificationToken) {
+        setVerificationToken(data.verificationToken);
+      }
       
       setOtpSent(true);
       toast.success('Verification code sent to your email.');
@@ -126,14 +132,24 @@ export default function Login() {
   };
 
   const handleMfaVerify = async () => {
-    if (!mfaUserId || !otpCode || otpCode.length !== 6) return;
+    if (!mfaUserId || !otpCode || otpCode.length !== 6 || !verificationToken) {
+      if (!verificationToken) {
+        toast.error('Please request a new verification code');
+      }
+      return;
+    }
     
     setVerifyingOtp(true);
     setError(null);
     
     try {
       const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { userId: mfaUserId, code: otpCode, purpose: 'login' }
+        body: { 
+          userId: mfaUserId, 
+          code: otpCode, 
+          verificationToken,
+          purpose: 'login' 
+        }
       });
       
       if (error) throw new Error(error.message || 'Verification failed');
@@ -154,7 +170,7 @@ export default function Login() {
       if (signInError) throw signInError;
       
       toast.success('Successfully verified!');
-      // Redirect will be handled by useEffect
+      setVerificationToken(null); // Clear the token
       setShowMfaVerification(false);
     } catch (error) {
       console.error('Error verifying OTP:', error);
@@ -177,6 +193,7 @@ export default function Login() {
     setMfaEmail(null);
     setOtpCode('');
     setOtpSent(false);
+    setVerificationToken(null);
     setError(null);
   };
 

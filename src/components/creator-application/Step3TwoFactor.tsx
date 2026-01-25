@@ -21,21 +21,25 @@ export default function Step3TwoFactor({ userEmail, mfaEnabled, onMfaEnabled, ot
   const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
 
   const sendOtp = async () => {
     setLoading(true);
     try {
-      // Get current user to pass userId to edge function
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Call our custom edge function that sends a branded 6-digit code
       const { data, error } = await supabase.functions.invoke('send-verification-otp', {
         body: { email: userEmail, userId: user.id },
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
+      // Store the verification token (stateless - no DB storage)
+      if (data?.verificationToken) {
+        setVerificationToken(data.verificationToken);
+      }
 
       onOtpSent();
       toast.success('Verification code sent to your email');
@@ -53,21 +57,31 @@ export default function Step3TwoFactor({ userEmail, mfaEnabled, onMfaEnabled, ot
       return;
     }
 
+    if (!verificationToken) {
+      toast.error('Please request a new verification code');
+      return;
+    }
+
     setVerifying(true);
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Call our custom verify edge function
+      // Pass the verification token for stateless verification
       const { data, error } = await supabase.functions.invoke('verify-otp', {
-        body: { userId: user.id, code: otpCode },
+        body: { 
+          userId: user.id, 
+          code: otpCode,
+          verificationToken,
+          purpose: 'enable_mfa'
+        },
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       toast.success('Two-factor authentication enabled!');
+      setVerificationToken(null); // Clear the token
       onMfaEnabled();
     } catch (err: any) {
       console.error('Verify error:', err);
