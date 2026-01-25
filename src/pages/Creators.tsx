@@ -160,22 +160,39 @@ export default function Creators() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredCreators.map((creator) => (
-                  <Link
-                    key={creator.id}
-                    to={`/@${creator.username || creator.id}`}
-                    className="group p-6 rounded-2xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
-                  >
+                <Link
+                  key={creator.id}
+                  to={`/@${creator.username || creator.id}`}
+                  className="group relative overflow-hidden rounded-2xl transition-all duration-500 hover:scale-[1.02]"
+                >
+                  {/* Glossy gradient border */}
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/40 via-violet-500/30 to-fuchsia-500/40 p-[1px]">
+                    <div className="absolute inset-[1px] rounded-2xl bg-card" />
+                  </div>
+                  
+                  {/* Glossy shine overlay */}
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                  
+                  {/* Glass reflection stripe */}
+                  <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/5 to-transparent rounded-t-2xl pointer-events-none" />
+                  
+                  {/* Content */}
+                  <div className="relative p-6 backdrop-blur-sm">
                     <div className="flex flex-col items-center text-center">
-                      <Avatar className="w-20 h-20 mb-4 ring-2 ring-border/50 group-hover:ring-primary/30 transition-all">
-                        <AvatarImage src={creator.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-xl font-medium">
-                          {(creator.username || 'C').charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      {/* Avatar with glow */}
+                      <div className="relative mb-4">
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/50 to-violet-500/50 blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-150" />
+                        <Avatar className="relative w-20 h-20 ring-2 ring-white/10 group-hover:ring-primary/50 transition-all duration-300 shadow-lg shadow-black/20">
+                          <AvatarImage src={creator.avatar_url || undefined} className="object-cover" />
+                          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-violet-500/20 text-primary text-xl font-medium">
+                            {(creator.username || 'C').charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
                       
                       {/* Name with verified badge */}
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <h3 className="font-semibold text-foreground group-hover:text-foreground/80 transition-colors">
+                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors duration-300">
                           {creator.full_name || creator.username || 'Creator'}
                         </h3>
                         {creator.verified && (
@@ -184,7 +201,7 @@ export default function Creators() {
                       </div>
                       
                       {/* Username */}
-                      <p className="text-sm text-primary mb-2">
+                      <p className="text-sm bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent font-medium mb-2">
                         @{creator.username || 'creator'}
                       </p>
                       
@@ -196,48 +213,55 @@ export default function Creators() {
                       )}
                       {!creator.bio && <div className="mb-4 min-h-[2rem]" />}
                       
-                      {/* Stats row with icons */}
-                      <div className="flex items-center justify-center gap-5 text-xs text-muted-foreground w-full py-3 border-t border-border/50">
+                      {/* Stats row with glass effect */}
+                      <div className="flex items-center justify-center gap-4 text-xs w-full py-3 px-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors">
                               <Package className="w-3.5 h-3.5" />
-                              <span className="font-medium">{creator.productCount}</span>
+                              <span className="font-semibold">{creator.productCount}</span>
                             </div>
                           </TooltipTrigger>
                           <TooltipContent><p>Products</p></TooltipContent>
                         </Tooltip>
                         
+                        <div className="w-px h-3 bg-white/10" />
+                        
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors">
                               <Users className="w-3.5 h-3.5" />
-                              <span className="font-medium">{creator.followersCount}</span>
+                              <span className="font-semibold">{creator.followersCount}</span>
                             </div>
                           </TooltipTrigger>
                           <TooltipContent><p>Followers</p></TooltipContent>
                         </Tooltip>
                         
+                        <div className="w-px h-3 bg-white/10" />
+                        
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors">
                               <UserPlus className="w-3.5 h-3.5" />
-                              <span className="font-medium">{creator.followingCount}</span>
+                              <span className="font-semibold">{creator.followingCount}</span>
                             </div>
                           </TooltipTrigger>
                           <TooltipContent><p>Following</p></TooltipContent>
                         </Tooltip>
                       </div>
                       
-                      {/* Owner badge - only show for owner */}
+                      {/* Owner badge - premium style */}
                       {creator.isOwner && (
-                        <Badge variant="outline" className="mt-3 text-xs text-muted-foreground border-muted-foreground/30">
-                          Owner
-                        </Badge>
+                        <div className="mt-3 px-3 py-1 rounded-full bg-gradient-to-r from-primary/20 to-violet-500/20 border border-primary/30">
+                          <span className="text-xs font-medium bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">
+                            Owner
+                          </span>
+                        </div>
                       )}
                     </div>
-                  </Link>
-                ))}
+                  </div>
+                </Link>
+              ))}
             </div>
           )}
         </div>
