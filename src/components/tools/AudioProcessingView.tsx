@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AudioWaveformPlayer } from "./AudioWaveformPlayer";
 import { useCredits } from "@/hooks/useCredits";
+import { OutOfCreditsDialog } from "./OutOfCreditsDialog";
 
 interface StemResult {
   url: string;
@@ -40,6 +41,7 @@ export function AudioProcessingView({
   const [detectedKey, setDetectedKey] = useState<string | undefined>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showOutOfCredits, setShowOutOfCredits] = useState(false);
 
   const { deductCredit, canUseTool } = useCredits();
 
@@ -54,9 +56,9 @@ export function AudioProcessingView({
   }, []);
 
   const processWithCreditCheck = useCallback(async (audioFile: File) => {
-    // Check if user can use this pro tool
+    // Check if user can use this pro tool - show dialog instead of toast
     if (!canUseTool(toolId)) {
-      toast.error("Insufficient credits. Please purchase more credits to continue.");
+      setShowOutOfCredits(true);
       return;
     }
 
@@ -397,6 +399,12 @@ export function AudioProcessingView({
         onChange={handleFileSelect}
         accept="audio/*"
         className="hidden"
+      />
+
+      {/* Out of Credits Dialog */}
+      <OutOfCreditsDialog 
+        open={showOutOfCredits} 
+        onOpenChange={setShowOutOfCredits} 
       />
     </div>
   );

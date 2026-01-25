@@ -43,56 +43,8 @@ export function ProToolsGate({
     );
   }
 
-  // Pro tool without credits - show upgrade prompt
-  if (isProTool && creditBalance <= 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/20 flex items-center justify-center mb-6">
-          <Coins className="w-10 h-10 text-amber-500" />
-        </div>
-        <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white mb-4">
-          Pro Feature
-        </Badge>
-        <h2 className="text-2xl font-bold mb-3">You're Out of Credits</h2>
-        <p className="text-muted-foreground max-w-md mb-6">
-          This AI-powered tool requires credits to use. Top up your balance to continue creating amazing audio.
-        </p>
-        
-        <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20 rounded-2xl p-6 mb-6 max-w-sm">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Coins className="w-6 h-6 text-amber-500" />
-            <span className="text-2xl font-bold text-amber-500">{creditBalance}</span>
-            <span className="text-muted-foreground">credits remaining</span>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Pro tools use 1 credit per generation. Purchase more credits to continue.
-          </p>
-          <ul className="text-sm text-left space-y-2">
-            <li className="flex items-center gap-2">
-              <Crown className="w-4 h-4 text-amber-500" />
-              <span>15 credits from $4.99</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Crown className="w-4 h-4 text-amber-500" />
-              <span>Credits never expire</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <Crown className="w-4 h-4 text-amber-500" />
-              <span>Bulk discounts available</span>
-            </li>
-          </ul>
-        </div>
-
-        <Button 
-          onClick={onTopUp}
-          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-        >
-          <Coins className="w-4 h-4 mr-2" />
-          View Plans
-        </Button>
-      </div>
-    );
-  }
+  // Pro tool without credits - still show tool, but with warning banner
+  // The tool itself will show a dialog when user tries to generate
 
   // All good - show the tool (with credit indicator for pro tools)
   return (
