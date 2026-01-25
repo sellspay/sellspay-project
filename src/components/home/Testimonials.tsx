@@ -35,6 +35,7 @@ const testimonials: Testimonial[] = [
     role: 'Content Creator',
     rating: 5,
     quote: 'Finally a marketplace that gets it. Every product I\'ve bought has been exactly as described. No more gambling on quality.',
+    verified: true,
   },
   {
     id: '3',
@@ -143,34 +144,44 @@ export function Testimonials() {
             {others.map((testimonial, index) => (
               <Reveal key={testimonial.id} delay={200 + index * 100}>
                 {testimonial.username ? (
-                  <Link to={`/@${testimonial.username}`} className="block">
-                    <div className="relative p-6 lg:p-8 rounded-2xl bg-card/80 border border-border/50 hover:border-primary/50 transition-colors">
-                      <StarRating rating={testimonial.rating} />
-                      
-                      <blockquote className="mt-5 mb-6">
-                        <p className="text-foreground/90 leading-relaxed">
-                          "{testimonial.quote}"
-                        </p>
-                      </blockquote>
+                  <div className="relative p-6 lg:p-8 rounded-2xl bg-card/80 border border-border/50 hover:border-primary/50 transition-colors">
+                    <StarRating rating={testimonial.rating} />
+                    
+                    <blockquote className="mt-5 mb-6">
+                      <p className="text-foreground/90 leading-relaxed">
+                        "{testimonial.quote}"
+                      </p>
+                    </blockquote>
 
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
+                        <Avatar className="h-10 w-10 ring-2 ring-primary/10">
                           <AvatarImage src={testimonial.avatar} />
                           <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
                             {testimonial.name.split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>
                         <div className="space-y-0.5">
-                          <div className="font-medium text-foreground text-sm">
-                            @{testimonial.username}
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-foreground text-sm">
+                              @{testimonial.username}
+                            </span>
+                            {testimonial.verified && (
+                              <BadgeCheck className="h-4 w-4 text-primary fill-primary/20" />
+                            )}
                           </div>
                           <div className="text-muted-foreground text-xs">
                             {testimonial.role}
                           </div>
                         </div>
                       </div>
+                      <Button asChild variant="ghost" size="sm" className="text-xs">
+                        <Link to={`/@${testimonial.username}`}>
+                          View Profile
+                        </Link>
+                      </Button>
                     </div>
-                  </Link>
+                  </div>
                 ) : (
                   <div className="relative p-6 lg:p-8 rounded-2xl bg-card/80 border border-border/50 hover:border-border transition-colors">
                     <StarRating rating={testimonial.rating} />
