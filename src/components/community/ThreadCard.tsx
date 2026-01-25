@@ -63,7 +63,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
-  const { user } = useAuth();
+  const { user, isOwner: isAppOwner } = useAuth();
   const queryClient = useQueryClient();
   const [showFullContent, setShowFullContent] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
@@ -107,7 +107,7 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
     enabled: !!thread.author_id,
   });
 
-  const isOwner = profile?.id === thread.author_id;
+  const isThreadOwner = profile?.id === thread.author_id;
   const contentTooLong = thread.content.length > 280;
   const displayContent =
     contentTooLong && !showFullContent ? thread.content.slice(0, 280) + '...' : thread.content;
@@ -181,6 +181,24 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
     },
   });
 
+  // Pin/unpin mutation (owner only)
+  const pinMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('threads')
+        .update({ is_pinned: !thread.is_pinned })
+        .eq('id', thread.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
+      toast.success(thread.is_pinned ? 'Thread unpinned' : 'Thread pinned');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update pin status');
+    },
+  });
+
   return (
     <div
       className={cn(
@@ -247,8 +265,19 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 bg-card/95 backdrop-blur-xl border-border/50">
-                {isOwner ? (
+              <DropdownMenuContent align="end" className="w-44 bg-card/95 backdrop-blur-xl border-border/50">
+                {/* Pin/Unpin - Owner only */}
+                {isAppOwner && (
+                  <DropdownMenuItem
+                    className="focus:bg-primary/10"
+                    onClick={() => pinMutation.mutate()}
+                  >
+                    <Pin className="h-4 w-4 mr-2" />
+                    {thread.is_pinned ? 'Unpin Thread' : 'Pin Thread'}
+                  </DropdownMenuItem>
+                )}
+                {/* Delete - Thread owner or App owner */}
+                {(isThreadOwner || isAppOwner) && (
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive focus:bg-destructive/10"
                     onClick={() => deleteMutation.mutate()}
@@ -256,7 +285,9 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
                   </DropdownMenuItem>
-                ) : (
+                )}
+                {/* Report - Non-owners only */}
+                {!isThreadOwner && !isAppOwner && (
                   <DropdownMenuItem className="focus:bg-muted">
                     <Flag className="h-4 w-4 mr-2" />
                     Report
