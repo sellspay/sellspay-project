@@ -425,8 +425,9 @@ export default function ProductDetail() {
 
       let creator = null;
       if (productData.creator_id) {
+        // Use public_profiles view for public access (no RLS restrictions for creator info)
         const { data: creatorData } = await supabase
-          .from("profiles")
+          .from("public_profiles")
           .select("id, username, full_name, avatar_url, bio, verified, user_id")
           .eq("id", productData.creator_id)
           .maybeSingle();

@@ -48,9 +48,9 @@ export function CreatorFollowDialog({
 
   const checkOwnerStatus = async () => {
     if (!creator?.user_id) {
-      // Try to get user_id from profiles if not provided
+      // Try to get user_id from public_profiles view (public access)
       const { data: profile } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("user_id")
         .eq("id", creator?.id || "")
         .maybeSingle();
