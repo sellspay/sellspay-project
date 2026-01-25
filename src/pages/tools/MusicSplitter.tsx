@@ -6,6 +6,7 @@ export default function MusicSplitter() {
       title="Music Splitter"
       description="Split music into individual stems with AI-powered separation"
       mode="full"
+      toolId="music-splitter"
       trackConfig={[
         {
           stemKey: "vocals",

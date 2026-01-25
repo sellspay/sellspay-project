@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AudioWaveformPlayer } from "./AudioWaveformPlayer";
+import { useCredits } from "@/hooks/useCredits";
 
 interface StemResult {
   url: string;
@@ -14,6 +15,7 @@ interface AudioProcessingViewProps {
   title: string;
   description: string;
   mode: "voice" | "sfx" | "full";
+  toolId: string; // Tool identifier for credit deduction
   trackConfig: {
     stemKey: string;
     name: string;
@@ -26,6 +28,7 @@ export function AudioProcessingView({
   title,
   description,
   mode,
+  toolId,
   trackConfig,
 }: AudioProcessingViewProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -38,6 +41,8 @@ export function AudioProcessingView({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  const { deductCredit, canUseTool } = useCredits();
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -48,6 +53,24 @@ export function AudioProcessingView({
     setIsDragging(false);
   }, []);
 
+  const processWithCreditCheck = useCallback(async (audioFile: File) => {
+    // Check if user can use this pro tool
+    if (!canUseTool(toolId)) {
+      toast.error("Insufficient credits. Please purchase more credits to continue.");
+      return;
+    }
+
+    // Deduct credit FIRST before processing
+    const deductResult = await deductCredit(toolId);
+    if (!deductResult.success) {
+      toast.error(deductResult.error || "Failed to deduct credit");
+      return;
+    }
+
+    // Proceed with audio processing
+    processAudioWithFile(audioFile);
+  }, [canUseTool, deductCredit, toolId]);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
@@ -55,20 +78,20 @@ export function AudioProcessingView({
     if (droppedFile && droppedFile.type.startsWith("audio/")) {
       setFile(droppedFile);
       setResult(null);
-      // Auto-start processing
-      processAudioWithFile(droppedFile);
+      // Check credit and process
+      processWithCreditCheck(droppedFile);
     } else {
       toast.error("Please drop an audio file");
     }
-  }, []);
+  }, [processWithCreditCheck]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
       setResult(null);
-      // Auto-start processing
-      processAudioWithFile(selectedFile);
+      // Check credit and process
+      processWithCreditCheck(selectedFile);
     }
   };
 

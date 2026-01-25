@@ -6,6 +6,7 @@ export default function VoiceIsolator() {
       title="Voice Isolator"
       description="Remove vocals to create karaoke tracks or isolate vocals for acapella"
       mode="voice"
+      toolId="voice-isolator"
       trackConfig={[
         {
           stemKey: "no_vocals",

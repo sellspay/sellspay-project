@@ -6,6 +6,7 @@ export default function SFXIsolator() {
       title="SFX Isolator"
       description="Extract sound effects and separate audio elements from your tracks"
       mode="sfx"
+      toolId="sfx-isolator"
       trackConfig={[
         {
           stemKey: "vocals",
