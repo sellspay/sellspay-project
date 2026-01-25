@@ -543,15 +543,30 @@ export default function ProductDetail() {
       setCommentCount(count || 0);
       
       if (data) {
+        // Type for profile data from the public_identities view
+        type ProfileIdentity = {
+          id: string;
+          username: string | null;
+          full_name: string | null;
+          avatar_url: string | null;
+          verified: boolean | null;
+        };
+
+        // Helper function to fetch profile from public_identities view
+        const fetchPublicIdentity = async (userId: string): Promise<ProfileIdentity | null> => {
+          const { data } = await supabase
+            .from("public_identities" as any)
+            .select("id, username, full_name, avatar_url, verified")
+            .eq("id", userId)
+            .maybeSingle();
+          return data as unknown as ProfileIdentity | null;
+        };
+
         // Fetch user info, likes, and replies for each comment
         const commentsWithDetails = await Promise.all(
           data.map(async (comment) => {
-            // Get user profile - use public_profiles view for public access
-            const { data: profile } = await supabase
-              .from("public_profiles")
-              .select("id, username, full_name, avatar_url, verified")
-              .eq("id", comment.user_id)
-              .maybeSingle();
+            // Get user profile - use public_identities view for public access (includes all users, not just creators)
+            const profile = await fetchPublicIdentity(comment.user_id);
             
             // Get likes for this comment
             const { data: likes } = await supabase
@@ -562,11 +577,7 @@ export default function ProductDetail() {
             // Fetch user info for likes (especially to show creator like)
             const likesWithUsers = await Promise.all(
               (likes || []).map(async (like) => {
-                const { data: likeUser } = await supabase
-                  .from("public_profiles")
-                  .select("id, username, full_name, avatar_url, verified")
-                  .eq("id", like.user_id)
-                  .maybeSingle();
+                const likeUser = await fetchPublicIdentity(like.user_id);
                 return { ...like, user: likeUser };
               })
             );
@@ -581,11 +592,7 @@ export default function ProductDetail() {
             // Fetch user info and likes for replies
             const repliesWithDetails = await Promise.all(
               (replies || []).map(async (reply) => {
-                const { data: replyProfile } = await supabase
-                  .from("public_profiles")
-                  .select("id, username, full_name, avatar_url, verified")
-                  .eq("id", reply.user_id)
-                  .maybeSingle();
+                const replyProfile = await fetchPublicIdentity(reply.user_id);
                 
                 const { data: replyLikes } = await supabase
                   .from("comment_likes")
@@ -594,11 +601,7 @@ export default function ProductDetail() {
                 
                 const replyLikesWithUsers = await Promise.all(
                   (replyLikes || []).map(async (like) => {
-                    const { data: likeUser } = await supabase
-                      .from("public_profiles")
-                      .select("id, username, full_name, avatar_url, verified")
-                      .eq("id", like.user_id)
-                      .maybeSingle();
+                    const likeUser = await fetchPublicIdentity(like.user_id);
                     return { ...like, user: likeUser };
                   })
                 );
