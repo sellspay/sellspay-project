@@ -692,9 +692,10 @@ export default function Settings() {
         setShowBannerPositionEditor(true);
         toast.success("Banner uploaded! Now position it.");
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error uploading banner:", error);
-      toast.error("Failed to upload banner");
+      const message = error instanceof Error ? error.message : "Failed to upload banner";
+      toast.error(message);
     } finally {
       setUploadingBanner(false);
     }
@@ -1030,7 +1031,14 @@ export default function Settings() {
                 </Dialog>
                 
                 <div className="relative rounded-lg overflow-hidden border border-border">
-                  {bannerUrl ? (
+                  {uploadingBanner ? (
+                    <div className="w-full h-24 bg-muted flex items-center justify-center">
+                      <div className="flex flex-col items-center gap-2 text-primary">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                        <span className="text-sm font-medium">Processing banner...</span>
+                      </div>
+                    </div>
+                  ) : bannerUrl ? (
                     <div className="relative w-full h-24 overflow-hidden">
                       {bannerUrl.match(/\.(mp4|webm|mov|ogg)$/i) ? (
                         <video
@@ -1054,43 +1062,30 @@ export default function Settings() {
                           }}
                         />
                       )}
-                    </div>
-                  ) : (
-                    <div className="w-full h-24 bg-gradient-to-br from-primary/40 to-accent/30" />
-                  )}
-                  {uploadingBanner ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                      <div className="flex items-center gap-2 text-primary">
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span className="text-sm">Uploading...</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
-                      <label className="cursor-pointer">
-                        <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
-                          <Upload className="w-4 h-4" />
-                          {bannerUrl ? "Change" : "Upload"}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*,video/mp4,video/webm,video/mov"
-                          onChange={handleBannerChange}
-                          className="hidden"
-                        />
-                      </label>
-                      {bannerUrl && !bannerUrl.match(/\.(mp4|webm|mov|ogg)$/i) && (
-                        <Button 
-                          variant="secondary" 
-                          size="sm"
-                          onClick={handleEditBannerPosition}
-                          className="text-white bg-white/20 hover:bg-white/30"
-                        >
-                          <Move className="w-4 h-4 mr-1" />
-                          Reposition
-                        </Button>
-                      )}
-                      {bannerUrl && (
+                      <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
+                        <label className="cursor-pointer">
+                          <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
+                            <Upload className="w-4 h-4" />
+                            Change
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*,video/mp4,video/webm,video/mov"
+                            onChange={handleBannerChange}
+                            className="hidden"
+                          />
+                        </label>
+                        {!bannerUrl.match(/\.(mp4|webm|mov|ogg)$/i) && (
+                          <Button 
+                            variant="secondary" 
+                            size="sm"
+                            onClick={handleEditBannerPosition}
+                            className="text-white bg-white/20 hover:bg-white/30"
+                          >
+                            <Move className="w-4 h-4 mr-1" />
+                            Reposition
+                          </Button>
+                        )}
                         <Button 
                           variant="destructive" 
                           size="sm"
@@ -1098,8 +1093,23 @@ export default function Settings() {
                         >
                           Remove
                         </Button>
-                      )}
+                      </div>
                     </div>
+                  ) : (
+                    <label className="cursor-pointer block">
+                      <div className="w-full h-24 bg-gradient-to-br from-primary/40 to-accent/30 flex items-center justify-center hover:from-primary/50 hover:to-accent/40 transition-colors">
+                        <div className="flex items-center gap-2 text-white/80">
+                          <Upload className="w-5 h-5" />
+                          <span className="text-sm font-medium">Upload Banner</span>
+                        </div>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*,video/mp4,video/webm,video/mov"
+                        onChange={handleBannerChange}
+                        className="hidden"
+                      />
+                    </label>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
