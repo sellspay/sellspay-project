@@ -1,131 +1,314 @@
 
-# Plan: Fix Credit Check Flickering with Global Cache
 
-## Problem Analysis
+# Platform Subscription Redesign: Tiered Plans + Fee Reduction System
 
-The current credit system causes flickering because:
+## Overview
 
-1. **Isolated State**: `useCredits` uses `useState` which creates independent state per component
-2. **Multiple Fetch Calls**: Both Header and Tools page call `useCredits()` → each triggers its own API call
-3. **Race Condition**: When navigating to Tools, the hook initializes with `creditBalance: 0` and `isLoading: true`, shows 0 briefly, then updates after API responds
+This is a strategic redesign of the pricing/subscription system to create a compelling value proposition for sellers/creators. The new system introduces three subscription tiers (Starter, Pro, Enterprise) with monthly base prices, credits included, a separate top-up system, and critically - **reduced seller fees** as a key tier benefit.
 
+---
+
+## Current State Analysis
+
+### Existing Credit Packages (Database)
+| Name | Credits | Price | 
+|------|---------|-------|
+| Starter | 15 | $4.99 |
+| Basic | 50 | $9.99 |
+| Pro | 150 | $24.99 |
+| Power | 350 | $49.99 |
+| Enterprise | 800 | $99.99 |
+
+### Current Issues
+- No subscription tier tracking in profiles
+- All sellers pay 5% platform fee regardless
+- No top-up system (only subscription upgrades)
+- Credits only used for tools, no seller benefits
+
+---
+
+## New System Architecture
+
+### Subscription Tiers
+
+| Tier | Monthly Price | Credits Included | Seller Fee | Credit Value |
+|------|---------------|------------------|------------|--------------|
+| **Starter** | $19.99 | ~60 credits | 5% (no reduction) | ~$0.33/credit |
+| **Pro** | $49.99 | ~150 credits | **3%** (2% savings) | ~$0.33/credit |
+| **Enterprise** | $99.99 | ~300 credits | **0%** (5% savings) | ~$0.33/credit |
+
+*Credit amounts calculated at approximately $0.33/credit for subscription value*
+
+### Top-Up Pricing (Premium rates - incentivizes subscription)
+| Top-Up | Price | Credit Value |
+|--------|-------|--------------|
+| 15 credits | $7.99 | ~$0.53/credit (60% premium) |
+| 50 credits | $24.99 | ~$0.50/credit (50% premium) |
+| 100 credits | $44.99 | ~$0.45/credit (35% premium) |
+| 250 credits | $99.99 | ~$0.40/credit (20% premium) |
+
+---
+
+## Implementation Plan
+
+### Phase 1: Database Schema Updates
+
+**New columns for `profiles` table:**
 ```text
-Current Flow:
-┌──────────────┐     ┌──────────────┐
-│    Header    │     │  Tools Page  │
-│ useCredits() │     │ useCredits() │
-│    ↓         │     │     ↓        │
-│ Fetch API    │     │  Fetch API   │ (separate calls!)
-│    ↓         │     │     ↓        │
-│ State: 50    │     │ State: 0 → 50│ (flicker!)
-└──────────────┘     └──────────────┘
+subscription_tier: TEXT (null, 'starter', 'pro', 'enterprise')
+subscription_stripe_id: TEXT (Stripe subscription ID for tracking)
 ```
 
----
-
-## Solution: React Query Global Cache
-
-Convert `useCredits` to use React Query which provides:
-- **Global cache** shared across all components
-- **Stale-while-revalidate** - shows cached data immediately
-- **Single source of truth** - no duplicate API calls
-- **Configurable refetch** - only refresh when needed
-
+**New table: `credit_topups`**
 ```text
-New Flow:
-┌──────────────┐     ┌──────────────┐
-│    Header    │     │  Tools Page  │
-│ useCredits() │     │ useCredits() │
-│    ↓         │     │     ↓        │
-│ Query: credits│←───→│ Query: credits│ (shared cache!)
-│    ↓         │     │     ↓        │
-│ State: 50    │     │ State: 50    │ (instant!)
-└──────────────┘     └──────────────┘
-         ↓
-    ┌────────────┐
-    │ React Query│
-    │   Cache    │
-    └────────────┘
+id: UUID (primary key)
+name: TEXT ('Small', 'Medium', 'Large', 'Mega')
+credits: INTEGER
+price_cents: INTEGER
+stripe_price_id: TEXT
+is_active: BOOLEAN
+display_order: INTEGER
 ```
 
----
+**Update `credit_packages` table:**
+- Convert existing packages to represent subscription tiers
+- Update credit amounts and prices for new structure:
+  - Starter: 60 credits, $19.99
+  - Pro: 150 credits, $49.99
+  - Enterprise: 300 credits, $99.99
 
-## Implementation Details
+### Phase 2: Edge Function Updates
 
-### 1. Refactor `useCredits.ts` to Use React Query
+#### 2.1 Update `manage-credit-subscription`
+- Add subscription tier detection and return in response
+- Map product IDs to tier names ('starter', 'pro', 'enterprise')
+- Include tier in subscription response object
 
-Replace `useState` + `useEffect` pattern with `useQuery`:
+#### 2.2 Update `create-credit-checkout`
+- Handle both subscription and top-up purchases
+- Accept `type: 'subscription' | 'topup'` parameter
+- Route to appropriate Stripe price IDs
+- Update profile's `subscription_tier` on successful subscription
 
-```typescript
-// Credit balance query - cached globally
-const { 
-  data: creditData, 
-  isLoading: creditsLoading,
-  refetch: refetchCredits 
-} = useQuery({
-  queryKey: ['user-credits', user?.id],
-  queryFn: async () => {
-    const { data } = await supabase.functions.invoke("check-credits");
-    return data?.credit_balance ?? 0;
-  },
-  enabled: !!user,
-  staleTime: 5 * 60 * 1000, // 5 minutes - don't refetch if data is fresh
-  gcTime: 10 * 60 * 1000,   // 10 minutes cache
-});
-```
+#### 2.3 Create `create-topup-checkout` (new function)
+- Handle one-time credit purchases (not subscriptions)
+- Use Stripe `mode: 'payment'` instead of `mode: 'subscription'`
+- Add credits to balance on completion
 
-### 2. Cache Configuration
+#### 2.4 Update `create-checkout-session` (product purchases)
+- Fetch buyer's subscription tier from profile
+- Apply dynamic platform fee based on tier:
+  - No tier or Starter: 5%
+  - Pro: 3%
+  - Enterprise: 0%
+- Log fee reduction in metadata
 
-| Setting | Value | Purpose |
-|---------|-------|---------|
-| `staleTime` | 5 minutes | Data considered fresh, no background refetch |
-| `gcTime` | 10 minutes | Keep in cache even when unmounted |
-| `enabled` | `!!user` | Only fetch when logged in |
-| `refetchOnMount` | false | Don't refetch if cache exists |
-| `refetchOnWindowFocus` | false | Don't refetch when returning to tab |
+#### 2.5 Update `create-editor-booking`
+- Same tier-based fee reduction logic as product purchases
 
-### 3. Manual Refresh Only When Needed
+#### 2.6 Update `stripe-webhook`
+- Handle subscription creation/updates
+- Update `profiles.subscription_tier` when subscription changes
+- Handle top-up purchase completions
 
-Credits should only refresh after:
-- **Deducting a credit** (using a tool)
-- **Purchasing credits** (checkout completion)
-- **Login/logout** (user change)
+### Phase 3: Frontend Updates
 
-The `deductCredit` and `verifyPurchase` functions will call `queryClient.invalidateQueries(['user-credits'])` to force refresh.
+#### 3.1 Redesign Pricing Page (`src/pages/Pricing.tsx`)
 
-### 4. Subscription Query (Same Pattern)
+**New Layout Structure:**
+1. **Hero Section**: "Choose Your Plan"
+2. **Three Tier Cards** (horizontal on desktop):
+   - Starter ($19.99/mo) - "Perfect for casual creators"
+   - Pro ($49.99/mo) - "MOST POPULAR" badge, "For serious sellers"
+   - Enterprise ($99.99/mo) - "For power users and teams"
+3. **Features per tier** highlighting:
+   - Credits included
+   - **Seller fee reduction** (prominent display)
+   - AI tool access
+   - Future benefits placeholders
+4. **FAQ Section** updated
 
-Apply the same caching to subscription status.
-
----
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/hooks/useCredits.ts` | Replace useState/useEffect with useQuery for credits and subscription |
-
----
-
-## Technical Changes Summary
-
+**Tier Card Content:**
 ```text
-Before:
-- useState({ creditBalance: 0, isLoading: true })
-- useEffect → checkCredits() (runs on every mount)
-- Multiple API calls per page navigation
+STARTER - $19.99/month
+- 60 credits/month
+- All Pro AI tools
+- 5% seller fee (standard)
+[Subscribe]
 
-After:
-- useQuery(['user-credits'], checkCredits, { staleTime: 5min })
-- Cached globally, shared across components
-- Single API call, instant display on navigation
+PRO - $49.99/month (MOST POPULAR)
+- 150 credits/month  
+- All Pro AI tools
+- 3% seller fee (Save 2%)
+- Priority support
+- Early access to new tools
+[Subscribe]
+
+ENTERPRISE - $99.99/month
+- 300 credits/month
+- All Pro AI tools
+- 0% seller fee (Save 5%)
+- Dedicated support
+- Custom integrations
+- Team features (coming soon)
+[Subscribe]
+```
+
+#### 3.2 Create Credit Top-Up Dialog Component
+
+**New component: `src/components/credits/TopUpDialog.tsx`**
+- Modal dialog triggered from wallet click
+- Shows current credit balance
+- Displays top-up packages with prices
+- "More expensive than subscription" visual indicator
+- Links to upgrade subscription as alternative
+
+**Top-Up Options Display:**
+```text
+Your Credits: 45
+
+Need more credits?
+
+[15 credits - $7.99] [50 credits - $24.99]
+[100 credits - $44.99] [250 credits - $99.99]
+
+💡 Tip: Upgrade your plan for better value!
+[View Plans]
+```
+
+#### 3.3 Update Credit Wallet Component
+
+**Changes to `src/components/credits/CreditWallet.tsx`:**
+- Click opens TopUpDialog instead of navigating to /pricing
+- Show subscription tier badge (if subscribed)
+- Display "Top Up" button that opens dialog
+
+#### 3.4 Update Header Wallet Display
+
+**Changes to `src/components/layout/Header.tsx`:**
+- Wallet click opens TopUpDialog
+- Show tier indicator next to balance (e.g., "45 ⭐ Pro")
+
+#### 3.5 Update useCredits Hook
+
+**Add to `src/hooks/useCredits.ts`:**
+- `subscriptionTier: string | null` state
+- `purchaseTopUp(packageId: string)` function
+- Update cache to include tier information
+
+#### 3.6 Update Dashboard Fee Display
+
+**Changes to `src/pages/Dashboard.tsx`:**
+- Show current seller fee rate based on tier
+- Display "Save X% with Pro/Enterprise" for lower tiers
+- Fee breakdown in earnings card
+
+---
+
+## Stripe Product Setup Required
+
+### New Stripe Products Needed:
+
+**Subscription Products:**
+1. Platform Starter - $19.99/month recurring
+2. Platform Pro - $49.99/month recurring  
+3. Platform Enterprise - $99.99/month recurring
+
+**Top-Up Products:**
+1. Credit Top-Up 15 - $7.99 one-time
+2. Credit Top-Up 50 - $24.99 one-time
+3. Credit Top-Up 100 - $44.99 one-time
+4. Credit Top-Up 250 - $99.99 one-time
+
+---
+
+## Fee Calculation Logic
+
+### Product/Booking Checkout Fee Calculation:
+```text
+// Pseudocode for create-checkout-session
+const TIER_FEE_RATES = {
+  null: 0.05,      // No subscription: 5%
+  'starter': 0.05, // Starter: 5%
+  'pro': 0.03,     // Pro: 3%
+  'enterprise': 0  // Enterprise: 0%
+};
+
+// Get seller's subscription tier
+const sellerTier = creatorProfile.subscription_tier;
+const platformFeeRate = TIER_FEE_RATES[sellerTier] ?? 0.05;
+
+// Calculate fees
+const platformFee = Math.round(grossAmount * platformFeeRate);
+const stripeProcessingFee = Math.round(grossAmount * 0.029) + 30;
+const totalApplicationFee = stripeProcessingFee + platformFee;
+const creatorPayout = grossAmount - totalApplicationFee;
 ```
 
 ---
 
-## Result
+## Technical Details
 
-- **No flicker**: Cached balance displays instantly when navigating to Tools
-- **One-time fetch**: Initial load fetches, subsequent navigations use cache
-- **Auto-refresh after actions**: Credits update after purchases/usage
-- **Better performance**: Fewer API calls, faster page loads
+### Files to Create:
+1. `src/components/credits/TopUpDialog.tsx` - Modal for purchasing top-up credits
+2. `supabase/functions/create-topup-checkout/index.ts` - One-time credit purchase
+
+### Files to Modify:
+1. `src/pages/Pricing.tsx` - Complete redesign for tier-based plans
+2. `src/components/credits/CreditWallet.tsx` - Open dialog instead of navigate
+3. `src/components/layout/Header.tsx` - Wallet click behavior
+4. `src/hooks/useCredits.ts` - Add tier tracking and top-up function
+5. `supabase/functions/create-checkout-session/index.ts` - Dynamic fee based on tier
+6. `supabase/functions/create-editor-booking/index.ts` - Dynamic fee based on tier
+7. `supabase/functions/manage-credit-subscription/index.ts` - Return tier info
+8. `supabase/functions/create-credit-checkout/index.ts` - Handle new tier subscriptions
+9. `supabase/functions/stripe-webhook/index.ts` - Update profile tier on subscription events
+10. `src/pages/Dashboard.tsx` - Show fee rate and upgrade prompts
+
+### Database Changes:
+1. Add `subscription_tier` column to `profiles`
+2. Add `subscription_stripe_id` column to `profiles`
+3. Create `credit_topups` table
+4. Update `credit_packages` table data
+
+---
+
+## User Experience Flow
+
+### New User Flow:
+1. Signs up → Gets 3 free credits
+2. Uses AI tools → Credits deplete
+3. Clicks wallet → Sees TopUpDialog
+4. Either tops up (expensive) or subscribes (better value)
+5. If seller → Sees fee reduction benefit on pricing page
+
+### Seller Conversion Flow:
+1. Seller sees 5% fee on earnings
+2. Notices "Save 2% with Pro" prompt
+3. Views pricing page → Sees comprehensive benefits
+4. Subscribes to Pro → Fee drops to 3%
+5. Dashboard reflects new fee rate
+
+### Top-Up vs Subscribe Decision:
+```text
+User needs 50 credits:
+- Top-up: $24.99 one-time
+- Pro subscription: $49.99/month for 150 credits + 3% fee reduction
+
+The subscription offers better value if:
+- They need credits regularly
+- They're also a seller (fee savings)
+```
+
+---
+
+## Future Extensibility
+
+This architecture supports future additions:
+- Manga generator (Pro+ only)
+- Video generators (Enterprise only)
+- Team accounts (Enterprise)
+- Higher quality exports
+- API access
+- Custom branding options
+
