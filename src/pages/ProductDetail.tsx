@@ -1041,12 +1041,16 @@ export default function ProductDetail() {
       toast.success(`You're now following @${product.creator.username}!`);
 
       // Create notification for the creator
+      // Fetch actor username for proper redirect
+      const { data: actorProfile } = await supabase.from("profiles").select("username").eq("id", userProfileId).maybeSingle();
+      const actorUsername = actorProfile?.username;
+      
       await createNotification({
         userId: product.creator.id,
         type: "follow",
         actorId: userProfileId,
         message: "started following you",
-        redirectUrl: `/@${(await supabase.from("profiles").select("username").eq("id", userProfileId).maybeSingle()).data?.username || "user"}`,
+        redirectUrl: actorUsername ? `/@${actorUsername}` : null,
       });
     } catch (error) {
       console.error("Error following creator:", error);

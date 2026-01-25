@@ -242,8 +242,8 @@ export function NotificationBell() {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
-    // Navigate if there's a redirect URL
-    if (notification.redirect_url) {
+    // Navigate if there's a valid redirect URL (skip broken patterns like /@user)
+    if (notification.redirect_url && !notification.redirect_url.match(/^\/@(user|undefined|null)$/)) {
       navigate(notification.redirect_url);
     }
   };
@@ -418,11 +418,9 @@ export function NotificationBell() {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1">
-                        {notification.actor?.username && (
-                          <span className="font-medium text-sm">
-                            @{notification.actor.username}
-                          </span>
-                        )}
+                        <span className="font-medium text-sm">
+                          {notification.actor?.username ? `@${notification.actor.username}` : "Someone"}
+                        </span>
                         {!notification.is_read && (
                           <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                         )}
