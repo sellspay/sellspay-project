@@ -1858,6 +1858,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           background_url: string | null
+          banner_position_y: number | null
           banner_url: string | null
           bio: string | null
           created_at: string | null
@@ -1887,6 +1888,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           background_url?: string | null
+          banner_position_y?: number | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
@@ -1916,6 +1918,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           background_url?: string | null
+          banner_position_y?: number | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
