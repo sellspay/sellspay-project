@@ -172,8 +172,6 @@ html[style*="padding-right"] {
 body {
   min-height: 100vh;
   overflow-x: hidden;
-  /* In some browsers the body is the scrolling element; keep scrollbar stable */
-  overflow-y: scroll;
 }
 
 /* Prevent layout shift when Radix UI modals/dropdowns modify body overflow */
@@ -190,8 +188,7 @@ body[style*="padding-right"] {
 
 /* Ensure dropdowns and popovers don't cause layout shifts */
 [data-radix-popper-content-wrapper] {
-  /* Don't force positioning; Radix handles this and forcing fixed can cause viewport width jank */
-  position: unset !important;
+  position: fixed !important;
 }
 
 /* Override Radix scroll lock padding injection */
