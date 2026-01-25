@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply, Bookmark, Flame, TrendingUp, Crown } from "lucide-react";
+import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply, Bookmark, Flame, TrendingUp, Crown, Pin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,6 +69,7 @@ interface Comment {
   created_at: string;
   user_id: string;
   parent_comment_id: string | null;
+  is_pinned: boolean;
   user: CommentUser | null;
   likes: CommentLike[];
   replies?: Comment[];
@@ -536,12 +537,13 @@ export default function ProductDetail() {
     if (!productId) return;
     
     try {
-      // Fetch top-level comments (no parent)
+      // Fetch top-level comments (no parent), ordering by pinned first, then by date
       const { data, count } = await supabase
         .from("comments")
         .select("*", { count: "exact" })
         .eq("product_id", productId)
         .is("parent_comment_id", null)
+        .order("is_pinned", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(10);
       
@@ -622,6 +624,7 @@ export default function ProductDetail() {
             
             return {
               ...comment,
+              is_pinned: comment.is_pinned || false,
               user: profile,
               likes: likesWithUsers,
               replies: repliesWithDetails,
@@ -924,6 +927,30 @@ export default function ProductDetail() {
     // Creator can delete any comment on their product
     if (product?.creator?.id === userProfileId) return true;
     return false;
+  };
+
+  // Check if user can pin/unpin comments (only product creator/seller)
+  const canPinComment = () => {
+    if (!userProfileId) return false;
+    return product?.creator?.id === userProfileId;
+  };
+
+  // Toggle pin status on a comment
+  const handlePinComment = async (commentId: string, currentlyPinned: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("comments")
+        .update({ is_pinned: !currentlyPinned })
+        .eq("id", commentId);
+
+      if (error) throw error;
+
+      fetchComments();
+      toast.success(currentlyPinned ? "Comment unpinned" : "Comment pinned!");
+    } catch (error) {
+      console.error("Error toggling pin:", error);
+      toast.error("Failed to update pin status");
+    }
   };
 
   const formatPrice = (cents: number | null, type: string | null, currency: string | null) => {
@@ -1563,6 +1590,12 @@ export default function ProductDetail() {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        {comment.is_pinned && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-0">
+                            <Pin className="w-2.5 h-2.5 mr-0.5" />
+                            Pinned
+                          </Badge>
+                        )}
                         <span className="text-sm font-medium flex items-center gap-1">
                           @{comment.user?.username || "anonymous"}
                           {comment.user?.verified && (
@@ -1640,6 +1673,22 @@ export default function ProductDetail() {
                           <Reply className="w-3.5 h-3.5" />
                           Reply
                         </button>
+
+                        {/* Pin button - only for product creator/seller */}
+                        {canPinComment() && (
+                          <button
+                            onClick={() => handlePinComment(comment.id, comment.is_pinned)}
+                            className={cn(
+                              "flex items-center gap-1 text-xs transition-colors",
+                              comment.is_pinned
+                                ? "text-primary"
+                                : "text-muted-foreground hover:text-primary"
+                            )}
+                          >
+                            <Pin className={cn("w-3.5 h-3.5", comment.is_pinned && "fill-current")} />
+                            {comment.is_pinned ? "Unpin" : "Pin"}
+                          </button>
+                        )}
 
                         {/* Delete button */}
                         {canDeleteComment(comment) && (
