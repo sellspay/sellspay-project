@@ -195,6 +195,10 @@ body[data-scroll-locked] {
   }
 }
 
+.animate-hue-rotate {
+  animation: hue-rotate 2s linear infinite;
+}
+
 .hover\:animate-hue-rotate:hover {
   animation: hue-rotate 2s linear infinite;
 }
