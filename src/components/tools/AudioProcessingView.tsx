@@ -72,22 +72,10 @@ export function AudioProcessingView({
     // Lock immediately with ref before async operations
     isProcessingRef.current = true;
 
-    try {
-      // Deduct credit FIRST before processing
-      const deductResult = await deductCredit(toolId);
-      if (!deductResult.success) {
-        toast.error(deductResult.error || "Failed to deduct credit");
-        isProcessingRef.current = false;
-        return;
-      }
-
-      // Proceed with audio processing
-      processAudioWithFile(audioFile);
-    } catch (err) {
-      isProcessingRef.current = false;
-      throw err;
-    }
-  }, [canUseTool, deductCredit, toolId]);
+    // Process FIRST - only deduct credit on SUCCESS
+    // Credit deduction is now handled after successful processing in processAudioWithFile
+    processAudioWithFile(audioFile);
+  }, [canUseTool, toolId]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -176,6 +164,13 @@ export function AudioProcessingView({
         throw new Error("No audio stems returned from processing");
       }
 
+      // SUCCESS - now deduct the credit
+      const deductResult = await deductCredit(toolId);
+      if (!deductResult.success) {
+        console.warn("Credit deduction failed after successful processing:", deductResult.error);
+        // Still show the result since processing succeeded
+      }
+
       setResult(responseData.stems);
       
       // Generate realistic BPM and Key values (simulated detection)
@@ -188,6 +183,7 @@ export function AudioProcessingView({
       
       toast.success("Audio processed successfully!");
     } catch (error) {
+      // FAILED - no credit deducted (credit is only deducted on success above)
       console.error("Processing error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to process audio";
       toast.error(errorMessage);

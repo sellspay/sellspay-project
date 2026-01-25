@@ -81,15 +81,7 @@ export default function SFXGenerator() {
     setResult(null);
 
     try {
-      // Deduct credit FIRST before processing
-      const deductResult = await deductCredit("sfx-generator");
-      if (!deductResult.success) {
-        toast.error(deductResult.error || "Failed to deduct credit");
-        setIsGenerating(false);
-        isGeneratingRef.current = false;
-        return;
-      }
-
+      // GENERATE FIRST - only deduct credit on SUCCESS
       const { data, error } = await supabase.functions.invoke("generate-sfx", {
         body: { prompt: prompt.trim(), duration },
       });
@@ -97,12 +89,20 @@ export default function SFXGenerator() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
+      // SUCCESS - now deduct the credit
+      const deductResult = await deductCredit("sfx-generator");
+      if (!deductResult.success) {
+        console.warn("Credit deduction failed after successful generation:", deductResult.error);
+        // Still show the result since generation succeeded
+      }
+
       setResult({
         audio_url: data.audio_url,
         filename: data.filename,
       });
       toast.success("Sound effect generated!");
     } catch (err) {
+      // FAILED - no credit deducted
       console.error("Generation error:", err);
       toast.error(err instanceof Error ? err.message : "Failed to generate sound effect");
     } finally {
@@ -265,12 +265,16 @@ export default function SFXGenerator() {
             <Button
               onClick={handleGenerate}
               disabled={isGenerating || !prompt.trim()}
-              className="flex-1"
+              className="flex-1 relative overflow-hidden"
             >
               {isGenerating ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Generating...
+                  {/* Animated gradient background */}
+                  <span className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-[shimmer_2s_infinite]" />
+                  <span className="relative flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating...
+                  </span>
                 </>
               ) : (
                 <>
@@ -323,13 +327,31 @@ export default function SFXGenerator() {
 
           <div className="flex-1 flex flex-col items-center justify-center min-h-[200px]">
             {isGenerating ? (
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <div className="text-center space-y-6">
+                {/* Pulsing rings animation */}
+                <div className="relative w-24 h-24 mx-auto">
+                  <span className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping" />
+                  <span className="absolute inset-2 rounded-full border-2 border-primary/40 animate-ping [animation-delay:0.2s]" />
+                  <span className="absolute inset-4 rounded-full border-2 border-primary/50 animate-ping [animation-delay:0.4s]" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/25">
+                      <Sparkles className="w-6 h-6 text-primary-foreground animate-pulse" />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium">Generating sound effect...</p>
-                  <p className="text-xs text-muted-foreground">This may take 10-30 seconds</p>
+                
+                {/* Animated text */}
+                <div className="space-y-2">
+                  <p className="text-base font-semibold bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] bg-clip-text text-transparent animate-[shimmer_2s_infinite]">
+                    Generating sound effect...
+                  </p>
+                  <p className="text-sm text-muted-foreground">This may take 10-30 seconds</p>
+                  
+                  {/* Progress bar animation */}
+                  <div className="w-48 h-1.5 bg-secondary/50 rounded-full overflow-hidden mx-auto mt-4">
+                    <div className="h-full bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_100%] animate-[shimmer_1.5s_infinite] rounded-full" 
+                         style={{ width: '60%' }} />
+                  </div>
                 </div>
               </div>
             ) : result ? (
