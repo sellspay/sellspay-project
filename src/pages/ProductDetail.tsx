@@ -281,8 +281,9 @@ export default function ProductDetail() {
       if (!productId) return;
 
       try {
-        // Check if product is subscription_only
-        setIsSubscriptionOnly(product?.pricing_type === 'subscription_only');
+        // Check if product is subscription_only OR paid without a price (subscription-only scenario)
+        const isPaidWithoutPrice = product?.pricing_type === 'paid' && (!product?.price_cents || product.price_cents < 499);
+        setIsSubscriptionOnly(product?.pricing_type === 'subscription_only' || isPaidWithoutPrice);
 
         // Fetch all plans that include this product with their benefits
         const { data: planProducts, error } = await supabase
