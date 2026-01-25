@@ -59,7 +59,7 @@ serve(async (req) => {
     // Fetch the plan details
     const { data: plan, error: planError } = await supabaseClient
       .from("creator_subscription_plans")
-      .select("*, profiles!creator_subscription_plans_creator_id_fkey(stripe_account_id, full_name, username)")
+      .select("*, profiles!creator_subscription_plans_creator_id_fkey(id, user_id, full_name, username)")
       .eq("id", plan_id)
       .single();
 
@@ -68,10 +68,27 @@ serve(async (req) => {
 
     // Get the creator's profile data
     const creatorProfile = Array.isArray(plan.profiles) ? plan.profiles[0] : plan.profiles;
-    if (!creatorProfile?.stripe_account_id) {
+    if (!creatorProfile?.user_id) {
+      throw new Error("Creator profile not found");
+    }
+
+    // Get creator's Stripe account from private schema
+    const { data: sellerConfig, error: configError } = await supabaseClient.rpc(
+      "get_seller_config",
+      { p_user_id: creatorProfile.user_id }
+    );
+
+    if (configError) {
+      logStep("Error getting seller config", { error: configError.message });
+    }
+
+    const creatorStripeAccountId = sellerConfig?.[0]?.stripe_account_id || null;
+    const stripeOnboardingComplete = sellerConfig?.[0]?.stripe_onboarding_complete || false;
+
+    if (!creatorStripeAccountId || !stripeOnboardingComplete) {
       throw new Error("Creator has not completed Stripe onboarding");
     }
-    logStep("Creator Stripe account found", { accountId: creatorProfile.stripe_account_id });
+    logStep("Creator Stripe account found", { accountId: creatorStripeAccountId });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
@@ -150,7 +167,7 @@ serve(async (req) => {
       subscription_data: {
         application_fee_percent: platformFeePercent,
         transfer_data: {
-          destination: creatorProfile.stripe_account_id,
+          destination: creatorStripeAccountId,
         },
         metadata: {
           plan_id: plan.id,
