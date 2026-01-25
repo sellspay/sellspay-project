@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, X, Loader2, Sparkles, Check, Crown, FolderOpen } from "lucide-react";
+import { Upload, X, Loader2, Sparkles, Check, Crown, FolderOpen, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,36 +13,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import SubscriptionPlanPicker from "@/components/product/SubscriptionPlanPicker";
 import VideoTrimmer from "@/components/product/VideoTrimmer";
+import VideoFrameSelector from "@/components/product/VideoFrameSelector";
+import { Progress } from "@/components/ui/progress";
 
 // Premium Publishing Overlay Component
-const PublishingOverlay = ({ isPublishing }: { isPublishing: boolean }) => {
-  const [step, setStep] = useState(0);
+const PublishingOverlay = ({ isPublishing, currentStep }: { isPublishing: boolean; currentStep: number }) => {
   const steps = [
-    "Uploading media...",
-    "Processing files...",
-    "Creating product...",
-    "Almost there..."
+    { label: "Uploading media...", icon: "📤" },
+    { label: "Processing files...", icon: "⚙️" },
+    { label: "Verifying content...", icon: "✅" },
+    { label: "Creating product...", icon: "🎨" },
+    { label: "Finalizing...", icon: "🚀" },
+    { label: "Done!", icon: "🎉" }
   ];
 
-  useEffect(() => {
-    if (!isPublishing) {
-      setStep(0);
-      return;
-    }
-    
-    const interval = setInterval(() => {
-      setStep((prev) => (prev < steps.length - 1 ? prev + 1 : prev));
-    }, 1500);
-    
-    return () => clearInterval(interval);
-  }, [isPublishing]);
+  const progress = Math.min(((currentStep + 1) / steps.length) * 100, 100);
+  const isDone = currentStep >= steps.length - 1;
 
   if (!isPublishing) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop with blur */}
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-md" />
+      <div className="absolute inset-0 bg-background/90 backdrop-blur-md" />
       
       {/* Animated gradient orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -51,39 +44,58 @@ const PublishingOverlay = ({ isPublishing }: { isPublishing: boolean }) => {
       </div>
       
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center text-center px-6">
+      <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-md w-full">
         {/* Animated icon */}
-        <div className="relative mb-8">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center animate-pulse">
-            <Sparkles className="w-10 h-10 text-white" />
+        <div className="relative mb-6">
+          <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center ${isDone ? '' : 'animate-pulse'}`}>
+            <span className="text-4xl">{steps[currentStep]?.icon || "🎨"}</span>
           </div>
-          {/* Rotating ring */}
-          <div className="absolute inset-0 w-20 h-20 border-2 border-primary/30 border-t-primary rounded-full animate-spin" style={{ animationDuration: '1.5s' }} />
+          {!isDone && (
+            <div className="absolute inset-0 w-24 h-24 border-2 border-primary/30 border-t-primary rounded-full animate-spin" style={{ animationDuration: '1.5s' }} />
+          )}
         </div>
         
         {/* Title */}
         <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Publishing Your Product
+          {isDone ? "Product Published!" : "Publishing Your Product"}
         </h2>
         
         {/* Current step */}
-        <p className="text-muted-foreground mb-8 h-6 animate-fade-in" key={step}>
-          {steps[step]}
+        <p className="text-muted-foreground mb-6 h-6" key={currentStep}>
+          {steps[currentStep]?.label || "Processing..."}
         </p>
         
-        {/* Progress steps */}
-        <div className="flex items-center gap-2">
-          {steps.map((_, i) => (
+        {/* Progress bar */}
+        <div className="w-full mb-4">
+          <Progress value={progress} className="h-2" />
+        </div>
+        
+        {/* Step indicators */}
+        <div className="flex items-center justify-center gap-3 mb-4">
+          {steps.map((step, i) => (
             <div
               key={i}
-              className={`h-1.5 rounded-full transition-all duration-500 ${
-                i <= step 
-                  ? 'w-8 bg-gradient-to-r from-primary to-accent' 
-                  : 'w-4 bg-muted'
+              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm transition-all duration-300 ${
+                i < currentStep 
+                  ? 'bg-primary text-primary-foreground scale-90' 
+                  : i === currentStep
+                  ? 'bg-gradient-to-r from-primary to-accent text-white scale-110 shadow-lg'
+                  : 'bg-muted text-muted-foreground scale-75'
               }`}
-            />
+            >
+              {i < currentStep ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <span className="text-xs">{i + 1}</span>
+              )}
+            </div>
           ))}
         </div>
+
+        {/* Percentage */}
+        <p className="text-sm font-mono text-muted-foreground">
+          {Math.round(progress)}% complete
+        </p>
       </div>
     </div>
   );
@@ -140,6 +152,7 @@ export default function CreateProduct() {
   
   const [loading, setLoading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishingStep, setPublishingStep] = useState(0);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [customSlug, setCustomSlug] = useState(false);
@@ -150,6 +163,8 @@ export default function CreateProduct() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverFromVideo, setCoverFromVideo] = useState(false);
+  const [showFrameSelector, setShowFrameSelector] = useState(false);
   const [previewVideo, setPreviewVideo] = useState<File | null>(null);
   const [previewVideoPreview, setPreviewVideoPreview] = useState<string | null>(null);
   const [videoTrimStart, setVideoTrimStart] = useState<number>(0);
@@ -291,6 +306,16 @@ export default function CreateProduct() {
     setShowTrimmer(false);
   };
 
+  // Handle frame selection from video
+  const handleFrameSelect = (blob: Blob, dataUrl: string) => {
+    // Convert blob to File
+    const file = new File([blob], 'cover-frame.jpg', { type: 'image/jpeg' });
+    setCoverImage(file);
+    setCoverPreview(dataUrl);
+    setCoverFromVideo(true);
+    setShowFrameSelector(false);
+  };
+
 
   const handleSubmit = async (e: React.FormEvent, publish: boolean) => {
     e.preventDefault();
@@ -312,10 +337,13 @@ export default function CreateProduct() {
     }
 
     setLoading(true);
-    if (publish) setIsPublishing(true);
+    if (publish) {
+      setIsPublishing(true);
+      setPublishingStep(0);
+    }
 
     try {
-      // Get user's profile
+      // Step 0: Uploading media
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("id")
@@ -329,7 +357,7 @@ export default function CreateProduct() {
 
       // Upload cover image
       if (coverImage) {
-        const ext = coverImage.name.split(".").pop();
+        const ext = coverImage.name.split(".").pop() || 'jpg';
         const path = `covers/${profile.id}/${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("product-media")
@@ -346,8 +374,8 @@ export default function CreateProduct() {
 
       // Upload preview video
       if (previewVideo) {
+        if (publish) setPublishingStep(1); // Processing files
         const ext = previewVideo.name.split(".").pop();
-        // Use consistent path format: previews/{profile_id}/{timestamp}.{ext}
         previewVideoPath = `previews/${profile.id}/${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("product-media")
@@ -362,14 +390,15 @@ export default function CreateProduct() {
         }
       }
 
-      // Upload multiple download files to private bucket
+      // Step 1-2: Processing & Verifying files
+      if (publish) setPublishingStep(2);
+      
       let downloadUrl: string | null = null;
       let originalFilename: string | null = null;
       const attachments: { name: string; path: string; size: number }[] = [];
       
       if (downloadFiles.length > 0) {
         for (const file of downloadFiles) {
-          // Store in private bucket with user's ID as folder for RLS policy
           const path = `${user.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._()-]/g, '_')}`;
           const { error: uploadError } = await supabase.storage
             .from("product-files")
@@ -387,22 +416,21 @@ export default function CreateProduct() {
           });
         }
         
-        // For backward compatibility, set download_url and original_filename to first file
         if (attachments.length > 0) {
           downloadUrl = attachments[0].path;
           originalFilename = attachments[0].name;
         }
       }
 
-      // Create product
+      // Step 3: Creating product
+      if (publish) setPublishingStep(3);
+      
       const priceCents = (pricingType === "free" || pricingType === "subscription") ? 0 : Math.round(parseFloat(price) * 100);
       
-      // Map pricing type to subscription_access
       let subscriptionAccess = 'none';
       if (pricingType === 'subscription') subscriptionAccess = 'subscription_only';
       else if (pricingType === 'both') subscriptionAccess = 'both';
 
-      // Check slug uniqueness if provided
       const finalSlug = slug.trim() || null;
       if (finalSlug) {
         const { data: existingSlug } = await supabase
@@ -414,6 +442,7 @@ export default function CreateProduct() {
         if (existingSlug) {
           toast.error("This URL slug is already taken. Please choose another.");
           setLoading(false);
+          setIsPublishing(false);
           return;
         }
       }
@@ -444,6 +473,9 @@ export default function CreateProduct() {
 
       if (error) throw error;
 
+      // Step 4: Finalizing
+      if (publish) setPublishingStep(4);
+
       // Link product to subscription plans if selected
       if (product && selectedSubscriptionPlans.length > 0) {
         const planProductsToInsert = selectedSubscriptionPlans.map(plan => ({
@@ -460,11 +492,10 @@ export default function CreateProduct() {
 
         if (linkError) {
           console.error('Error linking to subscription plans:', linkError);
-          // Don't fail the whole operation, just log
         }
       }
 
-      // If publishing, notify all followers
+      // Notify followers
       if (publish && product) {
         try {
           await supabase.functions.invoke('notify-product-launch', {
@@ -475,8 +506,13 @@ export default function CreateProduct() {
           });
         } catch (notifyError) {
           console.error('Failed to send launch notifications:', notifyError);
-          // Don't block the user - product was created successfully
         }
+      }
+
+      // Step 5: Done!
+      if (publish) {
+        setPublishingStep(5);
+        await new Promise(resolve => setTimeout(resolve, 1200)); // Show "Done!" briefly
       }
 
       toast.success(publish ? "Product published!" : "Draft saved!");
@@ -487,6 +523,7 @@ export default function CreateProduct() {
     } finally {
       setLoading(false);
       setIsPublishing(false);
+      setPublishingStep(0);
     }
   };
 
@@ -527,7 +564,7 @@ export default function CreateProduct() {
 
   return (
     <>
-      <PublishingOverlay isPublishing={isPublishing} />
+      <PublishingOverlay isPublishing={isPublishing} currentStep={publishingStep} />
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <h1 className="text-3xl font-bold mb-8">Create New Product</h1>
 
@@ -804,8 +841,17 @@ export default function CreateProduct() {
             {/* Cover Image */}
             <div>
               <Label>Cover Image</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Upload an image or select a frame from your preview video
+              </p>
               <div className="mt-2">
-                {coverPreview ? (
+                {showFrameSelector && previewVideoPreview ? (
+                  <VideoFrameSelector
+                    videoSrc={previewVideoPreview}
+                    onFrameSelect={handleFrameSelect}
+                    onCancel={() => setShowFrameSelector(false)}
+                  />
+                ) : coverPreview ? (
                   <div className="relative">
                     <img
                       src={coverPreview}
@@ -820,24 +866,45 @@ export default function CreateProduct() {
                       onClick={() => {
                         setCoverImage(null);
                         setCoverPreview(null);
+                        setCoverFromVideo(false);
                       }}
                     >
                       <X className="w-4 h-4" />
                     </Button>
+                    {coverFromVideo && (
+                      <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-black/70 text-white text-xs">
+                        Frame from video
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center w-full aspect-video border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-                    <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                    <span className="text-sm text-muted-foreground">
-                      Click to upload cover image
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleCoverChange}
-                      className="hidden"
-                    />
-                  </label>
+                  <div className="space-y-3">
+                    <label className="flex flex-col items-center justify-center w-full aspect-video border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                      <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                      <span className="text-sm text-muted-foreground">
+                        Click to upload cover image
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCoverChange}
+                        className="hidden"
+                      />
+                    </label>
+                    
+                    {/* Option to select frame from video */}
+                    {previewVideoPreview && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setShowFrameSelector(true)}
+                      >
+                        <Camera className="w-4 h-4 mr-2" />
+                        Select frame from preview video
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
