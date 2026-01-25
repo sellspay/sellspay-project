@@ -153,7 +153,8 @@ export default function Notifications() {
       await markAsRead(notification.id);
     }
 
-    if (notification.redirect_url) {
+    // Navigate if there's a valid redirect URL (skip broken patterns like /@user)
+    if (notification.redirect_url && !notification.redirect_url.match(/^\/@(user|undefined|null)$/)) {
       navigate(notification.redirect_url);
     }
   };
@@ -313,11 +314,9 @@ function NotificationCard({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              {notification.actor?.username && (
-                <span className="font-medium text-foreground">
-                  @{notification.actor.username}
-                </span>
-              )}
+              <span className="font-medium text-foreground">
+                {notification.actor?.username ? `@${notification.actor.username}` : "Someone"}
+              </span>
               {!notification.is_read && (
                 <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
               )}

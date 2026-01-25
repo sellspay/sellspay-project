@@ -835,12 +835,16 @@ const ProfilePage: React.FC = () => {
         toast.success(`Now following @${profile.username}`);
 
         // Create notification for the followed user
+        // Fetch actor username for proper redirect
+        const { data: actorProfile } = await supabase.from('profiles').select('username').eq('id', currentUserProfileId).maybeSingle();
+        const actorUsername = actorProfile?.username;
+        
         await createNotification({
           userId: profile.id,
           type: 'follow',
           actorId: currentUserProfileId,
           message: 'started following you',
-          redirectUrl: `/@${(await supabase.from('profiles').select('username').eq('id', currentUserProfileId).maybeSingle()).data?.username || 'user'}`,
+          redirectUrl: actorUsername ? `/@${actorUsername}` : null,
         });
       } else {
         toast.error('Failed to follow');
