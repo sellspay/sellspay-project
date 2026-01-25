@@ -1,108 +1,84 @@
 
-# Fix Website Branding & Social Sharing Preview
+# Fix: Universal Visibility for Public Profile Data
 
-## Problem
-When sharing the EditorsParadise website link on social media or messaging apps, it currently shows:
-- **Title**: "Lovable App"
-- **Description**: "Lovable Generated Project"
-- **Image**: Lovable's default OG image
-- **Favicon**: Default Lovable favicon
+## Problem Summary
+After the recent security hardening, all public-facing pages that display creator/editor profiles are broken for non-authenticated users. This affects:
 
-## Solution
+- **Home Page**: Featured Creators section and Testimonials (missing Kagori card)
+- **Products Page**: Comments show "@anonymous" with no avatars, "View Profile" card missing
+- **Community Page**: Thread authors show no profile pictures or usernames
+- **Spotlight Page**: Featured creators not displaying
+- **Updates Page**: Author information not visible
+- **Hire Editors Page**: No editors shown when logged out
+- **Creators Page**: No creators shown when logged out
 
-### 1. Update Meta Tags in `index.html`
+## Root Cause
+The database views `public_profiles` and `public_identities` use `security_invoker=on`, meaning they inherit the caller's RLS permissions. The underlying `profiles` table has no SELECT policy for:
+- Anonymous users
+- Authenticated users viewing other users' profiles (creator/editor)
 
-Replace all Lovable branding with EditorsParadise branding:
+The recent security migration removed the policy "Authenticated users can view creator and editor profiles" which was needed for this functionality.
 
-| Current | New |
-|---------|-----|
-| `<title>Lovable App</title>` | `<title>EditorsParadise</title>` |
-| `description: "Lovable Generated Project"` | `description: "The ultimate marketplace for editors. Discover premium Presets, LUTs, SFX, Templates, Overlays and Fonts crafted by professional creators worldwide."` |
-| `og:title: "Lovable App"` | `og:title: "EditorsParadise"` |
-| `author: "Lovable"` | `author: "EditorsParadise"` |
-| `twitter:site: "@Lovable"` | `twitter:site: "@EditorsParadise"` |
+## Solution: Add a Public-Safe RLS Policy
 
-### 2. Add EP Logo as Favicon
+Create a new RLS policy on the `profiles` table that allows **anyone** (including anonymous users) to SELECT rows where `is_creator = true OR is_editor = true`. This is safe because:
 
-Copy the uploaded EP logo to the `public` folder as `favicon.png` and update the HTML to reference it. This will show the EP logo in browser tabs and when shared.
+1. The views already filter to only include safe, non-PII columns
+2. Only creator/editor profiles are exposed (not regular users)
+3. Sensitive fields (email, phone, stripe_account_id, payoneer_email) are excluded from the views
 
-### 3. Create Social Share OG Image
+## Database Migration
 
-For the landscape 1200x630 OG image (standard for social sharing), I'll need to create a dedicated image that showcases the hero section. Options:
-
-**Option A (Recommended)**: Create a static OG image file that captures the essence of the hero section with:
-- The cosmic purple background
-- "Level Up Your Creative Workflow" headline
-- EditorsParadise branding
-- 1200x630 dimension (optimal for social platforms)
-
-**Option B**: Use a screenshot of the hero section (but this requires an external image)
-
-### 4. Files to Modify/Create
-
-| File | Action |
-|------|--------|
-| `index.html` | Update all meta tags with EP branding |
-| `public/favicon.png` | Copy EP logo as new favicon |
-| `public/og-image.png` | Create/add landscape social sharing image |
-
----
-
-## Technical Details
-
-### Updated `index.html` Structure
-```html
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <title>EditorsParadise</title>
-    <meta name="description" content="The ultimate marketplace for editors. Discover premium Presets, LUTs, SFX, Templates, Overlays and Fonts crafted by professional creators worldwide." />
-    <meta name="author" content="EditorsParadise" />
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    
-    <!-- Open Graph -->
-    <meta property="og:title" content="EditorsParadise" />
-    <meta property="og:description" content="The ultimate marketplace for editors. Discover premium Presets, LUTs, SFX, Templates, Overlays and Fonts crafted by professional creators worldwide." />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://editorsparadise.lovable.app/og-image.png" />
-    <meta property="og:url" content="https://editorsparadise.lovable.app" />
-    <meta property="og:site_name" content="EditorsParadise" />
-    
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@EditorsParadise" />
-    <meta name="twitter:title" content="EditorsParadise" />
-    <meta name="twitter:description" content="The ultimate marketplace for editors. Discover premium Presets, LUTs, SFX, Templates, Overlays and Fonts crafted by professional creators worldwide." />
-    <meta name="twitter:image" content="https://editorsparadise.lovable.app/og-image.png" />
-  </head>
-  ...
-</html>
+```sql
+-- Allow public read access to creator and editor profiles
+-- This is safe because:
+-- 1. Only profiles marked as is_creator=true or is_editor=true are accessible
+-- 2. The public_profiles and public_identities views exclude sensitive PII
+-- 3. This enables universal visibility for public-facing pages
+CREATE POLICY "Anyone can view creator and editor profiles"
+ON public.profiles FOR SELECT
+USING (is_creator = true OR is_editor = true);
 ```
 
-### OG Image Requirements
-For the best social sharing experience, I'll create a proper OG image with:
-- **Dimensions**: 1200x630 pixels (1.91:1 aspect ratio - standard for Facebook/Twitter/LinkedIn)
-- **Content**: Hero section aesthetic with cosmic background, headline, and EP branding
-- **Location**: `public/og-image.png`
+## Changes Summary
 
-### Favicon
-The EP logo will be copied to `public/favicon.png` and referenced with a proper link tag.
+| Component | Current State | After Fix |
+|-----------|---------------|-----------|
+| Featured Creators (Home) | Empty for anonymous users | Shows all featured creators |
+| Testimonials (Home) | Missing Kagori card | Shows all testimonials with correct profile data |
+| Product Comments | Shows "@anonymous", no avatars | Shows correct usernames and avatars |
+| Product Creator Card | Missing for non-owners | Visible to everyone |
+| Community Threads | No author profile data | Shows author info (avatar, username, verified badge) |
+| Spotlight Page | Empty | Shows spotlighted creators |
+| Updates Page | Works (uses bot identity) | No change needed |
+| Hire Editors | Empty for anonymous | Shows all approved editors |
+| Creators Page | Empty for anonymous | Shows all creators |
 
----
+## Security Assurance
 
-## Implementation Steps
+This change is secure because:
 
-1. **Copy EP logo** to `public/favicon.png`
-2. **Generate OG image** - Create a 1200x630 landscape image capturing the hero aesthetic using AI image generation
-3. **Update `index.html`** with all new meta tags, favicon reference, and OG image URLs
+1. **Column-Level Protection**: The views (`public_profiles`, `public_identities`) explicitly exclude sensitive columns:
+   - No email, phone, stripe_account_id, payoneer_email, seller_support_email
+   - Only public-facing data: username, full_name, avatar_url, bio, verified status
 
-This will ensure when anyone shares editorsparadise.lovable.app, they'll see:
-- ✅ "EditorsParadise" as the title
-- ✅ Proper brand description
-- ✅ EP logo as the icon
-- ✅ Beautiful hero-style landscape preview image
+2. **Row-Level Filtering**: Only profiles where `is_creator = true OR is_editor = true` are accessible
+   - Regular users' profiles remain completely private
+   - No access to non-creator/editor accounts
+
+3. **Owner's Full Profile**: The existing "Users can view their own full profile" policy remains, allowing users to see all their own data
+
+## Files Affected
+- Database migration only (no code changes needed)
+- The existing code already queries the correct views (`public_profiles`, `public_identities`)
+
+## Testing Verification
+After applying this fix, verify in an incognito/logged-out browser:
+- Home page shows Featured Creators section
+- Home page Testimonials shows all cards including dynamic ones
+- Product page shows creator "View Profile" card
+- Product comments show usernames and avatars
+- Community threads show author info
+- Spotlight page shows featured creators
+- Hire Editors page shows all approved editors
+- Creators page shows all creators
