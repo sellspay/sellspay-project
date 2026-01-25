@@ -83,28 +83,30 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
     enabled: !!user?.id,
   });
 
-  // Check if thread author is admin
-  const { data: authorIsAdmin } = useQuery({
-    queryKey: ['user-is-admin', thread.author_id],
+  // Check if thread author is owner (visible to everyone)
+  const { data: authorIsOwner = false } = useQuery({
+    queryKey: ['thread-author-is-owner', thread.author_id],
     queryFn: async () => {
+      // First get the user_id from the profile
       const { data: authorProfile, error: profileErr } = await supabase
         .from('profiles')
         .select('user_id')
         .eq('id', thread.author_id)
         .maybeSingle();
-      if (profileErr) throw profileErr;
-      if (!authorProfile?.user_id) return false;
+      if (profileErr || !authorProfile?.user_id) return false;
 
+      // Then check if they have owner role
       const { data: roleRow, error: roleErr } = await supabase
         .from('user_roles')
         .select('user_id')
         .eq('user_id', authorProfile.user_id)
         .eq('role', 'owner')
         .maybeSingle();
-      if (roleErr) throw roleErr;
+      if (roleErr) return false;
       return !!roleRow;
     },
     enabled: !!thread.author_id,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes since owner status rarely changes
   });
 
   const isThreadOwner = profile?.id === thread.author_id;
@@ -240,7 +242,7 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
               >
                 {thread.author?.full_name || thread.author?.username || 'Unknown'}
               </Link>
-              {thread.author?.verified && <VerifiedBadge size="sm" isOwner={authorIsAdmin} />}
+              {thread.author?.verified && <VerifiedBadge size="sm" isOwner={authorIsOwner} />}
               {thread.is_pinned && (
                 <Badge variant="secondary" className="text-xs gap-1 bg-gradient-to-r from-primary/20 to-accent/20 text-primary border-0 shadow-sm">
                   <Pin className="h-3 w-3" />
