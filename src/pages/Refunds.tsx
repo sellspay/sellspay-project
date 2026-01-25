@@ -233,13 +233,13 @@ export default function Refunds() {
                 refund request, please contact our support team at{' '}
                 <span className="text-foreground font-medium">support@editorsparadise.org</span>.
               </p>
-              <div className="flex gap-3">
-                <Button variant="outline" asChild>
-                  <a href="mailto:support@editorsparadise.org">Contact Support</a>
-                </Button>
-                <Button variant="ghost" asChild>
-                  <Link to="/faq">View FAQ</Link>
-                </Button>
+              <div className="flex flex-wrap gap-3">
+                <a href="mailto:support@editorsparadise.org">
+                  <Button variant="outline">Contact Support</Button>
+                </a>
+                <Link to="/faq">
+                  <Button variant="ghost">View FAQ</Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
