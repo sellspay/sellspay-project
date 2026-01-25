@@ -6,15 +6,50 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Download, Play, Pause, RotateCcw, Volume2 } from "lucide-react";
+import { 
+  Loader2, 
+  Sparkles, 
+  Download, 
+  RotateCcw, 
+  Volume2, 
+  Wand2,
+  Lightbulb
+} from "lucide-react";
+import { SFXWaveform } from "@/components/tools/SFXWaveform";
 
 export default function SFXGenerator() {
   const [prompt, setPrompt] = useState("");
   const [duration, setDuration] = useState(10);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [result, setResult] = useState<{ audio_url: string; filename: string } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleEnhancePrompt = async () => {
+    if (!prompt.trim()) {
+      toast.error("Please enter a prompt first");
+      return;
+    }
+
+    setIsEnhancing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("enhance-sfx-prompt", {
+        body: { prompt: prompt.trim() },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setPrompt(data.enhanced_prompt);
+      toast.success("Prompt enhanced with AI!");
+    } catch (err) {
+      console.error("Enhancement error:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to enhance prompt");
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -30,13 +65,8 @@ export default function SFXGenerator() {
         body: { prompt: prompt.trim(), duration },
       });
 
-      if (error) {
-        throw error;
-      }
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
       setResult({
         audio_url: data.audio_url,
@@ -101,6 +131,15 @@ export default function SFXGenerator() {
     "Creaky wooden door opening slowly in a haunted house",
   ];
 
+  const promptSuggestions = [
+    "Add reverb",
+    "Make it fade out",
+    "More bass",
+    "Shorter burst",
+    "Echo effect",
+    "Underwater",
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -120,7 +159,28 @@ export default function SFXGenerator() {
         {/* Input Section */}
         <Card className="p-6 space-y-6 bg-card/50">
           <div>
-            <label className="text-sm font-medium mb-2 block">Prompt</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">Prompt</label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleEnhancePrompt}
+                disabled={isEnhancing || !prompt.trim() || isGenerating}
+                className="h-7 text-xs gap-1.5 text-primary hover:text-primary"
+              >
+                {isEnhancing ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Enhancing...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-3 h-3" />
+                    AI Enhance
+                  </>
+                )}
+              </Button>
+            </div>
             <Textarea
               placeholder="Describe the sound effect you want to generate..."
               value={prompt}
@@ -128,6 +188,21 @@ export default function SFXGenerator() {
               className="min-h-[120px] resize-none"
               disabled={isGenerating}
             />
+            
+            {/* Quick Suggestions */}
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {promptSuggestions.map((suggestion, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPrompt((prev) => prev ? `${prev}, ${suggestion.toLowerCase()}` : suggestion)}
+                  disabled={isGenerating}
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-colors disabled:opacity-50 flex items-center gap-1"
+                >
+                  <Lightbulb className="w-2.5 h-2.5" />
+                  {suggestion}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -195,7 +270,7 @@ export default function SFXGenerator() {
         <Card className="p-6 bg-card/50 flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold">Result</h3>
-          {result ? (
+            {result ? (
               <Badge variant="outline" className="text-primary border-primary/30">
                 Ready
               </Badge>
@@ -219,36 +294,16 @@ export default function SFXGenerator() {
               </div>
             ) : result ? (
               <div className="w-full space-y-6">
-                {/* Audio Visualization Placeholder */}
-                <div className="h-24 bg-secondary/30 rounded-lg flex items-center justify-center overflow-hidden">
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: 40 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="w-1 bg-primary/60 rounded-full animate-pulse"
-                        style={{
-                          height: `${Math.random() * 60 + 20}%`,
-                          animationDelay: `${i * 50}ms`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
+                {/* Waveform Visualization */}
+                <SFXWaveform
+                  audioUrl={result.audio_url}
+                  isPlaying={isPlaying}
+                  onPlayPause={handlePlayPause}
+                  audioRef={audioRef}
+                />
 
-                {/* Playback Controls */}
-                <div className="flex items-center justify-center gap-4">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="w-12 h-12 rounded-full"
-                    onClick={handlePlayPause}
-                  >
-                    {isPlaying ? (
-                      <Pause className="w-5 h-5" />
-                    ) : (
-                      <Play className="w-5 h-5 ml-0.5" />
-                    )}
-                  </Button>
+                {/* Download Button */}
+                <div className="flex justify-center">
                   <Button variant="outline" onClick={handleDownload}>
                     <Download className="w-4 h-4 mr-2" />
                     Download
