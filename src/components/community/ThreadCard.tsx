@@ -107,19 +107,19 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
     enabled: !!user?.id,
   });
 
-  // Check if thread author is owner (visible to everyone)
+  // Check if thread author is owner (visible to everyone via public_profiles view)
   const { data: authorIsOwner = false } = useQuery({
     queryKey: ['thread-author-is-owner', thread.author_id],
     queryFn: async () => {
-      // First get the user_id from the profile
+      // First get the user_id from public_profiles (accessible to all users)
       const { data: authorProfile, error: profileErr } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('user_id')
         .eq('id', thread.author_id)
         .maybeSingle();
       if (profileErr || !authorProfile?.user_id) return false;
 
-      // Then check if they have owner role
+      // Then check if they have owner role (RLS allows public to check owner role)
       const { data: roleRow, error: roleErr } = await supabase
         .from('user_roles')
         .select('user_id')

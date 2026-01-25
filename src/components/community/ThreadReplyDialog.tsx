@@ -108,10 +108,10 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
       if (error) throw error;
       if (!repliesData || repliesData.length === 0) return [];
 
-      // Fetch authors
+      // Fetch authors from public_profiles (accessible to all users including anonymous)
       const authorIds = [...new Set(repliesData.map((r) => r.author_id))];
       const { data: authorsData } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id, user_id, username, full_name, avatar_url, verified')
         .in('id', authorIds);
 
@@ -167,7 +167,7 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
       if (!thread?.author_id) return false;
       // threads.author_id points to profiles.id (not auth user id)
       const { data: authorProfile } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('user_id')
         .eq('id', thread.author_id)
         .maybeSingle();
