@@ -50,7 +50,7 @@ export function ThreadComposer() {
       if (!user?.id) return null;
       const { data } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url')
+        .select('id, username, full_name, avatar_url, is_creator')
         .eq('user_id', user.id)
         .single();
       return data;
@@ -58,9 +58,10 @@ export function ThreadComposer() {
     enabled: !!user?.id,
   });
 
-  // Check if user can post threads (owner always can, or has any subscription)
+  // Check if user can post threads (owner, verified creators, or has any subscription)
   const hasSubscription = !!subscription;
-  const canPostThreads = isOwner || hasSubscription;
+  const isVerifiedCreator = !!profile?.is_creator;
+  const canPostThreads = isOwner || isVerifiedCreator || hasSubscription;
 
   // Handle promotion image upload
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
