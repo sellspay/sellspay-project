@@ -12,6 +12,21 @@ const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
+// Map Stripe product IDs to subscription tiers
+const PLATFORM_SUBSCRIPTION_PRODUCTS: Record<string, string> = {
+  'prod_TqywV2biJfsfYc': 'starter',
+  'prod_TqywcmDO94NEYg': 'pro',
+  'prod_TqywavIYdJ4IX2': 'enterprise',
+};
+
+// Map top-up product IDs to credits
+const TOPUP_PRODUCTS: Record<string, number> = {
+  'prod_TqyxD6x0yTSBtY': 15,
+  'prod_TqyxSmJKa3LvoI': 50,
+  'prod_TqyxuKkSnjURjP': 100,
+  'prod_Tqyxq1sukXthJx': 250,
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -84,6 +99,55 @@ serve(async (req) => {
 
       const metadata = session.metadata || {};
 
+      // Handle credit top-up purchase
+      if (metadata.type === "credit_topup") {
+        const userId = metadata.user_id;
+        const topupId = metadata.topup_id;
+        
+        logStep("Processing credit top-up", { userId, topupId });
+
+        // Get the topup package to find credit amount
+        const { data: topupPkg } = await supabaseAdmin
+          .from("credit_topups")
+          .select("credits")
+          .eq("id", topupId)
+          .single();
+
+        if (topupPkg) {
+          // Add credits to user's balance
+          const { error: updateError } = await supabaseAdmin.rpc('', {});
+          
+          // Direct update of credit_balance
+          const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("credit_balance")
+            .eq("user_id", userId)
+            .single();
+          
+          const newBalance = (profile?.credit_balance || 0) + topupPkg.credits;
+          
+          await supabaseAdmin
+            .from("profiles")
+            .update({ credit_balance: newBalance })
+            .eq("user_id", userId);
+          
+          // Record transaction
+          await supabaseAdmin.from("credit_transactions").insert({
+            user_id: userId,
+            amount: topupPkg.credits,
+            type: "topup",
+            description: `Credit top-up: ${topupPkg.credits} credits`,
+            stripe_session_id: session.id,
+          });
+
+          logStep("Top-up credits added", { userId, credits: topupPkg.credits, newBalance });
+        }
+        
+        return new Response(JSON.stringify({ received: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // Handle editor booking checkout
       if (metadata.type === "editor_booking") {
         const editorId = metadata.editor_id;
@@ -114,13 +178,37 @@ serve(async (req) => {
         });
       }
 
-      // Handle subscription checkout
+      // Handle subscription checkout (platform subscriptions)
       if (session.mode === "subscription") {
         const planId = metadata.plan_id;
         const buyerProfileId = metadata.buyer_profile_id;
 
+        // Check if this is a platform subscription
+        if (typeof session.subscription === "string") {
+          const subscription = await stripe.subscriptions.retrieve(session.subscription);
+          const productId = subscription.items.data[0]?.price?.product as string;
+          const tier = PLATFORM_SUBSCRIPTION_PRODUCTS[productId];
+
+          if (tier && session.customer_email) {
+            // Update user's subscription tier
+            const { error: updateError } = await supabaseAdmin
+              .from("profiles")
+              .update({ 
+                subscription_tier: tier,
+                subscription_stripe_id: session.subscription 
+              })
+              .eq("email", session.customer_email);
+
+            if (updateError) {
+              logStep("Failed to update subscription tier", { error: updateError.message });
+            } else {
+              logStep("Subscription tier updated", { tier, email: session.customer_email });
+            }
+          }
+        }
+
         if (planId && buyerProfileId) {
-          // Create user_subscription record
+          // Create user_subscription record for creator subscriptions
           const { error: subError } = await supabaseAdmin.from("user_subscriptions").insert({
             user_id: buyerProfileId,
             plan_id: planId,
@@ -128,7 +216,7 @@ serve(async (req) => {
             stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null,
             stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
             current_period_start: new Date().toISOString(),
-            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           });
 
           if (subError) {
@@ -151,11 +239,9 @@ serve(async (req) => {
           });
         }
 
-        // If no buyer profile ID, we need to create/find one based on email
         let finalBuyerProfileId = buyerProfileId;
 
         if (!finalBuyerProfileId && session.customer_email) {
-          // Check if profile exists for this email
           const { data: existingProfile } = await supabaseAdmin
             .from("profiles")
             .select("id")
@@ -201,6 +287,22 @@ serve(async (req) => {
       const subscription = event.data.object as Stripe.Subscription;
       logStep("Processing subscription.updated", { subscriptionId: subscription.id, status: subscription.status });
 
+      // Check if it's a platform subscription
+      const productId = subscription.items.data[0]?.price?.product as string;
+      const tier = PLATFORM_SUBSCRIPTION_PRODUCTS[productId];
+
+      if (tier) {
+        // Update profile subscription tier based on subscription status
+        if (subscription.status === "active") {
+          await supabaseAdmin
+            .from("profiles")
+            .update({ subscription_tier: tier })
+            .eq("subscription_stripe_id", subscription.id);
+          logStep("Platform subscription tier updated", { tier, subscriptionId: subscription.id });
+        }
+      }
+
+      // Update user_subscriptions table
       const { error: updateError } = await supabaseAdmin
         .from("user_subscriptions")
         .update({
@@ -223,6 +325,16 @@ serve(async (req) => {
       const subscription = event.data.object as Stripe.Subscription;
       logStep("Processing subscription.deleted", { subscriptionId: subscription.id });
 
+      // Check if it's a platform subscription and clear the tier
+      const productId = subscription.items.data[0]?.price?.product as string;
+      if (PLATFORM_SUBSCRIPTION_PRODUCTS[productId]) {
+        await supabaseAdmin
+          .from("profiles")
+          .update({ subscription_tier: null, subscription_stripe_id: null })
+          .eq("subscription_stripe_id", subscription.id);
+        logStep("Platform subscription tier cleared", { subscriptionId: subscription.id });
+      }
+
       const { error: updateError } = await supabaseAdmin
         .from("user_subscriptions")
         .update({
@@ -242,11 +354,9 @@ serve(async (req) => {
       const account = event.data.object as Stripe.Account;
       logStep("Processing account.updated", { accountId: account.id });
 
-      // Check if onboarding is complete
       const isComplete = account.details_submitted && account.charges_enabled && account.payouts_enabled;
 
       if (isComplete) {
-        // Update the profile
         const { error: updateError } = await supabaseAdmin
           .from("profiles")
           .update({ stripe_onboarding_complete: true })

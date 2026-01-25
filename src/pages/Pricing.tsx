@@ -5,77 +5,78 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCredits } from "@/hooks/useCredits";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MainLayout from "@/components/layout/MainLayout";
-import { Check, Loader2, Sparkles, Crown } from "lucide-react";
+import { Check, Loader2, Sparkles, Crown, Percent, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-interface CreditPackage {
+interface SubscriptionTier {
   id: string;
   name: string;
   credits: number;
   price_cents: number;
-  is_popular: boolean;
-  display_order: number;
   stripe_price_id: string | null;
+  stripe_product_id: string | null;
 }
 
-// Mapping to monthly recurring price IDs based on actual DB credits
-const MONTHLY_PRICE_MAP: Record<number, string> = {
-  15: "price_1SssVIE5Ga1Ha0QbMRTCVK4R",
-  50: "price_1SssVSE5Ga1Ha0Qb0fUFWDk9",
-  150: "price_1SssVhE5Ga1Ha0Qbt8oDdKvc",
-  350: "price_1SssWzE5Ga1Ha0QbGjeeSuID",
-  800: "price_1SssXEE5Ga1Ha0QbgDYnF7Ds",
-};
-
-// Tier definitions
-const TIERS = [
-  {
+// Tier definitions with seller fee benefits
+const TIER_CONFIG = {
+  starter: {
     id: "starter",
     name: "Starter",
     description: "Perfect for trying out our AI audio tools",
+    sellerFee: 5,
+    sellerFeeLabel: "5% seller fee (standard)",
     color: "from-blue-500/20 to-cyan-500/20",
     borderColor: "border-blue-500/30",
+    iconColor: "text-blue-400",
+    popular: false,
     features: [
+      "60 credits/month",
       "All Pro AI tools access",
-      "Voice Isolator",
-      "Music Splitter",
+      "Voice Isolator & Music Splitter",
       "SFX Generator",
       "Priority processing",
     ],
   },
-  {
+  pro: {
     id: "pro",
     name: "Pro",
-    description: "For creators who need more power and flexibility",
+    description: "For serious creators and sellers",
+    sellerFee: 3,
+    sellerFeeLabel: "3% seller fee (Save 2%)",
     color: "from-primary/20 to-purple-500/20",
     borderColor: "border-primary/50",
+    iconColor: "text-primary",
     popular: true,
     features: [
+      "150 credits/month",
       "Everything in Starter, plus:",
-      "Higher quality exports",
-      "Batch processing",
+      "Reduced 3% seller fee",
       "Priority support",
       "Early access to new tools",
     ],
   },
-  {
+  enterprise: {
     id: "enterprise",
     name: "Enterprise",
-    description: "Built for teams and high-volume creators",
+    description: "For power users and teams",
+    sellerFee: 0,
+    sellerFeeLabel: "0% seller fee (Save 5%)",
     color: "from-amber-500/20 to-orange-500/20",
     borderColor: "border-amber-500/30",
+    iconColor: "text-amber-400",
+    popular: false,
     features: [
+      "300 credits/month",
       "Everything in Pro, plus:",
+      "Zero seller fees",
       "Dedicated support",
       "Custom integrations",
-      "Team collaboration",
-      "Volume discounts",
+      "Team features (coming soon)",
     ],
   },
-];
+};
 
 const faqs = [
   {
@@ -87,12 +88,16 @@ const faqs = [
     answer: "Credits reset each month with your subscription. Unused credits don't roll over to the next month, so make sure to use them!"
   },
   {
-    question: "Can I cancel anytime?",
-    answer: "Yes! You can cancel your subscription at any time from Settings → Billing. You'll keep your credits until the end of your billing period."
+    question: "How do seller fee reductions work?",
+    answer: "When you subscribe to Pro or Enterprise, your platform fee on product sales drops from 5% to 3% (Pro) or 0% (Enterprise). This means more money in your pocket on every sale!"
   },
   {
-    question: "What happens if I run out of credits?",
-    answer: "You can upgrade to a higher tier anytime. Your subscription will be prorated for the remaining days in your billing cycle."
+    question: "Can I top up credits?",
+    answer: "Yes! You can purchase additional credits anytime by clicking your wallet in the header. Top-up credits are priced at a premium, so upgrading your plan is usually the better value."
+  },
+  {
+    question: "Can I cancel anytime?",
+    answer: "Yes! You can cancel your subscription at any time from Settings → Billing. You'll keep your credits and reduced seller fees until the end of your billing period."
   },
   {
     question: "Do new users get free credits?",
@@ -104,21 +109,14 @@ export default function Pricing() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { startCheckout, verifyPurchase, subscription } = useCredits();
+  const { startCheckout, verifyPurchase, subscription, checkSubscription } = useCredits();
   
-  const [packages, setPackages] = useState<CreditPackage[]>([]);
+  const [tiers, setTiers] = useState<SubscriptionTier[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState<string | null>(null);
-  
-  // Selected package per tier
-  const [selectedCredits, setSelectedCredits] = useState<Record<string, number>>({
-    starter: 15,
-    pro: 150,
-    enterprise: 800,
-  });
 
   useEffect(() => {
-    fetchPackages();
+    fetchTiers();
     
     const sessionId = searchParams.get("session_id");
     const success = searchParams.get("success");
@@ -135,7 +133,7 @@ export default function Pricing() {
     }
   }, [searchParams]);
 
-  const fetchPackages = async () => {
+  const fetchTiers = async () => {
     try {
       const { data, error } = await supabase
         .from("credit_packages")
@@ -144,29 +142,17 @@ export default function Pricing() {
         .order("display_order", { ascending: true });
 
       if (error) throw error;
-      setPackages(data || []);
+      setTiers(data || []);
     } catch (error) {
-      console.error("Error fetching packages:", error);
+      console.error("Error fetching tiers:", error);
       toast.error("Failed to load pricing");
     } finally {
       setLoading(false);
     }
   };
 
-  const getPackagesForTier = (tierId: string) => {
-    // Map tiers to credit ranges
-    const tierRanges: Record<string, number[]> = {
-      starter: [15, 50],
-      pro: [150, 350],
-      enterprise: [800],
-    };
-    const range = tierRanges[tierId] || [];
-    return packages.filter(pkg => range.includes(pkg.credits));
-  };
-
-  const getSelectedPackage = (tierId: string) => {
-    const credits = selectedCredits[tierId];
-    return packages.find(pkg => pkg.credits === credits);
+  const getTierData = (tierName: string) => {
+    return tiers.find(t => t.name.toLowerCase() === tierName.toLowerCase());
   };
 
   const handleSubscribe = async (tierId: string) => {
@@ -176,30 +162,24 @@ export default function Pricing() {
       return;
     }
 
-    const selectedPackage = getSelectedPackage(tierId);
-    if (!selectedPackage) {
-      toast.error("Please select a package");
-      return;
-    }
-
-    const monthlyPriceId = MONTHLY_PRICE_MAP[selectedPackage.credits];
-    if (!monthlyPriceId) {
-      toast.error("Invalid package configuration");
+    const tierData = getTierData(tierId);
+    if (!tierData || !tierData.stripe_price_id) {
+      toast.error("This plan is not available");
       return;
     }
 
     setPurchasing(tierId);
     try {
-      const result = await startCheckout(selectedPackage.id, monthlyPriceId);
+      const result = await startCheckout(tierData.id, tierData.stripe_price_id);
       
       if (result?.error) {
         toast.error(result.error);
         return;
       }
       
-      // Handle successful upgrade (no redirect, instant update)
       if (result?.upgraded) {
         toast.success(result.message || "Subscription upgraded successfully!");
+        await checkSubscription(true);
       }
     } catch (error) {
       console.error("Checkout error:", error);
@@ -210,7 +190,14 @@ export default function Pricing() {
   };
 
   const formatPrice = (cents: number) => {
-    return (cents / 100).toFixed(0);
+    return (cents / 100).toFixed(2);
+  };
+
+  const getCurrentTier = (): string | null => {
+    if (!subscription) return null;
+    // Match subscription credits to tier
+    const tier = tiers.find(t => t.credits === subscription.credits);
+    return tier?.name.toLowerCase() || null;
   };
 
   if (loading) {
@@ -222,6 +209,8 @@ export default function Pricing() {
       </MainLayout>
     );
   }
+
+  const currentTier = getCurrentTier();
 
   return (
     <MainLayout>
@@ -235,15 +224,32 @@ export default function Pricing() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-purple-500/20 border border-primary/20 mb-6">
               <Crown className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-                Pricing Plans
+                Platform Plans
               </span>
             </div>
             <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
               Choose Your <span className="bg-gradient-to-r from-primary via-purple-400 to-pink-400 bg-clip-text text-transparent">Plan</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Professional AI-powered audio tools. Simple pricing, powerful results.
+              Unlock AI tools, reduce seller fees, and scale your creative business.
             </p>
+          </div>
+
+          {/* Seller Fee Benefit Banner */}
+          <div className="max-w-2xl mx-auto mb-10">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-transparent border border-emerald-500/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                  <Percent className="h-5 w-5 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-emerald-400">Seller Fee Reduction</p>
+                  <p className="text-sm text-muted-foreground">
+                    Pro members pay only 3% fees on sales. Enterprise pays 0%. Keep more of what you earn!
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Active Subscription Notice */}
@@ -255,11 +261,11 @@ export default function Pricing() {
                     <Check className="h-5 w-5 text-green-500" />
                   </div>
                   <div>
-                    <p className="font-semibold text-green-400">
-                      Active: {subscription.credits} credits/month
+                    <p className="font-semibold text-green-400 capitalize">
+                      Active: {currentTier || "Subscription"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Renews {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                      {subscription.credits} credits/month • Renews {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -267,35 +273,53 @@ export default function Pricing() {
             </div>
           )}
 
-          {/* Pricing Cards - Side by Side */}
+          {/* Pricing Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-            {TIERS.map((tier) => {
-              const tierPackages = getPackagesForTier(tier.id);
-              const selectedPkg = getSelectedPackage(tier.id);
-              const isCurrentPlan = subscription && tierPackages.some(p => p.credits === subscription.credits);
+            {Object.values(TIER_CONFIG).map((tierConfig) => {
+              const tierData = getTierData(tierConfig.id);
+              const isCurrentPlan = currentTier === tierConfig.id;
+              const canUpgrade = subscription && tierData && tierData.price_cents > subscription.priceAmount;
+              const isDowngrade = subscription && tierData && tierData.price_cents < subscription.priceAmount;
               
               return (
                 <div
-                  key={tier.id}
+                  key={tierConfig.id}
                   className={cn(
                     "relative flex flex-col rounded-2xl border bg-card/50 backdrop-blur-sm p-6",
-                    tier.popular ? "border-primary/50 shadow-lg shadow-primary/10" : "border-border/50"
+                    tierConfig.popular ? "border-primary/50 shadow-lg shadow-primary/10" : "border-border/50",
+                    isCurrentPlan && "ring-2 ring-green-500/50"
                   )}
                 >
                   {/* Popular badge */}
-                  {tier.popular && (
+                  {tierConfig.popular && !isCurrentPlan && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <div className="px-4 py-1 rounded-full bg-gradient-to-r from-primary to-purple-500 text-xs font-bold text-white">
                         MOST POPULAR
                       </div>
                     </div>
                   )}
+                  
+                  {/* Current Plan badge */}
+                  {isCurrentPlan && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <div className="px-4 py-1 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-xs font-bold text-white">
+                        YOUR PLAN
+                      </div>
+                    </div>
+                  )}
 
                   {/* Tier header */}
-                  <div className="mb-6">
-                    <h3 className="text-xl font-bold mb-2">{tier.name}</h3>
+                  <div className="mb-6 pt-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="text-xl font-bold">{tierConfig.name}</h3>
+                      {tierConfig.sellerFee === 0 && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          0% fees
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      {tier.description}
+                      {tierConfig.description}
                     </p>
                   </div>
 
@@ -304,84 +328,72 @@ export default function Pricing() {
                     <div className="flex items-baseline gap-1">
                       <span className={cn(
                         "text-4xl font-bold",
-                        tier.popular && "bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent"
+                        tierConfig.popular && "bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent"
                       )}>
-                        ${selectedPkg ? formatPrice(selectedPkg.price_cents) : "—"}
+                        ${tierData ? formatPrice(tierData.price_cents) : "—"}
                       </span>
                       <span className="text-muted-foreground">per month</span>
                     </div>
+                    {tierData && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ~${(tierData.price_cents / tierData.credits / 100).toFixed(2)}/credit
+                      </p>
+                    )}
                   </div>
 
-                  {/* Credit selector dropdown */}
-                  {tierPackages.length > 0 && (
-                    <div className="mb-6">
-                      <Select
-                        value={String(selectedCredits[tier.id])}
-                        onValueChange={(value) => setSelectedCredits(prev => ({
-                          ...prev,
-                          [tier.id]: Number(value)
-                        }))}
-                      >
-                        <SelectTrigger className="w-full bg-secondary/50 border-border/50">
-                          <SelectValue placeholder="Select credits" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tierPackages.map((pkg) => (
-                            <SelectItem key={pkg.id} value={String(pkg.credits)}>
-                              {pkg.credits} credits / month
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  {/* Seller Fee Highlight */}
+                  <div className={cn(
+                    "p-3 rounded-lg mb-4",
+                    tierConfig.sellerFee === 0 
+                      ? "bg-gradient-to-r from-emerald-500/10 to-green-500/5 border border-emerald-500/20"
+                      : tierConfig.sellerFee === 3
+                        ? "bg-gradient-to-r from-primary/10 to-purple-500/5 border border-primary/20"
+                        : "bg-secondary/30 border border-border/30"
+                  )}>
+                    <div className="flex items-center gap-2">
+                      <Percent className={cn("h-4 w-4", tierConfig.iconColor)} />
+                      <span className="text-sm font-medium">{tierConfig.sellerFeeLabel}</span>
                     </div>
-                  )}
+                  </div>
 
                   {/* CTA Button */}
-                  {(() => {
-                    const isHigherTier = subscription && selectedPkg && selectedPkg.price_cents > subscription.priceAmount;
-                    const isLowerTier = subscription && selectedPkg && selectedPkg.price_cents < subscription.priceAmount;
-                    const isSameTier = subscription && selectedPkg && selectedPkg.credits === subscription.credits;
-                    
-                    return (
-                      <Button
-                        className={cn(
-                          "w-full mb-6",
-                          tier.popular
-                            ? "bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white"
-                            : "bg-secondary hover:bg-secondary/80"
-                        )}
-                        onClick={() => handleSubscribe(tier.id)}
-                        disabled={purchasing === tier.id || !selectedPkg || isSameTier || isLowerTier}
-                      >
-                        {purchasing === tier.id ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Processing...
-                          </>
-                        ) : isSameTier ? (
-                          "Current Plan"
-                        ) : isLowerTier ? (
-                          "Manage in Settings"
-                        ) : isHigherTier ? (
-                          `Upgrade (+$${((selectedPkg.price_cents - subscription.priceAmount) / 100).toFixed(0)}/mo)`
-                        ) : subscription ? (
-                          "Upgrade"
-                        ) : (
-                          "Subscribe"
-                        )}
-                      </Button>
-                    );
-                  })()}
+                  <Button
+                    className={cn(
+                      "w-full mb-6",
+                      tierConfig.popular && !isCurrentPlan
+                        ? "bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white"
+                        : isCurrentPlan
+                          ? "bg-green-500/20 text-green-400 border border-green-500/30 cursor-default"
+                          : "bg-secondary hover:bg-secondary/80"
+                    )}
+                    onClick={() => !isCurrentPlan && !isDowngrade && handleSubscribe(tierConfig.id)}
+                    disabled={purchasing === tierConfig.id || isCurrentPlan || isDowngrade}
+                  >
+                    {purchasing === tierConfig.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Processing...
+                      </>
+                    ) : isCurrentPlan ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Current Plan
+                      </>
+                    ) : isDowngrade ? (
+                      "Manage in Settings"
+                    ) : canUpgrade ? (
+                      "Upgrade"
+                    ) : (
+                      "Subscribe"
+                    )}
+                  </Button>
 
                   {/* Features list */}
                   <div className="flex-1">
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {tier.id === "starter" ? "All features:" : `All features in ${tier.id === "pro" ? "Starter" : "Pro"}, plus:`}
-                    </p>
                     <ul className="space-y-3">
-                      {tier.features.map((feature, index) => (
+                      {tierConfig.features.map((feature, index) => (
                         <li key={index} className="flex items-start gap-2">
-                          <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <Check className={cn("h-4 w-4 mt-0.5 shrink-0", tierConfig.iconColor)} />
                           <span className="text-sm">{feature}</span>
                         </li>
                       ))}

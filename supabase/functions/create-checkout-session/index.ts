@@ -15,10 +15,17 @@ const logStep = (step: string, details?: any) => {
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// Fee constants
-const PLATFORM_FEE_PERCENT = 0.05; // 5% platform fee
+// Base fee constants
 const STRIPE_PERCENT_FEE = 0.029; // 2.9% Stripe fee
 const STRIPE_FIXED_FEE_CENTS = 30; // $0.30 Stripe fixed fee
+
+// Tier-based platform fee rates
+const TIER_FEE_RATES: Record<string, number> = {
+  'starter': 0.05, // 5%
+  'pro': 0.03,     // 3%
+  'enterprise': 0, // 0%
+};
+const DEFAULT_FEE_RATE = 0.05; // 5% for no subscription
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -116,10 +123,10 @@ serve(async (req) => {
       );
     }
 
-    // Fetch creator profile separately (no FK dependency)
+    // Fetch creator profile separately with subscription tier
     const { data: creatorProfile, error: creatorError } = await supabaseAdmin
       .from("profiles")
-      .select("id, stripe_account_id, stripe_onboarding_complete")
+      .select("id, stripe_account_id, stripe_onboarding_complete, subscription_tier")
       .eq("id", product.creator_id)
       .single();
 
@@ -141,22 +148,22 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    logStep("Creator verified", { stripeAccountId: creatorProfile.stripe_account_id });
+    
+    // Determine platform fee rate based on creator's subscription tier
+    const creatorTier = creatorProfile.subscription_tier?.toLowerCase() || null;
+    const platformFeeRate = creatorTier && TIER_FEE_RATES[creatorTier] !== undefined 
+      ? TIER_FEE_RATES[creatorTier] 
+      : DEFAULT_FEE_RATE;
+    
+    logStep("Creator verified", { 
+      stripeAccountId: creatorProfile.stripe_account_id,
+      subscriptionTier: creatorTier,
+      platformFeeRate: `${platformFeeRate * 100}%`
+    });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Calculate fees properly:
-    // 1. Buyer pays the full product price
-    // 2. Stripe takes their processing fee (2.9% + $0.30)
-    // 3. Platform takes 5% of gross as application_fee
-    // 4. Creator gets the remainder
-    //
-    // With Stripe Connect using application_fee_amount:
-    // - The application_fee_amount is what the PLATFORM receives
-    // - Stripe's processing fees are deducted from the connected account (creator)
-    // - So we need to set application_fee to include BOTH platform fee AND Stripe fees
-    //   to ensure the platform covers its costs and the creator pays all fees
-    
+    // Calculate fees
     const grossAmount = product.price_cents || 0;
     
     // Validate minimum price ($4.99 = 499 cents)
@@ -178,14 +185,13 @@ serve(async (req) => {
     // Calculate Stripe's processing fee (2.9% + $0.30)
     const stripeProcessingFee = Math.round(grossAmount * STRIPE_PERCENT_FEE) + STRIPE_FIXED_FEE_CENTS;
     
-    // Calculate platform's 5% fee
-    const platformFee = Math.round(grossAmount * PLATFORM_FEE_PERCENT);
+    // Calculate platform fee based on creator's tier
+    const platformFee = Math.round(grossAmount * platformFeeRate);
     
-    // Total fees that need to be covered (Stripe + Platform)
-    // The application_fee_amount needs to include Stripe's fee so the platform doesn't lose money
+    // Total fees: Stripe processing + Platform fee
     const totalApplicationFee = stripeProcessingFee + platformFee;
     
-    // Creator receives: gross - Stripe fee - platform fee
+    // Creator receives: gross - all fees
     const creatorPayout = grossAmount - totalApplicationFee;
     
     // Ensure creator payout is positive
@@ -200,10 +206,10 @@ serve(async (req) => {
       grossAmount: grossAmount,
       stripeProcessingFee: stripeProcessingFee,
       platformFee: platformFee,
+      platformFeeRate: `${platformFeeRate * 100}%`,
+      creatorTier: creatorTier || "none",
       totalApplicationFee: totalApplicationFee,
       creatorPayout: creatorPayout,
-      platformFeePercentage: "5%",
-      stripeFeeFormula: "2.9% + $0.30"
     });
 
     // Check if customer exists
@@ -219,10 +225,6 @@ serve(async (req) => {
     const origin = req.headers.get("origin") || "https://editorsparadise.org";
 
     // Create checkout session with Stripe Connect
-    // IMPORTANT: Using application_fee_amount with transfer_data means:
-    // - Full amount is collected to the PLATFORM account first
-    // - application_fee_amount stays with platform (covers Stripe fees + platform profit)
-    // - Remainder is transferred to the creator
     logStep("Creating checkout with Stripe Connect", {
       destinationAccount: creatorProfile.stripe_account_id,
       applicationFee: totalApplicationFee,
@@ -263,6 +265,8 @@ serve(async (req) => {
         gross_amount_cents: grossAmount.toString(),
         stripe_fee_cents: stripeProcessingFee.toString(),
         platform_fee_cents: platformFee.toString(),
+        platform_fee_rate: platformFeeRate.toString(),
+        creator_tier: creatorTier || "none",
         creator_payout_cents: creatorPayout.toString(),
       },
     });
@@ -273,6 +277,7 @@ serve(async (req) => {
       grossCharged: grossAmount,
       applicationFee: totalApplicationFee,
       creatorPayout: creatorPayout,
+      creatorTier: creatorTier || "none",
       destinationAccount: creatorProfile.stripe_account_id,
     });
 
