@@ -354,6 +354,13 @@ export type Database = {
             foreignKeyName: "creator_subscription_plans_creator_id_fkey"
             columns: ["creator_id"]
             isOneToOne: false
+            referencedRelation: "public_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_subscription_plans_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
@@ -684,6 +691,13 @@ export type Database = {
             foreignKeyName: "platform_updates_author_id_fkey"
             columns: ["author_id"]
             isOneToOne: false
+            referencedRelation: "public_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_updates_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
@@ -933,6 +947,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_sections_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_identities"
             referencedColumns: ["id"]
           },
           {
@@ -1221,6 +1242,13 @@ export type Database = {
             foreignKeyName: "purchases_buyer_id_fkey"
             columns: ["buyer_id"]
             isOneToOne: false
+            referencedRelation: "public_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
@@ -1380,6 +1408,13 @@ export type Database = {
             foreignKeyName: "support_messages_customer_profile_id_fkey"
             columns: ["customer_profile_id"]
             isOneToOne: false
+            referencedRelation: "public_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_customer_profile_id_fkey"
+            columns: ["customer_profile_id"]
+            isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
@@ -1402,6 +1437,13 @@ export type Database = {
             columns: ["seller_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_seller_profile_id_fkey"
+            columns: ["seller_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_identities"
             referencedColumns: ["id"]
           },
           {
@@ -1735,20 +1777,14 @@ export type Database = {
       }
       public_products: {
         Row: {
-          attachments: Json | null
-          benefits: string[] | null
           cover_image_url: string | null
           created_at: string | null
           creator_id: string | null
           currency: string | null
           description: string | null
-          duration_label: string | null
-          excerpt: string | null
           featured: boolean | null
           id: string | null
-          locked: boolean | null
           name: string | null
-          original_filename: string | null
           preview_video_url: string | null
           price_cents: number | null
           pricing_type: string | null
@@ -1756,26 +1792,19 @@ export type Database = {
           slug: string | null
           status: string | null
           subscription_access: string | null
-          subscription_price_cents: number | null
           tags: string[] | null
           updated_at: string | null
           youtube_url: string | null
         }
         Insert: {
-          attachments?: Json | null
-          benefits?: string[] | null
           cover_image_url?: string | null
           created_at?: string | null
           creator_id?: string | null
           currency?: string | null
           description?: string | null
-          duration_label?: string | null
-          excerpt?: string | null
           featured?: boolean | null
           id?: string | null
-          locked?: boolean | null
           name?: string | null
-          original_filename?: string | null
           preview_video_url?: string | null
           price_cents?: number | null
           pricing_type?: string | null
@@ -1783,26 +1812,19 @@ export type Database = {
           slug?: string | null
           status?: string | null
           subscription_access?: string | null
-          subscription_price_cents?: number | null
           tags?: string[] | null
           updated_at?: string | null
           youtube_url?: string | null
         }
         Update: {
-          attachments?: Json | null
-          benefits?: string[] | null
           cover_image_url?: string | null
           created_at?: string | null
           creator_id?: string | null
           currency?: string | null
           description?: string | null
-          duration_label?: string | null
-          excerpt?: string | null
           featured?: boolean | null
           id?: string | null
-          locked?: boolean | null
           name?: string | null
-          original_filename?: string | null
           preview_video_url?: string | null
           price_cents?: number | null
           pricing_type?: string | null
@@ -1810,7 +1832,6 @@ export type Database = {
           slug?: string | null
           status?: string | null
           subscription_access?: string | null
-          subscription_price_cents?: number | null
           tags?: string[] | null
           updated_at?: string | null
           youtube_url?: string | null
