@@ -26,7 +26,7 @@ const TIER_CONFIG = {
     name: "Starter",
     description: "Perfect for trying out our AI audio tools",
     sellerFee: 5,
-    sellerFeeLabel: "5% seller fee (standard)",
+    sellerFeeLabel: null,
     color: "from-blue-500/20 to-cyan-500/20",
     borderColor: "border-blue-500/30",
     iconColor: "text-blue-400",
@@ -341,20 +341,20 @@ export default function Pricing() {
                     )}
                   </div>
 
-                  {/* Seller Fee Highlight */}
-                  <div className={cn(
-                    "p-3 rounded-lg mb-4",
-                    tierConfig.sellerFee === 0 
-                      ? "bg-gradient-to-r from-emerald-500/10 to-green-500/5 border border-emerald-500/20"
-                      : tierConfig.sellerFee === 3
-                        ? "bg-gradient-to-r from-primary/10 to-purple-500/5 border border-primary/20"
-                        : "bg-secondary/30 border border-border/30"
-                  )}>
-                    <div className="flex items-center gap-2">
-                      <Percent className={cn("h-4 w-4", tierConfig.iconColor)} />
-                      <span className="text-sm font-medium">{tierConfig.sellerFeeLabel}</span>
+                  {/* Seller Fee Highlight - Only show for Pro/Enterprise */}
+                  {tierConfig.sellerFeeLabel && (
+                    <div className={cn(
+                      "p-3 rounded-lg mb-4",
+                      tierConfig.sellerFee === 0 
+                        ? "bg-gradient-to-r from-emerald-500/10 to-green-500/5 border border-emerald-500/20"
+                        : "bg-gradient-to-r from-primary/10 to-purple-500/5 border border-primary/20"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        <Percent className={cn("h-4 w-4", tierConfig.iconColor)} />
+                        <span className="text-sm font-medium">{tierConfig.sellerFeeLabel}</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* CTA Button */}
                   <Button
