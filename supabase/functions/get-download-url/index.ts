@@ -97,14 +97,14 @@ serve(async (req) => {
     // Get the product details
     const { data: product, error: productError } = await supabaseAdmin
       .from("products")
-      .select("id, creator_id, download_url, pricing_type")
+      .select("id, creator_id, download_url, pricing_type, original_filename")
       .eq("id", productId)
       .single();
 
     if (productError || !product) {
       throw new Error("Product not found");
     }
-    logStep("Product found", { productId: product.id, downloadUrl: product.download_url });
+    logStep("Product found", { productId: product.id, downloadUrl: product.download_url, originalFilename: product.original_filename });
 
     if (!product.download_url) {
       throw new Error("No download file available for this product");
@@ -261,9 +261,9 @@ serve(async (req) => {
       }
     }
 
-    // Extract original filename
-    const filename = extractFilename(product.download_url);
-    logStep("Extracted filename", { filename });
+    // Use original_filename if stored (new uploads), otherwise fallback to extracting from path
+    const filename = product.original_filename || extractFilename(product.download_url);
+    logStep("Resolved filename", { filename, hasStoredFilename: !!product.original_filename });
 
     // Record the download event (only for non-owners)
     if (!isOwner) {
