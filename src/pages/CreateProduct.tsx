@@ -150,7 +150,7 @@ export default function CreateProduct() {
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [previewVideo, setPreviewVideo] = useState<File | null>(null);
   const [previewVideoPreview, setPreviewVideoPreview] = useState<string | null>(null);
-  const [downloadFile, setDownloadFile] = useState<File | null>(null);
+  const [downloadFiles, setDownloadFiles] = useState<File[]>([]);
   
   // Subscription plan picker state
   const [showPlanPicker, setShowPlanPicker] = useState(false);
@@ -194,10 +194,16 @@ export default function CreateProduct() {
   };
 
   const handleDownloadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setDownloadFile(file);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setDownloadFiles(prev => [...prev, ...Array.from(files)]);
     }
+    // Reset input value so the same file can be added again if needed
+    e.target.value = '';
+  };
+
+  const removeDownloadFile = (index: number) => {
+    setDownloadFiles(prev => prev.filter((_, i) => i !== index));
   };
 
 
@@ -235,7 +241,6 @@ export default function CreateProduct() {
 
       let coverImageUrl: string | null = null;
       let previewVideoPath: string | null = null;
-      let downloadUrl: string | null = null;
 
       // Upload cover image
       if (coverImage) {
@@ -272,25 +277,36 @@ export default function CreateProduct() {
         }
       }
 
-      // Upload download file to private bucket
+      // Upload multiple download files to private bucket
+      let downloadUrl: string | null = null;
       let originalFilename: string | null = null;
-      if (downloadFile) {
-        // Store in private bucket with user's ID as folder for RLS policy
-        // Use timestamp prefix but preserve the EXACT original filename
-        const path = `${user.id}/${Date.now()}-${downloadFile.name.replace(/[^a-zA-Z0-9._()-]/g, '_')}`;
-        const { error: uploadError } = await supabase.storage
-          .from("product-files")
-          .upload(path, downloadFile);
+      const attachments: { name: string; path: string; size: number }[] = [];
+      
+      if (downloadFiles.length > 0) {
+        for (const file of downloadFiles) {
+          // Store in private bucket with user's ID as folder for RLS policy
+          const path = `${user.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._()-]/g, '_')}`;
+          const { error: uploadError } = await supabase.storage
+            .from("product-files")
+            .upload(path, file);
 
-        if (uploadError) {
-          console.error('Download file upload error:', uploadError);
-          throw uploadError;
+          if (uploadError) {
+            console.error('Download file upload error:', uploadError);
+            throw uploadError;
+          }
+
+          attachments.push({
+            name: file.name,
+            path: path,
+            size: file.size,
+          });
         }
-
-        // Store the path (not public URL) - downloads will use signed URLs
-        downloadUrl = path;
-        // Store the EXACT original filename as the seller named it
-        originalFilename = downloadFile.name;
+        
+        // For backward compatibility, set download_url and original_filename to first file
+        if (attachments.length > 0) {
+          downloadUrl = attachments[0].path;
+          originalFilename = attachments[0].name;
+        }
       }
 
       // Create product
@@ -333,6 +349,7 @@ export default function CreateProduct() {
           preview_video_url: previewVideoPath,
           download_url: downloadUrl,
           original_filename: originalFilename,
+          attachments: attachments.length > 0 ? attachments : null,
           creator_id: profile.id,
           status: publish ? "published" : "draft",
           subscription_access: subscriptionAccess,
@@ -789,46 +806,53 @@ export default function CreateProduct() {
             </div>
 
 
-            {/* Download File */}
+            {/* Product Files - Multiple */}
             <div>
-              <Label>Product File</Label>
+              <Label>Product Files</Label>
               <p className="text-xs text-muted-foreground mb-2">
-                Upload any file type (ZIP, RAR, 7z, etc.) - stored securely and only accessible to buyers/subscribers
+                Upload multiple files (ZIP, RAR, 7z, source files, etc.) - stored securely and only accessible to buyers/subscribers
               </p>
-              <div className="mt-2">
-                {downloadFile ? (
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/20">
-                    <div className="flex flex-col min-w-0 flex-1 mr-2">
-                      <span className="text-sm font-medium truncate">{downloadFile.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {(downloadFile.size / (1024 * 1024)).toFixed(2)} MB
-                      </span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDownloadFile(null)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+              <div className="mt-2 space-y-2">
+                {/* List of added files */}
+                {downloadFiles.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    {downloadFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-secondary/20">
+                        <div className="flex flex-col min-w-0 flex-1 mr-2">
+                          <span className="text-sm font-medium truncate">{file.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {(file.size / (1024 * 1024)).toFixed(2)} MB
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeDownloadFile(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-                    <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                    <span className="text-sm text-muted-foreground">
-                      Click to upload product file
-                    </span>
-                    <span className="text-xs text-muted-foreground mt-1">
-                      ZIP, RAR, 7z, PDF, and other file types supported
-                    </span>
-                    <input
-                      type="file"
-                      onChange={handleDownloadChange}
-                      className="hidden"
-                    />
-                  </label>
                 )}
+                
+                {/* Upload button - always visible to add more files */}
+                <label className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                  <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                  <span className="text-sm text-muted-foreground">
+                    {downloadFiles.length > 0 ? 'Add more files' : 'Click to upload product files'}
+                  </span>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    ZIP, RAR, 7z, PDF, source files, and more
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleDownloadChange}
+                    className="hidden"
+                  />
+                </label>
               </div>
             </div>
           </CardContent>

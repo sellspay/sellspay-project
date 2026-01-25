@@ -87,26 +87,50 @@ serve(async (req) => {
     }
     logStep("User authenticated", { userId: userData.user.id });
 
-    // Get the product ID from the request body
-    const { productId } = await req.json();
+    // Get the product ID and optional attachment path from the request body
+    const { productId, attachmentPath } = await req.json();
     if (!productId) {
       throw new Error("Product ID is required");
     }
-    logStep("Product ID received", { productId });
+    logStep("Request received", { productId, attachmentPath });
 
-    // Get the product details
+    // Get the product details including attachments
     const { data: product, error: productError } = await supabaseAdmin
       .from("products")
-      .select("id, creator_id, download_url, pricing_type, original_filename")
+      .select("id, creator_id, download_url, pricing_type, original_filename, attachments")
       .eq("id", productId)
       .single();
 
     if (productError || !product) {
       throw new Error("Product not found");
     }
-    logStep("Product found", { productId: product.id, downloadUrl: product.download_url, originalFilename: product.original_filename });
+    logStep("Product found", { productId: product.id, hasAttachments: !!(product.attachments && (product.attachments as any[]).length > 0) });
 
-    if (!product.download_url) {
+    // Determine which file to download
+    let targetPath: string | null = null;
+    let targetFilename: string | null = null;
+
+    if (attachmentPath) {
+      // Downloading a specific attachment
+      const attachments = product.attachments as { name: string; path: string; size: number }[] | null;
+      if (attachments && Array.isArray(attachments)) {
+        const attachment = attachments.find(att => att.path === attachmentPath);
+        if (attachment) {
+          targetPath = attachment.path;
+          targetFilename = attachment.name;
+          logStep("Found specific attachment", { path: targetPath, filename: targetFilename });
+        }
+      }
+      if (!targetPath) {
+        throw new Error("Attachment not found");
+      }
+    } else if (product.download_url) {
+      // Default to primary download_url (first/legacy file)
+      targetPath = product.download_url;
+      targetFilename = product.original_filename || null;
+    }
+
+    if (!targetPath) {
       throw new Error("No download file available for this product");
     }
 
@@ -261,9 +285,9 @@ serve(async (req) => {
       }
     }
 
-    // Use original_filename if stored (new uploads), otherwise fallback to extracting from path
-    const filename = product.original_filename || extractFilename(product.download_url);
-    logStep("Resolved filename", { filename, hasStoredFilename: !!product.original_filename });
+    // Use targetFilename if provided, otherwise extract from path
+    const filename = targetFilename || extractFilename(targetPath);
+    logStep("Resolved filename", { filename, hasStoredFilename: !!targetFilename });
 
     // Record the download event (only for non-owners)
     if (!isOwner) {
@@ -282,20 +306,19 @@ serve(async (req) => {
     }
 
     // Generate signed URL or return public URL
-    // The download_url can be:
+    // The path can be:
     // 1. A relative path for product-files bucket (e.g., "user-id/timestamp-filename.zip")
     // 2. A full URL from product-media bucket (legacy public storage)
-    const downloadUrl = product.download_url;
     
     // Check if it's a full URL (legacy public storage)
-    if (downloadUrl.startsWith("http://") || downloadUrl.startsWith("https://")) {
+    if (targetPath.startsWith("http://") || targetPath.startsWith("https://")) {
       // Check if it's from product-media bucket (public) or product-files bucket
-      if (downloadUrl.includes("/product-media/")) {
+      if (targetPath.includes("/product-media/")) {
         // Legacy public URL - return as-is
         logStep("Returning public URL directly (legacy product-media)");
         return new Response(
           JSON.stringify({ 
-            url: downloadUrl,
+            url: targetPath,
             filename: filename,
             expiresIn: 0 // No expiry for public URLs
           }),
@@ -304,9 +327,9 @@ serve(async (req) => {
             status: 200,
           }
         );
-      } else if (downloadUrl.includes("/product-files/")) {
+      } else if (targetPath.includes("/product-files/")) {
         // Extract the path from the full URL for product-files bucket
-        const pathMatch = downloadUrl.match(/\/product-files\/(.+)$/);
+        const pathMatch = targetPath.match(/\/product-files\/(.+)$/);
         if (pathMatch && pathMatch[1]) {
           const filePath = decodeURIComponent(pathMatch[1]);
           logStep("Extracted path from full URL", { filePath });
@@ -338,7 +361,7 @@ serve(async (req) => {
       logStep("Unknown URL format, returning as-is");
       return new Response(
         JSON.stringify({ 
-          url: downloadUrl,
+          url: targetPath,
           filename: filename,
           expiresIn: 0
         }),
@@ -352,7 +375,7 @@ serve(async (req) => {
     // Relative path - generate signed URL from product-files bucket
     const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
       .from("product-files")
-      .createSignedUrl(downloadUrl, 300); // 5 minutes expiry
+      .createSignedUrl(targetPath, 300); // 5 minutes expiry
 
     if (signedUrlError || !signedUrlData) {
       logStep("Failed to generate signed URL", { error: signedUrlError?.message });

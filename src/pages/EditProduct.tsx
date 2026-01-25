@@ -93,18 +93,19 @@ export default function EditProduct() {
   const [existingPreviewVideoPath, setExistingPreviewVideoPath] = useState<string | null>(null);
   const [existingDownloadUrl, setExistingDownloadUrl] = useState<string | null>(null);
   const [existingOriginalFilename, setExistingOriginalFilename] = useState<string | null>(null);
+  const [existingAttachments, setExistingAttachments] = useState<{ name: string; path: string; size: number }[]>([]);
   
   // New uploads
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [previewVideo, setPreviewVideo] = useState<File | null>(null);
   const [previewVideoPreview, setPreviewVideoPreview] = useState<string | null>(null);
-  const [downloadFile, setDownloadFile] = useState<File | null>(null);
+  const [newDownloadFiles, setNewDownloadFiles] = useState<File[]>([]);
   
-  // Track if we should remove existing media
+  // Track which existing attachments to remove
   const [removeCover, setRemoveCover] = useState(false);
   const [removePreviewVideo, setRemovePreviewVideo] = useState(false);
-  const [removeDownload, setRemoveDownload] = useState(false);
+  const [attachmentsToRemove, setAttachmentsToRemove] = useState<string[]>([]);
 
   useEffect(() => {
     if (id && user) {
@@ -170,6 +171,19 @@ export default function EditProduct() {
       setExistingPreviewVideoPath(product.preview_video_url);
       setExistingDownloadUrl(product.download_url);
       setExistingOriginalFilename((product as any).original_filename || null);
+      
+      // Load existing attachments
+      const attachments = (product as any).attachments;
+      if (attachments && Array.isArray(attachments)) {
+        setExistingAttachments(attachments);
+      } else if (product.download_url) {
+        // Migrate old single-file format to attachments array for display
+        setExistingAttachments([{
+          name: (product as any).original_filename || product.download_url.split('/').pop() || 'Download File',
+          path: product.download_url,
+          size: 0,
+        }]);
+      }
     } catch (error) {
       console.error("Error fetching product:", error);
       toast.error("Failed to load product");
@@ -198,11 +212,23 @@ export default function EditProduct() {
   };
 
   const handleDownloadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setDownloadFile(file);
-      setRemoveDownload(false);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setNewDownloadFiles(prev => [...prev, ...Array.from(files)]);
     }
+    e.target.value = '';
+  };
+
+  const removeNewDownloadFile = (index: number) => {
+    setNewDownloadFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const markExistingAttachmentForRemoval = (path: string) => {
+    setAttachmentsToRemove(prev => [...prev, path]);
+  };
+
+  const getVisibleExistingAttachments = () => {
+    return existingAttachments.filter(att => !attachmentsToRemove.includes(att.path));
   };
   const getPreviewVideoUrl = (path: string | null): string | null => {
     if (!path) return null;
@@ -321,27 +347,37 @@ export default function EditProduct() {
         }
       }
 
-      // Handle download file - upload to private bucket
-      let originalFilename: string | null = existingOriginalFilename;
-      if (removeDownload) {
-        downloadUrl = null;
-        originalFilename = null;
-      } else if (downloadFile) {
-        // Store in private bucket with user's auth ID as folder for RLS policy
-        const path = `${user.id}/${Date.now()}-${downloadFile.name.replace(/[^a-zA-Z0-9._()-]/g, '_')}`;
+      // Handle attachments - combine existing (minus removed) with new uploads
+      let finalAttachments: { name: string; path: string; size: number }[] = [];
+      
+      // Keep existing attachments that weren't marked for removal
+      finalAttachments = existingAttachments.filter(att => !attachmentsToRemove.includes(att.path));
+      
+      // Upload new files
+      for (const file of newDownloadFiles) {
+        const path = `${user.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._()-]/g, '_')}`;
         const { error: uploadError } = await supabase.storage
           .from("product-files")
-          .upload(path, downloadFile);
+          .upload(path, file);
 
         if (uploadError) {
           console.error('Download file upload error:', uploadError);
           throw uploadError;
         }
 
-        // Store the path (not public URL) - downloads will use signed URLs
-        downloadUrl = path;
-        // Store the EXACT original filename as the seller named it
-        originalFilename = downloadFile.name;
+        finalAttachments.push({
+          name: file.name,
+          path: path,
+          size: file.size,
+        });
+      }
+      
+      // For backward compatibility, set download_url and original_filename to first attachment
+      let downloadUrlValue: string | null = null;
+      let originalFilename: string | null = null;
+      if (finalAttachments.length > 0) {
+        downloadUrlValue = finalAttachments[0].path;
+        originalFilename = finalAttachments[0].name;
       }
 
       // Check slug uniqueness if changed
@@ -385,8 +421,9 @@ export default function EditProduct() {
           tags: null,
           cover_image_url: coverImageUrl,
           preview_video_url: previewVideoPath,
-          download_url: downloadUrl,
+          download_url: downloadUrlValue,
           original_filename: originalFilename,
+          attachments: finalAttachments.length > 0 ? finalAttachments : null,
           status: publish ? "published" : "draft",
           subscription_access: subscriptionAccess,
         } as any)
@@ -784,75 +821,77 @@ export default function EditProduct() {
               />
             </div>
 
-            {/* Download File */}
+            {/* Product Files - Multiple */}
             <div>
-              <Label>Product File</Label>
+              <Label>Product Files</Label>
               <p className="text-xs text-muted-foreground mb-2">
-                Upload any file type (ZIP, RAR, 7z, etc.) - stored securely and only accessible to buyers/subscribers
+                Upload multiple files (ZIP, RAR, 7z, source files, etc.) - stored securely and only accessible to buyers/subscribers
               </p>
-              <div className="mt-2">
-                {downloadFile ? (
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/20">
-                    <div className="flex flex-col min-w-0 flex-1 mr-2">
-                      <span className="text-sm font-medium truncate">{downloadFile.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {(downloadFile.size / (1024 * 1024)).toFixed(2)} MB
-                      </span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDownloadFile(null)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : existingDownloadUrl && !removeDownload ? (
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/20">
-                    <div className="flex flex-col min-w-0 flex-1 mr-2">
-                      <span className="text-sm font-medium truncate">
-                        {existingDownloadUrl.split('/').pop() || 'Current file attached'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">File uploaded</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <label>
-                        <Button type="button" variant="secondary" size="sm" asChild>
-                          <span>Replace</span>
+              <div className="mt-2 space-y-2">
+                {/* List of existing files (not marked for removal) */}
+                {getVisibleExistingAttachments().length > 0 && (
+                  <div className="space-y-2">
+                    {getVisibleExistingAttachments().map((att, index) => (
+                      <div key={`existing-${index}`} className="flex items-center justify-between p-3 rounded-lg bg-secondary/20">
+                        <div className="flex flex-col min-w-0 flex-1 mr-2">
+                          <span className="text-sm font-medium truncate">{att.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {att.size > 0 ? `${(att.size / (1024 * 1024)).toFixed(2)} MB` : 'Uploaded'}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => markExistingAttachmentForRemoval(att.path)}
+                        >
+                          <X className="w-4 h-4" />
                         </Button>
-                        <input
-                          type="file"
-                          onChange={handleDownloadChange}
-                          className="hidden"
-                        />
-                      </label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setRemoveDownload(true)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-                    <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                    <span className="text-sm text-muted-foreground">
-                      Click to upload product file
-                    </span>
-                    <span className="text-xs text-muted-foreground mt-1">
-                      ZIP, RAR, 7z, PDF, and other file types supported
-                    </span>
-                    <input
-                      type="file"
-                      onChange={handleDownloadChange}
-                      className="hidden"
-                    />
-                  </label>
                 )}
+                
+                {/* List of newly added files */}
+                {newDownloadFiles.length > 0 && (
+                  <div className="space-y-2">
+                    {newDownloadFiles.map((file, index) => (
+                      <div key={`new-${index}`} className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
+                        <div className="flex flex-col min-w-0 flex-1 mr-2">
+                          <span className="text-sm font-medium truncate">{file.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {(file.size / (1024 * 1024)).toFixed(2)} MB • New
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeNewDownloadFile(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Upload button - always visible to add more files */}
+                <label className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                  <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                  <span className="text-sm text-muted-foreground">
+                    {(getVisibleExistingAttachments().length > 0 || newDownloadFiles.length > 0) ? 'Add more files' : 'Click to upload product files'}
+                  </span>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    ZIP, RAR, 7z, PDF, source files, and more
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleDownloadChange}
+                    className="hidden"
+                  />
+                </label>
               </div>
             </div>
           </CardContent>
