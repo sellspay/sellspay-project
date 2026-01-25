@@ -85,9 +85,90 @@ const TextPreview = memo(({ content }: { content: TextContent }) => {
 });
 TextPreview.displayName = 'TextPreview';
 
-// Image Section Preview
-const ImagePreview = memo(({ content }: { content: ImageContent }) => {
-  if (!content.imageUrl) {
+// Image Section Preview - supports single, 2-split, and 4-split layouts
+const ImagePreview = memo(({ section }: { section: ProfileSection }) => {
+  const content = section.content as ImageContent;
+  const preset = section.style_options?.preset;
+  const imageCount = content.imageCount || 1;
+  
+  // Parse images - imageUrl can be a single URL or comma-separated for multi-image
+  const images = content.imageUrl 
+    ? content.imageUrl.split(',').map(url => url.trim()).filter(Boolean)
+    : [];
+
+  // Placeholder component for empty slots
+  const ImagePlaceholder = ({ index, className }: { index: number; className?: string }) => (
+    <div className={cn(
+      "bg-muted/50 rounded-lg flex items-center justify-center border border-dashed border-muted-foreground/20",
+      className
+    )}>
+      <span className="text-muted-foreground/50 text-sm font-medium">Image {index}</span>
+    </div>
+  );
+
+  // 4 Images Grid (style4)
+  if (preset === 'style4' || imageCount === 4) {
+    const slots = Array.from({ length: 4 }, (_, i) => images[i] || null);
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {slots.map((url, i) => (
+          <div key={i} className="aspect-square rounded-lg overflow-hidden">
+            {url ? (
+              <img src={url} alt={content.altText || ''} className="w-full h-full object-cover" />
+            ) : (
+              <ImagePlaceholder index={i + 1} className="w-full h-full" />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // 2 Images Split (style3)
+  if (preset === 'style3' || imageCount === 2) {
+    const slots = Array.from({ length: 2 }, (_, i) => images[i] || null);
+    return (
+      <div className="flex gap-2">
+        {slots.map((url, i) => (
+          <div key={i} className="flex-1 aspect-video rounded-lg overflow-hidden">
+            {url ? (
+              <img src={url} alt={content.altText || ''} className="w-full h-full object-cover" />
+            ) : (
+              <ImagePlaceholder index={i + 1} className="w-full h-full" />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Centered (style2) - medium width
+  if (preset === 'style2' || content.layout === 'medium') {
+    if (!images[0]) {
+      return (
+        <div className="max-w-2xl mx-auto aspect-video bg-muted rounded-lg flex items-center justify-center">
+          <span className="text-muted-foreground">No image selected</span>
+        </div>
+      );
+    }
+    return (
+      <figure className="max-w-2xl mx-auto">
+        <img
+          src={images[0]}
+          alt={content.altText || ''}
+          className="w-full h-auto rounded-lg"
+        />
+        {content.caption && (
+          <figcaption className="mt-2 text-sm text-center text-muted-foreground">
+            {content.caption}
+          </figcaption>
+        )}
+      </figure>
+    );
+  }
+
+  // Full Width (default/style1)
+  if (!images[0]) {
     return (
       <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
         <span className="text-muted-foreground">No image selected</span>
@@ -96,9 +177,9 @@ const ImagePreview = memo(({ content }: { content: ImageContent }) => {
   }
   
   return (
-    <figure className={`${content.layout === 'small' ? 'max-w-md mx-auto' : content.layout === 'medium' ? 'max-w-2xl mx-auto' : ''}`}>
+    <figure className={`${content.layout === 'small' ? 'max-w-md mx-auto' : ''}`}>
       <img
-        src={content.imageUrl}
+        src={images[0]}
         alt={content.altText || ''}
         className="w-full h-auto rounded-lg"
       />
@@ -446,18 +527,18 @@ const HeadlinePreview = memo(({ content }: { content: HeadlineContent }) => {
 });
 HeadlinePreview.displayName = 'HeadlinePreview';
 
-// Sliding Banner Preview
-const SlidingBannerPreview = memo(({ content }: { content: SlidingBannerContent }) => {
+// Sliding Banner Preview - with visible marquee animation
+const SlidingBannerPreview = memo(({ content, preset }: { content: SlidingBannerContent; preset?: string }) => {
   const fontClass = getFontClassName(content.font);
   const customFontStyle = getCustomFontStyle(content.customFont);
   
   // Inject custom font if needed
   useCustomFont(content.customFont);
   
-  const speedClasses = {
-    slow: 'animate-[marquee_20s_linear_infinite]',
-    medium: 'animate-[marquee_12s_linear_infinite]',
-    fast: 'animate-[marquee_6s_linear_infinite]',
+  const speedDuration = {
+    slow: '20s',
+    medium: '12s',
+    fast: '6s',
   };
 
   const fontSizeClasses = {
@@ -489,38 +570,61 @@ const SlidingBannerPreview = memo(({ content }: { content: SlidingBannerContent 
     color: content.textColor || undefined,
     letterSpacing: letterSpacingMap[content.letterSpacing || 'normal'],
   };
+
+  // Highlight style for style2 preset - static centered banner
+  const isHighlight = preset === 'style2';
   
-  return (
-    <div 
-      className="overflow-hidden py-2 rounded-lg"
-      style={{ backgroundColor: content.backgroundColor || 'hsl(var(--primary) / 0.1)' }}
-    >
-      <div className={`whitespace-nowrap ${speedClasses[content.speed]}`}>
+  if (isHighlight) {
+    return (
+      <div 
+        className="py-4 rounded-lg text-center"
+        style={{ 
+          background: content.backgroundColor || 'linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(45 100% 60% / 0.2))'
+        }}
+      >
         <span 
           className={cn(
-            "inline-block px-4",
             fontClass,
-            fontSizeClasses[content.fontSize || 'base'],
-            fontWeightClasses[content.fontWeight || 'medium']
-          )}
-          style={combinedStyle}
-        >
-          {content.text}
-        </span>
-        <span 
-          className={cn(
-            "inline-block px-4",
-            fontClass,
-            fontSizeClasses[content.fontSize || 'base'],
-            fontWeightClasses[content.fontWeight || 'medium']
+            fontSizeClasses[content.fontSize || 'lg'],
+            fontWeightClasses[content.fontWeight || 'bold']
           )}
           style={combinedStyle}
         >
           {content.text}
         </span>
       </div>
+    );
+  }
+  
+  return (
+    <div 
+      className="overflow-hidden py-3 rounded-lg"
+      style={{ backgroundColor: content.backgroundColor || 'hsl(var(--primary) / 0.1)' }}
+    >
+      <div 
+        className="flex whitespace-nowrap"
+        style={{
+          animation: `sliding-banner-marquee ${speedDuration[content.speed]} linear infinite`,
+        }}
+      >
+        {/* Repeat text 4 times to ensure seamless loop */}
+        {[0, 1, 2, 3].map((i) => (
+          <span 
+            key={i}
+            className={cn(
+              "inline-block px-8",
+              fontClass,
+              fontSizeClasses[content.fontSize || 'base'],
+              fontWeightClasses[content.fontWeight || 'medium']
+            )}
+            style={combinedStyle}
+          >
+            {content.text}
+          </span>
+        ))}
+      </div>
       <style>{`
-        @keyframes marquee {
+        @keyframes sliding-banner-marquee {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
@@ -680,21 +784,128 @@ const SlideshowPreview = memo(({ content }: { content: SlideshowContent }) => {
 });
 SlideshowPreview.displayName = 'SlideshowPreview';
 
-// Basic List Preview
-const BasicListPreview = memo(({ content }: { content: BasicListContent }) => (
-  <div>
-    {content.title && (
-      <h3 className="text-xl font-semibold mb-4">{content.title}</h3>
-    )}
-    <ul className={content.style === 'numbered' ? 'list-decimal' : content.style === 'bullet' ? 'list-disc' : ''} style={{ listStylePosition: 'inside' }}>
-      {content.items.map((item, index) => (
-        <li key={item.id} className="py-1 text-muted-foreground">
-          {item.text}
-        </li>
-      ))}
-    </ul>
-  </div>
-));
+// Basic List Preview - supports simple, 3-col cards, 2-col cards, and horizontal layouts
+const BasicListPreview = memo(({ section }: { section: ProfileSection }) => {
+  const content = section.content as BasicListContent;
+  const preset = section.style_options?.preset;
+  const layout = content.layout || 'simple';
+  
+  // Determine layout from preset if not explicitly set
+  const resolvedLayout = 
+    preset === 'style1' ? 'cards-3col' :
+    preset === 'style2' ? 'cards-2col' :
+    preset === 'style3' ? 'horizontal' :
+    layout;
+
+  // Item placeholder for cards that need images
+  const ListItemCard = ({ item, showImage = true }: { item: typeof content.items[0]; showImage?: boolean }) => (
+    <div className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/30 transition-colors">
+      {showImage && (
+        <div className="aspect-video bg-muted flex items-center justify-center">
+          {item.icon ? (
+            <span className="text-3xl">{item.icon}</span>
+          ) : (
+            <span className="text-muted-foreground text-sm">Add image</span>
+          )}
+        </div>
+      )}
+      <div className="p-4">
+        <h4 className="font-medium text-foreground">{item.text || 'Add a title'}</h4>
+        <p className="text-sm text-muted-foreground mt-1">Add description here</p>
+      </div>
+    </div>
+  );
+
+  // 3 Column Cards Layout
+  if (resolvedLayout === 'cards-3col') {
+    const items = content.items.length > 0 ? content.items : [
+      { id: '1', text: 'First item' },
+      { id: '2', text: 'Second item' },
+      { id: '3', text: 'Third item' },
+    ];
+    return (
+      <div>
+        {content.title && (
+          <h3 className="text-xl font-semibold mb-6 text-center">{content.title}</h3>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {items.slice(0, 6).map((item) => (
+            <ListItemCard key={item.id} item={item} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // 2 Column Cards Layout
+  if (resolvedLayout === 'cards-2col') {
+    const items = content.items.length > 0 ? content.items : [
+      { id: '1', text: 'First item' },
+      { id: '2', text: 'Second item' },
+    ];
+    return (
+      <div>
+        {content.title && (
+          <h3 className="text-xl font-semibold mb-6 text-center">{content.title}</h3>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {items.slice(0, 4).map((item) => (
+            <ListItemCard key={item.id} item={item} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Horizontal List Layout
+  if (resolvedLayout === 'horizontal') {
+    const items = content.items.length > 0 ? content.items : [
+      { id: '1', text: 'First item' },
+      { id: '2', text: 'Second item' },
+      { id: '3', text: 'Third item' },
+    ];
+    return (
+      <div>
+        {content.title && (
+          <h3 className="text-xl font-semibold mb-6">{content.title}</h3>
+        )}
+        <div className="space-y-3">
+          {items.map((item) => (
+            <div key={item.id} className="flex items-center gap-4 p-3 bg-card border border-border rounded-lg hover:border-primary/30 transition-colors">
+              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                {item.icon ? (
+                  <span className="text-2xl">{item.icon}</span>
+                ) : (
+                  <span className="text-muted-foreground text-xs">Image</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-foreground">{item.text || 'Add a title'}</h4>
+                <p className="text-sm text-muted-foreground">Add description here</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Simple list (default)
+  return (
+    <div>
+      {content.title && (
+        <h3 className="text-xl font-semibold mb-4">{content.title}</h3>
+      )}
+      <ul className={content.style === 'numbered' ? 'list-decimal' : content.style === 'bullet' ? 'list-disc' : ''} style={{ listStylePosition: 'inside' }}>
+        {content.items.map((item) => (
+          <li key={item.id} className="py-1 text-muted-foreground">
+            {item.text}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+});
 BasicListPreview.displayName = 'BasicListPreview';
 
 // Featured Product Preview
@@ -817,7 +1028,7 @@ export const SectionPreviewContent = memo(({ section }: SectionPreviewContentPro
     case 'text':
       return <TextPreview content={section.content as TextContent} />;
     case 'image':
-      return <ImagePreview content={section.content as ImageContent} />;
+      return <ImagePreview section={section} />;
     case 'image_with_text':
       return <ImageWithTextPreview section={section} />;
     case 'gallery':
@@ -831,7 +1042,7 @@ export const SectionPreviewContent = memo(({ section }: SectionPreviewContentPro
     case 'headline':
       return <HeadlinePreview content={section.content as HeadlineContent} />;
     case 'sliding_banner':
-      return <SlidingBannerPreview content={section.content as SlidingBannerContent} />;
+      return <SlidingBannerPreview content={section.content as SlidingBannerContent} preset={section.style_options?.preset} />;
     case 'divider':
       return <DividerPreview content={section.content as DividerContent} />;
     case 'testimonials':
@@ -843,7 +1054,7 @@ export const SectionPreviewContent = memo(({ section }: SectionPreviewContentPro
     case 'slideshow':
       return <SlideshowPreview content={section.content as SlideshowContent} />;
     case 'basic_list':
-      return <BasicListPreview content={section.content as BasicListContent} />;
+      return <BasicListPreview section={section} />;
     case 'featured_product':
       return <FeaturedProductPreview content={section.content as FeaturedProductContent} />;
     case 'logo_list':
