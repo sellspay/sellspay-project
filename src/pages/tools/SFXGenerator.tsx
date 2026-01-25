@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { SFXWaveform } from "@/components/tools/SFXWaveform";
 import { useCredits } from "@/hooks/useCredits";
+import { OutOfCreditsDialog } from "@/components/tools/OutOfCreditsDialog";
 
 export default function SFXGenerator() {
   const [prompt, setPrompt] = useState("");
@@ -25,6 +26,7 @@ export default function SFXGenerator() {
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [result, setResult] = useState<{ audio_url: string; filename: string } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showOutOfCredits, setShowOutOfCredits] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const { deductCredit, creditBalance, canUseTool } = useCredits();
@@ -60,9 +62,9 @@ export default function SFXGenerator() {
       return;
     }
 
-    // Check if user can use this pro tool
+    // Check if user can use this pro tool - show dialog instead of toast
     if (!canUseTool("sfx-generator")) {
-      toast.error("Insufficient credits. Please purchase more credits to continue.");
+      setShowOutOfCredits(true);
       return;
     }
 
@@ -359,6 +361,12 @@ export default function SFXGenerator() {
           </div>
         </Card>
       </div>
+
+      {/* Out of Credits Dialog */}
+      <OutOfCreditsDialog 
+        open={showOutOfCredits} 
+        onOpenChange={setShowOutOfCredits} 
+      />
     </div>
   );
 }
