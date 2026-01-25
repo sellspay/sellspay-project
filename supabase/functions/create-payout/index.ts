@@ -12,6 +12,9 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-PAYOUT] ${step}${detailsStr}`);
 };
 
+// Minimum withdrawal in cents ($10)
+const MIN_WITHDRAWAL_CENTS = 1000;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -25,12 +28,13 @@ serve(async (req) => {
       throw new Error("STRIPE_SECRET_KEY is not set");
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
     // Create Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false }
+    });
 
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
@@ -79,7 +83,7 @@ serve(async (req) => {
 
     if (!profile.stripe_account_id || !profile.stripe_onboarding_complete) {
       return new Response(
-        JSON.stringify({ error: "Stripe account not connected or onboarding incomplete" }),
+        JSON.stringify({ error: "Please connect your Stripe account first to withdraw funds" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -89,43 +93,156 @@ serve(async (req) => {
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Get the connected account's balance
-    const balance = await stripe.balance.retrieve({
-      stripeAccount: profile.stripe_account_id,
+    // Get pending earnings from product sales (not yet transferred)
+    const { data: pendingPurchases, error: purchasesError } = await supabaseClient
+      .from("purchases")
+      .select(`
+        id,
+        creator_payout_cents,
+        product_id,
+        products!inner(creator_id)
+      `)
+      .eq("products.creator_id", profile.id)
+      .eq("status", "completed")
+      .eq("transferred", false);
+
+    if (purchasesError) {
+      logStep("Error fetching pending purchases", { error: purchasesError.message });
+    }
+
+    // Get pending earnings from editor bookings (not yet transferred)
+    const { data: pendingBookings, error: bookingsError } = await supabaseClient
+      .from("editor_bookings")
+      .select("id, editor_payout_cents")
+      .eq("editor_id", profile.id)
+      .eq("status", "completed")
+      .eq("transferred", false);
+
+    if (bookingsError) {
+      logStep("Error fetching pending bookings", { error: bookingsError.message });
+    }
+
+    // Calculate total pending earnings from platform-held funds
+    const pendingProductEarnings = (pendingPurchases || []).reduce(
+      (sum, p) => sum + (p.creator_payout_cents || 0), 0
+    );
+    const pendingBookingEarnings = (pendingBookings || []).reduce(
+      (sum, b) => sum + (b.editor_payout_cents || 0), 0
+    );
+    const totalPendingEarnings = pendingProductEarnings + pendingBookingEarnings;
+
+    logStep("Pending earnings calculated", {
+      pendingProductEarnings,
+      pendingBookingEarnings,
+      totalPendingEarnings,
+      pendingPurchaseCount: (pendingPurchases || []).length,
+      pendingBookingCount: (pendingBookings || []).length,
     });
 
-    logStep("Balance retrieved", { balance: balance.available });
+    // Also get the connected account's available balance (from direct transfers)
+    let stripeBalance = 0;
+    try {
+      const balance = await stripe.balance.retrieve({
+        stripeAccount: profile.stripe_account_id,
+      });
+      stripeBalance = balance.available.reduce((acc: number, b: Stripe.Balance.Available) => {
+        if (b.currency === "usd") return acc + b.amount;
+        return acc;
+      }, 0);
+      logStep("Stripe balance retrieved", { stripeBalance });
+    } catch (err) {
+      logStep("Could not retrieve Stripe balance", { error: err instanceof Error ? err.message : String(err) });
+    }
 
-    // Calculate available balance (sum of all currencies, convert to USD cents)
-    const availableBalance = balance.available.reduce((acc: number, b: Stripe.Balance.Available) => {
-      if (b.currency === "usd") return acc + b.amount;
-      return acc; // For simplicity, only handle USD
-    }, 0);
+    // Total available: pending platform earnings + Stripe account balance
+    const totalAvailable = totalPendingEarnings + stripeBalance;
 
-    if (availableBalance <= 0) {
+    if (totalAvailable < MIN_WITHDRAWAL_CENTS) {
       return new Response(
-        JSON.stringify({ error: "No available balance to withdraw", availableBalance: 0 }),
+        JSON.stringify({ 
+          error: `Minimum withdrawal is $${(MIN_WITHDRAWAL_CENTS / 100).toFixed(2)}. Your available balance is $${(totalAvailable / 100).toFixed(2)}.`,
+          availableBalance: totalAvailable,
+          pendingEarnings: totalPendingEarnings,
+          stripeBalance: stripeBalance,
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Calculate payout amount after fee (if instant)
-    let payoutAmount = availableBalance;
+    let payoutAmount = totalAvailable;
     let feeAmount = 0;
     
     if (instant) {
-      feeAmount = Math.round(availableBalance * 0.03); // 3% instant fee
-      payoutAmount = availableBalance - feeAmount;
+      feeAmount = Math.round(totalAvailable * 0.03); // 3% instant fee
+      payoutAmount = totalAvailable - feeAmount;
     }
 
     logStep("Payout calculation", { 
-      availableBalance, 
+      totalAvailable,
+      pendingEarnings: totalPendingEarnings,
+      stripeBalance,
       feeAmount, 
       payoutAmount, 
       instant 
     });
 
-    // Create payout on the connected account
+    // If there are pending earnings from platform, transfer them to the connected account first
+    if (totalPendingEarnings > 0) {
+      logStep("Transferring pending earnings to connected account", {
+        amount: totalPendingEarnings,
+        destination: profile.stripe_account_id,
+      });
+
+      const transfer = await stripe.transfers.create({
+        amount: totalPendingEarnings,
+        currency: "usd",
+        destination: profile.stripe_account_id,
+        description: `Withdrawal: ${(pendingPurchases || []).length} sales, ${(pendingBookings || []).length} bookings`,
+      });
+
+      logStep("Transfer created", { transferId: transfer.id, amount: transfer.amount });
+
+      // Mark purchases as transferred
+      if (pendingPurchases && pendingPurchases.length > 0) {
+        const purchaseIds = pendingPurchases.map(p => p.id);
+        const { error: updateError } = await supabaseClient
+          .from("purchases")
+          .update({ 
+            transferred: true, 
+            transferred_at: new Date().toISOString(),
+            stripe_transfer_id: transfer.id,
+          })
+          .in("id", purchaseIds);
+
+        if (updateError) {
+          logStep("Warning: Failed to mark purchases as transferred", { error: updateError.message });
+        } else {
+          logStep("Purchases marked as transferred", { count: purchaseIds.length });
+        }
+      }
+
+      // Mark bookings as transferred
+      if (pendingBookings && pendingBookings.length > 0) {
+        const bookingIds = pendingBookings.map(b => b.id);
+        const { error: updateError } = await supabaseClient
+          .from("editor_bookings")
+          .update({ 
+            transferred: true, 
+            transferred_at: new Date().toISOString(),
+            stripe_transfer_id: transfer.id,
+          })
+          .in("id", bookingIds);
+
+        if (updateError) {
+          logStep("Warning: Failed to mark bookings as transferred", { error: updateError.message });
+        } else {
+          logStep("Bookings marked as transferred", { count: bookingIds.length });
+        }
+      }
+    }
+
+    // Now create payout from connected account to their bank
     const payout = await stripe.payouts.create(
       {
         amount: payoutAmount,
@@ -153,6 +270,10 @@ serve(async (req) => {
         method: instant ? "instant" : "standard",
         arrivalDate: payout.arrival_date,
         estimatedArrival: instant ? "Instant" : "1-3 business days",
+        details: {
+          pendingEarningsTransferred: totalPendingEarnings,
+          stripeBalanceWithdrawn: stripeBalance,
+        },
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

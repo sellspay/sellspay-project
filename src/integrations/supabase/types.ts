@@ -545,6 +545,8 @@ export type Database = {
           stripe_payment_intent_id: string | null
           stripe_transfer_id: string | null
           total_amount_cents: number
+          transferred: boolean | null
+          transferred_at: string | null
           updated_at: string | null
         }
         Insert: {
@@ -560,6 +562,8 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_transfer_id?: string | null
           total_amount_cents: number
+          transferred?: boolean | null
+          transferred_at?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -575,6 +579,8 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_transfer_id?: string | null
           total_amount_cents?: number
+          transferred?: boolean | null
+          transferred_at?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1152,6 +1158,8 @@ export type Database = {
           stripe_checkout_session_id: string | null
           stripe_payment_intent_id: string | null
           stripe_transfer_id: string | null
+          transferred: boolean | null
+          transferred_at: string | null
         }
         Insert: {
           amount_cents: number
@@ -1165,6 +1173,8 @@ export type Database = {
           stripe_checkout_session_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_transfer_id?: string | null
+          transferred?: boolean | null
+          transferred_at?: string | null
         }
         Update: {
           amount_cents?: number
@@ -1178,6 +1188,8 @@ export type Database = {
           stripe_checkout_session_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_transfer_id?: string | null
+          transferred?: boolean | null
+          transferred_at?: string | null
         }
         Relationships: [
           {
