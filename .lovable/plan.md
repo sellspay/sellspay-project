@@ -1,72 +1,83 @@
 
-# Fix Social Media Link Preview (Open Graph)
+# Fix Plan: Seller Button and Logo
 
-## Problem Identified
-When sharing your website link, the social preview shows:
-- **Title**: "Lovable App" (should be "EditorsParadise")
-- **Description**: "Lovable Generated Project" (should describe the marketplace)
-- **Image**: Shows a tall/stretched preview instead of the proper landscape OG image
+## Overview
+Two issues to fix:
+1. The "Seller?" button on the profile page is not working - clicking "Yes, become a seller" shows "Failed to switch account"
+2. The navbar is using the old logo (`navbar-logo.png`) instead of the new logo (`hero-logo.png`)
 
-## Root Cause
-The Open Graph URLs in `index.html` are pointing to `https://editorsparadise.lovable.app/` but your custom domain is `https://editorsparadise.org/`. Social media crawlers may be getting confused by this mismatch or serving cached outdated content.
+---
 
-## Solution
+## Issue 1: Seller Button Not Working
 
-### 1. Update index.html Meta Tags
-Update all Open Graph and Twitter Card URLs to use your custom domain:
+### Root Cause
+The `SellerConfirmDialog` component uses `AlertDialogAction` from Radix UI. When clicked, `AlertDialogAction` **automatically closes the dialog immediately** before the async operation completes. This causes the dialog to close and potentially interrupt the state updates.
 
-```text
-File: index.html
+The fix requires preventing the automatic close behavior and handling the async operation properly.
 
-Changes:
-- og:image: https://editorsparadise.lovable.app/og-image.png -> https://editorsparadise.org/og-image.png
-- og:url: https://editorsparadise.lovable.app -> https://editorsparadise.org
-- twitter:image: https://editorsparadise.lovable.app/og-image.png -> https://editorsparadise.org/og-image.png
-```
+### Solution
+Modify `SellerConfirmDialog.tsx` to:
+1. Wrap the `AlertDialogAction` click handler to prevent default closing
+2. Let the parent's `onConfirm` callback control when the dialog closes (after success or on error)
 
-### 2. Add Additional OG Properties
-Add width/height hints for the OG image to ensure platforms display it at the correct aspect ratio (1200x630 is the standard OG image size):
+### File Changes
 
-```html
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
+**`src/components/profile/SellerConfirmDialog.tsx`**
+- Update the `AlertDialogAction` to use a click handler that calls `e.preventDefault()` before invoking `onConfirm`
+- This prevents Radix from auto-closing the dialog
+- The dialog will only close when `onOpenChange(false)` is called after successful update
+
+```tsx
+<AlertDialogAction 
+  onClick={(e) => {
+    e.preventDefault(); // Prevent auto-close
+    onConfirm();
+  }} 
+  disabled={loading}
+  className="bg-primary hover:bg-primary/90"
+>
+  {loading ? "Switching..." : "Yes, become a seller"}
+</AlertDialogAction>
 ```
 
 ---
 
-## Technical Details
+## Issue 2: Navbar Using Old Logo
 
-### Files to Modify
-- `index.html` - Update meta tag URLs and add image dimension hints
+### Root Cause
+The Header component is importing and using `navbar-logo.png` instead of the new logo file `hero-logo.png`.
 
-### Updated Meta Tags
-```html
-<!-- Open Graph -->
-<meta property="og:title" content="EditorsParadise" />
-<meta property="og:description" content="The ultimate marketplace for editors. Discover premium Presets, LUTs, SFX, Templates, Overlays and Fonts crafted by professional creators worldwide." />
-<meta property="og:type" content="website" />
-<meta property="og:image" content="https://editorsparadise.org/og-image.png" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-<meta property="og:url" content="https://editorsparadise.org" />
-<meta property="og:site_name" content="EditorsParadise" />
+### Solution
+1. Update `Header.tsx` to import and use `hero-logo.png` instead
+2. Delete the old `navbar-logo.png` file
+3. Also update `UpdateCard.tsx` which references the same old logo
 
-<!-- Twitter Card -->
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:site" content="@EditorsParadise" />
-<meta name="twitter:title" content="EditorsParadise" />
-<meta name="twitter:description" content="The ultimate marketplace for editors. Discover premium Presets, LUTs, SFX, Templates, Overlays and Fonts crafted by professional creators worldwide." />
-<meta name="twitter:image" content="https://editorsparadise.org/og-image.png" />
-```
+### File Changes
+
+**`src/components/layout/Header.tsx`**
+- Change import from `navbar-logo.png` to `hero-logo.png`
+- Rename the import variable for clarity
+
+**`src/components/community/UpdateCard.tsx`**
+- Also uses `navbar-logo.png` - update to use the new logo
+
+**Delete file**
+- `src/assets/navbar-logo.png` - remove the old logo file
 
 ---
 
-## Post-Implementation Steps
-After publishing, you'll need to clear cached previews:
+## Technical Summary
 
-1. **Discord**: Paste the link again - Discord auto-refreshes after some time, or try adding a query param like `?v=2`
-2. **Facebook**: Use the [Sharing Debugger](https://developers.facebook.com/tools/debug/) to scrape the fresh metadata
-3. **Twitter**: Use the [Card Validator](https://cards-dev.twitter.com/validator) to refresh
-4. **LinkedIn**: Use the [Post Inspector](https://www.linkedin.com/post-inspector/)
+| File | Action |
+|------|--------|
+| `src/components/profile/SellerConfirmDialog.tsx` | Add `e.preventDefault()` to AlertDialogAction onClick |
+| `src/components/layout/Header.tsx` | Change logo import from `navbar-logo.png` to `hero-logo.png` |
+| `src/components/community/UpdateCard.tsx` | Change logo import from `navbar-logo.png` to `hero-logo.png` |
+| `src/assets/navbar-logo.png` | Delete old logo file |
 
-These tools force the platforms to re-crawl your page and fetch the updated metadata.
+---
+
+## Expected Outcome
+1. Clicking "Yes, become a seller" will properly update the user's profile and show success toast
+2. The navbar will display the new logo across all pages
+3. The community UpdateCard bot avatar will also use the new logo
