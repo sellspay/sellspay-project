@@ -46,6 +46,7 @@ interface Profile {
   email: string | null;
   avatar_url: string | null;
   banner_url: string | null;
+  banner_position_y: number | null;
   background_url: string | null;
   bio: string | null;
   website: string | null;
@@ -967,12 +968,16 @@ const ProfilePage: React.FC = () => {
           <div className={`max-w-4xl mx-auto ${profile.background_url ? 'bg-background/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-border/50 mx-4 md:mx-auto pb-6' : ''}`}>
             {/* Banner - contained width like Twitter/X */}
             <div className={`px-4 ${profile.background_url ? 'pt-4' : 'pt-4'}`}>
-              <div className="h-32 md:h-40 rounded-xl overflow-hidden">
+              <div className="h-32 md:h-40 rounded-xl overflow-hidden relative">
                 {profile.banner_url ? (
                   <img
                     src={profile.banner_url}
                     alt="Profile banner"
-                    className="w-full h-full object-cover"
+                    className="absolute w-full"
+                    style={{
+                      transform: `translateY(${(profile.banner_position_y ?? 50) - 50}%)`,
+                      top: '50%',
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-primary/40 to-accent/30" />
