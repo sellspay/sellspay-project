@@ -65,12 +65,17 @@ export function Testimonials() {
 
   useEffect(() => {
     async function fetchKagori() {
-      // Fetch kagori from public_profiles
-      const { data: kagoriProfile } = await supabase
-        .from('public_profiles')
+      // Query profiles table directly - it has RLS policy for public read access
+      const { data: kagoriProfile, error } = await supabase
+        .from('profiles')
         .select('id, username, full_name, avatar_url, verified, bio')
         .eq('username', 'kagori')
         .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching kagori profile:', error);
+        return;
+      }
 
       if (kagoriProfile) {
         const kagoriTestimonial: Testimonial = {
