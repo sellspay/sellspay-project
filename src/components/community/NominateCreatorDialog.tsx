@@ -82,12 +82,13 @@ export function NominateCreatorDialog({ open, onOpenChange }: NominateCreatorDia
         followerCountMap.set(f.following_id, (followerCountMap.get(f.following_id) || 0) + 1);
       });
 
-      // Fetch owner roles (for Owner badge)
+      // Check owner status using secure RPC for each user
       const userIds = creatorsData.map(c => c.user_id).filter(Boolean);
-      const { data: ownerRoles } = userIds.length
-        ? await supabase.from('user_roles').select('user_id').eq('role', 'owner').in('user_id', userIds)
-        : { data: [] };
-      const adminUserIds = new Set(ownerRoles?.map(r => r.user_id) || []);
+      const adminUserIds = new Set<string>();
+      for (const userId of userIds) {
+        const { data: isOwner } = await supabase.rpc('is_owner', { p_user_id: userId });
+        if (isOwner) adminUserIds.add(userId);
+      }
 
       // Check which creators the current user has already nominated
       let nominatedCreatorIds = new Set<string>();

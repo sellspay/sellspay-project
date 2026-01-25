@@ -50,12 +50,13 @@ export default function Spotlight() {
         return [];
       }
 
-      // Fetch owner roles for these profiles (for Owner badge)
+      // Check owner status using secure RPC for each profile
       const userIds = spotlightsData.map((s: any) => s.profile_user_id).filter(Boolean);
-      const { data: ownerRoles } = userIds.length
-        ? await supabase.from('user_roles').select('user_id').eq('role', 'owner').in('user_id', userIds)
-        : { data: [] as any[] };
-      const adminUserIds = new Set((ownerRoles || []).map((r: any) => r.user_id));
+      const adminUserIds = new Set<string>();
+      for (const userId of userIds) {
+        const { data: isOwner } = await supabase.rpc('is_owner', { p_user_id: userId });
+        if (isOwner) adminUserIds.add(userId);
+      }
 
       // Get products and followers counts
       const spotlightsWithData = await Promise.all(spotlightsData.map(async (s: any) => {

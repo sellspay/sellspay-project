@@ -1964,6 +1964,36 @@ export type Database = {
         }
         Relationships: []
       }
+      safe_public_identities: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string | null
+          is_creator: boolean | null
+          is_editor: boolean | null
+          username: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_creator?: boolean | null
+          is_editor?: boolean | null
+          username?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_creator?: boolean | null
+          is_editor?: boolean | null
+          username?: string | null
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_active_spotlights: {
@@ -2012,6 +2042,7 @@ export type Database = {
         Returns: boolean
       }
       is_email_available: { Args: { p_email: string }; Returns: boolean }
+      is_owner: { Args: { p_user_id: string }; Returns: boolean }
       is_username_available: { Args: { p_username: string }; Returns: boolean }
       is_username_available_v2: {
         Args: { p_username: string }
