@@ -792,6 +792,7 @@ export type Database = {
           id: string
           locked: boolean | null
           name: string
+          original_filename: string | null
           preview_video_url: string | null
           price_cents: number | null
           pricing_type: string | null
@@ -820,6 +821,7 @@ export type Database = {
           id?: string
           locked?: boolean | null
           name: string
+          original_filename?: string | null
           preview_video_url?: string | null
           price_cents?: number | null
           pricing_type?: string | null
@@ -848,6 +850,7 @@ export type Database = {
           id?: string
           locked?: boolean | null
           name?: string
+          original_filename?: string | null
           preview_video_url?: string | null
           price_cents?: number | null
           pricing_type?: string | null

@@ -1832,27 +1832,29 @@ export default function ProductDetail() {
             
             // Add download_url as primary attachment with original filename
             if (product.download_url) {
-              // Extract original filename from the storage path
-              const downloadPath = product.download_url;
-              let originalFilename = 'Download File';
+              // Use the stored original_filename if available (new uploads)
+              // Otherwise fallback to extracting from path (legacy uploads)
+              let displayFilename = (product as any).original_filename || null;
               
-              // Extract the actual filename from the storage path
-              // The path could be: {user_id}/{timestamp}-{original_filename} 
-              // OR just the filename directly
-              const pathParts = downloadPath.split('/');
-              const filenamePart = pathParts[pathParts.length - 1];
-              
-              // Try to extract original filename after timestamp prefix (format: timestamp-filename)
-              // e.g., "1769306852596-rengoku_edit.aep" -> "rengoku_edit.aep"
-              const timestampMatch = filenamePart.match(/^\d{13,}-(.+)$/);
-              if (timestampMatch && timestampMatch[1]) {
-                originalFilename = timestampMatch[1];
-              } else {
-                // No timestamp prefix, use filename as-is
-                originalFilename = filenamePart;
+              if (!displayFilename) {
+                // Fallback: Extract filename from the storage path
+                const downloadPath = product.download_url;
+                const pathParts = downloadPath.split('/');
+                const filenamePart = pathParts[pathParts.length - 1];
+                
+                // Try to extract original filename after timestamp prefix (format: timestamp-filename)
+                // e.g., "1769306852596-rengoku_edit.aep" -> "rengoku_edit.aep"
+                const timestampMatch = filenamePart.match(/^\d{13,}-(.+)$/);
+                if (timestampMatch && timestampMatch[1]) {
+                  // Replace underscores back to spaces for better display (optional)
+                  displayFilename = timestampMatch[1];
+                } else {
+                  // No timestamp prefix or old format, use filename as-is
+                  displayFilename = filenamePart;
+                }
               }
               
-              attachmentsList.push({ name: originalFilename, isDownloadFile: true });
+              attachmentsList.push({ name: displayFilename || 'Download File', isDownloadFile: true });
             }
             
             // Add any existing attachments array

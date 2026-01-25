@@ -273,10 +273,11 @@ export default function CreateProduct() {
       }
 
       // Upload download file to private bucket
+      let originalFilename: string | null = null;
       if (downloadFile) {
-        const ext = downloadFile.name.split(".").pop();
         // Store in private bucket with user's ID as folder for RLS policy
-        const path = `${user.id}/${Date.now()}-${downloadFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        // Use timestamp prefix but preserve the EXACT original filename
+        const path = `${user.id}/${Date.now()}-${downloadFile.name.replace(/[^a-zA-Z0-9._()-]/g, '_')}`;
         const { error: uploadError } = await supabase.storage
           .from("product-files")
           .upload(path, downloadFile);
@@ -288,6 +289,8 @@ export default function CreateProduct() {
 
         // Store the path (not public URL) - downloads will use signed URLs
         downloadUrl = path;
+        // Store the EXACT original filename as the seller named it
+        originalFilename = downloadFile.name;
       }
 
       // Create product
@@ -329,10 +332,11 @@ export default function CreateProduct() {
           cover_image_url: coverImageUrl,
           preview_video_url: previewVideoPath,
           download_url: downloadUrl,
+          original_filename: originalFilename,
           creator_id: profile.id,
           status: publish ? "published" : "draft",
           subscription_access: subscriptionAccess,
-        })
+        } as any)
         .select()
         .single();
 

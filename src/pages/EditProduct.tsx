@@ -92,6 +92,7 @@ export default function EditProduct() {
   const [existingCoverUrl, setExistingCoverUrl] = useState<string | null>(null);
   const [existingPreviewVideoPath, setExistingPreviewVideoPath] = useState<string | null>(null);
   const [existingDownloadUrl, setExistingDownloadUrl] = useState<string | null>(null);
+  const [existingOriginalFilename, setExistingOriginalFilename] = useState<string | null>(null);
   
   // New uploads
   const [coverImage, setCoverImage] = useState<File | null>(null);
@@ -168,6 +169,7 @@ export default function EditProduct() {
       setExistingCoverUrl(product.cover_image_url);
       setExistingPreviewVideoPath(product.preview_video_url);
       setExistingDownloadUrl(product.download_url);
+      setExistingOriginalFilename((product as any).original_filename || null);
     } catch (error) {
       console.error("Error fetching product:", error);
       toast.error("Failed to load product");
@@ -320,11 +322,13 @@ export default function EditProduct() {
       }
 
       // Handle download file - upload to private bucket
+      let originalFilename: string | null = existingOriginalFilename;
       if (removeDownload) {
         downloadUrl = null;
+        originalFilename = null;
       } else if (downloadFile) {
         // Store in private bucket with user's auth ID as folder for RLS policy
-        const path = `${user.id}/${Date.now()}-${downloadFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const path = `${user.id}/${Date.now()}-${downloadFile.name.replace(/[^a-zA-Z0-9._()-]/g, '_')}`;
         const { error: uploadError } = await supabase.storage
           .from("product-files")
           .upload(path, downloadFile);
@@ -336,6 +340,8 @@ export default function EditProduct() {
 
         // Store the path (not public URL) - downloads will use signed URLs
         downloadUrl = path;
+        // Store the EXACT original filename as the seller named it
+        originalFilename = downloadFile.name;
       }
 
       // Check slug uniqueness if changed
@@ -380,9 +386,10 @@ export default function EditProduct() {
           cover_image_url: coverImageUrl,
           preview_video_url: previewVideoPath,
           download_url: downloadUrl,
+          original_filename: originalFilename,
           status: publish ? "published" : "draft",
           subscription_access: subscriptionAccess,
-        })
+        } as any)
         .eq("id", id);
 
       if (error) throw error;
