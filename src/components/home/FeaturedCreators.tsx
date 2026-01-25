@@ -38,19 +38,20 @@ export function FeaturedCreators() {
       }
 
       if (data && data.length > 0) {
-        // Fetch owner status for all creators (for Owner badge)
+        // Fetch owner status for all creators using RPC (user_roles is locked down)
         const userIds = data.map(c => c.user_id);
-        const { data: ownerRoles } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('role', 'owner')
-          .in('user_id', userIds);
-
-        const adminUserIds = new Set(ownerRoles?.map(r => r.user_id) || []);
+        const ownerStatusMap = new Map<string, boolean>();
+        
+        await Promise.all(
+          userIds.map(async (userId) => {
+            const { data: isOwner } = await supabase.rpc('is_owner', { p_user_id: userId });
+            ownerStatusMap.set(userId, isOwner === true);
+          })
+        );
         
         setCreators(data.map(creator => ({
           ...creator,
-          isAdmin: adminUserIds.has(creator.user_id)
+          isAdmin: ownerStatusMap.get(creator.user_id) === true
         })));
       } else {
         setCreators([]);
