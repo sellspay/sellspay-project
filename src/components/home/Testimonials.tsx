@@ -65,9 +65,9 @@ export function Testimonials() {
 
   useEffect(() => {
     async function fetchKagori() {
-      // Query profiles table directly - it has RLS policy for public read access
+      // Query public_profiles view for public access (works for all users including anonymous)
       const { data: kagoriProfile, error } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id, username, full_name, avatar_url, verified, bio')
         .eq('username', 'kagori')
         .maybeSingle();
