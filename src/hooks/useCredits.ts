@@ -43,6 +43,15 @@ export function useCredits() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const fetchedRef = useRef(false);
+
+  // Broadcast credit balance updates across the app (multiple hook instances)
+  // so ToolContent/ProToolsGate/Sidebar all reflect deductions immediately.
+  const broadcastCredits = useCallback((userId: string, balance: number) => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent("credits:changed", { detail: { userId, balance } })
+    );
+  }, []);
   
   const [creditBalance, setCreditBalance] = useState<number>(() => {
     // Initialize from cache if valid and same user
@@ -102,6 +111,7 @@ export function useCredits() {
       };
       
       setCreditBalance(balance);
+      broadcastCredits(user.id, balance);
       setError(null);
     } catch (err) {
       console.error("Error checking credits:", err);
@@ -167,6 +177,7 @@ export function useCredits() {
           balance: data.credit_balance,
           timestamp: Date.now(),
         };
+        broadcastCredits(user.id, data.credit_balance);
         return { success: true, newBalance: data.credit_balance };
       } else {
         return { success: false, error: data.error || "Failed to deduct credit" };
@@ -178,7 +189,7 @@ export function useCredits() {
         error: err instanceof Error ? err.message : "Failed to deduct credit" 
       };
     }
-  }, [user]);
+  }, [user, broadcastCredits]);
 
   const startCheckout = useCallback(async (packageId: string, priceId?: string): Promise<{ url?: string; upgraded?: boolean; message?: string; creditsAdded?: number; error?: string } | null> => {
     if (!user) {
@@ -322,6 +333,29 @@ export function useCredits() {
       }
     }
   }, [user?.id]); // Only depend on user ID
+
+  // Keep all hook instances in sync when credits change elsewhere.
+  useEffect(() => {
+    if (!user) return;
+    const handler = (e: Event) => {
+      const evt = e as CustomEvent<{ userId: string; balance: number }>;
+      if (!evt.detail) return;
+      if (evt.detail.userId !== user.id) return;
+
+      // Update local state even if this hook instance didn't trigger the change.
+      setCreditBalance(evt.detail.balance);
+
+      // Keep global cache coherent too.
+      creditsCache = {
+        userId: user.id,
+        balance: evt.detail.balance,
+        timestamp: Date.now(),
+      };
+    };
+
+    window.addEventListener("credits:changed", handler);
+    return () => window.removeEventListener("credits:changed", handler);
+  }, [user]);
 
   return {
     creditBalance,
