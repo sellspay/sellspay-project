@@ -242,37 +242,9 @@ serve(async (req) => {
       );
     }
 
-    // ====== DEDUCT CREDIT (if not Pro) ======
-    if (!hasProSubscription) {
-      // Use service role for credit deduction to bypass RLS
-      const serviceClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-      );
-
-      // Fetch current balance and update
-      const { data: currentProfile } = await serviceClient
-        .from("profiles")
-        .select("credit_balance")
-        .eq("user_id", user.id)
-        .single();
-
-      if (currentProfile) {
-        await serviceClient
-          .from("profiles")
-          .update({ credit_balance: Math.max(0, (currentProfile.credit_balance ?? 0) - 1) })
-          .eq("user_id", user.id);
-      }
-
-      // Record transaction
-      await serviceClient.from("credit_transactions").insert({
-        user_id: user.id,
-        amount: -1,
-        type: "usage",
-        tool_id: "audio_stem_separation",
-        description: "Audio stem separation tool usage",
-      });
-    }
+    // NOTE: Credit deduction is handled client-side via the deduct-credit edge function
+    // BEFORE calling this function. We only validate credits exist above, not deduct here.
+    // This prevents double-deduction bugs.
 
     // ====== TRACK USAGE ======
     await supabaseClient.from("tool_usage").insert({
