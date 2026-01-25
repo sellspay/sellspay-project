@@ -182,16 +182,10 @@ export function ThreadComposer() {
       "group relative transition-all duration-500",
       isFocused && "scale-[1.01]"
     )}>
-      {/* Premium glow effect */}
-      <div className={cn(
-        "absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-xl transition-opacity duration-500",
-        isFocused ? "opacity-100" : "opacity-0 group-hover:opacity-50"
-      )} />
-      
       <div className={cn(
         "relative bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl border rounded-3xl p-5 transition-all duration-500 overflow-hidden",
         isFocused 
-          ? "border-primary/40 shadow-2xl shadow-primary/10" 
+          ? "border-primary/40 shadow-xl shadow-primary/5" 
           : "border-border/50 hover:border-primary/20"
       )}>
         {/* Subtle gradient line at top when focused */}
@@ -201,25 +195,19 @@ export function ThreadComposer() {
         )} />
 
         <div className="relative flex gap-4">
-          {/* Avatar with glow */}
-          <div className="relative shrink-0">
-            <div className={cn(
-              "absolute -inset-1 rounded-full bg-gradient-to-br from-primary/50 to-accent/50 blur transition-opacity duration-500",
-              isFocused ? "opacity-100" : "opacity-0"
-            )} />
-            <Avatar className="relative h-12 w-12 ring-2 ring-border/50">
-              <AvatarImage src={profile?.avatar_url || ''} />
-              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-foreground font-semibold">
-                {profile?.full_name?.charAt(0) || profile?.username?.charAt(0) || '?'}
-              </AvatarFallback>
-            </Avatar>
-          </div>
+          {/* Avatar - no glow effect */}
+          <Avatar className="shrink-0 h-12 w-12 ring-2 ring-border/50">
+            <AvatarImage src={profile?.avatar_url || ''} />
+            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-foreground font-semibold">
+              {profile?.full_name?.charAt(0) || profile?.username?.charAt(0) || '?'}
+            </AvatarFallback>
+          </Avatar>
 
           {/* Input Area */}
           <div className="flex-1 space-y-4">
             <Textarea
               placeholder="What's on your mind? Start a thread..."
-              className="min-h-[60px] resize-none border-0 p-0 text-base focus-visible:ring-0 placeholder:text-muted-foreground/50 bg-transparent"
+              className="min-h-[60px] resize-none border-0 p-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 bg-transparent"
               value={content}
               onChange={(e) => setContent(e.target.value.slice(0, MAX_LENGTH))}
               onFocus={() => setIsFocused(true)}
