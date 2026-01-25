@@ -866,11 +866,17 @@ export default function Settings() {
         {/* Profile Tab */}
         <TabsContent value="profile">
           <Card className="bg-card/50">
-            <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>
-                Update your profile information visible to other users.
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+              <div>
+                <CardTitle>Profile Information</CardTitle>
+                <CardDescription>
+                  Update your profile information visible to other users.
+                </CardDescription>
+              </div>
+              <Button onClick={saveProfile} disabled={saving}>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Avatar */}
@@ -1121,10 +1127,6 @@ export default function Settings() {
                 </p>
               </div>
 
-              <Button onClick={saveProfile} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>
