@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { Send, Loader2, Sparkles } from 'lucide-react';
+import { Send, Loader2, Sparkles, Crown, Lock } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,7 @@ import {
 import { GifPicker } from '@/components/comments/GifPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
+import { useCredits } from '@/hooks/useCredits';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
@@ -29,7 +30,8 @@ const categories = [
 const MAX_LENGTH = 1000;
 
 export function ThreadComposer() {
-  const { user } = useAuth();
+  const { user, isOwner } = useAuth();
+  const { subscription } = useCredits();
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('discussion');
@@ -51,10 +53,15 @@ export function ThreadComposer() {
     enabled: !!user?.id,
   });
 
+  // Check if user can post threads (owner always can, or has any subscription)
+  const hasSubscription = !!subscription;
+  const canPostThreads = isOwner || hasSubscription;
+
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!profile?.id) throw new Error('Must be logged in');
       if (!content.trim()) throw new Error('Content is required');
+      if (!canPostThreads) throw new Error('Subscription required to post threads');
 
       const { error } = await supabase.from('threads').insert({
         author_id: profile.id,
@@ -87,9 +94,14 @@ export function ThreadComposer() {
       toast.error('Please log in to post');
       return;
     }
+    if (!canPostThreads) {
+      toast.error('You need a subscription to post threads');
+      return;
+    }
     createMutation.mutate();
   };
 
+  // Not logged in state
   if (!user) {
     return (
       <div className="group relative">
@@ -109,6 +121,62 @@ export function ThreadComposer() {
     );
   }
 
+  // Logged in but no subscription (and not owner)
+  if (!canPostThreads) {
+    return (
+      <div className="group relative">
+        {/* Glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        
+        <div className="relative bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl border border-amber-500/30 rounded-3xl p-6 hover:border-amber-500/50 transition-all duration-500">
+          <div className="flex items-start gap-4">
+            {/* Avatar */}
+            <Avatar className="h-12 w-12 ring-2 ring-border/50 shrink-0">
+              <AvatarImage src={profile?.avatar_url || ''} />
+              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-foreground font-semibold">
+                {profile?.full_name?.charAt(0) || profile?.username?.charAt(0) || '?'}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex-1 space-y-3">
+              {/* Locked input area */}
+              <div className="relative">
+                <div className="min-h-[60px] rounded-xl bg-muted/30 border border-border/30 p-4 flex items-center justify-center gap-3">
+                  <Lock className="h-5 w-5 text-amber-500" />
+                  <span className="text-muted-foreground">Thread posting requires a subscription</span>
+                </div>
+              </div>
+
+              {/* CTA */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Crown className="h-4 w-4 text-amber-500" />
+                  <span>Unlock with any plan</span>
+                </div>
+                <Button
+                  asChild
+                  size="sm"
+                  className="rounded-full px-6 h-10 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/25"
+                >
+                  <Link to="/pricing">
+                    <Crown className="h-4 w-4 mr-2" />
+                    View Plans
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Info note */}
+          <p className="mt-4 text-xs text-muted-foreground text-center">
+            You can still browse, like, and reply to threads without a subscription.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Has subscription or is owner - full composer
   return (
     <div className={cn(
       "group relative transition-all duration-500",
