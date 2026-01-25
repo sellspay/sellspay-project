@@ -51,7 +51,7 @@ function AtUsernameRoute() {
   }
 
   return (
-    <MainLayout>
+    <MainLayout hideFooter>
       {/* Profile reads the param from the URL */}
       <Profile />
     </MainLayout>
@@ -79,7 +79,7 @@ const App = () => (
             <Route path="/create-product" element={<MainLayout><CreateProduct /></MainLayout>} />
             <Route path="/edit-product/:id" element={<MainLayout><EditProduct /></MainLayout>} />
             <Route path="/creators" element={<MainLayout><Creators /></MainLayout>} />
-            <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
+            <Route path="/profile" element={<MainLayout hideFooter><Profile /></MainLayout>} />
             <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
             <Route path="/admin" element={<MainLayout><Admin /></MainLayout>} />
             <Route path="/community" element={<MainLayout><Community /></MainLayout>} />
