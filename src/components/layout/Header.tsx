@@ -61,9 +61,7 @@ export default function Header() {
               alt="EditorsParadise" 
               className="h-14 sm:h-16 w-auto max-w-[200px] sm:max-w-[280px]"
             />
-            <span className="hidden sm:inline text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              EditorsParadise
-            </span>
+            <span className="sr-only">EditorsParadise</span>
           </Link>
 
           {/* Desktop Navigation */}

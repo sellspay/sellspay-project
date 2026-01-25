@@ -44,13 +44,11 @@ export default function HeroSection() {
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
       <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
-          {/* Brand name for Google verification */}
-          <span className="text-sm font-medium text-primary/80 tracking-widest uppercase mb-4">
-            EditorsParadise
-          </span>
-
-          {/* Main headline */}
+          {/* Main headline with brand name for Google verification */}
           <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-6">
+            <span className="block text-lg sm:text-xl font-semibold text-primary tracking-widest uppercase mb-2">
+              EditorsParadise
+            </span>
             <span className="text-foreground drop-shadow-lg">Level Up Your</span>
             <br />
             <span className="relative inline-block">
