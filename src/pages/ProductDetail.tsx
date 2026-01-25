@@ -559,12 +559,12 @@ export default function ProductDetail() {
           verified: boolean | null;
         };
 
-        // Helper function to fetch profile from public_identities_cache table
-        // This table is publicly readable for ALL visitors.
+        // Helper function to fetch profile from safe_public_identities view
+        // This view exposes only non-sensitive fields (no user_id mapping) for public access.
         // IMPORTANT: comments/comment_likes store *profile id* (profiles.id), not auth user id.
         const fetchPublicIdentity = async (profileId: string): Promise<ProfileIdentity | null> => {
           const { data } = await supabase
-            .from("public_identities_cache")
+            .from("safe_public_identities")
             .select("id, username, full_name, avatar_url, verified")
             .eq("id", profileId)
             .maybeSingle();

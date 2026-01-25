@@ -107,7 +107,7 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
     enabled: !!user?.id,
   });
 
-  // Check if thread author is owner (visible to everyone via public_profiles view)
+  // Check if thread author is owner using secure RPC (does not expose user_roles table)
   const { data: authorIsOwner = false } = useQuery({
     queryKey: ['thread-author-is-owner', thread.author_id],
     queryFn: async () => {
@@ -119,15 +119,11 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
         .maybeSingle();
       if (profileErr || !authorProfile?.user_id) return false;
 
-      // Then check if they have owner role (RLS allows public to check owner role)
-      const { data: roleRow, error: roleErr } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('user_id', authorProfile.user_id)
-        .eq('role', 'owner')
-        .maybeSingle();
-      if (roleErr) return false;
-      return !!roleRow;
+      // Use secure RPC to check owner status (does not expose user_roles directly)
+      const { data: isOwner, error: rpcErr } = await supabase
+        .rpc('is_owner', { p_user_id: authorProfile.user_id });
+      if (rpcErr) return false;
+      return !!isOwner;
     },
     enabled: !!thread.author_id,
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes since owner status rarely changes

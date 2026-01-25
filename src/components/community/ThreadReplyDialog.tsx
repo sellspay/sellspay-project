@@ -117,12 +117,13 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
 
       const authorsMap = new Map(authorsData?.map((a) => [a.id, a]) || []);
 
-      // Fetch owner roles (for Owner badge)
+      // Check owner status using secure RPC for each user
       const userIds = (authorsData || []).map((p: any) => p.user_id).filter(Boolean);
-      const { data: ownerRoles } = userIds.length
-        ? await supabase.from('user_roles').select('user_id').eq('role', 'owner').in('user_id', userIds)
-        : { data: [] as any[] };
-      const adminUserIds = new Set((ownerRoles || []).map((r: any) => r.user_id));
+      const adminUserIds = new Set<string>();
+      for (const userId of userIds) {
+        const { data: isOwner } = await supabase.rpc('is_owner', { p_user_id: userId });
+        if (isOwner) adminUserIds.add(userId);
+      }
 
       // Fetch likes counts
       const replyIds = repliesData.map((r) => r.id);
