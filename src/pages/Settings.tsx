@@ -631,6 +631,42 @@ export default function Settings() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    const isVideo = file.type.startsWith('video/');
+    const maxSize = 100 * 1024 * 1024; // 100MB
+    
+    // Validate file size
+    if (file.size > maxSize) {
+      toast.error("File too large. Maximum size is 100MB.");
+      return;
+    }
+
+    // Validate video duration if it's a video
+    if (isVideo) {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      
+      const durationCheck = new Promise<boolean>((resolve) => {
+        video.onloadedmetadata = () => {
+          URL.revokeObjectURL(video.src);
+          if (video.duration > 5) {
+            toast.error("Video too long. Maximum duration is 5 seconds.");
+            resolve(false);
+          } else {
+            resolve(true);
+          }
+        };
+        video.onerror = () => {
+          URL.revokeObjectURL(video.src);
+          toast.error("Could not read video file.");
+          resolve(false);
+        };
+      });
+      
+      video.src = URL.createObjectURL(file);
+      const isValid = await durationCheck;
+      if (!isValid) return;
+    }
+
     setUploadingBanner(true);
     try {
       const ext = file.name.split(".").pop();
@@ -646,10 +682,16 @@ export default function Settings() {
         .from("product-media")
         .getPublicUrl(path);
 
-      // Show position editor after upload
-      setPendingBannerUrl(publicUrl.publicUrl);
-      setShowBannerPositionEditor(true);
-      toast.success("Banner uploaded! Now position it.");
+      // For videos, skip position editor and set directly
+      if (isVideo) {
+        setBannerUrl(publicUrl.publicUrl);
+        toast.success("Animated banner uploaded!");
+      } else {
+        // Show position editor for images
+        setPendingBannerUrl(publicUrl.publicUrl);
+        setShowBannerPositionEditor(true);
+        toast.success("Banner uploaded! Now position it.");
+      }
     } catch (error) {
       console.error("Error uploading banner:", error);
       toast.error("Failed to upload banner");
@@ -990,15 +1032,28 @@ export default function Settings() {
                 <div className="relative rounded-lg overflow-hidden border border-border">
                   {bannerUrl ? (
                     <div className="relative w-full h-24 overflow-hidden">
-                      <img
-                        src={bannerUrl}
-                        alt="Profile banner"
-                        className="absolute w-full"
-                        style={{
-                          transform: `translateY(${bannerPositionY - 50}%)`,
-                          top: '50%',
-                        }}
-                      />
+                      {bannerUrl.match(/\.(mp4|webm|mov|ogg)$/i) ? (
+                        <video
+                          src={bannerUrl}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="w-full h-full object-cover"
+                          style={{
+                            objectPosition: `center ${bannerPositionY}%`,
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={bannerUrl}
+                          alt="Profile banner"
+                          className="w-full h-full object-cover"
+                          style={{
+                            objectPosition: `center ${bannerPositionY}%`,
+                          }}
+                        />
+                      )}
                     </div>
                   ) : (
                     <div className="w-full h-24 bg-gradient-to-br from-primary/40 to-accent/30" />
@@ -1019,36 +1074,36 @@ export default function Settings() {
                         </span>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/*,video/mp4,video/webm,video/mov"
                           onChange={handleBannerChange}
                           className="hidden"
                         />
                       </label>
+                      {bannerUrl && !bannerUrl.match(/\.(mp4|webm|mov|ogg)$/i) && (
+                        <Button 
+                          variant="secondary" 
+                          size="sm"
+                          onClick={handleEditBannerPosition}
+                          className="text-white bg-white/20 hover:bg-white/30"
+                        >
+                          <Move className="w-4 h-4 mr-1" />
+                          Reposition
+                        </Button>
+                      )}
                       {bannerUrl && (
-                        <>
-                          <Button 
-                            variant="secondary" 
-                            size="sm"
-                            onClick={handleEditBannerPosition}
-                            className="text-white bg-white/20 hover:bg-white/30"
-                          >
-                            <Move className="w-4 h-4 mr-1" />
-                            Reposition
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={removeBanner}
-                          >
-                            Remove
-                          </Button>
-                        </>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={removeBanner}
+                        >
+                          Remove
+                        </Button>
                       )}
                     </div>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Recommended: 2560x1440px. Upload and drag to position the visible area.
+                  Images: 2560x1440px recommended. Videos: Max 5 seconds, 100MB.
                 </p>
               </div>
 
