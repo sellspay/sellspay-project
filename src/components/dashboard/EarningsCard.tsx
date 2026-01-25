@@ -35,6 +35,15 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
     connected: boolean;
     availableBalance: number;
     pendingBalance: number;
+    pendingEarnings?: number;
+    stripeBalance?: number;
+    needsOnboarding?: boolean;
+    breakdown?: {
+      productEarnings: number;
+      bookingEarnings: number;
+      stripeAvailable?: number;
+      stripePending?: number;
+    };
   } | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
@@ -178,11 +187,16 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
 
   const availableBalanceDollars = (stripeBalance?.availableBalance || 0) / 100;
   const pendingBalanceDollars = (stripeBalance?.pendingBalance || 0) / 100;
+  const pendingEarningsDollars = (stripeBalance?.pendingEarnings || 0) / 100;
+  const stripeBalanceDollars = (stripeBalance?.stripeBalance || 0) / 100;
   const { fee, netAmount, feeLabel } = calculateFees(availableBalanceDollars, selectedProvider, selectedSpeed);
 
+  // User has earnings even if Stripe not connected (pending platform earnings)
+  const hasAvailableFunds = availableBalanceDollars >= MINIMUM_WITHDRAWAL;
   const isStripeAvailable = stripeBalance?.connected || payoutStatus?.stripeConnected;
   const isPayoneerAvailable = payoutStatus?.payoneerConnected && payoutStatus?.payoneerStatus === 'active';
-  const canWithdraw = availableBalanceDollars >= MINIMUM_WITHDRAWAL && 
+  const needsOnboarding = stripeBalance?.needsOnboarding && !isStripeAvailable;
+  const canWithdraw = hasAvailableFunds && 
     ((selectedProvider === 'stripe' && isStripeAvailable) || 
      (selectedProvider === 'payoneer' && isPayoneerAvailable));
 
@@ -222,8 +236,8 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
             </div>
           </div>
 
-          {/* Stripe Balance */}
-          {isStripeAvailable && (
+          {/* Available Balance - show for all users with funds */}
+          {availableBalanceDollars > 0 && (
             <div className="pt-2 border-t border-border/50 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Available to Withdraw</span>
@@ -242,6 +256,21 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
                   </Button>
                 </div>
               </div>
+              
+              {/* Breakdown for users with pending earnings */}
+              {pendingEarningsDollars > 0 && stripeBalanceDollars > 0 && (
+                <div className="text-xs space-y-1 text-muted-foreground">
+                  <div className="flex justify-between">
+                    <span>Platform pending</span>
+                    <span>${pendingEarningsDollars.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Stripe balance</span>
+                    <span>${stripeBalanceDollars.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+              
               {pendingBalanceDollars > 0 && (
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Pending (7-day hold)</span>
@@ -251,16 +280,31 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
             </div>
           )}
 
-          {/* Withdraw Button */}
-          {isStripeAvailable && (
+          {/* Withdraw Button - show if Stripe connected and has funds */}
+          {isStripeAvailable && hasAvailableFunds && (
             <Button 
               className="w-full" 
               onClick={() => setWithdrawDialogOpen(true)}
-              disabled={loadingBalance || availableBalanceDollars < MINIMUM_WITHDRAWAL}
+              disabled={loadingBalance}
             >
               <Wallet className="w-4 h-4 mr-2" />
               Withdraw Funds
             </Button>
+          )}
+
+          {/* Needs Onboarding - has funds but no payout method */}
+          {needsOnboarding && hasAvailableFunds && (
+            <div className="space-y-2">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  You have ${availableBalanceDollars.toFixed(2)} in pending earnings. Complete payout setup in Settings to withdraw.
+                </AlertDescription>
+              </Alert>
+              <Button variant="outline" className="w-full" asChild>
+                <a href="/settings">Complete Payout Setup</a>
+              </Button>
+            </div>
           )}
 
           {availableBalanceDollars > 0 && availableBalanceDollars < MINIMUM_WITHDRAWAL && (
@@ -275,9 +319,9 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
             </div>
           )}
 
-          {!loadingBalance && !isStripeAvailable && (
+          {!loadingBalance && availableBalanceDollars === 0 && (
             <p className="text-xs text-muted-foreground text-center">
-              Complete payout setup in Settings to withdraw funds
+              {isStripeAvailable ? 'No funds available to withdraw' : 'Complete payout setup in Settings to withdraw funds'}
             </p>
           )}
         </CardContent>
