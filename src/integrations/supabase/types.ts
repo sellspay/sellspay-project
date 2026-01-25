@@ -1281,54 +1281,6 @@ export type Database = {
         }
         Relationships: []
       }
-      seller_payment_config: {
-        Row: {
-          created_at: string | null
-          id: string
-          payoneer_email: string | null
-          payoneer_payee_id: string | null
-          payoneer_status: string | null
-          preferred_payout_method: string | null
-          resend_vault_secret_id: string | null
-          seller_email_verified: boolean | null
-          seller_support_email: string | null
-          stripe_account_id: string | null
-          stripe_onboarding_complete: boolean | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          payoneer_email?: string | null
-          payoneer_payee_id?: string | null
-          payoneer_status?: string | null
-          preferred_payout_method?: string | null
-          resend_vault_secret_id?: string | null
-          seller_email_verified?: boolean | null
-          seller_support_email?: string | null
-          stripe_account_id?: string | null
-          stripe_onboarding_complete?: boolean | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          payoneer_email?: string | null
-          payoneer_payee_id?: string | null
-          payoneer_status?: string | null
-          preferred_payout_method?: string | null
-          resend_vault_secret_id?: string | null
-          seller_email_verified?: boolean | null
-          seller_support_email?: string | null
-          stripe_account_id?: string | null
-          stripe_onboarding_complete?: boolean | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       stripe_events: {
         Row: {
           event_type: string
