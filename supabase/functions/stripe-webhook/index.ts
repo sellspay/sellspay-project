@@ -19,6 +19,9 @@ const PLATFORM_SUBSCRIPTION_PRODUCTS: Record<string, string> = {
   'prod_TqywavIYdJ4IX2': 'enterprise',
 };
 
+// Pro Tools subscription product ID
+const PRO_TOOLS_PRODUCT_ID = 'prod_TqZ3pDNHL0r6XZ';
+
 // Map top-up product IDs to credits
 const TOPUP_PRODUCTS: Record<string, number> = {
   'prod_TqyxD6x0yTSBtY': 15,
@@ -178,10 +181,39 @@ serve(async (req) => {
         });
       }
 
-      // Handle subscription checkout (platform subscriptions)
+      // Handle subscription checkout (platform subscriptions & pro tools)
       if (session.mode === "subscription") {
         const planId = metadata.plan_id;
         const buyerProfileId = metadata.buyer_profile_id;
+        const productType = metadata.product_type;
+        const userId = metadata.user_id;
+
+        // Check if this is a Pro Tools subscription
+        if (productType === "pro_tools" && userId && typeof session.subscription === "string") {
+          const subscription = await stripe.subscriptions.retrieve(session.subscription);
+          
+          // Insert or update pro_tool_subscriptions record
+          const { error: proToolsError } = await supabaseAdmin
+            .from("pro_tool_subscriptions")
+            .upsert({
+              user_id: userId,
+              stripe_subscription_id: session.subscription,
+              stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
+              status: "active",
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            }, { onConflict: "user_id" });
+
+          if (proToolsError) {
+            logStep("Failed to create pro_tool_subscriptions record", { error: proToolsError.message });
+          } else {
+            logStep("Pro Tools subscription created", { userId, subscriptionId: session.subscription });
+          }
+          
+          return new Response(JSON.stringify({ received: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
 
         // Check if this is a platform subscription
         if (typeof session.subscription === "string") {
@@ -297,8 +329,27 @@ serve(async (req) => {
       const subscription = event.data.object as Stripe.Subscription;
       logStep("Processing subscription.updated", { subscriptionId: subscription.id, status: subscription.status });
 
-      // Check if it's a platform subscription
       const productId = subscription.items.data[0]?.price?.product as string;
+
+      // Handle Pro Tools subscription update
+      if (productId === PRO_TOOLS_PRODUCT_ID) {
+        const { error: proToolsUpdateError } = await supabaseAdmin
+          .from("pro_tool_subscriptions")
+          .update({
+            status: subscription.status,
+            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          })
+          .eq("stripe_subscription_id", subscription.id);
+
+        if (proToolsUpdateError) {
+          logStep("Failed to update pro_tool_subscriptions", { error: proToolsUpdateError.message });
+        } else {
+          logStep("Pro Tools subscription updated", { subscriptionId: subscription.id, status: subscription.status });
+        }
+      }
+
+      // Check if it's a platform subscription
       const tier = PLATFORM_SUBSCRIPTION_PRODUCTS[productId];
 
       if (tier) {
@@ -335,8 +386,25 @@ serve(async (req) => {
       const subscription = event.data.object as Stripe.Subscription;
       logStep("Processing subscription.deleted", { subscriptionId: subscription.id });
 
-      // Check if it's a platform subscription and clear the tier
       const productId = subscription.items.data[0]?.price?.product as string;
+
+      // Handle Pro Tools subscription cancellation
+      if (productId === PRO_TOOLS_PRODUCT_ID) {
+        const { error: proToolsDeleteError } = await supabaseAdmin
+          .from("pro_tool_subscriptions")
+          .update({
+            status: "canceled",
+          })
+          .eq("stripe_subscription_id", subscription.id);
+
+        if (proToolsDeleteError) {
+          logStep("Failed to cancel pro_tool_subscriptions", { error: proToolsDeleteError.message });
+        } else {
+          logStep("Pro Tools subscription canceled", { subscriptionId: subscription.id });
+        }
+      }
+
+      // Check if it's a platform subscription and clear the tier
       if (PLATFORM_SUBSCRIPTION_PRODUCTS[productId]) {
         await supabaseAdmin
           .from("profiles")
