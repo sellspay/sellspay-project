@@ -49,11 +49,11 @@ export function useActiveEditorChat() {
     if (!profile?.id) return;
 
     setLoading(true);
+    // Fetch chat rooms that haven't expired yet (includes read-only history after session ends)
     const { data, error } = await supabase
       .from('editor_chat_rooms')
       .select('*')
       .or(`buyer_id.eq.${profile.id},editor_id.eq.${profile.id}`)
-      .eq('is_active', true)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(1)
