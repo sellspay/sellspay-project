@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { Send, Loader2, Sparkles, Crown, Lock } from 'lucide-react';
+import { Send, Loader2, Sparkles, Crown, Lock, Link2, ImagePlus, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -37,6 +39,9 @@ export function ThreadComposer() {
   const [category, setCategory] = useState('discussion');
   const [gifUrl, setGifUrl] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [promotionUrl, setPromotionUrl] = useState('');
+  const [promotionImageUrl, setPromotionImageUrl] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Fetch user profile
   const { data: profile } = useQuery({
@@ -57,17 +62,53 @@ export function ThreadComposer() {
   const hasSubscription = !!subscription;
   const canPostThreads = isOwner || hasSubscription;
 
+  // Handle promotion image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile?.id) return;
+
+    setIsUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
+      const filePath = `thread-images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-media')
+        .getPublicUrl(filePath);
+
+      setPromotionImageUrl(publicUrl);
+      toast.success('Image uploaded!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to upload image');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!profile?.id) throw new Error('Must be logged in');
       if (!content.trim()) throw new Error('Content is required');
       if (!canPostThreads) throw new Error('Subscription required to post threads');
 
+      // For promotions, store embed URL in content metadata via image_url field
+      const imageUrl = category === 'promotion' ? promotionImageUrl || null : null;
+
       const { error } = await supabase.from('threads').insert({
         author_id: profile.id,
-        content: content.trim(),
+        content: category === 'promotion' && promotionUrl 
+          ? `${content.trim()}\n\n🔗 ${promotionUrl}` 
+          : content.trim(),
         category,
         gif_url: gifUrl,
+        image_url: imageUrl,
       });
 
       if (error) throw error;
@@ -77,7 +118,10 @@ export function ThreadComposer() {
       setGifUrl(null);
       setCategory('discussion');
       setIsFocused(false);
+      setPromotionUrl('');
+      setPromotionImageUrl('');
       queryClient.invalidateQueries({ queryKey: ['threads'] });
+      queryClient.invalidateQueries({ queryKey: ['threads-count'] });
       toast.success('Thread posted!');
     },
     onError: (error: any) => {
@@ -230,6 +274,80 @@ export function ThreadComposer() {
                 >
                   ×
                 </Button>
+              </div>
+            )}
+
+            {/* Promotion Fields */}
+            {category === 'promotion' && (isFocused || content) && (
+              <div className="space-y-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                <div className="flex items-center gap-2 text-sm font-medium text-amber-500">
+                  <Link2 className="h-4 w-4" />
+                  Promotion Details
+                </div>
+                
+                {/* URL Input */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="promo-url" className="text-xs text-muted-foreground">
+                    Link URL (required)
+                  </Label>
+                  <Input
+                    id="promo-url"
+                    type="url"
+                    placeholder="https://example.com/your-product"
+                    value={promotionUrl}
+                    onChange={(e) => setPromotionUrl(e.target.value)}
+                    className="h-10 bg-background/50 border-border/50 rounded-lg"
+                  />
+                </div>
+
+                {/* Image Upload */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Cover Image (optional)
+                  </Label>
+                  {promotionImageUrl ? (
+                    <div className="relative inline-block">
+                      <img
+                        src={promotionImageUrl}
+                        alt="Promotion cover"
+                        className="max-h-32 rounded-lg border border-border/30"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-card/90 backdrop-blur-sm border border-border/50 shadow-md hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                        onClick={() => setPromotionImageUrl('')}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 rounded-lg border-dashed"
+                        disabled={isUploadingImage}
+                        onClick={() => document.getElementById('promo-image-upload')?.click()}
+                      >
+                        {isUploadingImage ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <ImagePlus className="h-4 w-4 mr-2" />
+                        )}
+                        Upload Image
+                      </Button>
+                      <input
+                        id="promo-image-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
