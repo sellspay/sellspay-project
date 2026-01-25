@@ -928,81 +928,124 @@ function SlideshowEditablePreview({ content }: { content: SlideshowContent }) {
   );
 }
 
-// Basic List Preview
+// Basic List Preview - Fixed to show proper card layouts with images
 function BasicListEditablePreview({ content, section }: { content: BasicListContent; section: ProfileSection }) {
   const preset = section.style_options?.preset || 'style1';
   const layout = content.layout || 'simple';
+  
+  // Resolve layout from preset
+  const resolvedLayout = 
+    preset === 'style1' ? 'cards-3col' :
+    preset === 'style2' ? 'cards-2col' :
+    preset === 'style3' ? 'horizontal' :
+    layout;
+  
   const items = content.items || [];
 
-  // Cards 3-Column
-  if (preset === 'style1' || layout === 'cards-3col') {
+  // Card component for list items
+  const ListItemCard = ({ item, index, showImage = true }: { item: typeof items[0] | null; index: number; showImage?: boolean }) => (
+    <div className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/30 transition-colors">
+      {showImage && (
+        <div className="aspect-video bg-muted flex items-center justify-center">
+          {item?.icon ? (
+            <span className="text-3xl">{item.icon}</span>
+          ) : (
+            <ImagePlaceholder className="w-full h-full" />
+          )}
+        </div>
+      )}
+      <div className="p-4">
+        <h4 className="font-medium text-foreground">{item?.text || `Add a title`}</h4>
+        <p className="text-sm text-muted-foreground mt-1">Add description here</p>
+      </div>
+    </div>
+  );
+
+  // 3 Column Cards Layout
+  if (resolvedLayout === 'cards-3col') {
     const slots = Array.from({ length: 3 }, (_, i) => items[i] || null);
     return (
-      <div className="grid grid-cols-3 gap-3">
-        {slots.map((item, i) => (
-          <div key={i} className="bg-muted/30 rounded-lg p-4 text-center">
-            <div className="w-10 h-10 rounded-full bg-primary/10 mx-auto mb-2 flex items-center justify-center">
-              <Check className="w-5 h-5 text-primary" />
-            </div>
-            <h4 className="font-medium text-sm mb-1">{item?.text || `Item ${i + 1}`}</h4>
-          </div>
-        ))}
+      <div>
+        {content.title && (
+          <h3 className="text-xl font-semibold mb-6 text-center">{content.title}</h3>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {slots.map((item, i) => (
+            <ListItemCard key={i} item={item} index={i} />
+          ))}
+        </div>
       </div>
     );
   }
 
-  // Cards 2-Column
-  if (preset === 'style2' || layout === 'cards-2col') {
-    const slots = Array.from({ length: 4 }, (_, i) => items[i] || null);
+  // 2 Column Cards Layout
+  if (resolvedLayout === 'cards-2col') {
+    const slots = Array.from({ length: 2 }, (_, i) => items[i] || null);
     return (
-      <div className="grid grid-cols-2 gap-3">
-        {slots.map((item, i) => (
-          <div key={i} className="bg-muted/30 rounded-lg p-3 flex gap-3 items-start">
-            <div className="w-8 h-8 rounded-full bg-primary/10 shrink-0 flex items-center justify-center">
-              <Check className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <h4 className="font-medium text-sm">{item?.text || `Item ${i + 1}`}</h4>
-            </div>
-          </div>
-        ))}
+      <div>
+        {content.title && (
+          <h3 className="text-xl font-semibold mb-6 text-center">{content.title}</h3>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {slots.map((item, i) => (
+            <ListItemCard key={i} item={item} index={i} />
+          ))}
+        </div>
       </div>
     );
   }
 
-  // Horizontal Layout
-  if (preset === 'style3' || layout === 'horizontal') {
-    const slots = Array.from({ length: 4 }, (_, i) => items[i] || null);
+  // Horizontal List Layout
+  if (resolvedLayout === 'horizontal') {
+    const slots = Array.from({ length: 3 }, (_, i) => items[i] || null);
     return (
-      <div className="flex gap-4 justify-center">
-        {slots.map((item, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-primary" />
-            <span className="text-sm">{item?.text || `Item ${i + 1}`}</span>
-          </div>
-        ))}
+      <div>
+        {content.title && (
+          <h3 className="text-xl font-semibold mb-6">{content.title}</h3>
+        )}
+        <div className="space-y-3">
+          {slots.map((item, i) => (
+            <div key={i} className="flex items-center gap-4 p-3 bg-card border border-border rounded-lg hover:border-primary/30 transition-colors">
+              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                {item?.icon ? (
+                  <span className="text-2xl">{item.icon}</span>
+                ) : (
+                  <ImagePlaceholder className="w-full h-full" />
+                )}
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-foreground">{item?.text || `Add a title`}</h4>
+                <p className="text-sm text-muted-foreground">Add description here</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   // Simple List (default)
   const displayItems = items.length > 0 ? items.slice(0, 5) : [
-    { text: 'First item' },
-    { text: 'Second item' },
-    { text: 'Third item' },
+    { id: '1', text: 'First item' },
+    { id: '2', text: 'Second item' },
+    { id: '3', text: 'Third item' },
   ];
   return (
-    <ul className="space-y-2 pl-4">
-      {displayItems.map((item, i) => (
-        <li key={i} className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          <span className="text-sm">{item.text}</span>
-        </li>
-      ))}
-    </ul>
+    <div>
+      {content.title && (
+        <h3 className="text-xl font-semibold mb-4">{content.title}</h3>
+      )}
+      <ul className="space-y-2 pl-4">
+        {displayItems.map((item, i) => (
+          <li key={i} className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+            <span className="text-sm">{item.text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
-
 // Featured Product Preview
 function FeaturedProductEditablePreview({ content }: { content: FeaturedProductContent }) {
   return (

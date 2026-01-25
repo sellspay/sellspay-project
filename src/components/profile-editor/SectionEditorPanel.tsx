@@ -240,6 +240,101 @@ export function SectionEditorPanel({
         );
 
       case 'image':
+        const preset = section.style_options?.preset;
+        const imageCount = (section.content as any).imageCount || 1;
+        const currentImages = ((section.content as any).imageUrl || '')
+          .split(',')
+          .map((url: string) => url.trim())
+          .filter(Boolean);
+        
+        const isMultiImage = preset === 'style3' || preset === 'style4' || imageCount > 1;
+        const targetImageCount = preset === 'style4' ? 4 : preset === 'style3' ? 2 : imageCount;
+
+        const handleMultiImageUpload = (file: File, index: number) => {
+          handleImageUpload(file, (url) => {
+            const newImages = [...currentImages];
+            newImages[index] = url;
+            updateContent({ imageUrl: newImages.join(',') });
+          });
+        };
+
+        // Multi-image layouts (2 or 4 images)
+        if (isMultiImage) {
+          const slots = Array.from({ length: targetImageCount }, (_, i) => currentImages[i] || null);
+          return (
+            <div className="space-y-4">
+              <Label>Images ({targetImageCount} slots)</Label>
+              <div className={cn(
+                "grid gap-2",
+                targetImageCount === 4 ? "grid-cols-2" : "grid-cols-2"
+              )}>
+                {slots.map((imageUrl, index) => (
+                  <div key={index} className="space-y-2">
+                    {imageUrl ? (
+                      <div className="relative">
+                        <img
+                          src={imageUrl}
+                          alt=""
+                          className="w-full aspect-square object-cover rounded-lg"
+                        />
+                        <div className="absolute bottom-2 left-2 right-2 flex gap-1">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="flex-1 text-xs"
+                            onClick={() => document.getElementById(`multi-image-upload-${section.id}-${index}`)?.click()}
+                          >
+                            Replace
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="text-xs"
+                            onClick={() => {
+                              const newImages = [...currentImages];
+                              newImages[index] = '';
+                              updateContent({ imageUrl: newImages.filter(Boolean).join(',') });
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => document.getElementById(`multi-image-upload-${section.id}-${index}`)?.click()}
+                      >
+                        <Upload className="h-6 w-6 mb-1 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Image {index + 1}</span>
+                      </div>
+                    )}
+                    <input
+                      id={`multi-image-upload-${section.id}-${index}`}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleMultiImageUpload(file, index);
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div>
+                <Label>Caption (optional)</Label>
+                <Input
+                  value={(section.content as any).caption || ''}
+                  onChange={(e) => updateContent({ caption: e.target.value })}
+                  placeholder="Image caption"
+                />
+              </div>
+            </div>
+          );
+        }
+
+        // Single image layout
         return (
           <div className="space-y-4">
             <div>
@@ -297,22 +392,6 @@ export function SectionEditorPanel({
                 onChange={(e) => updateContent({ caption: e.target.value })}
                 placeholder="Image caption"
               />
-            </div>
-            <div>
-              <Label>Layout</Label>
-              <Select
-                value={(section.content as any).layout || 'full'}
-                onValueChange={(value: 'full' | 'medium' | 'small') => updateContent({ layout: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="full">Full Width</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="small">Small</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
         );
