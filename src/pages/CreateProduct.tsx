@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, X, Loader2, Sparkles, Check, Crown } from "lucide-react";
+import { Upload, X, Loader2, Sparkles, Check, Crown, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import SubscriptionPlanPicker from "@/components/product/SubscriptionPlanPicker";
+import VideoTrimmer from "@/components/product/VideoTrimmer";
 
 // Premium Publishing Overlay Component
 const PublishingOverlay = ({ isPublishing }: { isPublishing: boolean }) => {
@@ -151,7 +152,12 @@ export default function CreateProduct() {
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [previewVideo, setPreviewVideo] = useState<File | null>(null);
   const [previewVideoPreview, setPreviewVideoPreview] = useState<string | null>(null);
+  const [videoTrimStart, setVideoTrimStart] = useState<number>(0);
+  const [videoTrimEnd, setVideoTrimEnd] = useState<number>(5);
+  const [showTrimmer, setShowTrimmer] = useState(false);
   const [downloadFiles, setDownloadFiles] = useState<File[]>([]);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+  const fileDropRef = useRef<HTMLDivElement>(null);
   
   // Subscription plan picker state
   const [showPlanPicker, setShowPlanPicker] = useState(false);
@@ -205,6 +211,84 @@ export default function CreateProduct() {
 
   const removeDownloadFile = (index: number) => {
     setDownloadFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Recursively get all files from dropped items (including folders)
+  const getFilesFromDataTransferItems = async (items: DataTransferItemList): Promise<File[]> => {
+    const files: File[] = [];
+    
+    const traverseDirectory = async (entry: FileSystemEntry): Promise<void> => {
+      if (entry.isFile) {
+        const fileEntry = entry as FileSystemFileEntry;
+        return new Promise((resolve) => {
+          fileEntry.file((file) => {
+            files.push(file);
+            resolve();
+          });
+        });
+      } else if (entry.isDirectory) {
+        const dirEntry = entry as FileSystemDirectoryEntry;
+        const reader = dirEntry.createReader();
+        return new Promise((resolve) => {
+          reader.readEntries(async (entries) => {
+            for (const e of entries) {
+              await traverseDirectory(e);
+            }
+            resolve();
+          });
+        });
+      }
+    };
+
+    const promises: Promise<void>[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === 'file') {
+        const entry = item.webkitGetAsEntry();
+        if (entry) {
+          promises.push(traverseDirectory(entry));
+        }
+      }
+    }
+    await Promise.all(promises);
+    return files;
+  };
+
+  // Handle drag and drop for files
+  const handleFileDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFiles(true);
+  }, []);
+
+  const handleFileDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set false if leaving the drop zone entirely
+    if (!fileDropRef.current?.contains(e.relatedTarget as Node)) {
+      setIsDraggingFiles(false);
+    }
+  }, []);
+
+  const handleFileDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFiles(false);
+
+    const items = e.dataTransfer.items;
+    if (items && items.length > 0) {
+      const droppedFiles = await getFilesFromDataTransferItems(items);
+      if (droppedFiles.length > 0) {
+        setDownloadFiles(prev => [...prev, ...droppedFiles]);
+      }
+    }
+  }, []);
+
+  // Handle video trim confirmation
+  const handleTrimConfirm = (start: number, end: number) => {
+    setVideoTrimStart(start);
+    setVideoTrimEnd(end);
+    setShowTrimmer(false);
   };
 
 
@@ -762,29 +846,64 @@ export default function CreateProduct() {
             <div>
               <Label>Preview Video (loops on hover)</Label>
               <p className="text-xs text-muted-foreground mb-2">
-                Short video clip that plays when hovering over your product card
+                Short video clip that plays when hovering over your product card. Select a 1-5 second clip.
               </p>
               <div className="mt-2">
                 {previewVideoPreview ? (
-                  <div className="relative">
-                    <video
-                      src={previewVideoPreview}
-                      className="w-full aspect-video object-cover rounded-lg"
-                      controls
-                      muted
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-2 right-2"
-                      onClick={() => {
-                        setPreviewVideo(null);
-                        setPreviewVideoPreview(null);
-                      }}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                  <div className="space-y-4">
+                    {showTrimmer ? (
+                      <VideoTrimmer
+                        videoSrc={previewVideoPreview}
+                        onTrimConfirm={handleTrimConfirm}
+                        minDuration={1}
+                        maxDuration={5}
+                      />
+                    ) : (
+                      <div className="relative">
+                        <video
+                          src={previewVideoPreview}
+                          className="w-full aspect-video object-cover rounded-lg"
+                          controls
+                          muted
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2"
+                          onClick={() => {
+                            setPreviewVideo(null);
+                            setPreviewVideoPreview(null);
+                            setShowTrimmer(false);
+                          }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Trim controls */}
+                    {!showTrimmer && (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/20">
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Preview clip: </span>
+                          <span className="font-mono font-medium">
+                            {videoTrimStart.toFixed(1)}s - {videoTrimEnd.toFixed(1)}s
+                          </span>
+                          <span className="text-muted-foreground ml-2">
+                            ({(videoTrimEnd - videoTrimStart).toFixed(1)}s)
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowTrimmer(true)}
+                        >
+                          Edit Clip
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <label className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
@@ -793,12 +912,15 @@ export default function CreateProduct() {
                       Click to upload preview video
                     </span>
                     <span className="text-xs text-muted-foreground mt-1">
-                      MP4, WebM (max 30 seconds recommended)
+                      MP4, WebM - you'll select a 1-5 second clip
                     </span>
                     <input
                       type="file"
                       accept="video/*"
-                      onChange={handlePreviewVideoChange}
+                      onChange={(e) => {
+                        handlePreviewVideoChange(e);
+                        setShowTrimmer(true);
+                      }}
                       className="hidden"
                     />
                   </label>
@@ -807,11 +929,11 @@ export default function CreateProduct() {
             </div>
 
 
-            {/* Product Files - Multiple */}
+            {/* Product Files - Multiple with Drag & Drop */}
             <div>
               <Label>Product Files</Label>
               <p className="text-xs text-muted-foreground mb-2">
-                Upload multiple files (ZIP, RAR, 7z, source files, etc.) - stored securely and only accessible to buyers/subscribers
+                Drag & drop files or folders, or click to browse. ZIP, RAR, 7z, source files, etc.
               </p>
               <div className="mt-2 space-y-2">
                 {/* List of added files */}
@@ -838,22 +960,45 @@ export default function CreateProduct() {
                   </div>
                 )}
                 
-                {/* Upload button - always visible to add more files */}
-                <label className="flex flex-col items-center justify-center w-full py-8 border-2 border-dashed border-border/50 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
-                  <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                  <span className="text-sm text-muted-foreground">
-                    {downloadFiles.length > 0 ? 'Add more files' : 'Click to upload product files'}
-                  </span>
-                  <span className="text-xs text-muted-foreground mt-1">
-                    ZIP, RAR, 7z, PDF, source files, and more
-                  </span>
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleDownloadChange}
-                    className="hidden"
-                  />
-                </label>
+                {/* Drag & Drop zone */}
+                <div
+                  ref={fileDropRef}
+                  onDragOver={handleFileDragOver}
+                  onDragLeave={handleFileDragLeave}
+                  onDrop={handleFileDrop}
+                  className={`relative flex flex-col items-center justify-center w-full py-8 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+                    isDraggingFiles
+                      ? 'border-primary bg-primary/10 scale-[1.02]'
+                      : 'border-border/50 hover:border-primary/50'
+                  }`}
+                >
+                  <label className="flex flex-col items-center justify-center w-full cursor-pointer">
+                    {isDraggingFiles ? (
+                      <>
+                        <FolderOpen className="w-10 h-10 text-primary mb-2 animate-bounce" />
+                        <span className="text-sm font-medium text-primary">
+                          Drop files or folders here
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                        <span className="text-sm text-muted-foreground">
+                          {downloadFiles.length > 0 ? 'Add more files' : 'Drag & drop files or folders here'}
+                        </span>
+                        <span className="text-xs text-muted-foreground mt-1">
+                          or click to browse • ZIP, RAR, 7z, PDF, and more
+                        </span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleDownloadChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
             </div>
           </CardContent>
