@@ -22,7 +22,8 @@ import {
   User,
   Sparkles,
   Store,
-  ChevronDown
+  ChevronDown,
+  FileEdit
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -281,7 +282,7 @@ const ProfilePage: React.FC = () => {
   const [savedProducts, setSavedProducts] = useState<SavedProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
-  const [activeTab, setActiveTab] = useState<'collections' | 'downloads' | 'saved'>('collections');
+  const [activeTab, setActiveTab] = useState<'collections' | 'downloads' | 'saved' | 'drafts'>('collections');
   const [isAdmin, setIsAdmin] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -1243,6 +1244,31 @@ const ProfilePage: React.FC = () => {
                 <TooltipContent>Saved</TooltipContent>
               </Tooltip>
             )}
+
+            {/* Drafts Tab - only for sellers on own profile */}
+            {isOwnProfile && profile.is_seller && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setActiveTab('drafts')}
+                    className={`relative flex items-center gap-2 px-8 py-3 border-t-2 transition-colors ${
+                      activeTab === 'drafts'
+                        ? 'border-foreground text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <FileEdit className="w-5 h-5" />
+                    {/* Badge for draft count */}
+                    {products.filter(p => p.status === 'draft').length > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                        {products.filter(p => p.status === 'draft').length}
+                      </span>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Drafts</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
 
@@ -1449,6 +1475,80 @@ const ProfilePage: React.FC = () => {
                   </p>
                   <Button onClick={() => navigate('/products')}>
                     Browse Products
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Drafts Tab */}
+          {activeTab === 'drafts' && isOwnProfile && profile.is_seller && (
+            <>
+              <p className="text-sm text-muted-foreground mb-6">
+                Unpublished products that are still in draft
+              </p>
+              {products.filter(p => p.status === 'draft').length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {products
+                    .filter(p => p.status === 'draft')
+                    .map((product) => {
+                      const thumbnailUrl = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
+                      return (
+                        <button
+                          key={product.id}
+                          onClick={() => navigate(`/edit-product/${product.id}`)}
+                          className="group text-left bg-card/50 border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-all"
+                        >
+                          <div className="relative aspect-video bg-muted">
+                            {thumbnailUrl ? (
+                              <img
+                                src={thumbnailUrl}
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  if (target.src.includes('maxresdefault')) {
+                                    target.src = target.src.replace('maxresdefault', 'hqdefault');
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Play className="w-8 h-8 text-muted-foreground" />
+                              </div>
+                            )}
+                            {/* Draft badge */}
+                            <div className="absolute top-2 left-2 rounded bg-amber-500/90 px-2 py-0.5 text-xs font-medium text-primary-foreground">
+                              Draft
+                            </div>
+                          </div>
+                          <div className="p-4">
+                            <h3 className="font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                              {product.name}
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Created {product.created_at ? format(new Date(product.created_at), 'MMM d, yyyy') : 'Unknown'}
+                            </p>
+                            <div className="mt-3 flex items-center gap-2">
+                              <span className="text-xs text-primary">
+                                Click to edit →
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-muted/20 rounded-xl border border-border/50">
+                  <FileEdit className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-4">No drafts.</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Products you start creating but don't publish will appear here.
+                  </p>
+                  <Button onClick={() => navigate('/create-product')}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Product
                   </Button>
                 </div>
               )}
