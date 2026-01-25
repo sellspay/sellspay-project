@@ -58,9 +58,11 @@ export default function Spotlight() {
       if (!spotlightsData || spotlightsData.length === 0) return [];
 
       const profileIds = spotlightsData.map(s => s.profile_id);
+      
+      // Fetch directly from profiles table (has RLS for public creator access)
       const { data: profilesData } = await supabase
-        .from('public_profiles')
-        .select('id, user_id, username, full_name, avatar_url, verified, bio')
+        .from('profiles')
+        .select('id, user_id, username, full_name, avatar_url, verified, bio, is_creator')
         .in('id', profileIds);
 
       const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
@@ -198,7 +200,13 @@ export default function Spotlight() {
       </section>
 
       {/* Featured Creator - Premium Design */}
-      {featuredCreator && (
+      {isLoading ? (
+        <section className="relative py-24 px-4 sm:px-6 lg:px-8">
+          <div className="relative mx-auto max-w-5xl text-center">
+            <p className="text-muted-foreground">Loading featured creator...</p>
+          </div>
+        </section>
+      ) : featuredCreator ? (
         <section className="relative py-24 px-4 sm:px-6 lg:px-8">
           {/* Section Divider Gradient */}
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
@@ -317,7 +325,7 @@ export default function Spotlight() {
             </Reveal>
           </div>
         </section>
-      )}
+      ) : null}
 
       {/* Past Spotlights Grid - Premium Design */}
       {pastSpotlights.length > 0 && (
