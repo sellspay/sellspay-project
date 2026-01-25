@@ -123,7 +123,7 @@ serve(async (req) => {
       );
     }
 
-    // Fetch creator profile separately with subscription tier
+    // Fetch creator profile - NO LONGER REQUIRE STRIPE ONBOARDING
     const { data: creatorProfile, error: creatorError } = await supabaseAdmin
       .from("profiles")
       .select("id, stripe_account_id, stripe_onboarding_complete, subscription_tier")
@@ -138,16 +138,8 @@ serve(async (req) => {
       );
     }
 
-    if (!creatorProfile.stripe_account_id || !creatorProfile.stripe_onboarding_complete) {
-      logStep("Creator not onboarded", { 
-        hasAccount: !!creatorProfile.stripe_account_id, 
-        complete: creatorProfile.stripe_onboarding_complete 
-      });
-      return new Response(
-        JSON.stringify({ error: "Creator has not completed Stripe onboarding" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Determine if creator has Stripe connected for direct transfer
+    const creatorHasStripe = creatorProfile.stripe_account_id && creatorProfile.stripe_onboarding_complete;
     
     // Determine platform fee rate based on creator's subscription tier
     const creatorTier = creatorProfile.subscription_tier?.toLowerCase() || null;
@@ -155,8 +147,9 @@ serve(async (req) => {
       ? TIER_FEE_RATES[creatorTier] 
       : DEFAULT_FEE_RATE;
     
-    logStep("Creator verified", { 
-      stripeAccountId: creatorProfile.stripe_account_id,
+    logStep("Creator profile found", { 
+      creatorId: creatorProfile.id,
+      hasStripe: creatorHasStripe,
       subscriptionTier: creatorTier,
       platformFeeRate: `${platformFeeRate * 100}%`
     });
@@ -210,6 +203,7 @@ serve(async (req) => {
       creatorTier: creatorTier || "none",
       totalApplicationFee: totalApplicationFee,
       creatorPayout: creatorPayout,
+      creatorHasStripe: creatorHasStripe,
     });
 
     // Check if customer exists
@@ -224,16 +218,8 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://editorsparadise.org";
 
-    // Create checkout session with Stripe Connect
-    logStep("Creating checkout with Stripe Connect", {
-      destinationAccount: creatorProfile.stripe_account_id,
-      applicationFee: totalApplicationFee,
-      creatorGets: creatorPayout,
-      platformKeeps: platformFee,
-      stripeFee: stripeProcessingFee,
-    });
-
-    const session = await stripe.checkout.sessions.create({
+    // Build checkout session config based on whether creator has Stripe
+    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : buyerEmail,
       line_items: [
@@ -250,12 +236,6 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      payment_intent_data: {
-        application_fee_amount: totalApplicationFee,
-        transfer_data: {
-          destination: creatorProfile.stripe_account_id,
-        },
-      },
       success_url: `${origin}/product/${product_id}?purchase=success`,
       cancel_url: `${origin}/product/${product_id}?purchase=canceled`,
       metadata: {
@@ -268,17 +248,43 @@ serve(async (req) => {
         platform_fee_rate: platformFeeRate.toString(),
         creator_tier: creatorTier || "none",
         creator_payout_cents: creatorPayout.toString(),
+        creator_has_stripe: creatorHasStripe ? "true" : "false",
       },
-    });
+    };
+
+    // If creator has Stripe connected, use direct transfer (immediate payout)
+    // Otherwise, payment goes to platform and creator withdraws later
+    if (creatorHasStripe) {
+      logStep("Creating checkout with Stripe Connect (direct transfer)", {
+        destinationAccount: creatorProfile.stripe_account_id,
+        applicationFee: totalApplicationFee,
+      });
+      
+      sessionConfig.payment_intent_data = {
+        application_fee_amount: totalApplicationFee,
+        transfer_data: {
+          destination: creatorProfile.stripe_account_id!,
+        },
+      };
+    } else {
+      logStep("Creating checkout (platform holds funds)", {
+        creatorPayout: creatorPayout,
+        note: "Creator will withdraw when Stripe is connected",
+      });
+      // Payment goes to platform account, no transfer_data
+      // Creator earnings tracked in purchases table, transferred on withdrawal
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     logStep("Checkout session created successfully", { 
       sessionId: session.id, 
       url: session.url,
       grossCharged: grossAmount,
-      applicationFee: totalApplicationFee,
+      applicationFee: creatorHasStripe ? totalApplicationFee : 0,
       creatorPayout: creatorPayout,
       creatorTier: creatorTier || "none",
-      destinationAccount: creatorProfile.stripe_account_id,
+      directTransfer: creatorHasStripe,
     });
 
     return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {

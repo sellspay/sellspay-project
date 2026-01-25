@@ -261,7 +261,10 @@ serve(async (req) => {
           });
         }
 
-        // Create purchase record
+        // Check if creator received direct transfer (has Stripe connected)
+        const creatorHasStripe = metadata.creator_has_stripe === "true";
+        
+        // Create purchase record - mark as transferred if direct transfer happened
         const { error: purchaseError } = await supabaseAdmin.from("purchases").insert({
           buyer_id: finalBuyerProfileId,
           product_id: productId,
@@ -271,6 +274,8 @@ serve(async (req) => {
           stripe_checkout_session_id: session.id,
           stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
           status: "completed",
+          transferred: creatorHasStripe, // true if direct transfer, false if platform holds funds
+          transferred_at: creatorHasStripe ? new Date().toISOString() : null,
         });
 
         if (purchaseError) {
@@ -278,7 +283,12 @@ serve(async (req) => {
           throw new Error(`Failed to create purchase: ${purchaseError.message}`);
         }
 
-        logStep("Purchase recorded successfully", { productId, buyerProfileId: finalBuyerProfileId });
+        logStep("Purchase recorded successfully", { 
+          productId, 
+          buyerProfileId: finalBuyerProfileId,
+          transferred: creatorHasStripe,
+          creatorPayout: creatorPayoutCents,
+        });
       }
     }
 
