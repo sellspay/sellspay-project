@@ -560,13 +560,13 @@ export default function ProductDetail() {
         };
 
         // Helper function to fetch profile from public_identities_cache table
-        // This table is publicly readable for ALL users (not just creators/editors)
-        // Note: comments store auth user_id, so we query by user_id column
-        const fetchPublicIdentity = async (authUserId: string): Promise<ProfileIdentity | null> => {
+        // This table is publicly readable for ALL visitors.
+        // IMPORTANT: comments/comment_likes store *profile id* (profiles.id), not auth user id.
+        const fetchPublicIdentity = async (profileId: string): Promise<ProfileIdentity | null> => {
           const { data } = await supabase
             .from("public_identities_cache")
             .select("id, username, full_name, avatar_url, verified")
-            .eq("user_id", authUserId)
+            .eq("id", profileId)
             .maybeSingle();
           return data as ProfileIdentity | null;
         };
