@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, MessageCircle, MoreHorizontal, Trash2, Flag, Pin } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Trash2, Flag, Pin, ExternalLink } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,30 @@ import { useAuth } from '@/lib/auth';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+// Helper to extract YouTube video ID from various URL formats
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+// Helper to extract URL from content
+function extractPromotionUrl(content: string): string | null {
+  const urlMatch = content.match(/🔗\s*(https?:\/\/[^\s]+)/);
+  return urlMatch ? urlMatch[1] : null;
+}
+
+// Helper to get content without the URL line
+function getContentWithoutUrl(content: string): string {
+  return content.replace(/\n\n🔗\s*https?:\/\/[^\s]+$/, '').trim();
+}
 
 interface ThreadAuthor {
   id: string;
@@ -110,9 +134,22 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
   });
 
   const isThreadOwner = profile?.id === thread.author_id;
-  const contentTooLong = thread.content.length > 280;
+
+  // For promotions, extract and parse the URL
+  const promotionData = useMemo(() => {
+    if (thread.category !== 'promotion') return null;
+    const url = extractPromotionUrl(thread.content);
+    if (!url) return null;
+    const youtubeId = extractYouTubeId(url);
+    const cleanContent = getContentWithoutUrl(thread.content);
+    return { url, youtubeId, cleanContent };
+  }, [thread.content, thread.category]);
+
+  // Use clean content for promotions, original for others
+  const contentForDisplay = promotionData?.cleanContent || thread.content;
+  const contentTooLong = contentForDisplay.length > 280;
   const displayContent =
-    contentTooLong && !showFullContent ? thread.content.slice(0, 280) + '...' : thread.content;
+    contentTooLong && !showFullContent ? contentForDisplay.slice(0, 280) + '...' : contentForDisplay;
 
   const categoryStyle = categoryStyles[thread.category] || { bg: 'bg-muted', text: 'text-muted-foreground', gradient: 'from-muted to-muted' };
 
@@ -324,8 +361,55 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
             </button>
           )}
 
-          {/* GIF/Image with premium border */}
-          {(thread.gif_url || thread.image_url) && (
+          {/* Promotion YouTube Embed or Link */}
+          {promotionData && (
+            <div className="mt-4">
+              {promotionData.youtubeId ? (
+                // YouTube Video Embed
+                <div className="rounded-2xl overflow-hidden border border-border/30 shadow-lg aspect-video max-w-lg bg-black">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${promotionData.youtubeId}`}
+                    title="YouTube video"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                  />
+                </div>
+              ) : (
+                // Regular Link with preview
+                <a
+                  href={promotionData.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-border/50 hover:border-primary/30 hover:bg-muted/50 transition-all group max-w-lg"
+                >
+                  <div className="shrink-0 p-2.5 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+                    <ExternalLink className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                      {promotionData.url.replace(/^https?:\/\//, '').split('/')[0]}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{promotionData.url}</p>
+                  </div>
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Promotion Cover Image (only if not YouTube) */}
+          {thread.category === 'promotion' && thread.image_url && !promotionData?.youtubeId && (
+            <div className="mt-4 rounded-2xl overflow-hidden border border-border/30 max-w-md bg-gradient-to-br from-muted/50 to-muted/30 shadow-lg">
+              <img
+                src={thread.image_url}
+                alt="Promotion cover"
+                className="w-full h-auto max-h-72 object-cover"
+              />
+            </div>
+          )}
+
+          {/* GIF/Image with premium border (non-promotion) */}
+          {thread.category !== 'promotion' && (thread.gif_url || thread.image_url) && (
             <div className="mt-4 rounded-2xl overflow-hidden border border-border/30 max-w-md bg-gradient-to-br from-muted/50 to-muted/30 shadow-lg">
               <img
                 src={thread.gif_url || thread.image_url || ''}
