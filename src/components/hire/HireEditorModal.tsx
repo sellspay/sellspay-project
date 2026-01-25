@@ -5,8 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Clock, DollarSign, Users, Sparkles, MessageCircle } from 'lucide-react';
+import { Loader2, Clock, DollarSign, Users, Sparkles, MessageCircle, Shield, Zap, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -151,15 +150,78 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
             </div>
           )}
 
-          {/* Chat Feature Highlight */}
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
-            <MessageCircle className="h-5 w-5 text-primary" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-primary">1-on-1 Chat Included</p>
-              <p className="text-xs text-muted-foreground">
-                A private chat opens for 7 days after your project ends
-              </p>
+          {/* What's Included - Premium Benefits */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 via-fuchsia-500/5 to-violet-500/5 border border-primary/20 space-y-3">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20">
+                <Sparkles className="h-4 w-4 text-primary" />
+              </div>
+              <h4 className="font-semibold text-sm">What's Included</h4>
             </div>
+            
+            <div className="space-y-2.5">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 p-1 rounded-full bg-primary/10">
+                  <MessageCircle className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">Private 1-on-1 Chat</p>
+                  <p className="text-xs text-muted-foreground">
+                    Exclusive direct messaging with your editor, stays open for 7 days after project completion
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 p-1 rounded-full bg-primary/10">
+                  <Shield className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">Priority Support</p>
+                  <p className="text-xs text-muted-foreground">
+                    Get expedited assistance from our team throughout your project
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 p-1 rounded-full bg-primary/10">
+                  <Zap className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">Secure Payment</p>
+                  <p className="text-xs text-muted-foreground">
+                    Protected transaction with instant editor notification upon payment
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* How It Works */}
+          <div className="p-4 rounded-xl bg-secondary/50 border border-border/50 space-y-3">
+            <h4 className="font-semibold text-sm flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              How It Works
+            </h4>
+            <ol className="space-y-2 text-xs text-muted-foreground">
+              <li className="flex gap-2">
+                <span className="font-bold text-primary">1.</span>
+                <span>Complete payment securely via Stripe</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="font-bold text-primary">2.</span>
+                <span>{queueLength > 0 ? "You'll be added to the queue and notified when it's your turn" : "Your editor is immediately notified and your chat opens"}</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="font-bold text-primary">3.</span>
+                <span>Collaborate directly through your private chat</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="font-bold text-primary">4.</span>
+                <span>Chat remains active for 7 days after completion for revisions</span>
+              </li>
+            </ol>
           </div>
 
           {/* Hours Selection */}
