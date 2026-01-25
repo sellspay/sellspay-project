@@ -281,11 +281,15 @@ export default function ProductCard({
             </div>
           )}
 
-          {/* Minimal Featured Badge */}
+          {/* Premium Featured Badge */}
           {showFeaturedBadge && product.featured && (
-            <div className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-md bg-primary/20 border border-primary/30 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-primary tracking-wide">
-              <Star className="h-2.5 w-2.5" />
-              Featured
+            <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 rounded-lg overflow-hidden">
+              {/* Animated gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 animate-shimmer bg-[length:200%_100%]" />
+              <div className="relative flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-amber-950 tracking-wider uppercase">
+                <Crown className="h-3 w-3" />
+                Featured
+              </div>
             </div>
           )}
 

@@ -1,22 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, X, Sparkles, Filter, Grid3X3, LayoutGrid, ChevronDown } from 'lucide-react';
+import { Search, X, Sparkles, Filter, Grid3X3, LayoutGrid, ChevronDown, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import ProductCard from '@/components/ProductCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -251,90 +249,119 @@ export default function Products() {
         </div>
       </section>
 
-      {/* Category Pills */}
-      <section className="relative px-4 pb-8">
+      {/* Filters Bar - Consolidated */}
+      <section className="relative px-4 pb-8 sticky top-0 z-40">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
           className="max-w-7xl mx-auto"
         >
-          <div className="flex flex-wrap justify-center gap-2">
-            <button
-              onClick={() => setTypeFilter('all')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                typeFilter === 'all'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                  : 'bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground border border-white/10'
-              }`}
-            >
-              All Products
-            </button>
-            {productTypes.map(({ value, label, icon }) => {
-              const count = productTypeCounts[value] || 0;
-              return (
-                <button
-                  key={value}
-                  onClick={() => setTypeFilter(value)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 ${
-                    typeFilter === value
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                      : 'bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground border border-white/10'
-                  }`}
-                >
-                  <span>{icon}</span>
-                  {label}
-                  {count > 0 && <span className="text-xs opacity-60">({count})</span>}
-                </button>
-              );
-            })}
-          </div>
-        </motion.div>
-      </section>
-
-      {/* Filters Bar */}
-      <section className="relative px-4 pb-8 sticky top-0 z-40">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="max-w-7xl mx-auto"
-        >
           <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-card/60 backdrop-blur-xl border border-white/10 rounded-xl">
             <div className="flex items-center gap-3">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+              {/* Filter Dropdown Button */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    className="h-10 bg-white/5 border-white/10 hover:bg-white/10 hover:border-purple-500/30 transition-all gap-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    Filter
+                    {activeFiltersCount > 0 && (
+                      <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-purple-500 hover:bg-purple-500">
+                        {activeFiltersCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  className="w-80 p-0 bg-card/95 backdrop-blur-xl border-white/10" 
+                  align="start"
+                  sideOffset={8}
+                >
+                  <div className="p-4 border-b border-white/10">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-sm">Filters</h4>
+                      {activeFiltersCount > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearFilters}
+                          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          Clear all
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Category Filter */}
+                  <div className="p-4 border-b border-white/10">
+                    <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">Category</p>
+                    <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-2">
+                      <button
+                        onClick={() => setTypeFilter('all')}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                          typeFilter === 'all'
+                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                            : 'bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground border border-transparent'
+                        }`}
+                      >
+                        {typeFilter === 'all' && <Check className="h-3 w-3" />}
+                        All
+                      </button>
+                      {productTypes.map(({ value, label, icon }) => (
+                        <button
+                          key={value}
+                          onClick={() => setTypeFilter(value)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                            typeFilter === value
+                              ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                              : 'bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground border border-transparent'
+                          }`}
+                        >
+                          {typeFilter === value && <Check className="h-3 w-3" />}
+                          <span>{icon}</span>
+                          <span className="truncate">{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Price Filter */}
+                  <div className="p-4">
+                    <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">Price</p>
+                    <div className="flex gap-2">
+                      {[
+                        { value: 'all', label: 'All Prices' },
+                        { value: 'free', label: 'Free' },
+                        { value: 'paid', label: 'Paid' },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setPriceFilter(option.value)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all flex-1 justify-center ${
+                            priceFilter === option.value
+                              ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                              : 'bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground border border-transparent'
+                          }`}
+                        >
+                          {priceFilter === option.value && <Check className="h-3 w-3" />}
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
               <span className="text-sm text-muted-foreground">
                 {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
               </span>
-              
-              {activeFiltersCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearFilters}
-                  className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Clear filters
-                  <Badge variant="secondary" className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
-                    {activeFiltersCount}
-                  </Badge>
-                </Button>
-              )}
             </div>
-
+            
             <div className="flex items-center gap-3">
-              {/* Price Filter */}
-              <Select value={priceFilter} onValueChange={setPriceFilter}>
-                <SelectTrigger className="w-[130px] h-9 bg-white/5 border-white/10 hover:bg-white/10 transition-colors">
-                  <SelectValue placeholder="Price" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Prices</SelectItem>
-                  <SelectItem value="free">Free</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                </SelectContent>
-              </Select>
-
               {/* Sort Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -343,17 +370,21 @@ export default function Products() {
                     <ChevronDown className="ml-2 h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-xl border-white/10">
                   <DropdownMenuItem onClick={() => setSortBy('newest')}>
+                    {sortBy === 'newest' && <Check className="h-3.5 w-3.5 mr-2" />}
                     Newest First
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSortBy('featured')}>
+                    {sortBy === 'featured' && <Check className="h-3.5 w-3.5 mr-2" />}
                     Featured
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSortBy('price-low')}>
+                    {sortBy === 'price-low' && <Check className="h-3.5 w-3.5 mr-2" />}
                     Price: Low to High
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSortBy('price-high')}>
+                    {sortBy === 'price-high' && <Check className="h-3.5 w-3.5 mr-2" />}
                     Price: High to Low
                   </DropdownMenuItem>
                 </DropdownMenuContent>
