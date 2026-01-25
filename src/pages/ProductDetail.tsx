@@ -19,6 +19,7 @@ import { CreatorFollowDialog } from "@/components/product/CreatorFollowDialog";
 import { createNotification, checkFollowCooldown } from "@/lib/notifications";
 import { getFileTypeIcon, getFileTypeLabel } from "@/lib/fileTypeIcons";
 import { SubscriptionPromotion } from "@/components/product/SubscriptionPromotion";
+import { SubscriptionBadge } from "@/components/product/SubscriptionBadge";
 
 interface Product {
   id: string;
@@ -29,6 +30,7 @@ interface Product {
   youtube_url: string | null;
   price_cents: number | null;
   pricing_type: string | null;
+  subscription_access: string | null;
   currency: string | null;
   product_type: string | null;
   attachments: any;
@@ -281,9 +283,13 @@ export default function ProductDetail() {
       if (!productId) return;
 
       try {
-        // Check if product is subscription_only OR paid without a price (subscription-only scenario)
-        const isPaidWithoutPrice = product?.pricing_type === 'paid' && (!product?.price_cents || product.price_cents < 499);
-        setIsSubscriptionOnly(product?.pricing_type === 'subscription_only' || isPaidWithoutPrice);
+        // Check if product is truly subscription-only
+        // Only set true if explicitly subscription_only pricing OR subscription_access is subscription_only
+        // Products with pricing_type='free' or subscription_access='both' should NOT be flagged
+        const isExplicitlySubscriptionOnly = 
+          product?.pricing_type === 'subscription_only' || 
+          product?.subscription_access === 'subscription_only';
+        setIsSubscriptionOnly(isExplicitlySubscriptionOnly);
 
         // Fetch all plans that include this product with their benefits
         const { data: planProducts, error } = await supabase
@@ -1895,6 +1901,20 @@ export default function ProductDetail() {
                     {product.creator.bio}
                   </p>
                 )}
+                
+                {/* Subscription Badge - Compact, premium design */}
+                {!isOwner && !hasPurchased && !hasActiveSubscription && planBenefits.length > 0 && (
+                  <div className="mt-4 flex justify-center">
+                    <SubscriptionBadge
+                      creatorId={product.creator.id}
+                      creatorName={product.creator.username || 'creator'}
+                      planBenefits={planBenefits}
+                      isSubscriptionOnly={isSubscriptionOnly}
+                      activeSubscriptionPlanId={activeSubscriptionPlanId}
+                    />
+                  </div>
+                )}
+                
                 <Button asChild className="w-full mt-4" variant="outline">
                   <Link to={`/@${product.creator.username}`}>
                     View Profile

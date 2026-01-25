@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, X, Loader2, Sparkles, Check } from "lucide-react";
+import { Upload, X, Loader2, Sparkles, Check, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import SubscriptionPlanPicker from "@/components/product/SubscriptionPlanPicker";
 
 // Premium Publishing Overlay Component
 const PublishingOverlay = ({ isPublishing }: { isPublishing: boolean }) => {
@@ -150,6 +151,31 @@ export default function CreateProduct() {
   const [previewVideo, setPreviewVideo] = useState<File | null>(null);
   const [previewVideoPreview, setPreviewVideoPreview] = useState<string | null>(null);
   const [downloadFile, setDownloadFile] = useState<File | null>(null);
+  
+  // Subscription plan picker state
+  const [showPlanPicker, setShowPlanPicker] = useState(false);
+  const [selectedSubscriptionPlans, setSelectedSubscriptionPlans] = useState<{
+    planId: string;
+    planName: string;
+    planPriceCents: number;
+    isFree: boolean;
+    discountPercent: number | null;
+  }[]>([]);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  
+  // Fetch profile ID on mount for plan picker
+  useEffect(() => {
+    const fetchProfileId = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+      setProfileId(data?.id || null);
+    };
+    fetchProfileId();
+  }, [user]);
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -311,6 +337,26 @@ export default function CreateProduct() {
         .single();
 
       if (error) throw error;
+
+      // Link product to subscription plans if selected
+      if (product && selectedSubscriptionPlans.length > 0) {
+        const planProductsToInsert = selectedSubscriptionPlans.map(plan => ({
+          plan_id: plan.planId,
+          product_id: product.id,
+          is_free: plan.isFree,
+          discount_percent: plan.isFree ? null : plan.discountPercent,
+          discount_type: plan.isFree ? 'free' : plan.discountPercent ? 'percentage' : null,
+        }));
+
+        const { error: linkError } = await supabase
+          .from('subscription_plan_products')
+          .insert(planProductsToInsert);
+
+        if (linkError) {
+          console.error('Error linking to subscription plans:', linkError);
+          // Don't fail the whole operation, just log
+        }
+      }
 
       // If publishing, notify all followers
       if (publish && product) {
@@ -507,29 +553,43 @@ export default function CreateProduct() {
                 <Button
                   type="button"
                   variant={pricingType === "free" ? "default" : "outline"}
-                  onClick={() => setPricingType("free")}
+                  onClick={() => {
+                    setPricingType("free");
+                    setSelectedSubscriptionPlans([]);
+                  }}
                 >
                   Free
                 </Button>
                 <Button
                   type="button"
                   variant={pricingType === "paid" ? "default" : "outline"}
-                  onClick={() => setPricingType("paid")}
+                  onClick={() => {
+                    setPricingType("paid");
+                    setSelectedSubscriptionPlans([]);
+                  }}
                 >
                   One-Time Purchase
                 </Button>
                 <Button
                   type="button"
                   variant={pricingType === "subscription" ? "default" : "outline"}
-                  onClick={() => setPricingType("subscription")}
+                  onClick={() => {
+                    setPricingType("subscription");
+                    if (profileId) setShowPlanPicker(true);
+                  }}
                 >
+                  <Crown className="w-4 h-4 mr-2" />
                   Subscription Only
                 </Button>
                 <Button
                   type="button"
                   variant={pricingType === "both" ? "default" : "outline"}
-                  onClick={() => setPricingType("both")}
+                  onClick={() => {
+                    setPricingType("both");
+                    if (profileId) setShowPlanPicker(true);
+                  }}
                 >
+                  <Crown className="w-4 h-4 mr-2" />
                   Both (One-Time + Subscription)
                 </Button>
               </div>
@@ -538,6 +598,54 @@ export default function CreateProduct() {
                 {pricingType === "both" && "Users can buy once OR get access through their subscription."}
               </p>
             </div>
+
+            {/* Selected Subscription Plans Display */}
+            {(pricingType === "subscription" || pricingType === "both") && selectedSubscriptionPlans.length > 0 && (
+              <div className="p-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-primary" />
+                    Linked Subscription Plans
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPlanPicker(true)}
+                  >
+                    Edit
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedSubscriptionPlans.map((plan) => (
+                    <Badge 
+                      key={plan.planId} 
+                      variant="secondary"
+                      className="flex items-center gap-1.5 py-1.5"
+                    >
+                      <span>{plan.planName}</span>
+                      <span className="text-muted-foreground">•</span>
+                      <span className={plan.isFree ? "text-emerald-500" : "text-violet-500"}>
+                        {plan.isFree ? "Free" : `${plan.discountPercent}% off`}
+                      </span>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Prompt to select plans if subscription type but no plans selected */}
+            {(pricingType === "subscription" || pricingType === "both") && selectedSubscriptionPlans.length === 0 && (
+              <div className="p-4 rounded-lg border border-dashed border-primary/50 bg-primary/5 text-center">
+                <Crown className="w-8 h-8 mx-auto text-primary mb-2" />
+                <p className="text-sm text-muted-foreground mb-3">
+                  Select which subscription plans will include this product
+                </p>
+                <Button type="button" variant="outline" onClick={() => setShowPlanPicker(true)}>
+                  Select Plans
+                </Button>
+              </div>
+            )}
 
             {(pricingType === "paid" || pricingType === "both") && (
               <div>
@@ -569,6 +677,17 @@ export default function CreateProduct() {
             )}
           </CardContent>
         </Card>
+
+        {/* Subscription Plan Picker Dialog */}
+        {profileId && (
+          <SubscriptionPlanPicker
+            open={showPlanPicker}
+            onOpenChange={setShowPlanPicker}
+            creatorId={profileId}
+            pricingType={pricingType === "subscription" ? "subscription" : "both"}
+            onConfirm={(plans) => setSelectedSubscriptionPlans(plans)}
+          />
+        )}
 
         {/* Media */}
         <Card className="bg-card/50">

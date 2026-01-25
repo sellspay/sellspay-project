@@ -551,7 +551,6 @@ export default function SubscriptionPlans() {
             open={createWizardOpen}
             onOpenChange={setCreateWizardOpen}
             creatorId={profileId}
-            products={products}
             onSuccess={fetchData}
           />
         )}

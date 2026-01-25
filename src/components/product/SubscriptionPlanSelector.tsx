@@ -3,7 +3,6 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Package, Loader2 } from "lucide-react";
 import CreatePlanWizard from "@/components/subscription/CreatePlanWizard";
 
@@ -13,14 +12,6 @@ interface SubscriptionPlan {
   price_cents: number;
   currency: string;
   product_count: number;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  cover_image_url: string | null;
-  pricing_type: string | null;
-  price_cents: number | null;
 }
 
 interface SubscriptionPlanSelectorProps {
@@ -34,7 +25,6 @@ export function SubscriptionPlanSelector({
 }: SubscriptionPlanSelectorProps) {
   const { user } = useAuth();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateWizard, setShowCreateWizard] = useState(false);
 
@@ -72,15 +62,6 @@ export function SubscriptionPlanSelector({
       );
 
       setPlans(plansWithCounts);
-
-      // Fetch creator's products for the wizard
-      const { data: productsData } = await supabase
-        .from("products")
-        .select("id, name, cover_image_url, pricing_type, price_cents")
-        .eq("creator_id", user.id)
-        .eq("status", "published");
-
-      setProducts(productsData || []);
     } catch (error) {
       console.error("Error fetching plans:", error);
     } finally {
@@ -172,20 +153,12 @@ export function SubscriptionPlanSelector({
         </>
       )}
 
-      <Dialog open={showCreateWizard} onOpenChange={setShowCreateWizard}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Subscription Plan</DialogTitle>
-          </DialogHeader>
-          <CreatePlanWizard 
-            open={showCreateWizard}
-            onOpenChange={setShowCreateWizard}
-            creatorId={user?.id || ""}
-            products={products}
-            onSuccess={handlePlanCreated}
-          />
-        </DialogContent>
-      </Dialog>
+      <CreatePlanWizard 
+        open={showCreateWizard}
+        onOpenChange={setShowCreateWizard}
+        creatorId={user?.id || ""}
+        onSuccess={handlePlanCreated}
+      />
     </div>
   );
 }
