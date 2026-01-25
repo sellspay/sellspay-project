@@ -102,9 +102,47 @@ serve(async (req) => {
     // ====== PROCESS REQUEST ======
     const { audio_url, mode, output_format = "mp3" } = await req.json();
 
-    if (!audio_url) {
+    // ====== URL VALIDATION (SSRF Prevention) ======
+    if (!audio_url || typeof audio_url !== 'string') {
       return new Response(
         JSON.stringify({ error: "audio_url is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate URL length
+    if (audio_url.length > 2048) {
+      return new Response(
+        JSON.stringify({ error: "URL too long" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate URL format, protocol, and host
+    try {
+      const parsedUrl = new URL(audio_url);
+      
+      // Only allow HTTPS protocol
+      if (parsedUrl.protocol !== 'https:') {
+        return new Response(
+          JSON.stringify({ error: "Only HTTPS URLs are allowed" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Only allow URLs from our Supabase storage
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const supabaseHostname = new URL(supabaseUrl).hostname;
+      
+      if (parsedUrl.hostname !== supabaseHostname) {
+        return new Response(
+          JSON.stringify({ error: "Audio URL must be from authorized storage" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid URL format" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
