@@ -20,6 +20,7 @@ import { createNotification, checkFollowCooldown } from "@/lib/notifications";
 import { getFileTypeIcon, getFileTypeLabel } from "@/lib/fileTypeIcons";
 import { SubscriptionPromotion } from "@/components/product/SubscriptionPromotion";
 import { SubscriptionBadge } from "@/components/product/SubscriptionBadge";
+import { useProductViewTracking } from "@/hooks/useViewTracking";
 
 interface Product {
   id: string;
@@ -177,6 +178,9 @@ export default function ProductDetail() {
   
   // Related
   const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
+
+  // Track product view for analytics
+  useProductViewTracking(product?.id);
 
   // Fetch user's profile ID for likes
   useEffect(() => {
