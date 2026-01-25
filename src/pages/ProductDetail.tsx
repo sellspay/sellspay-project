@@ -1041,8 +1041,8 @@ export default function ProductDetail() {
       toast.success(`You're now following @${product.creator.username}!`);
 
       // Create notification for the creator
-      // Fetch actor username for proper redirect
-      const { data: actorProfile } = await supabase.from("profiles").select("username").eq("id", userProfileId).maybeSingle();
+      // Fetch actor username for proper redirect (use public view to bypass RLS)
+      const { data: actorProfile } = await supabase.from("safe_public_identities").select("username").eq("id", userProfileId).maybeSingle();
       const actorUsername = actorProfile?.username;
       
       await createNotification({
