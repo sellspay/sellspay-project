@@ -1148,6 +1148,42 @@ export type Database = {
         }
         Relationships: []
       }
+      public_identities_cache: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string
+          is_creator: boolean | null
+          is_editor: boolean | null
+          updated_at: string
+          user_id: string
+          username: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id: string
+          is_creator?: boolean | null
+          is_editor?: boolean | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          avatar_url?: string | null
+          full_name?: string | null
+          id?: string
+          is_creator?: boolean | null
+          is_editor?: boolean | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       purchases: {
         Row: {
           amount_cents: number
