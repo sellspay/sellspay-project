@@ -1,149 +1,204 @@
 
-# Test Download & Purchase Flows Across Product Types
 
-## Summary
-This plan covers comprehensive testing of the download, purchase, and access control flows for all product pricing types. Since only 2 free products currently exist, we need to create test products for paid, subscription, and "both" types.
+## Overview
+This plan addresses three requests:
+1. Add a dedicated "Manage Users" tab in Admin panel with quick role revocation actions
+2. Redesign the "Explore by Type" section to match the premium visual identity
+3. Fix Testimonials to show `@deadeye`'s verified badge and "View Profile" button like `@shrimpy`
 
-## Current Status
+## Current State Analysis
 
-### Existing Products
-| Product | Type | Price | Filename Status |
-|---------|------|-------|-----------------|
-| Dandelions - Arcane AMV | Free | $0 | ✅ `original_filename` = "Arcane edit (converted).aep" |
-| FUNK CRIMINAL - Rengoku Manga Edit | Free | $0 | ⚠️ `original_filename` = NULL (uses fallback extraction → "rengoku_edit.aep") |
+**Admin Panel:**
+- Existing Users tab shows all users with basic actions (view, edit, suspend)
+- Role revocation (creator/editor) currently happens only in the Applications tabs
+- No quick actions for revoking roles directly from the user table
 
-### What's Working
-1. **Free product downloads**: Working correctly with follow-gate
-2. **Download rate limiting**: 2 per week per product per user - enforced
-3. **Purchase tracking**: Free products create $0 purchase records on first download
-4. **Filename preservation**: New uploads save `original_filename` correctly
-5. **Legacy fallback**: Timestamps are stripped from paths correctly
+**Explore by Type Section:**
+- Currently using a basic gray background (`bg-muted/30`) with simple cards
+- Lacks the glassmorphism, animated orbs, and gradient styling used elsewhere
+- Appears disconnected from the premium design language
 
-## Required Test Products
+**Testimonials:**
+- Uses hardcoded data with `verified: true` only for `@shrimpy`
+- `@deadeye` is a verified creator in the database but not marked in the static data
+- `@deadeye` card is missing the checkmark and "View Profile" button
 
-To fully test all flows, we need to create:
+---
 
-1. **Paid Product** ($4.99+ minimum)
-   - Tests Stripe checkout flow
-   - Tests creator Stripe Connect onboarding requirement
-   - Tests purchase verification and download unlock
+## Implementation Plan
 
-2. **Subscription-Only Product**
-   - Tests "Subscribers Only" button state
-   - Tests subscription plan linkage
-   - Tests subscriber download access
+### 1. Add "Manage Users" Tab to Admin Panel
 
-3. **Both (Paid + Subscription) Product**
-   - Tests dual access paths
-   - Tests subscription discount display
-   - Tests fallback to subscription-only if price < $4.99
+**File:** `src/pages/Admin.tsx`
 
-## Testing Steps
+Create a new dedicated tab for quick user role management:
 
-### Phase 1: Fix Legacy Product
-Update the FUNK CRIMINAL product to have its original filename stored:
+- Add new `TabsTrigger` with "Manage Users" label and `UserCog` icon
+- Create `TabsContent` with filterable table showing:
+  - User info (avatar, name, username)
+  - Current roles (Creator/Editor badges)
+  - Quick action buttons for each role type
+- Implement inline "Revoke Creator" and "Revoke Editor" buttons
+- Creator revocation: Sets `is_creator: false`, `verified: false`
+- Editor revocation: Clears all editor fields (`is_editor: false`, `editor_hourly_rate_cents: null`, etc.)
+- Only show revoke buttons for users who have that specific role
+- Add confirmation dialog before revocation
 
-```sql
-UPDATE products 
-SET original_filename = 'rengoku_edit.aep' 
-WHERE id = 'cfee67f3-231d-4191-a4f6-ff1d4acf2cb6';
+**Key features:**
+- Filter to show only Creators, only Editors, or both
+- Search by name/username
+- Visual indicators for each role
+- Loading states during revocation
+
+### 2. Redesign "Explore by Type" Section
+
+**File:** `src/pages/Home.tsx`
+
+Transform the section to match the "Million Dollar" premium design:
+
+- Replace plain `bg-muted/30` with layered gradient background
+- Add floating animated orbs with `animate-float` class
+- Apply glassmorphism styling to category cards (backdrop-blur, border gradients)
+- Update section header with premium pill badge styling
+- Add subtle radial gradients and enhanced visual depth
+- Style category icons with gradient backgrounds
+- Add hover effects with glow/border transitions
+
+**Visual enhancements:**
+- Background: Dark with radial purple gradients
+- Floating orbs: 3-4 positioned orbs with blur and animation
+- Category cards: Glass effect with `bg-white/5`, `backdrop-blur-xl`, gradient borders
+- Typography: Enhanced contrast and spacing
+
+### 3. Fix Testimonials for @deadeye
+
+**File:** `src/components/home/Testimonials.tsx`
+
+Update the hardcoded testimonials data:
+
+- Add `verified: true` to deadeye's testimonial entry
+- Add deadeye's actual avatar URL (fetched from database or use placeholder)
+- Modify the "others" testimonial card rendering to:
+  - Show verified checkmark when `verified: true`
+  - Show "View Profile" button (like shrimpy's card)
+- Ensure both linked testimonials have consistent styling
+
+**Changes to testimonials array:**
+```
+{
+  id: '2',
+  name: 'Deadeye',
+  username: 'deadeye',
+  role: 'Content Creator',
+  rating: 5,
+  quote: 'Finally a marketplace that gets it...',
+  verified: true,  // ADD THIS
+}
 ```
 
-### Phase 2: Create Test Products
-Create test products for each pricing type via the Create Product page:
+**Changes to card rendering:**
+- Add verified badge display for non-featured cards with `verified: true`
+- Add "View Profile" button to cards with valid usernames
 
-1. **Paid Product Test** ($4.99)
-   - Create with `pricing_type = paid`, `price_cents = 499`
-   - Attempt purchase without Stripe Connect → should fail with "Creator has not completed Stripe onboarding"
-   - Complete Stripe Connect → purchase should work
+---
 
-2. **Subscription-Only Product Test**
-   - Create with `pricing_type = subscription`
-   - Link to a subscription plan
-   - Non-subscriber sees "Subscribers Only" button (disabled)
-   - Subscriber can download
+## Technical Details
 
-3. **Both Product Test** ($5.99)
-   - Create with `pricing_type = both`, `price_cents = 599`
-   - Link to subscription plan with discount
-   - Non-subscriber sees "Buy $5.99" button
-   - Subscriber sees "Download (Subscriber)"
+### Admin Revocation Logic
 
-### Phase 3: Test Download Rules
-
-For each product type, verify:
-
-| Scenario | Free | Paid | Subscription | Both |
-|----------|------|------|--------------|------|
-| Logged out user | Login prompt | Login prompt | Login prompt | Login prompt |
-| Not following creator | "Get Access" → Follow dialog | "Get Access" → Follow dialog | "Get Access" | "Get Access" |
-| Following, not purchased/subscribed | "Free (2/2)" | "Buy $X" | "Subscribers Only" | "Buy $X" |
-| Purchased | "Download (2/2)" | "Download (2/2)" | N/A | "Download (2/2)" |
-| Subscribed | N/A | N/A | "Download (Subscriber)" | "Download (Subscriber)" |
-| Owner | Direct download (no limit) | Direct download (no limit) | Direct download (no limit) | Direct download (no limit) |
-| Rate limit exceeded | "Limit (Xd)" | "Limit (Xd)" | "Limit (Xd)" | "Limit (Xd)" |
-
-### Phase 4: Verify Edge Cases
-
-1. **Minimum price enforcement**: Products with `price_cents < 499` and `pricing_type = paid` should be treated as subscription-only
-2. **Stripe Connect requirement**: Paid checkout fails if creator hasn't completed onboarding
-3. **Filename preservation**: Downloaded files retain seller's original filename
-4. **Rate limiting bypass**: Product owners can download unlimited times
-
-## Implementation
-
-### Step 1: Update Legacy Product Filename
-Run database update to set the original filename for the legacy product.
-
-### Step 2: Manual Testing Checklist
-Since automated testing requires user sessions, manual testing is recommended:
-
-1. **Free Product Test** (as @laym or another test user):
-   - [ ] Click "Get Access" → Follow dialog appears
-   - [ ] Follow creator → Button changes to "Free (2/2)"
-   - [ ] Click download → File downloads with correct filename
-   - [ ] Download count updates to "(1/2)"
-   - [ ] Download again → Updates to "(0/2)"
-   - [ ] Try again → "Limit (7d)" appears
-
-2. **Paid Product Test** (after creating):
-   - [ ] Non-follower sees "Get Access"
-   - [ ] Follower sees "Buy $4.99"
-   - [ ] Click buy → Stripe checkout opens in new tab
-   - [ ] Complete purchase → Redirected with success toast
-   - [ ] Button changes to "Download (2/2)"
-
-3. **Subscription Product Test** (after creating plan + linking):
-   - [ ] Non-subscriber sees "Subscribers Only" (disabled)
-   - [ ] Subscribe to creator's plan
-   - [ ] Button changes to "Download (Subscriber)"
-
-4. **Attachments Display**:
-   - [ ] Filename shows seller's original name
-   - [ ] File type icon is correct
-   - [ ] Lock icon shows for unauthorized users
-
-## Technical Notes
-
-### Pricing Type Logic
-```text
-pricing_type = 'free'         → subscription_access = 'none'
-pricing_type = 'paid'         → subscription_access = 'none'
-pricing_type = 'subscription' → subscription_access = 'subscription_only', price_cents = 0
-pricing_type = 'both'         → subscription_access = 'both', price_cents > 0
+**Revoke Creator:**
+```typescript
+const handleRevokeCreatorFromUser = async (userId: string) => {
+  await supabase.from('profiles').update({
+    is_creator: false,
+    verified: false
+  }).eq('id', userId);
+  
+  // Also delete any creator_applications record
+  await supabase.from('creator_applications').delete()
+    .eq('user_id', userId);
+}
 ```
 
-### isSubscriptionOnly Logic
-```javascript
-const isSubscriptionOnly = 
-  product.pricing_type === 'subscription_only' || 
-  product.subscription_access === 'subscription_only' ||
-  (product.subscription_access === 'both' && (!product.price_cents || product.price_cents < 499));
+**Revoke Editor:**
+```typescript
+const handleRevokeEditorFromUser = async (userId: string) => {
+  await supabase.from('profiles').update({
+    is_editor: false,
+    editor_hourly_rate_cents: null,
+    editor_services: null,
+    editor_languages: null,
+    editor_country: null,
+    editor_city: null,
+    editor_about: null
+  }).eq('id', userId);
+  
+  // Also delete any editor_applications record
+  await supabase.from('editor_applications').delete()
+    .eq('user_id', userId);
+}
 ```
 
-## Deliverables
+### Explore by Type Premium Styling
 
-1. Update FUNK CRIMINAL product's `original_filename` in database
-2. Create 3 test products (paid, subscription, both)
-3. Create at least 1 subscription plan for testing
-4. Document test results for each scenario
+```tsx
+<section className="relative py-16 lg:py-24 overflow-hidden">
+  {/* Background gradients */}
+  <div className="absolute inset-0 -z-10">
+    <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/10 to-background" />
+    <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] 
+      bg-primary/10 rounded-full blur-[120px] animate-float" />
+    <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] 
+      bg-accent/10 rounded-full blur-[100px] animate-float" 
+      style={{ animationDelay: '-3s' }} />
+  </div>
+  
+  {/* Content with glassmorphism cards */}
+  <div className="container ...">
+    <CategorySection className="bg-white/5 backdrop-blur-xl 
+      border border-white/10 rounded-2xl" />
+  </div>
+</section>
+```
+
+### Testimonial Badge Implementation
+
+```tsx
+// For non-featured testimonial cards with verified users
+<div className="flex items-center gap-3">
+  <Avatar>...</Avatar>
+  <div>
+    <div className="flex items-center gap-1.5">
+      <span className="font-medium">@{testimonial.username}</span>
+      {testimonial.verified && (
+        <BadgeCheck className="h-4 w-4 text-primary fill-primary/20" />
+      )}
+    </div>
+    <span className="text-xs text-muted-foreground">{testimonial.role}</span>
+  </div>
+  {testimonial.username && (
+    <Button asChild variant="ghost" size="sm" className="ml-auto">
+      <Link to={`/@${testimonial.username}`}>View Profile</Link>
+    </Button>
+  )}
+</div>
+```
+
+---
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/pages/Admin.tsx` | Add "Manage Users" tab, revocation handlers, new tab content |
+| `src/pages/Home.tsx` | Redesign "Explore by Type" section with premium styling |
+| `src/components/home/Testimonials.tsx` | Add `verified: true` to deadeye, update card rendering |
+
+---
+
+## Expected Outcome
+
+1. **Admin Panel:** New "Manage Users" tab with quick revoke buttons for Creator and Editor roles, directly in the user table
+2. **Explore by Type:** Premium glassmorphism design with animated floating orbs, matching the rest of the site's visual identity
+3. **Testimonials:** Both @shrimpy and @deadeye display verified checkmarks and "View Profile" buttons consistently
+
