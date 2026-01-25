@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { useCredits } from '@/hooks/useCredits';
 import navbarLogo from '@/assets/navbar-logo.png';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { TopUpDialog } from '@/components/credits/TopUpDialog';
 
 const navItems = [
   { name: 'Store', path: '/products' },
@@ -28,8 +29,16 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [topUpDialogOpen, setTopUpDialogOpen] = useState(false);
   
-  const { creditBalance, isLoading: creditsLoading } = useCredits();
+  const { creditBalance, isLoading: creditsLoading, subscription } = useCredits();
+  
+  // Get subscription tier from subscription data
+  const subscriptionTier = subscription ? 
+    subscription.credits === 60 ? 'starter' :
+    subscription.credits === 150 ? 'pro' :
+    subscription.credits === 300 ? 'enterprise' : null
+  : null;
 
   // Derive values from centralized profile state
   const isCreator = profile?.is_creator || false;
@@ -84,7 +93,7 @@ export default function Header() {
             {/* Credit Wallet - Only show when logged in */}
             {user && (
               <button
-                onClick={() => navigate('/pricing')}
+                onClick={() => setTopUpDialogOpen(true)}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/80 hover:bg-secondary transition-colors border border-border/50"
               >
                 <Wallet className="h-4 w-4 text-primary" />
@@ -126,7 +135,7 @@ export default function Header() {
                   {/* Mobile wallet display */}
                   <div className="sm:hidden px-2 pb-2">
                     <button
-                      onClick={() => navigate('/pricing')}
+                      onClick={() => setTopUpDialogOpen(true)}
                       className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/80 hover:bg-secondary transition-colors border border-border/50"
                     >
                       <Wallet className="h-4 w-4 text-primary" />
@@ -240,6 +249,14 @@ export default function Header() {
           </div>
         )}
       </div>
+      
+      {/* Top Up Dialog */}
+      <TopUpDialog
+        open={topUpDialogOpen}
+        onOpenChange={setTopUpDialogOpen}
+        currentBalance={creditBalance}
+        subscriptionTier={subscriptionTier}
+      />
     </header>
   );
 }
