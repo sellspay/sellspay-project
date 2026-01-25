@@ -14,7 +14,7 @@ import { StatsSummary } from '@/components/dashboard/StatsSummary';
 import { SalesBreakdown } from '@/components/dashboard/SalesBreakdown';
 import { VisitorSourcesTable } from '@/components/dashboard/VisitorSourcesTable';
 import { ConversionFunnel } from '@/components/dashboard/ConversionFunnel';
-import { WorldMap } from '@/components/dashboard/WorldMap';
+
 import { EarningsCard } from '@/components/dashboard/EarningsCard';
 import { format, subDays, startOfMonth, eachDayOfInterval } from 'date-fns';
 
@@ -277,27 +277,6 @@ export default function Dashboard() {
       .slice(0, 10);
   }, [filteredViews, filteredPurchases]);
 
-  // REAL country data from product_views table
-  const countryData = useMemo(() => {
-    if (filteredViews.length === 0) return { countries: [], maxVisits: 0 };
-    
-    // Group views by country code
-    const countryMap = new Map<string, number>();
-    
-    filteredViews.forEach(v => {
-      if (v.country_code) {
-        countryMap.set(v.country_code, (countryMap.get(v.country_code) || 0) + 1);
-      }
-    });
-    
-    const countries = Array.from(countryMap.entries())
-      .map(([country, visits]) => ({ country, visits }))
-      .sort((a, b) => b.visits - a.visits);
-    
-    const maxVisits = countries.length > 0 ? countries[0].visits : 0;
-    
-    return { countries, maxVisits };
-  }, [filteredViews]);
 
   if (loading || profileLoading) {
     return (
@@ -421,15 +400,6 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* World Map - Now with REAL data */}
-      <Card className="bg-card mt-6">
-        <CardContent className="p-6">
-          <WorldMap 
-            countries={countryData.countries} 
-            maxVisits={countryData.maxVisits} 
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }
