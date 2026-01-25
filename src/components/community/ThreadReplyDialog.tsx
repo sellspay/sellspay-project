@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { X, Send, Heart, Loader2 } from 'lucide-react';
+import { X, Send, Heart, Loader2, Link as LinkIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,12 @@ import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { GifPicker } from '@/components/comments/GifPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
+import { useCredits } from '@/hooks/useCredits';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+// Regex to detect URLs in text
+const URL_REGEX = /https?:\/\/[^\s]+|www\.[^\s]+/gi;
 
 interface ThreadAuthor {
   id: string;
@@ -65,10 +69,14 @@ const categoryLabels: Record<string, string> = {
 };
 
 export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDialogProps) {
-  const { user } = useAuth();
+  const { user, isOwner } = useAuth();
+  const { subscription } = useCredits();
   const queryClient = useQueryClient();
   const [replyContent, setReplyContent] = useState('');
   const [selectedGif, setSelectedGif] = useState<string | null>(null);
+
+  // Check if user can embed links (owner always can, or has any subscription)
+  const canEmbedLinks = isOwner || !!subscription;
 
   // Fetch user profile
   const { data: profile } = useQuery({
@@ -181,10 +189,17 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
       if (!profile?.id || !thread?.id) throw new Error('Must be logged in');
       if (!replyContent.trim() && !selectedGif) throw new Error('Reply cannot be empty');
 
+      // Strip links from content if user doesn't have subscription (and not owner)
+      let finalContent = replyContent.trim();
+      if (!canEmbedLinks && URL_REGEX.test(finalContent)) {
+        finalContent = finalContent.replace(URL_REGEX, '[link removed]');
+        toast.info('Links require a subscription to embed');
+      }
+
       const { error } = await supabase.from('thread_replies').insert({
         thread_id: thread.id,
         author_id: profile.id,
-        content: replyContent.trim(),
+        content: finalContent,
         gif_url: selectedGif,
       });
 
@@ -404,6 +419,13 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
                 </div>
               </div>
             </div>
+            {/* Link restriction notice for non-subscribers */}
+            {!canEmbedLinks && (
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <LinkIcon className="h-3 w-3" />
+                <span>Links require a subscription to embed</span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="p-4 border-t border-border/50 text-center text-muted-foreground text-sm">
