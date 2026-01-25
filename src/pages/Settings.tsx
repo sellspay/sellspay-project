@@ -15,6 +15,7 @@ import { AvatarCropper } from "@/components/ui/avatar-cropper";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -956,7 +957,7 @@ export default function Settings() {
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Recommended: 1500x500px. JPG, PNG or GIF.
+                  Recommended: 1920x1080px (16:9 aspect ratio). JPG, PNG or GIF.
                 </p>
               </div>
 
@@ -1498,21 +1499,62 @@ export default function Settings() {
                 </div>
               )}
 
-              {/* Add new row button */}
-              <button
-                onClick={() => {
-                  setSocialLinks(prev => [...prev, { id: crypto.randomUUID(), url: '' }]);
-                }}
-                className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add social link
-              </button>
+              {/* Add new row button - Issue #6 fix: enforce one link per platform */}
+              {(() => {
+                const usedPlatforms = socialLinks
+                  .map(link => detectSocialPlatform(link.url)?.platform)
+                  .filter(Boolean);
+                const allPlatformsUsed = usedPlatforms.length >= 4;
+                
+                return (
+                  <>
+                    <button
+                      onClick={() => {
+                        if (!allPlatformsUsed) {
+                          setSocialLinks(prev => [...prev, { id: crypto.randomUUID(), url: '' }]);
+                        }
+                      }}
+                      disabled={allPlatformsUsed}
+                      className={cn(
+                        "text-sm font-medium flex items-center gap-1 transition-colors",
+                        allPlatformsUsed 
+                          ? "text-muted-foreground cursor-not-allowed" 
+                          : "text-primary hover:text-primary/80"
+                      )}
+                    >
+                      <Plus className="w-4 h-4" />
+                      {allPlatformsUsed ? 'All platforms linked' : 'Add social link'}
+                    </button>
+                    
+                    {/* Show which platforms are already used */}
+                    {usedPlatforms.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {['instagram', 'youtube', 'twitter', 'tiktok'].map(platform => {
+                          const isUsed = usedPlatforms.includes(platform);
+                          return (
+                            <Badge 
+                              key={platform} 
+                              variant={isUsed ? "default" : "outline"}
+                              className={cn(
+                                "text-xs capitalize",
+                                isUsed ? "bg-primary/20 text-primary border-primary/30" : "text-muted-foreground"
+                              )}
+                            >
+                              {platform === 'twitter' ? 'X' : platform}
+                              {isUsed && <span className="ml-1">✓</span>}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               <Separator className="my-4" />
 
               <p className="text-xs text-muted-foreground">
-                Supported platforms: Instagram, YouTube, X (Twitter), TikTok
+                Supported platforms: Instagram, YouTube, X (Twitter), TikTok. One link per platform.
               </p>
 
               <Button onClick={saveProfile} disabled={saving}>

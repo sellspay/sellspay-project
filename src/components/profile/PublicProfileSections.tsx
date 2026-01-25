@@ -101,11 +101,16 @@ export function PublicProfileSections({
         // Fetch products for each collection
         const collectionsWithProducts = await Promise.all(
           (collectionsData || []).map(async (collection) => {
-            const { data: items, count } = await supabase
+            const { data: items, error: itemsError, count } = await supabase
               .from("collection_items")
               .select("product_id", { count: "exact" })
               .eq("collection_id", collection.id)
               .order("display_order", { ascending: true });
+
+            // Issue #4 fix: Better error logging
+            if (itemsError) {
+              console.error(`Error fetching collection_items for ${collection.name}:`, itemsError);
+            }
 
             if (!items || items.length === 0) {
               return {
@@ -119,11 +124,16 @@ export function PublicProfileSections({
             }
 
             const productIds = items.map((item) => item.product_id);
-            const { data: productsData } = await supabase
+            const { data: productsData, error: productsError } = await supabase
               .from("products")
               .select("id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency, pricing_type, created_at")
               .in("id", productIds)
               .eq("status", "published");
+
+            // Issue #4 fix: Log if products query fails
+            if (productsError) {
+              console.error(`Error fetching products for collection ${collection.name}:`, productsError);
+            }
 
             // Get like and comment counts
             let likeMap = new Map<string, number>();
@@ -151,19 +161,27 @@ export function PublicProfileSections({
               });
             }
 
-            const publishedProducts = (productsData || []).map(p => ({
-              ...p,
-              likeCount: likeMap.get(p.id) || 0,
-              commentCount: commentMap.get(p.id) || 0,
-            }));
+            // Issue #4 fix: Preserve the display_order from collection_items
+            const productMap = new Map(
+              (productsData || []).map(p => [p.id, {
+                ...p,
+                likeCount: likeMap.get(p.id) || 0,
+                commentCount: commentMap.get(p.id) || 0,
+              }])
+            );
+            
+            // Maintain the order from collection_items
+            const orderedProducts = productIds
+              .map(id => productMap.get(id))
+              .filter((p): p is NonNullable<typeof p> => p !== undefined);
 
             return {
               ...collection,
               display_order: collection.display_order ?? 0,
               is_visible: collection.is_visible ?? true,
               style_options: (collection as any).style_options || {},
-              products: publishedProducts,
-              totalCount: publishedProducts.length,
+              products: orderedProducts,
+              totalCount: orderedProducts.length,
             };
           })
         );

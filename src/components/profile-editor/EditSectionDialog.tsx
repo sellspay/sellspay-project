@@ -175,7 +175,12 @@ export function EditSectionDialog({
         );
       case 'about_me':
         return (
-          <AboutMeEditor content={section.content as AboutMeContent} onChange={updateContent} />
+          <AboutMeEditor 
+            content={section.content as AboutMeContent} 
+            onChange={updateContent}
+            onUpload={handleImageUpload}
+            uploading={uploading}
+          />
         );
       case 'headline':
         return (
@@ -840,12 +845,69 @@ function CollectionEditor({
 function AboutMeEditor({
   content,
   onChange,
+  onUpload,
+  uploading,
 }: {
   content: AboutMeContent;
   onChange: (updates: Partial<AboutMeContent>) => void;
+  onUpload: (file: File, onSuccess: (url: string) => void) => void;
+  uploading: boolean;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  
   return (
     <div className="space-y-4">
+      {/* Image Upload - Issue #3 fix */}
+      <div>
+        <Label>Profile Image</Label>
+        <div className="mt-2">
+          {content.imageUrl ? (
+            <div className="relative w-20 h-20">
+              <img
+                src={content.imageUrl}
+                alt="About me"
+                className="w-20 h-20 rounded-full object-cover"
+              />
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute -top-1 -right-1 h-6 w-6"
+                onClick={() => onChange({ imageUrl: '' })}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          ) : (
+            <button
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              className="w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center hover:border-primary/50 transition-colors"
+            >
+              {uploading ? (
+                <span className="text-xs text-muted-foreground">...</span>
+              ) : (
+                <Upload className="w-5 h-5 text-muted-foreground" />
+              )}
+            </button>
+          )}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                onUpload(file, (url) => onChange({ imageUrl: url }));
+              }
+            }}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Upload a photo to display with your bio
+        </p>
+      </div>
+
       <div className="flex items-center justify-between">
         <Label>Show Avatar</Label>
         <Switch
