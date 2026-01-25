@@ -202,7 +202,10 @@ export default function Header() {
                 <Button variant="ghost" asChild className="hidden sm:inline-flex">
                   <Link to="/login">Sign In</Link>
                 </Button>
-                <Button asChild className="rounded-full bg-foreground text-background hover:bg-foreground/90">
+                <Button 
+                  asChild 
+                  className="rounded-full text-white font-medium relative overflow-hidden bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 bg-[length:200%_100%] animate-[gradient-wave_2s_ease-in-out_infinite] hover:shadow-lg hover:shadow-primary/30 transition-shadow"
+                >
                   <Link to="/signup">Join for free</Link>
                 </Button>
               </div>
