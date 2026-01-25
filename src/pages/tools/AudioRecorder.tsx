@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, Square, Play, Pause, Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,23 +20,68 @@ export default function AudioRecorder() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioFormat, setAudioFormat] = useState("audio/webm");
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [audioLevels, setAudioLevels] = useState<number[]>(new Array(24).fill(5));
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recordingStartTimeRef = useRef<number>(0);
 
   useEffect(() => {
     return () => {
       recordings.forEach(rec => URL.revokeObjectURL(rec.url));
       if (timerRef.current) clearInterval(timerRef.current);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
   }, []);
+
+  const updateAudioLevels = useCallback(() => {
+    if (!analyserRef.current || !isRecording || isPaused) {
+      setAudioLevels(new Array(24).fill(5));
+      return;
+    }
+
+    const analyser = analyserRef.current;
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(dataArray);
+
+    // Sample 24 bands from the frequency data
+    const bands = 24;
+    const bandSize = Math.floor(dataArray.length / bands);
+    const newLevels = [];
+
+    for (let i = 0; i < bands; i++) {
+      let sum = 0;
+      for (let j = 0; j < bandSize; j++) {
+        sum += dataArray[i * bandSize + j];
+      }
+      const average = sum / bandSize;
+      // Normalize to 5-100 range for visual height
+      const normalizedLevel = Math.max(5, Math.min(100, (average / 255) * 100));
+      newLevels.push(normalizedLevel);
+    }
+
+    setAudioLevels(newLevels);
+    animationFrameRef.current = requestAnimationFrame(updateAudioLevels);
+  }, [isRecording, isPaused]);
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       
+      // Set up audio analyzer for reactive waveform
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
       const mimeType = MediaRecorder.isTypeSupported(audioFormat) ? audioFormat : "audio/webm";
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
@@ -51,26 +96,36 @@ export default function AudioRecorder() {
       mediaRecorder.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
         const url = URL.createObjectURL(blob);
+        
+        // Calculate actual duration from start time
+        const actualDuration = Math.floor((Date.now() - recordingStartTimeRef.current) / 1000);
+        
         const recording: Recording = {
           id: crypto.randomUUID(),
           blob,
           url,
-          duration: recordingTime,
+          duration: actualDuration,
           timestamp: new Date(),
         };
         setRecordings(prev => [recording, ...prev]);
         stream.getTracks().forEach(track => track.stop());
         setRecordingTime(0);
+        setAudioLevels(new Array(24).fill(5));
         toast.success("Recording saved!");
       };
 
       mediaRecorder.start(100);
       setIsRecording(true);
       setIsPaused(false);
+      recordingStartTimeRef.current = Date.now();
 
+      // Start timer
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
+
+      // Start audio visualization
+      animationFrameRef.current = requestAnimationFrame(updateAudioLevels);
 
       toast.success("Recording started");
     } catch (error) {
@@ -88,6 +143,10 @@ export default function AudioRecorder() {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
     }
   };
 
@@ -98,12 +157,18 @@ export default function AudioRecorder() {
         timerRef.current = setInterval(() => {
           setRecordingTime(prev => prev + 1);
         }, 1000);
+        animationFrameRef.current = requestAnimationFrame(updateAudioLevels);
       } else {
         mediaRecorderRef.current.pause();
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+        setAudioLevels(new Array(24).fill(5));
       }
       setIsPaused(!isPaused);
     }
@@ -186,20 +251,28 @@ export default function AudioRecorder() {
               {formatTime(recordingTime)}
             </div>
 
-            {/* Waveform indicator */}
-            {isRecording && !isPaused && (
-              <div className="flex items-center gap-1 mb-8 h-12">
-                {[...Array(12)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-1 bg-primary rounded-full animate-pulse"
-                    style={{
-                      height: `${Math.random() * 100}%`,
-                      animationDelay: `${i * 0.1}s`,
-                    }}
-                  />
-                ))}
-              </div>
+            {/* Reactive Waveform Visualizer */}
+            <div className="flex items-end justify-center gap-[3px] mb-8 h-16 w-full max-w-md">
+              {audioLevels.map((level, i) => (
+                <div
+                  key={i}
+                  className={`w-2 rounded-full transition-all duration-75 ${
+                    isRecording && !isPaused 
+                      ? "bg-gradient-to-t from-primary to-accent" 
+                      : "bg-muted-foreground/30"
+                  }`}
+                  style={{
+                    height: `${level}%`,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Status Text */}
+            {isRecording && (
+              <p className="text-sm text-muted-foreground mb-6">
+                {isPaused ? "Recording paused" : "🔴 Recording in progress..."}
+              </p>
             )}
 
             {/* Controls */}
@@ -208,7 +281,7 @@ export default function AudioRecorder() {
                 <Button
                   size="lg"
                   onClick={startRecording}
-                  className="w-20 h-20 rounded-full bg-gradient-to-r from-primary to-accent"
+                  className="w-20 h-20 rounded-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
                 >
                   <Mic className="w-8 h-8" />
                 </Button>
@@ -248,12 +321,6 @@ export default function AudioRecorder() {
                 </SelectContent>
               </Select>
             </div>
-
-            {isRecording && (
-              <p className="text-sm text-muted-foreground mt-4">
-                {isPaused ? "Recording paused" : "Recording in progress..."}
-              </p>
-            )}
           </div>
         </CardContent>
       </Card>
