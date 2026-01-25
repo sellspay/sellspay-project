@@ -98,7 +98,14 @@ export function AudioProcessingView({
   };
 
   const uploadToStorage = async (file: File): Promise<string> => {
-    const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    // Get current user for user-scoped path
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Authentication required");
+    
+    // Use user-scoped path: {user_id}/{timestamp}-{filename}
+    const timestamp = Date.now();
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const fileName = `${user.id}/${timestamp}-${sanitizedName}`;
     
     // Simulate upload progress
     const progressInterval = setInterval(() => {
@@ -130,38 +137,30 @@ export function AudioProcessingView({
       const audioUrl = await uploadToStorage(audioFile);
       setProcessingStage("process");
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audio-stem-separation`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({
-            audio_url: audioUrl,
-            mode,
-            output_format: "mp3",
-          }),
-        }
-      );
+      // Use authenticated supabase.functions.invoke instead of direct fetch
+      const { data: responseData, error: invokeError } = await supabase.functions.invoke("audio-stem-separation", {
+        body: {
+          audio_url: audioUrl,
+          mode,
+          output_format: "mp3",
+        },
+      });
 
-      const data = await response.json();
-      console.log("Edge function response:", data);
-
-      if (!response.ok) {
-        throw new Error(data.error || `Processing failed with status ${response.status}`);
+      if (invokeError) {
+        throw new Error(invokeError.message || "Processing failed");
       }
 
-      if (!data.success) {
-        throw new Error(data.error || "Processing failed");
+      console.log("Edge function response:", responseData);
+
+      if (!responseData?.success) {
+        throw new Error(responseData?.error || "Processing failed");
       }
 
-      if (!data.stems || Object.keys(data.stems).length === 0) {
+      if (!responseData.stems || Object.keys(responseData.stems).length === 0) {
         throw new Error("No audio stems returned from processing");
       }
 
-      setResult(data.stems);
+      setResult(responseData.stems);
       
       // Generate realistic BPM and Key values (simulated detection)
       const bpmValues = [85, 90, 95, 100, 105, 110, 115, 120, 125, 128, 130, 135, 140, 145, 150];
