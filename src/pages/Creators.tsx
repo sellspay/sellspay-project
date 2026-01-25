@@ -56,18 +56,17 @@ export default function Creators() {
         return;
       }
 
-      // Get admin status for all creators
+      // Get owner status for all creators using RPC (user_roles is locked down)
       const userIds = (data || []).map(c => c.user_id).filter(Boolean) as string[];
-      let adminUserIds: string[] = [];
+      const ownerStatusMap = new Map<string, boolean>();
       
-      if (userIds.length > 0) {
-        const { data: roles } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('role', 'owner')
-          .in('user_id', userIds);
-        adminUserIds = (roles || []).map(r => r.user_id);
-      }
+      // Check owner status for each user via RPC
+      await Promise.all(
+        userIds.map(async (userId) => {
+          const { data: isOwner } = await supabase.rpc('is_owner', { p_user_id: userId });
+          ownerStatusMap.set(userId, isOwner === true);
+        })
+      );
 
       // Fetch counts for each creator
       const creatorsWithCounts = await Promise.all(
@@ -96,7 +95,7 @@ export default function Creators() {
             productCount: productCount || 0,
             followersCount: followersCount || 0,
             followingCount: followingCount || 0,
-            isOwner: creator.user_id ? adminUserIds.includes(creator.user_id) : false,
+            isOwner: creator.user_id ? ownerStatusMap.get(creator.user_id) === true : false,
           };
         })
       );
