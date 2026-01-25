@@ -1836,23 +1836,20 @@ export default function ProductDetail() {
               const downloadPath = product.download_url;
               let originalFilename = 'Download File';
               
-              // The file is stored as: {user_id}/{timestamp}-{original_filename}
-              // e.g., "1189c483-dd26-4365-8c8b-287172056a12/1769306852596-rengoku_edit.aep"
-              if (downloadPath.includes('/')) {
-                const pathParts = downloadPath.split('/');
-                const filenamePart = pathParts[pathParts.length - 1];
-                // Remove timestamp prefix if present (format: timestamp-filename)
-                const timestampMatch = filenamePart.match(/^\d+-(.+)$/);
-                if (timestampMatch) {
-                  // Restore original filename by removing sanitization (underscores back to spaces optionally)
-                  originalFilename = timestampMatch[1];
-                } else {
-                  originalFilename = filenamePart;
-                }
-              } else if (downloadPath.includes('downloads/')) {
-                // Legacy format: downloads/{creator_id}/{timestamp}.{ext}
-                const parts = downloadPath.split('/');
-                originalFilename = parts[parts.length - 1];
+              // Extract the actual filename from the storage path
+              // The path could be: {user_id}/{timestamp}-{original_filename} 
+              // OR just the filename directly
+              const pathParts = downloadPath.split('/');
+              const filenamePart = pathParts[pathParts.length - 1];
+              
+              // Try to extract original filename after timestamp prefix (format: timestamp-filename)
+              // e.g., "1769306852596-rengoku_edit.aep" -> "rengoku_edit.aep"
+              const timestampMatch = filenamePart.match(/^\d{13,}-(.+)$/);
+              if (timestampMatch && timestampMatch[1]) {
+                originalFilename = timestampMatch[1];
+              } else {
+                // No timestamp prefix, use filename as-is
+                originalFilename = filenamePart;
               }
               
               attachmentsList.push({ name: originalFilename, isDownloadFile: true });
@@ -1906,18 +1903,6 @@ export default function ProductDetail() {
           })()}
 
           <Separator className="mt-6" />
-
-          {/* Product Type Badge */}
-          {product.product_type && !isOwner && (
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">
-                {productTypeLabels[product.product_type] || product.product_type}
-              </Badge>
-              <span className="text-lg font-semibold">
-                {formatPrice(product.price_cents, product.pricing_type, product.currency)}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Sidebar - Right Side */}
