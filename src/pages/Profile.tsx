@@ -36,6 +36,7 @@ import CreatorApplicationDialog from '@/components/creator-application/CreatorAp
 import { SellerConfirmDialog } from '@/components/profile/SellerConfirmDialog';
 import { UnfollowConfirmDialog } from '@/components/profile/UnfollowConfirmDialog';
 import { createNotification, checkFollowCooldown, recordUnfollow } from '@/lib/notifications';
+import { useProfileViewTracking } from '@/hooks/useViewTracking';
 
 interface Profile {
   id: string;
@@ -304,6 +305,9 @@ const ProfilePage: React.FC = () => {
   const [savedPage, setSavedPage] = useState(0);
   const savedGridRef = useRef<HTMLDivElement>(null);
   const SAVED_ITEMS_PER_PAGE = 30; // 6 columns × 5 rows
+
+  // Track profile view for analytics (only for other users' profiles)
+  useProfileViewTracking(!isOwnProfile ? profile?.id : undefined);
 
   const handleBecomeSeller = async () => {
     if (!user || !profile) return;

@@ -775,6 +775,39 @@ export type Database = {
         }
         Relationships: []
       }
+      product_views: {
+        Row: {
+          city: string | null
+          country_code: string | null
+          created_at: string
+          id: string
+          product_id: string
+          referrer: string | null
+          referrer_domain: string | null
+          viewer_id: string | null
+        }
+        Insert: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          product_id: string
+          referrer?: string | null
+          referrer_domain?: string | null
+          viewer_id?: string | null
+        }
+        Update: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          product_id?: string
+          referrer?: string | null
+          referrer_domain?: string | null
+          viewer_id?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           attachments: Json | null
@@ -922,6 +955,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profile_views: {
+        Row: {
+          city: string | null
+          country_code: string | null
+          created_at: string
+          id: string
+          profile_id: string
+          referrer: string | null
+          referrer_domain: string | null
+          viewer_id: string | null
+        }
+        Insert: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          profile_id: string
+          referrer?: string | null
+          referrer_domain?: string | null
+          viewer_id?: string | null
+        }
+        Update: {
+          city?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          profile_id?: string
+          referrer?: string | null
+          referrer_domain?: string | null
+          viewer_id?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

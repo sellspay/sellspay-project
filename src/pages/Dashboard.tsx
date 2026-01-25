@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, BarChart3 } from 'lucide-react';
+import { Loader2, BarChart3, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -14,7 +14,7 @@ import { StatsSummary } from '@/components/dashboard/StatsSummary';
 import { SalesBreakdown } from '@/components/dashboard/SalesBreakdown';
 import { VisitorSourcesTable } from '@/components/dashboard/VisitorSourcesTable';
 import { ConversionFunnel } from '@/components/dashboard/ConversionFunnel';
-import { VisitsMap } from '@/components/dashboard/VisitsMap';
+import { WorldMap } from '@/components/dashboard/WorldMap';
 import { EarningsCard } from '@/components/dashboard/EarningsCard';
 import { format, subDays, startOfMonth, eachDayOfInterval } from 'date-fns';
 
@@ -36,13 +36,22 @@ interface EditorBooking {
   status: string;
 }
 
+interface ProductView {
+  product_id: string;
+  referrer_domain: string | null;
+  country_code: string | null;
+  created_at: string;
+}
+
 export default function Dashboard() {
   const { user, profile, profileLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [editorBookings, setEditorBookings] = useState<EditorBooking[]>([]);
+  const [productViews, setProductViews] = useState<ProductView[]>([]);
   
   // Filters
   const [selectedProduct, setSelectedProduct] = useState('all');
@@ -53,18 +62,12 @@ export default function Dashboard() {
   const isCreator = profile?.is_creator || false;
   const hasAccess = isSeller || isCreator;
 
-  useEffect(() => {
-    if (user && profile && hasAccess) {
-      fetchDashboardData();
-    } else if (!profileLoading) {
-      setLoading(false);
-    }
-  }, [user, profile, hasAccess, profileLoading]);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (showToast = false) => {
     if (!profile) return;
     
     try {
+      if (showToast) setRefreshing(true);
+      
       // Fetch products
       const { data: productsData, error: productsError } = await supabase
         .from('products')
@@ -75,10 +78,10 @@ export default function Dashboard() {
       if (productsError) throw productsError;
       setProducts(productsData || []);
 
-      // Fetch all purchases for these products
       const productIds = productsData?.map(p => p.id) || [];
       
       if (productIds.length > 0) {
+        // Fetch purchases
         const { data: purchasesData } = await supabase
           .from('purchases')
           .select('product_id, creator_payout_cents, created_at, buyer_id')
@@ -86,6 +89,16 @@ export default function Dashboard() {
           .eq('status', 'completed');
         
         setPurchases(purchasesData || []);
+
+        // Fetch real product views
+        const { data: viewsData } = await supabase
+          .from('product_views')
+          .select('product_id, referrer_domain, country_code, created_at')
+          .in('product_id', productIds)
+          .order('created_at', { ascending: false })
+          .limit(10000);
+        
+        setProductViews(viewsData || []);
       }
 
       // Fetch editor bookings (if user is an editor)
@@ -96,13 +109,24 @@ export default function Dashboard() {
         .eq('status', 'completed');
       
       setEditorBookings(bookingsData || []);
+      
+      if (showToast) toast.success('Dashboard refreshed');
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    if (user && profile && hasAccess) {
+      fetchDashboardData();
+    } else if (!profileLoading) {
+      setLoading(false);
+    }
+  }, [user, profile, hasAccess, profileLoading]);
 
   // Get date range for filtering
   const getDateRange = () => {
@@ -134,24 +158,36 @@ export default function Dashboard() {
     });
   }, [purchases, selectedProduct, dateRange]);
 
-  // Generate daily views data (simulated based on purchases activity)
+  // Filter views based on selected product and date range
+  const filteredViews = useMemo(() => {
+    const { start, end } = getDateRange();
+    
+    return productViews.filter(v => {
+      const viewDate = new Date(v.created_at);
+      const inDateRange = viewDate >= start && viewDate <= end;
+      const matchesProduct = selectedProduct === 'all' || v.product_id === selectedProduct;
+      return inDateRange && matchesProduct;
+    });
+  }, [productViews, selectedProduct, dateRange]);
+
+  // Generate daily views data from REAL data
   const dailyViewsData = useMemo(() => {
     const { start, end } = getDateRange();
     const days = eachDayOfInterval({ start, end });
     
+    // Group views by day
+    const viewsByDay = new Map<string, number>();
+    filteredViews.forEach(v => {
+      const dayKey = format(new Date(v.created_at), 'yyyy-MM-dd');
+      viewsByDay.set(dayKey, (viewsByDay.get(dayKey) || 0) + 1);
+    });
+    
     return days.map(day => {
       const dateStr = format(day, 'MMM d');
-      // Simulate views - in a real app, you'd have a views table
-      const purchasesOnDay = filteredPurchases.filter(
-        p => format(new Date(p.created_at), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')
-      ).length;
-      // Assume 10-50 views per day, more if there were purchases
-      const baseViews = Math.floor(Math.random() * 10);
-      const views = baseViews + (purchasesOnDay * 5);
-      
-      return { date: dateStr, views };
+      const dayKey = format(day, 'yyyy-MM-dd');
+      return { date: dateStr, views: viewsByDay.get(dayKey) || 0 };
     });
-  }, [filteredPurchases, dateRange]);
+  }, [filteredViews, dateRange]);
 
   // Generate daily sales data
   const dailySalesData = useMemo(() => {
@@ -169,15 +205,15 @@ export default function Dashboard() {
     });
   }, [filteredPurchases, dateRange]);
 
-  // Calculate summary stats
+  // Calculate summary stats from REAL data
   const summaryStats = useMemo(() => {
     const totalSales = filteredPurchases.reduce((acc, p) => acc + p.creator_payout_cents, 0) / 100;
     const uniqueCustomers = new Set(filteredPurchases.map(p => p.buyer_id)).size;
     const totalOrders = filteredPurchases.length;
-    const totalViews = dailyViewsData.reduce((acc, d) => acc + d.views, 0);
+    const totalViews = filteredViews.length;
     
     return { totalSales, uniqueCustomers, totalOrders, totalViews };
-  }, [filteredPurchases, dailyViewsData]);
+  }, [filteredPurchases, filteredViews]);
 
   // Sales breakdown by product
   const salesBreakdown = useMemo(() => {
@@ -206,37 +242,62 @@ export default function Dashboard() {
     return editorBookings.reduce((acc, b) => acc + b.editor_payout_cents, 0) / 100;
   }, [editorBookings]);
 
-  // Simulated visitor sources (in a real app, you'd track referrers)
+  // REAL visitor sources from product_views table
   const visitorSources = useMemo(() => {
-    const totalViews = summaryStats.totalViews;
-    if (totalViews === 0) return [];
+    if (filteredViews.length === 0) return [];
     
-    return [
-      { referrer: 'Direct', visits: Math.floor(totalViews * 0.6), orders: Math.floor(summaryStats.totalOrders * 0.5) },
-      { referrer: 'Google', visits: Math.floor(totalViews * 0.2), orders: Math.floor(summaryStats.totalOrders * 0.3) },
-      { referrer: 'Twitter', visits: Math.floor(totalViews * 0.1), orders: Math.floor(summaryStats.totalOrders * 0.1) },
-      { referrer: 'YouTube', visits: Math.floor(totalViews * 0.05), orders: Math.floor(summaryStats.totalOrders * 0.05) },
-      { referrer: 'Other', visits: Math.floor(totalViews * 0.05), orders: Math.floor(summaryStats.totalOrders * 0.05) },
-    ].filter(s => s.visits > 0);
-  }, [summaryStats]);
+    // Group views by referrer domain
+    const sourceMap = new Map<string, { visits: number; orders: number }>();
+    
+    filteredViews.forEach(v => {
+      const domain = v.referrer_domain || 'Direct';
+      const current = sourceMap.get(domain) || { visits: 0, orders: 0 };
+      current.visits++;
+      sourceMap.set(domain, current);
+    });
+    
+    // Add order counts from purchases
+    filteredPurchases.forEach(p => {
+      // Find the view that matches this purchase (by product_id and buyer proximity in time)
+      const matchingView = filteredViews.find(v => 
+        v.product_id === p.product_id && 
+        new Date(v.created_at) <= new Date(p.created_at)
+      );
+      const domain = matchingView?.referrer_domain || 'Direct';
+      const current = sourceMap.get(domain);
+      if (current) {
+        current.orders++;
+      }
+    });
+    
+    // Convert to array and sort by visits
+    return Array.from(sourceMap.entries())
+      .map(([referrer, data]) => ({ referrer, ...data }))
+      .sort((a, b) => b.visits - a.visits)
+      .slice(0, 10);
+  }, [filteredViews, filteredPurchases]);
 
-  // Simulated country data (in a real app, you'd track visitor locations)
+  // REAL country data from product_views table
   const countryData = useMemo(() => {
-    const totalViews = summaryStats.totalViews;
-    if (totalViews === 0) return { countries: [], maxVisits: 0 };
+    if (filteredViews.length === 0) return { countries: [], maxVisits: 0 };
     
-    const countries = [
-      { country: 'US', visits: Math.floor(totalViews * 0.6) },
-      { country: 'GB', visits: Math.floor(totalViews * 0.1) },
-      { country: 'CA', visits: Math.floor(totalViews * 0.08) },
-      { country: 'AU', visits: Math.floor(totalViews * 0.05) },
-      { country: 'DE', visits: Math.floor(totalViews * 0.05) },
-    ].filter(c => c.visits > 0);
+    // Group views by country code
+    const countryMap = new Map<string, number>();
     
-    const maxVisits = Math.max(...countries.map(c => c.visits), 1);
+    filteredViews.forEach(v => {
+      if (v.country_code) {
+        countryMap.set(v.country_code, (countryMap.get(v.country_code) || 0) + 1);
+      }
+    });
+    
+    const countries = Array.from(countryMap.entries())
+      .map(([country, visits]) => ({ country, visits }))
+      .sort((a, b) => b.visits - a.visits);
+    
+    const maxVisits = countries.length > 0 ? countries[0].visits : 0;
     
     return { countries, maxVisits };
-  }, [summaryStats]);
+  }, [filteredViews]);
 
   if (loading || profileLoading) {
     return (
@@ -276,6 +337,23 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
+      {/* Header with Refresh */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Real-time insights into your performance</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => fetchDashboardData(true)}
+          disabled={refreshing}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
       {/* Earnings Card at Top */}
       <div className="mb-6">
         <EarningsCard 
@@ -325,7 +403,7 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Visitor Sources */}
+      {/* Visitor Sources - Now with REAL data */}
       <Card className="bg-card mt-6">
         <CardContent className="p-6">
           <VisitorSourcesTable sources={visitorSources} />
@@ -343,10 +421,10 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Visits Map */}
+      {/* World Map - Now with REAL data */}
       <Card className="bg-card mt-6">
         <CardContent className="p-6">
-          <VisitsMap 
+          <WorldMap 
             countries={countryData.countries} 
             maxVisits={countryData.maxVisits} 
           />
