@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply, Bookmark, Flame, TrendingUp, Crown, Pin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -893,6 +893,9 @@ export default function ProductDetail() {
     }
   };
 
+  // Ref for the comment input to scroll to
+  const commentInputRef = useRef<HTMLDivElement>(null);
+
   const handleReply = (commentId: string) => {
     setReplyingTo(commentId);
     // Find the comment to show who we're replying to
@@ -900,6 +903,10 @@ export default function ProductDetail() {
     if (comment?.user?.username) {
       setNewComment(`@${comment.user.username} `);
     }
+    // Scroll to comment input
+    setTimeout(() => {
+      commentInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
   };
 
   const handleDeleteComment = async (commentId: string) => {
@@ -1507,87 +1514,19 @@ export default function ProductDetail() {
           <div>
             <h3 className="font-semibold mb-4">Comments</h3>
             
-            {/* Replying indicator */}
-            {replyingTo && (
-              <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
-                <Reply className="w-3 h-3" />
-                <span>Replying to comment</span>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-auto p-1 text-xs"
-                  onClick={() => {
-                    setReplyingTo(null);
-                    setNewComment("");
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
-            
-            {/* New Comment Input */}
-            {user && (
-              <div className="space-y-2 mb-4">
-                {/* Selected GIF preview */}
-                {selectedGif && (
-                  <div className="relative inline-block">
-                    <img 
-                      src={selectedGif} 
-                      alt="Selected GIF" 
-                      className="max-h-24 rounded-md"
-                    />
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full"
-                      onClick={() => setSelectedGif(null)}
-                    >
-                      <span className="sr-only">Remove GIF</span>
-                      ×
-                    </Button>
-                  </div>
-                )}
-                
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1 relative">
-                    <Textarea
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
-                      className="min-h-[60px] pr-16"
-                    />
-                    <div className="absolute right-2 bottom-2">
-                      <GifPicker onSelect={setSelectedGif} />
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={handleSubmitComment} 
-                    disabled={submittingComment || (!newComment.trim() && !selectedGif)}
-                    size="icon"
-                    className="h-[60px] w-[60px] rounded-full shrink-0"
-                  >
-                    {submittingComment ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <Send className="w-5 h-5" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Comments List */}
-            <div className="space-y-4">
+            {/* Comments List - Now ABOVE the input */}
+            <div className="max-h-[320px] overflow-y-auto scroll-smooth space-y-4 mb-4 pr-1">
               {displayedComments.map((comment) => (
                 <div key={comment.id} className="space-y-2">
                   <div className="flex gap-3">
-                    <Avatar className="w-8 h-8 flex-shrink-0">
-                      <AvatarImage src={comment.user?.avatar_url || undefined} />
-                      <AvatarFallback className="text-xs">
-                        {comment.user?.username?.[0]?.toUpperCase() || "?"}
-                      </AvatarFallback>
-                    </Avatar>
+                    <Link to={comment.user?.username ? `/@${comment.user.username}` : '#'}>
+                      <Avatar className="w-8 h-8 flex-shrink-0 hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer">
+                        <AvatarImage src={comment.user?.avatar_url || undefined} />
+                        <AvatarFallback className="text-xs">
+                          {comment.user?.username?.[0]?.toUpperCase() || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         {comment.is_pinned && (
@@ -1596,12 +1535,15 @@ export default function ProductDetail() {
                             Pinned
                           </Badge>
                         )}
-                        <span className="text-sm font-medium flex items-center gap-1">
+                        <Link 
+                          to={comment.user?.username ? `/@${comment.user.username}` : '#'}
+                          className="text-sm font-medium flex items-center gap-1 hover:text-primary transition-colors"
+                        >
                           @{comment.user?.username || "anonymous"}
                           {comment.user?.verified && (
                             <VerifiedBadge size="sm" />
                           )}
-                        </span>
+                        </Link>
                         <span className="text-xs text-muted-foreground">
                           {formatDate(comment.created_at)}
                         </span>
@@ -1732,20 +1674,25 @@ export default function ProductDetail() {
                           <CollapsibleContent className="mt-2 space-y-3 ml-6 border-l-2 border-border pl-3">
                             {comment.replies.map((reply) => (
                               <div key={reply.id} className="flex gap-2">
-                                <Avatar className="w-6 h-6 flex-shrink-0">
-                                  <AvatarImage src={reply.user?.avatar_url || undefined} />
-                                  <AvatarFallback className="text-[10px]">
-                                    {reply.user?.username?.[0]?.toUpperCase() || "?"}
-                                  </AvatarFallback>
-                                </Avatar>
+                                <Link to={reply.user?.username ? `/@${reply.user.username}` : '#'}>
+                                  <Avatar className="w-6 h-6 flex-shrink-0 hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer">
+                                    <AvatarImage src={reply.user?.avatar_url || undefined} />
+                                    <AvatarFallback className="text-[10px]">
+                                      {reply.user?.username?.[0]?.toUpperCase() || "?"}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </Link>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-xs font-medium flex items-center gap-1">
+                                    <Link 
+                                      to={reply.user?.username ? `/@${reply.user.username}` : '#'}
+                                      className="text-xs font-medium flex items-center gap-1 hover:text-primary transition-colors"
+                                    >
                                       @{reply.user?.username || "anonymous"}
                                       {reply.user?.verified && (
                                         <VerifiedBadge size="sm" />
                                       )}
-                                    </span>
+                                    </Link>
                                     <span className="text-[10px] text-muted-foreground">
                                       {formatDate(reply.created_at)}
                                     </span>
@@ -1851,6 +1798,85 @@ export default function ProductDetail() {
                 </Button>
               )}
             </div>
+            
+            {/* Replying indicator */}
+            {replyingTo && (
+              <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+                <Reply className="w-3 h-3" />
+                <span>Replying to comment</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-auto p-1 text-xs"
+                  onClick={() => {
+                    setReplyingTo(null);
+                    setNewComment("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+            
+            {/* New Comment Input - Now BELOW the comments list */}
+            {user && (
+              <div ref={commentInputRef} className="space-y-2">
+                {/* Selected GIF preview */}
+                {selectedGif && (
+                  <div className="relative inline-block">
+                    <img 
+                      src={selectedGif} 
+                      alt="Selected GIF" 
+                      className="max-h-24 rounded-md"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full"
+                      onClick={() => setSelectedGif(null)}
+                    >
+                      <span className="sr-only">Remove GIF</span>
+                      ×
+                    </Button>
+                  </div>
+                )}
+                
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1 relative">
+                    <Textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
+                      className="min-h-[60px] pr-16"
+                    />
+                    <div className="absolute right-2 bottom-2">
+                      <GifPicker onSelect={setSelectedGif} />
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={handleSubmitComment} 
+                    disabled={submittingComment || (!newComment.trim() && !selectedGif)}
+                    size="icon"
+                    className="h-[60px] w-[60px] rounded-full shrink-0"
+                  >
+                    {submittingComment ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Login prompt for unauthenticated users */}
+            {!user && (
+              <div className="text-center py-2">
+                <Link to="/login" className="text-sm text-primary hover:underline">
+                  Log in to comment
+                </Link>
+              </div>
+            )}
           </div>
 
           <Separator />
