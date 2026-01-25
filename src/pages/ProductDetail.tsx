@@ -24,6 +24,7 @@ import { useProductViewTracking } from "@/hooks/useViewTracking";
 
 interface Product {
   id: string;
+  slug: string | null;
   name: string;
   description: string | null;
   cover_image_url: string | null;
@@ -989,14 +990,21 @@ export default function ProductDetail() {
   };
 
   const handleShare = async () => {
+    // Build the correct shareable URL using custom domain + slug or id
+    const PRODUCTION_DOMAIN = "https://editorsparadise.org";
+    const productPath = product?.slug 
+      ? `/p/${product.slug}` 
+      : `/product/${product?.id}`;
+    const shareUrl = `${PRODUCTION_DOMAIN}${productPath}`;
+    
     try {
       await navigator.share({
         title: product?.name,
         text: product?.description || "",
-        url: window.location.href,
+        url: shareUrl,
       });
     } catch {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(shareUrl);
       toast.success("Link copied to clipboard!");
     }
   };

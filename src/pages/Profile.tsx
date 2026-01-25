@@ -878,7 +878,8 @@ const ProfilePage: React.FC = () => {
   };
 
   const copyProfileLink = () => {
-    const url = `${window.location.origin}/@${profile?.username}`;
+    const PRODUCTION_DOMAIN = "https://editorsparadise.org";
+    const url = `${PRODUCTION_DOMAIN}/@${profile?.username}`;
     navigator.clipboard.writeText(url);
     toast.success('Profile link copied!');
   };
