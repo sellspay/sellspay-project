@@ -965,85 +965,91 @@ export default function Settings() {
               <div>
                 <Label className="mb-2 block">Profile Banner</Label>
                 
-                {/* Banner Position Editor Dialog */}
-                {showBannerPositionEditor && pendingBannerUrl && (
-                  <div className="mb-4 p-4 rounded-lg border border-primary/30 bg-card">
-                    <BannerPositionEditor
-                      imageUrl={pendingBannerUrl}
-                      onConfirm={handleBannerPositionConfirm}
-                      onCancel={handleBannerPositionCancel}
-                      initialPositionY={bannerPositionY}
-                    />
-                  </div>
-                )}
+                {/* Banner Position Editor Dialog - Full Screen Modal */}
+                <Dialog open={showBannerPositionEditor && !!pendingBannerUrl} onOpenChange={(open) => {
+                  if (!open) handleBannerPositionCancel();
+                }}>
+                  <DialogContent className="max-w-4xl w-[95vw]">
+                    <DialogHeader>
+                      <DialogTitle>Position Your Banner</DialogTitle>
+                      <DialogDescription>
+                        Drag the image to adjust which part is visible on your profile
+                      </DialogDescription>
+                    </DialogHeader>
+                    {pendingBannerUrl && (
+                      <BannerPositionEditor
+                        imageUrl={pendingBannerUrl}
+                        onConfirm={handleBannerPositionConfirm}
+                        onCancel={handleBannerPositionCancel}
+                        initialPositionY={bannerPositionY}
+                      />
+                    )}
+                  </DialogContent>
+                </Dialog>
                 
-                {!showBannerPositionEditor && (
-                  <>
-                    <div className="relative rounded-lg overflow-hidden border border-border">
-                      {bannerUrl ? (
-                        <div className="relative w-full h-24 overflow-hidden">
-                          <img
-                            src={bannerUrl}
-                            alt="Profile banner"
-                            className="absolute w-full"
-                            style={{
-                              transform: `translateY(${bannerPositionY - 50}%)`,
-                              top: '50%',
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-full h-24 bg-gradient-to-br from-primary/40 to-accent/30" />
-                      )}
-                      {uploadingBanner ? (
-                        <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                          <div className="flex items-center gap-2 text-primary">
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span className="text-sm">Uploading...</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
-                          <label className="cursor-pointer">
-                            <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
-                              <Upload className="w-4 h-4" />
-                              {bannerUrl ? "Change" : "Upload"}
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleBannerChange}
-                              className="hidden"
-                            />
-                          </label>
-                          {bannerUrl && (
-                            <>
-                              <Button 
-                                variant="secondary" 
-                                size="sm"
-                                onClick={handleEditBannerPosition}
-                                className="text-white bg-white/20 hover:bg-white/30"
-                              >
-                                <Move className="w-4 h-4 mr-1" />
-                                Reposition
-                              </Button>
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                onClick={removeBanner}
-                              >
-                                Remove
-                              </Button>
-                            </>
-                          )}
-                        </div>
+                <div className="relative rounded-lg overflow-hidden border border-border">
+                  {bannerUrl ? (
+                    <div className="relative w-full h-24 overflow-hidden">
+                      <img
+                        src={bannerUrl}
+                        alt="Profile banner"
+                        className="absolute w-full"
+                        style={{
+                          transform: `translateY(${bannerPositionY - 50}%)`,
+                          top: '50%',
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-24 bg-gradient-to-br from-primary/40 to-accent/30" />
+                  )}
+                  {uploadingBanner ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                      <div className="flex items-center gap-2 text-primary">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span className="text-sm">Uploading...</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
+                      <label className="cursor-pointer">
+                        <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
+                          <Upload className="w-4 h-4" />
+                          {bannerUrl ? "Change" : "Upload"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleBannerChange}
+                          className="hidden"
+                        />
+                      </label>
+                      {bannerUrl && (
+                        <>
+                          <Button 
+                            variant="secondary" 
+                            size="sm"
+                            onClick={handleEditBannerPosition}
+                            className="text-white bg-white/20 hover:bg-white/30"
+                          >
+                            <Move className="w-4 h-4 mr-1" />
+                            Reposition
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={removeBanner}
+                          >
+                            Remove
+                          </Button>
+                        </>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Recommended: 2560x1440px. Upload and drag to position the visible area.
-                    </p>
-                  </>
-                )}
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Recommended: 2560x1440px. Upload and drag to position the visible area.
+                </p>
               </div>
 
               {/* Profile Background (Steam-style) */}

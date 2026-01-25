@@ -92,21 +92,16 @@ export default function BannerPositionEditor({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Move className="w-4 h-4 text-primary" />
-          <span>Position Your Banner</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onCancel}>
-            <X className="w-4 h-4 mr-1" />
-            Cancel
-          </Button>
-          <Button size="sm" onClick={() => onConfirm(positionY)}>
-            <Check className="w-4 h-4 mr-1" />
-            Apply
-          </Button>
-        </div>
+      {/* Action buttons */}
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={onCancel}>
+          <X className="w-4 h-4 mr-1" />
+          Cancel
+        </Button>
+        <Button size="sm" onClick={() => onConfirm(positionY)}>
+          <Check className="w-4 h-4 mr-1" />
+          Apply
+        </Button>
       </div>
       
       {/* Editor container */}
