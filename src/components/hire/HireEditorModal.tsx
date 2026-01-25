@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Clock, DollarSign } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Clock, DollarSign, Users, Sparkles, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -28,13 +29,32 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
   const { user } = useAuth();
   const [hours, setHours] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [queueLength, setQueueLength] = useState(0);
+
+  useEffect(() => {
+    if (open && editor) {
+      fetchQueueStatus();
+    }
+  }, [open, editor?.id]);
+
+  const fetchQueueStatus = async () => {
+    if (!editor) return;
+
+    // Count active/queued bookings for this editor
+    const { count } = await supabase
+      .from('editor_bookings')
+      .select('*', { count: 'exact', head: true })
+      .eq('editor_id', editor.id)
+      .in('status', ['in_progress', 'queued']);
+
+    setQueueLength(count || 0);
+  };
 
   if (!editor) return null;
 
   const hourlyRate = (editor.editor_hourly_rate_cents || 5000) / 100;
   const totalPrice = hourlyRate * hours;
   const platformFee = totalPrice * 0.05; // 5% platform fee
-  const editorPayout = totalPrice - platformFee;
 
   const handleHire = async () => {
     if (!user) {
@@ -81,34 +101,70 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Hire Editor</DialogTitle>
-          <DialogDescription>
-            Select the number of hours you want to hire this editor for.
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* Editor Info */}
-        <div className="flex items-center gap-4 p-4 rounded-lg bg-secondary/50">
-          <Avatar className="w-14 h-14">
-            <AvatarImage src={editor.avatar_url || undefined} />
-            <AvatarFallback className="bg-primary/20 text-primary text-lg">
-              {(editor.full_name || editor.username)?.charAt(0).toUpperCase() || '?'}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-medium">{editor.full_name || editor.username || 'Editor'}</p>
-            <p className="text-sm text-muted-foreground">
-              ${hourlyRate.toFixed(2)} / hour
-            </p>
-          </div>
+      <DialogContent className="max-w-md p-0 overflow-hidden bg-gradient-to-b from-background via-background to-background/95 border-primary/20">
+        {/* Premium Header */}
+        <div className="relative">
+          <div className="absolute inset-0 h-24 bg-gradient-to-r from-violet-500/20 via-fuchsia-500/20 to-violet-500/20" />
+          <div className="absolute top-0 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
+          
+          <DialogHeader className="relative p-6 pb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <DialogTitle className="text-xl">Hire Editor</DialogTitle>
+            </div>
+            <DialogDescription>
+              Book hours with this editor for your project.
+            </DialogDescription>
+          </DialogHeader>
         </div>
 
-        {/* Hours Selection */}
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Number of Hours</Label>
+        <div className="px-6 pb-6 space-y-5">
+          {/* Editor Info */}
+          <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-secondary/80 to-secondary/40 border border-border/50">
+            <Avatar className="w-14 h-14 ring-2 ring-primary/30 shadow-lg">
+              <AvatarImage src={editor.avatar_url || undefined} />
+              <AvatarFallback className="bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 text-primary text-lg">
+                {(editor.full_name || editor.username)?.charAt(0).toUpperCase() || '?'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <p className="font-semibold text-foreground">{editor.full_name || editor.username || 'Editor'}</p>
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <DollarSign className="h-3.5 w-3.5" />
+                ${hourlyRate.toFixed(2)} / hour
+              </p>
+            </div>
+          </div>
+
+          {/* Queue Status */}
+          {queueLength > 0 && (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <Users className="h-5 w-5 text-amber-500" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                  Editor is currently busy
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {queueLength} booking{queueLength > 1 ? 's' : ''} in queue • You'll be position {queueLength + 1}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Chat Feature Highlight */}
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
+            <MessageCircle className="h-5 w-5 text-primary" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-primary">1-on-1 Chat Included</p>
+              <p className="text-xs text-muted-foreground">
+                A private chat opens for 7 days after your project ends
+              </p>
+            </div>
+          </div>
+
+          {/* Hours Selection */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Number of Hours</Label>
             <div className="flex items-center gap-4">
               <Slider
                 value={[hours]}
@@ -122,7 +178,7 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
                 type="number"
                 value={hours}
                 onChange={(e) => setHours(Math.max(1, Math.min(40, parseInt(e.target.value) || 1)))}
-                className="w-20 text-center"
+                className="w-20 text-center bg-secondary/50 border-border/50"
                 min={1}
                 max={40}
               />
@@ -130,51 +186,55 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
           </div>
 
           {/* Price Breakdown */}
-          <div className="p-4 rounded-lg border space-y-2">
+          <div className="p-4 rounded-xl bg-card/50 border border-border/50 space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-muted-foreground" />
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="w-4 h-4" />
                 {hours} hour{hours > 1 ? 's' : ''} × ${hourlyRate.toFixed(2)}
               </span>
-              <span>${totalPrice.toFixed(2)}</span>
+              <span className="font-medium">${totalPrice.toFixed(2)}</span>
             </div>
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Platform fee (5%)</span>
               <span>${platformFee.toFixed(2)}</span>
             </div>
-            <div className="border-t pt-2 mt-2 flex items-center justify-between font-semibold">
-              <span className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4" />
+            <div className="border-t border-border/50 pt-3 flex items-center justify-between">
+              <span className="font-semibold flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-primary" />
                 Total
               </span>
-              <span className="text-lg">${totalPrice.toFixed(2)}</span>
+              <span className="text-xl font-bold bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent">
+                ${totalPrice.toFixed(2)}
+              </span>
             </div>
           </div>
-        </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleHire}
-            disabled={loading}
-            className="flex-1"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              `Pay $${totalPrice.toFixed(2)}`
-            )}
-          </Button>
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="flex-1 rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleHire}
+              disabled={loading}
+              className="flex-1 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white shadow-lg shadow-primary/25"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  {queueLength > 0 ? 'Join Queue' : 'Pay'} ${totalPrice.toFixed(2)}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

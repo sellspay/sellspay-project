@@ -530,12 +530,16 @@ export type Database = {
       editor_bookings: {
         Row: {
           buyer_id: string
+          chat_expires_at: string | null
+          completed_at: string | null
           created_at: string | null
           editor_id: string
           editor_payout_cents: number
           hours: number
           id: string
           platform_fee_cents: number
+          queue_position: number | null
+          started_at: string | null
           status: string | null
           stripe_checkout_session_id: string | null
           stripe_payment_intent_id: string | null
@@ -547,12 +551,16 @@ export type Database = {
         }
         Insert: {
           buyer_id: string
+          chat_expires_at?: string | null
+          completed_at?: string | null
           created_at?: string | null
           editor_id: string
           editor_payout_cents: number
           hours: number
           id?: string
           platform_fee_cents: number
+          queue_position?: number | null
+          started_at?: string | null
           status?: string | null
           stripe_checkout_session_id?: string | null
           stripe_payment_intent_id?: string | null
@@ -564,12 +572,16 @@ export type Database = {
         }
         Update: {
           buyer_id?: string
+          chat_expires_at?: string | null
+          completed_at?: string | null
           created_at?: string | null
           editor_id?: string
           editor_payout_cents?: number
           hours?: number
           id?: string
           platform_fee_cents?: number
+          queue_position?: number | null
+          started_at?: string | null
           status?: string | null
           stripe_checkout_session_id?: string | null
           stripe_payment_intent_id?: string | null
@@ -580,6 +592,79 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      editor_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean
+          room_id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          room_id: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          room_id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "editor_chat_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "editor_chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      editor_chat_rooms: {
+        Row: {
+          booking_id: string
+          buyer_id: string
+          created_at: string
+          editor_id: string
+          expires_at: string
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          booking_id: string
+          buyer_id: string
+          created_at?: string
+          editor_id: string
+          expires_at: string
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          booking_id?: string
+          buyer_id?: string
+          created_at?: string
+          editor_id?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "editor_chat_rooms_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "editor_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       followers: {
         Row: {

@@ -161,19 +161,99 @@ serve(async (req) => {
 
         logStep("Processing editor booking", { editorId, buyerId, hours, editorPayoutCents });
 
-        // Update the booking record to completed
-        const { error: bookingError } = await supabaseAdmin
+        // Check if editor has an active booking (in_progress)
+        const { data: activeBookings } = await supabaseAdmin
+          .from("editor_bookings")
+          .select("id")
+          .eq("editor_id", editorId)
+          .eq("status", "in_progress");
+
+        const hasActiveBooking = (activeBookings?.length || 0) > 0;
+
+        // Get the queue position (count of pending/queued bookings for this editor)
+        const { count: queueCount } = await supabaseAdmin
+          .from("editor_bookings")
+          .select("*", { count: "exact", head: true })
+          .eq("editor_id", editorId)
+          .in("status", ["pending", "queued", "in_progress"]);
+
+        const queuePosition = hasActiveBooking ? (queueCount || 0) : 0;
+        const newStatus = hasActiveBooking ? "queued" : "in_progress";
+        const startedAt = hasActiveBooking ? null : new Date().toISOString();
+
+        // Calculate chat expiry (7 days after booking ends or starts)
+        // For queued bookings, this will be updated when they start
+        const chatExpiresAt = new Date();
+        chatExpiresAt.setDate(chatExpiresAt.getDate() + 7 + (hours / 8)); // Assume 8 hours work per day + 7 days after
+
+        // Update the booking record
+        const { data: booking, error: bookingError } = await supabaseAdmin
           .from("editor_bookings")
           .update({
-            status: "completed",
+            status: newStatus,
+            queue_position: queuePosition > 0 ? queuePosition : null,
+            started_at: startedAt,
+            chat_expires_at: chatExpiresAt.toISOString(),
             stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
           })
-          .eq("stripe_checkout_session_id", session.id);
+          .eq("stripe_checkout_session_id", session.id)
+          .select()
+          .single();
 
         if (bookingError) {
           logStep("Failed to update booking record", { error: bookingError.message });
         } else {
-          logStep("Editor booking completed successfully", { editorId, editorPayoutCents });
+          logStep("Editor booking updated", { 
+            editorId, 
+            status: newStatus, 
+            queuePosition: queuePosition || "next in line",
+            editorPayoutCents 
+          });
+
+          // Create chat room for buyer and editor
+          const { error: chatRoomError } = await supabaseAdmin
+            .from("editor_chat_rooms")
+            .insert({
+              booking_id: booking.id,
+              buyer_id: buyerId,
+              editor_id: editorId,
+              expires_at: chatExpiresAt.toISOString(),
+              is_active: true,
+            });
+
+          if (chatRoomError) {
+            logStep("Failed to create chat room", { error: chatRoomError.message });
+          } else {
+            logStep("Chat room created for booking", { bookingId: booking.id });
+          }
+
+          // Notify the editor about the new booking
+          const { data: buyerProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("username, full_name")
+            .eq("id", buyerId)
+            .single();
+
+          const buyerName = buyerProfile?.full_name || buyerProfile?.username || "A buyer";
+
+          // Get editor's user_id for notification
+          const { data: editorProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("user_id")
+            .eq("id", editorId)
+            .single();
+
+          if (editorProfile?.user_id) {
+            await supabaseAdmin.from("notifications").insert({
+              user_id: editorProfile.user_id,
+              type: "editor_booking",
+              message: hasActiveBooking 
+                ? `${buyerName} has booked you for ${hours} hours. You're currently busy, they've been added to your queue (position ${queuePosition}).`
+                : `${buyerName} has booked you for ${hours} hours. You can start working now! A chat has been opened.`,
+              redirect_url: "/dashboard",
+            });
+            logStep("Editor notified about booking");
+          }
         }
         
         return new Response(JSON.stringify({ received: true }), {
