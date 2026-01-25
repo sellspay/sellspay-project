@@ -1742,7 +1742,6 @@ export type Database = {
           creator_id: string | null
           currency: string | null
           description: string | null
-          download_url: string | null
           duration_label: string | null
           excerpt: string | null
           featured: boolean | null
@@ -1770,7 +1769,6 @@ export type Database = {
           creator_id?: string | null
           currency?: string | null
           description?: string | null
-          download_url?: string | null
           duration_label?: string | null
           excerpt?: string | null
           featured?: boolean | null
@@ -1798,7 +1796,6 @@ export type Database = {
           creator_id?: string | null
           currency?: string | null
           description?: string | null
-          download_url?: string | null
           duration_label?: string | null
           excerpt?: string | null
           featured?: boolean | null
