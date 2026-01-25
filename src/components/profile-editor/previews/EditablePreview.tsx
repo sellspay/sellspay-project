@@ -22,6 +22,12 @@ const InlineEdit: React.FC<InlineEditProps> = ({ value, onChange, className, pla
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const tempValueRef = useRef(tempValue);
+
+  // Keep ref in sync with state for use in visibility handler
+  useEffect(() => {
+    tempValueRef.current = tempValue;
+  }, [tempValue]);
 
   useEffect(() => {
     setTempValue(value);
@@ -33,6 +39,22 @@ const InlineEdit: React.FC<InlineEditProps> = ({ value, onChange, className, pla
       inputRef.current.select();
     }
   }, [isEditing]);
+
+  // Save on tab away (visibility change) - Issue #1 fix
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && isEditing) {
+        // Save current value when user tabs away
+        if (tempValueRef.current !== value) {
+          onChange(tempValueRef.current);
+        }
+        setIsEditing(false);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isEditing, value, onChange]);
 
   const handleBlur = () => {
     setIsEditing(false);

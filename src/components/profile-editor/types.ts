@@ -125,6 +125,7 @@ export interface AboutMeContent {
   title: string;
   description: string;
   showAvatar: boolean;
+  imageUrl?: string; // Custom image upload for About Me section
 }
 
 export interface HeadlineContent {

@@ -204,25 +204,102 @@ const ImageWithTextPreview = memo(({ section }: { section: ProfileSection }) => 
 });
 ImageWithTextPreview.displayName = 'ImageWithTextPreview';
 
-// Gallery Preview
-const GalleryPreview = memo(({ content }: { content: GalleryContent }) => {
-  if (content.images.length === 0) {
+// Gallery Preview - Updated to handle presets (Issue #5 fix)
+const GalleryPreview = memo(({ section }: { section: ProfileSection }) => {
+  const content = section.content as GalleryContent;
+  const preset = section.style_options?.preset || 'style1';
+  const images = content.images || [];
+
+  if (images.length === 0) {
     return (
       <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
         <span className="text-muted-foreground">No images in gallery</span>
       </div>
     );
   }
-  
+
+  // Image placeholder component
+  const ImagePlaceholder = ({ label, className }: { label?: number; className?: string }) => (
+    <div className={cn(
+      "bg-muted/50 rounded-lg flex items-center justify-center border border-dashed border-muted-foreground/20",
+      className
+    )}>
+      {label !== undefined ? (
+        <span className="text-muted-foreground/50 text-xs font-medium">{label}</span>
+      ) : null}
+    </div>
+  );
+
+  // Masonry Layout (style3) - One large left, smaller right
+  if (preset === 'style3') {
+    const slots = Array.from({ length: 4 }, (_, i) => images[i] || null);
+    return (
+      <div className="grid grid-cols-3 grid-rows-2 gap-2 aspect-[16/10]">
+        {/* Large image spanning 2 rows on left */}
+        <div className="row-span-2 rounded-lg overflow-hidden">
+          {slots[0]?.url ? (
+            <img src={slots[0].url} alt={slots[0].altText || ''} className="w-full h-full object-cover" />
+          ) : (
+            <ImagePlaceholder label={1} className="w-full h-full" />
+          )}
+        </div>
+        {/* Top right images */}
+        <div className="rounded-lg overflow-hidden">
+          {slots[1]?.url ? (
+            <img src={slots[1].url} alt={slots[1].altText || ''} className="w-full h-full object-cover" />
+          ) : (
+            <ImagePlaceholder label={2} className="w-full h-full" />
+          )}
+        </div>
+        <div className="rounded-lg overflow-hidden">
+          {slots[2]?.url ? (
+            <img src={slots[2].url} alt={slots[2].altText || ''} className="w-full h-full object-cover" />
+          ) : (
+            <ImagePlaceholder label={3} className="w-full h-full" />
+          )}
+        </div>
+        {/* Bottom right spanning 2 columns */}
+        <div className="col-span-2 rounded-lg overflow-hidden">
+          {slots[3]?.url ? (
+            <img src={slots[3].url} alt={slots[3].altText || ''} className="w-full h-full object-cover" />
+          ) : (
+            <ImagePlaceholder label={4} className="w-full h-full" />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 2x3 Grid (style2) - 2 columns, 3 rows
+  if (preset === 'style2') {
+    const slots = Array.from({ length: 6 }, (_, i) => images[i] || null);
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {slots.map((img, i) => (
+          <div key={i} className="aspect-square rounded-lg overflow-hidden">
+            {img?.url ? (
+              <img src={img.url} alt={img.altText || ''} className="w-full h-full object-cover" />
+            ) : (
+              <ImagePlaceholder label={i + 1} className="w-full h-full" />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Default 3x2 Grid (style1) - 3 columns, 2 rows
+  const slots = Array.from({ length: 6 }, (_, i) => images[i] || null);
   return (
-    <div className={`grid gap-4 grid-cols-${content.columns}`} style={{ gridTemplateColumns: `repeat(${content.columns}, 1fr)` }}>
-      {content.images.map((img, i) => (
-        <img
-          key={i}
-          src={img.url}
-          alt={img.altText || ''}
-          className="w-full aspect-square object-cover rounded-lg"
-        />
+    <div className="grid grid-cols-3 gap-2">
+      {slots.map((img, i) => (
+        <div key={i} className="aspect-square rounded-lg overflow-hidden">
+          {img?.url ? (
+            <img src={img.url} alt={img.altText || ''} className="w-full h-full object-cover" />
+          ) : (
+            <ImagePlaceholder label={i + 1} className="w-full h-full" />
+          )}
+        </div>
       ))}
     </div>
   );
@@ -277,11 +354,14 @@ const CollectionPreview = memo(({ content }: { content: CollectionContent }) => 
 ));
 CollectionPreview.displayName = 'CollectionPreview';
 
-// About Me Preview
+// About Me Preview - Updated to support custom image (Issue #3 fix)
 const AboutMePreview = memo(({ content }: { content: AboutMeContent }) => (
   <div className="flex flex-col md:flex-row gap-6 items-start">
     {content.showAvatar && (
       <Avatar className="h-20 w-20 flex-shrink-0">
+        {content.imageUrl ? (
+          <AvatarImage src={content.imageUrl} alt="About me" className="object-cover" />
+        ) : null}
         <AvatarFallback className="text-2xl bg-primary/10">A</AvatarFallback>
       </Avatar>
     )}
@@ -741,7 +821,7 @@ export const SectionPreviewContent = memo(({ section }: SectionPreviewContentPro
     case 'image_with_text':
       return <ImageWithTextPreview section={section} />;
     case 'gallery':
-      return <GalleryPreview content={section.content as GalleryContent} />;
+      return <GalleryPreview section={section} />;
     case 'video':
       return <VideoPreview content={section.content as VideoContent} />;
     case 'collection':
