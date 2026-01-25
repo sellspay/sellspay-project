@@ -69,11 +69,12 @@ export default function Notifications() {
       if (error) throw error;
 
       // Fetch actor info for each notification
+      // NOTE: actor identity fields are exposed via the public identity view (not the base profiles table)
       const notificationsWithActors = await Promise.all(
         (data || []).map(async (notif) => {
           if (notif.actor_id) {
             const { data: actorData } = await supabase
-              .from('profiles')
+              .from('safe_public_identities')
               .select('username, avatar_url')
               .eq('id', notif.actor_id)
               .maybeSingle();
@@ -153,9 +154,17 @@ export default function Notifications() {
       await markAsRead(notification.id);
     }
 
-    // Navigate if there's a valid redirect URL (skip broken patterns like /@user)
-    if (notification.redirect_url && !notification.redirect_url.match(/^\/@(user|undefined|null)$/)) {
+    // Navigate:
+    // - Prefer redirect_url when valid
+    // - If redirect_url is a legacy placeholder (e.g. /@user), fall back to actor username
+    const isBrokenAtHandle = notification.redirect_url?.match(/^\/@(user|undefined|null)$/);
+    if (notification.redirect_url && !isBrokenAtHandle) {
       navigate(notification.redirect_url);
+      return;
+    }
+
+    if (isBrokenAtHandle && notification.actor?.username) {
+      navigate(`/@${notification.actor.username}`);
     }
   };
 

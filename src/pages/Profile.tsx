@@ -431,6 +431,13 @@ const ProfilePage: React.FC = () => {
     // - /@username via route param ":atUsername" where value starts with '@'
     const raw = atUsername ?? username;
     const cleanUsername = raw?.replace('@', '');
+
+    // Guard against legacy/broken placeholder usernames (e.g. old notifications pointing to /@user)
+    if (cleanUsername && ['user', 'undefined', 'null'].includes(cleanUsername.toLowerCase())) {
+      setLoading(false);
+      navigate('/notifications');
+      return;
+    }
     
     let data = null;
     let error = null;
