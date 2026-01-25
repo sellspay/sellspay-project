@@ -970,14 +970,25 @@ const ProfilePage: React.FC = () => {
             <div className={`px-4 ${profile.background_url ? 'pt-4' : 'pt-4'}`}>
               <div className="h-32 md:h-40 rounded-xl overflow-hidden">
                 {profile.banner_url ? (
-                  <img
-                    src={profile.banner_url}
-                    alt="Profile banner"
-                    className="w-full h-full object-cover"
-                    style={{
-                      objectPosition: `center ${profile.banner_position_y ?? 50}%`,
-                    }}
-                  />
+                  profile.banner_url.match(/\.(mp4|webm|mov|ogg)$/i) ? (
+                    <video
+                      src={profile.banner_url}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={profile.banner_url}
+                      alt="Profile banner"
+                      className="w-full h-full object-cover"
+                      style={{
+                        objectPosition: `center ${profile.banner_position_y ?? 50}%`,
+                      }}
+                    />
+                  )
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-primary/40 to-accent/30" />
                 )}
