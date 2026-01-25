@@ -204,6 +204,7 @@ export default function Settings() {
         setBio(data.bio || "");
         setAvatarUrl(data.avatar_url);
         setBannerUrl((data as Record<string, unknown>).banner_url as string | null);
+        setBannerPositionY((data as Record<string, unknown>).banner_position_y as number || 50);
         setBackgroundUrl((data as Record<string, unknown>).background_url as string | null);
         setIsSeller((data as Record<string, unknown>).is_seller as boolean || false);
         setProfileId(data.id);
@@ -769,6 +770,7 @@ export default function Settings() {
         bio,
         avatar_url: avatarUrl,
         banner_url: bannerUrl,
+        banner_position_y: bannerPositionY,
         background_url: backgroundUrl,
         social_links: socialLinksObj,
       };
