@@ -1,14 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, MessageSquare, Sparkles, Zap } from 'lucide-react';
+import { Loader2, MessageSquare, Sparkles, Zap, SearchX } from 'lucide-react';
 import { ThreadCard } from '@/components/community/ThreadCard';
 import { ThreadComposer } from '@/components/community/ThreadComposer';
 import { CategoryFilter } from '@/components/community/CategoryFilter';
 import { CommunityNav } from '@/components/community/CommunityNav';
 import { ThreadReplyDialog } from '@/components/community/ThreadReplyDialog';
+import { ThreadSearch } from '@/components/community/ThreadSearch';
 import { Reveal } from '@/components/home/Reveal';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+
+const THREADS_PER_PAGE = 20;
 
 interface ThreadAuthor {
   id: string;
@@ -38,6 +49,13 @@ export default function Community() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Reset page when category or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, searchQuery]);
 
   // Fetch user profile
   const { data: profile } = useQuery({
@@ -50,22 +68,61 @@ export default function Community() {
     enabled: !!user?.id,
   });
 
+  // Fetch total count for pagination
+  const { data: totalCount = 0 } = useQuery({
+    queryKey: ['threads-count', activeCategory, searchQuery],
+    queryFn: async () => {
+      let query = supabase.from('threads').select('id', { count: 'exact', head: true });
+
+      // Category filtering
+      if (activeCategory === 'all') {
+        // "All" feed excludes promotions
+        query = query.neq('category', 'promotion');
+      } else {
+        query = query.eq('category', activeCategory);
+      }
+
+      // Search filtering (also excludes promotions)
+      if (searchQuery) {
+        query = query.neq('category', 'promotion').ilike('content', `%${searchQuery}%`);
+      }
+
+      const { count, error } = await query;
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  const totalPages = Math.ceil(totalCount / THREADS_PER_PAGE);
+
   const {
     data: threads = [],
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['threads', activeCategory],
+    queryKey: ['threads', activeCategory, currentPage, searchQuery],
     queryFn: async () => {
+      const start = (currentPage - 1) * THREADS_PER_PAGE;
+      const end = start + THREADS_PER_PAGE - 1;
+
       let query = supabase
         .from('threads')
         .select('*')
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(50);
+        .range(start, end);
 
-      if (activeCategory !== 'all') {
+      // Category filtering
+      if (activeCategory === 'all') {
+        // "All" feed excludes promotions
+        query = query.neq('category', 'promotion');
+      } else {
         query = query.eq('category', activeCategory);
+      }
+
+      // Search filtering (also excludes promotions)
+      if (searchQuery) {
+        query = query.neq('category', 'promotion').ilike('content', `%${searchQuery}%`);
       }
 
       const { data: threadsData, error } = await query;
@@ -146,6 +203,35 @@ export default function Community() {
   const handleReplyClick = (thread: Thread) => {
     setSelectedThread(thread);
     setReplyDialogOpen(true);
+  };
+
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
+  const handleCategoryChange = useCallback((category: string) => {
+    setActiveCategory(category);
+    setSearchQuery(''); // Clear search when switching categories
+  }, []);
+
+  // Generate page numbers to show
+  const getPageNumbers = () => {
+    const pages: number[] = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= Math.min(maxVisible, totalPages); i++) pages.push(i);
+      } else if (currentPage >= totalPages - 2) {
+        for (let i = Math.max(1, totalPages - maxVisible + 1); i <= totalPages; i++) pages.push(i);
+      } else {
+        for (let i = currentPage - 2; i <= currentPage + 2; i++) pages.push(i);
+      }
+    }
+    
+    return pages;
   };
 
   return (
@@ -259,12 +345,30 @@ export default function Community() {
             <ThreadComposer />
           </Reveal>
 
+          {/* Search Bar */}
+          <Reveal delay={150}>
+            <ThreadSearch onSearchChange={handleSearchChange} />
+          </Reveal>
+
           {/* Category Filter */}
           <Reveal delay={200}>
             <div className="flex justify-center">
-              <CategoryFilter activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
+              <CategoryFilter activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
             </div>
           </Reveal>
+
+          {/* Search Results Info */}
+          {searchQuery && (
+            <Reveal delay={250}>
+              <div className="text-center text-sm text-muted-foreground">
+                {totalCount > 0 ? (
+                  <span>Found <span className="font-medium text-foreground">{totalCount}</span> thread{totalCount !== 1 ? 's' : ''} matching "<span className="font-medium text-foreground">{searchQuery}</span>"</span>
+                ) : (
+                  <span>No threads found matching "<span className="font-medium text-foreground">{searchQuery}</span>"</span>
+                )}
+              </div>
+            </Reveal>
+          )}
 
           {/* Threads List */}
           {isLoading ? (
@@ -280,10 +384,20 @@ export default function Community() {
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="relative text-center py-20 px-8 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border border-border/50 rounded-3xl">
                   <div className="inline-flex p-6 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 mb-6">
-                    <MessageSquare className="h-12 w-12 text-primary" />
+                    {searchQuery ? (
+                      <SearchX className="h-12 w-12 text-primary" />
+                    ) : (
+                      <MessageSquare className="h-12 w-12 text-primary" />
+                    )}
                   </div>
-                  <h3 className="text-2xl font-bold text-foreground mb-3">No threads yet</h3>
-                  <p className="text-muted-foreground text-lg">Be the first to start a conversation!</p>
+                  <h3 className="text-2xl font-bold text-foreground mb-3">
+                    {searchQuery ? 'No matches found' : 'No threads yet'}
+                  </h3>
+                  <p className="text-muted-foreground text-lg">
+                    {searchQuery 
+                      ? 'Try adjusting your search or browse all threads' 
+                      : 'Be the first to start a conversation!'}
+                  </p>
                 </div>
               </div>
             </Reveal>
@@ -295,6 +409,47 @@ export default function Community() {
                 </Reveal>
               ))}
             </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && !isLoading && threads.length > 0 && (
+            <Reveal delay={350}>
+              <div className="pt-8">
+                <Pagination>
+                  <PaginationContent className="gap-1">
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                    
+                    {getPageNumbers().map((pageNum) => (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(pageNum)}
+                          isActive={currentPage === pageNum}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+                
+                <div className="text-center mt-3 text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </div>
+              </div>
+            </Reveal>
           )}
         </div>
       </section>
