@@ -141,6 +141,7 @@ export default function Settings() {
   const [show2FADialog, setShow2FADialog] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [sendingOtp, setSendingOtp] = useState(false);
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -354,11 +355,17 @@ export default function Settings() {
     
     setSendingOtp(true);
     try {
-      const { error } = await supabase.functions.invoke("send-verification-otp", {
+      const { data, error } = await supabase.functions.invoke("send-verification-otp", {
         body: { email: user.email, userId: user.id }
       });
       
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      // Store the verification token for stateless 2FA
+      if (data?.verificationToken) {
+        setVerificationToken(data.verificationToken);
+      }
       
       setOtpSent(true);
       toast.success('Verification code sent to your email.');
@@ -373,10 +380,20 @@ export default function Settings() {
   const handleVerify2FA = async () => {
     if (!user?.id || !otpCode || otpCode.length !== 6) return;
     
+    if (!verificationToken) {
+      toast.error('Please request a new verification code');
+      return;
+    }
+    
     setVerifyingOtp(true);
     try {
       const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { userId: user.id, code: otpCode }
+        body: { 
+          userId: user.id, 
+          code: otpCode,
+          verificationToken,
+          purpose: 'enable_mfa'
+        }
       });
       
       if (error) throw new Error(error.message || 'Failed to verify code');
@@ -389,6 +406,7 @@ export default function Settings() {
       setShow2FADialog(false);
       setOtpCode("");
       setOtpSent(false);
+      setVerificationToken(null);
       toast.success('Two-factor authentication enabled!');
     } catch (error) {
       console.error('Error verifying OTP:', error);
