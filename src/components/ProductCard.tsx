@@ -111,13 +111,13 @@ export default function ProductCard({
   const isLarge = size === 'large';
   const isFree = !product.price_cents || product.price_cents === 0;
 
-  // Fetch creator info
+  // Fetch creator info from public_profiles view (excludes sensitive PII)
   useEffect(() => {
     const fetchCreator = async () => {
       if (!showCreator || !product.creator_id) return;
       
       const { data } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('username, avatar_url')
         .eq('id', product.creator_id)
         .maybeSingle();

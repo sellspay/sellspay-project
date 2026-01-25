@@ -436,15 +436,46 @@ const ProfilePage: React.FC = () => {
     let error = null;
     
     if (cleanUsername) {
-      // Use case-insensitive matching via ilike
-      const result = await supabase
-        .from('profiles')
-        .select('*')
-        .ilike('username', cleanUsername)
-        .maybeSingle();
-      data = result.data;
-      error = result.error;
+      // First check if this is the current user's own profile
+      // If so, use the full profiles table for complete access
+      if (user) {
+        const { data: ownCheck } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (ownCheck?.username?.toLowerCase() === cleanUsername.toLowerCase()) {
+          // This is own profile, use full profiles table
+          const result = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          data = result.data;
+          error = result.error;
+        } else {
+          // Viewing someone else's profile - use public_profiles view (excludes PII)
+          const result = await supabase
+            .from('public_profiles')
+            .select('*')
+            .ilike('username', cleanUsername)
+            .maybeSingle();
+          data = result.data;
+          error = result.error;
+        }
+      } else {
+        // Not logged in - use public_profiles view (excludes PII)
+        const result = await supabase
+          .from('public_profiles')
+          .select('*')
+          .ilike('username', cleanUsername)
+          .maybeSingle();
+        data = result.data;
+        error = result.error;
+      }
     } else if (user) {
+      // /profile route with logged in user - viewing own profile
       const result = await supabase
         .from('profiles')
         .select('*')
