@@ -58,9 +58,24 @@ serve(async (req) => {
       .from("profiles")
       .select("stripe_account_id, stripe_onboarding_complete")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (profileError) throw new Error(`Profile error: ${profileError.message}`);
+    
+    if (!profile) {
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          accounts: [], 
+          connected: false,
+          message: "No profile found" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
     if (!profile?.stripe_account_id) {
       return new Response(
         JSON.stringify({ 
