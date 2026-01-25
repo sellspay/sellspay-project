@@ -2004,6 +2004,15 @@ export type Database = {
         }[]
       }
       get_monthly_tool_usage: { Args: { p_user_id: string }; Returns: number }
+      get_seller_config: {
+        Args: { p_user_id: string }
+        Returns: {
+          payoneer_payee_id: string
+          payoneer_status: string
+          stripe_account_id: string
+          stripe_onboarding_complete: boolean
+        }[]
+      }
       get_seller_email_config: {
         Args: { p_seller_user_id: string }
         Returns: Json

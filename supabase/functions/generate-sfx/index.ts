@@ -21,6 +21,14 @@ serve(async (req) => {
       );
     }
 
+    // Use service role for reliable database access (bypasses RLS)
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    // Also create a user client for auth verification
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -38,9 +46,9 @@ serve(async (req) => {
 
     console.log("Authenticated user:", user.id);
 
-    // ====== SERVER-SIDE CREDIT CHECK ======
+    // ====== SERVER-SIDE CREDIT CHECK (using service role for reliable access) ======
     // Check if user has Pro subscription
-    const { data: proSub } = await supabaseClient
+    const { data: proSub } = await supabaseAdmin
       .from("pro_tool_subscriptions")
       .select("status")
       .eq("user_id", user.id)
@@ -48,16 +56,24 @@ serve(async (req) => {
       .maybeSingle();
 
     const hasProSubscription = !!proSub;
+    console.log("Pro subscription check:", { hasProSubscription, userId: user.id });
 
     // If no Pro subscription, check credits
     if (!hasProSubscription) {
-      const { data: profile } = await supabaseClient
+      const { data: profile, error: profileError } = await supabaseAdmin
         .from("profiles")
         .select("id, credit_balance")
         .eq("user_id", user.id)
         .single();
 
-      if (!profile || (profile.credit_balance ?? 0) < 1) {
+      console.log("Credit check:", { 
+        creditBalance: profile?.credit_balance ?? 0, 
+        profileError: profileError?.message,
+        userId: user.id 
+      });
+
+      // IMPORTANT: Check for >= 1 (user with exactly 1 credit SHOULD be able to use the tool)
+      if (profileError || !profile || (profile.credit_balance ?? 0) < 1) {
         return new Response(
           JSON.stringify({ error: "Insufficient credits. Please purchase credits or subscribe to Pro." }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
