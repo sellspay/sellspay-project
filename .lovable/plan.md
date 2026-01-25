@@ -1,204 +1,303 @@
 
+# Comprehensive Security Review
 
-## Overview
-This plan addresses three requests:
-1. Add a dedicated "Manage Users" tab in Admin panel with quick role revocation actions
-2. Redesign the "Explore by Type" section to match the premium visual identity
-3. Fix Testimonials to show `@deadeye`'s verified badge and "View Profile" button like `@shrimpy`
+## Executive Summary
 
-## Current State Analysis
-
-**Admin Panel:**
-- Existing Users tab shows all users with basic actions (view, edit, suspend)
-- Role revocation (creator/editor) currently happens only in the Applications tabs
-- No quick actions for revoking roles directly from the user table
-
-**Explore by Type Section:**
-- Currently using a basic gray background (`bg-muted/30`) with simple cards
-- Lacks the glassmorphism, animated orbs, and gradient styling used elsewhere
-- Appears disconnected from the premium design language
-
-**Testimonials:**
-- Uses hardcoded data with `verified: true` only for `@shrimpy`
-- `@deadeye` is a verified creator in the database but not marked in the static data
-- `@deadeye` card is missing the checkmark and "View Profile" button
+I've completed a thorough security review of your project and identified **21 security findings** across multiple categories. The most critical issues involve **exposed personal information** and **overly permissive database policies** that could lead to data breaches, privacy violations, and potential platform abuse.
 
 ---
 
-## Implementation Plan
+## Critical Issues (Immediate Action Required)
 
-### 1. Add "Manage Users" Tab to Admin Panel
+### 1. User Email Addresses and Phone Numbers Exposed Publicly
+**Severity: CRITICAL**
 
-**File:** `src/pages/Admin.tsx`
+The `profiles` table is publicly readable for creators and editors, which exposes sensitive personal information including:
+- Email addresses (e.g., `vizual90@gmail.com`, `deadeye0000gaming@gmail.com`)
+- Phone numbers
+- Other PII fields
 
-Create a new dedicated tab for quick user role management:
+**Risk**: Hackers could scrape this data to spam users, conduct phishing attacks, or sell information on the dark web.
 
-- Add new `TabsTrigger` with "Manage Users" label and `UserCog` icon
-- Create `TabsContent` with filterable table showing:
-  - User info (avatar, name, username)
-  - Current roles (Creator/Editor badges)
-  - Quick action buttons for each role type
-- Implement inline "Revoke Creator" and "Revoke Editor" buttons
-- Creator revocation: Sets `is_creator: false`, `verified: false`
-- Editor revocation: Clears all editor fields (`is_editor: false`, `editor_hourly_rate_cents: null`, etc.)
-- Only show revoke buttons for users who have that specific role
-- Add confirmation dialog before revocation
-
-**Key features:**
-- Filter to show only Creators, only Editors, or both
-- Search by name/username
-- Visual indicators for each role
-- Loading states during revocation
-
-### 2. Redesign "Explore by Type" Section
-
-**File:** `src/pages/Home.tsx`
-
-Transform the section to match the "Million Dollar" premium design:
-
-- Replace plain `bg-muted/30` with layered gradient background
-- Add floating animated orbs with `animate-float` class
-- Apply glassmorphism styling to category cards (backdrop-blur, border gradients)
-- Update section header with premium pill badge styling
-- Add subtle radial gradients and enhanced visual depth
-- Style category icons with gradient backgrounds
-- Add hover effects with glow/border transitions
-
-**Visual enhancements:**
-- Background: Dark with radial purple gradients
-- Floating orbs: 3-4 positioned orbs with blur and animation
-- Category cards: Glass effect with `bg-white/5`, `backdrop-blur-xl`, gradient borders
-- Typography: Enhanced contrast and spacing
-
-### 3. Fix Testimonials for @deadeye
-
-**File:** `src/components/home/Testimonials.tsx`
-
-Update the hardcoded testimonials data:
-
-- Add `verified: true` to deadeye's testimonial entry
-- Add deadeye's actual avatar URL (fetched from database or use placeholder)
-- Modify the "others" testimonial card rendering to:
-  - Show verified checkmark when `verified: true`
-  - Show "View Profile" button (like shrimpy's card)
-- Ensure both linked testimonials have consistent styling
-
-**Changes to testimonials array:**
-```
-{
-  id: '2',
-  name: 'Deadeye',
-  username: 'deadeye',
-  role: 'Content Creator',
-  rating: 5,
-  quote: 'Finally a marketplace that gets it...',
-  verified: true,  // ADD THIS
-}
-```
-
-**Changes to card rendering:**
-- Add verified badge display for non-featured cards with `verified: true`
-- Add "View Profile" button to cards with valid usernames
+**Fix Required**:
+- Create a `public_profiles` view that excludes sensitive fields (email, phone, stripe_account_id, payoneer fields)
+- The existing `public_profiles` view appears to be using SECURITY DEFINER which is flagged as an error
+- Update the view to use `security_invoker=on` and remove sensitive columns
 
 ---
 
-## Technical Details
+### 2. Payment Processing Data Accessible to Competitors
+**Severity: CRITICAL**
 
-### Admin Revocation Logic
+The `profiles` table publicly exposes:
+- `stripe_account_id`
+- `stripe_onboarding_complete`
+- `subscription_stripe_id`
+- `payoneer_payee_id`
+- `payoneer_email`
 
-**Revoke Creator:**
-```typescript
-const handleRevokeCreatorFromUser = async (userId: string) => {
-  await supabase.from('profiles').update({
-    is_creator: false,
-    verified: false
-  }).eq('id', userId);
-  
-  // Also delete any creator_applications record
-  await supabase.from('creator_applications').delete()
-    .eq('user_id', userId);
-}
-```
+**Risk**: Competitors could analyze your payment infrastructure and identify high-value creators to poach.
 
-**Revoke Editor:**
-```typescript
-const handleRevokeEditorFromUser = async (userId: string) => {
-  await supabase.from('profiles').update({
-    is_editor: false,
-    editor_hourly_rate_cents: null,
-    editor_services: null,
-    editor_languages: null,
-    editor_country: null,
-    editor_city: null,
-    editor_about: null
-  }).eq('id', userId);
-  
-  // Also delete any editor_applications record
-  await supabase.from('editor_applications').delete()
-    .eq('user_id', userId);
-}
-```
-
-### Explore by Type Premium Styling
-
-```tsx
-<section className="relative py-16 lg:py-24 overflow-hidden">
-  {/* Background gradients */}
-  <div className="absolute inset-0 -z-10">
-    <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/10 to-background" />
-    <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] 
-      bg-primary/10 rounded-full blur-[120px] animate-float" />
-    <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] 
-      bg-accent/10 rounded-full blur-[100px] animate-float" 
-      style={{ animationDelay: '-3s' }} />
-  </div>
-  
-  {/* Content with glassmorphism cards */}
-  <div className="container ...">
-    <CategorySection className="bg-white/5 backdrop-blur-xl 
-      border border-white/10 rounded-2xl" />
-  </div>
-</section>
-```
-
-### Testimonial Badge Implementation
-
-```tsx
-// For non-featured testimonial cards with verified users
-<div className="flex items-center gap-3">
-  <Avatar>...</Avatar>
-  <div>
-    <div className="flex items-center gap-1.5">
-      <span className="font-medium">@{testimonial.username}</span>
-      {testimonial.verified && (
-        <BadgeCheck className="h-4 w-4 text-primary fill-primary/20" />
-      )}
-    </div>
-    <span className="text-xs text-muted-foreground">{testimonial.role}</span>
-  </div>
-  {testimonial.username && (
-    <Button asChild variant="ghost" size="sm" className="ml-auto">
-      <Link to={`/@${testimonial.username}`}>View Profile</Link>
-    </Button>
-  )}
-</div>
-```
+**Fix Required**: These fields should only be visible to the profile owner and admins.
 
 ---
 
-## Files to Modify
+### 3. User Account Status Information Leaked
+**Severity: CRITICAL**
 
-| File | Changes |
-|------|---------|
-| `src/pages/Admin.tsx` | Add "Manage Users" tab, revocation handlers, new tab content |
-| `src/pages/Home.tsx` | Redesign "Explore by Type" section with premium styling |
-| `src/components/home/Testimonials.tsx` | Add `verified: true` to deadeye, update card rendering |
+Publicly exposed flags include:
+- `suspended`
+- `verified`
+- `mfa_enabled`
+- `seller_email_verified`
+- `email_notifications_enabled`
+
+**Risk**: Malicious actors could identify suspended users for impersonation, target unverified accounts for scams, or identify users without MFA for account takeover attempts.
 
 ---
 
-## Expected Outcome
+### 4. Secret Management References Visible
+**Severity: CRITICAL**
 
-1. **Admin Panel:** New "Manage Users" tab with quick revoke buttons for Creator and Editor roles, directly in the user table
-2. **Explore by Type:** Premium glassmorphism design with animated floating orbs, matching the rest of the site's visual identity
-3. **Testimonials:** Both @shrimpy and @deadeye display verified checkmarks and "View Profile" buttons consistently
+The `resend_vault_secret_id` field is publicly readable, exposing internal secret storage architecture.
 
+---
+
+### 5. Security Definer View Issue
+**Severity: HIGH**
+
+The database linter detected views defined with SECURITY DEFINER. This means queries run with the view creator's privileges rather than the querying user's privileges.
+
+**Fix Required**: Recreate affected views with `security_invoker=on`.
+
+---
+
+### 6. Leaked Password Protection Disabled
+**Severity: HIGH**
+
+Password protection against known leaked passwords is currently disabled in the authentication configuration.
+
+**Fix Required**: Enable leaked password protection in the Auth settings.
+
+---
+
+## High Priority Issues
+
+### 7. RLS Policies with "Always True" Conditions (5 instances)
+**Severity: HIGH**
+
+Multiple RLS policies use overly permissive `WITH CHECK (true)` for INSERT operations:
+- `Edge functions can insert downloads` on `product_downloads`
+- `System can insert purchases` on `purchases`
+- `Authenticated users can create admin notifications` on `admin_notifications`
+- `Anyone can create product views` on `product_views`
+- `Anyone can create profile views` on `profile_views`
+
+While some of these may be intentional (e.g., analytics tracking), they should be reviewed to ensure they can't be abused.
+
+---
+
+### 8. RLS Enabled But No Policies
+**Severity: MEDIUM**
+
+At least one table has RLS enabled but no policies defined, which means no one can access the data (not even service role in some cases).
+
+---
+
+### 9. Verification Codes Table Security
+**Severity: HIGH**
+
+The `verification_codes` table stores sensitive MFA codes. While RLS is enabled, ensure:
+- Users can only access their own unexpired codes
+- Expired codes are automatically deleted
+- Rate limiting exists for verification attempts
+
+---
+
+## Medium Priority Issues
+
+### 10. Customer Purchase History Visible to Product Creators
+**Severity: MEDIUM**
+
+Creators can view all purchases of their products, exposing buyer_id and purchase amounts. While creators need sales data, this reveals specific buyer identities.
+
+**Recommendation**: Consider aggregating data or masking buyer identities in creator-facing analytics.
+
+---
+
+### 11. Editor Booking Financial Details Exposed
+**Severity: MEDIUM**
+
+Both buyers and editors can see `platform_fee_cents`, `editor_payout_cents`, and `total_amount_cents`. This could lead to disputes.
+
+**Recommendation**: Consider separate views showing only relevant financial data to each party.
+
+---
+
+### 12. Support Messages Lack Proper Isolation
+**Severity: MEDIUM**
+
+Current policies allow sellers and customers to view their respective messages, but there may be gaps in preventing cross-conversation access if IDs are known.
+
+---
+
+### 13. Application Review Status Visible to Applicants
+**Severity: LOW**
+
+Users can see `reviewed_by` and `reviewed_at` fields, potentially enabling targeted appeals to specific admins.
+
+---
+
+### 14. Subscription Details Exposure
+**Severity: MEDIUM**
+
+Creators can view detailed subscription records including Stripe customer IDs and cancellation timestamps, which could be used to reverse-engineer retention metrics.
+
+---
+
+## Informational Issues
+
+### 15. User Relationship History Tracking
+The `unfollow_history` table tracks social behavior with a 7-day refollow restriction. Ensure this is disclosed in the privacy policy.
+
+### 16. Product Analytics Viewer Locations
+The `product_views` table stores geographic tracking (city, country_code). Ensure GDPR/CCPA compliance and proper user disclosure.
+
+### 17. Profile View Tracking
+Similar geographic tracking for profile visits. Consider anonymizing viewer_id for unauthenticated users.
+
+---
+
+## Edge Function Security Review
+
+### Positive Findings
+1. **Stripe Webhook**: Properly validates webhook signatures before processing
+2. **Get Download URL**: Implements proper authorization checks (owner, purchaser, subscriber)
+3. **Deduct Credit**: Uses service role key appropriately and validates user authentication
+4. **Add Credits**: Includes idempotency check to prevent double-processing
+
+### Areas for Improvement
+1. **Rate Limiting**: Consider adding rate limiting to prevent abuse of credit operations
+2. **Input Validation**: Ensure all edge functions validate and sanitize input parameters
+
+---
+
+## Recommended Remediation Plan
+
+### Phase 1: Critical (This Week)
+
+```text
++--------------------------------------------------+
+|  1. Fix Public Profile Data Exposure             |
+|     - Create secure public_profiles view         |
+|     - Exclude: email, phone, stripe_*, payoneer_*|
+|     - Use security_invoker=on                    |
++--------------------------------------------------+
+                      |
+                      v
++--------------------------------------------------+
+|  2. Enable Leaked Password Protection            |
+|     - Configure in Auth settings                 |
++--------------------------------------------------+
+                      |
+                      v
++--------------------------------------------------+
+|  3. Fix Security Definer Views                   |
+|     - Recreate with security_invoker=on          |
++--------------------------------------------------+
+```
+
+### Phase 2: High Priority (Next 2 Weeks)
+1. Review and tighten "always true" RLS policies
+2. Implement proper isolation for verification_codes table
+3. Add automatic cleanup for expired verification codes
+
+### Phase 3: Medium Priority (Within 1 Month)
+1. Create separate financial views for buyers vs sellers
+2. Mask buyer identities in creator analytics
+3. Improve support message isolation
+4. Hide admin reviewer information from applicants
+
+### Phase 4: Compliance & Documentation
+1. Update privacy policy to disclose tracking
+2. Implement consent mechanisms for analytics
+3. Consider anonymization for unauthenticated viewers
+
+---
+
+## Technical Implementation Details
+
+### Fix for Public Profile Exposure
+
+The fix requires creating a new secure view that excludes sensitive columns:
+
+```sql
+-- Drop existing view if using SECURITY DEFINER
+DROP VIEW IF EXISTS public.public_profiles;
+
+-- Create secure view with invoker security
+CREATE VIEW public.public_profiles
+WITH (security_invoker=on) AS
+SELECT 
+    id,
+    user_id,
+    username,
+    full_name,
+    avatar_url,
+    banner_url,
+    background_url,
+    bio,
+    website,
+    social_links,
+    is_creator,
+    is_editor,
+    is_seller,
+    verified,
+    show_recent_uploads,
+    editor_about,
+    editor_city,
+    editor_country,
+    editor_services,
+    editor_languages,
+    editor_hourly_rate_cents,
+    editor_social_links,
+    global_font,
+    global_custom_font,
+    created_at,
+    updated_at
+FROM public.profiles
+WHERE is_creator = true OR is_editor = true;
+
+-- Grant appropriate access
+GRANT SELECT ON public.public_profiles TO anon, authenticated;
+```
+
+### Sensitive Fields to Always Exclude from Public Access
+- email
+- phone
+- stripe_account_id
+- stripe_onboarding_complete
+- subscription_stripe_id
+- payoneer_payee_id
+- payoneer_email
+- payoneer_status
+- resend_vault_secret_id
+- mfa_enabled
+- suspended
+- seller_email_verified
+- seller_support_email
+- pending_email
+- credit_balance
+
+---
+
+## Summary
+
+| Category | Count | Action Required |
+|----------|-------|-----------------|
+| Critical | 6 | Immediate |
+| High | 4 | This week |
+| Medium | 5 | Within 2 weeks |
+| Low/Info | 6 | Within 1 month |
+
+The most urgent priority is fixing the public exposure of user PII and payment data in the profiles table. This represents a significant privacy risk that should be addressed immediately.
