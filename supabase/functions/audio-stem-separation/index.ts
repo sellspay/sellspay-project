@@ -250,18 +250,7 @@ serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
       );
 
-      // Deduct 1 credit
-      const { error: deductError } = await serviceClient
-        .from("profiles")
-        .update({ credit_balance: supabaseClient.rpc("", {}) }) // Use RPC for atomic update
-        .eq("user_id", user.id);
-
-      // Alternative: Use raw SQL for atomic decrement
-      await serviceClient.rpc("", {}).catch(() => {
-        // Fallback: manual update
-      });
-
-      // Simple approach: fetch and update
+      // Fetch current balance and update
       const { data: currentProfile } = await serviceClient
         .from("profiles")
         .select("credit_balance")
