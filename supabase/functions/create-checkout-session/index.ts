@@ -123,10 +123,10 @@ serve(async (req) => {
       );
     }
 
-    // Fetch creator profile - NO LONGER REQUIRE STRIPE ONBOARDING
+    // Fetch creator profile to get user_id and subscription_tier
     const { data: creatorProfile, error: creatorError } = await supabaseAdmin
       .from("profiles")
-      .select("id, stripe_account_id, stripe_onboarding_complete, subscription_tier")
+      .select("id, user_id, subscription_tier")
       .eq("id", product.creator_id)
       .single();
 
@@ -138,8 +138,22 @@ serve(async (req) => {
       );
     }
 
+    // Get creator's seller config from private schema
+    const { data: sellerConfig, error: configError } = await supabaseAdmin.rpc(
+      "get_seller_config",
+      { p_user_id: creatorProfile.user_id }
+    );
+
+    if (configError) {
+      logStep("Error getting seller config", { error: configError.message });
+    }
+
+    // Extract Stripe info from seller config
+    const stripeAccountId = sellerConfig?.[0]?.stripe_account_id || null;
+    const stripeOnboardingComplete = sellerConfig?.[0]?.stripe_onboarding_complete || false;
+
     // Determine if creator has Stripe connected for direct transfer
-    const creatorHasStripe = creatorProfile.stripe_account_id && creatorProfile.stripe_onboarding_complete;
+    const creatorHasStripe = stripeAccountId && stripeOnboardingComplete;
     
     // Determine platform fee rate based on creator's subscription tier
     const creatorTier = creatorProfile.subscription_tier?.toLowerCase() || null;
@@ -254,16 +268,16 @@ serve(async (req) => {
 
     // If creator has Stripe connected, use direct transfer (immediate payout)
     // Otherwise, payment goes to platform and creator withdraws later
-    if (creatorHasStripe) {
+    if (creatorHasStripe && stripeAccountId) {
       logStep("Creating checkout with Stripe Connect (direct transfer)", {
-        destinationAccount: creatorProfile.stripe_account_id,
+        destinationAccount: stripeAccountId,
         applicationFee: totalApplicationFee,
       });
       
       sessionConfig.payment_intent_data = {
         application_fee_amount: totalApplicationFee,
         transfer_data: {
-          destination: creatorProfile.stripe_account_id!,
+          destination: stripeAccountId,
         },
       };
     } else {
