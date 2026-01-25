@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -113,6 +113,8 @@ export default function Admin() {
   const [deletingApplicationId, setDeletingApplicationId] = useState<string | null>(null);
   const [deletingCreatorAppId, setDeletingCreatorAppId] = useState<string | null>(null);
   const [showSpotlightDialog, setShowSpotlightDialog] = useState(false);
+  const [revokingEditorId, setRevokingEditorId] = useState<string | null>(null);
+  const [revokingCreatorId, setRevokingCreatorId] = useState<string | null>(null);
   
   // Stats
   const [totalUsers, setTotalUsers] = useState(0);
@@ -454,6 +456,77 @@ export default function Admin() {
       toast.error("Failed to delete application");
     } finally {
       setDeletingCreatorAppId(null);
+    }
+  };
+
+  // Revoke editor status
+  const handleRevokeEditor = async (application: EditorApplication) => {
+    setRevokingEditorId(application.id);
+    try {
+      // Remove editor status from profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          is_editor: false,
+          editor_hourly_rate_cents: null,
+          editor_services: null,
+          editor_languages: null,
+          editor_country: null,
+          editor_city: null,
+          editor_about: null
+        })
+        .eq('id', application.user_id);
+
+      if (profileError) throw profileError;
+
+      // Delete the application record
+      const { error: deleteError } = await supabase
+        .from('editor_applications')
+        .delete()
+        .eq('id', application.id);
+
+      if (deleteError) throw deleteError;
+
+      toast.success("Editor status revoked successfully");
+      fetchData();
+    } catch (error) {
+      console.error("Error revoking editor:", error);
+      toast.error("Failed to revoke editor status");
+    } finally {
+      setRevokingEditorId(null);
+    }
+  };
+
+  // Revoke verified creator status
+  const handleRevokeCreator = async (application: CreatorApplication) => {
+    setRevokingCreatorId(application.id);
+    try {
+      // Remove creator and verified status from profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          is_creator: false,
+          verified: false
+        })
+        .eq('id', application.user_id);
+
+      if (profileError) throw profileError;
+
+      // Delete the application record
+      const { error: deleteError } = await supabase
+        .from('creator_applications')
+        .delete()
+        .eq('id', application.id);
+
+      if (deleteError) throw deleteError;
+
+      toast.success("Creator verification revoked successfully");
+      fetchData();
+    } catch (error) {
+      console.error("Error revoking creator:", error);
+      toast.error("Failed to revoke creator status");
+    } finally {
+      setRevokingCreatorId(null);
     }
   };
 
@@ -1207,6 +1280,22 @@ export default function Admin() {
                                 </Button>
                               </>
                             )}
+                            {app.status === 'approved' && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleRevokeEditor(app)}
+                                disabled={revokingEditorId === app.id}
+                                title="Revoke Editor Status"
+                              >
+                                {revokingEditorId === app.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <UserMinus className="w-4 h-4" />
+                                )}
+                              </Button>
+                            )}
                             {app.status === 'rejected' && canBeRemoved && (
                               <Button
                                 size="icon"
@@ -1368,6 +1457,18 @@ export default function Admin() {
                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => handleCreatorAppAction(app.id, 'approve')}><CheckCircle className="w-4 h-4" /></Button>
                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => handleCreatorAppAction(app.id, 'reject')}><XCircle className="w-4 h-4" /></Button>
                               </>
+                            )}
+                            {app.status === 'approved' && (
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                onClick={() => handleRevokeCreator(app)} 
+                                disabled={revokingCreatorId === app.id}
+                                title="Revoke Creator Status"
+                              >
+                                {revokingCreatorId === app.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
+                              </Button>
                             )}
                             {app.status === 'rejected' && canBeRemoved && (
                               <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteCreatorApp(app.id)} disabled={deletingCreatorAppId === app.id}>
