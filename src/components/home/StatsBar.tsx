@@ -14,9 +14,23 @@ interface StatItem {
 function AnimatedCounter({ target, suffix, isVisible }: { target: number; suffix: string; isVisible: boolean }) {
   const [count, setCount] = useState(0);
   const hasAnimated = useRef(false);
+  const targetRef = useRef(target);
+  
+  // Keep track of current target for animation
+  useEffect(() => {
+    targetRef.current = target;
+  }, [target]);
 
   useEffect(() => {
-    if (!isVisible || hasAnimated.current) return;
+    // Wait for both visibility AND valid target data
+    if (!isVisible || target === 0) return;
+    
+    // If already animated, just update to new target
+    if (hasAnimated.current) {
+      setCount(target);
+      return;
+    }
+    
     hasAnimated.current = true;
 
     const duration = 2000;
@@ -28,7 +42,7 @@ function AnimatedCounter({ target, suffix, isVisible }: { target: number; suffix
       
       // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(eased * target));
+      setCount(Math.floor(eased * targetRef.current));
 
       if (progress < 1) {
         requestAnimationFrame(animate);
