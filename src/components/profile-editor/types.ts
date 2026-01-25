@@ -98,6 +98,8 @@ export interface ImageWithTextContent {
   buttonLinkType?: 'external' | 'product' | 'profile'; // Link destination type
   buttonProductId?: string; // If linking to a product
   layout?: 'hero' | 'side-by-side' | 'overlay'; // For different preset layouts
+  buttonColor?: string; // Custom button background color
+  buttonTextColor?: string; // Custom button text color
 }
 
 export interface GalleryContent {
