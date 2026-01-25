@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Heart, Reply, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,20 +70,25 @@ export function CommentItem({
 
   return (
     <div className={cn("flex gap-3", isReply && "ml-10")}>
-      <Avatar className="w-8 h-8 flex-shrink-0">
-        <AvatarImage src={comment.user?.avatar_url || undefined} />
-        <AvatarFallback className="text-xs">
-          {comment.user?.username?.[0]?.toUpperCase() || "?"}
-        </AvatarFallback>
-      </Avatar>
+      <Link to={comment.user?.username ? `/@${comment.user.username}` : '#'}>
+        <Avatar className="w-8 h-8 flex-shrink-0 hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer">
+          <AvatarImage src={comment.user?.avatar_url || undefined} />
+          <AvatarFallback className="text-xs">
+            {comment.user?.username?.[0]?.toUpperCase() || "?"}
+          </AvatarFallback>
+        </Avatar>
+      </Link>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium flex items-center gap-1">
+          <Link 
+            to={comment.user?.username ? `/@${comment.user.username}` : '#'}
+            className="text-sm font-medium flex items-center gap-1 hover:text-primary transition-colors"
+          >
             @{comment.user?.username || "anonymous"}
             {comment.user?.verified && (
               <BadgeCheck className="w-3 h-3 text-primary" />
             )}
-          </span>
+          </Link>
           <span className="text-xs text-muted-foreground">
             {formatDate(comment.created_at)}
           </span>
