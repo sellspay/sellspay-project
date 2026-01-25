@@ -1231,6 +1231,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["id"]
+          },
         ]
       }
       saved_products: {
@@ -1318,6 +1325,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "subscription_plan_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
+            referencedColumns: ["id"]
+          },
         ]
       }
       support_messages: {
@@ -1374,6 +1388,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "public_products"
             referencedColumns: ["id"]
           },
           {
@@ -1709,6 +1730,93 @@ export type Database = {
           user_id?: string | null
           username?: string | null
           verified?: boolean | null
+        }
+        Relationships: []
+      }
+      public_products: {
+        Row: {
+          attachments: Json | null
+          benefits: string[] | null
+          cover_image_url: string | null
+          created_at: string | null
+          creator_id: string | null
+          currency: string | null
+          description: string | null
+          download_url: string | null
+          duration_label: string | null
+          excerpt: string | null
+          featured: boolean | null
+          id: string | null
+          locked: boolean | null
+          name: string | null
+          original_filename: string | null
+          preview_video_url: string | null
+          price_cents: number | null
+          pricing_type: string | null
+          product_type: string | null
+          slug: string | null
+          status: string | null
+          subscription_access: string | null
+          subscription_price_cents: number | null
+          tags: string[] | null
+          updated_at: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          attachments?: Json | null
+          benefits?: string[] | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          creator_id?: string | null
+          currency?: string | null
+          description?: string | null
+          download_url?: string | null
+          duration_label?: string | null
+          excerpt?: string | null
+          featured?: boolean | null
+          id?: string | null
+          locked?: boolean | null
+          name?: string | null
+          original_filename?: string | null
+          preview_video_url?: string | null
+          price_cents?: number | null
+          pricing_type?: string | null
+          product_type?: string | null
+          slug?: string | null
+          status?: string | null
+          subscription_access?: string | null
+          subscription_price_cents?: number | null
+          tags?: string[] | null
+          updated_at?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          attachments?: Json | null
+          benefits?: string[] | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          creator_id?: string | null
+          currency?: string | null
+          description?: string | null
+          download_url?: string | null
+          duration_label?: string | null
+          excerpt?: string | null
+          featured?: boolean | null
+          id?: string | null
+          locked?: boolean | null
+          name?: string | null
+          original_filename?: string | null
+          preview_video_url?: string | null
+          price_cents?: number | null
+          pricing_type?: string | null
+          product_type?: string | null
+          slug?: string | null
+          status?: string | null
+          subscription_access?: string | null
+          subscription_price_cents?: number | null
+          tags?: string[] | null
+          updated_at?: string | null
+          youtube_url?: string | null
         }
         Relationships: []
       }
