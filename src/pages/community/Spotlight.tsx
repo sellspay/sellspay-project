@@ -59,7 +59,7 @@ export default function Spotlight() {
 
       const profileIds = spotlightsData.map(s => s.profile_id);
       const { data: profilesData } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id, user_id, username, full_name, avatar_url, verified, bio')
         .in('id', profileIds);
 

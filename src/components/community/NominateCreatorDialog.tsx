@@ -59,9 +59,9 @@ export function NominateCreatorDialog({ open, onOpenChange }: NominateCreatorDia
   const { data: creators = [], isLoading } = useQuery({
     queryKey: ['top-creators-for-nomination', currentProfile?.id],
     queryFn: async () => {
-      // Get all creators
+      // Get all creators from public_profiles (accessible to all users)
       const { data: creatorsData, error } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id, user_id, username, full_name, avatar_url, verified')
         .eq('is_creator', true)
         .not('username', 'is', null);

@@ -130,10 +130,10 @@ export default function Community() {
 
       if (!threadsData || threadsData.length === 0) return [];
 
-      // Fetch authors
+      // Fetch authors from public_profiles view (accessible to all users including anonymous)
       const authorIds = [...new Set(threadsData.map((t) => t.author_id))];
       const { data: authorsData } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id, username, full_name, avatar_url, verified')
         .in('id', authorIds);
 
