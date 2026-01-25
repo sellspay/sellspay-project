@@ -16,6 +16,7 @@ import {
   Lightbulb
 } from "lucide-react";
 import { SFXWaveform } from "@/components/tools/SFXWaveform";
+import { useCredits } from "@/hooks/useCredits";
 
 export default function SFXGenerator() {
   const [prompt, setPrompt] = useState("");
@@ -25,6 +26,8 @@ export default function SFXGenerator() {
   const [result, setResult] = useState<{ audio_url: string; filename: string } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  const { deductCredit, creditBalance, canUseTool } = useCredits();
 
   const handleEnhancePrompt = async () => {
     if (!prompt.trim()) {
@@ -57,10 +60,24 @@ export default function SFXGenerator() {
       return;
     }
 
+    // Check if user can use this pro tool
+    if (!canUseTool("sfx-generator")) {
+      toast.error("Insufficient credits. Please purchase more credits to continue.");
+      return;
+    }
+
     setIsGenerating(true);
     setResult(null);
 
     try {
+      // Deduct credit FIRST before processing
+      const deductResult = await deductCredit("sfx-generator");
+      if (!deductResult.success) {
+        toast.error(deductResult.error || "Failed to deduct credit");
+        setIsGenerating(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("generate-sfx", {
         body: { prompt: prompt.trim(), duration },
       });
