@@ -1207,7 +1207,8 @@ export default function ProductDetail() {
   const getVideoUrl = (path: string | null) => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
-    return `https://ocwvpzvbnepqmqkkrqcv.supabase.co/storage/v1/object/public/product-media/${path}`;
+    const { data } = supabase.storage.from('product-media').getPublicUrl(path);
+    return data?.publicUrl || null;
   };
 
   const handleDelete = async () => {
