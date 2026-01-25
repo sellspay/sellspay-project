@@ -15,10 +15,17 @@ const logStep = (step: string, details?: any) => {
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// Fee constants
-const PLATFORM_FEE_PERCENT = 0.05; // 5% platform fee
+// Base fee constants
 const STRIPE_PERCENT_FEE = 0.029; // 2.9% Stripe fee
 const STRIPE_FIXED_FEE_CENTS = 30; // $0.30 Stripe fixed fee
+
+// Tier-based platform fee rates
+const TIER_FEE_RATES: Record<string, number> = {
+  'starter': 0.05, // 5%
+  'pro': 0.03,     // 3%
+  'enterprise': 0, // 0%
+};
+const DEFAULT_FEE_RATE = 0.05; // 5% for no subscription
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -120,28 +127,61 @@ serve(async (req) => {
       );
     }
 
-    // Calculate amounts - use safe integer arithmetic
-    // Maximum: 100 hours * $1000/hr = $100,000 = 10,000,000 cents (safe for JS integers)
+    // Calculate amounts
     const grossAmount = hours * hourlyRateCents;
     
-    // Final safety check on total
     if (grossAmount > 10000000) { // Max $100,000
       return new Response(
         JSON.stringify({ error: "Total amount exceeds maximum allowed" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Get editor's profile with subscription tier
+    const { data: editorProfile, error: editorError } = await supabaseClient
+      .from("profiles")
+      .select("stripe_account_id, stripe_onboarding_complete, full_name, username, subscription_tier")
+      .eq("id", editorId)
+      .single();
+
+    if (editorError) {
+      return new Response(
+        JSON.stringify({ error: `Failed to fetch editor profile: ${editorError.message}` }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify editor has completed Stripe onboarding
+    if (!editorProfile?.stripe_account_id || !editorProfile?.stripe_onboarding_complete) {
+      return new Response(
+        JSON.stringify({ error: "Editor has not completed Stripe onboarding" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Determine platform fee rate based on editor's subscription tier
+    const editorTier = editorProfile.subscription_tier?.toLowerCase() || null;
+    const platformFeeRate = editorTier && TIER_FEE_RATES[editorTier] !== undefined 
+      ? TIER_FEE_RATES[editorTier] 
+      : DEFAULT_FEE_RATE;
+
+    logStep("Editor profile fetched", { 
+      hasStripeAccount: !!editorProfile?.stripe_account_id,
+      onboardingComplete: editorProfile?.stripe_onboarding_complete,
+      subscriptionTier: editorTier,
+      platformFeeRate: `${platformFeeRate * 100}%`
+    });
     
     // Calculate Stripe's processing fee (2.9% + $0.30)
     const stripeProcessingFee = Math.round(grossAmount * STRIPE_PERCENT_FEE) + STRIPE_FIXED_FEE_CENTS;
     
-    // Calculate platform's 5% fee
-    const platformFee = Math.round(grossAmount * PLATFORM_FEE_PERCENT);
+    // Calculate platform fee based on editor's tier
+    const platformFee = Math.round(grossAmount * platformFeeRate);
     
-    // Total fees that need to be covered (Stripe + Platform)
+    // Total fees
     const totalApplicationFee = stripeProcessingFee + platformFee;
     
-    // Editor receives: gross - Stripe fee - platform fee
+    // Editor receives: gross - all fees
     const editorPayoutCents = grossAmount - totalApplicationFee;
     
     // Ensure editor payout is positive
@@ -156,37 +196,11 @@ serve(async (req) => {
       grossAmount: grossAmount,
       stripeProcessingFee: stripeProcessingFee,
       platformFee: platformFee,
+      platformFeeRate: `${platformFeeRate * 100}%`,
+      editorTier: editorTier || "none",
       totalApplicationFee: totalApplicationFee,
       editorPayout: editorPayoutCents,
-      platformFeePercentage: "5%",
-      stripeFeeFormula: "2.9% + $0.30"
     });
-
-    // Get editor's profile to check for Stripe account
-    const { data: editorProfile, error: editorError } = await supabaseClient
-      .from("profiles")
-      .select("stripe_account_id, stripe_onboarding_complete, full_name, username")
-      .eq("id", editorId)
-      .single();
-
-    if (editorError) {
-      return new Response(
-        JSON.stringify({ error: `Failed to fetch editor profile: ${editorError.message}` }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    logStep("Editor profile fetched", { 
-      hasStripeAccount: !!editorProfile?.stripe_account_id,
-      onboardingComplete: editorProfile?.stripe_onboarding_complete 
-    });
-
-    // Verify editor has completed Stripe onboarding
-    if (!editorProfile?.stripe_account_id || !editorProfile?.stripe_onboarding_complete) {
-      return new Response(
-        JSON.stringify({ error: "Editor has not completed Stripe onboarding" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
@@ -242,6 +256,8 @@ serve(async (req) => {
         gross_amount_cents: grossAmount.toString(),
         stripe_fee_cents: stripeProcessingFee.toString(),
         platform_fee_cents: platformFee.toString(),
+        platform_fee_rate: platformFeeRate.toString(),
+        editor_tier: editorTier || "none",
         editor_payout_cents: editorPayoutCents.toString(),
       },
     });
@@ -251,11 +267,11 @@ serve(async (req) => {
       url: session.url,
       grossAmount: grossAmount,
       applicationFee: totalApplicationFee,
-      editorPayout: editorPayoutCents
+      editorPayout: editorPayoutCents,
+      editorTier: editorTier || "none"
     });
 
     // Create booking record with pending status
-    // Note: We store the net payout (after all fees) in editor_payout_cents
     const { data: booking, error: bookingError } = await supabaseClient
       .from("editor_bookings")
       .insert({
@@ -263,7 +279,7 @@ serve(async (req) => {
         buyer_id: buyerId,
         hours: hours,
         total_amount_cents: grossAmount,
-        platform_fee_cents: platformFee + stripeProcessingFee, // Total fees deducted
+        platform_fee_cents: platformFee + stripeProcessingFee,
         editor_payout_cents: editorPayoutCents,
         stripe_checkout_session_id: session.id,
         status: "pending",
@@ -273,7 +289,6 @@ serve(async (req) => {
 
     if (bookingError) {
       logStep("Warning: Failed to create booking record", { error: bookingError.message });
-      // Don't throw - let the checkout continue, webhook will handle it
     } else {
       logStep("Booking record created", { bookingId: booking.id });
     }
