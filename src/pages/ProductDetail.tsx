@@ -546,9 +546,9 @@ export default function ProductDetail() {
         // Fetch user info, likes, and replies for each comment
         const commentsWithDetails = await Promise.all(
           data.map(async (comment) => {
-            // Get user profile
+            // Get user profile - use public_profiles view for public access
             const { data: profile } = await supabase
-              .from("profiles")
+              .from("public_profiles")
               .select("id, username, full_name, avatar_url, verified")
               .eq("id", comment.user_id)
               .maybeSingle();
@@ -563,7 +563,7 @@ export default function ProductDetail() {
             const likesWithUsers = await Promise.all(
               (likes || []).map(async (like) => {
                 const { data: likeUser } = await supabase
-                  .from("profiles")
+                  .from("public_profiles")
                   .select("id, username, full_name, avatar_url, verified")
                   .eq("id", like.user_id)
                   .maybeSingle();
@@ -582,7 +582,7 @@ export default function ProductDetail() {
             const repliesWithDetails = await Promise.all(
               (replies || []).map(async (reply) => {
                 const { data: replyProfile } = await supabase
-                  .from("profiles")
+                  .from("public_profiles")
                   .select("id, username, full_name, avatar_url, verified")
                   .eq("id", reply.user_id)
                   .maybeSingle();
@@ -595,7 +595,7 @@ export default function ProductDetail() {
                 const replyLikesWithUsers = await Promise.all(
                   (replyLikes || []).map(async (like) => {
                     const { data: likeUser } = await supabase
-                      .from("profiles")
+                      .from("public_profiles")
                       .select("id, username, full_name, avatar_url, verified")
                       .eq("id", like.user_id)
                       .maybeSingle();
