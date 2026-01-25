@@ -15,6 +15,7 @@ import { useCredits } from '@/hooks/useCredits';
 import platformLogo from '@/assets/ep-logo.png';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { TopUpDialog } from '@/components/credits/TopUpDialog';
+import EditorChatIcon from '@/components/chat/EditorChatIcon';
 
 const navItems = [
   { name: 'Store', path: '/products' },
@@ -102,6 +103,9 @@ export default function Header() {
                 </span>
               </button>
             )}
+
+            {/* Editor Chat Icon - Only show when user has active booking chat */}
+            {user && <EditorChatIcon />}
 
             {/* Notification Bell - Only show when logged in */}
             {user && <NotificationBell />}
