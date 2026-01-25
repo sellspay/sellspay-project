@@ -842,8 +842,8 @@ const ProfilePage: React.FC = () => {
         toast.success(`Now following @${profile.username}`);
 
         // Create notification for the followed user
-        // Fetch actor username for proper redirect
-        const { data: actorProfile } = await supabase.from('profiles').select('username').eq('id', currentUserProfileId).maybeSingle();
+        // Fetch actor username for proper redirect (use public view to bypass RLS)
+        const { data: actorProfile } = await supabase.from('safe_public_identities').select('username').eq('id', currentUserProfileId).maybeSingle();
         const actorUsername = actorProfile?.username;
         
         await createNotification({
