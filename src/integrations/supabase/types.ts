@@ -395,6 +395,42 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_topups: {
+        Row: {
+          created_at: string | null
+          credits: number
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price_cents: number
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          credits: number
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price_cents: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          credits?: number
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price_cents?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+        }
+        Relationships: []
+      }
       credit_transactions: {
         Row: {
           amount: number
@@ -904,6 +940,8 @@ export type Database = {
           social_links: Json | null
           stripe_account_id: string | null
           stripe_onboarding_complete: boolean | null
+          subscription_stripe_id: string | null
+          subscription_tier: string | null
           suspended: boolean | null
           updated_at: string | null
           user_id: string
@@ -951,6 +989,8 @@ export type Database = {
           social_links?: Json | null
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
+          subscription_stripe_id?: string | null
+          subscription_tier?: string | null
           suspended?: boolean | null
           updated_at?: string | null
           user_id: string
@@ -998,6 +1038,8 @@ export type Database = {
           social_links?: Json | null
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
+          subscription_stripe_id?: string | null
+          subscription_tier?: string | null
           suspended?: boolean | null
           updated_at?: string | null
           user_id?: string
