@@ -277,7 +277,7 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
                 to={thread.author?.username ? `/@${thread.author.username}` : '#'}
                 className="font-bold text-foreground hover:text-primary transition-colors"
               >
-                {thread.author?.full_name || thread.author?.username || 'Unknown'}
+                @{thread.author?.username || 'unknown'}
               </Link>
               {thread.author?.verified && <VerifiedBadge size="sm" isOwner={authorIsOwner} />}
               {thread.is_pinned && (
@@ -286,7 +286,6 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
                   Pinned
                 </Badge>
               )}
-              <span className="text-muted-foreground text-sm">@{thread.author?.username || 'unknown'}</span>
               <span className="text-muted-foreground/30 text-sm">·</span>
               <span className="text-muted-foreground/70 text-sm">
                 {formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}
