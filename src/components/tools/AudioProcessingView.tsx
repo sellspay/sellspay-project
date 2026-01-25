@@ -42,6 +42,7 @@ export function AudioProcessingView({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showOutOfCredits, setShowOutOfCredits] = useState(false);
+  const isProcessingRef = useRef(false); // Guard against double-clicks/drops
 
   const { deductCredit, canUseTool } = useCredits();
 
@@ -56,21 +57,36 @@ export function AudioProcessingView({
   }, []);
 
   const processWithCreditCheck = useCallback(async (audioFile: File) => {
+    // CRITICAL: Guard against double-clicks/drops using ref (state updates are async)
+    if (isProcessingRef.current) {
+      console.log("Processing already in progress, ignoring duplicate request");
+      return;
+    }
+
     // Check if user can use this pro tool - show dialog instead of toast
     if (!canUseTool(toolId)) {
       setShowOutOfCredits(true);
       return;
     }
 
-    // Deduct credit FIRST before processing
-    const deductResult = await deductCredit(toolId);
-    if (!deductResult.success) {
-      toast.error(deductResult.error || "Failed to deduct credit");
-      return;
-    }
+    // Lock immediately with ref before async operations
+    isProcessingRef.current = true;
 
-    // Proceed with audio processing
-    processAudioWithFile(audioFile);
+    try {
+      // Deduct credit FIRST before processing
+      const deductResult = await deductCredit(toolId);
+      if (!deductResult.success) {
+        toast.error(deductResult.error || "Failed to deduct credit");
+        isProcessingRef.current = false;
+        return;
+      }
+
+      // Proceed with audio processing
+      processAudioWithFile(audioFile);
+    } catch (err) {
+      isProcessingRef.current = false;
+      throw err;
+    }
   }, [canUseTool, deductCredit, toolId]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -179,6 +195,7 @@ export function AudioProcessingView({
     } finally {
       setIsProcessing(false);
       setUploadProgress(0);
+      isProcessingRef.current = false; // Reset the guard
     }
   };
 
