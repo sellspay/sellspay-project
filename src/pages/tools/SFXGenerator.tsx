@@ -28,6 +28,7 @@ export default function SFXGenerator() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showOutOfCredits, setShowOutOfCredits] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isGeneratingRef = useRef(false); // Guard against double-clicks
   
   const { deductCredit, creditBalance, canUseTool } = useCredits();
 
@@ -62,12 +63,20 @@ export default function SFXGenerator() {
       return;
     }
 
+    // CRITICAL: Guard against double-clicks using ref (state updates are async)
+    if (isGeneratingRef.current) {
+      console.log("Generation already in progress, ignoring duplicate click");
+      return;
+    }
+
     // Check if user can use this pro tool - show dialog instead of toast
     if (!canUseTool("sfx-generator")) {
       setShowOutOfCredits(true);
       return;
     }
 
+    // Lock immediately with ref before async operations
+    isGeneratingRef.current = true;
     setIsGenerating(true);
     setResult(null);
 
@@ -77,6 +86,7 @@ export default function SFXGenerator() {
       if (!deductResult.success) {
         toast.error(deductResult.error || "Failed to deduct credit");
         setIsGenerating(false);
+        isGeneratingRef.current = false;
         return;
       }
 
@@ -97,6 +107,7 @@ export default function SFXGenerator() {
       toast.error(err instanceof Error ? err.message : "Failed to generate sound effect");
     } finally {
       setIsGenerating(false);
+      isGeneratingRef.current = false;
     }
   };
 
