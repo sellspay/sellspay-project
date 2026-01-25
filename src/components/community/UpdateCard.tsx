@@ -30,7 +30,7 @@ import {
   Bot,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import platformLogo from '@/assets/hero-logo.png';
+import platformLogo from '@/assets/ep-logo.png';
 
 interface UpdateCardProps {
   update: {

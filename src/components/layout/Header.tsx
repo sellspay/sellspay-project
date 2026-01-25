@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, CreditCard, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { useCredits } from '@/hooks/useCredits';
-import platformLogo from '@/assets/hero-logo.png';
+import platformLogo from '@/assets/ep-logo.png';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { TopUpDialog } from '@/components/credits/TopUpDialog';
 
