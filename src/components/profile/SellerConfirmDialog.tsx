@@ -46,7 +46,10 @@ export function SellerConfirmDialog({
         <AlertDialogFooter className="sm:justify-center gap-2">
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
           <AlertDialogAction 
-            onClick={onConfirm} 
+            onClick={(e) => {
+              e.preventDefault();
+              onConfirm();
+            }} 
             disabled={loading}
             className="bg-primary hover:bg-primary/90"
           >

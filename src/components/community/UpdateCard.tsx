@@ -30,7 +30,7 @@ import {
   Bot,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import navbarLogo from '@/assets/navbar-logo.png';
+import platformLogo from '@/assets/hero-logo.png';
 
 interface UpdateCardProps {
   update: {
@@ -114,7 +114,7 @@ export function UpdateCard({ update, isOwner }: UpdateCardProps) {
             <div className="flex items-center gap-3">
               {/* Bot Avatar with amber glow */}
               <Avatar className="h-10 w-10 ring-2 ring-amber-500/50 shadow-lg shadow-amber-500/20">
-                <AvatarImage src={navbarLogo} className="object-contain p-0.5" />
+                <AvatarImage src={platformLogo} className="object-contain p-0.5" />
                 <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-500 text-white font-bold">
                   EP
                 </AvatarFallback>
