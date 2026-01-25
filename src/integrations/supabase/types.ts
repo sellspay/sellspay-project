@@ -364,6 +364,13 @@ export type Database = {
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "creator_subscription_plans_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
         ]
       }
       credit_packages: {
@@ -701,6 +708,13 @@ export type Database = {
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "platform_updates_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
         ]
       }
       pro_tool_subscriptions: {
@@ -963,6 +977,13 @@ export type Database = {
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profile_sections_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profile_views: {
@@ -1155,6 +1176,7 @@ export type Database = {
           id: string
           is_creator: boolean | null
           is_editor: boolean | null
+          is_owner: boolean | null
           updated_at: string
           user_id: string
           username: string | null
@@ -1166,6 +1188,7 @@ export type Database = {
           id: string
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_owner?: boolean | null
           updated_at?: string
           user_id: string
           username?: string | null
@@ -1177,6 +1200,7 @@ export type Database = {
           id?: string
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_owner?: boolean | null
           updated_at?: string
           user_id?: string
           username?: string | null
@@ -1250,6 +1274,13 @@ export type Database = {
             columns: ["buyer_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
             referencedColumns: ["id"]
           },
           {
@@ -1467,6 +1498,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "support_messages_customer_profile_id_fkey"
+            columns: ["customer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "support_messages_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -1499,6 +1537,13 @@ export type Database = {
             columns: ["seller_profile_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_messages_seller_profile_id_fkey"
+            columns: ["seller_profile_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
             referencedColumns: ["id"]
           },
         ]
@@ -1797,6 +1842,7 @@ export type Database = {
           id: string | null
           is_creator: boolean | null
           is_editor: boolean | null
+          is_owner: boolean | null
           user_id: string | null
           username: string | null
           verified: boolean | null
@@ -1807,6 +1853,7 @@ export type Database = {
           id?: string | null
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_owner?: never
           user_id?: string | null
           username?: string | null
           verified?: boolean | null
@@ -1817,6 +1864,7 @@ export type Database = {
           id?: string | null
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_owner?: never
           user_id?: string | null
           username?: string | null
           verified?: boolean | null
@@ -1830,6 +1878,8 @@ export type Database = {
           creator_id: string | null
           currency: string | null
           description: string | null
+          duration_label: string | null
+          excerpt: string | null
           featured: boolean | null
           id: string | null
           name: string | null
@@ -1850,6 +1900,8 @@ export type Database = {
           creator_id?: string | null
           currency?: string | null
           description?: string | null
+          duration_label?: string | null
+          excerpt?: string | null
           featured?: boolean | null
           id?: string | null
           name?: string | null
@@ -1870,6 +1922,8 @@ export type Database = {
           creator_id?: string | null
           currency?: string | null
           description?: string | null
+          duration_label?: string | null
+          excerpt?: string | null
           featured?: boolean | null
           id?: string | null
           name?: string | null
@@ -1901,9 +1955,12 @@ export type Database = {
           editor_services: string[] | null
           editor_social_links: Json | null
           full_name: string | null
+          global_custom_font: Json | null
+          global_font: string | null
           id: string | null
           is_creator: boolean | null
           is_editor: boolean | null
+          is_owner: boolean | null
           show_recent_uploads: boolean | null
           social_links: Json | null
           updated_at: string | null
@@ -1926,9 +1983,12 @@ export type Database = {
           editor_services?: string[] | null
           editor_social_links?: Json | null
           full_name?: string | null
+          global_custom_font?: Json | null
+          global_font?: string | null
           id?: string | null
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_owner?: never
           show_recent_uploads?: boolean | null
           social_links?: Json | null
           updated_at?: string | null
@@ -1951,9 +2011,12 @@ export type Database = {
           editor_services?: string[] | null
           editor_social_links?: Json | null
           full_name?: string | null
+          global_custom_font?: Json | null
+          global_font?: string | null
           id?: string | null
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_owner?: never
           show_recent_uploads?: boolean | null
           social_links?: Json | null
           updated_at?: string | null
@@ -1971,6 +2034,7 @@ export type Database = {
           id: string | null
           is_creator: boolean | null
           is_editor: boolean | null
+          is_owner: boolean | null
           username: string | null
           verified: boolean | null
         }
@@ -1980,6 +2044,7 @@ export type Database = {
           id?: string | null
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_owner?: never
           username?: string | null
           verified?: boolean | null
         }
@@ -1989,6 +2054,7 @@ export type Database = {
           id?: string | null
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_owner?: never
           username?: string | null
           verified?: boolean | null
         }

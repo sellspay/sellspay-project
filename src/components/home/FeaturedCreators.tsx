@@ -24,10 +24,10 @@ export function FeaturedCreators() {
 
   useEffect(() => {
     async function fetchCreators() {
-      // Use public_profiles view to ensure visibility for all users (including anonymous)
+      // Use public_profiles view - includes is_owner computed field
       const { data, error } = await supabase
         .from('public_profiles')
-        .select('id, user_id, username, full_name, avatar_url, verified, bio')
+        .select('id, user_id, username, full_name, avatar_url, verified, bio, is_owner')
         .eq('is_creator', true)
         .limit(6);
 
@@ -38,20 +38,9 @@ export function FeaturedCreators() {
       }
 
       if (data && data.length > 0) {
-        // Fetch owner status for all creators using RPC (user_roles is locked down)
-        const userIds = data.map(c => c.user_id);
-        const ownerStatusMap = new Map<string, boolean>();
-        
-        await Promise.all(
-          userIds.map(async (userId) => {
-            const { data: isOwner } = await supabase.rpc('is_owner', { p_user_id: userId });
-            ownerStatusMap.set(userId, isOwner === true);
-          })
-        );
-        
         setCreators(data.map(creator => ({
           ...creator,
-          isAdmin: ownerStatusMap.get(creator.user_id) === true
+          isAdmin: (creator as any).is_owner === true
         })));
       } else {
         setCreators([]);

@@ -59,10 +59,10 @@ export function NominateCreatorDialog({ open, onOpenChange }: NominateCreatorDia
   const { data: creators = [], isLoading } = useQuery({
     queryKey: ['top-creators-for-nomination', currentProfile?.id],
     queryFn: async () => {
-      // Get all creators from public_profiles (accessible to all users)
+      // Get all creators from public_profiles - includes is_owner computed field
       const { data: creatorsData, error } = await supabase
         .from('public_profiles')
-        .select('id, user_id, username, full_name, avatar_url, verified')
+        .select('id, user_id, username, full_name, avatar_url, verified, is_owner')
         .eq('is_creator', true)
         .not('username', 'is', null);
 
@@ -82,14 +82,6 @@ export function NominateCreatorDialog({ open, onOpenChange }: NominateCreatorDia
         followerCountMap.set(f.following_id, (followerCountMap.get(f.following_id) || 0) + 1);
       });
 
-      // Check owner status using secure RPC for each user
-      const userIds = creatorsData.map(c => c.user_id).filter(Boolean);
-      const adminUserIds = new Set<string>();
-      for (const userId of userIds) {
-        const { data: isOwner } = await supabase.rpc('is_owner', { p_user_id: userId });
-        if (isOwner) adminUserIds.add(userId);
-      }
-
       // Check which creators the current user has already nominated
       let nominatedCreatorIds = new Set<string>();
       if (currentProfile?.id) {
@@ -100,11 +92,11 @@ export function NominateCreatorDialog({ open, onOpenChange }: NominateCreatorDia
         nominatedCreatorIds = new Set(nominations?.map(n => n.creator_id) || []);
       }
 
-      // Build creators with follower counts and admin status
+      // Build creators with follower counts and admin status (is_owner from view)
       const creatorsWithData: Creator[] = creatorsData.map(creator => ({
         ...creator,
         followers_count: followerCountMap.get(creator.id) || 0,
-        isAdmin: adminUserIds.has(creator.user_id),
+        isAdmin: (creator as any).is_owner === true,
         hasNominated: nominatedCreatorIds.has(creator.id),
       }));
 
