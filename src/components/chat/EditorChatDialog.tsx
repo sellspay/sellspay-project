@@ -20,6 +20,12 @@ interface ChatRoom {
   is_active: boolean;
 }
 
+interface Booking {
+  id: string;
+  status: string;
+  completed_at: string | null;
+}
+
 interface Message {
   id: string;
   room_id: string;
@@ -49,16 +55,20 @@ export default function EditorChatDialog({ open, onOpenChange, chatRoom, onMessa
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
+  const [booking, setBooking] = useState<Booking | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isExpired = new Date(chatRoom.expires_at) < new Date();
+  const isSessionEnded = booking?.status === 'completed';
+  const canSendMessages = !isExpired && !isSessionEnded;
   const isBuyer = profile?.id === chatRoom.buyer_id;
 
   useEffect(() => {
     if (open && chatRoom) {
       fetchMessages();
       fetchOtherUser();
+      fetchBooking();
       markMessagesAsRead();
 
       // Subscribe to new messages
@@ -121,6 +131,18 @@ export default function EditorChatDialog({ open, onOpenChange, chatRoom, onMessa
     }
   };
 
+  const fetchBooking = async () => {
+    const { data } = await supabase
+      .from('editor_bookings')
+      .select('id, status, completed_at')
+      .eq('id', chatRoom.booking_id)
+      .single();
+
+    if (data) {
+      setBooking(data);
+    }
+  };
+
   const markMessagesAsRead = async () => {
     if (!profile?.id) return;
 
@@ -136,7 +158,7 @@ export default function EditorChatDialog({ open, onOpenChange, chatRoom, onMessa
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || sending || isExpired || !profile?.id) return;
+    if (!newMessage.trim() || sending || !canSendMessages || !profile?.id) return;
 
     setSending(true);
     const { error } = await supabase
@@ -174,7 +196,9 @@ export default function EditorChatDialog({ open, onOpenChange, chatRoom, onMessa
                     <User className="h-5 w-5" />
                   </AvatarFallback>
                 </Avatar>
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                {canSendMessages && (
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-lg font-semibold flex items-center gap-2">
@@ -187,10 +211,16 @@ export default function EditorChatDialog({ open, onOpenChange, chatRoom, onMessa
               </div>
               <Badge 
                 variant="outline" 
-                className={`flex items-center gap-1 text-xs ${isExpired ? 'border-destructive/50 text-destructive' : 'border-primary/30 text-primary'}`}
+                className={`flex items-center gap-1 text-xs ${
+                  isExpired 
+                    ? 'border-destructive/50 text-destructive' 
+                    : isSessionEnded 
+                      ? 'border-muted-foreground/50 text-muted-foreground' 
+                      : 'border-primary/30 text-primary'
+                }`}
               >
                 <Clock className="h-3 w-3" />
-                {isExpired ? 'Expired' : `Ends ${timeRemaining}`}
+                {isExpired ? 'Expired' : isSessionEnded ? 'Read Only' : `Active`}
               </Badge>
             </div>
           </DialogHeader>
@@ -262,7 +292,13 @@ export default function EditorChatDialog({ open, onOpenChange, chatRoom, onMessa
           {isExpired ? (
             <div className="text-center py-2">
               <p className="text-sm text-muted-foreground">
-                This chat has expired. The 7-day communication window has ended.
+                This chat has expired. The 7-day history window has ended.
+              </p>
+            </div>
+          ) : isSessionEnded ? (
+            <div className="text-center py-2">
+              <p className="text-sm text-muted-foreground">
+                Session complete. Chat history available for {formatDistanceToNow(new Date(chatRoom.expires_at), { addSuffix: false })} more.
               </p>
             </div>
           ) : (
