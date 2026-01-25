@@ -43,10 +43,10 @@ serve(async (req) => {
 
     logStep("User authenticated", { userId: user.id });
 
-    // Get profile with stripe account
+    // Get profile id
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("id, stripe_account_id, stripe_onboarding_complete")
+      .select("id")
       .eq("user_id", user.id)
       .single();
 
@@ -54,7 +54,20 @@ serve(async (req) => {
       throw new Error("Profile not found");
     }
 
-    if (!profile.stripe_account_id) {
+    // Get seller config from private schema
+    const { data: sellerConfig, error: configError } = await supabaseAdmin.rpc(
+      "get_seller_config",
+      { p_user_id: user.id }
+    );
+
+    if (configError) {
+      logStep("Error getting seller config", { error: configError.message });
+    }
+
+    const stripeAccountId = sellerConfig?.[0]?.stripe_account_id;
+    const onboardingComplete = sellerConfig?.[0]?.stripe_onboarding_complete || false;
+
+    if (!stripeAccountId) {
       return new Response(JSON.stringify({ 
         connected: false, 
         onboarding_complete: false,
@@ -64,10 +77,10 @@ serve(async (req) => {
       });
     }
 
-    logStep("Checking Stripe account", { accountId: profile.stripe_account_id });
+    logStep("Checking Stripe account", { accountId: stripeAccountId });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const account = await stripe.accounts.retrieve(profile.stripe_account_id);
+    const account = await stripe.accounts.retrieve(stripeAccountId);
 
     const isComplete = account.details_submitted && account.charges_enabled && account.payouts_enabled;
 
@@ -78,14 +91,14 @@ serve(async (req) => {
       isComplete 
     });
 
-    // Update profile if status changed
-    if (isComplete && !profile.stripe_onboarding_complete) {
-      await supabaseAdmin
-        .from("profiles")
-        .update({ stripe_onboarding_complete: true })
-        .eq("id", profile.id);
+    // Update private config if status changed
+    if (isComplete && !onboardingComplete) {
+      await supabaseAdmin.rpc("update_seller_config", {
+        p_user_id: user.id,
+        p_stripe_onboarding_complete: true
+      });
       
-      logStep("Profile updated - onboarding complete");
+      logStep("Seller config updated - onboarding complete");
     }
 
     return new Response(JSON.stringify({ 

@@ -67,10 +67,10 @@ serve(async (req) => {
     const { instant } = body; // true for instant (3% fee), false for standard (free, 1-3 days)
     logStep("Request parsed", { instant });
 
-    // Get user's profile with Stripe account
+    // Get user's profile id
     const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
-      .select("id, stripe_account_id, stripe_onboarding_complete")
+      .select("id")
       .eq("user_id", user.id)
       .single();
 
@@ -81,14 +81,28 @@ serve(async (req) => {
       );
     }
 
-    if (!profile.stripe_account_id || !profile.stripe_onboarding_complete) {
+    // Get seller config from private schema
+    const { data: sellerConfig, error: configError } = await supabaseClient.rpc(
+      "get_seller_config",
+      { p_user_id: user.id }
+    );
+
+    if (configError) {
+      logStep("Error getting seller config", { error: configError.message });
+    }
+
+    const config = sellerConfig?.[0];
+    const stripeAccountId = config?.stripe_account_id;
+    const onboardingComplete = config?.stripe_onboarding_complete;
+
+    if (!stripeAccountId || !onboardingComplete) {
       return new Response(
         JSON.stringify({ error: "Please connect your Stripe account first to withdraw funds" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    logStep("Profile found", { profileId: profile.id, stripeAccountId: profile.stripe_account_id });
+    logStep("Profile found", { profileId: profile.id, stripeAccountId });
 
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
@@ -143,7 +157,7 @@ serve(async (req) => {
     let stripeBalance = 0;
     try {
       const balance = await stripe.balance.retrieve({
-        stripeAccount: profile.stripe_account_id,
+        stripeAccount: stripeAccountId,
       });
       stripeBalance = balance.available.reduce((acc: number, b: Stripe.Balance.Available) => {
         if (b.currency === "usd") return acc + b.amount;
@@ -191,13 +205,13 @@ serve(async (req) => {
     if (totalPendingEarnings > 0) {
       logStep("Transferring pending earnings to connected account", {
         amount: totalPendingEarnings,
-        destination: profile.stripe_account_id,
+        destination: stripeAccountId,
       });
 
       const transfer = await stripe.transfers.create({
         amount: totalPendingEarnings,
         currency: "usd",
-        destination: profile.stripe_account_id,
+        destination: stripeAccountId,
         description: `Withdrawal: ${(pendingPurchases || []).length} sales, ${(pendingBookings || []).length} bookings`,
       });
 
@@ -250,7 +264,7 @@ serve(async (req) => {
         method: instant ? "instant" : "standard",
       },
       {
-        stripeAccount: profile.stripe_account_id,
+        stripeAccount: stripeAccountId,
       }
     );
 

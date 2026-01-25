@@ -29,7 +29,6 @@ export interface CreatorApplication {
   profile?: {
     avatar_url: string | null;
     username: string | null;
-    email: string | null;
   };
 }
 

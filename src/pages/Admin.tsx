@@ -25,7 +25,6 @@ interface Profile {
   user_id: string;
   username: string | null;
   full_name: string | null;
-  email: string | null;
   avatar_url: string | null;
   bio: string | null;
   is_creator: boolean | null;
@@ -67,7 +66,6 @@ interface EditorApplication {
   profile?: {
     avatar_url: string | null;
     username: string | null;
-    email: string | null;
   };
 }
 
@@ -150,10 +148,10 @@ export default function Admin() {
 
   const fetchData = async () => {
     try {
-      // Fetch users with new fields
+      // Fetch users (no email - moved to private schema)
       const { data: usersData, error: usersError } = await supabase
         .from("profiles")
-        .select("id, user_id, username, full_name, email, avatar_url, bio, is_creator, is_editor, suspended, verified, created_at")
+        .select("id, user_id, username, full_name, avatar_url, bio, is_creator, is_editor, suspended, verified, created_at")
         .order("created_at", { ascending: false });
 
       if (usersError) throw usersError;
@@ -199,18 +197,18 @@ export default function Admin() {
         .order("created_at", { ascending: false });
 
       if (!applicationsError && applicationsData) {
-        // Get profile info for each application
+        // Get profile info for each application (no email - in private schema)
         const appUserIds = [...new Set(applicationsData.map(a => a.user_id))];
-        let profilesMap: Record<string, { avatar_url: string | null; username: string | null; email: string | null }> = {};
+        let profilesMap: Record<string, { avatar_url: string | null; username: string | null }> = {};
         
         if (appUserIds.length > 0) {
           const { data: profilesData } = await supabase
             .from("profiles")
-            .select("id, avatar_url, username, email")
+            .select("id, avatar_url, username")
             .in("id", appUserIds);
           
           profilesData?.forEach(p => {
-            profilesMap[p.id] = { avatar_url: p.avatar_url, username: p.username, email: p.email };
+            profilesMap[p.id] = { avatar_url: p.avatar_url, username: p.username };
           });
         }
 
@@ -231,16 +229,16 @@ export default function Admin() {
 
       if (!creatorAppsError && creatorAppsData) {
         const creatorAppUserIds = [...new Set(creatorAppsData.map(a => a.user_id))];
-        let creatorProfilesMap: Record<string, { avatar_url: string | null; username: string | null; email: string | null }> = {};
+        let creatorProfilesMap: Record<string, { avatar_url: string | null; username: string | null }> = {};
         
         if (creatorAppUserIds.length > 0) {
           const { data: profilesData } = await supabase
             .from("profiles")
-            .select("id, avatar_url, username, email")
+            .select("id, avatar_url, username")
             .in("id", creatorAppUserIds);
           
           profilesData?.forEach(p => {
-            creatorProfilesMap[p.id] = { avatar_url: p.avatar_url, username: p.username, email: p.email };
+            creatorProfilesMap[p.id] = { avatar_url: p.avatar_url, username: p.username };
           });
         }
 
@@ -613,8 +611,7 @@ export default function Admin() {
 
   const filteredUsers = users.filter(u =>
     (u.username?.toLowerCase() || "").includes(userSearch.toLowerCase()) ||
-    (u.full_name?.toLowerCase() || "").includes(userSearch.toLowerCase()) ||
-    (u.email?.toLowerCase() || "").includes(userSearch.toLowerCase())
+    (u.full_name?.toLowerCase() || "").includes(userSearch.toLowerCase())
   );
 
   const filteredProducts = products.filter(p =>
@@ -840,7 +837,7 @@ export default function Admin() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{profile.email || "-"}</TableCell>
+                      <TableCell>@{profile.username || "-"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           {profile.is_creator && <Badge>Creator</Badge>}

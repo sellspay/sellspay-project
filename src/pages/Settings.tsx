@@ -201,8 +201,6 @@ export default function Settings() {
         setAvatarUrl(data.avatar_url);
         setBannerUrl((data as Record<string, unknown>).banner_url as string | null);
         setBackgroundUrl((data as Record<string, unknown>).background_url as string | null);
-        setStripeAccountId(data.stripe_account_id);
-        setStripeOnboardingComplete(data.stripe_onboarding_complete || false);
         setIsSeller((data as Record<string, unknown>).is_seller as boolean || false);
         setProfileId(data.id);
         setMfaEnabled(data.mfa_enabled || false);
@@ -221,16 +219,31 @@ export default function Settings() {
             .map(([_, url]) => ({ id: crypto.randomUUID(), url }));
           setSocialLinks(loadedLinks);
         }
-        
-        // If there's a Stripe account but onboarding not complete, check status
-        if (data.stripe_account_id && !data.stripe_onboarding_complete) {
-          checkStripeStatus();
-        }
+      }
+      
+      // Fetch seller config from edge function (for Stripe status)
+      if ((data as Record<string, unknown>)?.is_seller) {
+        await fetchSellerConfig();
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSellerConfig = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("check-connect-status");
+      
+      if (error) throw error;
+      
+      if (data) {
+        setStripeAccountId(data.connected ? "connected" : null);
+        setStripeOnboardingComplete(data.onboarding_complete || false);
+      }
+    } catch (error) {
+      console.error("Error fetching seller config:", error);
     }
   };
 

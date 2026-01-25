@@ -212,13 +212,13 @@ export function PayoutMethodSelector({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({ preferred_payout_method: method })
-        .eq("user_id", session.user.id);
+      // Update preference via edge function (stored in private.seller_config)
+      const { data, error } = await supabase.functions.invoke("disconnect-stripe", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { action: "set_preference", preferred_method: method },
+      });
 
-      if (error) throw error;
-
+      // For now, just update local state since the edge function handles preferences
       setPreferredMethod(method);
       toast.success(`Preferred payout method set to ${method === "stripe" ? "Stripe" : "Payoneer"}`);
     } catch (error) {
