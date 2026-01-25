@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, CollectionContent, AboutMeContent, HeadlineContent, SlidingBannerContent, DividerContent, TestimonialsContent, FAQContent, NewsletterContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, ContactUsContent, FooterContent } from '../types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -747,42 +747,89 @@ const NewsletterPreview = memo(({ content }: { content: NewsletterContent }) => 
 ));
 NewsletterPreview.displayName = 'NewsletterPreview';
 
-// Slideshow Preview
-const SlideshowPreview = memo(({ content }: { content: SlideshowContent }) => {
-  if (content.slides.length === 0) {
+// Slideshow Preview - functional with navigation and autoplay
+const SlideshowPreview = ({ content }: { content: SlideshowContent }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const slides = content.slides || [];
+
+  // Autoplay effect
+  useEffect(() => {
+    if (!content.autoPlay || slides.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % slides.length);
+    }, (content.interval || 5) * 1000);
+    return () => clearInterval(timer);
+  }, [content.autoPlay, content.interval, slides.length]);
+
+  // Reset index when slides change
+  useEffect(() => {
+    if (currentIndex >= slides.length && slides.length > 0) {
+      setCurrentIndex(0);
+    }
+  }, [slides.length, currentIndex]);
+
+  if (slides.length === 0) {
     return (
       <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
         <span className="text-muted-foreground">No slides added yet</span>
       </div>
     );
   }
+
+  const currentSlide = slides[currentIndex] || slides[0];
+
+  const goToPrev = () => {
+    setCurrentIndex(prev => (prev - 1 + slides.length) % slides.length);
+  };
+
+  const goToNext = () => {
+    setCurrentIndex(prev => (prev + 1) % slides.length);
+  };
   
   return (
     <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
       <img
-        src={content.slides[0]?.imageUrl}
+        src={currentSlide?.imageUrl}
         alt=""
         className="w-full h-full object-cover"
       />
-      {content.slides[0]?.caption && (
+      {currentSlide?.caption && (
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-          <p className="text-white">{content.slides[0].caption}</p>
+          <p className="text-white">{currentSlide.caption}</p>
         </div>
       )}
-      {content.slides.length > 1 && (
+      {slides.length > 1 && (
         <>
-          <button className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2">
+          <button 
+            onClick={goToPrev}
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 transition-colors"
+          >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <button className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2">
+          <button 
+            onClick={goToNext}
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 transition-colors"
+          >
             <ChevronRight className="h-5 w-5" />
           </button>
+          {/* Navigation Dots */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentIndex(i)}
+                className={cn(
+                  "w-2 h-2 rounded-full transition-colors",
+                  i === currentIndex ? "bg-white" : "bg-white/50 hover:bg-white/70"
+                )}
+              />
+            ))}
+          </div>
         </>
       )}
     </div>
   );
-});
-SlideshowPreview.displayName = 'SlideshowPreview';
+};
 
 // Basic List Preview - supports simple, 3-col cards, 2-col cards, and horizontal layouts
 const BasicListPreview = memo(({ section }: { section: ProfileSection }) => {

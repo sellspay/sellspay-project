@@ -243,11 +243,32 @@ function ImageEditablePreview({ content, onUpdate }: { content: ImageContent; on
   );
 }
 
-// Image With Text Preview
+// Image With Text Preview - with editable buttons and color styling
 function ImageWithTextEditablePreview({ content, section, onUpdate }: { content: ImageWithTextContent; section: ProfileSection; onUpdate: (c: Partial<ImageWithTextContent>) => void }) {
   const preset = section.style_options?.preset || 'style1';
   const layout = content.layout || 'side-by-side';
   const imagePosition = content.imagePosition || 'left';
+
+  // Button style from content
+  const buttonStyle = {
+    backgroundColor: content.buttonColor || 'hsl(var(--primary))',
+    color: content.buttonTextColor || 'hsl(var(--primary-foreground))',
+  };
+
+  // Editable Button component
+  const EditableButton = () => (
+    <span 
+      className="inline-block text-xs px-3 py-1.5 rounded font-medium"
+      style={buttonStyle}
+    >
+      <InlineEdit 
+        value={content.buttonText || 'Shop Now'} 
+        onChange={(v) => onUpdate({ buttonText: v })} 
+        placeholder="Button" 
+        className="!text-inherit"
+      />
+    </span>
+  );
 
   // Hero Banner Layout
   if (preset === 'style1' || layout === 'hero') {
@@ -263,9 +284,10 @@ function ImageWithTextEditablePreview({ content, section, onUpdate }: { content:
             <h2 className="text-xl font-bold mb-2">
               <InlineEdit value={content.title || ''} onChange={(v) => onUpdate({ title: v })} placeholder="Hero Title" className="text-white" />
             </h2>
-            <p className="text-sm opacity-90">
+            <p className="text-sm opacity-90 mb-4">
               <InlineEdit value={content.body || ''} onChange={(v) => onUpdate({ body: v })} placeholder="Hero description" className="text-white" />
             </p>
+            <EditableButton />
           </div>
         </div>
       </div>
@@ -285,9 +307,10 @@ function ImageWithTextEditablePreview({ content, section, onUpdate }: { content:
           <h3 className="text-white font-semibold">
             <InlineEdit value={content.title || ''} onChange={(v) => onUpdate({ title: v })} placeholder="Title" className="text-white" />
           </h3>
-          <p className="text-white/80 text-sm">
+          <p className="text-white/80 text-sm mb-3">
             <InlineEdit value={content.body || ''} onChange={(v) => onUpdate({ body: v })} placeholder="Description" className="text-white/80" />
           </p>
+          <EditableButton />
         </div>
       </div>
     );
@@ -311,11 +334,7 @@ function ImageWithTextEditablePreview({ content, section, onUpdate }: { content:
         <p className="text-sm text-muted-foreground">
           <InlineEdit value={content.body || ''} onChange={(v) => onUpdate({ body: v })} placeholder="Description" multiline />
         </p>
-        {content.buttonText && (
-          <span className="inline-block text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded">
-            <InlineEdit value={content.buttonText} onChange={(v) => onUpdate({ buttonText: v })} placeholder="Button" className="text-primary-foreground" />
-          </span>
-        )}
+        <EditableButton />
       </div>
     </div>
   );
@@ -401,28 +420,33 @@ function GalleryEditablePreview({ content, section }: { content: GalleryContent;
   );
 }
 
-// Video Preview
+// Video Preview - shows actual YouTube embed
 function VideoEditablePreview({ content }: { content: VideoContent }) {
-  // Extract thumbnail from YouTube URL if possible
-  const getYoutubeThumbnail = (url: string) => {
-    const match = url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
-    return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : null;
+  // Extract YouTube video ID from various URL formats
+  const getYouTubeId = (url: string) => {
+    const match = url?.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/shorts\/|\/watch\?.+&v=))([\w-]{11})/);
+    return match ? match[1] : null;
   };
   
-  const thumbnailUrl = getYoutubeThumbnail(content.videoUrl || '');
+  const videoId = getYouTubeId(content.videoUrl || '');
   
   return (
-    <div className="aspect-video bg-muted rounded-lg overflow-hidden relative">
-      {thumbnailUrl ? (
-        <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" />
+    <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+      {videoId ? (
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}`}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
       ) : (
-        <div className="w-full h-full bg-gradient-to-br from-muted to-muted-foreground/20" />
-      )}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-          <Play className="w-5 h-5 text-foreground ml-0.5" />
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/20">
+          <div className="text-center">
+            <Play className="w-12 h-12 mx-auto mb-2 text-muted-foreground/40" />
+            <span className="text-sm text-muted-foreground">Enter a YouTube URL</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -897,10 +921,37 @@ function SlidingBannerEditablePreview({ content, onUpdate }: { content: SlidingB
   );
 }
 
-// Slideshow Preview
+// Slideshow Preview - functional with navigation and autoplay
 function SlideshowEditablePreview({ content }: { content: SlideshowContent }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
   const slides = content.slides || [];
-  const currentSlide = slides[0] || { imageUrl: '', caption: 'Slide 1' };
+  const slideCount = Math.max(slides.length, 1);
+
+  // Autoplay effect
+  useEffect(() => {
+    if (!content.autoPlay || slides.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % slides.length);
+    }, (content.interval || 5) * 1000);
+    return () => clearInterval(timer);
+  }, [content.autoPlay, content.interval, slides.length]);
+
+  // Reset index when slides change
+  useEffect(() => {
+    if (currentIndex >= slides.length && slides.length > 0) {
+      setCurrentIndex(0);
+    }
+  }, [slides.length, currentIndex]);
+
+  const currentSlide = slides[currentIndex] || { imageUrl: '', caption: '' };
+
+  const goToPrev = () => {
+    setCurrentIndex(prev => (prev - 1 + slideCount) % slideCount);
+  };
+
+  const goToNext = () => {
+    setCurrentIndex(prev => (prev + 1) % slideCount);
+  };
 
   return (
     <div className="relative">
@@ -908,20 +959,38 @@ function SlideshowEditablePreview({ content }: { content: SlideshowContent }) {
         {currentSlide.imageUrl ? (
           <img src={currentSlide.imageUrl} alt="" className="w-full h-full object-cover" />
         ) : (
-          <ImagePlaceholder className="w-full h-full" />
+          <ImagePlaceholder className="w-full h-full" label={currentIndex + 1} />
+        )}
+        {currentSlide.caption && (
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+            <p className="text-white text-sm">{currentSlide.caption}</p>
+          </div>
         )}
       </div>
       {/* Navigation Arrows */}
-      <button className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow">
+      <button 
+        onClick={goToPrev}
+        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 hover:bg-white flex items-center justify-center shadow transition-colors"
+      >
         <ChevronLeft className="w-4 h-4" />
       </button>
-      <button className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow">
+      <button 
+        onClick={goToNext}
+        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 hover:bg-white flex items-center justify-center shadow transition-colors"
+      >
         <ChevronRight className="w-4 h-4" />
       </button>
       {/* Navigation Dots */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-        {Array.from({ length: Math.min(slides.length || 3, 3) }).map((_, i) => (
-          <div key={i} className={cn("w-2 h-2 rounded-full", i === 0 ? "bg-white" : "bg-white/50")} />
+        {Array.from({ length: Math.max(slides.length, 3) }).map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrentIndex(i)}
+            className={cn(
+              "w-2 h-2 rounded-full transition-colors",
+              i === currentIndex ? "bg-white" : "bg-white/50 hover:bg-white/70"
+            )}
+          />
         ))}
       </div>
     </div>

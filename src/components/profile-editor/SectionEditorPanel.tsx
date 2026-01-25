@@ -521,6 +521,46 @@ export function SectionEditorPanel({
                 />
               </div>
             )}
+            {/* Button Styling */}
+            <div className="border-t pt-4 space-y-4">
+              <Label className="text-sm font-medium">Button Styling</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs">Button Color</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type="color"
+                      value={(section.content as any).buttonColor || '#8B5CF6'}
+                      onChange={(e) => updateContent({ buttonColor: e.target.value })}
+                      className="w-12 h-9 p-1 cursor-pointer"
+                    />
+                    <Input
+                      value={(section.content as any).buttonColor || '#8B5CF6'}
+                      onChange={(e) => updateContent({ buttonColor: e.target.value })}
+                      placeholder="#8B5CF6"
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Text Color</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type="color"
+                      value={(section.content as any).buttonTextColor || '#FFFFFF'}
+                      onChange={(e) => updateContent({ buttonTextColor: e.target.value })}
+                      className="w-12 h-9 p-1 cursor-pointer"
+                    />
+                    <Input
+                      value={(section.content as any).buttonTextColor || '#FFFFFF'}
+                      onChange={(e) => updateContent({ buttonTextColor: e.target.value })}
+                      placeholder="#FFFFFF"
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         );
 
@@ -549,6 +589,210 @@ export function SectionEditorPanel({
                 onChange={(e) => updateContent({ description: e.target.value })}
                 rows={3}
               />
+            </div>
+          </div>
+        );
+
+      case 'gallery':
+        const galleryImages = (section.content as any).images || [];
+        const galleryPreset = section.style_options?.preset || 'style1';
+        const galleryImageCount = galleryPreset === 'style3' ? 4 : 6; // Masonry = 4, others = 6
+        const galleryColumns = galleryPreset === 'style2' ? 2 : 3;
+
+        const handleGalleryImageUpload = (file: File, index: number) => {
+          handleImageUpload(file, (url) => {
+            const newImages = [...galleryImages];
+            newImages[index] = { url, altText: '' };
+            updateContent({ images: newImages });
+          });
+        };
+
+        const handleGalleryImageRemove = (index: number) => {
+          const newImages = [...galleryImages];
+          newImages[index] = null;
+          updateContent({ images: newImages.filter(Boolean) });
+        };
+
+        return (
+          <div className="space-y-4">
+            <Label>Gallery Images ({galleryImageCount} slots)</Label>
+            <div className={cn("grid gap-2", galleryColumns === 2 ? "grid-cols-2" : "grid-cols-3")}>
+              {Array.from({ length: galleryImageCount }, (_, index) => {
+                const img = galleryImages[index];
+                return (
+                  <div key={index} className="space-y-1">
+                    {img?.url ? (
+                      <div className="relative">
+                        <img
+                          src={img.url}
+                          alt=""
+                          className="w-full aspect-square object-cover rounded-lg"
+                        />
+                        <div className="absolute bottom-1 left-1 right-1 flex gap-1">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="flex-1 text-xs h-7"
+                            onClick={() => document.getElementById(`gallery-upload-${section.id}-${index}`)?.click()}
+                          >
+                            Replace
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="text-xs h-7"
+                            onClick={() => handleGalleryImageRemove(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => document.getElementById(`gallery-upload-${section.id}-${index}`)?.click()}
+                      >
+                        <Upload className="h-5 w-5 mb-1 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">{index + 1}</span>
+                      </div>
+                    )}
+                    <input
+                      id={`gallery-upload-${section.id}-${index}`}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleGalleryImageUpload(file, index);
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+
+      case 'slideshow':
+        const slideshowSlides = (section.content as any).slides || [];
+        const maxSlides = 3;
+
+        const handleSlideImageUpload = (file: File, index: number) => {
+          handleImageUpload(file, (url) => {
+            const newSlides = [...slideshowSlides];
+            if (!newSlides[index]) {
+              newSlides[index] = { id: Date.now().toString(), imageUrl: '', caption: '', linkUrl: '' };
+            }
+            newSlides[index] = { ...newSlides[index], imageUrl: url };
+            updateContent({ slides: newSlides });
+          });
+        };
+
+        const handleSlideUpdate = (index: number, updates: Record<string, any>) => {
+          const newSlides = [...slideshowSlides];
+          if (!newSlides[index]) {
+            newSlides[index] = { id: Date.now().toString(), imageUrl: '', caption: '', linkUrl: '' };
+          }
+          newSlides[index] = { ...newSlides[index], ...updates };
+          updateContent({ slides: newSlides });
+        };
+
+        const handleSlideRemove = (index: number) => {
+          const newSlides = slideshowSlides.filter((_: any, i: number) => i !== index);
+          updateContent({ slides: newSlides });
+        };
+
+        return (
+          <div className="space-y-4">
+            <Label>Slides ({maxSlides} max)</Label>
+            <div className="space-y-3">
+              {Array.from({ length: maxSlides }, (_, index) => {
+                const slide = slideshowSlides[index];
+                return (
+                  <div key={index} className="border rounded-lg p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Slide {index + 1}</span>
+                      {slide?.imageUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs ml-auto"
+                          onClick={() => handleSlideRemove(index)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                    {slide?.imageUrl ? (
+                      <div className="relative">
+                        <img
+                          src={slide.imageUrl}
+                          alt=""
+                          className="w-full aspect-video object-cover rounded-lg"
+                        />
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="absolute bottom-2 left-2 text-xs"
+                          onClick={() => document.getElementById(`slide-upload-${section.id}-${index}`)?.click()}
+                        >
+                          Replace
+                        </Button>
+                      </div>
+                    ) : (
+                      <div
+                        className="aspect-video border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => document.getElementById(`slide-upload-${section.id}-${index}`)?.click()}
+                      >
+                        <Upload className="h-6 w-6 mb-1 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Upload image</span>
+                      </div>
+                    )}
+                    <input
+                      id={`slide-upload-${section.id}-${index}`}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleSlideImageUpload(file, index);
+                      }}
+                    />
+                    <Input
+                      placeholder="Caption (optional)"
+                      value={slide?.caption || ''}
+                      onChange={(e) => handleSlideUpdate(index, { caption: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Link URL (optional)"
+                      value={slide?.linkUrl || ''}
+                      onChange={(e) => handleSlideUpdate(index, { linkUrl: e.target.value })}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="border-t pt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <Label>Auto Play</Label>
+                <Switch
+                  checked={(section.content as any).autoPlay ?? false}
+                  onCheckedChange={(checked) => updateContent({ autoPlay: checked })}
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Interval (seconds)</Label>
+                  <span className="text-sm text-muted-foreground">{(section.content as any).interval || 5}s</span>
+                </div>
+                <Slider
+                  value={[(section.content as any).interval || 5]}
+                  onValueChange={([value]) => updateContent({ interval: value })}
+                  min={1}
+                  max={10}
+                  step={1}
+                />
+              </div>
             </div>
           </div>
         );
