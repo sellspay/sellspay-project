@@ -1826,54 +1826,84 @@ export default function ProductDetail() {
           )}
 
           {/* Attachments Section - Main Content */}
-          {product.attachments && Array.isArray(product.attachments) && product.attachments.length > 0 && (
-            <div className="mt-6">
-              <h3 className="font-semibold mb-4 text-cyan-400 flex items-center gap-2">
-                <FileIcon className="w-5 h-5" />
-                Attachments
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                {product.attachments.map((attachment: any, index: number) => {
-                  const hasAccess = isOwner || hasPurchased || (product.pricing_type === "free" && isFollowingCreator);
-                  const IconComponent = getFileTypeIcon(attachment.name || '');
-                  const fileLabel = getFileTypeLabel(attachment.name || '');
-                  
-                  return (
-                    <div 
-                      key={index} 
-                      className="flex items-center gap-3 px-4 py-3 rounded-full bg-muted/50 border border-border hover:bg-muted transition-colors"
-                    >
-                      <IconComponent className="w-5 h-5 text-cyan-400 flex-shrink-0" />
-                      <span className="text-sm font-medium truncate max-w-[200px]" title={attachment.name || `Attachment ${index + 1}`}>
-                        {attachment.name || `Attachment ${index + 1}`}
-                      </span>
-                      {hasAccess ? (
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          className="h-6 w-6 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-400/10 rounded-full"
-                          onClick={() => {
-                            if (attachment.url) {
-                              window.open(attachment.url, '_blank');
-                            }
-                          }}
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      ) : (
-                        <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      )}
-                    </div>
-                  );
-                })}
+          {(() => {
+            // Build attachments list from download_url and any existing attachments
+            const attachmentsList: { name: string; url?: string; isDownloadFile?: boolean }[] = [];
+            
+            // Add download_url as primary attachment with original filename
+            if (product.download_url) {
+              // Extract original filename from the storage path
+              const downloadPath = product.download_url;
+              let originalFilename = 'Download File';
+              
+              // The file is stored as: {user_id}/{timestamp}-{original_filename}
+              // e.g., "1189c483-dd26-4365-8c8b-287172056a12/1769306852596-rengoku_edit.aep"
+              if (downloadPath.includes('/')) {
+                const pathParts = downloadPath.split('/');
+                const filenamePart = pathParts[pathParts.length - 1];
+                // Remove timestamp prefix if present (format: timestamp-filename)
+                const timestampMatch = filenamePart.match(/^\d+-(.+)$/);
+                if (timestampMatch) {
+                  // Restore original filename by removing sanitization (underscores back to spaces optionally)
+                  originalFilename = timestampMatch[1];
+                } else {
+                  originalFilename = filenamePart;
+                }
+              } else if (downloadPath.includes('downloads/')) {
+                // Legacy format: downloads/{creator_id}/{timestamp}.{ext}
+                const parts = downloadPath.split('/');
+                originalFilename = parts[parts.length - 1];
+              }
+              
+              attachmentsList.push({ name: originalFilename, isDownloadFile: true });
+            }
+            
+            // Add any existing attachments array
+            if (product.attachments && Array.isArray(product.attachments)) {
+              product.attachments.forEach((att: any) => {
+                attachmentsList.push({ name: att.name || 'Attachment', url: att.url });
+              });
+            }
+            
+            if (attachmentsList.length === 0) return null;
+            
+            const hasAccess = isOwner || hasPurchased || (product.pricing_type === "free" && isFollowingCreator);
+            
+            return (
+              <div className="mt-6">
+                <h3 className="font-semibold mb-4 text-foreground">
+                  Attachments
+                </h3>
+                <div className="flex flex-col gap-2">
+                  {attachmentsList.map((attachment, index) => {
+                    const IconComponent = getFileTypeIcon(attachment.name);
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className="flex items-center gap-3 px-4 py-3 bg-muted/30 rounded-lg border border-border/50"
+                      >
+                        <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                          <IconComponent className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                        <span className="text-sm font-medium text-foreground truncate flex-1" title={attachment.name}>
+                          {attachment.name}
+                        </span>
+                        {!hasAccess && (
+                          <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {!hasAccess && product.pricing_type !== "free" && (
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Purchase to unlock attachments
+                  </p>
+                )}
               </div>
-              {!isOwner && !hasPurchased && product.pricing_type !== "free" && (
-                <p className="text-xs text-muted-foreground mt-3">
-                  Purchase to unlock all attachments
-                </p>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           <Separator className="mt-6" />
 
