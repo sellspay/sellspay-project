@@ -216,23 +216,43 @@ export default function Home() {
       {/* Category Sections */}
       {(tutorials.length > 0 || projectFiles.length > 0 || presets.length > 0) && (
         <Reveal>
-          <section className="py-16 lg:py-24 bg-muted/30">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-              {/* Section Header */}
-              <div className="text-center mb-16">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/50 border border-border mb-6">
-                  <TrendingUp className="h-4 w-4 text-foreground" />
+          <section className="relative py-20 lg:py-28 overflow-hidden">
+            {/* Premium background with floating orbs */}
+            <div className="absolute inset-0 -z-10">
+              <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/20 to-background" />
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+              
+              {/* Floating orbs */}
+              <div 
+                className="absolute top-1/4 left-[15%] w-[500px] h-[500px] bg-primary/8 rounded-full blur-[120px] animate-float"
+                style={{ animationDuration: '8s' }}
+              />
+              <div 
+                className="absolute bottom-1/4 right-[10%] w-[400px] h-[400px] bg-accent/10 rounded-full blur-[100px] animate-float"
+                style={{ animationDelay: '-3s', animationDuration: '10s' }}
+              />
+              <div 
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-primary/5 rounded-full blur-[80px]"
+              />
+            </div>
+
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative">
+              {/* Premium Section Header */}
+              <div className="text-center mb-16 lg:mb-20">
+                <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 mb-8 shadow-lg shadow-primary/5">
+                  <TrendingUp className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium text-foreground">Browse by Category</span>
                 </div>
-                <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
+                <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-5 tracking-tight">
                   Explore by Type
                 </h2>
-                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                <p className="text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto">
                   Find exactly what you need for your next project
                 </p>
               </div>
 
-              <div className="space-y-20">
+              <div className="space-y-24">
                 {/* Tutorials */}
                 {tutorials.length > 0 && (
                   <CategorySection
@@ -290,40 +310,46 @@ function CategorySection({ title, description, products, icon }: CategorySection
   const navigate = useNavigate();
   
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-            {icon}
+    <div className="relative">
+      {/* Glassmorphism card wrapper */}
+      <div className="absolute inset-0 -z-10 rounded-3xl bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm border border-white/10" />
+      
+      <div className="p-8 lg:p-10">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary border border-primary/20 shadow-lg shadow-primary/10">
+              {icon}
+            </div>
+            <div>
+              <h3 className="text-2xl lg:text-3xl font-semibold text-foreground">{title}</h3>
+              <p className="text-muted-foreground">{description}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-2xl font-semibold text-foreground">{title}</h3>
-            <p className="text-muted-foreground">{description}</p>
-          </div>
+          <Button 
+            variant="outline" 
+            className="group hidden sm:flex bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+            onClick={() => navigate(`/products?type=${title.toLowerCase()}`)}
+          >
+            View All
+            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </Button>
         </div>
-        <Button 
-          variant="ghost" 
-          className="group hidden sm:flex"
-          onClick={() => navigate(`/products?type=${title.toLowerCase()}`)}
-        >
-          View All
-          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-        </Button>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {products.slice(0, 4).map((product) => (
-          <ProductCard key={product.id} product={product} showFeaturedBadge={true} showType={false} />
-        ))}
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {products.slice(0, 4).map((product) => (
+            <ProductCard key={product.id} product={product} showFeaturedBadge={true} showType={false} />
+          ))}
+        </div>
 
-      <div className="mt-6 text-center sm:hidden">
-        <Button 
-          variant="outline" 
-          onClick={() => navigate(`/products?type=${title.toLowerCase()}`)}
-        >
-          View All {title}
-        </Button>
+        <div className="mt-8 text-center sm:hidden">
+          <Button 
+            variant="outline" 
+            className="bg-white/5 border-white/10"
+            onClick={() => navigate(`/products?type=${title.toLowerCase()}`)}
+          >
+            View All {title}
+          </Button>
+        </div>
       </div>
     </div>
   );

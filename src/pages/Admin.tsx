@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,6 +100,10 @@ export default function Admin() {
   const [productSearch, setProductSearch] = useState("");
   const [applicationSearch, setApplicationSearch] = useState("");
   const [creatorAppSearch, setCreatorAppSearch] = useState("");
+  const [manageUsersSearch, setManageUsersSearch] = useState("");
+  const [manageUsersFilter, setManageUsersFilter] = useState<'all' | 'creators' | 'editors'>('all');
+  const [revokingUserCreator, setRevokingUserCreator] = useState<string | null>(null);
+  const [revokingUserEditor, setRevokingUserEditor] = useState<string | null>(null);
   const [viewingApplication, setViewingApplication] = useState<EditorApplication | null>(null);
   const [viewingCreatorApp, setViewingCreatorApp] = useState<CreatorApplication | null>(null);
   const [applicationTab, setApplicationTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
@@ -530,6 +534,73 @@ export default function Admin() {
     }
   };
 
+  // Revoke creator status directly from user (Manage Users tab)
+  const handleRevokeCreatorFromUser = async (userId: string) => {
+    setRevokingUserCreator(userId);
+    try {
+      // Remove creator and verified status from profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          is_creator: false,
+          verified: false
+        })
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+
+      // Delete any creator application record
+      await supabase
+        .from('creator_applications')
+        .delete()
+        .eq('user_id', userId);
+
+      toast.success("Creator status revoked successfully");
+      fetchData();
+    } catch (error) {
+      console.error("Error revoking creator:", error);
+      toast.error("Failed to revoke creator status");
+    } finally {
+      setRevokingUserCreator(null);
+    }
+  };
+
+  // Revoke editor status directly from user (Manage Users tab)
+  const handleRevokeEditorFromUser = async (userId: string) => {
+    setRevokingUserEditor(userId);
+    try {
+      // Remove editor status and clear all editor fields
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          is_editor: false,
+          editor_hourly_rate_cents: null,
+          editor_services: null,
+          editor_languages: null,
+          editor_country: null,
+          editor_city: null,
+          editor_about: null
+        })
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+
+      // Delete any editor application record
+      await supabase
+        .from('editor_applications')
+        .delete()
+        .eq('user_id', userId);
+
+      toast.success("Editor status revoked successfully");
+      fetchData();
+    } catch (error) {
+      console.error("Error revoking editor:", error);
+      toast.error("Failed to revoke editor status");
+    } finally {
+      setRevokingUserEditor(null);
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Unknown";
     return new Date(dateString).toLocaleDateString();
@@ -681,6 +752,10 @@ export default function Admin() {
       <Tabs defaultValue="users" className="space-y-6">
         <TabsList className="flex-wrap">
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="manage-users">
+            <UserCog className="w-4 h-4 mr-1.5" />
+            Manage Users
+          </TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="featured" className="relative">
             <Star className="w-4 h-4 mr-1.5" />
@@ -818,6 +893,175 @@ export default function Admin() {
               {filteredUsers.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   No users found
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Manage Users Tab */}
+        <TabsContent value="manage-users">
+          <Card className="bg-card/50">
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserCog className="w-5 h-5" />
+                    Manage User Roles
+                  </CardTitle>
+                  <CardDescription>Quick actions to revoke creator or editor roles</CardDescription>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1">
+                    <Button 
+                      variant={manageUsersFilter === 'all' ? 'default' : 'outline'} 
+                      size="sm"
+                      onClick={() => setManageUsersFilter('all')}
+                    >
+                      All
+                    </Button>
+                    <Button 
+                      variant={manageUsersFilter === 'creators' ? 'default' : 'outline'} 
+                      size="sm"
+                      onClick={() => setManageUsersFilter('creators')}
+                    >
+                      Creators
+                    </Button>
+                    <Button 
+                      variant={manageUsersFilter === 'editors' ? 'default' : 'outline'} 
+                      size="sm"
+                      onClick={() => setManageUsersFilter('editors')}
+                    >
+                      Editors
+                    </Button>
+                  </div>
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={manageUsersSearch}
+                      onChange={(e) => setManageUsersSearch(e.target.value)}
+                      placeholder="Search by name..."
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Current Roles</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users
+                    .filter(u => {
+                      // Filter by search
+                      const matchesSearch = 
+                        (u.username?.toLowerCase() || "").includes(manageUsersSearch.toLowerCase()) ||
+                        (u.full_name?.toLowerCase() || "").includes(manageUsersSearch.toLowerCase());
+                      
+                      // Filter by role
+                      if (manageUsersFilter === 'creators') return matchesSearch && u.is_creator;
+                      if (manageUsersFilter === 'editors') return matchesSearch && u.is_editor;
+                      return matchesSearch && (u.is_creator || u.is_editor);
+                    })
+                    .map((profile) => (
+                      <TableRow key={profile.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-9 h-9">
+                              <AvatarImage src={profile.avatar_url || undefined} />
+                              <AvatarFallback className="bg-muted text-muted-foreground">
+                                {profile.full_name?.[0] || profile.username?.[0] || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">
+                                {profile.full_name || profile.username || "Unnamed"}
+                              </p>
+                              {profile.username && (
+                                <p className="text-sm text-muted-foreground">
+                                  @{profile.username}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {profile.is_creator && (
+                              <Badge className="bg-primary/20 text-primary">
+                                Creator
+                              </Badge>
+                            )}
+                            {profile.is_editor && (
+                              <Badge className="bg-accent/20 text-accent">
+                                Editor
+                              </Badge>
+                            )}
+                            {profile.verified && (
+                              <Badge variant="outline" className="text-green-500 border-green-500/30">
+                                Verified
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {profile.suspended ? (
+                            <Badge variant="destructive">Suspended</Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Active</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {profile.is_creator && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                disabled={revokingUserCreator === profile.id}
+                                onClick={() => handleRevokeCreatorFromUser(profile.id)}
+                              >
+                                {revokingUserCreator === profile.id ? (
+                                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                                ) : (
+                                  <UserMinus className="w-3 h-3 mr-1.5" />
+                                )}
+                                Revoke Creator
+                              </Button>
+                            )}
+                            {profile.is_editor && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                disabled={revokingUserEditor === profile.id}
+                                onClick={() => handleRevokeEditorFromUser(profile.id)}
+                              >
+                                {revokingUserEditor === profile.id ? (
+                                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                                ) : (
+                                  <UserMinus className="w-3 h-3 mr-1.5" />
+                                )}
+                                Revoke Editor
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+
+              {users.filter(u => u.is_creator || u.is_editor).length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No creators or editors found
                 </div>
               )}
             </CardContent>
