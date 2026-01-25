@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Reveal } from './Reveal';
-import { Star, Quote, BadgeCheck } from 'lucide-react';
+import { Star, Quote } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { VerifiedBadge } from '@/components/ui/verified-badge';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Testimonial {
   id: string;
@@ -16,7 +19,8 @@ interface Testimonial {
   verified?: boolean;
 }
 
-const testimonials: Testimonial[] = [
+// Static testimonials - kagori will be fetched from DB
+const staticTestimonials: Testimonial[] = [
   {
     id: '1',
     name: 'Matthew',
@@ -36,13 +40,6 @@ const testimonials: Testimonial[] = [
     rating: 5,
     quote: 'Finally a marketplace that gets it. Every product I\'ve bought has been exactly as described. No more gambling on quality.',
     verified: true,
-  },
-  {
-    id: '3',
-    name: 'Jake Rodriguez',
-    role: 'Freelance Colorist',
-    rating: 5,
-    quote: 'I sell my LUTs here and the platform takes care of everything. Payments, delivery, even handles customer questions. Just works.',
   },
 ];
 
@@ -64,6 +61,35 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export function Testimonials() {
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(staticTestimonials);
+
+  useEffect(() => {
+    async function fetchKagori() {
+      // Fetch kagori from public_profiles
+      const { data: kagoriProfile } = await supabase
+        .from('public_profiles')
+        .select('id, username, full_name, avatar_url, verified, bio')
+        .eq('username', 'kagori')
+        .maybeSingle();
+
+      if (kagoriProfile) {
+        const kagoriTestimonial: Testimonial = {
+          id: '3',
+          name: kagoriProfile.full_name || 'Kagori',
+          username: kagoriProfile.username || 'kagori',
+          role: 'Video Editor',
+          avatar: kagoriProfile.avatar_url || undefined,
+          rating: 5,
+          quote: 'I sell my LUTs here and the platform takes care of everything. Payments, delivery, even handles customer questions. Just works.',
+          verified: kagoriProfile.verified || false,
+        };
+        setTestimonials([...staticTestimonials, kagoriTestimonial]);
+      }
+    }
+
+    fetchKagori();
+  }, []);
+
   const featured = testimonials.find(t => t.featured);
   const others = testimonials.filter(t => !t.featured);
 
@@ -118,7 +144,7 @@ export function Testimonials() {
                             @{featured.username || featured.name.toLowerCase().replace(' ', '')}
                           </span>
                           {featured.verified && (
-                            <BadgeCheck className="h-5 w-5 text-primary fill-primary/20" />
+                            <VerifiedBadge size="md" />
                           )}
                         </div>
                         <div className="text-sm text-muted-foreground">
@@ -143,73 +169,46 @@ export function Testimonials() {
           <div className="lg:col-span-5 space-y-6">
             {others.map((testimonial, index) => (
               <Reveal key={testimonial.id} delay={200 + index * 100}>
-                {testimonial.username ? (
-                  <div className="relative p-6 lg:p-8 rounded-2xl bg-card/80 border border-border/50 hover:border-primary/50 transition-colors">
-                    <StarRating rating={testimonial.rating} />
-                    
-                    <blockquote className="mt-5 mb-6">
-                      <p className="text-foreground/90 leading-relaxed">
-                        "{testimonial.quote}"
-                      </p>
-                    </blockquote>
+                <div className="relative p-6 lg:p-8 rounded-2xl bg-card/80 border border-border/50 hover:border-primary/50 transition-colors">
+                  <StarRating rating={testimonial.rating} />
+                  
+                  <blockquote className="mt-5 mb-6">
+                    <p className="text-foreground/90 leading-relaxed">
+                      "{testimonial.quote}"
+                    </p>
+                  </blockquote>
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10 ring-2 ring-primary/10">
-                          <AvatarImage src={testimonial.avatar} />
-                          <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
-                            {testimonial.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium text-foreground text-sm">
-                              @{testimonial.username}
-                            </span>
-                            {testimonial.verified && (
-                              <BadgeCheck className="h-4 w-4 text-primary fill-primary/20" />
-                            )}
-                          </div>
-                          <div className="text-muted-foreground text-xs">
-                            {testimonial.role}
-                          </div>
-                        </div>
-                      </div>
-                      <Button asChild variant="ghost" size="sm" className="text-xs">
-                        <Link to={`/@${testimonial.username}`}>
-                          View Profile
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="relative p-6 lg:p-8 rounded-2xl bg-card/80 border border-border/50 hover:border-border transition-colors">
-                    <StarRating rating={testimonial.rating} />
-                    
-                    <blockquote className="mt-5 mb-6">
-                      <p className="text-foreground/90 leading-relaxed">
-                        "{testimonial.quote}"
-                      </p>
-                    </blockquote>
-
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
+                      <Avatar className="h-10 w-10 ring-2 ring-primary/10">
                         <AvatarImage src={testimonial.avatar} />
                         <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
                           {testimonial.name.split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
                       <div className="space-y-0.5">
-                        <div className="font-medium text-foreground text-sm">
-                          {testimonial.name}
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-foreground text-sm">
+                            {testimonial.username ? `@${testimonial.username}` : testimonial.name}
+                          </span>
+                          {testimonial.verified && (
+                            <VerifiedBadge size="sm" />
+                          )}
                         </div>
                         <div className="text-muted-foreground text-xs">
                           {testimonial.role}
                         </div>
                       </div>
                     </div>
+                    {testimonial.username && (
+                      <Button asChild variant="ghost" size="sm" className="text-xs">
+                        <Link to={`/@${testimonial.username}`}>
+                          View Profile
+                        </Link>
+                      </Button>
+                    )}
                   </div>
-                )}
+                </div>
               </Reveal>
             ))}
           </div>

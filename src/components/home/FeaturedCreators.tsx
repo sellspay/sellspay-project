@@ -24,8 +24,9 @@ export function FeaturedCreators() {
 
   useEffect(() => {
     async function fetchCreators() {
+      // Use public_profiles view to ensure visibility for all users (including anonymous)
       const { data, error } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id, user_id, username, full_name, avatar_url, verified, bio')
         .eq('is_creator', true)
         .limit(6);
