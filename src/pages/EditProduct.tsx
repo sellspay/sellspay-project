@@ -247,6 +247,12 @@ export default function EditProduct() {
     e.preventDefault();
     
     if (!user || !id) return;
+    
+    // Safety check: prevent saving if product data hasn't loaded
+    if (loading) {
+      toast.error("Please wait for the product to load");
+      return;
+    }
 
     if (!name.trim()) {
       toast.error("Please enter a product name");
@@ -851,7 +857,7 @@ export default function EditProduct() {
             type="button"
             variant="outline"
             onClick={(e) => handleSubmit(e, false)}
-            disabled={saving}
+            disabled={saving || loading}
             className="flex-1"
           >
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
@@ -860,7 +866,7 @@ export default function EditProduct() {
           <Button
             type="button"
             onClick={(e) => handleSubmit(e, true)}
-            disabled={saving}
+            disabled={saving || loading}
             className="flex-1 bg-gradient-to-r from-primary to-accent"
           >
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
