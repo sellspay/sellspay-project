@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Briefcase, Star } from "lucide-react";
+import { Bell, Briefcase, Star, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 interface Notification {
   id: string;
@@ -186,6 +187,45 @@ export function NotificationBell() {
     }
   };
 
+  const handleMarkAllRead = async () => {
+    if (!userProfileId) return;
+
+    try {
+      const { error } = await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", userProfileId)
+        .eq("is_read", false);
+
+      if (error) throw error;
+
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+      toast.success("All notifications marked as read");
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+      toast.error("Failed to mark notifications as read");
+    }
+  };
+
+  const handleMarkAllAdminRead = async () => {
+    try {
+      const { error } = await supabase
+        .from("admin_notifications")
+        .update({ is_read: true })
+        .eq("is_read", false);
+
+      if (error) throw error;
+
+      setAdminNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setAdminUnreadCount(0);
+      toast.success("All admin notifications marked as read");
+    } catch (error) {
+      console.error("Error marking all admin notifications as read:", error);
+      toast.error("Failed to mark notifications as read");
+    }
+  };
+
   const handleNotificationClick = async (notification: Notification) => {
     // Mark as read
     if (!notification.is_read) {
@@ -282,14 +322,46 @@ export function NotificationBell() {
         <div className="px-3 py-2 border-b space-y-2">
           <div className="flex items-center justify-between">
             <span className="font-semibold">Notifications</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-auto py-1"
-              onClick={() => navigate("/notifications")}
-            >
-              View all
-            </Button>
+            <div className="flex items-center gap-1">
+              {!showAdminView && unreadCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-auto py-1 px-2 gap-1"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMarkAllRead();
+                  }}
+                >
+                  <CheckCheck className="h-3 w-3" />
+                  Read all
+                </Button>
+              )}
+              {showAdminView && adminUnreadCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-auto py-1 px-2 gap-1"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleMarkAllAdminRead();
+                  }}
+                >
+                  <CheckCheck className="h-3 w-3" />
+                  Read all
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-auto py-1"
+                onClick={() => navigate("/notifications")}
+              >
+                View all
+              </Button>
+            </div>
           </div>
           
           {/* Admin toggle - only show if admin */}
