@@ -1,84 +1,72 @@
 
-# Fix: Universal Visibility for Public Profile Data
+# Fix Social Media Link Preview (Open Graph)
 
-## Problem Summary
-After the recent security hardening, all public-facing pages that display creator/editor profiles are broken for non-authenticated users. This affects:
-
-- **Home Page**: Featured Creators section and Testimonials (missing Kagori card)
-- **Products Page**: Comments show "@anonymous" with no avatars, "View Profile" card missing
-- **Community Page**: Thread authors show no profile pictures or usernames
-- **Spotlight Page**: Featured creators not displaying
-- **Updates Page**: Author information not visible
-- **Hire Editors Page**: No editors shown when logged out
-- **Creators Page**: No creators shown when logged out
+## Problem Identified
+When sharing your website link, the social preview shows:
+- **Title**: "Lovable App" (should be "EditorsParadise")
+- **Description**: "Lovable Generated Project" (should describe the marketplace)
+- **Image**: Shows a tall/stretched preview instead of the proper landscape OG image
 
 ## Root Cause
-The database views `public_profiles` and `public_identities` use `security_invoker=on`, meaning they inherit the caller's RLS permissions. The underlying `profiles` table has no SELECT policy for:
-- Anonymous users
-- Authenticated users viewing other users' profiles (creator/editor)
+The Open Graph URLs in `index.html` are pointing to `https://editorsparadise.lovable.app/` but your custom domain is `https://editorsparadise.org/`. Social media crawlers may be getting confused by this mismatch or serving cached outdated content.
 
-The recent security migration removed the policy "Authenticated users can view creator and editor profiles" which was needed for this functionality.
+## Solution
 
-## Solution: Add a Public-Safe RLS Policy
+### 1. Update index.html Meta Tags
+Update all Open Graph and Twitter Card URLs to use your custom domain:
 
-Create a new RLS policy on the `profiles` table that allows **anyone** (including anonymous users) to SELECT rows where `is_creator = true OR is_editor = true`. This is safe because:
+```text
+File: index.html
 
-1. The views already filter to only include safe, non-PII columns
-2. Only creator/editor profiles are exposed (not regular users)
-3. Sensitive fields (email, phone, stripe_account_id, payoneer_email) are excluded from the views
-
-## Database Migration
-
-```sql
--- Allow public read access to creator and editor profiles
--- This is safe because:
--- 1. Only profiles marked as is_creator=true or is_editor=true are accessible
--- 2. The public_profiles and public_identities views exclude sensitive PII
--- 3. This enables universal visibility for public-facing pages
-CREATE POLICY "Anyone can view creator and editor profiles"
-ON public.profiles FOR SELECT
-USING (is_creator = true OR is_editor = true);
+Changes:
+- og:image: https://editorsparadise.lovable.app/og-image.png -> https://editorsparadise.org/og-image.png
+- og:url: https://editorsparadise.lovable.app -> https://editorsparadise.org
+- twitter:image: https://editorsparadise.lovable.app/og-image.png -> https://editorsparadise.org/og-image.png
 ```
 
-## Changes Summary
+### 2. Add Additional OG Properties
+Add width/height hints for the OG image to ensure platforms display it at the correct aspect ratio (1200x630 is the standard OG image size):
 
-| Component | Current State | After Fix |
-|-----------|---------------|-----------|
-| Featured Creators (Home) | Empty for anonymous users | Shows all featured creators |
-| Testimonials (Home) | Missing Kagori card | Shows all testimonials with correct profile data |
-| Product Comments | Shows "@anonymous", no avatars | Shows correct usernames and avatars |
-| Product Creator Card | Missing for non-owners | Visible to everyone |
-| Community Threads | No author profile data | Shows author info (avatar, username, verified badge) |
-| Spotlight Page | Empty | Shows spotlighted creators |
-| Updates Page | Works (uses bot identity) | No change needed |
-| Hire Editors | Empty for anonymous | Shows all approved editors |
-| Creators Page | Empty for anonymous | Shows all creators |
+```html
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+```
 
-## Security Assurance
+---
 
-This change is secure because:
+## Technical Details
 
-1. **Column-Level Protection**: The views (`public_profiles`, `public_identities`) explicitly exclude sensitive columns:
-   - No email, phone, stripe_account_id, payoneer_email, seller_support_email
-   - Only public-facing data: username, full_name, avatar_url, bio, verified status
+### Files to Modify
+- `index.html` - Update meta tag URLs and add image dimension hints
 
-2. **Row-Level Filtering**: Only profiles where `is_creator = true OR is_editor = true` are accessible
-   - Regular users' profiles remain completely private
-   - No access to non-creator/editor accounts
+### Updated Meta Tags
+```html
+<!-- Open Graph -->
+<meta property="og:title" content="EditorsParadise" />
+<meta property="og:description" content="The ultimate marketplace for editors. Discover premium Presets, LUTs, SFX, Templates, Overlays and Fonts crafted by professional creators worldwide." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="https://editorsparadise.org/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content="https://editorsparadise.org" />
+<meta property="og:site_name" content="EditorsParadise" />
 
-3. **Owner's Full Profile**: The existing "Users can view their own full profile" policy remains, allowing users to see all their own data
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@EditorsParadise" />
+<meta name="twitter:title" content="EditorsParadise" />
+<meta name="twitter:description" content="The ultimate marketplace for editors. Discover premium Presets, LUTs, SFX, Templates, Overlays and Fonts crafted by professional creators worldwide." />
+<meta name="twitter:image" content="https://editorsparadise.org/og-image.png" />
+```
 
-## Files Affected
-- Database migration only (no code changes needed)
-- The existing code already queries the correct views (`public_profiles`, `public_identities`)
+---
 
-## Testing Verification
-After applying this fix, verify in an incognito/logged-out browser:
-- Home page shows Featured Creators section
-- Home page Testimonials shows all cards including dynamic ones
-- Product page shows creator "View Profile" card
-- Product comments show usernames and avatars
-- Community threads show author info
-- Spotlight page shows featured creators
-- Hire Editors page shows all approved editors
-- Creators page shows all creators
+## Post-Implementation Steps
+After publishing, you'll need to clear cached previews:
+
+1. **Discord**: Paste the link again - Discord auto-refreshes after some time, or try adding a query param like `?v=2`
+2. **Facebook**: Use the [Sharing Debugger](https://developers.facebook.com/tools/debug/) to scrape the fresh metadata
+3. **Twitter**: Use the [Card Validator](https://cards-dev.twitter.com/validator) to refresh
+4. **LinkedIn**: Use the [Post Inspector](https://www.linkedin.com/post-inspector/)
+
+These tools force the platforms to re-crawl your page and fetch the updated metadata.
