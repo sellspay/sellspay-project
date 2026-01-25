@@ -276,7 +276,7 @@ const ProfilePage: React.FC = () => {
   const username = (params as Record<string, string | undefined>).username;
   const atUsername = (params as Record<string, string | undefined>).atUsername;
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -321,6 +321,8 @@ const ProfilePage: React.FC = () => {
       if (error) throw error;
       
       setProfile({ ...profile, is_seller: true });
+      // Refresh the global auth context so other pages (like CreateProduct) see the update immediately
+      await refreshProfile();
       setShowSellerConfirm(false);
       toast.success('Your account is now a seller account! You can create products.');
     } catch (error) {
