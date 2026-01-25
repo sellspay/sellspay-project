@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.91.0";
+import * as jose from "https://deno.land/x/jose@v5.2.2/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,11 +11,11 @@ const corsHeaders = {
 interface VerifyRequest {
   userId: string;
   code: string;
-  purpose?: 'login' | 'enable_mfa'; // Optional: specify the purpose
+  verificationToken: string; // JWT token from send-verification-otp
+  purpose?: 'login' | 'enable_mfa';
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -22,69 +23,66 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const jwtSecret = supabaseServiceKey;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { userId, code, purpose = 'enable_mfa' }: VerifyRequest = await req.json();
+    const { userId, code, verificationToken, purpose = 'enable_mfa' }: VerifyRequest = await req.json();
 
-    if (!userId || !code) {
+    if (!userId || !code || !verificationToken) {
       return new Response(
-        JSON.stringify({ error: "User ID and code are required" }),
+        JSON.stringify({ error: "User ID, code, and verification token are required" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Retrieve the stored OTP
-    const { data: verificationData, error: fetchError } = await supabase
-      .from('verification_codes')
-      .select('code, expires_at')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (fetchError) {
-      console.error("Error fetching OTP:", fetchError);
-      return new Response(
-        JSON.stringify({ error: "Failed to verify code" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    if (!verificationData) {
-      return new Response(
-        JSON.stringify({ error: "No verification code found. Please request a new code." }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    // Check if expired
-    const expiresAt = new Date(verificationData.expires_at);
-    if (new Date() > expiresAt) {
-      // Delete expired code
-      await supabase
-        .from('verification_codes')
-        .delete()
-        .eq('user_id', userId);
-      
+    // Verify the JWT token
+    const secret = new TextEncoder().encode(jwtSecret);
+    let payload: jose.JWTPayload;
+    
+    try {
+      const { payload: verifiedPayload } = await jose.jwtVerify(verificationToken, secret);
+      payload = verifiedPayload;
+    } catch (jwtError) {
+      console.error("JWT verification failed:", jwtError);
       return new Response(
         JSON.stringify({ error: "Verification code has expired. Please request a new one." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Verify the code
-    if (verificationData.code !== code) {
+    // Validate the token is for this user
+    if (payload.sub !== userId) {
+      return new Response(
+        JSON.stringify({ error: "Invalid verification token" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate the purpose
+    if (payload.purpose !== 'mfa_verification') {
+      return new Response(
+        JSON.stringify({ error: "Invalid token purpose" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Hash the provided code with userId and compare
+    const providedHash = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(code + userId)
+    );
+    const providedHashHex = Array.from(new Uint8Array(providedHash))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    if (providedHashHex !== payload.hash) {
       return new Response(
         JSON.stringify({ error: "Invalid verification code" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Code is valid - delete it
-    await supabase
-      .from('verification_codes')
-      .delete()
-      .eq('user_id', userId);
-
-    // If purpose is to enable MFA, update the profile
+    // Code is valid! If purpose is to enable MFA, update the profile
     if (purpose === 'enable_mfa') {
       const { error: updateError } = await supabase
         .from('profiles')

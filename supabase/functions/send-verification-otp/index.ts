@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.91.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import * as jose from "https://deno.land/x/jose@v5.2.2/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,7 +20,6 @@ function generateOTP(): string {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -27,7 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const jwtSecret = supabaseServiceKey; // Use service key as JWT secret
 
     const { email, userId }: OtpRequest = await req.json();
 
@@ -40,27 +40,29 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Generate a 6-digit OTP
     const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+    const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60); // 10 minutes from now
 
-    // Delete any existing OTP for this user
-    await supabase
-      .from('verification_codes')
-      .delete()
-      .eq('user_id', userId);
+    // Create a signed JWT containing the OTP hash (not the OTP itself)
+    // The OTP is sent via email, the token is used for verification
+    const otpHash = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(otp + userId)
+    );
+    const otpHashHex = Array.from(new Uint8Array(otpHash))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
 
-    // Insert new OTP
-    const { error: insertError } = await supabase
-      .from('verification_codes')
-      .insert({
-        user_id: userId,
-        code: otp,
-        expires_at: expiresAt.toISOString(),
-      });
-
-    if (insertError) {
-      console.error("Error storing OTP:", insertError);
-      throw new Error("Failed to generate verification code");
-    }
+    // Create JWT with the hash - this is what we'll verify against
+    const secret = new TextEncoder().encode(jwtSecret);
+    const verificationToken = await new jose.SignJWT({ 
+      sub: userId,
+      hash: otpHashHex,
+      purpose: 'mfa_verification'
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime(expiresAt)
+      .sign(secret);
 
     // Build branded email HTML
     const emailHtml = `
@@ -94,7 +96,6 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    // Check if Resend is configured
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     
     if (resendApiKey) {
@@ -112,13 +113,16 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error("Failed to send verification email");
       }
     } else {
-      // No Resend configured - log for development
       console.log(`[DEV] Verification code for ${email}: ${otp}`);
-      // In production, user needs to set up RESEND_API_KEY
     }
 
+    // Return the verification token - client stores this temporarily
     return new Response(
-      JSON.stringify({ success: true, message: "Verification code sent" }),
+      JSON.stringify({ 
+        success: true, 
+        message: "Verification code sent",
+        verificationToken // Client needs this to verify the code
+      }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
