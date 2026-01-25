@@ -46,10 +46,10 @@ serve(async (req) => {
     const user = userData.user;
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Get user's profile
+    // Get user's profile id
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("id, stripe_account_id, stripe_onboarding_complete, email")
+      .select("id")
       .eq("user_id", user.id)
       .single();
 
@@ -58,10 +58,28 @@ serve(async (req) => {
     }
     logStep("Profile found", { profileId: profile.id });
 
+    // Get existing seller config from private schema
+    const { data: sellerConfig, error: configError } = await supabaseAdmin.rpc(
+      "get_seller_config",
+      { p_user_id: user.id }
+    );
+
+    if (configError) {
+      logStep("Error getting seller config", { error: configError.message });
+    }
+
+    // Get user email from private schema
+    const { data: userPii, error: piiError } = await supabaseAdmin.rpc(
+      "get_user_pii",
+      { p_user_id: user.id }
+    );
+
+    const userEmail = userPii?.[0]?.email || user.email;
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const origin = req.headers.get("origin") || "https://editorsparadise.org";
 
-    let accountId = profile.stripe_account_id;
+    let accountId = sellerConfig?.[0]?.stripe_account_id;
 
     // Create a new Connect account if one doesn't exist
     if (!accountId) {
@@ -69,7 +87,7 @@ serve(async (req) => {
       
       const account = await stripe.accounts.create({
         type: "express",
-        email: profile.email || user.email,
+        email: userEmail,
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true },
@@ -80,16 +98,13 @@ serve(async (req) => {
       accountId = account.id;
       logStep("Connect account created", { accountId });
 
-      // Save the account ID to the profile
-      const { error: updateError } = await supabaseAdmin
-        .from("profiles")
-        .update({ stripe_account_id: accountId })
-        .eq("id", profile.id);
+      // Save the account ID to private.seller_config
+      await supabaseAdmin.rpc("update_seller_config", {
+        p_user_id: user.id,
+        p_stripe_account_id: accountId
+      });
 
-      if (updateError) {
-        logStep("Failed to save account ID", { error: updateError.message });
-        throw new Error("Failed to save Stripe account");
-      }
+      logStep("Stripe account ID saved to private config");
     } else {
       logStep("Using existing Connect account", { accountId });
     }

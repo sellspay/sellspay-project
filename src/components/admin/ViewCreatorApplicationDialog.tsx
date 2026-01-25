@@ -63,9 +63,6 @@ export default function ViewCreatorApplicationDialog({
               {application.profile?.username && (
                 <p className="text-sm text-muted-foreground">@{application.profile.username}</p>
               )}
-              {application.profile?.email && (
-                <p className="text-xs text-muted-foreground">{application.profile.email}</p>
-              )}
             </div>
             <div className="ml-auto">
               <Badge

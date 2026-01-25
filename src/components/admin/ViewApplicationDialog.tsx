@@ -45,7 +45,6 @@ interface EditorApplication {
   profile?: {
     avatar_url: string | null;
     username: string | null;
-    email: string | null;
   };
 }
 
@@ -121,12 +120,6 @@ export default function ViewApplicationDialog({
               </div>
               {application.profile?.username && (
                 <p className="text-muted-foreground">@{application.profile.username}</p>
-              )}
-              {application.profile?.email && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                  <Mail className="w-3 h-3" />
-                  {application.profile.email}
-                </p>
               )}
               <p className="text-sm text-muted-foreground mt-1">
                 Applied: {formatDate(application.created_at)}

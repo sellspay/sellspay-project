@@ -77,18 +77,15 @@ serve(async (req) => {
     // For now, we'll simulate the registration and store the info
     // This allows the UI to be built and tested
 
-    // Update profile with Payoneer info
-    const { error: updateError } = await supabaseClient
-      .from("profiles")
-      .update({
-        payoneer_email: payoneerEmail,
-        payoneer_payee_id: payeeId,
-        payoneer_status: "pending", // Will be 'active' after Payoneer verification
-      })
-      .eq("id", profile.id);
+    // Update private.seller_config with Payoneer info
+    await supabaseClient.rpc("update_seller_config", {
+      p_user_id: user.id,
+      p_payoneer_email: payoneerEmail,
+      p_payoneer_payee_id: payeeId,
+      p_payoneer_status: "pending", // Will be 'active' after Payoneer verification
+    });
 
-    if (updateError) throw updateError;
-    logStep("Profile updated with Payoneer info");
+    logStep("Seller config updated with Payoneer info");
 
     return new Response(
       JSON.stringify({

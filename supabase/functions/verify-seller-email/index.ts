@@ -47,10 +47,10 @@ const handler = async (req: Request): Promise<Response> => {
     // Create service client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if user is a seller
+    // Check if user is a seller from public profiles table
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id, is_seller, seller_support_email")
+      .select("id, is_seller")
       .eq("user_id", user.id)
       .single();
 

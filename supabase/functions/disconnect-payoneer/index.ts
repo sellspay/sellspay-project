@@ -38,18 +38,15 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    // Clear Payoneer account data from profile
-    const { error: updateError } = await supabaseClient
-      .from("profiles")
-      .update({
-        payoneer_email: null,
-        payoneer_payee_id: null,
-        payoneer_status: null,
-        preferred_payout_method: "stripe",
-      })
-      .eq("user_id", user.id);
+    // Clear Payoneer account data from private.seller_config
+    await supabaseClient.rpc("update_seller_config", {
+      p_user_id: user.id,
+      p_payoneer_email: null,
+      p_payoneer_payee_id: null,
+      p_payoneer_status: null,
+      p_preferred_payout_method: "stripe",
+    });
 
-    if (updateError) throw new Error(`Failed to disconnect: ${updateError.message}`);
     logStep("Payoneer account disconnected successfully");
 
     return new Response(

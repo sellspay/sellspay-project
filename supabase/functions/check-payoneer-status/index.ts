@@ -36,15 +36,27 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    // Get user profile with Payoneer info
+    // Get profile id
     const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
-      .select("id, payoneer_email, payoneer_payee_id, payoneer_status, preferred_payout_method")
+      .select("id")
       .eq("user_id", user.id)
       .single();
 
     if (profileError || !profile) throw new Error("Profile not found");
     logStep("Profile found", { profileId: profile.id });
+
+    // Get seller config from private schema
+    const { data: sellerConfig, error: configError } = await supabaseClient.rpc(
+      "get_seller_config",
+      { p_user_id: user.id }
+    );
+
+    if (configError) {
+      logStep("Error getting seller config", { error: configError.message });
+    }
+
+    const config = sellerConfig?.[0];
 
     // Check if Payoneer is configured
     const payoneerConfigured = !!(
@@ -58,10 +70,10 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         payoneerConfigured,
-        payoneerEmail: profile.payoneer_email,
-        payoneerPayeeId: profile.payoneer_payee_id,
-        payoneerStatus: profile.payoneer_status,
-        preferredPayoutMethod: profile.preferred_payout_method || "stripe",
+        payoneerEmail: config?.payoneer_email || null,
+        payoneerPayeeId: null, // Not exposed for security
+        payoneerStatus: config?.payoneer_status || null,
+        preferredPayoutMethod: config?.preferred_payout_method || "stripe",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );

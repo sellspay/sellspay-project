@@ -22,7 +22,6 @@ interface Profile {
   user_id: string;
   username: string | null;
   full_name: string | null;
-  email: string | null;
   avatar_url: string | null;
   bio: string | null;
   is_creator: boolean | null;
@@ -122,7 +121,7 @@ export default function EditUserDialog({
               </AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-medium">{user.email}</p>
+              <p className="font-medium">@{user.username || "No username"}</p>
               <p className="text-sm text-muted-foreground">User ID: {user.id}</p>
             </div>
           </div>

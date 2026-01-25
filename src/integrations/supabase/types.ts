@@ -1034,7 +1034,6 @@ export type Database = {
           editor_languages: string[] | null
           editor_services: string[] | null
           editor_social_links: Json | null
-          email: string | null
           email_notifications_enabled: boolean | null
           full_name: string | null
           global_custom_font: Json | null
@@ -1045,22 +1044,10 @@ export type Database = {
           is_seller: boolean | null
           last_username_changed_at: string | null
           mfa_enabled: boolean | null
-          payoneer_email: string | null
-          payoneer_payee_id: string | null
-          payoneer_status: string | null
-          pending_email: string | null
-          phone: string | null
-          preferred_payout_method: string | null
           previous_username: string | null
           previous_username_available_at: string | null
-          resend_vault_secret_id: string | null
-          seller_email_verified: boolean | null
-          seller_support_email: string | null
           show_recent_uploads: boolean | null
           social_links: Json | null
-          stripe_account_id: string | null
-          stripe_onboarding_complete: boolean | null
-          subscription_stripe_id: string | null
           subscription_tier: string | null
           suspended: boolean | null
           updated_at: string | null
@@ -1083,7 +1070,6 @@ export type Database = {
           editor_languages?: string[] | null
           editor_services?: string[] | null
           editor_social_links?: Json | null
-          email?: string | null
           email_notifications_enabled?: boolean | null
           full_name?: string | null
           global_custom_font?: Json | null
@@ -1094,22 +1080,10 @@ export type Database = {
           is_seller?: boolean | null
           last_username_changed_at?: string | null
           mfa_enabled?: boolean | null
-          payoneer_email?: string | null
-          payoneer_payee_id?: string | null
-          payoneer_status?: string | null
-          pending_email?: string | null
-          phone?: string | null
-          preferred_payout_method?: string | null
           previous_username?: string | null
           previous_username_available_at?: string | null
-          resend_vault_secret_id?: string | null
-          seller_email_verified?: boolean | null
-          seller_support_email?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
-          stripe_account_id?: string | null
-          stripe_onboarding_complete?: boolean | null
-          subscription_stripe_id?: string | null
           subscription_tier?: string | null
           suspended?: boolean | null
           updated_at?: string | null
@@ -1132,7 +1106,6 @@ export type Database = {
           editor_languages?: string[] | null
           editor_services?: string[] | null
           editor_social_links?: Json | null
-          email?: string | null
           email_notifications_enabled?: boolean | null
           full_name?: string | null
           global_custom_font?: Json | null
@@ -1143,22 +1116,10 @@ export type Database = {
           is_seller?: boolean | null
           last_username_changed_at?: string | null
           mfa_enabled?: boolean | null
-          payoneer_email?: string | null
-          payoneer_payee_id?: string | null
-          payoneer_status?: string | null
-          pending_email?: string | null
-          phone?: string | null
-          preferred_payout_method?: string | null
           previous_username?: string | null
           previous_username_available_at?: string | null
-          resend_vault_secret_id?: string | null
-          seller_email_verified?: boolean | null
-          seller_support_email?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
-          stripe_account_id?: string | null
-          stripe_onboarding_complete?: boolean | null
-          subscription_stripe_id?: string | null
           subscription_tier?: string | null
           suspended?: boolean | null
           updated_at?: string | null
@@ -1961,6 +1922,7 @@ export type Database = {
           is_creator: boolean | null
           is_editor: boolean | null
           is_owner: boolean | null
+          is_seller: boolean | null
           show_recent_uploads: boolean | null
           social_links: Json | null
           updated_at: string | null
@@ -1989,6 +1951,7 @@ export type Database = {
           is_creator?: boolean | null
           is_editor?: boolean | null
           is_owner?: never
+          is_seller?: boolean | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
           updated_at?: string | null
@@ -2017,6 +1980,7 @@ export type Database = {
           is_creator?: boolean | null
           is_editor?: boolean | null
           is_owner?: never
+          is_seller?: boolean | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
           updated_at?: string | null

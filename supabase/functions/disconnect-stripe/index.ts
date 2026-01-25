@@ -38,17 +38,14 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    // Clear Stripe account data from profile
-    const { error: updateError } = await supabaseClient
-      .from("profiles")
-      .update({
-        stripe_account_id: null,
-        stripe_onboarding_complete: false,
-        preferred_payout_method: null,
-      })
-      .eq("user_id", user.id);
+    // Clear Stripe account data from private.seller_config
+    await supabaseClient.rpc("update_seller_config", {
+      p_user_id: user.id,
+      p_stripe_account_id: null,
+      p_stripe_onboarding_complete: false,
+      p_preferred_payout_method: null,
+    });
 
-    if (updateError) throw new Error(`Failed to disconnect: ${updateError.message}`);
     logStep("Stripe account disconnected successfully");
 
     return new Response(
