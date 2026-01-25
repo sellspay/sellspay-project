@@ -837,7 +837,6 @@ export type Database = {
           benefits: string[] | null
           cover_image_url: string | null
           created_at: string | null
-          created_by: string | null
           creator_id: string | null
           currency: string | null
           description: string | null
@@ -866,7 +865,6 @@ export type Database = {
           benefits?: string[] | null
           cover_image_url?: string | null
           created_at?: string | null
-          created_by?: string | null
           creator_id?: string | null
           currency?: string | null
           description?: string | null
@@ -895,7 +893,6 @@ export type Database = {
           benefits?: string[] | null
           cover_image_url?: string | null
           created_at?: string | null
-          created_by?: string | null
           creator_id?: string | null
           currency?: string | null
           description?: string | null
