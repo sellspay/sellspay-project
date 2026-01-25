@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, CreditCard, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { useCredits } from '@/hooks/useCredits';
-import navbarLogo from '@/assets/navbar-logo.png';
+import platformLogo from '@/assets/hero-logo.png';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { TopUpDialog } from '@/components/credits/TopUpDialog';
 
@@ -56,7 +56,7 @@ export default function Header() {
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img 
-              src={navbarLogo} 
+              src={platformLogo} 
               alt="EditorsParadise" 
               className="h-14 sm:h-16 w-auto max-w-[200px] sm:max-w-[280px]"
             />
