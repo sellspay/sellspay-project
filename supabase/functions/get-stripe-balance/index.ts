@@ -86,45 +86,127 @@ serve(async (req) => {
     const stripeAccountId = config?.stripe_account_id;
     const onboardingComplete = config?.stripe_onboarding_complete;
 
+    logStep("Profile found", { profileId: profile.id, stripeAccountId, onboardingComplete });
+
+    // Initialize Stripe
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+
+    // Get pending earnings from product sales (not yet transferred to connected account)
+    const { data: pendingPurchases, error: purchasesError } = await supabaseClient
+      .from("purchases")
+      .select(`
+        id,
+        creator_payout_cents,
+        product_id,
+        products!inner(creator_id)
+      `)
+      .eq("products.creator_id", profile.id)
+      .eq("status", "completed")
+      .eq("transferred", false);
+
+    if (purchasesError) {
+      logStep("Error fetching pending purchases", { error: purchasesError.message });
+    }
+
+    // Get pending earnings from editor bookings (not yet transferred)
+    const { data: pendingBookings, error: bookingsError } = await supabaseClient
+      .from("editor_bookings")
+      .select("id, editor_payout_cents")
+      .eq("editor_id", profile.id)
+      .eq("status", "completed")
+      .eq("transferred", false);
+
+    if (bookingsError) {
+      logStep("Error fetching pending bookings", { error: bookingsError.message });
+    }
+
+    // Calculate total pending earnings from platform-held funds
+    const pendingProductEarnings = (pendingPurchases || []).reduce(
+      (sum, p) => sum + (p.creator_payout_cents || 0), 0
+    );
+    const pendingBookingEarnings = (pendingBookings || []).reduce(
+      (sum, b) => sum + (b.editor_payout_cents || 0), 0
+    );
+    const totalPendingEarnings = pendingProductEarnings + pendingBookingEarnings;
+
+    logStep("Pending earnings calculated", {
+      pendingProductEarnings,
+      pendingBookingEarnings,
+      totalPendingEarnings,
+      pendingPurchaseCount: (pendingPurchases || []).length,
+      pendingBookingCount: (pendingBookings || []).length,
+    });
+
+    // If user has no Stripe connected, return pending earnings as available balance
     if (!stripeAccountId || !onboardingComplete) {
       return new Response(
         JSON.stringify({ 
           connected: false,
-          availableBalance: 0,
+          availableBalance: totalPendingEarnings, // Show pending earnings
           pendingBalance: 0,
+          pendingEarnings: totalPendingEarnings,
+          stripeBalance: 0,
+          breakdown: {
+            productEarnings: pendingProductEarnings,
+            bookingEarnings: pendingBookingEarnings,
+          },
+          needsOnboarding: true,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
-    logStep("Profile found", { profileId: profile.id, stripeAccountId });
-
-    // Initialize Stripe
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-
     // Get the connected account's balance
-    const balance = await stripe.balance.retrieve({
-      stripeAccount: stripeAccountId,
+    let stripeAvailableBalance = 0;
+    let stripePendingBalance = 0;
+    
+    try {
+      const balance = await stripe.balance.retrieve({
+        stripeAccount: stripeAccountId,
+      });
+
+      logStep("Balance retrieved", { available: balance.available, pending: balance.pending });
+
+      // Calculate balances (USD only for simplicity)
+      stripeAvailableBalance = balance.available.reduce((acc: number, b: Stripe.Balance.Available) => {
+        if (b.currency === "usd") return acc + b.amount;
+        return acc;
+      }, 0);
+
+      stripePendingBalance = balance.pending.reduce((acc: number, b: Stripe.Balance.Pending) => {
+        if (b.currency === "usd") return acc + b.amount;
+        return acc;
+      }, 0);
+    } catch (stripeErr) {
+      logStep("Could not retrieve Stripe balance", { error: stripeErr instanceof Error ? stripeErr.message : String(stripeErr) });
+    }
+
+    // Total available = pending platform earnings + Stripe available balance
+    const totalAvailableBalance = totalPendingEarnings + stripeAvailableBalance;
+    // Total pending = Stripe pending (7-day hold on direct transfers)
+    const totalPendingBalance = stripePendingBalance;
+
+    logStep("Final balance calculated", {
+      totalAvailableBalance,
+      totalPendingBalance,
+      stripeAvailableBalance,
+      stripePendingBalance,
+      platformPendingEarnings: totalPendingEarnings,
     });
-
-    logStep("Balance retrieved", { available: balance.available, pending: balance.pending });
-
-    // Calculate balances (USD only for simplicity)
-    const availableBalance = balance.available.reduce((acc: number, b: Stripe.Balance.Available) => {
-      if (b.currency === "usd") return acc + b.amount;
-      return acc;
-    }, 0);
-
-    const pendingBalance = balance.pending.reduce((acc: number, b: Stripe.Balance.Pending) => {
-      if (b.currency === "usd") return acc + b.amount;
-      return acc;
-    }, 0);
 
     return new Response(
       JSON.stringify({
         connected: true,
-        availableBalance,
-        pendingBalance,
+        availableBalance: totalAvailableBalance,
+        pendingBalance: totalPendingBalance,
+        pendingEarnings: totalPendingEarnings,
+        stripeBalance: stripeAvailableBalance,
+        breakdown: {
+          productEarnings: pendingProductEarnings,
+          bookingEarnings: pendingBookingEarnings,
+          stripeAvailable: stripeAvailableBalance,
+          stripePending: stripePendingBalance,
+        },
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

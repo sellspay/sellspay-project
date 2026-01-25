@@ -101,12 +101,12 @@ export default function Dashboard() {
         setProductViews(viewsData || []);
       }
 
-      // Fetch editor bookings (if user is an editor)
+      // Fetch editor bookings (if user is an editor) - include all paid bookings
       const { data: bookingsData } = await supabase
         .from('editor_bookings')
         .select('editor_payout_cents, created_at, status')
         .eq('editor_id', profile.id)
-        .eq('status', 'completed');
+        .in('status', ['completed', 'in_progress', 'queued']); // Include all paid statuses
       
       setEditorBookings(bookingsData || []);
       
