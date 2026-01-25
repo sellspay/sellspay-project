@@ -108,22 +108,15 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
       if (error) throw error;
       if (!repliesData || repliesData.length === 0) return [];
 
-      // Fetch authors from public_profiles (accessible to all users including anonymous)
+      // Fetch authors from public_profiles (includes is_owner computed field)
       const authorIds = [...new Set(repliesData.map((r) => r.author_id))];
       const { data: authorsData } = await supabase
         .from('public_profiles')
-        .select('id, user_id, username, full_name, avatar_url, verified')
+        .select('id, user_id, username, full_name, avatar_url, verified, is_owner')
         .in('id', authorIds);
 
       const authorsMap = new Map(authorsData?.map((a) => [a.id, a]) || []);
 
-      // Check owner status using secure RPC for each user
-      const userIds = (authorsData || []).map((p: any) => p.user_id).filter(Boolean);
-      const adminUserIds = new Set<string>();
-      for (const userId of userIds) {
-        const { data: isOwner } = await supabase.rpc('is_owner', { p_user_id: userId });
-        if (isOwner) adminUserIds.add(userId);
-      }
 
       // Fetch likes counts
       const replyIds = repliesData.map((r) => r.id);
@@ -148,39 +141,33 @@ export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDia
         userLikesSet = new Set(userLikes?.map((l) => l.reply_id) || []);
       }
 
-      return repliesData.map((reply) => ({
-        ...reply,
-        author: {
-          ...authorsMap.get(reply.author_id),
-          isAdmin: adminUserIds.has((authorsMap.get(reply.author_id) as any)?.user_id),
-        },
-        likes_count: likesCountMap.get(reply.id) || 0,
-        is_liked: userLikesSet.has(reply.id),
-      })) as Reply[];
+      return repliesData.map((reply) => {
+        const author = authorsMap.get(reply.author_id) as any;
+        return {
+          ...reply,
+          author: {
+            ...author,
+            isAdmin: author?.is_owner === true,
+          },
+          likes_count: likesCountMap.get(reply.id) || 0,
+          is_liked: userLikesSet.has(reply.id),
+        };
+      }) as Reply[];
     },
     enabled: !!thread?.id && open,
   });
 
-  // Check if thread author is owner (for Owner badge)
+  // Check if thread author is owner (for Owner badge) - use is_owner from public_profiles
   const { data: threadAuthorIsAdmin } = useQuery({
     queryKey: ['user-is-owner', thread?.author_id],
     queryFn: async () => {
       if (!thread?.author_id) return false;
-      // threads.author_id points to profiles.id (not auth user id)
       const { data: authorProfile } = await supabase
         .from('public_profiles')
-        .select('user_id')
+        .select('is_owner')
         .eq('id', thread.author_id)
         .maybeSingle();
-      if (!authorProfile?.user_id) return false;
-
-      const { data: roleRow } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('user_id', authorProfile.user_id)
-        .eq('role', 'owner')
-        .maybeSingle();
-      return !!roleRow;
+      return authorProfile?.is_owner === true;
     },
     enabled: !!thread?.author_id && open,
   });

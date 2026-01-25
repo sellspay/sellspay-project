@@ -65,27 +65,19 @@ export default function SpotlightNominationsDialog({ open, onOpenChange }: Spotl
       // Get unique creator IDs
       const creatorIds = [...nominationCounts.keys()];
 
-      // Fetch profiles for these creators
+      // Fetch profiles for these creators using public_profiles (includes is_owner)
       const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, user_id, username, full_name, avatar_url, verified, bio')
+        .from('public_profiles')
+        .select('id, user_id, username, full_name, avatar_url, verified, bio, is_owner')
         .in('id', creatorIds);
 
       if (!profiles) return [];
 
-      // Check owner status using secure RPC for each user
-      const userIds = profiles.map(p => p.user_id).filter(Boolean);
-      const adminUserIds = new Set<string>();
-      for (const userId of userIds) {
-        const { data: isOwner } = await supabase.rpc('is_owner', { p_user_id: userId });
-        if (isOwner) adminUserIds.add(userId);
-      }
-
-      // Build result with nomination counts
+      // Build result with nomination counts (is_owner comes from view)
       const result: NominatedCreator[] = profiles.map(p => ({
         ...p,
         nomination_count: nominationCounts.get(p.id) || 0,
-        isAdmin: adminUserIds.has(p.user_id),
+        isAdmin: (p as any).is_owner === true,
       }));
 
       // Sort by nomination count descending

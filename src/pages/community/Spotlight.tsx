@@ -50,13 +50,16 @@ export default function Spotlight() {
         return [];
       }
 
-      // Check owner status using secure RPC for each profile
+      // Build owner lookup from public_profiles (which now includes is_owner)
       const userIds = spotlightsData.map((s: any) => s.profile_user_id).filter(Boolean);
-      const adminUserIds = new Set<string>();
-      for (const userId of userIds) {
-        const { data: isOwner } = await supabase.rpc('is_owner', { p_user_id: userId });
-        if (isOwner) adminUserIds.add(userId);
-      }
+      const { data: profilesWithOwner } = await supabase
+        .from('public_profiles')
+        .select('user_id, is_owner')
+        .in('user_id', userIds);
+      
+      const adminUserIds = new Set<string>(
+        (profilesWithOwner || []).filter((p: any) => p.is_owner).map((p: any) => p.user_id)
+      );
 
       // Get products and followers counts
       const spotlightsWithData = await Promise.all(spotlightsData.map(async (s: any) => {

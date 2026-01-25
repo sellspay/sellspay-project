@@ -42,10 +42,10 @@ export default function Creators() {
 
   useEffect(() => {
     async function fetchCreators() {
-      // Use public_profiles view for public access (no RLS restrictions)
+      // Use public_profiles view for public access - includes is_owner computed field
       const { data, error } = await supabase
         .from('public_profiles')
-        .select('id, user_id, username, full_name, avatar_url, bio, is_creator, verified')
+        .select('id, user_id, username, full_name, avatar_url, bio, is_creator, verified, is_owner')
         .eq('is_creator', true)
         .order('created_at', { ascending: false });
 
@@ -55,18 +55,6 @@ export default function Creators() {
         setLoading(false);
         return;
       }
-
-      // Get owner status for all creators using RPC (user_roles is locked down)
-      const userIds = (data || []).map(c => c.user_id).filter(Boolean) as string[];
-      const ownerStatusMap = new Map<string, boolean>();
-      
-      // Check owner status for each user via RPC
-      await Promise.all(
-        userIds.map(async (userId) => {
-          const { data: isOwner } = await supabase.rpc('is_owner', { p_user_id: userId });
-          ownerStatusMap.set(userId, isOwner === true);
-        })
-      );
 
       // Fetch counts for each creator
       const creatorsWithCounts = await Promise.all(
@@ -95,7 +83,7 @@ export default function Creators() {
             productCount: productCount || 0,
             followersCount: followersCount || 0,
             followingCount: followingCount || 0,
-            isOwner: creator.user_id ? ownerStatusMap.get(creator.user_id) === true : false,
+            isOwner: (creator as any).is_owner === true,
           };
         })
       );
