@@ -187,7 +187,12 @@ export function ThreadComposer() {
               <div className="relative">
                 <div className="min-h-[60px] rounded-xl bg-muted/30 border border-border/30 p-4 flex items-center justify-center gap-3">
                   <Lock className="h-5 w-5 text-amber-500" />
-                  <span className="text-muted-foreground">Thread posting requires Starter plan or above</span>
+                  <span className="text-muted-foreground">
+                    Thread posting requires{' '}
+                    <Link to="/pricing" className="text-primary hover:underline font-medium">
+                      Starter plan or above
+                    </Link>
+                  </span>
                 </div>
               </div>
 
