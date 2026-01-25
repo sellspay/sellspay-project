@@ -125,6 +125,14 @@ export default {
             transform: "translateX(-50%)",
           },
         },
+        "shimmer": {
+          "0%": {
+            backgroundPosition: "200% 0",
+          },
+          "100%": {
+            backgroundPosition: "-200% 0",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -134,6 +142,7 @@ export default {
         "hue-rotate": "hue-rotate 3s linear infinite",
         "reveal-up": "reveal-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         "marquee": "marquee 30s linear infinite",
+        "shimmer": "shimmer 2s linear infinite",
       },
     },
   },
