@@ -1413,6 +1413,10 @@ export default function Settings() {
                 connectingStripe={connectingStripe}
                 checkingStripeStatus={checkingStripeStatus}
                 onCheckStripeStatus={checkStripeStatus}
+                onStripeDisconnected={() => {
+                  setStripeAccountId(null);
+                  setStripeOnboardingComplete(false);
+                }}
               />
 
               <Separator />
