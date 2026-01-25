@@ -178,35 +178,45 @@ export default function SFXGenerator() {
         {/* Input Section */}
         <Card className="p-6 space-y-6 bg-card/50">
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">Prompt</label>
-              <Button
-                variant="ghost"
-                size="sm"
+            <label className="text-sm font-medium mb-2 block">Prompt</label>
+            <div className="relative">
+              <Textarea
+                placeholder="Describe the sound effect you want to generate..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="min-h-[120px] resize-none pr-4 pb-14"
+                disabled={isGenerating}
+              />
+              
+              {/* AI Enhance Button - Inside textarea */}
+              <button
                 onClick={handleEnhancePrompt}
                 disabled={isEnhancing || !prompt.trim() || isGenerating}
-                className="h-7 text-xs gap-1.5 text-primary hover:text-primary"
+                className="absolute bottom-3 right-3 group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 text-white text-xs font-medium shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:scale-100 overflow-hidden"
               >
+                {/* Animated background shimmer */}
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+                
+                {/* Pulsing glow effect */}
+                <span className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-400 via-purple-400 to-fuchsia-400 opacity-0 group-hover:opacity-40 blur-sm transition-opacity duration-300" />
+                
                 {isEnhancing ? (
                   <>
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Enhancing...
+                    <Loader2 className="w-3.5 h-3.5 animate-spin relative z-10" />
+                    <span className="relative z-10">Enhancing...</span>
                   </>
                 ) : (
                   <>
-                    <Wand2 className="w-3 h-3" />
-                    AI Enhance
+                    <Wand2 className="w-3.5 h-3.5 relative z-10 group-hover:rotate-12 transition-transform duration-300" />
+                    <span className="relative z-10">AI Enhance</span>
+                    
+                    {/* Sparkle particle animation */}
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-yellow-300 rounded-full animate-ping opacity-75" />
+                    <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-yellow-200 rounded-full" />
                   </>
                 )}
-              </Button>
+              </button>
             </div>
-            <Textarea
-              placeholder="Describe the sound effect you want to generate..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="min-h-[120px] resize-none"
-              disabled={isGenerating}
-            />
             
             {/* Quick Suggestions */}
             <div className="flex flex-wrap gap-1.5 mt-2">
