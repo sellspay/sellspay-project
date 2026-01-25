@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -9,7 +8,7 @@ const corsHeaders = {
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : "";
-  console.log(`[CREATE-LOGIN-LINK] ${step}${detailsStr}`);
+  console.log(`[DISCONNECT-PAYONEER] ${step}${detailsStr}`);
 };
 
 serve(async (req) => {
@@ -20,17 +19,13 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    if (!supabaseUrl || !supabaseAnonKey) {
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error("Supabase credentials not configured");
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -43,34 +38,22 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    // Fetch user profile to get stripe_account_id
-    const { data: profile, error: profileError } = await supabaseClient
+    // Clear Payoneer account data from profile
+    const { error: updateError } = await supabaseClient
       .from("profiles")
-      .select("stripe_account_id, stripe_onboarding_complete")
-      .eq("user_id", user.id)
-      .maybeSingle();
+      .update({
+        payoneer_email: null,
+        payoneer_payee_id: null,
+        payoneer_status: null,
+        preferred_payout_method: "stripe",
+      })
+      .eq("user_id", user.id);
 
-    if (profileError) throw new Error(`Profile error: ${profileError.message}`);
-    if (!profile) {
-      throw new Error("Profile not found. Please ensure your account is set up correctly.");
-    }
-    if (!profile.stripe_account_id) {
-      throw new Error("No Stripe account connected. Please complete Stripe onboarding first.");
-    }
-    if (!profile.stripe_onboarding_complete) {
-      throw new Error("Stripe onboarding not complete. Please complete onboarding first.");
-    }
-    logStep("Profile found", { stripeAccountId: profile.stripe_account_id });
-
-    // Initialize Stripe
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-
-    // Create login link to Stripe Express Dashboard
-    const loginLink = await stripe.accounts.createLoginLink(profile.stripe_account_id);
-    logStep("Login link created", { url: loginLink.url });
+    if (updateError) throw new Error(`Failed to disconnect: ${updateError.message}`);
+    logStep("Payoneer account disconnected successfully");
 
     return new Response(
-      JSON.stringify({ success: true, url: loginLink.url }),
+      JSON.stringify({ success: true, message: "Payoneer account disconnected" }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,

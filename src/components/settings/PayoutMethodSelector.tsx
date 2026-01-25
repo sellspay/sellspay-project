@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CreditCard, Globe, Loader2, CheckCircle, AlertCircle, ExternalLink, RefreshCw, Building } from "lucide-react";
+import { CreditCard, Globe, Loader2, CheckCircle, AlertCircle, ExternalLink, RefreshCw, Building, Unlink } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,18 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PayoutMethodSelectorProps {
   stripeConnected: boolean;
@@ -23,6 +34,7 @@ interface PayoutMethodSelectorProps {
   connectingStripe: boolean;
   checkingStripeStatus: boolean;
   onCheckStripeStatus: () => void;
+  onStripeDisconnected?: () => void;
 }
 
 interface BankAccount {
@@ -42,6 +54,7 @@ export function PayoutMethodSelector({
   connectingStripe,
   checkingStripeStatus,
   onCheckStripeStatus,
+  onStripeDisconnected,
 }: PayoutMethodSelectorProps) {
   const [preferredMethod, setPreferredMethod] = useState<"stripe" | "payoneer">("stripe");
   const [payoneerEmail, setPayoneerEmail] = useState("");
@@ -56,6 +69,12 @@ export function PayoutMethodSelector({
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [loadingBankAccounts, setLoadingBankAccounts] = useState(false);
   const [openingDashboard, setOpeningDashboard] = useState(false);
+  
+  // Disconnect dialogs
+  const [showDisconnectStripeDialog, setShowDisconnectStripeDialog] = useState(false);
+  const [showDisconnectPayoneerDialog, setShowDisconnectPayoneerDialog] = useState(false);
+  const [disconnectingStripe, setDisconnectingStripe] = useState(false);
+  const [disconnectingPayoneer, setDisconnectingPayoneer] = useState(false);
 
   useEffect(() => {
     fetchPayoneerStatus();
@@ -207,6 +226,63 @@ export function PayoutMethodSelector({
       toast.error("Failed to update preference");
     } finally {
       setSavingPreference(false);
+    }
+  };
+
+  const handleDisconnectStripe = async () => {
+    setDisconnectingStripe(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("disconnect-stripe", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success("Stripe account disconnected successfully");
+        setBankAccounts([]);
+        setShowDisconnectStripeDialog(false);
+        onStripeDisconnected?.();
+      } else {
+        throw new Error(data.error || "Failed to disconnect Stripe");
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to disconnect Stripe";
+      toast.error(message);
+    } finally {
+      setDisconnectingStripe(false);
+    }
+  };
+
+  const handleDisconnectPayoneer = async () => {
+    setDisconnectingPayoneer(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("disconnect-payoneer", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success("Payoneer account disconnected successfully");
+        setPayoneerStatus(null);
+        setPayoneerEmail("");
+        setPreferredMethod("stripe");
+        setShowDisconnectPayoneerDialog(false);
+      } else {
+        throw new Error(data.error || "Failed to disconnect Payoneer");
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to disconnect Payoneer";
+      toast.error(message);
+    } finally {
+      setDisconnectingPayoneer(false);
     }
   };
 
@@ -380,6 +456,15 @@ export function PayoutMethodSelector({
                     Set as Primary
                   </Button>
                 )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setShowDisconnectStripeDialog(true)}
+                >
+                  <Unlink className="w-4 h-4 mr-2" />
+                  Disconnect
+                </Button>
               </>
             ) : (
               <>
@@ -396,13 +481,24 @@ export function PayoutMethodSelector({
                   )}
                 </Button>
                 {stripeConnected && (
-                  <Button variant="outline" onClick={onCheckStripeStatus} disabled={checkingStripeStatus}>
-                    {checkingStripeStatus ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                  </Button>
+                  <>
+                    <Button variant="outline" onClick={onCheckStripeStatus} disabled={checkingStripeStatus}>
+                      {checkingStripeStatus ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setShowDisconnectStripeDialog(true)}
+                    >
+                      <Unlink className="w-4 h-4 mr-2" />
+                      Disconnect
+                    </Button>
+                  </>
                 )}
               </>
             )}
@@ -464,20 +560,42 @@ export function PayoutMethodSelector({
 
           <div className="flex flex-wrap gap-2">
             {payoneerStatus === "active" ? (
-              preferredMethod !== "payoneer" && (
+              <>
+                {preferredMethod !== "payoneer" && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleSetPreferredMethod("payoneer")}
+                    disabled={savingPreference}
+                  >
+                    Set as Primary
+                  </Button>
+                )}
                 <Button
-                  variant="secondary"
-                  onClick={() => handleSetPreferredMethod("payoneer")}
-                  disabled={savingPreference}
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setShowDisconnectPayoneerDialog(true)}
                 >
-                  Set as Primary
+                  <Unlink className="w-4 h-4 mr-2" />
+                  Disconnect
                 </Button>
-              )
+              </>
             ) : payoneerStatus === "pending" ? (
-              <Button variant="outline" onClick={fetchPayoneerStatus}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Check Status
-              </Button>
+              <>
+                <Button variant="outline" onClick={fetchPayoneerStatus}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Check Status
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setShowDisconnectPayoneerDialog(true)}
+                >
+                  <Unlink className="w-4 h-4 mr-2" />
+                  Disconnect
+                </Button>
+              </>
             ) : payoneerConfigured ? (
               <Button onClick={() => setShowPayoneerDialog(true)}>
                 Connect Payoneer
@@ -557,6 +675,65 @@ export function PayoutMethodSelector({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Disconnect Stripe Confirmation */}
+      <AlertDialog open={showDisconnectStripeDialog} onOpenChange={setShowDisconnectStripeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect Stripe Account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove your bank account connection. You won't be able to receive payouts until you reconnect. 
+              Any pending withdrawals will still be processed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={disconnectingStripe}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDisconnectStripe}
+              disabled={disconnectingStripe}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {disconnectingStripe ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Disconnecting...
+                </>
+              ) : (
+                "Disconnect"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Disconnect Payoneer Confirmation */}
+      <AlertDialog open={showDisconnectPayoneerDialog} onOpenChange={setShowDisconnectPayoneerDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect Payoneer Account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove your Payoneer connection. You won't be able to receive payouts via Payoneer until you reconnect.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={disconnectingPayoneer}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDisconnectPayoneer}
+              disabled={disconnectingPayoneer}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {disconnectingPayoneer ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Disconnecting...
+                </>
+              ) : (
+                "Disconnect"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
