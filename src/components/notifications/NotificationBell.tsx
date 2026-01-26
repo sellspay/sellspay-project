@@ -25,6 +25,7 @@ interface Notification {
   actor_id: string | null;
   actor?: {
     username: string | null;
+    full_name: string | null;
     avatar_url: string | null;
   } | null;
 }
@@ -155,7 +156,7 @@ export function NotificationBell() {
           if (notif.actor_id) {
             const { data: actorData } = await supabase
               .from("safe_public_identities")
-              .select("username, avatar_url")
+              .select("username, full_name, avatar_url")
               .eq("id", notif.actor_id)
               .maybeSingle();
             return { ...notif, actor: actorData };
@@ -243,18 +244,31 @@ export function NotificationBell() {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
-    // Navigate:
-    // - Prefer redirect_url when valid
-    // - If redirect_url is a legacy placeholder (e.g. /@user), fall back to actor username
-    const isBrokenAtHandle = notification.redirect_url?.match(/^\/@(user|undefined|null)$/);
-    if (notification.redirect_url && !isBrokenAtHandle) {
+    // Check for broken redirect URLs
+    const isBrokenUrl = notification.redirect_url?.match(/\/@(user|undefined|null)/) ||
+                        notification.redirect_url?.includes('/@undefined') ||
+                        notification.redirect_url?.includes('/@null');
+
+    // Navigate based on what's available
+    if (notification.redirect_url && !isBrokenUrl) {
       navigate(notification.redirect_url);
       return;
     }
 
-    if (isBrokenAtHandle && notification.actor?.username) {
+    // Fallback: try actor username for profile navigation
+    if (notification.actor?.username) {
       navigate(`/@${notification.actor.username}`);
+      return;
     }
+
+    // For product-related notifications, try to extract product link
+    if (notification.redirect_url?.includes('/product/')) {
+      const productMatch = notification.redirect_url.match(/\/product\/[^/]+/);
+      if (productMatch) {
+        navigate(productMatch[0]);
+      }
+    }
+    // Otherwise, just mark as read (already done above) - no navigation
   };
 
   const handleAdminNotificationClick = async (notification: AdminNotification) => {
@@ -428,7 +442,11 @@ export function NotificationBell() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1">
                         <span className="font-medium text-sm">
-                          {notification.actor?.username ? `@${notification.actor.username}` : "Someone"}
+                          {notification.actor?.username 
+                            ? `@${notification.actor.username}` 
+                            : notification.actor?.full_name 
+                              ? notification.actor.full_name 
+                              : "Someone"}
                         </span>
                         {!notification.is_read && (
                           <span className="h-1.5 w-1.5 rounded-full bg-primary" />

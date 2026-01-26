@@ -109,12 +109,13 @@ export default function Signup() {
 
       const { data: { user: newUser } } = await supabase.auth.getUser();
       if (newUser) {
+        // Update profile with username and full_name only
+        // Phone is stored in private.user_pii via the handle_new_user trigger
         await supabase
           .from('profiles')
           .update({
             username: cleanUsername,
             full_name: fullName.trim(),
-            phone: cleanPhone,
           })
           .eq('user_id', newUser.id);
       }
