@@ -577,15 +577,14 @@ export function ProfileEditorDialog({
       if (collectionsData && collectionsData.length > 0) {
         const collectionsWithProducts = await Promise.all(
           collectionsData.map(async (collection) => {
-            // Fetch first 4 items for display
-            const { data: items } = await supabase
+            // Get ALL collection items with their product IDs
+            const { data: allItems } = await supabase
               .from('collection_items')
-              .select('product_id')
+              .select('product_id, display_order')
               .eq('collection_id', collection.id)
-              .order('display_order', { ascending: true })
-              .limit(4);
+              .order('display_order', { ascending: true });
 
-            if (!items || items.length === 0) {
+            if (!allItems || allItems.length === 0) {
               return { 
                 ...collection, 
                 is_visible: collection.is_visible ?? true,
@@ -596,36 +595,29 @@ export function ProfileEditorDialog({
               };
             }
 
-            // Get ALL product IDs to count published items accurately
-            const { data: allItems } = await supabase
-              .from('collection_items')
-              .select('product_id')
-              .eq('collection_id', collection.id);
+            const allProductIds = allItems.map(item => item.product_id);
             
-            const allProductIds = (allItems || []).map(item => item.product_id);
-            
-            // Count only published products
-            const { count: publishedCount } = await supabase
+            // Fetch ALL published products in this collection
+            const { data: publishedProducts } = await supabase
               .from('products')
-              .select('id', { count: 'exact', head: true })
+              .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency')
               .in('id', allProductIds)
               .eq('status', 'published');
 
-            // Fetch first 4 products for display
-            const productIds = items.map((item) => item.product_id);
-            const { data: productsData } = await supabase
-              .from('products')
-              .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency')
-              .in('id', productIds)
-              .eq('status', 'published');
+            // Sort by display_order from collection_items, then limit to 4 for display
+            const orderedProducts = (publishedProducts || []).sort((a, b) => {
+              const orderA = allItems.find(item => item.product_id === a.id)?.display_order ?? 999;
+              const orderB = allItems.find(item => item.product_id === b.id)?.display_order ?? 999;
+              return orderA - orderB;
+            });
 
             return {
               ...collection,
               is_visible: collection.is_visible ?? true,
               display_order: collection.display_order ?? 0,
               style_options: (collection as any).style_options || {},
-              products: productsData || [],
-              totalCount: publishedCount || 0,
+              products: orderedProducts.slice(0, 4),
+              totalCount: orderedProducts.length,
             };
           })
         );
