@@ -37,7 +37,16 @@ export default function Login() {
     const params = new URLSearchParams(location.search);
     const discordError = params.get('discord_error');
     if (discordError) {
-      setError(`Discord login failed: ${discordError}`);
+      let errorMessage = `Discord login failed: ${discordError}`;
+      
+      // User-friendly error messages
+      if (discordError === 'discord_not_linked') {
+        errorMessage = 'Discord is not linked to any account. Please sign in with your original method and connect Discord in Settings.';
+      } else if (discordError === 'wrong_discord_account') {
+        errorMessage = 'This Discord account is linked to a different email address.';
+      }
+      
+      setError(errorMessage);
       // Clean up URL
       window.history.replaceState({}, '', location.pathname);
     }
