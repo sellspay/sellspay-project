@@ -362,9 +362,9 @@ function CategoryExplorer({ products }: CategoryExplorerProps) {
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
             
             <div className="relative p-4 sm:p-8 lg:p-10">
-              {/* Filter Tabs */}
-              <div className="mb-8 sm:mb-10">
-                <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
+              {/* Filter Tabs - Horizontal scroll on mobile */}
+              <div className="mb-6 sm:mb-10 -mx-4 sm:mx-0">
+                <div className="flex sm:flex-wrap gap-2 sm:gap-3 sm:justify-center overflow-x-auto scrollbar-hide px-4 sm:px-0 pb-2 sm:pb-0">
                   {CATEGORY_OPTIONS.map((category) => {
                     const Icon = category.icon;
                     const isActive = selectedCategory === category.id;
@@ -373,8 +373,8 @@ function CategoryExplorer({ products }: CategoryExplorerProps) {
                         key={category.id}
                         onClick={() => setSelectedCategory(category.id)}
                         className={`
-                          group flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium
-                          transition-all duration-300 ease-out
+                          group flex-shrink-0 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium
+                          transition-all duration-300 ease-out whitespace-nowrap
                           ${isActive 
                             ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25 scale-105' 
                             : 'bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground border border-white/10 hover:border-white/20'
@@ -382,8 +382,7 @@ function CategoryExplorer({ products }: CategoryExplorerProps) {
                         `}
                       >
                         <Icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                        <span className="hidden sm:inline">{category.label}</span>
-                        <span className="sm:hidden">{category.label.length > 6 ? category.label.slice(0, 6) : category.label}</span>
+                        <span>{category.label}</span>
                       </button>
                     );
                   })}
