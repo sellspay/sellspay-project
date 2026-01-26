@@ -279,14 +279,15 @@ export default function CollectionRow({ id, name, coverImage, products, totalCou
           )}
         </div>
 
-        {/* Products Grid - 3 per row with video preview */}
-        <div className="grid grid-cols-3 gap-5">
+        {/* Products Grid - horizontal scroll on mobile, 3 cols on desktop */}
+        <div className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:gap-5 sm:overflow-visible sm:pb-0 scrollbar-thin">
           {currentProducts.map((product) => (
-            <ProductCardWithPreview
-              key={product.id}
-              product={product}
-              onClick={() => navigate(`/product/${product.id}`)}
-            />
+            <div key={product.id} className="w-[75vw] flex-shrink-0 sm:w-auto">
+              <ProductCardWithPreview
+                product={product}
+                onClick={() => navigate(`/product/${product.id}`)}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -308,7 +309,7 @@ export default function CollectionRow({ id, name, coverImage, products, totalCou
             </DialogTitle>
           </DialogHeader>
           
-          <div className="grid grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
             {products.map((product) => (
               <ProductCardWithPreview
                 key={product.id}

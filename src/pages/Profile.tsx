@@ -23,7 +23,8 @@ import {
   Sparkles,
   Store,
   ChevronDown,
-  FileEdit
+  FileEdit,
+  Monitor
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -37,6 +38,7 @@ import { SellerConfirmDialog } from '@/components/profile/SellerConfirmDialog';
 import { UnfollowConfirmDialog } from '@/components/profile/UnfollowConfirmDialog';
 import { createNotification, checkFollowCooldown, recordUnfollow } from '@/lib/notifications';
 import { useProfileViewTracking } from '@/hooks/useViewTracking';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Profile {
   id: string;
@@ -278,6 +280,7 @@ const ProfilePage: React.FC = () => {
   const atUsername = (params as Record<string, string | undefined>).atUsername;
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
+  const isMobile = useIsMobile();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -1348,7 +1351,16 @@ const ProfilePage: React.FC = () => {
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={() => setShowProfileEditor(true)}
+                    onClick={() => {
+                      if (isMobile) {
+                        toast.info('Profile Editor is only available on desktop. Please switch to a computer to edit your profile.', {
+                          icon: <Monitor className="w-4 h-4" />,
+                          duration: 4000,
+                        });
+                        return;
+                      }
+                      setShowProfileEditor(true);
+                    }}
                     className="bg-primary hover:bg-primary/90"
                   >
                     <Pencil className="w-4 h-4 mr-1" />
