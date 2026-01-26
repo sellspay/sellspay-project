@@ -52,6 +52,9 @@ import {
   CardSlideItem,
   BannerSlideshowContent,
   BannerSlideItem,
+  FeaturedProductContent,
+  BasicListContent,
+  ListItem,
   SECTION_TEMPLATES,
 } from './types';
 import { EditablePreview } from './previews/EditablePreview';
@@ -259,6 +262,21 @@ export function EditSectionDialog({
             onChange={updateContent}
             onUpload={handleImageUpload}
             uploading={uploading}
+          />
+        );
+      case 'featured_product':
+        return (
+          <FeaturedProductEditor
+            content={section.content as FeaturedProductContent}
+            onChange={updateContent}
+            products={products}
+          />
+        );
+      case 'basic_list':
+        return (
+          <BasicListEditor
+            content={section.content as BasicListContent}
+            onChange={updateContent}
           />
         );
       default:
@@ -844,6 +862,166 @@ function CollectionEditor({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function FeaturedProductEditor({
+  content,
+  onChange,
+  products,
+}: {
+  content: FeaturedProductContent;
+  onChange: (updates: Partial<FeaturedProductContent>) => void;
+  products: { id: string; name: string }[];
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Select Product</Label>
+        {products.length > 0 ? (
+          <Select
+            value={content.productId || ''}
+            onValueChange={(value) => onChange({ productId: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a product to feature" />
+            </SelectTrigger>
+            <SelectContent>
+              {products.map((prod) => (
+                <SelectItem key={prod.id} value={prod.id}>
+                  {prod.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="mt-2 p-4 border-2 border-dashed border-border rounded-lg text-center">
+            <p className="text-sm text-muted-foreground">
+              No products available. Create products first to feature them here.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <Label>Show Description</Label>
+        <Switch
+          checked={content.showDescription ?? true}
+          onCheckedChange={(checked) => onChange({ showDescription: checked })}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <Label>Show Price</Label>
+        <Switch
+          checked={content.showPrice ?? true}
+          onCheckedChange={(checked) => onChange({ showPrice: checked })}
+        />
+      </div>
+
+      <div>
+        <Label>Button Text</Label>
+        <Input
+          value={content.buttonText || ''}
+          onChange={(e) => onChange({ buttonText: e.target.value })}
+          placeholder="View Product"
+        />
+      </div>
+    </div>
+  );
+}
+
+function BasicListEditor({
+  content,
+  onChange,
+}: {
+  content: BasicListContent;
+  onChange: (updates: Partial<BasicListContent>) => void;
+}) {
+  const items = content.items || [];
+
+  const addItem = () => {
+    const newItem: ListItem = {
+      id: Date.now().toString(),
+      text: '',
+      icon: 'check',
+    };
+    onChange({ items: [...items, newItem] });
+  };
+
+  const updateItem = (index: number, updates: Partial<ListItem>) => {
+    const updated = [...items];
+    updated[index] = { ...updated[index], ...updates };
+    onChange({ items: updated });
+  };
+
+  const removeItem = (index: number) => {
+    onChange({ items: items.filter((_, i) => i !== index) });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Title (optional)</Label>
+        <Input
+          value={content.title || ''}
+          onChange={(e) => onChange({ title: e.target.value })}
+          placeholder="List title"
+        />
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label>List Items</Label>
+          <Button variant="outline" size="sm" onClick={addItem}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Item
+          </Button>
+        </div>
+
+        {items.map((item, index) => (
+          <div key={item.id} className="flex gap-2 items-start">
+            <Input
+              value={item.text}
+              onChange={(e) => updateItem(index, { text: e.target.value })}
+              placeholder={`Item ${index + 1}`}
+              className="flex-1"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => removeItem(index)}
+              className="h-10 w-10 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+
+        {items.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No items yet. Click "Add Item" to start.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <Label>Style</Label>
+        <Select
+          value={content.style || 'bullet'}
+          onValueChange={(value) => onChange({ style: value as BasicListContent['style'] })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="bullet">Bullet Points</SelectItem>
+            <SelectItem value="numbered">Numbered</SelectItem>
+            <SelectItem value="icon">Icons</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 }
