@@ -99,38 +99,63 @@ export function StatsBar() {
 
   return (
     <Reveal>
-      <section ref={ref} className="py-16 border-y border-border/50 bg-gradient-to-b from-background via-card/20 to-background">
+      <section ref={ref} className="py-12 sm:py-16 border-y border-border/50 bg-gradient-to-b from-background via-card/20 to-background">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 lg:gap-10">
+          {/* Mobile: First row of 3, then row of 2 centered */}
+          <div className="md:hidden flex flex-col gap-4">
+            {/* First row - 3 items */}
+            <div className="grid grid-cols-3 gap-3">
+              {stats.slice(0, 3).map((stat, index) => (
+                <StatCard key={stat.label} stat={stat} index={index} isVisible={isVisible} compact />
+              ))}
+            </div>
+            {/* Second row - 2 items centered */}
+            <div className="flex justify-center gap-3">
+              {stats.slice(3, 5).map((stat, index) => (
+                <div key={stat.label} className="w-[calc(33.333%-4px)]">
+                  <StatCard stat={stat} index={index + 3} isVisible={isVisible} compact />
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Desktop: 5 columns */}
+          <div className="hidden md:grid md:grid-cols-5 gap-6 lg:gap-10">
             {stats.map((stat, index) => (
-              <div
-                key={stat.label}
-                className="group relative flex flex-col items-center text-center gap-4 p-6 rounded-2xl transition-all duration-500 hover:bg-card/40 hover:shadow-xl hover:shadow-primary/5 cursor-default"
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                {/* Glow effect on hover */}
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
-                {/* Icon container with premium styling */}
-                <div className="relative p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 group-hover:border-primary/40 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-primary/20 transition-all duration-500">
-                  <div className="text-primary group-hover:text-primary group-hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-all duration-300">
-                    {stat.icon}
-                  </div>
-                </div>
-                
-                <div className="relative">
-                  <div className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent group-hover:from-primary group-hover:to-accent transition-all duration-500">
-                    <AnimatedCounter target={stat.value} suffix={stat.suffix} isVisible={isVisible} />
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-2 group-hover:text-foreground/80 transition-colors duration-300 font-medium tracking-wide uppercase">
-                    {stat.label}
-                  </div>
-                </div>
-              </div>
+              <StatCard key={stat.label} stat={stat} index={index} isVisible={isVisible} />
             ))}
           </div>
         </div>
       </section>
     </Reveal>
+  );
+}
+
+// Extracted stat card component
+function StatCard({ stat, index, isVisible, compact = false }: { stat: StatItem; index: number; isVisible: boolean; compact?: boolean }) {
+  return (
+    <div
+      className={`group relative flex flex-col items-center text-center gap-2 sm:gap-4 ${compact ? 'p-3' : 'p-6'} rounded-2xl transition-all duration-500 hover:bg-card/40 hover:shadow-xl hover:shadow-primary/5 cursor-default`}
+      style={{ transitionDelay: `${index * 100}ms` }}
+    >
+      {/* Glow effect on hover */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      
+      {/* Icon container with premium styling */}
+      <div className={`relative ${compact ? 'p-2.5' : 'p-4'} rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 group-hover:border-primary/40 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-primary/20 transition-all duration-500`}>
+        <div className={`text-primary group-hover:text-primary group-hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.5)] transition-all duration-300 ${compact ? '[&>svg]:h-4 [&>svg]:w-4' : ''}`}>
+          {stat.icon}
+        </div>
+      </div>
+      
+      <div className="relative">
+        <div className={`${compact ? 'text-xl' : 'text-4xl lg:text-5xl'} font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent group-hover:from-primary group-hover:to-accent transition-all duration-500`}>
+          <AnimatedCounter target={stat.value} suffix={stat.suffix} isVisible={isVisible} />
+        </div>
+        <div className={`${compact ? 'text-[10px]' : 'text-sm'} text-muted-foreground mt-1 sm:mt-2 group-hover:text-foreground/80 transition-colors duration-300 font-medium tracking-wide uppercase`}>
+          {stat.label}
+        </div>
+      </div>
+    </div>
   );
 }
