@@ -103,6 +103,9 @@ serve(async (req) => {
       Deno.env.get("PAYPAL_CLIENT_SECRET")
     );
 
+    // Get Stripe connection status
+    const stripeConnected = !!(config?.stripe_account_id && config?.stripe_onboarding_complete);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -114,6 +117,8 @@ serve(async (req) => {
         paypalConfigured,
         paypalEmail: config?.paypal_email || null,
         paypalConnected: config?.paypal_payout_enabled || false,
+        // Stripe fields
+        stripeConnected,
         preferredPayoutMethod: config?.preferred_payout_method || "stripe",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
