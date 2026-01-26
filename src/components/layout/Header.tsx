@@ -52,14 +52,14 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-2 shrink-0">
             <img 
               src={platformLogo} 
               alt="EditorsParadise" 
-              className="h-14 sm:h-16 w-auto max-w-[200px] sm:max-w-[280px]"
+              className="h-10 sm:h-14 lg:h-16 w-auto max-w-[140px] sm:max-w-[200px] lg:max-w-[280px]"
             />
             <span className="sr-only">EditorsParadise</span>
           </Link>
@@ -91,15 +91,15 @@ export default function Header() {
           </nav>
 
           {/* Right Side */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
             {/* Credit Wallet - Only show when logged in */}
             {user && (
               <button
                 onClick={() => setTopUpDialogOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/80 hover:bg-secondary transition-colors border border-border/50"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-secondary/80 hover:bg-secondary transition-colors border border-border/50"
               >
-                <Wallet className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">
+                <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                <span className="text-xs sm:text-sm font-medium">
                   {creditsLoading ? '...' : creditBalance}
                 </span>
               </button>
@@ -114,10 +114,10 @@ export default function Header() {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                    <Avatar className="h-9 w-9">
+                  <Button variant="ghost" className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0">
+                    <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
                       <AvatarImage src={avatarUrl || undefined} />
-                      <AvatarFallback className="bg-primary/20 text-primary">
+                      <AvatarFallback className="bg-primary/20 text-primary text-xs sm:text-sm">
                         {(username || user.email)?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -203,15 +203,16 @@ export default function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" asChild className="hidden sm:inline-flex">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Button variant="ghost" asChild className="hidden sm:inline-flex" size="sm">
                   <Link to="/login">Sign In</Link>
                 </Button>
                 <Button 
                   asChild 
-                  className="rounded-full text-white font-medium relative overflow-hidden bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 bg-[length:200%_100%] animate-[gradient-wave_2s_ease-in-out_infinite] hover:shadow-lg hover:shadow-primary/30 transition-shadow"
+                  size="sm"
+                  className="rounded-full text-white text-xs sm:text-sm font-medium relative overflow-hidden bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 bg-[length:200%_100%] animate-[gradient-wave_2s_ease-in-out_infinite] hover:shadow-lg hover:shadow-primary/30 transition-shadow px-3 sm:px-4"
                 >
-                  <Link to="/signup">Join for free</Link>
+                  <Link to="/signup">Join free</Link>
                 </Button>
               </div>
             )}
@@ -220,10 +221,10 @@ export default function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
+              className="lg:hidden h-8 w-8 sm:h-9 sm:w-9"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {mobileMenuOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
             </Button>
           </div>
         </div>

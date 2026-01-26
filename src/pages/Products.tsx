@@ -175,7 +175,7 @@ export default function Products() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative pt-20 pb-16 px-4">
+      <section className="relative pt-12 sm:pt-20 pb-10 sm:pb-16 px-4">
         <div className="max-w-7xl mx-auto text-center relative z-10">
           {/* Floating Badge */}
           <motion.div
@@ -185,9 +185,9 @@ export default function Products() {
           >
             <Badge 
               variant="outline" 
-              className="mb-6 px-4 py-2 border-purple-500/30 bg-purple-500/10 text-purple-300 backdrop-blur-sm"
+              className="mb-4 sm:mb-6 px-3 sm:px-4 py-1.5 sm:py-2 border-purple-500/30 bg-purple-500/10 text-purple-300 backdrop-blur-sm text-xs sm:text-sm"
             >
-              <Sparkles className="w-3.5 h-3.5 mr-2" />
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1.5 sm:mr-2" />
               {products.length}+ Premium Digital Assets
             </Badge>
           </motion.div>
@@ -197,7 +197,7 @@ export default function Products() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-5xl md:text-7xl font-bold tracking-tight mb-6"
+            className="text-3xl sm:text-5xl md:text-7xl font-bold tracking-tight mb-4 sm:mb-6"
           >
             <span className="bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">
               Creator Store
@@ -209,7 +209,7 @@ export default function Products() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
+            className="text-sm sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-6 sm:mb-10 px-2"
           >
             Discover handcrafted presets, LUTs, sound effects, and templates from the world's top creators
           </motion.p>
@@ -219,26 +219,26 @@ export default function Products() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="max-w-2xl mx-auto"
+            className="max-w-2xl mx-auto px-2"
           >
             <div className="relative group">
               {/* Glow effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/50 via-pink-600/50 to-purple-600/50 rounded-2xl blur-lg opacity-0 group-hover:opacity-75 transition-opacity duration-500" />
+              <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/50 via-pink-600/50 to-purple-600/50 rounded-xl sm:rounded-2xl blur-lg opacity-0 group-hover:opacity-75 transition-opacity duration-500" />
               
-              <div className="relative flex items-center bg-card/80 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden">
-                <Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
+              <div className="relative flex items-center bg-card/80 backdrop-blur-xl border border-white/10 rounded-lg sm:rounded-xl overflow-hidden">
+                <Search className="absolute left-3 sm:left-4 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                 <Input
-                  placeholder="Search presets, LUTs, templates, and more..."
+                  placeholder="Search presets, LUTs, templates..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 pr-4 py-6 text-lg border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
+                  className="pl-10 sm:pl-12 pr-4 py-4 sm:py-6 text-sm sm:text-lg border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
                 />
                 {searchQuery && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setSearchQuery('')}
-                    className="mr-2 hover:bg-white/10"
+                    className="mr-2 hover:bg-white/10 h-8 w-8 p-0"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -250,26 +250,27 @@ export default function Products() {
       </section>
 
       {/* Filters Bar - Consolidated */}
-      <section className="relative px-4 pb-8 sticky top-0 z-40">
+      <section className="relative px-3 sm:px-4 pb-6 sm:pb-8 sticky top-14 sm:top-16 z-40">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
           className="max-w-7xl mx-auto"
         >
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-card/60 backdrop-blur-xl border border-white/10 rounded-xl">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 bg-card/60 backdrop-blur-xl border border-white/10 rounded-lg sm:rounded-xl">
+            <div className="flex items-center gap-2 sm:gap-3">
               {/* Filter Dropdown Button */}
               <Popover>
                 <PopoverTrigger asChild>
                   <Button 
                     variant="outline" 
-                    className="h-10 bg-white/5 border-white/10 hover:bg-white/10 hover:border-purple-500/30 transition-all gap-2"
+                    size="sm"
+                    className="h-8 sm:h-10 bg-white/5 border-white/10 hover:bg-white/10 hover:border-purple-500/30 transition-all gap-1.5 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3"
                   >
-                    <Filter className="h-4 w-4" />
-                    Filter
+                    <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden xs:inline">Filter</span>
                     {activeFiltersCount > 0 && (
-                      <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-purple-500 hover:bg-purple-500">
+                      <Badge className="ml-0.5 sm:ml-1 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[9px] sm:text-[10px] bg-purple-500 hover:bg-purple-500">
                         {activeFiltersCount}
                       </Badge>
                     )}
@@ -356,18 +357,19 @@ export default function Products() {
                 </PopoverContent>
               </Popover>
               
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs sm:text-sm text-muted-foreground hidden xs:inline">
                 {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
               </span>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {/* Sort Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 bg-white/5 border-white/10 hover:bg-white/10">
-                    Sort by
-                    <ChevronDown className="ml-2 h-3.5 w-3.5" />
+                  <Button variant="outline" size="sm" className="h-8 sm:h-9 bg-white/5 border-white/10 hover:bg-white/10 text-xs sm:text-sm px-2 sm:px-3">
+                    <span className="hidden xs:inline">Sort by</span>
+                    <span className="xs:hidden">Sort</span>
+                    <ChevronDown className="ml-1 sm:ml-2 h-3 w-3 sm:h-3.5 sm:w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-xl border-white/10">
@@ -390,7 +392,7 @@ export default function Products() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Grid Size Toggle */}
+              {/* Grid Size Toggle - Hidden on mobile */}
               <div className="hidden md:flex items-center gap-1 p-1 bg-white/5 rounded-lg border border-white/10">
                 <button
                   onClick={() => setGridSize('normal')}
@@ -415,27 +417,28 @@ export default function Products() {
       </section>
 
       {/* Products Grid */}
-      <section className="relative px-4 pb-20">
+      <section className="relative px-3 sm:px-4 pb-12 sm:pb-20">
         <div className="max-w-7xl mx-auto">
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="aspect-[4/3] bg-card/50 rounded-xl animate-pulse" />
+                <div key={i} className="aspect-[4/3] bg-card/50 rounded-lg sm:rounded-xl animate-pulse" />
               ))}
             </div>
           ) : filteredProducts.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-center py-20"
+              className="text-center py-12 sm:py-20"
             >
-              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                <Search className="w-8 h-8 text-muted-foreground" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                <Search className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">No products found</h3>
-              <p className="text-muted-foreground mb-6">Try adjusting your filters or search query</p>
+              <h3 className="text-lg sm:text-xl font-semibold mb-2">No products found</h3>
+              <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">Try adjusting your filters or search query</p>
               <Button 
                 variant="outline" 
+                size="sm"
                 onClick={clearFilters}
                 className="border-white/10 hover:bg-white/5"
               >
@@ -446,10 +449,10 @@ export default function Products() {
           ) : (
             <motion.div
               layout
-              className={`grid gap-6 ${
+              className={`grid gap-3 sm:gap-6 ${
                 gridSize === 'large'
-                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                  ? 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-3'
+                  : 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
               }`}
             >
               <AnimatePresence mode="popLayout">

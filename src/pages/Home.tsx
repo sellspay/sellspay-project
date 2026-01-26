@@ -135,18 +135,18 @@ export default function Home() {
 
       {/* Featured Products Section */}
       <Reveal>
-        <section className="relative py-20 lg:py-28 overflow-hidden">
+        <section className="relative py-12 sm:py-20 lg:py-28 overflow-hidden">
           {/* Subtle background */}
           <div className="pointer-events-none absolute inset-0 -z-10">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-gradient-to-r from-primary/3 via-transparent to-primary/3 rounded-full blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[1000px] h-[400px] sm:h-[600px] bg-gradient-to-r from-primary/3 via-transparent to-primary/3 rounded-full blur-3xl" />
           </div>
 
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
             {/* Minimal Section Header */}
-            <div className="flex items-end justify-between mb-10">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 sm:mb-10">
               <div>
-                <p className="text-xs font-medium text-primary uppercase tracking-[0.2em] mb-2">Curated</p>
-                <h2 className="text-2xl lg:text-3xl font-semibold text-foreground">
+                <p className="text-xs font-medium text-primary uppercase tracking-[0.2em] mb-1.5 sm:mb-2">Curated</p>
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">
                   Featured Products
                 </h2>
               </div>
@@ -175,7 +175,7 @@ export default function Home() {
             ) : (
               <>
                 {/* Clean Grid Layout */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
                   {featuredWithStats.slice(0, 8).map((product) => (
                     <ProductCard 
                       key={product.id}
@@ -216,43 +216,43 @@ export default function Home() {
       {/* Category Sections */}
       {(tutorials.length > 0 || projectFiles.length > 0 || presets.length > 0) && (
         <Reveal>
-          <section className="relative py-20 lg:py-28 overflow-hidden">
+          <section className="relative py-12 sm:py-20 lg:py-28 overflow-hidden">
             {/* Premium background with floating orbs */}
             <div className="absolute inset-0 -z-10">
               <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/20 to-background" />
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
               
-              {/* Floating orbs */}
+              {/* Floating orbs - smaller on mobile */}
               <div 
-                className="absolute top-1/4 left-[15%] w-[500px] h-[500px] bg-primary/8 rounded-full blur-[120px] animate-float"
+                className="absolute top-1/4 left-[15%] w-[250px] sm:w-[500px] h-[250px] sm:h-[500px] bg-primary/8 rounded-full blur-[80px] sm:blur-[120px] animate-float"
                 style={{ animationDuration: '8s' }}
               />
               <div 
-                className="absolute bottom-1/4 right-[10%] w-[400px] h-[400px] bg-accent/10 rounded-full blur-[100px] animate-float"
+                className="hidden sm:block absolute bottom-1/4 right-[10%] w-[400px] h-[400px] bg-accent/10 rounded-full blur-[100px] animate-float"
                 style={{ animationDelay: '-3s', animationDuration: '10s' }}
               />
               <div 
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-primary/5 rounded-full blur-[80px]"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[150px] sm:h-[300px] bg-primary/5 rounded-full blur-[60px] sm:blur-[80px]"
               />
             </div>
 
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative">
               {/* Premium Section Header */}
-              <div className="text-center mb-16 lg:mb-20">
-                <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 mb-8 shadow-lg shadow-primary/5">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium text-foreground">Browse by Category</span>
+              <div className="text-center mb-10 sm:mb-16 lg:mb-20">
+                <div className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 mb-6 sm:mb-8 shadow-lg shadow-primary/5">
+                  <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                  <span className="text-xs sm:text-sm font-medium text-foreground">Browse by Category</span>
                 </div>
-                <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-5 tracking-tight">
+                <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-3 sm:mb-5 tracking-tight">
                   Explore by Type
                 </h2>
-                <p className="text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto">
+                <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
                   Find exactly what you need for your next project
                 </p>
               </div>
 
-              <div className="space-y-24">
+              <div className="space-y-12 sm:space-y-24">
                 {/* Tutorials */}
                 {tutorials.length > 0 && (
                   <CategorySection
@@ -312,21 +312,22 @@ function CategorySection({ title, description, products, icon }: CategorySection
   return (
     <div className="relative">
       {/* Glassmorphism card wrapper */}
-      <div className="absolute inset-0 -z-10 rounded-3xl bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm border border-white/10" />
+      <div className="absolute inset-0 -z-10 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm border border-white/10" />
       
-      <div className="p-8 lg:p-10">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary border border-primary/20 shadow-lg shadow-primary/10">
+      <div className="p-4 sm:p-8 lg:p-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary border border-primary/20 shadow-lg shadow-primary/10">
               {icon}
             </div>
             <div>
-              <h3 className="text-2xl lg:text-3xl font-semibold text-foreground">{title}</h3>
-              <p className="text-muted-foreground">{description}</p>
+              <h3 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">{title}</h3>
+              <p className="text-sm sm:text-base text-muted-foreground">{description}</p>
             </div>
           </div>
           <Button 
             variant="outline" 
+            size="sm"
             className="group hidden sm:flex bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
             onClick={() => navigate(`/products?type=${title.toLowerCase()}`)}
           >
@@ -335,15 +336,16 @@ function CategorySection({ title, description, products, icon }: CategorySection
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
           {products.slice(0, 4).map((product) => (
             <ProductCard key={product.id} product={product} showFeaturedBadge={true} showType={false} />
           ))}
         </div>
 
-        <div className="mt-8 text-center sm:hidden">
+        <div className="mt-6 sm:mt-8 text-center sm:hidden">
           <Button 
             variant="outline" 
+            size="sm"
             className="bg-white/5 border-white/10"
             onClick={() => navigate(`/products?type=${title.toLowerCase()}`)}
           >
