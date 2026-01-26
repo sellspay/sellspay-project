@@ -43,6 +43,17 @@ interface ProductView {
   created_at: string;
 }
 
+interface ProfileView {
+  referrer_domain: string | null;
+  country_code: string | null;
+  created_at: string;
+}
+
+interface ProductDownload {
+  product_id: string;
+  created_at: string;
+}
+
 export default function Dashboard() {
   const { user, profile, profileLoading } = useAuth();
   const navigate = useNavigate();
@@ -52,6 +63,8 @@ export default function Dashboard() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [editorBookings, setEditorBookings] = useState<EditorBooking[]>([]);
   const [productViews, setProductViews] = useState<ProductView[]>([]);
+  const [profileViews, setProfileViews] = useState<ProfileView[]>([]);
+  const [productDownloads, setProductDownloads] = useState<ProductDownload[]>([]);
   
   // Filters
   const [selectedProduct, setSelectedProduct] = useState('all');
@@ -99,7 +112,27 @@ export default function Dashboard() {
           .limit(10000);
         
         setProductViews(viewsData || []);
+
+        // Fetch product downloads
+        const { data: downloadsData } = await supabase
+          .from('product_downloads')
+          .select('product_id, created_at')
+          .in('product_id', productIds)
+          .order('created_at', { ascending: false })
+          .limit(10000);
+        
+        setProductDownloads(downloadsData || []);
       }
+
+      // Fetch profile views (total visitors to seller's profile)
+      const { data: profileViewsData } = await supabase
+        .from('profile_views')
+        .select('referrer_domain, country_code, created_at')
+        .eq('profile_id', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(10000);
+      
+      setProfileViews(profileViewsData || []);
 
       // Fetch editor bookings (if user is an editor) - include all paid bookings
       const { data: bookingsData } = await supabase
@@ -170,6 +203,28 @@ export default function Dashboard() {
     });
   }, [productViews, selectedProduct, dateRange]);
 
+  // Filter downloads based on selected product and date range
+  const filteredDownloads = useMemo(() => {
+    const { start, end } = getDateRange();
+    
+    return productDownloads.filter(d => {
+      const downloadDate = new Date(d.created_at);
+      const inDateRange = downloadDate >= start && downloadDate <= end;
+      const matchesProduct = selectedProduct === 'all' || d.product_id === selectedProduct;
+      return inDateRange && matchesProduct;
+    });
+  }, [productDownloads, selectedProduct, dateRange]);
+
+  // Filter profile views based on date range (not product-specific)
+  const filteredProfileViews = useMemo(() => {
+    const { start, end } = getDateRange();
+    
+    return profileViews.filter(v => {
+      const viewDate = new Date(v.created_at);
+      return viewDate >= start && viewDate <= end;
+    });
+  }, [profileViews, dateRange]);
+
   // Generate daily views data from REAL data
   const dailyViewsData = useMemo(() => {
     const { start, end } = getDateRange();
@@ -209,11 +264,13 @@ export default function Dashboard() {
   const summaryStats = useMemo(() => {
     const totalSales = filteredPurchases.reduce((acc, p) => acc + p.creator_payout_cents, 0) / 100;
     const uniqueCustomers = new Set(filteredPurchases.map(p => p.buyer_id)).size;
-    const totalOrders = filteredPurchases.length;
-    const totalViews = filteredViews.length;
+    const totalPurchases = filteredPurchases.length;
+    const totalDownloads = filteredDownloads.length;
+    const totalProductViews = filteredViews.length;
+    const totalProfileViews = filteredProfileViews.length;
     
-    return { totalSales, uniqueCustomers, totalOrders, totalViews };
-  }, [filteredPurchases, filteredViews]);
+    return { totalSales, uniqueCustomers, totalPurchases, totalDownloads, totalProductViews, totalProfileViews };
+  }, [filteredPurchases, filteredDownloads, filteredViews, filteredProfileViews]);
 
   // Sales breakdown by product
   const salesBreakdown = useMemo(() => {
@@ -369,8 +426,10 @@ export default function Dashboard() {
           <StatsSummary
             totalSales={summaryStats.totalSales}
             uniqueCustomers={summaryStats.uniqueCustomers}
-            totalOrders={summaryStats.totalOrders}
-            totalViews={summaryStats.totalViews}
+            totalPurchases={summaryStats.totalPurchases}
+            totalDownloads={summaryStats.totalDownloads}
+            totalProductViews={summaryStats.totalProductViews}
+            totalProfileViews={summaryStats.totalProfileViews}
           />
         </CardContent>
       </Card>
@@ -393,9 +452,9 @@ export default function Dashboard() {
       <Card className="bg-card mt-6">
         <CardContent className="p-6">
           <ConversionFunnel
-            views={summaryStats.totalViews}
-            startedCheckout={Math.floor(summaryStats.totalOrders * 1.5)}
-            completedCheckout={summaryStats.totalOrders}
+            views={summaryStats.totalProductViews}
+            startedCheckout={Math.floor(summaryStats.totalPurchases * 1.5)}
+            completedCheckout={summaryStats.totalPurchases}
           />
         </CardContent>
       </Card>
