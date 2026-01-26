@@ -159,13 +159,13 @@ export function ConnectionsTab() {
       }
       
       if (providerId === "discord") {
-        // For Discord, we need to clear the user_metadata
-        const newMetadata = { ...currentUser.user_metadata };
-        delete newMetadata.discord_id;
-        delete newMetadata.discord_username;
-        
+        // For Discord, we need to set metadata fields to null to remove them
+        // (updateUser merges data, so we must explicitly null the fields)
         const { error } = await supabase.auth.updateUser({
-          data: newMetadata,
+          data: {
+            discord_id: null,
+            discord_username: null,
+          },
         });
         
         if (error) throw error;
