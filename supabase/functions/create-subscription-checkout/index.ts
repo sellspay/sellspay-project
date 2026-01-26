@@ -12,6 +12,11 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[CREATE-SUBSCRIPTION-CHECKOUT] ${step}${detailsStr}`);
 };
 
+// Base fee constants - Stripe fees paid by creator
+const STRIPE_PERCENT_FEE = 0.029; // 2.9% Stripe fee
+const STRIPE_FIXED_FEE_CENTS = 30; // $0.30 Stripe fixed fee
+const PLATFORM_FEE_PERCENT = 5; // 5% platform fee
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -145,10 +150,33 @@ serve(async (req) => {
         .eq("id", plan.id);
     }
 
-    // Calculate 5% platform fee
-    const platformFeePercent = 5;
-    const applicationFeeAmount = Math.round(plan.price_cents * (platformFeePercent / 100));
-    logStep("Fee calculated", { platformFee: applicationFeeAmount, creatorPayout: plan.price_cents - applicationFeeAmount });
+    // Calculate fees (creator pays Stripe fees + 5% platform fee)
+    const grossAmount = plan.price_cents;
+    
+    // Stripe's processing fee (2.9% + $0.30)
+    const stripeProcessingFee = Math.round(grossAmount * STRIPE_PERCENT_FEE) + STRIPE_FIXED_FEE_CENTS;
+    
+    // Platform fee (5%)
+    const platformFee = Math.round(grossAmount * (PLATFORM_FEE_PERCENT / 100));
+    
+    // Total application fee includes both Stripe fees and platform fee
+    const totalApplicationFee = stripeProcessingFee + platformFee;
+    
+    // Creator receives: gross - all fees
+    const creatorPayout = grossAmount - totalApplicationFee;
+    
+    // Calculate the application_fee_percent equivalent for Stripe's subscription API
+    // Since Stripe subscription only supports percent, we need to calculate the combined rate
+    const applicationFeePercent = Math.round((totalApplicationFee / grossAmount) * 10000) / 100;
+    
+    logStep("Fee breakdown", { 
+      grossAmount,
+      stripeProcessingFee,
+      platformFee,
+      totalApplicationFee,
+      applicationFeePercent: `${applicationFeePercent}%`,
+      creatorPayout,
+    });
 
     // Create checkout session with Connect
     const origin = req.headers.get("origin") || "http://localhost:5173";
@@ -165,13 +193,16 @@ serve(async (req) => {
       success_url: `${origin}/profile?subscription=success`,
       cancel_url: `${origin}/profile?subscription=cancelled`,
       subscription_data: {
-        application_fee_percent: platformFeePercent,
+        application_fee_percent: applicationFeePercent,
         transfer_data: {
           destination: creatorStripeAccountId,
         },
         metadata: {
           plan_id: plan.id,
           buyer_profile_id: buyerProfile.id,
+          platform_fee_cents: platformFee.toString(),
+          stripe_fee_cents: stripeProcessingFee.toString(),
+          creator_payout_cents: creatorPayout.toString(),
         },
       },
       metadata: {
@@ -180,7 +211,12 @@ serve(async (req) => {
       },
     });
 
-    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+    logStep("Checkout session created", { 
+      sessionId: session.id, 
+      url: session.url,
+      applicationFeePercent: `${applicationFeePercent}%`,
+      creatorPayout,
+    });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
