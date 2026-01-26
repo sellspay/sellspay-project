@@ -577,9 +577,10 @@ export function ProfileEditorDialog({
       if (collectionsData && collectionsData.length > 0) {
         const collectionsWithProducts = await Promise.all(
           collectionsData.map(async (collection) => {
-            const { data: items, count } = await supabase
+            // Fetch first 4 items for display
+            const { data: items } = await supabase
               .from('collection_items')
-              .select('product_id', { count: 'exact' })
+              .select('product_id')
               .eq('collection_id', collection.id)
               .order('display_order', { ascending: true })
               .limit(4);
@@ -595,6 +596,22 @@ export function ProfileEditorDialog({
               };
             }
 
+            // Get ALL product IDs to count published items accurately
+            const { data: allItems } = await supabase
+              .from('collection_items')
+              .select('product_id')
+              .eq('collection_id', collection.id);
+            
+            const allProductIds = (allItems || []).map(item => item.product_id);
+            
+            // Count only published products
+            const { count: publishedCount } = await supabase
+              .from('products')
+              .select('id', { count: 'exact', head: true })
+              .in('id', allProductIds)
+              .eq('status', 'published');
+
+            // Fetch first 4 products for display
             const productIds = items.map((item) => item.product_id);
             const { data: productsData } = await supabase
               .from('products')
@@ -608,7 +625,7 @@ export function ProfileEditorDialog({
               display_order: collection.display_order ?? 0,
               style_options: (collection as any).style_options || {},
               products: productsData || [],
-              totalCount: count || 0,
+              totalCount: publishedCount || 0,
             };
           })
         );
