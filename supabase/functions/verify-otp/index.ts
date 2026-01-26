@@ -67,13 +67,23 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Hash the provided code with userId and compare
+    // IMPORTANT: The code must be trimmed to handle any whitespace
+    const trimmedCode = code.trim();
     const providedHash = await crypto.subtle.digest(
       "SHA-256",
-      new TextEncoder().encode(code + userId)
+      new TextEncoder().encode(trimmedCode + userId)
     );
     const providedHashHex = Array.from(new Uint8Array(providedHash))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
+
+    console.log("Verification attempt:", {
+      userId,
+      codeLength: trimmedCode.length,
+      providedHashPrefix: providedHashHex.substring(0, 10),
+      expectedHashPrefix: (payload.hash as string)?.substring(0, 10),
+      hashMatch: providedHashHex === payload.hash
+    });
 
     if (providedHashHex !== payload.hash) {
       return new Response(

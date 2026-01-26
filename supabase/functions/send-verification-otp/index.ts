@@ -44,13 +44,21 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Create a signed JWT containing the OTP hash (not the OTP itself)
     // The OTP is sent via email, the token is used for verification
+    // IMPORTANT: Use trimmed OTP to ensure consistency
+    const trimmedOtp = otp.trim();
     const otpHash = await crypto.subtle.digest(
       "SHA-256",
-      new TextEncoder().encode(otp + userId)
+      new TextEncoder().encode(trimmedOtp + userId)
     );
     const otpHashHex = Array.from(new Uint8Array(otpHash))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
+
+    console.log("OTP generated:", {
+      userId,
+      otpLength: trimmedOtp.length,
+      hashPrefix: otpHashHex.substring(0, 10)
+    });
 
     // Create JWT with the hash - this is what we'll verify against
     const secret = new TextEncoder().encode(jwtSecret);
