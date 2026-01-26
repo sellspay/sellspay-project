@@ -25,6 +25,16 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+interface ProductData {
+  id: string;
+  name: string;
+  cover_image_url?: string | null;
+  price_cents?: number | null;
+  currency?: string | null;
+  description?: string | null;
+  excerpt?: string | null;
+}
+
 interface SectionEditorPanelProps {
   section: ProfileSection;
   onUpdate: (section: ProfileSection) => void;
@@ -32,7 +42,7 @@ interface SectionEditorPanelProps {
   onToggleVisibility: () => void;
   onClose: () => void;
   collections?: { id: string; name: string }[];
-  products?: { id: string; name: string }[];
+  products?: ProductData[];
   onPreviewAnimation?: () => void;
 }
 
@@ -1116,13 +1126,29 @@ export function SectionEditorPanel({
         );
 
       case 'featured_product':
+        const handleProductSelect = (productId: string) => {
+          const selectedProduct = products.find(p => p.id === productId);
+          if (selectedProduct) {
+            updateContent({
+              productId: productId,
+              productName: selectedProduct.name,
+              productImageUrl: selectedProduct.cover_image_url || '',
+              productPriceCents: selectedProduct.price_cents || 0,
+              productCurrency: selectedProduct.currency || 'USD',
+              productDescription: selectedProduct.excerpt || selectedProduct.description || '',
+            });
+          } else {
+            updateContent({ productId: productId });
+          }
+        };
+        
         return (
           <div className="space-y-4">
             <div>
               <Label>Select Product</Label>
               <Select
                 value={(section.content as any).productId || ''}
-                onValueChange={(value) => updateContent({ productId: value })}
+                onValueChange={handleProductSelect}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a product" />

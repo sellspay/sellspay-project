@@ -1072,30 +1072,55 @@ const BasicListPreview = memo(({ section }: { section: ProfileSection }) => {
 });
 BasicListPreview.displayName = 'BasicListPreview';
 
-// Featured Product Preview
-const FeaturedProductPreview = memo(({ content }: { content: FeaturedProductContent }) => (
-  <div className="flex flex-col md:flex-row gap-8 items-center max-w-3xl mx-auto">
-    <div className="flex-1">
-      <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
-        <span className="text-muted-foreground">
-          {content.productId ? 'Product Image' : 'Select a product'}
-        </span>
+// Featured Product Preview - shows actual product data
+const FeaturedProductPreview = memo(({ content }: { content: FeaturedProductContent }) => {
+  const hasProduct = content.productId && content.productName;
+  
+  // Format price
+  const formatPrice = () => {
+    if (!content.productPriceCents) return 'Free';
+    const amount = content.productPriceCents / 100;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: content.productCurrency || 'USD',
+    }).format(amount);
+  };
+  
+  return (
+    <div className="flex flex-col md:flex-row gap-8 items-center max-w-3xl mx-auto">
+      <div className="flex-1">
+        {content.productImageUrl ? (
+          <img 
+            src={content.productImageUrl} 
+            alt={content.productName || 'Product'} 
+            className="w-full aspect-square object-cover rounded-lg"
+          />
+        ) : (
+          <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
+            <span className="text-muted-foreground">
+              {hasProduct ? 'No image' : 'Select a product'}
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="flex-1">
+        <h3 className="text-2xl font-bold mb-2">
+          {content.productName || 'No Product Selected'}
+        </h3>
+        {content.showDescription && content.productDescription && (
+          <p className="text-muted-foreground mb-4 line-clamp-3">{content.productDescription}</p>
+        )}
+        {content.showDescription && !content.productDescription && hasProduct && (
+          <p className="text-muted-foreground mb-4 italic">No description available</p>
+        )}
+        {content.showPrice && hasProduct && (
+          <p className="text-xl font-semibold mb-4 text-primary">{formatPrice()}</p>
+        )}
+        <Button>{content.buttonText || 'View Product'}</Button>
       </div>
     </div>
-    <div className="flex-1">
-      <h3 className="text-2xl font-bold mb-2">
-        {content.productId ? 'Featured Product' : 'No Product Selected'}
-      </h3>
-      {content.showDescription && (
-        <p className="text-muted-foreground mb-4">Product description goes here...</p>
-      )}
-      {content.showPrice && (
-        <p className="text-xl font-semibold mb-4">$29.99</p>
-      )}
-      <Button>{content.buttonText || 'View Product'}</Button>
-    </div>
-  </div>
-));
+  );
+});
 FeaturedProductPreview.displayName = 'FeaturedProductPreview';
 
 // Logo List Preview - improved with better sizing and placeholders

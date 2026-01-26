@@ -635,7 +635,7 @@ export function ProfileEditorDialog({
       // Fetch ALL creator products for featured product dropdown and other uses
       const { data } = await supabase
         .from('products')
-        .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency')
+        .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency, excerpt, description')
         .eq('creator_id', profileId)
         .eq('status', 'published')
         .order('created_at', { ascending: false });
