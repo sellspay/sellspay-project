@@ -375,6 +375,8 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
             <DialogTitle>Withdraw Funds</DialogTitle>
             <DialogDescription>
               Choose your payout provider and withdrawal speed. Available: ${availableBalanceDollars.toFixed(2)}
+              <br />
+              <span className="text-xs">Connect additional providers in <a href="/settings" className="text-primary underline">Settings</a></span>
             </DialogDescription>
           </DialogHeader>
 
