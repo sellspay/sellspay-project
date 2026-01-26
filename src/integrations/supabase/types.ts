@@ -733,6 +733,27 @@ export type Database = {
         }
         Relationships: []
       }
+      paypal_oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          state_token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          state_token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          state_token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_updates: {
         Row: {
           author_id: string

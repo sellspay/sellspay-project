@@ -36,8 +36,12 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+    // Use anon client to verify user token
+    const supabaseAnonClient = createClient(supabaseUrl, supabaseAnonKey);
+    // Use service role client for DB writes (RLS bypass)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false }
     });
 
@@ -45,7 +49,7 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header provided");
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: userData, error: userError } = await supabaseAnonClient.auth.getUser(token);
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     
     const user = userData.user;
@@ -64,8 +68,8 @@ serve(async (req) => {
     };
     const state = btoa(JSON.stringify(stateData));
 
-    // Store state in database for verification on callback
-    const { error: stateError } = await supabaseClient
+    // Store state in database for verification on callback (use admin client to bypass RLS)
+    const { error: stateError } = await supabaseAdmin
       .from("paypal_oauth_states")
       .insert({
         state_token: state,

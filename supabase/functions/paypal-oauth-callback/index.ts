@@ -134,7 +134,7 @@ serve(async (req) => {
       return Response.redirect(`${frontendUrl}?paypal_error=save_failed`);
     }
 
-    // Clean up the state token
+    // Clean up the state token (service role client)
     await supabaseClient
       .from("paypal_oauth_states")
       .delete()
