@@ -259,6 +259,12 @@ export interface FeaturedProductContent {
   showDescription: boolean;
   showPrice: boolean;
   buttonText: string;
+  // Cached product data for preview (populated when product is selected)
+  productName?: string;
+  productImageUrl?: string;
+  productPriceCents?: number;
+  productCurrency?: string;
+  productDescription?: string;
 }
 
 export interface LogoItem {
