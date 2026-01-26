@@ -204,7 +204,7 @@ export default function Header() {
               </DropdownMenu>
             ) : (
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <Button variant="ghost" asChild className="hidden sm:inline-flex" size="sm">
+                <Button variant="ghost" asChild size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
                   <Link to="/login">Sign In</Link>
                 </Button>
                 <Button 
