@@ -127,41 +127,59 @@ serve(async (req) => {
     if (existingUser) {
       // User exists with this email
       userId = existingUser.id;
-      logStep("Existing user found", { userId, isLinkingAccount });
-      
-      // Check if this is a linking attempt but user already has Discord linked
       const existingDiscordId = existingUser.user_metadata?.discord_id;
-      if (existingDiscordId && existingDiscordId !== discordUser.id) {
-        logStep("User already has a different Discord account linked");
-        return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=different_discord_linked`);
-      }
+      logStep("Existing user found", { userId, isLinkingAccount, hasDiscordLinked: !!existingDiscordId });
+      
+      if (isLinkingAccount) {
+        // This is a linking attempt from Settings
+        if (existingDiscordId && existingDiscordId !== discordUser.id) {
+          logStep("User already has a different Discord account linked");
+          return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=different_discord_linked`);
+        }
 
-      // Update their metadata with Discord info
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-        user_metadata: {
-          ...existingUser.user_metadata,
-          discord_id: discordUser.id,
-          discord_username: discordUser.username,
-          avatar_url: existingUser.user_metadata?.avatar_url || 
-            (discordUser.avatar 
-              ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
-              : null),
-        },
-      });
+        // Link Discord to their account
+        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+          user_metadata: {
+            ...existingUser.user_metadata,
+            discord_id: discordUser.id,
+            discord_username: discordUser.username,
+            avatar_url: existingUser.user_metadata?.avatar_url || 
+              (discordUser.avatar 
+                ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+                : null),
+          },
+        });
 
-      if (updateError) {
-        logStep("Error updating user metadata", { error: updateError.message });
+        if (updateError) {
+          logStep("Error updating user metadata", { error: updateError.message });
+          return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=link_failed`);
+        }
+        
+        logStep("Discord linked successfully");
+      } else {
+        // This is a login attempt - only allow if Discord is already linked
+        if (!existingDiscordId) {
+          logStep("Discord not linked to this account - login denied");
+          return Response.redirect(`${frontendUrl}/login?discord_error=discord_not_linked`);
+        }
+        
+        // Verify it's the same Discord account
+        if (existingDiscordId !== discordUser.id) {
+          logStep("Different Discord account than what's linked");
+          return Response.redirect(`${frontendUrl}/login?discord_error=wrong_discord_account`);
+        }
+        
+        logStep("Discord is linked, allowing login");
       }
     } else {
       // No user with this email exists
       if (isLinkingAccount) {
         // This was a linking attempt but the Discord email doesn't match any existing user
-        // This shouldn't normally happen since linking requires being logged in first
         logStep("Linking attempt but no user found with Discord email");
         return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=email_mismatch`);
       }
       
-      // Create new user
+      // Create new user (signing up with Discord)
       isNewUser = true;
       const discordAvatarUrl = discordUser.avatar 
         ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
@@ -185,7 +203,7 @@ serve(async (req) => {
       }
 
       userId = newUser.user.id;
-      logStep("New user created", { userId });
+      logStep("New user created via Discord signup", { userId });
     }
 
     // Generate a magic link for the user to sign in

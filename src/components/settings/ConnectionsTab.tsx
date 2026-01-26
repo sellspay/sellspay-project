@@ -59,32 +59,29 @@ export function ConnectionsTab() {
       // Get current user's identities from Supabase auth
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      if (currentUser?.identities) {
-        const connectedProviders = currentUser.identities.map(id => ({
-          provider: id.provider,
-          email: id.identity_data?.email,
-          connected: true,
-        }));
+      if (currentUser) {
+        const supabaseIdentities = currentUser.identities || [];
         
-        // Build full list with connected status
-        const allIdentities = PROVIDERS.map(p => {
-          const connected = connectedProviders.find(cp => cp.provider === p.id);
-          return {
-            provider: p.id,
-            email: connected?.email,
-            connected: !!connected,
-          };
-        });
+        // Check for Google via Supabase identities
+        const hasGoogle = supabaseIdentities.some(id => id.provider === "google");
+        const googleIdentity = supabaseIdentities.find(id => id.provider === "google");
         
-        // Check if user has email/password auth (no provider)
-        const hasEmailAuth = currentUser.identities.some(id => id.provider === "email");
-        if (hasEmailAuth || currentUser.email) {
-          // Add email as a "connection" type if they signed up with email
-          const emailIdentity = allIdentities.find(i => i.provider === "email");
-          if (!emailIdentity) {
-            // Email auth is implicit if they have a password
-          }
-        }
+        // Check for Discord via user_metadata (our custom flow stores it there)
+        const hasDiscord = !!currentUser.user_metadata?.discord_id;
+        const discordUsername = currentUser.user_metadata?.discord_username;
+        
+        const allIdentities: ConnectedIdentity[] = [
+          {
+            provider: "google",
+            email: googleIdentity?.identity_data?.email,
+            connected: hasGoogle,
+          },
+          {
+            provider: "discord",
+            email: discordUsername ? `@${discordUsername}` : undefined,
+            connected: hasDiscord,
+          },
+        ];
         
         setIdentities(allIdentities);
       }
@@ -143,18 +140,43 @@ export function ConnectionsTab() {
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
-      if (!currentUser?.identities) {
-        toast.error("Unable to get user identities");
+      if (!currentUser) {
+        toast.error("Unable to get user info");
         return;
       }
       
-      // Check if this is the only identity
-      if (currentUser.identities.length <= 1) {
+      // Count connected methods
+      const supabaseIdentities = currentUser.identities || [];
+      const hasGoogle = supabaseIdentities.some(id => id.provider === "google");
+      const hasDiscord = !!currentUser.user_metadata?.discord_id;
+      const hasEmail = supabaseIdentities.some(id => id.provider === "email");
+      
+      const connectedCount = [hasGoogle, hasDiscord, hasEmail].filter(Boolean).length;
+      
+      if (connectedCount <= 1) {
         toast.error("You must keep at least one login method connected.");
         return;
       }
       
-      const identity = currentUser.identities.find(id => id.provider === providerId);
+      if (providerId === "discord") {
+        // For Discord, we need to clear the user_metadata
+        const newMetadata = { ...currentUser.user_metadata };
+        delete newMetadata.discord_id;
+        delete newMetadata.discord_username;
+        
+        const { error } = await supabase.auth.updateUser({
+          data: newMetadata,
+        });
+        
+        if (error) throw error;
+        
+        toast.success("Discord disconnected");
+        await loadIdentities();
+        return;
+      }
+      
+      // For other providers (Google), use Supabase's unlinkIdentity
+      const identity = supabaseIdentities.find(id => id.provider === providerId);
       if (!identity) {
         toast.error("Identity not found");
         return;
