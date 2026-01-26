@@ -1955,28 +1955,9 @@ export type Database = {
           is_creator: boolean | null
           is_editor: boolean | null
           is_owner: boolean | null
+          user_id: string | null
           username: string | null
           verified: boolean | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          full_name?: string | null
-          id?: string | null
-          is_creator?: boolean | null
-          is_editor?: boolean | null
-          is_owner?: boolean | null
-          username?: string | null
-          verified?: boolean | null
-        }
-        Update: {
-          avatar_url?: string | null
-          full_name?: string | null
-          id?: string | null
-          is_creator?: boolean | null
-          is_editor?: boolean | null
-          is_owner?: boolean | null
-          username?: string | null
-          verified?: boolean | null
         }
         Relationships: []
       }
