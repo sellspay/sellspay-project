@@ -18,6 +18,7 @@ import ManageFeaturedDialog from "@/components/admin/ManageFeaturedDialog";
 import DeleteProductDialog from "@/components/admin/DeleteProductDialog";
 import ViewCreatorApplicationDialog from "@/components/admin/ViewCreatorApplicationDialog";
 import SpotlightNominationsDialog from "@/components/admin/SpotlightNominationsDialog";
+import SpotlightLeaderboard from "@/components/admin/SpotlightLeaderboard";
 import { CreatorApplication, PRODUCT_TYPE_OPTIONS } from "@/components/creator-application/types";
 
 interface Profile {
@@ -1173,14 +1174,14 @@ export default function Admin() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <Star className="w-5 h-5 text-yellow-500" />
+                    <Star className="w-5 h-5 text-amber-500" />
                     Featured Products
                   </CardTitle>
                   <CardDescription>
-                    Manage which products appear on the homepage "Popular Picks" section
+                    Manage which products appear on the homepage
                   </CardDescription>
                 </div>
-                <Button onClick={() => setShowFeaturedDialog(true)} className="gap-2">
+                <Button onClick={() => setShowFeaturedDialog(true)} className="gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700">
                   <Star className="w-4 h-4" />
                   Manage Featured
                 </Button>
@@ -1189,16 +1190,16 @@ export default function Admin() {
             <CardContent>
               {/* Quick Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                   <div className="flex items-center gap-3">
-                    <Star className="w-8 h-8 text-yellow-500" />
+                    <Star className="w-8 h-8 text-amber-500" />
                     <div>
                       <p className="text-2xl font-bold">{products.filter(p => p.featured).length}</p>
                       <p className="text-sm text-muted-foreground">Featured Products</p>
                     </div>
                   </div>
                 </div>
-                <div className="p-4 rounded-lg bg-secondary/50 border">
+                <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
                   <div className="flex items-center gap-3">
                     <Package className="w-8 h-8 text-muted-foreground" />
                     <div>
@@ -1207,7 +1208,7 @@ export default function Admin() {
                     </div>
                   </div>
                 </div>
-                <div className="p-4 rounded-lg bg-secondary/50 border">
+                <div className="p-4 rounded-xl bg-muted/50 border border-border/50">
                   <div className="flex items-center gap-3">
                     <Eye className="w-8 h-8 text-muted-foreground" />
                     <div>
@@ -1220,63 +1221,68 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* Featured Products Table */}
-              <h3 className="font-medium mb-4">Currently Featured</h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Creator</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Featured Date</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {products.filter(p => p.featured).map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                          <span className="font-medium">{product.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {product.creator?.full_name || product.creator?.username || "Unknown"}
-                      </TableCell>
-                      <TableCell>
-                        {formatPrice(product.price_cents, product.pricing_type)}
-                      </TableCell>
-                      <TableCell>{formatDate(product.created_at)}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleFeatured(product)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {products.filter(p => p.featured).length === 0 && (
-                <div className="text-center py-12 border border-dashed rounded-lg mt-4">
-                  <Star className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+              {/* Featured Products Grid */}
+              <h3 className="font-medium mb-4 flex items-center gap-2">
+                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                Currently Featured ({products.filter(p => p.featured).length})
+              </h3>
+              
+              {products.filter(p => p.featured).length === 0 ? (
+                <div className="text-center py-16 border border-dashed rounded-xl">
+                  <Star className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
                   <p className="text-muted-foreground mb-4">No featured products yet</p>
                   <Button onClick={() => setShowFeaturedDialog(true)} variant="outline">
                     Add Featured Products
                   </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  {products.filter(p => p.featured).map((product) => (
+                    <div
+                      key={product.id}
+                      className="group relative rounded-xl overflow-hidden border border-amber-500/30 bg-card hover:border-amber-500/50 transition-all hover:shadow-lg hover:shadow-amber-500/10"
+                    >
+                      {/* Placeholder for cover image - we don't have it in products list */}
+                      <div className="aspect-video relative bg-gradient-to-br from-amber-500/20 to-amber-600/10 flex items-center justify-center">
+                        <Star className="w-8 h-8 text-amber-500/50" />
+                        {/* Featured badge */}
+                        <div className="absolute top-2 left-2">
+                          <Badge className="bg-amber-500 text-amber-950 text-[10px]">
+                            <Star className="w-2.5 h-2.5 mr-0.5 fill-current" />
+                            Featured
+                          </Badge>
+                        </div>
+                        {/* Remove overlay */}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleToggleFeatured(product)}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                      {/* Product Info */}
+                      <div className="p-3">
+                        <p className="font-medium text-sm truncate">{product.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          by {product.creator?.full_name || product.creator?.username || "Unknown"}
+                        </p>
+                        <p className="text-xs text-amber-500 mt-1">
+                          {formatPrice(product.price_cents, product.pricing_type)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Spotlight Tab */}
+        {/* Spotlight Tab - Leaderboard View */}
         <TabsContent value="spotlight">
           <Card className="bg-card/50">
             <CardHeader>
@@ -1287,7 +1293,7 @@ export default function Admin() {
                     Creator Spotlight Nominations
                   </CardTitle>
                   <CardDescription>
-                    View community nominations and select featured creators for the Spotlight page
+                    End-of-month leaderboard — feature the most nominated creators
                   </CardDescription>
                 </div>
                 <Button 
@@ -1295,42 +1301,12 @@ export default function Admin() {
                   className="gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
                 >
                   <Crown className="w-4 h-4" />
-                  Manage Spotlight
+                  Add to Spotlight
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-6 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <div className="flex items-center gap-3">
-                    <Crown className="w-8 h-8 text-amber-500" />
-                    <div>
-                      <p className="text-lg font-bold">Creator Spotlight</p>
-                      <p className="text-sm text-muted-foreground">
-                        Review nominations from the community and select creators to feature on the Spotlight page.
-                      </p>
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={() => setShowSpotlightDialog(true)} 
-                    className="mt-4 w-full"
-                    variant="outline"
-                  >
-                    View Nominations
-                  </Button>
-                </div>
-                <div className="p-6 rounded-lg bg-secondary/50 border">
-                  <div className="flex items-center gap-3">
-                    <Star className="w-8 h-8 text-muted-foreground" />
-                    <div>
-                      <p className="text-lg font-bold">How It Works</p>
-                      <p className="text-sm text-muted-foreground">
-                        Users nominate creators → You review nominations → Select winners to feature on Spotlight page.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <SpotlightLeaderboard onSelectCreator={() => setShowSpotlightDialog(true)} />
             </CardContent>
           </Card>
         </TabsContent>

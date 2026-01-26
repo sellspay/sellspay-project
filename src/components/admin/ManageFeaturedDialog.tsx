@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Star, X, Loader2, Plus, Filter } from "lucide-react";
+import { Search, Star, X, Loader2, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -25,8 +25,12 @@ interface Product {
   id: string;
   name: string;
   cover_image_url: string | null;
+  preview_video_url: string | null;
   featured: boolean | null;
   product_type: string | null;
+  pricing_type: string | null;
+  price_cents: number | null;
+  currency: string | null;
   creator_id: string | null;
   creator?: {
     id: string;
@@ -51,11 +55,21 @@ const PRODUCT_TYPE_LABELS: Record<string, string> = {
   preset: "Preset",
   lut: "LUT",
   sfx: "SFX",
-  motion_graphics: "Motion Graphics",
+  music: "Music",
+  template: "Template",
+  overlay: "Overlay",
+  font: "Font",
   tutorial: "Tutorial",
   project_file: "Project File",
   other: "Other",
 };
+
+function formatPrice(cents: number | null, currency: string | null): string {
+  if (!cents || cents === 0) return 'Free';
+  const amount = cents / 100;
+  const cur = currency?.toUpperCase() || 'USD';
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(amount);
+}
 
 export default function ManageFeaturedDialog({
   open,
@@ -80,17 +94,15 @@ export default function ManageFeaturedDialog({
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      // Fetch 20 most recent published products
       const { data: productsData, error: productsError } = await supabase
         .from("products")
-        .select("id, name, cover_image_url, featured, product_type, creator_id")
+        .select("id, name, cover_image_url, preview_video_url, featured, product_type, pricing_type, price_cents, currency, creator_id")
         .eq("status", "published")
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (productsError) throw productsError;
 
-      // Fetch creator info
       const creatorIds = [...new Set(productsData?.map(p => p.creator_id).filter(Boolean) || [])];
       let creatorsMap: Record<string, Creator> = {};
 
@@ -167,14 +179,14 @@ export default function ManageFeaturedDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[85vh]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="p-6 pb-4 border-b border-border/50">
           <DialogTitle className="flex items-center gap-2">
-            <Star className="w-5 h-5 text-yellow-500" />
+            <Crown className="w-5 h-5 text-amber-500" />
             Manage Featured Products
           </DialogTitle>
           <DialogDescription>
-            Products marked as featured will appear on the homepage "Popular Picks" section
+            Products marked as featured will appear on the homepage
           </DialogDescription>
         </DialogHeader>
 
@@ -183,66 +195,70 @@ export default function ManageFeaturedDialog({
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="flex-1 overflow-hidden flex flex-col">
             {/* Currently Featured */}
-            <div>
+            <div className="p-6 pb-4 border-b border-border/50">
               <h3 className="font-medium mb-3 flex items-center gap-2">
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
                 Currently Featured ({featuredProducts.length})
               </h3>
               
               {featuredProducts.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground border border-dashed rounded-lg">
-                  No featured products yet. Add products below to feature them on the homepage.
+                  No featured products yet. Add products below.
                 </div>
               ) : (
-                <ScrollArea className="max-h-[180px]">
-                  <div className="space-y-2">
+                <ScrollArea className="h-[180px]">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pr-4">
                     {featuredProducts.map((product) => (
                       <div
                         key={product.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20"
+                        className="group relative rounded-xl overflow-hidden border border-amber-500/30 bg-amber-500/5"
                       >
-                        <div className="flex items-center gap-3">
+                        {/* Product Image */}
+                        <div className="aspect-video relative">
                           {product.cover_image_url ? (
                             <img
                               src={product.cover_image_url}
                               alt={product.name}
-                              className="w-10 h-10 rounded object-cover"
+                              className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                              <Star className="w-4 h-4 text-muted-foreground" />
+                            <div className="w-full h-full bg-muted flex items-center justify-center">
+                              <Star className="w-6 h-6 text-muted-foreground" />
                             </div>
                           )}
-                          <div>
-                            <p className="font-medium text-sm">{product.name}</p>
-                            <div className="flex items-center gap-2">
-                              <p className="text-xs text-muted-foreground">
-                                by {product.creator?.full_name || product.creator?.username || "Unknown"}
-                              </p>
-                              {product.product_type && (
-                                <Badge variant="outline" className="text-[10px] h-4 px-1">
-                                  {PRODUCT_TYPE_LABELS[product.product_type] || product.product_type}
-                                </Badge>
+                          {/* Remove overlay */}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleToggleFeatured(product.id, false)}
+                              disabled={updating === product.id}
+                            >
+                              {updating === product.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <X className="w-4 h-4" />
                               )}
-                            </div>
+                              <span className="ml-1">Remove</span>
+                            </Button>
+                          </div>
+                          {/* Featured badge */}
+                          <div className="absolute top-2 left-2">
+                            <Badge className="bg-amber-500 text-amber-950 text-[10px]">
+                              <Star className="w-2.5 h-2.5 mr-0.5 fill-current" />
+                              Featured
+                            </Badge>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleFeatured(product.id, false)}
-                          disabled={updating === product.id}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          {updating === product.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <X className="w-4 h-4" />
-                          )}
-                          <span className="ml-1">Remove</span>
-                        </Button>
+                        {/* Product Info */}
+                        <div className="p-2">
+                          <p className="font-medium text-xs truncate">{product.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            by {product.creator?.full_name || product.creator?.username || "Unknown"}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -250,8 +266,8 @@ export default function ManageFeaturedDialog({
               )}
             </div>
 
-            {/* Add Products */}
-            <div>
+            {/* Add Products Section */}
+            <div className="flex-1 overflow-hidden flex flex-col p-6 pt-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium">Add Products to Featured</h3>
                 {hasActiveFilters && (
@@ -275,7 +291,7 @@ export default function ManageFeaturedDialog({
                 </div>
                 
                 <Select value={creatorFilter} onValueChange={setCreatorFilter}>
-                  <SelectTrigger className="w-[160px]">
+                  <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="All Creators" />
                   </SelectTrigger>
                   <SelectContent>
@@ -289,7 +305,7 @@ export default function ManageFeaturedDialog({
                 </Select>
 
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-[120px]">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent>
@@ -303,66 +319,78 @@ export default function ManageFeaturedDialog({
                 </Select>
               </div>
 
-              <ScrollArea className="max-h-[280px]">
+              {/* Scrollable product grid */}
+              <ScrollArea className="flex-1">
                 {filteredProducts.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
                     {hasActiveFilters ? "No products match your filters" : "All products are featured"}
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {filteredProducts.slice(0, 20).map((product) => (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pr-4">
+                    {filteredProducts.map((product) => (
                       <div
                         key={product.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                        className="group relative rounded-xl overflow-hidden border border-border/50 hover:border-primary/30 transition-colors bg-card"
                       >
-                        <div className="flex items-center gap-3">
+                        {/* Product Image */}
+                        <div className="aspect-video relative">
                           {product.cover_image_url ? (
                             <img
                               src={product.cover_image_url}
                               alt={product.name}
-                              className="w-10 h-10 rounded object-cover"
+                              className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                              <Star className="w-4 h-4 text-muted-foreground" />
+                            <div className="w-full h-full bg-muted flex items-center justify-center">
+                              <Star className="w-6 h-6 text-muted-foreground" />
                             </div>
                           )}
-                          <div>
-                            <p className="font-medium text-sm">{product.name}</p>
-                            <div className="flex items-center gap-2">
-                              <p className="text-xs text-muted-foreground">
-                                by {product.creator?.full_name || product.creator?.username || "Unknown"}
-                              </p>
-                              {product.product_type && (
-                                <Badge variant="outline" className="text-[10px] h-4 px-1">
-                                  {PRODUCT_TYPE_LABELS[product.product_type] || product.product_type}
-                                </Badge>
+                          {/* Add overlay */}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Button
+                              size="sm"
+                              onClick={() => handleToggleFeatured(product.id, true)}
+                              disabled={updating === product.id}
+                              className="bg-amber-500 hover:bg-amber-600 text-amber-950"
+                            >
+                              {updating === product.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Star className="w-4 h-4" />
                               )}
-                            </div>
+                              <span className="ml-1">Feature</span>
+                            </Button>
                           </div>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleFeatured(product.id, true)}
-                          disabled={updating === product.id}
-                          className="bg-yellow-500/10 border-yellow-500/30 hover:bg-yellow-500/20 text-yellow-600"
-                        >
-                          {updating === product.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Star className="w-4 h-4" />
+                          {/* Price badge */}
+                          <div className="absolute top-2 left-2">
+                            <Badge variant="secondary" className="text-[10px] bg-black/50 border-0">
+                              {formatPrice(product.price_cents, product.currency)}
+                            </Badge>
+                          </div>
+                          {/* Type badge */}
+                          {product.product_type && (
+                            <div className="absolute top-2 right-2">
+                              <Badge variant="outline" className="text-[10px] bg-black/50 border-0 text-white">
+                                {PRODUCT_TYPE_LABELS[product.product_type] || product.product_type}
+                              </Badge>
+                            </div>
                           )}
-                          <span className="ml-1">Feature</span>
-                        </Button>
+                        </div>
+                        {/* Product Info */}
+                        <div className="p-2">
+                          <p className="font-medium text-xs truncate">{product.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            by {product.creator?.full_name || product.creator?.username || "Unknown"}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </ScrollArea>
               
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                Showing up to 20 most recent products
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                Showing {filteredProducts.length} products
               </p>
             </div>
           </div>
