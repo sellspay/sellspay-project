@@ -15,7 +15,7 @@ export interface UploadProgress {
   phase: 'idle' | 'uploading' | 'processing' | 'done';
 }
 
-export const MAX_PRODUCT_SIZE_BYTES = 5 * 1024 * 1024 * 1024; // 5GB
+export const MAX_PRODUCT_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB (Lovable Cloud limit)
 
 export const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 B';
