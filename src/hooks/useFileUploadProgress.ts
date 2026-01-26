@@ -98,12 +98,17 @@ export function useFileUploadProgress() {
           return;
         }
 
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        
         const upload = new tus.Upload(file, {
-          // Use the direct storage endpoint for resumable uploads
+          // Correct storage endpoint for resumable uploads
           endpoint: `https://${projectId}.supabase.co/storage/v1/upload/resumable`,
           retryDelays: [0, 1000, 3000, 5000, 10000], // Retry on failure
           headers: {
             authorization: `Bearer ${accessToken}`,
+            apikey: anonKey, // Required for TUS uploads
+            'x-upsert': 'false',
           },
           uploadDataDuringCreation: true,
           removeFingerprintOnSuccess: true,
