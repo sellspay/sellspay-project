@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import * as tus from 'tus-js-client';
 
 export interface UploadProgress {
   totalBytes: number;
@@ -63,10 +64,120 @@ export function useFileUploadProgress() {
     phase: 'idle',
   });
 
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const abortRef = useRef<boolean>(false);
   const bytesUploadedBeforeCurrentFile = useRef(0);
+  const speedSamples = useRef<number[]>([]);
+  const lastProgressTime = useRef(0);
+  const lastProgressBytes = useRef(0);
 
-  const uploadFileWithProgress = useCallback(
+  // Calculate smoothed speed using moving average
+  const calculateSmoothedSpeed = (instantSpeed: number): number => {
+    speedSamples.current.push(instantSpeed);
+    // Keep last 10 samples for smoothing
+    if (speedSamples.current.length > 10) {
+      speedSamples.current.shift();
+    }
+    const sum = speedSamples.current.reduce((a, b) => a + b, 0);
+    return sum / speedSamples.current.length;
+  };
+
+  // TUS-based resumable upload for large files
+  const uploadFileWithTus = useCallback(
+    async (
+      file: File,
+      bucket: string,
+      path: string,
+      accessToken: string
+    ): Promise<{ success: boolean; error?: string }> => {
+      return new Promise((resolve) => {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        
+        if (!projectId) {
+          console.error('Missing VITE_SUPABASE_PROJECT_ID');
+          resolve({ success: false, error: 'Configuration error' });
+          return;
+        }
+
+        const upload = new tus.Upload(file, {
+          // Use the direct storage endpoint for resumable uploads
+          endpoint: `https://${projectId}.supabase.co/storage/v1/upload/resumable`,
+          retryDelays: [0, 1000, 3000, 5000, 10000], // Retry on failure
+          headers: {
+            authorization: `Bearer ${accessToken}`,
+          },
+          uploadDataDuringCreation: true,
+          removeFingerprintOnSuccess: true,
+          metadata: {
+            bucketName: bucket,
+            objectName: path,
+            contentType: file.type || 'application/octet-stream',
+            cacheControl: '3600',
+          },
+          // 6MB chunks - optimal for Supabase
+          chunkSize: 6 * 1024 * 1024,
+          
+          onError: (error) => {
+            console.error('TUS upload error:', error);
+            resolve({ success: false, error: error.message || 'Upload failed' });
+          },
+          
+          onProgress: (bytesUploaded, bytesTotal) => {
+            const now = Date.now();
+            const totalUploaded = bytesUploadedBeforeCurrentFile.current + bytesUploaded;
+
+            // Calculate instant speed (bytes since last update)
+            let instantSpeed = 0;
+            if (lastProgressTime.current > 0) {
+              const timeDelta = (now - lastProgressTime.current) / 1000;
+              const bytesDelta = totalUploaded - lastProgressBytes.current;
+              if (timeDelta > 0) {
+                instantSpeed = bytesDelta / timeDelta;
+              }
+            }
+            lastProgressTime.current = now;
+            lastProgressBytes.current = totalUploaded;
+
+            setProgress((prev) => {
+              // Use smoothed speed for better UX
+              const smoothedSpeed = instantSpeed > 0 
+                ? calculateSmoothedSpeed(instantSpeed) 
+                : prev.speed;
+              
+              const remainingBytes = prev.totalBytes - totalUploaded;
+              const estimatedRemaining = smoothedSpeed > 0 ? remainingBytes / smoothedSpeed : 0;
+              const percentage = prev.totalBytes > 0 ? (totalUploaded / prev.totalBytes) * 100 : 0;
+
+              return {
+                ...prev,
+                uploadedBytes: totalUploaded,
+                speed: smoothedSpeed,
+                estimatedRemaining,
+                percentage,
+              };
+            });
+          },
+          
+          onSuccess: () => {
+            bytesUploadedBeforeCurrentFile.current += file.size;
+            resolve({ success: true });
+          },
+        });
+
+        // Check for previous uploads to resume
+        upload.findPreviousUploads().then((previousUploads) => {
+          if (previousUploads.length) {
+            console.log('Resuming previous upload...');
+            upload.resumeFromPreviousUpload(previousUploads[0]);
+          }
+          upload.start();
+        });
+      });
+    },
+    []
+  );
+
+  // Fallback XHR upload for smaller files (< 50MB)
+  const uploadFileWithXhr = useCallback(
     async (
       file: File,
       bucket: string,
@@ -75,24 +186,39 @@ export function useFileUploadProgress() {
     ): Promise<{ success: boolean; error?: string }> => {
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest();
-        abortControllerRef.current = new AbortController();
 
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
             const now = Date.now();
             const totalUploaded = bytesUploadedBeforeCurrentFile.current + e.loaded;
 
+            let instantSpeed = 0;
+            if (lastProgressTime.current > 0) {
+              const timeDelta = (now - lastProgressTime.current) / 1000;
+              const bytesDelta = totalUploaded - lastProgressBytes.current;
+              if (timeDelta > 0.1) { // Only update if enough time has passed
+                instantSpeed = bytesDelta / timeDelta;
+                lastProgressTime.current = now;
+                lastProgressBytes.current = totalUploaded;
+              }
+            } else {
+              lastProgressTime.current = now;
+              lastProgressBytes.current = totalUploaded;
+            }
+
             setProgress((prev) => {
-              const elapsedSeconds = (now - prev.startTime) / 1000;
-              const speed = elapsedSeconds > 0 ? totalUploaded / elapsedSeconds : 0;
+              const smoothedSpeed = instantSpeed > 0 
+                ? calculateSmoothedSpeed(instantSpeed) 
+                : prev.speed;
+              
               const remainingBytes = prev.totalBytes - totalUploaded;
-              const estimatedRemaining = speed > 0 ? remainingBytes / speed : 0;
+              const estimatedRemaining = smoothedSpeed > 0 ? remainingBytes / smoothedSpeed : 0;
               const percentage = prev.totalBytes > 0 ? (totalUploaded / prev.totalBytes) * 100 : 0;
 
               return {
                 ...prev,
                 uploadedBytes: totalUploaded,
-                speed,
+                speed: smoothedSpeed,
                 estimatedRemaining,
                 percentage,
               };
@@ -156,6 +282,10 @@ export function useFileUploadProgress() {
 
       const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
       bytesUploadedBeforeCurrentFile.current = 0;
+      speedSamples.current = [];
+      lastProgressTime.current = 0;
+      lastProgressBytes.current = 0;
+      abortRef.current = false;
 
       setProgress({
         totalBytes,
@@ -172,7 +302,14 @@ export function useFileUploadProgress() {
 
       const paths: string[] = [];
 
+      // Use TUS for files > 50MB, XHR for smaller files
+      const TUS_THRESHOLD = 50 * 1024 * 1024; // 50MB
+
       for (let i = 0; i < files.length; i++) {
+        if (abortRef.current) {
+          return { success: false, paths, error: 'Upload cancelled' };
+        }
+
         const file = files[i];
         const path = pathGenerator(file, i);
 
@@ -182,7 +319,13 @@ export function useFileUploadProgress() {
           currentFileName: file.name,
         }));
 
-        const result = await uploadFileWithProgress(file, bucket, path, accessToken);
+        // Choose upload method based on file size
+        const useTus = file.size > TUS_THRESHOLD;
+        console.log(`Uploading ${file.name} (${formatBytes(file.size)}) using ${useTus ? 'TUS' : 'XHR'}`);
+        
+        const result = useTus
+          ? await uploadFileWithTus(file, bucket, path, accessToken)
+          : await uploadFileWithXhr(file, bucket, path, accessToken);
 
         if (!result.success) {
           setProgress((prev) => ({ ...prev, phase: 'idle' }));
@@ -201,10 +344,11 @@ export function useFileUploadProgress() {
 
       return { success: true, paths };
     },
-    [uploadFileWithProgress]
+    [uploadFileWithTus, uploadFileWithXhr]
   );
 
   const resetProgress = useCallback(() => {
+    abortRef.current = true;
     setProgress({
       totalBytes: 0,
       uploadedBytes: 0,
@@ -218,6 +362,9 @@ export function useFileUploadProgress() {
       phase: 'idle',
     });
     bytesUploadedBeforeCurrentFile.current = 0;
+    speedSamples.current = [];
+    lastProgressTime.current = 0;
+    lastProgressBytes.current = 0;
   }, []);
 
   const setPhase = useCallback((phase: UploadProgress['phase']) => {

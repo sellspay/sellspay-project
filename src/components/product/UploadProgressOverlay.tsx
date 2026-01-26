@@ -1,4 +1,4 @@
-import { Check, Upload, Loader2, FileCheck, Rocket, PartyPopper } from 'lucide-react';
+import { Check, Upload, Loader2, FileCheck, Rocket, PartyPopper, Zap } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { UploadProgress, formatBytes, formatTime } from '@/hooks/useFileUploadProgress';
 
@@ -16,10 +16,10 @@ export default function UploadProgressOverlay({ isVisible, progress, isEdit = fa
       case 'uploading':
         return {
           icon: <Upload className="w-8 h-8 text-white" />,
-          emoji: '📤',
+          emoji: '🚀',
           label: progress.totalFiles > 1 
             ? `Uploading file ${progress.currentFileIndex + 1} of ${progress.totalFiles}` 
-            : 'Uploading file...',
+            : 'Uploading...',
           sublabel: progress.currentFileName,
         };
       case 'processing':
@@ -49,6 +49,9 @@ export default function UploadProgressOverlay({ isVisible, progress, isEdit = fa
   const phaseInfo = getPhaseInfo();
   const isDone = progress.phase === 'done';
   const isUploading = progress.phase === 'uploading';
+
+  // Determine if using fast TUS upload (files > 50MB)
+  const isLargeFile = progress.totalBytes > 50 * 1024 * 1024;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -89,33 +92,52 @@ export default function UploadProgressOverlay({ isVisible, progress, isEdit = fa
         </h2>
 
         {/* Sublabel */}
-        <p className="text-muted-foreground mb-6 h-6 truncate max-w-full" title={phaseInfo.sublabel}>
+        <p className="text-muted-foreground mb-4 h-6 truncate max-w-full" title={phaseInfo.sublabel}>
           {phaseInfo.sublabel}
         </p>
 
+        {/* Upload mode badge */}
+        {isUploading && isLargeFile && (
+          <div className="flex items-center gap-1.5 mb-4 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+            <Zap className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-medium text-primary">Resumable Upload</span>
+          </div>
+        )}
+
         {/* Progress bar */}
         <div className="w-full mb-4">
-          <Progress value={progress.percentage} className="h-2" />
+          <Progress value={progress.percentage} className="h-3" />
         </div>
 
         {/* Real-time stats */}
         {isUploading && (
-          <div className="w-full space-y-2 text-sm">
-            {/* Speed and time */}
-            <div className="flex justify-between text-muted-foreground">
-              <span>
-                {progress.speed > 0 ? `${formatBytes(progress.speed)}/s` : 'Starting...'}
-              </span>
-              <span>
-                {progress.estimatedRemaining > 0 && progress.speed > 0
-                  ? `~${formatTime(progress.estimatedRemaining)} remaining`
-                  : 'Calculating...'}
-              </span>
+          <div className="w-full space-y-3 text-sm">
+            {/* Speed and time - large display */}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-primary" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-foreground">
+                    {progress.speed > 0 ? `${formatBytes(progress.speed)}/s` : 'Starting...'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Upload speed</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold text-foreground">
+                  {progress.estimatedRemaining > 0 && progress.speed > 0
+                    ? formatTime(progress.estimatedRemaining)
+                    : 'Calculating...'}
+                </p>
+                <p className="text-xs text-muted-foreground">Time remaining</p>
+              </div>
             </div>
 
-            {/* Bytes uploaded */}
-            <div className="flex justify-center text-muted-foreground">
-              <span>
+            {/* Bytes uploaded - progress text */}
+            <div className="flex justify-center">
+              <span className="text-muted-foreground font-mono text-xs">
                 {formatBytes(progress.uploadedBytes)} / {formatBytes(progress.totalBytes)}
               </span>
             </div>
@@ -123,8 +145,8 @@ export default function UploadProgressOverlay({ isVisible, progress, isEdit = fa
         )}
 
         {/* Percentage */}
-        <p className="text-sm font-mono text-muted-foreground mt-4">
-          {Math.round(progress.percentage)}% complete
+        <p className="text-2xl font-bold font-mono text-foreground mt-4">
+          {Math.round(progress.percentage)}%
         </p>
 
         {/* Phase indicators */}
@@ -151,6 +173,13 @@ export default function UploadProgressOverlay({ isVisible, progress, isEdit = fa
             );
           })}
         </div>
+
+        {/* Tip for large files */}
+        {isUploading && progress.totalBytes > 500 * 1024 * 1024 && (
+          <p className="text-xs text-muted-foreground mt-4 max-w-xs">
+            💡 Large file detected. Upload will resume automatically if interrupted.
+          </p>
+        )}
       </div>
     </div>
   );
