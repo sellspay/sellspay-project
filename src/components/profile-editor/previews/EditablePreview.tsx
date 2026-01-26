@@ -1117,20 +1117,46 @@ function BasicListEditablePreview({ content, section }: { content: BasicListCont
 }
 // Featured Product Preview
 function FeaturedProductEditablePreview({ content }: { content: FeaturedProductContent }) {
+  const hasProduct = content.productId && content.productName;
+  
+  // Format price from cents
+  const formatPrice = () => {
+    if (!content.productPriceCents) return 'Free';
+    const amount = content.productPriceCents / 100;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: content.productCurrency || 'USD',
+    }).format(amount);
+  };
+
   return (
     <div className="bg-muted/30 rounded-lg p-4 flex gap-4">
       <div className="w-24 h-24 bg-muted rounded-lg shrink-0 overflow-hidden">
-        <ImagePlaceholder className="w-full h-full" />
+        {content.productImageUrl ? (
+          <img 
+            src={content.productImageUrl} 
+            alt={content.productName || 'Product'} 
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <ImagePlaceholder className="w-full h-full" />
+        )}
       </div>
       <div className="flex-1 space-y-2">
-        <h3 className="font-semibold">Product Name</h3>
+        <h3 className="font-semibold">{content.productName || 'Product Name'}</h3>
         {content.showDescription && (
-          <p className="text-sm text-muted-foreground line-clamp-2">Product description here</p>
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {content.productDescription || 'Product description here'}
+          </p>
         )}
         <div className="flex items-center gap-3">
-          {content.showPrice && <span className="font-bold text-primary">$29.99</span>}
+          {content.showPrice && (
+            <span className="font-bold text-primary">
+              {hasProduct ? formatPrice() : '$29.99'}
+            </span>
+          )}
           <button className="bg-primary text-primary-foreground px-3 py-1 rounded text-sm">
-            {content.buttonText || 'Buy Now'}
+            {content.buttonText || 'View Product'}
           </button>
         </div>
       </div>
