@@ -20,7 +20,7 @@ interface EarningsCardProps {
   editorEarnings: number; // in dollars
 }
 
-type PayoutProvider = 'stripe' | 'payoneer';
+type PayoutProvider = 'stripe' | 'payoneer' | 'paypal';
 type WithdrawalSpeed = 'standard' | 'instant';
 
 interface PayoutStatus {
@@ -28,6 +28,7 @@ interface PayoutStatus {
   stripeConnected: boolean;
   payoneerConnected: boolean;
   payoneerStatus: string | null;
+  paypalConnected: boolean;
 }
 
 export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardProps) {
@@ -77,6 +78,7 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
           stripeConnected: data.stripeConnected || false,
           payoneerConnected: data.payoneerConnected || false,
           payoneerStatus: data.payoneerStatus,
+          paypalConnected: data.paypalConnected || false,
         });
         setSelectedProvider(data.preferredPayoutMethod || 'stripe');
       }
@@ -112,6 +114,9 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
         return { fee, netAmount: amount - fee, feeLabel: '3% instant fee' };
       }
       return { fee: 0, netAmount: amount, feeLabel: 'Free' };
+    } else if (provider === 'paypal') {
+      // PayPal - platform charges no fee, but PayPal may charge fees
+      return { fee: 0, netAmount: amount, feeLabel: 'Free (PayPal may charge fees)' };
     } else {
       // Payoneer - platform charges no fee, but Payoneer may charge withdrawal fees
       return { fee: 0, netAmount: amount, feeLabel: 'Free (Payoneer may charge withdrawal fees)' };
@@ -154,6 +159,21 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
         } else {
           throw new Error(data.error || 'Failed to process withdrawal');
         }
+      } else if (selectedProvider === 'paypal') {
+        // PayPal withdrawal
+        const { data, error } = await supabase.functions.invoke('create-paypal-payout', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        if (error) throw error;
+
+        if (data.success) {
+          toast.success(data.message || `$${data.amount} is being transferred to your PayPal account.`);
+          setWithdrawDialogOpen(false);
+          fetchStripeBalance();
+        } else {
+          throw new Error(data.error || 'Failed to process PayPal withdrawal');
+        }
       } else {
         // Payoneer withdrawal
         const amountCents = Math.floor(availableAmount * 100);
@@ -165,12 +185,12 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
         if (error) throw error;
 
         if (data.notConfigured) {
-          toast.error('Payoneer integration is coming soon. Please use Stripe for now.');
+          toast.error('Payoneer integration is coming soon. Please use Stripe or PayPal for now.');
           return;
         }
 
         if (data.success) {
-          toast.success(data.message || `$${(data.amount / 100).toFixed(2)} withdrawal initiated via Payoneer.`);
+          toast.success(data.message || `$${data.amount} withdrawal initiated via Payoneer.`);
           setWithdrawDialogOpen(false);
           fetchStripeBalance();
         } else {
@@ -197,10 +217,13 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
   const hasPendingFunds = pendingBalanceDollars > 0 || stripePendingDollars > 0;
   const isStripeAvailable = stripeBalance?.connected || payoutStatus?.stripeConnected;
   const isPayoneerAvailable = payoutStatus?.payoneerConnected && payoutStatus?.payoneerStatus === 'active';
-  const needsOnboarding = stripeBalance?.needsOnboarding && !isStripeAvailable;
+  const isPaypalAvailable = payoutStatus?.paypalConnected;
+  const needsOnboarding = stripeBalance?.needsOnboarding && !isStripeAvailable && !isPaypalAvailable && !isPayoneerAvailable;
+  const hasAnyPayoutMethod = isStripeAvailable || isPayoneerAvailable || isPaypalAvailable;
   const canWithdraw = hasAvailableFunds && 
     ((selectedProvider === 'stripe' && isStripeAvailable) || 
-     (selectedProvider === 'payoneer' && isPayoneerAvailable));
+     (selectedProvider === 'payoneer' && isPayoneerAvailable) ||
+     (selectedProvider === 'paypal' && isPaypalAvailable));
 
   return (
     <>
@@ -290,8 +313,8 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
             </div>
           )}
 
-          {/* Withdraw Button - show if Stripe connected and has funds */}
-          {isStripeAvailable && hasAvailableFunds && (
+          {/* Withdraw Button - show if any payout method connected and has funds */}
+          {hasAnyPayoutMethod && hasAvailableFunds && (
             <Button 
               className="w-full" 
               onClick={() => setWithdrawDialogOpen(true)}
@@ -379,6 +402,27 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       Direct bank deposit in 45+ countries
+                    </p>
+                  </Label>
+                </div>
+
+                {/* PayPal Option */}
+                <div className={`flex items-center space-x-3 p-3 rounded-lg border transition-colors ${
+                  selectedProvider === 'paypal' ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent/50'
+                } ${!isPaypalAvailable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                  <RadioGroupItem value="paypal" id="paypal" disabled={!isPaypalAvailable} />
+                  <Label htmlFor="paypal" className="flex-1 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-blue-500" />
+                      <span className="font-medium">PayPal</span>
+                      {isPaypalAvailable ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">Connected</span>
+                      ) : (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">Not Connected</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Fast transfers to your PayPal balance
                     </p>
                   </Label>
                 </div>
@@ -487,7 +531,7 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
               ) : (
                 <>
                   <Wallet className="w-4 h-4 mr-2" />
-                  Withdraw ${netAmount.toFixed(2)} via {selectedProvider === 'stripe' ? 'Stripe' : 'Payoneer'}
+                  Withdraw ${netAmount.toFixed(2)} via {selectedProvider === 'stripe' ? 'Stripe' : selectedProvider === 'paypal' ? 'PayPal' : 'Payoneer'}
                 </>
               )}
             </Button>
