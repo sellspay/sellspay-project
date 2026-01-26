@@ -1,10 +1,10 @@
 import React, { memo, useState, useEffect, useRef } from 'react';
-import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, CollectionContent, AboutMeContent, HeadlineContent, SlidingBannerContent, DividerContent, TestimonialsContent, FAQContent, NewsletterContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, ContactUsContent, FooterContent } from '../types';
+import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, CollectionContent, AboutMeContent, HeadlineContent, SlidingBannerContent, DividerContent, TestimonialsContent, FAQContent, NewsletterContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, ContactUsContent, FooterContent, FooterSocialLink, FooterSocialPlatform } from '../types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ChevronRight, ChevronLeft, Quote, Mail, Send, Star, Instagram, Youtube, Twitter } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Quote, Mail, Send, Star, Instagram, Youtube, Twitter, Globe, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getFontClassName, getCustomFontStyle, useCustomFont } from '../hooks/useCustomFont';
 
@@ -1182,6 +1182,26 @@ const FooterPreview = memo(({ section }: { section: ProfileSection }) => {
     );
   }
 
+  // Helper to get icon for platform
+  const getSocialIcon = (platform: FooterSocialPlatform, size: 'sm' | 'md' = 'md') => {
+    const iconClass = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
+    switch (platform) {
+      case 'instagram': return <Instagram className={iconClass} />;
+      case 'youtube': return <Youtube className={iconClass} />;
+      case 'twitter': return <Twitter className={iconClass} />;
+      case 'tiktok': return (
+        <svg className={iconClass} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
+        </svg>
+      );
+      case 'discord': return <MessageCircle className={iconClass} />;
+      case 'website': return <Globe className={iconClass} />;
+      default: return <Globe className={iconClass} />;
+    }
+  };
+
+  const socialLinks = content.socialLinks || [];
+
   // Simple Footer - Centered social icons + copyright
   if (layout === 'simple') {
     return (
@@ -1189,19 +1209,24 @@ const FooterPreview = memo(({ section }: { section: ProfileSection }) => {
         className="text-center py-6 rounded-lg space-y-4"
         style={{ backgroundColor: content.backgroundColor || undefined }}
       >
-        {content.showSocialLinks && (
+        {socialLinks.length > 0 && (
           <div className="flex justify-center gap-4">
-            {/* Social icon circles */}
-            <div className="w-10 h-10 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
-              <Instagram className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <div className="w-10 h-10 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
-              <Youtube className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <div className="w-10 h-10 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
-              <Twitter className="w-5 h-5 text-muted-foreground" />
-            </div>
+            {socialLinks.map((link) => (
+              <a
+                key={link.id}
+                href={link.url || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {getSocialIcon(link.platform)}
+              </a>
+            ))}
           </div>
+        )}
+        {socialLinks.length === 0 && (
+          <p className="text-xs text-muted-foreground/50">Add social links in the editor</p>
         )}
         <p className="text-sm text-muted-foreground">{content.text}</p>
       </div>
@@ -1239,17 +1264,20 @@ const FooterPreview = memo(({ section }: { section: ProfileSection }) => {
         </div>
       )}
       
-      {content.showSocialLinks && (
+      {socialLinks.length > 0 && (
         <div className="flex justify-center gap-4 mb-4 pt-4 border-t border-border">
-          <div className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
-            <Instagram className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <div className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
-            <Youtube className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <div className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
-            <Twitter className="w-4 h-4 text-muted-foreground" />
-          </div>
+          {socialLinks.map((link) => (
+            <a
+              key={link.id}
+              href={link.url || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {getSocialIcon(link.platform, 'sm')}
+            </a>
+          ))}
         </div>
       )}
       
