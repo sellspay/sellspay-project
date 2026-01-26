@@ -1,91 +1,140 @@
 
-# Mobile UI Fixes for Community, Header, and Settings
+# Universal Payout Provider Selection
 
-## Overview
+## Problem Identified
 
-This plan addresses three mobile-specific UI issues:
-1. **Community nav buttons cut off** - Can't see all buttons including FAQ
-2. **Missing Sign In button on mobile** - Only "Join free" visible for logged-out users
-3. **Settings tabs completely broken** - Can't click tabs, not organized for mobile
+Currently, the payout architecture has a critical flaw:
 
----
+1. **All buyer payments go through Stripe** (the platform's default payment processor)
+2. **When sellers withdraw**, the `create-payout` function **requires Stripe Connect** because it uses `stripe.transfers.create()` and `stripe.payouts.create()` to move funds
+3. **The PayPal payout function** only searches for purchases with `paypal_%` payment IDs (purchases made via PayPal checkout) - but since buyers primarily pay with Stripe, this captures almost nothing
+4. **Result**: Sellers can ONLY withdraw via Stripe Connect, regardless of their preferred payout method
 
-## 1. Community Navigation - Fix Button Overflow
+## Solution: Unified Payout Architecture
 
-**File:** `src/components/community/CommunityNav.tsx`
+The key insight: **Funds collected in Stripe can be sent out via ANY provider** - the platform just needs to initiate payouts from its own account rather than requiring sellers to have their own Stripe accounts.
 
-**Current Problem:**
-- Navigation container has `overflow-x-auto` but the wrapper doesn't properly enable horizontal scrolling
-- All 5 buttons with full text labels exceed mobile screen width
-- FAQ button gets cut off
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                    CURRENT FLOW (Broken)                            │
+├─────────────────────────────────────────────────────────────────────┤
+│  Buyer Pays → Stripe (Platform Account) → transferred: false        │
+│                                                                      │
+│  Seller Withdraws → Requires Stripe Connect → stripe.transfers()    │
+│                     PayPal option only sees "paypal_%" purchases    │
+└─────────────────────────────────────────────────────────────────────┘
 
-**Solution:**
-- On mobile, show only icons (hide labels) to make buttons fit
-- Add proper horizontal scroll container with touch gestures
-- Add left/right padding to allow first/last items to be fully visible when scrolled
+┌─────────────────────────────────────────────────────────────────────┐
+│                    NEW FLOW (Fixed)                                 │
+├─────────────────────────────────────────────────────────────────────┤
+│  Buyer Pays → Stripe (Platform Account) → transferred: false        │
+│                                                                      │
+│  Seller Withdraws → Choose Provider:                                 │
+│    • Stripe Connect → Use stripe.transfers() (existing)            │
+│    • PayPal → Platform sends PayPal payout from ALL pending funds  │
+│    • Payoneer → Platform sends Payoneer payout from ALL funds      │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-**Changes:**
-- Update nav container to use proper full-width scrollable container
-- Add `touch-pan-x` for smooth mobile swiping
-- Show labels only on `sm:` breakpoint and above
-- Use smaller padding and gap on mobile
+## Implementation Plan
 
----
+### 1. Create New Unified Withdrawal Edge Function
 
-## 2. Header - Add Sign In Button for Mobile
+**File**: `supabase/functions/create-unified-payout/index.ts`
 
-**File:** `src/components/layout/Header.tsx`
+This new function will:
+- Accept a `provider` parameter: `stripe`, `paypal`, or `payoneer`
+- Fetch ALL pending earnings (`transferred: false`) regardless of how buyer paid
+- Route payout through the selected provider:
+  - **Stripe**: Transfer to seller's Stripe Connect account, then payout to their bank
+  - **PayPal**: Platform sends PayPal Payouts API mass payment to seller's PayPal email
+  - **Payoneer**: Platform sends Payoneer payout to seller's Payoneer payee ID
 
-**Current Problem:**
-- Line 207: "Sign In" button has `hidden sm:inline-flex` - completely hidden on mobile
-- Users only see "Join free", creating confusion for returning users
+### 2. Update `get-stripe-balance` to Return Provider-Agnostic Data
 
-**Solution:**
-- Remove `hidden sm:inline-flex` class from Sign In button
-- Make both buttons visible on mobile with adjusted sizing
-- Add proper spacing for mobile layout
+The balance function should:
+- Continue calculating total pending earnings from ALL purchases (already does this)
+- Return clear data on what's available for withdrawal via ANY provider
+- Show breakdown by payment source for transparency (optional)
 
-**Changes:**
-- Change Sign In button from `hidden sm:inline-flex` to always visible
-- Adjust button text size for mobile (`text-xs`)
-- Ensure both "Sign In" and "Join free" are accessible
+### 3. Fix `create-paypal-payout` Function
 
----
+Remove the filter `.like("stripe_payment_intent_id", "paypal_%")` so it can pay out ALL pending earnings, not just PayPal-originated purchases.
 
-## 3. Settings Page - Complete Mobile Redesign
+Key change at line 131-137:
+```typescript
+// BEFORE (broken - only PayPal payments)
+const { data: pendingPurchases } = await supabaseAdmin
+  .from("purchases")
+  .eq("transferred", false)
+  .like("stripe_payment_intent_id", "paypal_%")  // ← REMOVE THIS
 
-**File:** `src/pages/Settings.tsx`
+// AFTER (correct - all platform-held funds)
+const { data: pendingPurchases } = await supabaseAdmin
+  .from("purchases")
+  .eq("transferred", false)
+  // No payment method filter - seller can choose any payout provider
+```
 
-**Current Problem:**
-- TabsList uses `grid w-full grid-cols-6` - forces 6 tiny columns on mobile
-- Each tab shows icon + text, making them impossibly narrow
-- Users cannot tap or read the tabs on mobile
+### 4. Update Stripe Payout Flow
 
-**Solution:**
-- On mobile: Stack tabs vertically or use horizontal scroll with icon-only buttons
-- Use responsive grid: 2 columns on mobile, 6 on desktop
-- Show icon-only on mobile, icon + text on larger screens
+Modify `create-payout` to handle cases where seller wants Stripe but doesn't have Stripe Connect:
+- Use **Stripe Payouts API** to send funds directly to bank details stored in the platform (alternative flow)
+- OR clearly message that Stripe Connect is required for Stripe withdrawals
 
-**Changes:**
-- Update TabsList: `grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-6`
-- Update TabsTrigger: Hide text on mobile with `hidden sm:inline`
-- Reduce icon size on mobile for better spacing
-- Add proper gap and padding for touch targets
+### 5. Update EarningsCard UI Component
 
----
+**File**: `src/components/dashboard/EarningsCard.tsx`
 
-## Technical Summary
+Updates:
+- Remove hard-coded provider restrictions in the withdraw dialog
+- Enable ALL connected providers for withdrawal regardless of payment source
+- Update messaging to clarify sellers can use any connected provider
 
-| File | Change |
-|------|--------|
-| `src/components/community/CommunityNav.tsx` | Icon-only on mobile, horizontal scroll container with touch support |
-| `src/components/layout/Header.tsx` | Show "Sign In" button on mobile by removing `hidden sm:inline-flex` |
-| `src/pages/Settings.tsx` | Responsive tabs grid (2 cols mobile, 6 cols desktop), icon-only on mobile |
+### 6. Update PayoutMethodSelector to Clarify the Model
 
----
+Add helper text explaining:
+> "Connect your preferred payout method. All earnings from product sales and editor bookings can be withdrawn to any connected provider."
 
-## Expected Result
+## Technical Details
 
-- **Community:** All 5 nav buttons visible and accessible, FAQ button fully visible
-- **Header:** Both "Sign In" and "Join free" visible on mobile for logged-out users
-- **Settings:** All 6 tabs easily tappable with clear icons, organized in 2-column grid on mobile
+### Edge Function Changes
+
+| Function | Change |
+|----------|--------|
+| `create-paypal-payout` | Remove `paypal_%` filter, query ALL `transferred: false` purchases |
+| `create-payoneer-payout` | Add real pending earnings calculation (currently hardcoded/placeholder) |
+| `create-payout` (Stripe) | Keep as-is for Stripe Connect users, add error messaging for non-Connect users |
+
+### Database Tracking
+
+When marking purchases as transferred, include which provider was used:
+```sql
+UPDATE purchases SET 
+  transferred = true,
+  transferred_at = NOW(),
+  stripe_transfer_id = 'paypal_payout_BATCH_ID' -- or 'payoneer_PO_123'
+WHERE id IN (...);
+```
+
+### Fee Structure (No Changes)
+
+- Stripe Standard: Free (1-3 days)
+- Stripe Instant: 3% fee
+- PayPal: Free from platform (PayPal may charge withdrawal fees)
+- Payoneer: Free from platform (Payoneer may charge fees)
+
+## Files to Modify
+
+1. **`supabase/functions/create-paypal-payout/index.ts`** - Remove payment method filter
+2. **`supabase/functions/create-payoneer-payout/index.ts`** - Add real earnings calculation
+3. **`src/components/dashboard/EarningsCard.tsx`** - Update UI provider selection logic
+4. **`supabase/functions/get-stripe-balance/index.ts`** - Minor updates for clarity
+
+## Outcome
+
+After implementation:
+- Seller sells product → Buyer pays via Stripe → Funds tracked as pending
+- Seller goes to Dashboard → Sees available balance
+- Seller clicks "Withdraw" → Chooses between Stripe, PayPal, or Payoneer
+- Platform sends payout via chosen provider → Marks purchases as transferred
