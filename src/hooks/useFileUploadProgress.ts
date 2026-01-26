@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import * as tus from 'tus-js-client';
+import { useUploadRecovery } from './useUploadRecovery';
+export type { PendingUpload } from './useUploadRecovery';
 
 export interface UploadProgress {
   totalBytes: number;
@@ -44,7 +46,7 @@ export const validateTotalFileSize = (files: File[]): { valid: boolean; totalSiz
     return {
       valid: false,
       totalSize,
-      message: `Total file size (${formatBytes(totalSize)}) exceeds 5GB limit. Please reduce file size.`,
+      message: `Total file size (${formatBytes(totalSize)}) exceeds 2GB limit. Please reduce file size.`,
     };
   }
   return { valid: true, totalSize, message: '' };
@@ -69,6 +71,18 @@ export function useFileUploadProgress() {
   const speedSamples = useRef<number[]>([]);
   const lastProgressTime = useRef(0);
   const lastProgressBytes = useRef(0);
+  const activeUploadRef = useRef<tus.Upload | null>(null);
+  const currentUploadIdRef = useRef<string | null>(null);
+
+  // Upload recovery hooks
+  const {
+    pendingUploads,
+    hasResumableUploads,
+    savePendingUpload,
+    updateUploadProgress,
+    removePendingUpload,
+    clearAllPendingUploads,
+  } = useUploadRecovery();
 
   // Calculate smoothed speed using moving average
   const calculateSmoothedSpeed = (instantSpeed: number): number => {
@@ -98,20 +112,33 @@ export function useFileUploadProgress() {
           return;
         }
 
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const uploadId = `${bucket}/${path}`;
+        currentUploadIdRef.current = uploadId;
+        
+        // Save upload info for recovery
+        savePendingUpload({
+          fileName: file.name,
+          fileSize: file.size,
+          bucket,
+          path,
+          uploadedBytes: 0,
+          totalBytes: file.size,
+        });
         
         const upload = new tus.Upload(file, {
           // Correct storage endpoint for resumable uploads
           endpoint: `https://${projectId}.supabase.co/storage/v1/upload/resumable`,
-          retryDelays: [0, 1000, 3000, 5000, 10000], // Retry on failure
+          retryDelays: [0, 1000, 3000, 5000, 10000, 30000], // Extended retry delays
           headers: {
             authorization: `Bearer ${accessToken}`,
-            apikey: anonKey, // Required for TUS uploads
+            apikey: anonKey,
             'x-upsert': 'false',
           },
           uploadDataDuringCreation: true,
           removeFingerprintOnSuccess: true,
+          // Use localStorage for fingerprint storage (enables resume across page reloads)
+          storeFingerprintForResuming: true,
           metadata: {
             bucketName: bucket,
             objectName: path,
@@ -123,12 +150,20 @@ export function useFileUploadProgress() {
           
           onError: (error) => {
             console.error('TUS upload error:', error);
-            resolve({ success: false, error: error.message || 'Upload failed' });
+            // Keep the pending upload so user can resume later
+            activeUploadRef.current = null;
+            resolve({ success: false, error: error.message || 'Upload failed - you can resume later' });
           },
           
           onProgress: (bytesUploaded, bytesTotal) => {
             const now = Date.now();
             const totalUploaded = bytesUploadedBeforeCurrentFile.current + bytesUploaded;
+
+            // Update recovery state periodically (every 5%)
+            const progressPercent = Math.floor((bytesUploaded / bytesTotal) * 20) * 5;
+            if (uploadId && progressPercent % 10 === 0) {
+              updateUploadProgress(uploadId, bytesUploaded);
+            }
 
             // Calculate instant speed (bytes since last update)
             let instantSpeed = 0;
@@ -164,21 +199,30 @@ export function useFileUploadProgress() {
           
           onSuccess: () => {
             bytesUploadedBeforeCurrentFile.current += file.size;
+            // Remove from pending uploads on success
+            if (uploadId) {
+              removePendingUpload(uploadId);
+            }
+            activeUploadRef.current = null;
+            currentUploadIdRef.current = null;
             resolve({ success: true });
           },
         });
 
+        // Store reference for potential abort/pause
+        activeUploadRef.current = upload;
+
         // Check for previous uploads to resume
         upload.findPreviousUploads().then((previousUploads) => {
           if (previousUploads.length) {
-            console.log('Resuming previous upload...');
+            console.log('Found previous upload, resuming from where it left off...');
             upload.resumeFromPreviousUpload(previousUploads[0]);
           }
           upload.start();
         });
       });
     },
-    []
+    [savePendingUpload, updateUploadProgress, removePendingUpload]
   );
 
   // Fallback XHR upload for smaller files (< 50MB)
@@ -376,6 +420,15 @@ export function useFileUploadProgress() {
     setProgress((prev) => ({ ...prev, phase }));
   }, []);
 
+  // Abort current upload
+  const abortUpload = useCallback(() => {
+    if (activeUploadRef.current) {
+      activeUploadRef.current.abort();
+      activeUploadRef.current = null;
+    }
+    abortRef.current = true;
+  }, []);
+
   return {
     progress,
     uploadFiles,
@@ -384,5 +437,10 @@ export function useFileUploadProgress() {
     validateTotalFileSize,
     formatBytes,
     formatTime,
+    // Recovery features
+    pendingUploads,
+    hasResumableUploads,
+    clearAllPendingUploads,
+    abortUpload,
   };
 }
