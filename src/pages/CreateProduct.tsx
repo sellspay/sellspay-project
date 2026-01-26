@@ -253,6 +253,11 @@ export default function CreateProduct() {
       return;
     }
 
+    if (!productType) {
+      toast.error("Please select a product type");
+      return;
+    }
+
     // Validate minimum price for paid products
     if ((pricingType === "paid" || pricingType === "both") && parseFloat(price) < 4.99) {
       toast.error("Minimum price is $4.99 for paid products");
