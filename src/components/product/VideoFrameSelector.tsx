@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Camera, Check, X } from 'lucide-react';
+import { Camera, Check, X, Loader2 } from 'lucide-react';
 
 interface VideoFrameSelectorProps {
   videoSrc: string;
@@ -20,6 +19,8 @@ export default function VideoFrameSelector({
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [previewFrame, setPreviewFrame] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   // When video metadata loads
   const handleLoadedMetadata = () => {
@@ -58,6 +59,21 @@ export default function VideoFrameSelector({
     return { blob, dataUrl };
   };
 
+  // Capture initial frame when video data is ready
+  const handleLoadedData = () => {
+    setIsLoading(false);
+    const result = captureFrame();
+    if (result) {
+      setPreviewFrame(result.dataUrl);
+    }
+  };
+
+  // Handle video load error
+  const handleError = () => {
+    setIsLoading(false);
+    setHasError(true);
+  };
+
   // Update preview when seeking
   const handleSeek = (values: number[]) => {
     const time = values[0];
@@ -89,13 +105,6 @@ export default function VideoFrameSelector({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Initial frame capture
-  useEffect(() => {
-    if (duration > 0 && videoRef.current) {
-      videoRef.current.currentTime = 0;
-    }
-  }, [duration]);
-
   return (
     <div className="space-y-4 p-4 rounded-lg bg-secondary/20 border">
       <div className="flex items-center justify-between">
@@ -112,9 +121,13 @@ export default function VideoFrameSelector({
       <video
         ref={videoRef}
         src={videoSrc}
+        crossOrigin="anonymous"
+        preload="auto"
         className="hidden"
         onLoadedMetadata={handleLoadedMetadata}
+        onLoadedData={handleLoadedData}
         onSeeked={handleSeeked}
+        onError={handleError}
         muted
         playsInline
       />
@@ -124,7 +137,17 @@ export default function VideoFrameSelector({
       
       {/* Frame Preview */}
       <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
-        {previewFrame ? (
+        {hasError ? (
+          <div className="w-full h-full flex flex-col items-center justify-center text-destructive gap-2">
+            <X className="w-8 h-8" />
+            <span className="text-sm">Failed to load video</span>
+          </div>
+        ) : isLoading ? (
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            <span className="text-sm">Loading video...</span>
+          </div>
+        ) : previewFrame ? (
           <img 
             src={previewFrame} 
             alt="Selected frame" 
@@ -132,7 +155,7 @@ export default function VideoFrameSelector({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            <span className="text-sm">Loading preview...</span>
+            <span className="text-sm">No frame captured</span>
           </div>
         )}
       </div>
