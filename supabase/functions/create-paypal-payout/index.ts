@@ -127,25 +127,48 @@ serve(async (req) => {
       );
     }
 
-    // Get PayPal purchases for these products
-    const { data: paypalPurchases, error: ppError } = await supabaseAdmin
+    // Get ALL pending purchases for these products (regardless of payment method)
+    // Sellers can choose to withdraw via PayPal even if buyer paid via Stripe
+    const { data: pendingPurchases, error: purchasesError } = await supabaseAdmin
       .from("purchases")
       .select("id, creator_payout_cents, product_id")
       .eq("status", "completed")
       .eq("transferred", false)
-      .like("stripe_payment_intent_id", "paypal_%")
       .in("product_id", productIds);
 
-    if (ppError) {
-      logStep("Error fetching purchases", { error: ppError.message });
+    // Also get pending editor bookings
+    const { data: pendingBookings, error: bookingsError } = await supabaseAdmin
+      .from("editor_bookings")
+      .select("id, editor_payout_cents")
+      .eq("editor_id", profile.id)
+      .eq("status", "completed")
+      .eq("transferred", false);
+
+    if (purchasesError) {
+      logStep("Error fetching purchases", { error: purchasesError.message });
+    }
+    if (bookingsError) {
+      logStep("Error fetching bookings", { error: bookingsError.message });
     }
 
-    const totalPendingCents = paypalPurchases?.reduce(
-      (sum, p) => sum + (p.creator_payout_cents || 0), 
+    // Calculate total pending earnings from products and bookings
+    const productEarnings = (pendingPurchases || []).reduce(
+      (sum: number, p) => sum + (p.creator_payout_cents || 0), 
       0
-    ) || 0;
+    );
+    const bookingEarnings = (pendingBookings || []).reduce(
+      (sum: number, b) => sum + (b.editor_payout_cents || 0), 
+      0
+    );
+    const totalPendingCents = productEarnings + bookingEarnings;
 
-    logStep("Pending earnings calculated", { totalPendingCents, purchaseCount: paypalPurchases?.length || 0 });
+    logStep("Pending earnings calculated", { 
+      totalPendingCents, 
+      productEarnings,
+      bookingEarnings,
+      purchaseCount: (pendingPurchases || []).length,
+      bookingCount: (pendingBookings || []).length 
+    });
 
     if (totalPendingCents < MINIMUM_PAYOUT_CENTS) {
       return new Response(
@@ -201,7 +224,7 @@ serve(async (req) => {
     logStep("Payout created", { batchId: payoutResult.batch_header?.payout_batch_id });
 
     // Mark purchases as transferred
-    const purchaseIds = paypalPurchases?.map(p => p.id) || [];
+    const purchaseIds = (pendingPurchases || []).map(p => p.id);
     if (purchaseIds.length > 0) {
       await supabaseAdmin
         .from("purchases")
@@ -211,6 +234,19 @@ serve(async (req) => {
           stripe_transfer_id: `paypal_payout_${payoutResult.batch_header?.payout_batch_id}`,
         })
         .in("id", purchaseIds);
+    }
+
+    // Mark bookings as transferred
+    const bookingIds = (pendingBookings || []).map(b => b.id);
+    if (bookingIds.length > 0) {
+      await supabaseAdmin
+        .from("editor_bookings")
+        .update({ 
+          transferred: true, 
+          transferred_at: new Date().toISOString(),
+          stripe_transfer_id: `paypal_payout_${payoutResult.batch_header?.payout_batch_id}`,
+        })
+        .in("id", bookingIds);
     }
 
     return new Response(
