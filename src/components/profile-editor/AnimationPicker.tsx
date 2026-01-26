@@ -1,12 +1,7 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Sparkles, Check } from 'lucide-react';
+import { Check, Play, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 export type AnimationType = 
   | 'none'
@@ -21,17 +16,20 @@ interface AnimationOption {
   value: AnimationType;
   label: string;
   description: string;
+  icon: string;
 }
 
 const ANIMATION_OPTIONS: AnimationOption[] = [
-  { value: 'none', label: 'None', description: 'No animation' },
-  { value: 'fade-in', label: 'Fade In', description: 'Smooth opacity transition' },
-  { value: 'slide-up', label: 'Slide Up', description: 'Slides from bottom' },
-  { value: 'slide-left', label: 'Slide Left', description: 'Slides from right' },
-  { value: 'slide-right', label: 'Slide Right', description: 'Slides from left' },
-  { value: 'scale-up', label: 'Scale Up', description: 'Grows into view' },
-  { value: 'blur-in', label: 'Blur In', description: 'Blur to focus effect' },
+  { value: 'none', label: 'None', description: 'No animation', icon: '⏹' },
+  { value: 'fade-in', label: 'Fade In', description: 'Smooth opacity', icon: '✨' },
+  { value: 'slide-up', label: 'Slide Up', description: 'From bottom', icon: '⬆️' },
+  { value: 'slide-left', label: 'Slide Left', description: 'From right', icon: '⬅️' },
+  { value: 'slide-right', label: 'Slide Right', description: 'From left', icon: '➡️' },
+  { value: 'scale-up', label: 'Scale Up', description: 'Grow effect', icon: '📐' },
+  { value: 'blur-in', label: 'Blur In', description: 'Focus effect', icon: '🔮' },
 ];
+
+export { ANIMATION_OPTIONS };
 
 interface AnimationPickerProps {
   value: AnimationType;
@@ -39,76 +37,81 @@ interface AnimationPickerProps {
   onPreview?: () => void;
 }
 
-export function AnimationPicker({ value, onChange, onPreview }: AnimationPickerProps) {
-  const [open, setOpen] = React.useState(false);
-  const selectedOption = ANIMATION_OPTIONS.find(opt => opt.value === value) || ANIMATION_OPTIONS[0];
+// Inline picker for the section editor panel (new design)
+export function AnimationPickerInline({ value, onChange, onPreview }: AnimationPickerProps) {
+  const [previewingAnimation, setPreviewingAnimation] = React.useState<AnimationType | null>(null);
+
+  const handlePreview = (animation: AnimationType) => {
+    if (animation === 'none') return;
+    setPreviewingAnimation(animation);
+    setTimeout(() => setPreviewingAnimation(null), 700);
+  };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="secondary"
-          size="sm"
-          className={cn(
-            "h-7 px-2 gap-1.5 shadow-lg",
-            value !== 'none' && "bg-primary text-primary-foreground hover:bg-primary/90"
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          <span className="text-xs font-medium">
-            {value === 'none' ? 'Animate' : selectedOption.label}
-          </span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent 
-        className="w-48 p-1" 
-        align="center"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="space-y-0.5">
-          {ANIMATION_OPTIONS.map((option) => (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">Section Animation</span>
+        </div>
+        {value !== 'none' && onPreview && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs gap-1.5"
+            onClick={onPreview}
+          >
+            <Play className="h-3 w-3" />
+            Preview
+          </Button>
+        )}
+      </div>
+      
+      <div className="grid grid-cols-2 gap-2">
+        {ANIMATION_OPTIONS.map((option) => {
+          const isSelected = value === option.value;
+          const isPreviewing = previewingAnimation === option.value;
+          
+          return (
             <button
               key={option.value}
               className={cn(
-                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-sm transition-colors",
-                "hover:bg-accent",
-                value === option.value && "bg-accent"
+                "relative flex items-center gap-2 p-2.5 rounded-lg text-left text-sm transition-all border",
+                isSelected
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border/50 bg-secondary/30 text-muted-foreground hover:border-border hover:bg-secondary/50",
+                isPreviewing && option.value !== 'none' && "animate-pulse"
               )}
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={() => {
                 onChange(option.value);
-                setOpen(false);
+                handlePreview(option.value);
               }}
             >
-              <div className="flex-1">
-                <div className="font-medium">{option.label}</div>
-                <div className="text-xs text-muted-foreground">{option.description}</div>
+              <span className="text-base">{option.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-xs">{option.label}</div>
               </div>
-              {value === option.value && (
-                <Check className="h-4 w-4 text-primary shrink-0" />
+              {isSelected && (
+                <Check className="h-3.5 w-3.5 text-primary shrink-0" />
               )}
             </button>
-          ))}
-        </div>
-        {value !== 'none' && onPreview && (
-          <div className="border-t pt-1.5 mt-1.5">
-            <button
-              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPreview();
-                setOpen(false);
-              }}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Preview Animation
-            </button>
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+          );
+        })}
+      </div>
+      
+      {value !== 'none' && (
+        <p className="text-xs text-muted-foreground">
+          This animation plays when visitors scroll to this section.
+        </p>
+      )}
+    </div>
   );
+}
+
+// Legacy popover picker for backward compatibility
+export function AnimationPicker({ value, onChange, onPreview }: AnimationPickerProps) {
+  // This is now deprecated - use AnimationPickerInline in the style panel
+  return null;
 }
 
 // CSS helper for scroll-triggered animations
