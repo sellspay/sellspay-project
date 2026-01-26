@@ -60,49 +60,49 @@ export default function Updates() {
   const regularUpdates = updates?.filter((u) => !u.is_pinned) || [];
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Background Effects */}
+    <div className="min-h-screen bg-background relative overflow-x-hidden">
+      {/* Background Effects - Hidden on mobile */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-1/4 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[128px] animate-pulse" />
-        <div className="absolute bottom-40 right-1/4 w-[500px] h-[500px] bg-orange-500/8 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[150px]" />
+        <div className="hidden sm:block absolute top-20 left-1/4 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[128px] animate-pulse" />
+        <div className="hidden sm:block absolute bottom-40 right-1/4 w-[500px] h-[500px] bg-orange-500/8 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[150px]" />
       </div>
 
-      <div className="container mx-auto px-4 py-12 relative z-10">
+      <div className="container mx-auto px-3 sm:px-4 py-8 sm:py-12 relative z-10">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 mb-6">
+        <div className="text-center mb-8 sm:mb-12">
+          <div className="inline-flex items-center gap-2 mb-4 sm:mb-6">
             <Badge 
               variant="outline" 
-              className="px-4 py-2 text-sm bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-500/30 text-amber-400"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-500/30 text-amber-400"
             >
-              <Megaphone className="h-4 w-4 mr-2" />
+              <Megaphone className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
               Official Updates
             </Badge>
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent px-2">
             Platform Updates
           </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-sm sm:text-lg max-w-2xl mx-auto px-4">
             Stay informed about the latest changes, features, and announcements from EditorsParadise.
           </p>
         </div>
 
         {/* Navigation */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-6 sm:mb-8 overflow-x-auto">
           <CommunityNav />
         </div>
 
         {/* Owner Composer */}
         {isOwner && (
-          <div className="max-w-3xl mx-auto mb-10">
+          <div className="max-w-3xl mx-auto mb-8 sm:mb-10 px-1">
             <UpdateComposer />
           </div>
         )}
 
         {/* Updates Feed */}
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6 px-1">
           {/* Pinned Updates */}
           {pinnedUpdates.length > 0 && (
             <div className="space-y-4">
