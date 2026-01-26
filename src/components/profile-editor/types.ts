@@ -100,6 +100,8 @@ export interface ImageWithTextContent {
   layout?: 'hero' | 'side-by-side' | 'overlay'; // For different preset layouts
   buttonColor?: string; // Custom button background color
   buttonTextColor?: string; // Custom button text color
+  hideButton?: boolean; // Hide the button from display
+  imagePositionY?: number; // 0-100 vertical position for object-position
 }
 
 export interface GalleryContent {

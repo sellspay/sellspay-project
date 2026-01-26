@@ -400,24 +400,35 @@ export function SectionEditorPanel({
         );
 
       case 'image_with_text':
+        const isHeroLayout = section.style_options?.preset === 'style1' || (section.content as any).layout === 'hero';
         return (
           <div className="space-y-4">
             <div>
-              <Label>Image</Label>
+              <Label>Background Image</Label>
               {(section.content as any).imageUrl ? (
                 <div className="mt-2 space-y-2">
                   <img
                     src={(section.content as any).imageUrl}
                     alt=""
                     className="w-full h-32 object-cover rounded-lg"
+                    style={{ objectPosition: `center ${(section.content as any).imagePositionY ?? 50}%` }}
                   />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById(`img-text-upload-${section.id}`)?.click()}
-                  >
-                    Replace
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById(`img-text-upload-${section.id}`)?.click()}
+                    >
+                      Replace
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateContent({ imageUrl: '' })}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div
@@ -441,6 +452,24 @@ export function SectionEditorPanel({
                 }}
               />
             </div>
+            {/* Image Position Y - only for Hero layout */}
+            {isHeroLayout && (section.content as any).imageUrl && (
+              <div>
+                <Label>Image Position (Vertical)</Label>
+                <div className="flex items-center gap-4 mt-2">
+                  <span className="text-xs text-muted-foreground">Top</span>
+                  <Slider
+                    value={[(section.content as any).imagePositionY ?? 50]}
+                    onValueChange={([value]) => updateContent({ imagePositionY: value })}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-muted-foreground">Bottom</span>
+                </div>
+              </div>
+            )}
             <div>
               <Label>Image Position</Label>
               <Select
@@ -524,46 +553,56 @@ export function SectionEditorPanel({
                 />
               </div>
             )}
-            {/* Button Styling */}
-            <div className="border-t pt-4 space-y-4">
-              <Label className="text-sm font-medium">Button Styling</Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs">Button Color</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      type="color"
-                      value={(section.content as any).buttonColor || '#8B5CF6'}
-                      onChange={(e) => updateContent({ buttonColor: e.target.value })}
-                      className="w-12 h-9 p-1 cursor-pointer"
-                    />
-                    <Input
-                      value={(section.content as any).buttonColor || '#8B5CF6'}
-                      onChange={(e) => updateContent({ buttonColor: e.target.value })}
-                      placeholder="#8B5CF6"
-                      className="flex-1"
-                    />
+            {/* Hide Button Toggle */}
+            <div className="flex items-center justify-between">
+              <Label>Hide Button</Label>
+              <Switch
+                checked={(section.content as any).hideButton || false}
+                onCheckedChange={(checked) => updateContent({ hideButton: checked })}
+              />
+            </div>
+            {/* Button Styling - only show if button is not hidden */}
+            {!(section.content as any).hideButton && (section.content as any).buttonText && (
+              <div className="border-t pt-4 space-y-4">
+                <Label className="text-sm font-medium">Button Styling</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">Button Color</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Input
+                        type="color"
+                        value={(section.content as any).buttonColor || '#8B5CF6'}
+                        onChange={(e) => updateContent({ buttonColor: e.target.value })}
+                        className="w-12 h-9 p-1 cursor-pointer"
+                      />
+                      <Input
+                        value={(section.content as any).buttonColor || '#8B5CF6'}
+                        onChange={(e) => updateContent({ buttonColor: e.target.value })}
+                        placeholder="#8B5CF6"
+                        className="flex-1"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <Label className="text-xs">Text Color</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      type="color"
-                      value={(section.content as any).buttonTextColor || '#FFFFFF'}
-                      onChange={(e) => updateContent({ buttonTextColor: e.target.value })}
-                      className="w-12 h-9 p-1 cursor-pointer"
-                    />
-                    <Input
-                      value={(section.content as any).buttonTextColor || '#FFFFFF'}
-                      onChange={(e) => updateContent({ buttonTextColor: e.target.value })}
-                      placeholder="#FFFFFF"
-                      className="flex-1"
-                    />
+                  <div>
+                    <Label className="text-xs">Text Color</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Input
+                        type="color"
+                        value={(section.content as any).buttonTextColor || '#FFFFFF'}
+                        onChange={(e) => updateContent({ buttonTextColor: e.target.value })}
+                        className="w-12 h-9 p-1 cursor-pointer"
+                      />
+                      <Input
+                        value={(section.content as any).buttonTextColor || '#FFFFFF'}
+                        onChange={(e) => updateContent({ buttonTextColor: e.target.value })}
+                        placeholder="#FFFFFF"
+                        className="flex-1"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         );
 
