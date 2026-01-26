@@ -30,10 +30,20 @@ serve(async (req) => {
     }
 
     // Decode and verify state
-    let stateData: { returnTo: string; timestamp: number; nonce: string; linkAccount?: boolean };
+    let stateData: { 
+      returnTo: string; 
+      timestamp: number; 
+      nonce: string; 
+      linkAccount?: boolean;
+      linkingUserId?: string | null;
+    };
     try {
       stateData = JSON.parse(atob(state));
-      logStep("State decoded", { returnTo: stateData.returnTo, linkAccount: stateData.linkAccount });
+      logStep("State decoded", { 
+        returnTo: stateData.returnTo, 
+        linkAccount: stateData.linkAccount,
+        hasLinkingUserId: !!stateData.linkingUserId 
+      });
       
       // Check if state is expired (10 minutes)
       if (Date.now() - stateData.timestamp > 10 * 60 * 1000) {
@@ -46,6 +56,13 @@ serve(async (req) => {
     }
     
     const isLinkingAccount = stateData.linkAccount === true;
+    const linkingUserId = stateData.linkingUserId;
+
+    // CRITICAL: If linking, we MUST have a user ID from the state
+    if (isLinkingAccount && !linkingUserId) {
+      logStep("Linking attempt without user ID - security violation");
+      return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=invalid_link_request`);
+    }
 
     const clientId = Deno.env.get("DISCORD_CLIENT_ID");
     const clientSecret = Deno.env.get("DISCORD_CLIENT_SECRET");
@@ -111,6 +128,58 @@ serve(async (req) => {
       return Response.redirect(`${frontendUrl}/login?discord_error=no_email`);
     }
 
+    // ========== LINKING FLOW ==========
+    if (isLinkingAccount && linkingUserId) {
+      logStep("Processing link request", { linkingUserId, discordId: discordUser.id });
+      
+      // Get the user we're linking to
+      const { data: linkingUser, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(linkingUserId);
+      
+      if (getUserError || !linkingUser?.user) {
+        logStep("Could not find linking user", { error: getUserError?.message });
+        return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=user_not_found`);
+      }
+      
+      const existingDiscordId = linkingUser.user.user_metadata?.discord_id;
+      
+      // Check if user already has a different Discord linked
+      if (existingDiscordId && existingDiscordId !== discordUser.id) {
+        logStep("User already has a different Discord account linked");
+        return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=different_discord_linked`);
+      }
+      
+      // Check if this Discord account is already linked to a DIFFERENT user
+      const { data: allUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const userWithThisDiscord = allUsers?.users.find(
+        u => u.user_metadata?.discord_id === discordUser.id && u.id !== linkingUserId
+      );
+      
+      if (userWithThisDiscord) {
+        logStep("This Discord account is already linked to another user");
+        return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=discord_already_linked_to_other`);
+      }
+      
+      // Link Discord to the user's account
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(linkingUserId, {
+        user_metadata: {
+          ...linkingUser.user.user_metadata,
+          discord_id: discordUser.id,
+          discord_username: discordUser.username,
+        },
+      });
+
+      if (updateError) {
+        logStep("Error updating user metadata", { error: updateError.message });
+        return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=link_failed`);
+      }
+      
+      logStep("Discord linked successfully to user", { userId: linkingUserId });
+      
+      // Redirect back to settings - user is already logged in, no magic link needed
+      return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_linked=success`);
+    }
+
+    // ========== LOGIN/SIGNUP FLOW ==========
     // Check if user exists in Supabase
     const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
     
@@ -128,58 +197,23 @@ serve(async (req) => {
       // User exists with this email
       userId = existingUser.id;
       const existingDiscordId = existingUser.user_metadata?.discord_id;
-      logStep("Existing user found", { userId, isLinkingAccount, hasDiscordLinked: !!existingDiscordId });
+      logStep("Existing user found", { userId, hasDiscordLinked: !!existingDiscordId });
       
-      if (isLinkingAccount) {
-        // This is a linking attempt from Settings
-        if (existingDiscordId && existingDiscordId !== discordUser.id) {
-          logStep("User already has a different Discord account linked");
-          return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=different_discord_linked`);
-        }
-
-        // Link Discord to their account
-        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-          user_metadata: {
-            ...existingUser.user_metadata,
-            discord_id: discordUser.id,
-            discord_username: discordUser.username,
-            avatar_url: existingUser.user_metadata?.avatar_url || 
-              (discordUser.avatar 
-                ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
-                : null),
-          },
-        });
-
-        if (updateError) {
-          logStep("Error updating user metadata", { error: updateError.message });
-          return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=link_failed`);
-        }
-        
-        logStep("Discord linked successfully");
-      } else {
-        // This is a login attempt - only allow if Discord is already linked
-        if (!existingDiscordId) {
-          logStep("Discord not linked to this account - login denied");
-          return Response.redirect(`${frontendUrl}/login?discord_error=discord_not_linked`);
-        }
-        
-        // Verify it's the same Discord account
-        if (existingDiscordId !== discordUser.id) {
-          logStep("Different Discord account than what's linked");
-          return Response.redirect(`${frontendUrl}/login?discord_error=wrong_discord_account`);
-        }
-        
-        logStep("Discord is linked, allowing login");
+      // This is a login attempt - only allow if Discord is already linked
+      if (!existingDiscordId) {
+        logStep("Discord not linked to this account - login denied");
+        return Response.redirect(`${frontendUrl}/login?discord_error=discord_not_linked`);
       }
+      
+      // Verify it's the same Discord account
+      if (existingDiscordId !== discordUser.id) {
+        logStep("Different Discord account than what's linked");
+        return Response.redirect(`${frontendUrl}/login?discord_error=wrong_discord_account`);
+      }
+      
+      logStep("Discord is linked, allowing login");
     } else {
-      // No user with this email exists
-      if (isLinkingAccount) {
-        // This was a linking attempt but the Discord email doesn't match any existing user
-        logStep("Linking attempt but no user found with Discord email");
-        return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=email_mismatch`);
-      }
-      
-      // Create new user (signing up with Discord)
+      // No user with this email exists - create new user (signing up with Discord)
       isNewUser = true;
       const discordAvatarUrl = discordUser.avatar 
         ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,18 +35,55 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
     // Get the origin for redirect after login
     const body = await req.json().catch(() => ({}));
     const returnTo = body.returnTo || "/";
     const linkAccount = body.linkAccount || false;
     
+    let linkingUserId: string | null = null;
+    
+    // If this is a linking attempt, we MUST verify the user is authenticated
+    // and pass their user ID securely
+    if (linkAccount) {
+      // Get the auth header to verify user
+      const authHeader = req.headers.get("authorization");
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Authentication required to link accounts" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        );
+      }
+      
+      // Verify the user's session
+      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+        auth: { persistSession: false }
+      });
+      
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        logStep("User not authenticated for linking", { error: userError?.message });
+        return new Response(
+          JSON.stringify({ success: false, error: "You must be logged in to link Discord" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        );
+      }
+      
+      linkingUserId = user.id;
+      logStep("Authenticated user for linking", { userId: linkingUserId });
+    }
+    
     // Create a state token to prevent CSRF and store return URL
     const stateData = {
       returnTo,
       timestamp: Date.now(),
       nonce: crypto.randomUUID(),
-      linkAccount, // Flag to indicate this is for linking, not signup
+      linkAccount,
+      // CRITICAL: Include the user ID when linking so callback knows WHO to link
+      linkingUserId,
     };
     const state = btoa(JSON.stringify(stateData));
 
@@ -61,7 +99,7 @@ serve(async (req) => {
     authUrl.searchParams.set("state", state);
     authUrl.searchParams.set("prompt", "consent");
 
-    logStep("OAuth URL generated", { url: authUrl.toString() });
+    logStep("OAuth URL generated", { linkAccount, hasLinkingUserId: !!linkingUserId });
 
     return new Response(
       JSON.stringify({
