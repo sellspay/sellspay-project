@@ -296,11 +296,20 @@ export interface FooterColumn {
   links: FooterLink[];
 }
 
+export type FooterSocialPlatform = 'instagram' | 'youtube' | 'twitter' | 'tiktok' | 'discord' | 'website';
+
+export interface FooterSocialLink {
+  id: string;
+  platform: FooterSocialPlatform;
+  url: string;
+}
+
 export interface FooterContent {
   text: string;
   showSocialLinks: boolean;
   columns: FooterColumn[];
   backgroundColor?: string;
+  socialLinks?: FooterSocialLink[];
 }
 
 export type SectionContent = 

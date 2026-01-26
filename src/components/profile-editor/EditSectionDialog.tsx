@@ -46,6 +46,8 @@ import {
   FooterContent,
   FooterColumn,
   FooterLink,
+  FooterSocialLink,
+  FooterSocialPlatform,
   CardSlideshowContent,
   CardSlideItem,
   BannerSlideshowContent,
@@ -1838,6 +1840,45 @@ function FooterEditor({
     updateColumn(columnId, { links: column.links.filter((l) => l.id !== linkId) });
   };
 
+  // Social platform options
+  const socialPlatforms: { value: FooterSocialPlatform; label: string }[] = [
+    { value: 'instagram', label: 'Instagram' },
+    { value: 'youtube', label: 'YouTube' },
+    { value: 'twitter', label: 'X (Twitter)' },
+    { value: 'tiktok', label: 'TikTok' },
+    { value: 'discord', label: 'Discord' },
+    { value: 'website', label: 'Website' },
+  ];
+
+  const addSocialLink = (platform: FooterSocialPlatform) => {
+    const existingLink = content.socialLinks?.find(l => l.platform === platform);
+    if (existingLink) {
+      toast.error(`${platform} link already exists`);
+      return;
+    }
+    const newLink: FooterSocialLink = {
+      id: crypto.randomUUID(),
+      platform,
+      url: '',
+    };
+    onChange({ socialLinks: [...(content.socialLinks || []), newLink] });
+  };
+
+  const updateSocialLink = (id: string, url: string) => {
+    onChange({
+      socialLinks: (content.socialLinks || []).map(l => l.id === id ? { ...l, url } : l),
+    });
+  };
+
+  const removeSocialLink = (id: string) => {
+    onChange({ socialLinks: (content.socialLinks || []).filter(l => l.id !== id) });
+  };
+
+  // Get available platforms (not yet added)
+  const availablePlatforms = socialPlatforms.filter(
+    p => !(content.socialLinks || []).some(l => l.platform === p.value)
+  );
+
   // Minimal footer - just copyright text
   if (layout === 'minimal') {
     return (
@@ -1857,7 +1898,7 @@ function FooterEditor({
     );
   }
 
-  // Simple footer - copyright + social links only
+  // Simple footer - copyright + social links editor
   if (layout === 'simple') {
     return (
       <div className="space-y-4">
@@ -1872,16 +1913,46 @@ function FooterEditor({
             placeholder="© 2026 Your Store. All rights reserved."
           />
         </div>
-        <div className="flex items-center justify-between">
-          <Label>Show Social Links</Label>
-          <Switch
-            checked={content.showSocialLinks}
-            onCheckedChange={(checked) => onChange({ showSocialLinks: checked })}
-          />
+
+        <div className="space-y-3">
+          <Label>Social Links</Label>
+          <p className="text-xs text-muted-foreground">
+            Add your social links - icons will appear for each platform you add.
+          </p>
+          
+          {(content.socialLinks || []).map((link) => (
+            <div key={link.id} className="flex items-center gap-2">
+              <div className="w-24 text-sm font-medium capitalize">{link.platform}</div>
+              <Input
+                value={link.url}
+                onChange={(e) => updateSocialLink(link.id, e.target.value)}
+                placeholder={`https://${link.platform}.com/...`}
+                className="flex-1"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => removeSocialLink(link.id)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+
+          {availablePlatforms.length > 0 && (
+            <Select onValueChange={(value) => addSocialLink(value as FooterSocialPlatform)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="+ Add Social Link" />
+              </SelectTrigger>
+              <SelectContent>
+                {availablePlatforms.map(p => (
+                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground">
-          Social links are pulled from your profile settings.
-        </p>
       </div>
     );
   }
