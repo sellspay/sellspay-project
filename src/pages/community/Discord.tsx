@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Reveal } from '@/components/home/Reveal';
 
-const DISCORD_LINK = 'https://discord.gg/xQAzE4bWgu';
+const DISCORD_LINK = 'https://discord.gg/JSDMksAsHx';
 
 const benefits = [
   {
