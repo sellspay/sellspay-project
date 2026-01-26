@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Play, Pause, Scissors, Check } from 'lucide-react';
 
 interface VideoTrimmerProps {
@@ -23,49 +22,98 @@ export default function VideoTrimmer({
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(maxDuration);
   const [currentTime, setCurrentTime] = useState(0);
-  const animationRef = useRef<number>();
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const animationRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
 
   // When video metadata loads
   const handleLoadedMetadata = () => {
-    if (videoRef.current) {
+    if (videoRef.current && isMountedRef.current) {
       const dur = videoRef.current.duration;
-      setDuration(dur);
-      // Set initial end time to min(maxDuration, videoDuration)
-      setEndTime(Math.min(maxDuration, dur));
+      if (isFinite(dur) && dur > 0) {
+        setDuration(dur);
+        setEndTime(Math.min(maxDuration, dur));
+        setIsVideoReady(true);
+      }
+    }
+  };
+
+  // Handle video data ready (more reliable than loadedmetadata for blob URLs)
+  const handleCanPlay = () => {
+    if (videoRef.current && isMountedRef.current) {
+      const dur = videoRef.current.duration;
+      if (isFinite(dur) && dur > 0 && !isVideoReady) {
+        setDuration(dur);
+        setEndTime(Math.min(maxDuration, dur));
+        setIsVideoReady(true);
+      }
     }
   };
 
   // Update current time during playback
   const updateProgress = useCallback(() => {
-    if (videoRef.current) {
+    if (!isMountedRef.current) return;
+    
+    if (videoRef.current && isVideoReady) {
       const time = videoRef.current.currentTime;
       setCurrentTime(time);
       
-      // Loop within selected range
-      if (time >= endTime) {
-        videoRef.current.currentTime = startTime;
+      // Loop within selected range - use a small buffer to avoid edge case issues
+      if (time >= endTime - 0.05) {
+        try {
+          videoRef.current.currentTime = startTime;
+        } catch (e) {
+          // Ignore errors when seeking on blob URLs
+          console.warn('Seek error:', e);
+        }
       }
     }
     animationRef.current = requestAnimationFrame(updateProgress);
-  }, [startTime, endTime]);
+  }, [startTime, endTime, isVideoReady]);
 
-  // Handle play/pause
-  const togglePlay = () => {
-    if (!videoRef.current) return;
+  // Handle play/pause - using type="button" in JSX to prevent form submission
+  const togglePlay = useCallback((e?: React.MouseEvent) => {
+    // Prevent event bubbling that might cause form submission or navigation
+    e?.preventDefault();
+    e?.stopPropagation();
+    
+    if (!videoRef.current || !isVideoReady) return;
     
     if (isPlaying) {
       videoRef.current.pause();
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+      setIsPlaying(false);
     } else {
       // Start from startTime if not within range
-      if (videoRef.current.currentTime < startTime || videoRef.current.currentTime >= endTime) {
-        videoRef.current.currentTime = startTime;
+      try {
+        if (videoRef.current.currentTime < startTime || videoRef.current.currentTime >= endTime) {
+          videoRef.current.currentTime = startTime;
+        }
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              if (isMountedRef.current) {
+                setIsPlaying(true);
+                animationRef.current = requestAnimationFrame(updateProgress);
+              }
+            })
+            .catch((error) => {
+              // Auto-play was prevented or other error
+              console.warn('Play error:', error);
+              if (isMountedRef.current) {
+                setIsPlaying(false);
+              }
+            });
+        }
+      } catch (e) {
+        console.warn('Toggle play error:', e);
       }
-      videoRef.current.play();
-      animationRef.current = requestAnimationFrame(updateProgress);
     }
-    setIsPlaying(!isPlaying);
-  };
+  }, [isPlaying, isVideoReady, startTime, endTime, updateProgress]);
 
   // Handle range change
   const handleRangeChange = (values: number[]) => {
@@ -93,21 +141,49 @@ export default function VideoTrimmer({
     setStartTime(newStart);
     setEndTime(newEnd);
     
-    // Seek to new start
-    if (videoRef.current) {
-      videoRef.current.currentTime = newStart;
+    // Seek to new start - wrap in try/catch for blob URL safety
+    if (videoRef.current && isVideoReady) {
+      try {
+        videoRef.current.currentTime = newStart;
+      } catch (e) {
+        console.warn('Seek error on range change:', e);
+      }
     }
   };
 
-  // Cleanup animation frame
+  // Cleanup on unmount
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      isMountedRef.current = false;
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+      // Stop video on unmount
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
     };
   }, []);
 
+  // Stop playback when video source changes
+  useEffect(() => {
+    setIsPlaying(false);
+    setIsVideoReady(false);
+    setCurrentTime(0);
+    setStartTime(0);
+    setDuration(0);
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+  }, [videoSrc]);
+
   // Confirm selection
-  const handleConfirm = () => {
+  const handleConfirm = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     onTrimConfirm(startTime, endTime);
   };
 
@@ -134,12 +210,15 @@ export default function VideoTrimmer({
           src={videoSrc}
           className="w-full h-full object-contain"
           onLoadedMetadata={handleLoadedMetadata}
+          onCanPlay={handleCanPlay}
           muted
           playsInline
+          preload="auto"
         />
         
-        {/* Play overlay */}
+        {/* Play overlay - use type="button" to prevent form submission */}
         <button
+          type="button"
           onClick={togglePlay}
           className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors"
         >
@@ -188,8 +267,9 @@ export default function VideoTrimmer({
         </div>
       )}
 
-      {/* Confirm button */}
+      {/* Confirm button - use type="button" to prevent form submission */}
       <Button
+        type="button"
         onClick={handleConfirm}
         className="w-full"
         disabled={selectedDuration < minDuration || selectedDuration > maxDuration}
@@ -204,4 +284,3 @@ export default function VideoTrimmer({
     </div>
   );
 }
-
