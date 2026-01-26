@@ -26,14 +26,45 @@ serve(async (req) => {
     );
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
+    if (!authHeader) {
+      // Return safe defaults for unauthenticated requests
+      return new Response(
+        JSON.stringify({
+          success: true,
+          payoneerConfigured: false,
+          payoneerEmail: null,
+          payoneerPayeeId: null,
+          payoneerStatus: null,
+          paypalConfigured: false,
+          paypalEmail: null,
+          paypalConnected: false,
+          preferredPayoutMethod: "stripe",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    if (userError || !userData?.user?.email) {
+      // Return safe defaults if auth fails
+      return new Response(
+        JSON.stringify({
+          success: true,
+          payoneerConfigured: false,
+          payoneerEmail: null,
+          payoneerPayeeId: null,
+          payoneerStatus: null,
+          paypalConfigured: false,
+          paypalEmail: null,
+          paypalConnected: false,
+          preferredPayoutMethod: "stripe",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
     
     const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
     // Get profile id

@@ -32,30 +32,40 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Authenticate user
+    // Authenticate user - return safe defaults if not authenticated
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: "No authorization header provided" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          connected: false,
+          availableBalance: 0,
+          pendingBalance: 0,
+          pendingEarnings: 0,
+          stripeBalance: 0,
+          breakdown: { productEarnings: 0, bookingEarnings: 0 },
+          needsOnboarding: false,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) {
+    if (userError || !userData?.user) {
       return new Response(
-        JSON.stringify({ error: `Authentication error: ${userError.message}` }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          connected: false,
+          availableBalance: 0,
+          pendingBalance: 0,
+          pendingEarnings: 0,
+          stripeBalance: 0,
+          breakdown: { productEarnings: 0, bookingEarnings: 0 },
+          needsOnboarding: false,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     const user = userData.user;
-    if (!user) {
-      return new Response(
-        JSON.stringify({ error: "User not authenticated" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
     logStep("User authenticated", { userId: user.id });
 
     // Get user's profile id
