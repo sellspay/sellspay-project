@@ -203,8 +203,8 @@ export function ToolsSidebar({
   });
 
   return (
-    <div className="w-full lg:w-80 flex-shrink-0 space-y-4">
-      {/* Search Input */}
+    <div className="w-full lg:w-80 flex-shrink-0 space-y-3 sm:space-y-4">
+      {/* Search Input - Smaller on mobile */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
@@ -212,7 +212,7 @@ export function ToolsSidebar({
           placeholder="Search tools..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10 pr-10 h-11 bg-secondary/30 border-border/50 rounded-xl focus:border-primary/50 focus:ring-primary/20"
+          className="pl-10 pr-10 h-9 sm:h-11 bg-secondary/30 border-border/50 rounded-lg sm:rounded-xl focus:border-primary/50 focus:ring-primary/20 text-sm"
         />
         {searchQuery && (
           <button
@@ -224,8 +224,8 @@ export function ToolsSidebar({
         )}
       </div>
 
-      {/* Category Tabs */}
-      <div className="flex gap-2 flex-wrap">
+      {/* Category Tabs - Horizontal scroll on mobile */}
+      <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-thin">
         {(["all", "audio", "generators"] as const).map((cat) => {
           const Icon = categoryIcons[cat];
           return (
@@ -233,16 +233,16 @@ export function ToolsSidebar({
               key={cat}
               onClick={() => onSelectCategory(cat)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap",
+                "flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0",
                 selectedCategory === cat
                   ? "bg-gradient-to-r from-primary/20 to-accent/20 text-foreground border border-primary/30 shadow-lg shadow-primary/10"
                   : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground border border-transparent"
               )}
             >
-              <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+              <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
               <span>{cat === "all" ? "All" : cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
               <span className={cn(
-                "text-xs px-1.5 py-0.5 rounded-md",
+                "text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 rounded-md",
                 selectedCategory === cat
                   ? "bg-primary/30 text-primary-foreground"
                   : "bg-muted/50 text-muted-foreground"
@@ -254,10 +254,10 @@ export function ToolsSidebar({
         })}
       </div>
 
-      {/* Tools List */}
-      <div className="space-y-1.5">
+      {/* Tools List - Horizontal scroll on mobile, vertical on desktop */}
+      <div className="flex gap-2 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0 lg:space-y-1.5 lg:gap-0 scrollbar-thin">
         {filteredTools.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="text-center py-8 text-muted-foreground w-full">
             <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No tools found</p>
           </div>
@@ -268,28 +268,31 @@ export function ToolsSidebar({
               onClick={() => tool.available && onSelectTool(tool.id)}
               disabled={!tool.available}
               className={cn(
-                "w-full flex items-center gap-3.5 p-3.5 rounded-xl text-left transition-all group",
+                // Mobile: compact horizontal cards
+                "flex-shrink-0 w-[140px] sm:w-[160px] lg:w-full",
+                // Mobile: vertical layout, Desktop: horizontal
+                "flex flex-col lg:flex-row items-start lg:items-center gap-2 lg:gap-3.5 p-3 lg:p-3.5 rounded-xl text-left transition-all group",
                 selectedTool === tool.id
                   ? "bg-gradient-to-r from-primary/15 to-accent/10 border border-primary/40 shadow-lg shadow-primary/5"
                   : tool.available 
-                    ? "hover:bg-secondary/40 border border-transparent hover:border-border/50 hover:shadow-md" 
+                    ? "hover:bg-secondary/40 border border-border/30 lg:border-transparent hover:border-border/50 hover:shadow-md bg-secondary/20 lg:bg-transparent" 
                     : "opacity-60 cursor-not-allowed border border-transparent"
               )}
             >
               <div className={cn(
-                "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
+                "w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
                 selectedTool === tool.id
                   ? "bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-lg shadow-primary/30"
                   : tool.available
                     ? "bg-secondary/60 text-muted-foreground group-hover:bg-secondary group-hover:text-foreground"
                     : "bg-secondary/40 text-muted-foreground/60"
               )}>
-                <tool.icon className="w-5 h-5" />
+                <tool.icon className="w-4 h-4 lg:w-5 lg:h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 lg:gap-2 flex-wrap">
                   <span className={cn(
-                    "font-semibold transition-colors leading-tight",
+                    "font-semibold transition-colors leading-tight text-xs sm:text-sm",
                     selectedTool === tool.id ? "text-foreground" : "text-foreground/90"
                   )}>
                     {tool.title}
@@ -297,7 +300,7 @@ export function ToolsSidebar({
                   {tool.badge && (
                     <Badge 
                       className={cn(
-                        "text-[10px] px-1.5 py-0 font-medium border-0 h-4 leading-none",
+                        "text-[9px] lg:text-[10px] px-1 lg:px-1.5 py-0 font-medium border-0 h-3.5 lg:h-4 leading-none",
                         tool.badge === "Popular" && "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-sm",
                         tool.badge === "New" && "bg-accent/20 text-accent-foreground",
                         tool.badge === "Pro" && "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm",
@@ -308,15 +311,13 @@ export function ToolsSidebar({
                     </Badge>
                   )}
                   {!tool.available && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground border-muted-foreground/30 h-4 leading-none">
+                    <Badge variant="outline" className="text-[9px] lg:text-[10px] px-1 lg:px-1.5 py-0 text-muted-foreground border-muted-foreground/30 h-3.5 lg:h-4 leading-none">
                       Soon
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                <p className="text-[10px] lg:text-xs text-muted-foreground mt-0.5 line-clamp-2 lg:line-clamp-1 hidden sm:block lg:block">
                   {tool.description}
-                  {tool.isPro && " • 1 credit"}
-                  {tool.badge === "Free" && " • Unlimited"}
                 </p>
               </div>
             </button>
