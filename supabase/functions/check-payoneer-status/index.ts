@@ -66,6 +66,12 @@ serve(async (req) => {
       Deno.env.get("PAYONEER_PROGRAM_ID")
     );
 
+    // Check if PayPal is configured
+    const paypalConfigured = !!(
+      Deno.env.get("PAYPAL_CLIENT_ID") &&
+      Deno.env.get("PAYPAL_CLIENT_SECRET")
+    );
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -73,6 +79,10 @@ serve(async (req) => {
         payoneerEmail: config?.payoneer_email || null,
         payoneerPayeeId: null, // Not exposed for security
         payoneerStatus: config?.payoneer_status || null,
+        // PayPal fields
+        paypalConfigured,
+        paypalEmail: config?.paypal_email || null,
+        paypalConnected: config?.paypal_payout_enabled || false,
         preferredPayoutMethod: config?.preferred_payout_method || "stripe",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CreditCard, Globe, Loader2, CheckCircle, AlertCircle, ExternalLink, RefreshCw, Building, Unlink } from "lucide-react";
+import { CreditCard, Globe, Loader2, CheckCircle, AlertCircle, ExternalLink, RefreshCw, Building, Unlink, Wallet } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +56,7 @@ export function PayoutMethodSelector({
   onCheckStripeStatus,
   onStripeDisconnected,
 }: PayoutMethodSelectorProps) {
-  const [preferredMethod, setPreferredMethod] = useState<"stripe" | "payoneer">("stripe");
+  const [preferredMethod, setPreferredMethod] = useState<"stripe" | "payoneer" | "paypal">("stripe");
   const [payoneerEmail, setPayoneerEmail] = useState("");
   const [payoneerStatus, setPayoneerStatus] = useState<string | null>(null);
   const [payoneerConfigured, setPayoneerConfigured] = useState(false);
@@ -64,6 +64,14 @@ export function PayoutMethodSelector({
   const [showPayoneerDialog, setShowPayoneerDialog] = useState(false);
   const [connectingPayoneer, setConnectingPayoneer] = useState(false);
   const [savingPreference, setSavingPreference] = useState(false);
+  
+  // PayPal state
+  const [paypalEmail, setPaypalEmail] = useState("");
+  const [paypalConnected, setPaypalConnected] = useState(false);
+  const [showPaypalDialog, setShowPaypalDialog] = useState(false);
+  const [connectingPaypal, setConnectingPaypal] = useState(false);
+  const [showDisconnectPaypalDialog, setShowDisconnectPaypalDialog] = useState(false);
+  const [disconnectingPaypal, setDisconnectingPaypal] = useState(false);
   
   // Bank account state
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
@@ -149,12 +157,82 @@ export function PayoutMethodSelector({
         setPayoneerConfigured(data.payoneerConfigured);
         setPayoneerEmail(data.payoneerEmail || "");
         setPayoneerStatus(data.payoneerStatus);
+        // Also check for PayPal
+        setPaypalEmail(data.paypalEmail || "");
+        setPaypalConnected(data.paypalConnected || false);
         setPreferredMethod(data.preferredPayoutMethod || "stripe");
       }
     } catch (error) {
       console.error("Error fetching Payoneer status:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConnectPaypal = async () => {
+    if (!paypalEmail) {
+      toast.error("Please enter your PayPal email");
+      return;
+    }
+
+    setConnectingPaypal(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("register-paypal-seller", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { paypalEmail },
+      });
+
+      if (error) throw error;
+
+      if (data.notConfigured) {
+        toast.info("PayPal integration coming soon!");
+        setShowPaypalDialog(false);
+        return;
+      }
+
+      if (data.success) {
+        toast.success("PayPal account connected successfully!");
+        setPaypalConnected(true);
+        setShowPaypalDialog(false);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to connect PayPal";
+      toast.error(message);
+    } finally {
+      setConnectingPaypal(false);
+    }
+  };
+
+  const handleDisconnectPaypal = async () => {
+    setDisconnectingPaypal(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      // Call the disconnect RPC
+      const { error } = await supabase.rpc("disconnect_seller_paypal", { 
+        p_user_id: session.user.id 
+      });
+
+      if (error) throw error;
+
+      toast.success("PayPal account disconnected successfully");
+      setPaypalEmail("");
+      setPaypalConnected(false);
+      if (preferredMethod === "paypal") {
+        setPreferredMethod("stripe");
+      }
+      setShowDisconnectPaypalDialog(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to disconnect PayPal";
+      toast.error(message);
+    } finally {
+      setDisconnectingPaypal(false);
     }
   };
 
@@ -197,13 +275,17 @@ export function PayoutMethodSelector({
     }
   };
 
-  const handleSetPreferredMethod = async (method: "stripe" | "payoneer") => {
+  const handleSetPreferredMethod = async (method: "stripe" | "payoneer" | "paypal") => {
     if (method === "stripe" && !stripeOnboardingComplete) {
       toast.error("Please complete Stripe setup first");
       return;
     }
     if (method === "payoneer" && payoneerStatus !== "active") {
       toast.error("Please complete Payoneer verification first");
+      return;
+    }
+    if (method === "paypal" && !paypalConnected) {
+      toast.error("Please connect your PayPal account first");
       return;
     }
 
@@ -614,6 +696,168 @@ export function PayoutMethodSelector({
           </div>
         </CardContent>
       </Card>
+
+      {/* PayPal Section */}
+      <Card className={`${preferredMethod === "paypal" ? "border-primary" : "border-border"}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Wallet className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  PayPal
+                  {preferredMethod === "paypal" && (
+                    <Badge variant="secondary" className="bg-primary/20 text-primary text-xs">
+                      Primary
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>Fast, worldwide payments to your PayPal account</CardDescription>
+              </div>
+            </div>
+            {paypalConnected ? (
+              <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Connected
+              </Badge>
+            ) : null}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {paypalConnected
+              ? `Connected as ${paypalEmail}. Receive payouts directly to your PayPal balance.`
+              : "Connect your PayPal account to receive fast, worldwide payouts."}
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {paypalConnected ? (
+              <>
+                {preferredMethod !== "paypal" && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleSetPreferredMethod("paypal")}
+                    disabled={savingPreference}
+                  >
+                    Set as Primary
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setShowDisconnectPaypalDialog(true)}
+                >
+                  <Unlink className="w-4 h-4 mr-2" />
+                  Disconnect
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setShowPaypalDialog(true)}>
+                Connect PayPal
+              </Button>
+            )}
+          </div>
+
+          <div className="pt-2 text-xs text-muted-foreground space-y-1">
+            <p>✓ Instant access to funds in your PayPal balance</p>
+            <p>✓ Available in 200+ countries and 25 currencies</p>
+            <p className="text-muted-foreground/70">Note: PayPal fees apply when receiving payments</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* PayPal Connect Dialog */}
+      <Dialog open={showPaypalDialog} onOpenChange={setShowPaypalDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-blue-500" />
+              Connect PayPal
+            </DialogTitle>
+            <DialogDescription>
+              Enter the email address associated with your PayPal account.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="paypal-email">PayPal Email</Label>
+              <Input
+                id="paypal-email"
+                type="email"
+                placeholder="your@email.com"
+                value={paypalEmail}
+                onChange={(e) => setPaypalEmail(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Use the email address you registered with PayPal
+              </p>
+            </div>
+
+            <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+              <p className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                Don't have a PayPal account?{" "}
+                <a
+                  href="https://www.paypal.com/signup"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Sign up for free →
+                </a>
+              </p>
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={handleConnectPaypal}
+              disabled={connectingPaypal || !paypalEmail}
+            >
+              {connectingPaypal ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                "Connect PayPal"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disconnect PayPal Confirmation */}
+      <AlertDialog open={showDisconnectPaypalDialog} onOpenChange={setShowDisconnectPaypalDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect PayPal Account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove your PayPal connection. You won't be able to receive payouts via PayPal until you reconnect.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={disconnectingPaypal}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDisconnectPaypal}
+              disabled={disconnectingPaypal}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {disconnectingPaypal ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Disconnecting...
+                </>
+              ) : (
+                "Disconnect"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Payoneer Connect Dialog */}
       <Dialog open={showPayoneerDialog} onOpenChange={setShowPayoneerDialog}>
