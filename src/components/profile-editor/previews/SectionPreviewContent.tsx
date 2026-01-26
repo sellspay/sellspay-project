@@ -206,6 +206,9 @@ const ImageWithTextPreview = memo(({ section }: { section: ProfileSection }) => 
   const layout = content.layout || resolvedLayout || 'side-by-side';
   const imagePosition = content.imagePosition || resolvedImagePosition;
   
+  // Check if button should be hidden
+  const showButton = !content.hideButton && content.buttonText;
+  
   // Compute the button href based on link type
   const getButtonHref = () => {
     if (!content.buttonText) return undefined;
@@ -221,24 +224,36 @@ const ImageWithTextPreview = memo(({ section }: { section: ProfileSection }) => 
   };
   
   const buttonHref = getButtonHref();
-  const ButtonElement = buttonHref ? (
-    <Button asChild>
-      <a href={buttonHref} target={content.buttonLinkType === 'external' ? '_blank' : '_self'} rel="noopener noreferrer">
+  const ButtonElement = showButton ? (
+    buttonHref ? (
+      <Button asChild style={{ backgroundColor: content.buttonColor, color: content.buttonTextColor }}>
+        <a href={buttonHref} target={content.buttonLinkType === 'external' ? '_blank' : '_self'} rel="noopener noreferrer">
+          {content.buttonText}
+        </a>
+      </Button>
+    ) : (
+      <Button style={{ backgroundColor: content.buttonColor, color: content.buttonTextColor }}>
         {content.buttonText}
-      </a>
-    </Button>
-  ) : content.buttonText ? (
-    <Button>{content.buttonText}</Button>
+      </Button>
+    )
   ) : null;
   
-  // Hero Banner layout (style1)
+  // Image position Y for object-position
+  const imagePositionY = content.imagePositionY ?? 50;
+  
+  // Hero Banner layout (style1) - wider aspect ratio like a banner
   if (layout === 'hero') {
     return (
-      <div className="relative min-h-[300px] rounded-lg overflow-hidden bg-gradient-to-br from-primary/10 to-secondary/10">
+      <div className="relative aspect-[21/9] rounded-lg overflow-hidden bg-gradient-to-br from-primary/10 to-secondary/10">
         {content.imageUrl && (
-          <img src={content.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+          <img 
+            src={content.imageUrl} 
+            alt="" 
+            className="absolute inset-0 w-full h-full object-cover opacity-60" 
+            style={{ objectPosition: `center ${imagePositionY}%` }}
+          />
         )}
-        <div className="relative z-10 flex flex-col items-center justify-center min-h-[300px] text-center p-8">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-8">
           <h3 className="text-3xl font-bold mb-4">{content.title}</h3>
           <p className="text-muted-foreground mb-6 max-w-lg">{content.body}</p>
           {ButtonElement}
