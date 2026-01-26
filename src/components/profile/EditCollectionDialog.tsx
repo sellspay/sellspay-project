@@ -66,11 +66,12 @@ export default function EditCollectionDialog({
     
     setLoadingProducts(true);
     try {
-      // Fetch all products by this creator
+      // Fetch only published products by this creator
       const { data: products, error: productsError } = await supabase
         .from('products')
         .select('id, name, cover_image_url, status')
         .eq('creator_id', profile.id)
+        .eq('status', 'published')
         .order('created_at', { ascending: false });
 
       if (productsError) throw productsError;
