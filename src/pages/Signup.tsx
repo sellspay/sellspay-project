@@ -88,7 +88,7 @@ export default function Signup() {
       return;
     }
     if (emailStatus === 'taken') {
-      setError('That email is already registered. Try logging in instead.');
+      setError('This email is already registered. Please sign in with the method you originally used (Google, Discord, or email/password).');
       return;
     }
 
@@ -128,8 +128,8 @@ export default function Signup() {
       navigate('/');
     } catch (err: any) {
       const msg = String(err?.message || '');
-      if (/already/i.test(msg)) {
-        setError('That email is already registered. Try logging in instead.');
+      if (/already/i.test(msg) || /registered/i.test(msg)) {
+        setError('This email is already registered. Please sign in with the method you originally used (Google, Discord, or email/password).');
       } else {
         setError(msg || 'Signup failed');
       }
@@ -289,7 +289,7 @@ export default function Signup() {
                 </div>
               </div>
               {emailStatus === 'taken' && (
-                <p className="text-destructive text-xs">Email is already registered</p>
+                <p className="text-destructive text-xs">This email is already registered. Sign in with the method you originally used.</p>
               )}
             </div>
 

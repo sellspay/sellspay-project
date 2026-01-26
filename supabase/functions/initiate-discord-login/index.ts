@@ -38,12 +38,14 @@ serve(async (req) => {
     // Get the origin for redirect after login
     const body = await req.json().catch(() => ({}));
     const returnTo = body.returnTo || "/";
+    const linkAccount = body.linkAccount || false;
     
     // Create a state token to prevent CSRF and store return URL
     const stateData = {
       returnTo,
       timestamp: Date.now(),
       nonce: crypto.randomUUID(),
+      linkAccount, // Flag to indicate this is for linking, not signup
     };
     const state = btoa(JSON.stringify(stateData));
 

@@ -30,10 +30,10 @@ serve(async (req) => {
     }
 
     // Decode and verify state
-    let stateData: { returnTo: string; timestamp: number; nonce: string };
+    let stateData: { returnTo: string; timestamp: number; nonce: string; linkAccount?: boolean };
     try {
       stateData = JSON.parse(atob(state));
-      logStep("State decoded", { returnTo: stateData.returnTo });
+      logStep("State decoded", { returnTo: stateData.returnTo, linkAccount: stateData.linkAccount });
       
       // Check if state is expired (10 minutes)
       if (Date.now() - stateData.timestamp > 10 * 60 * 1000) {
@@ -44,6 +44,8 @@ serve(async (req) => {
       logStep("Invalid state token");
       return Response.redirect(`${frontendUrl}/login?discord_error=invalid_state`);
     }
+    
+    const isLinkingAccount = stateData.linkAccount === true;
 
     const clientId = Deno.env.get("DISCORD_CLIENT_ID");
     const clientSecret = Deno.env.get("DISCORD_CLIENT_SECRET");
@@ -123,10 +125,18 @@ serve(async (req) => {
     let isNewUser = false;
 
     if (existingUser) {
-      // User exists, update their metadata with Discord info
+      // User exists with this email
       userId = existingUser.id;
-      logStep("Existing user found", { userId });
+      logStep("Existing user found", { userId, isLinkingAccount });
+      
+      // Check if this is a linking attempt but user already has Discord linked
+      const existingDiscordId = existingUser.user_metadata?.discord_id;
+      if (existingDiscordId && existingDiscordId !== discordUser.id) {
+        logStep("User already has a different Discord account linked");
+        return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=different_discord_linked`);
+      }
 
+      // Update their metadata with Discord info
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
         user_metadata: {
           ...existingUser.user_metadata,
@@ -143,6 +153,14 @@ serve(async (req) => {
         logStep("Error updating user metadata", { error: updateError.message });
       }
     } else {
+      // No user with this email exists
+      if (isLinkingAccount) {
+        // This was a linking attempt but the Discord email doesn't match any existing user
+        // This shouldn't normally happen since linking requires being logged in first
+        logStep("Linking attempt but no user found with Discord email");
+        return Response.redirect(`${frontendUrl}/settings?tab=connections&discord_error=email_mismatch`);
+      }
+      
       // Create new user
       isNewUser = true;
       const discordAvatarUrl = discordUser.avatar 
