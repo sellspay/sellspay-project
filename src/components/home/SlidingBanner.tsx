@@ -12,8 +12,8 @@ const bannerItems = [
 ];
 
 export default function SlidingBanner() {
-  // Duplicate items for seamless loop
-  const items = [...bannerItems, ...bannerItems, ...bannerItems];
+  // Duplicate items for seamless loop - need at least 2 full copies
+  const items = [...bannerItems, ...bannerItems];
 
   return (
     <div className="group/banner relative w-full py-5 overflow-hidden bg-gradient-to-r from-card/50 via-background to-card/50 border-y border-border/20">
@@ -21,7 +21,7 @@ export default function SlidingBanner() {
       <div className="absolute left-0 top-0 bottom-0 w-40 bg-gradient-to-r from-background via-background/80 to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-40 bg-gradient-to-l from-background via-background/80 to-transparent z-10 pointer-events-none" />
       
-      <div className="flex animate-banner-marquee group-hover/banner:[animation-play-state:paused]">
+      <div className="flex w-max animate-banner-marquee group-hover/banner:[animation-play-state:paused]">
         {items.map((item, index) => (
           <div
             key={index}
@@ -46,14 +46,14 @@ export default function SlidingBanner() {
       <style>{`
         @keyframes banner-marquee {
           0% {
-            transform: translateX(0%);
+            transform: translateX(0);
           }
           100% {
-            transform: translateX(-33.33%);
+            transform: translateX(-50%);
           }
         }
         .animate-banner-marquee {
-          animation: banner-marquee 40s linear infinite;
+          animation: banner-marquee 30s linear infinite;
         }
       `}</style>
     </div>
