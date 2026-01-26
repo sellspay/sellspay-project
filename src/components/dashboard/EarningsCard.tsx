@@ -73,12 +73,12 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
 
       if (!error && data) {
         setPayoutStatus({
-          preferredMethod: data.preferredMethod || 'stripe',
+          preferredMethod: data.preferredPayoutMethod || 'stripe',
           stripeConnected: data.stripeConnected || false,
           payoneerConnected: data.payoneerConnected || false,
           payoneerStatus: data.payoneerStatus,
         });
-        setSelectedProvider(data.preferredMethod || 'stripe');
+        setSelectedProvider(data.preferredPayoutMethod || 'stripe');
       }
     } catch (error) {
       console.error('Failed to fetch payout status:', error);
@@ -189,10 +189,12 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
   const pendingBalanceDollars = (stripeBalance?.pendingBalance || 0) / 100;
   const pendingEarningsDollars = (stripeBalance?.pendingEarnings || 0) / 100;
   const stripeBalanceDollars = (stripeBalance?.stripeBalance || 0) / 100;
+  const stripePendingDollars = (stripeBalance?.breakdown?.stripePending || 0) / 100;
   const { fee, netAmount, feeLabel } = calculateFees(availableBalanceDollars, selectedProvider, selectedSpeed);
 
   // User has earnings even if Stripe not connected (pending platform earnings)
   const hasAvailableFunds = availableBalanceDollars >= MINIMUM_WITHDRAWAL;
+  const hasPendingFunds = pendingBalanceDollars > 0 || stripePendingDollars > 0;
   const isStripeAvailable = stripeBalance?.connected || payoutStatus?.stripeConnected;
   const isPayoneerAvailable = payoutStatus?.payoneerConnected && payoutStatus?.payoneerStatus === 'active';
   const needsOnboarding = stripeBalance?.needsOnboarding && !isStripeAvailable;
@@ -236,26 +238,28 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
             </div>
           </div>
 
-          {/* Available Balance - show for all users with funds */}
-          {availableBalanceDollars > 0 && (
+          {/* Available Balance - show for all users with funds or pending */}
+          {(availableBalanceDollars > 0 || hasPendingFunds) && (
             <div className="pt-2 border-t border-border/50 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Available to Withdraw</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-emerald-500">
-                    ${availableBalanceDollars.toFixed(2)}
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6"
-                    onClick={fetchStripeBalance}
-                    disabled={loadingBalance}
-                  >
-                    <RefreshCw className={`w-3 h-3 ${loadingBalance ? 'animate-spin' : ''}`} />
-                  </Button>
+              {availableBalanceDollars > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Available to Withdraw</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-emerald-500">
+                      ${availableBalanceDollars.toFixed(2)}
+                    </span>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6"
+                      onClick={fetchStripeBalance}
+                      disabled={loadingBalance}
+                    >
+                      <RefreshCw className={`w-3 h-3 ${loadingBalance ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
               
               {/* Breakdown for users with pending earnings */}
               {pendingEarningsDollars > 0 && stripeBalanceDollars > 0 && (
@@ -271,10 +275,16 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
                 </div>
               )}
               
-              {pendingBalanceDollars > 0 && (
+              {/* Pending funds in Stripe (7-day hold) */}
+              {(pendingBalanceDollars > 0 || stripePendingDollars > 0) && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Pending (7-day hold)</span>
-                  <span className="text-warning">${pendingBalanceDollars.toFixed(2)}</span>
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    Pending (7-day hold)
+                  </span>
+                  <span className="text-amber-500 font-medium">
+                    ${Math.max(pendingBalanceDollars, stripePendingDollars).toFixed(2)}
+                  </span>
                 </div>
               )}
             </div>
@@ -319,9 +329,17 @@ export function EarningsCard({ productEarnings, editorEarnings }: EarningsCardPr
             </div>
           )}
 
-          {!loadingBalance && availableBalanceDollars === 0 && (
+          {!loadingBalance && availableBalanceDollars === 0 && !hasPendingFunds && (
             <p className="text-xs text-muted-foreground text-center">
-              {isStripeAvailable ? 'No funds available to withdraw' : 'Complete payout setup in Settings to withdraw funds'}
+              {isStripeAvailable 
+                ? 'No funds available to withdraw yet' 
+                : 'Complete payout setup in Settings to withdraw funds'}
+            </p>
+          )}
+
+          {!loadingBalance && isStripeAvailable && hasPendingFunds && availableBalanceDollars === 0 && (
+            <p className="text-xs text-muted-foreground text-center">
+              Funds will be available after the 7-day security hold
             </p>
           )}
         </CardContent>
