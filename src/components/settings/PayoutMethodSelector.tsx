@@ -68,7 +68,7 @@ export function PayoutMethodSelector({
   // PayPal state
   const [paypalEmail, setPaypalEmail] = useState("");
   const [paypalConnected, setPaypalConnected] = useState(false);
-  const [showPaypalDialog, setShowPaypalDialog] = useState(false);
+  // showPaypalDialog removed - now using OAuth redirect flow
   const [connectingPaypal, setConnectingPaypal] = useState(false);
   const [showDisconnectPaypalDialog, setShowDisconnectPaypalDialog] = useState(false);
   const [disconnectingPaypal, setDisconnectingPaypal] = useState(false);
@@ -170,35 +170,28 @@ export function PayoutMethodSelector({
   };
 
   const handleConnectPaypal = async () => {
-    if (!paypalEmail) {
-      toast.error("Please enter your PayPal email");
-      return;
-    }
-
     setConnectingPaypal(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      const { data, error } = await supabase.functions.invoke("register-paypal-seller", {
+      const { data, error } = await supabase.functions.invoke("initiate-paypal-connect", {
         headers: { Authorization: `Bearer ${session.access_token}` },
-        body: { paypalEmail },
+        body: { origin: window.location.origin },
       });
 
       if (error) throw error;
 
       if (data.notConfigured) {
         toast.info("PayPal integration coming soon!");
-        setShowPaypalDialog(false);
         return;
       }
 
-      if (data.success) {
-        toast.success("PayPal account connected successfully!");
-        setPaypalConnected(true);
-        setShowPaypalDialog(false);
+      if (data.success && data.authUrl) {
+        // Redirect user to PayPal for real OAuth login
+        window.location.href = data.authUrl;
       } else {
-        throw new Error(data.error);
+        throw new Error(data.error || "Failed to initiate PayPal connection");
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to connect PayPal";
@@ -755,8 +748,15 @@ export function PayoutMethodSelector({
                 </Button>
               </>
             ) : (
-              <Button onClick={() => setShowPaypalDialog(true)}>
-                Connect PayPal
+              <Button onClick={handleConnectPaypal} disabled={connectingPaypal}>
+                {connectingPaypal ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  "Connect PayPal"
+                )}
               </Button>
             )}
           </div>
@@ -768,67 +768,7 @@ export function PayoutMethodSelector({
           </div>
         </CardContent>
       </Card>
-
-      {/* PayPal Connect Dialog */}
-      <Dialog open={showPaypalDialog} onOpenChange={setShowPaypalDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Wallet className="w-5 h-5 text-blue-500" />
-              Connect PayPal
-            </DialogTitle>
-            <DialogDescription>
-              Enter the email address associated with your PayPal account.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="paypal-email">PayPal Email</Label>
-              <Input
-                id="paypal-email"
-                type="email"
-                placeholder="your@email.com"
-                value={paypalEmail}
-                onChange={(e) => setPaypalEmail(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Use the email address you registered with PayPal
-              </p>
-            </div>
-
-            <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-              <p className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                Don't have a PayPal account?{" "}
-                <a
-                  href="https://www.paypal.com/signup"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Sign up for free →
-                </a>
-              </p>
-            </div>
-
-            <Button
-              className="w-full"
-              onClick={handleConnectPaypal}
-              disabled={connectingPaypal || !paypalEmail}
-            >
-              {connectingPaypal ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                "Connect PayPal"
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* PayPal Connect Dialog removed - now using OAuth redirect */}
 
       {/* Disconnect PayPal Confirmation */}
       <AlertDialog open={showDisconnectPaypalDialog} onOpenChange={setShowDisconnectPaypalDialog}>
