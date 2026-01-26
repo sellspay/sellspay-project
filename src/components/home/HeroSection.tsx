@@ -19,7 +19,7 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <section className="relative min-h-[90vh] flex items-center overflow-hidden">
+    <section className="relative min-h-[80vh] sm:min-h-[90vh] flex items-center overflow-hidden">
       {/* Cosmic background image */}
       <div className="absolute inset-0 z-0">
         {/* Background image */}
@@ -36,23 +36,23 @@ export default function HeroSection() {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
       </div>
 
-      {/* Floating decorative elements */}
-      <div className="absolute top-20 right-[15%] w-3 h-3 bg-primary rounded-full animate-bounce opacity-60 z-10" style={{ animationDuration: '3s' }} />
-      <div className="absolute top-40 left-[10%] w-2 h-2 bg-accent rounded-full animate-bounce opacity-40 z-10" style={{ animationDuration: '4s', animationDelay: '1s' }} />
-      <div className="absolute bottom-32 right-[25%] w-4 h-4 bg-primary/50 rounded-full animate-bounce opacity-50 z-10" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }} />
-      <div className="absolute bottom-20 left-[20%] w-2 h-2 bg-accent/60 rounded-full animate-bounce opacity-30 z-10" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }} />
+      {/* Floating decorative elements - hidden on mobile */}
+      <div className="hidden sm:block absolute top-20 right-[15%] w-3 h-3 bg-primary rounded-full animate-bounce opacity-60 z-10" style={{ animationDuration: '3s' }} />
+      <div className="hidden sm:block absolute top-40 left-[10%] w-2 h-2 bg-accent rounded-full animate-bounce opacity-40 z-10" style={{ animationDuration: '4s', animationDelay: '1s' }} />
+      <div className="hidden sm:block absolute bottom-32 right-[25%] w-4 h-4 bg-primary/50 rounded-full animate-bounce opacity-50 z-10" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }} />
+      <div className="hidden sm:block absolute bottom-20 left-[20%] w-2 h-2 bg-accent/60 rounded-full animate-bounce opacity-30 z-10" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }} />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
       <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           {/* Main headline with brand name for Google verification */}
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-6">
-            <span className="block text-lg sm:text-xl font-semibold text-primary tracking-widest uppercase mb-2">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight mb-4 sm:mb-6">
+            <span className="block text-sm sm:text-lg font-semibold text-primary tracking-widest uppercase mb-1 sm:mb-2">
               EditorsParadise
             </span>
             <span className="text-foreground drop-shadow-lg">Level Up Your</span>
             <br />
             <span className="relative inline-block">
-              <span 
+              <span
                 className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-2xl"
                 style={{
                   textShadow: '0 0 40px rgba(168, 85, 247, 0.5), 0 0 80px rgba(168, 85, 247, 0.3)',
@@ -95,22 +95,22 @@ export default function HeroSection() {
           </h1>
 
           {/* Subtitle with rotating words */}
-          <p className="text-xl sm:text-2xl text-muted-foreground max-w-2xl mb-10 leading-relaxed">
+          <p className="text-lg sm:text-xl lg:text-2xl text-muted-foreground max-w-2xl mb-8 sm:mb-10 leading-relaxed px-2">
             Discover premium <span className="text-foreground font-semibold animate-fade-in" key={activeWord}>{floatingWords[activeWord]}</span> crafted by
             <br className="hidden sm:block" />
             professional creators worldwide.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-16">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-12 sm:mb-16 w-full sm:w-auto px-4 sm:px-0">
             <Button
               asChild
               size="lg"
-              className="h-14 px-8 text-lg rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 group"
+              className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 group w-full sm:w-auto"
             >
               <Link to="/products">
                 Explore Store
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
             {!user ? (
@@ -118,7 +118,7 @@ export default function HeroSection() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-14 px-8 text-lg rounded-full border-2 hover:bg-foreground/5"
+                className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg rounded-full border-2 hover:bg-foreground/5 w-full sm:w-auto"
               >
                 <Link to="/signup">
                   Join for Free
@@ -129,10 +129,10 @@ export default function HeroSection() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-14 px-8 text-lg rounded-full border-2 hover:bg-foreground/5 group"
+                className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg rounded-full border-2 hover:bg-foreground/5 group w-full sm:w-auto"
               >
                 <Link to="/creators">
-                  <Play className="mr-2 h-5 w-5 fill-current" />
+                  <Play className="mr-2 h-4 w-4 sm:h-5 sm:w-5 fill-current" />
                   Meet Creators
                 </Link>
               </Button>

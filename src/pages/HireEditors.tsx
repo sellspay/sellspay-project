@@ -186,37 +186,37 @@ export default function HireEditors() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section className="relative py-12 sm:py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Background gradient effects */}
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute top-20 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
+        <div className="hidden sm:block absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+        <div className="hidden sm:block absolute top-20 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
         
         <div className="relative mx-auto max-w-4xl text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-8">
-            <Sparkles className="w-4 h-4" />
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs sm:text-sm font-medium mb-6 sm:mb-8">
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             Connect with Creative Professionals
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-4 sm:mb-6 leading-tight">
             Hire Top{' '}
             <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
               Video Editors
             </span>
           </h1>
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
+          <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-10 px-2">
             Find skilled editors, motion designers, and creative professionals 
             ready to bring your vision to life.
           </p>
           
           {/* Search Bar */}
-          <div className="flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto mb-8">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 max-w-2xl mx-auto mb-6 sm:mb-8">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
               <Input 
-                placeholder="Search by skill, name, or specialty..." 
-                className="pl-12 h-14 bg-card/80 backdrop-blur-sm border-border/50 text-base rounded-xl shadow-lg shadow-black/5"
+                placeholder="Search by skill, name..." 
+                className="pl-10 sm:pl-12 h-12 sm:h-14 bg-card/80 backdrop-blur-sm border-border/50 text-sm sm:text-base rounded-lg sm:rounded-xl shadow-lg shadow-black/5"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -330,10 +330,10 @@ export default function HireEditors() {
       </section>
 
       {/* Editors Grid */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8">
+      <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {[1, 2, 3, 4, 5, 6].map(i => (
                 <Card key={i} className="bg-card/50 border-border/30 animate-pulse overflow-hidden">
                   <CardContent className="p-6">
@@ -366,7 +366,7 @@ export default function HireEditors() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredEditors.map((editor) => (
                 <Card 
                   key={editor.id} 
