@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,9 +42,40 @@ const PROVIDERS = [
 
 export function ConnectionsTab() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [identities, setIdentities] = useState<ConnectedIdentity[]>([]);
   const [loading, setLoading] = useState(true);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
+
+  // Handle Discord link success/error from URL params
+  useEffect(() => {
+    const discordLinked = searchParams.get('discord_linked');
+    const discordError = searchParams.get('discord_error');
+    
+    if (discordLinked === 'success') {
+      toast.success('Discord connected successfully!');
+      // Clean up URL
+      searchParams.delete('discord_linked');
+      setSearchParams(searchParams, { replace: true });
+      // Reload identities
+      loadIdentities();
+    } else if (discordError) {
+      let errorMessage = 'Failed to connect Discord';
+      if (discordError === 'discord_already_linked_to_other') {
+        errorMessage = 'This Discord account is already linked to another user.';
+      } else if (discordError === 'different_discord_linked') {
+        errorMessage = 'You already have a different Discord account linked.';
+      } else if (discordError === 'email_mismatch') {
+        errorMessage = 'Discord email does not match your account.';
+      } else if (discordError === 'invalid_link_request') {
+        errorMessage = 'Invalid link request. Please try again.';
+      }
+      toast.error(errorMessage);
+      // Clean up URL
+      searchParams.delete('discord_error');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (user) {
