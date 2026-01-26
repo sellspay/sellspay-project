@@ -71,13 +71,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     const followerIds = followers.map((f) => f.follower_id);
 
-    // Get follower profiles with email preferences
+    // Get follower profiles with notification preferences (email is in private schema)
     const { data: followerProfiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, email, email_notifications_enabled, username")
+      .select("id, user_id, email_notifications_enabled, username")
       .in("id", followerIds);
 
     if (profilesError) {
+      console.error("Profile fetch error:", profilesError);
       throw new Error("Failed to fetch follower profiles");
     }
 
@@ -112,79 +113,97 @@ const handler = async (req: Request): Promise<Response> => {
     if (resendApiKey) {
       const resend = new Resend(resendApiKey);
       
-      const emailEnabledFollowers = followerProfiles?.filter(
-        (f) => f.email && f.email_notifications_enabled !== false
-      ) || [];
+      // Get emails from private schema for followers who have notifications enabled
+      const emailEnabledFollowerIds = followerProfiles?.filter(
+        (f) => f.email_notifications_enabled !== false
+      ).map(f => f.user_id) || [];
 
-      for (const follower of emailEnabledFollowers) {
-        try {
-          await resend.emails.send({
-            from: "Loopz <notifications@loopz.co>",
-            to: [follower.email!],
-            subject: `🚀 ${creatorDisplayName} just dropped something new!`,
-            html: `
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              </head>
-              <body style="margin: 0; padding: 0; background-color: #0a0a0b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0b; padding: 40px 20px;">
-                  <tr>
-                    <td align="center">
-                      <table width="100%" max-width="600" cellpadding="0" cellspacing="0" style="max-width: 600px;">
-                        <!-- Header -->
-                        <tr>
-                          <td style="text-align: center; padding-bottom: 30px;">
-                            <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🎉 New Product Alert!</h1>
-                          </td>
-                        </tr>
-                        
-                        <!-- Main Content -->
-                        <tr>
-                          <td style="background: linear-gradient(135deg, #1a1a1d 0%, #0d0d0e 100%); border-radius: 16px; padding: 32px; border: 1px solid #2a2a2d;">
-                            ${product.cover_image_url ? `
-                            <img src="${product.cover_image_url}" alt="${product.name}" style="width: 100%; height: auto; border-radius: 12px; margin-bottom: 24px; object-fit: cover; max-height: 300px;" />
-                            ` : ''}
-                            
-                            <p style="color: #a1a1aa; font-size: 16px; margin: 0 0 8px 0;">
-                              <strong style="color: #10b981;">@${creator.username}</strong> just released:
-                            </p>
-                            
-                            <h2 style="color: #ffffff; font-size: 24px; margin: 0 0 24px 0; font-weight: 600;">
-                              ${product.name}
-                            </h2>
-                            
-                            <a href="https://loopz.co/product/${product.slug || productId}" 
-                               style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                              Check it out →
-                            </a>
-                          </td>
-                        </tr>
-                        
-                        <!-- Footer -->
-                        <tr>
-                          <td style="text-align: center; padding-top: 30px;">
-                            <p style="color: #52525b; font-size: 13px; margin: 0;">
-                              You're receiving this because you follow @${creator.username} on Loopz.
-                            </p>
-                            <p style="color: #52525b; font-size: 13px; margin: 8px 0 0 0;">
-                              <a href="https://loopz.co/settings" style="color: #71717a; text-decoration: underline;">Manage email preferences</a>
-                            </p>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                </table>
-              </body>
-              </html>
-            `,
-          });
-          emailsSent++;
-        } catch (emailError) {
-          console.error(`Failed to send email to ${follower.email}:`, emailError);
+      if (emailEnabledFollowerIds.length > 0) {
+        // Fetch emails from private.user_pii using service role
+        const { data: piiData } = await supabase
+          .from("private.user_pii" as any)
+          .select("user_id, email")
+          .in("user_id", emailEnabledFollowerIds);
+
+        // Create a map of user_id to email
+        const emailMap = new Map<string, string>();
+        piiData?.forEach((p: any) => {
+          if (p.email) emailMap.set(p.user_id, p.email);
+        });
+
+        for (const follower of followerProfiles || []) {
+          const email = emailMap.get(follower.user_id);
+          if (!email || follower.email_notifications_enabled === false) continue;
+
+          try {
+            await resend.emails.send({
+              from: "Loopz <notifications@loopz.co>",
+              to: [email],
+              subject: `🚀 ${creatorDisplayName} just dropped something new!`,
+              html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <meta charset="utf-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                </head>
+                <body style="margin: 0; padding: 0; background-color: #0a0a0b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0b; padding: 40px 20px;">
+                    <tr>
+                      <td align="center">
+                        <table width="100%" max-width="600" cellpadding="0" cellspacing="0" style="max-width: 600px;">
+                          <!-- Header -->
+                          <tr>
+                            <td style="text-align: center; padding-bottom: 30px;">
+                              <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🎉 New Product Alert!</h1>
+                            </td>
+                          </tr>
+                          
+                          <!-- Main Content -->
+                          <tr>
+                            <td style="background: linear-gradient(135deg, #1a1a1d 0%, #0d0d0e 100%); border-radius: 16px; padding: 32px; border: 1px solid #2a2a2d;">
+                              ${product.cover_image_url ? `
+                              <img src="${product.cover_image_url}" alt="${product.name}" style="width: 100%; height: auto; border-radius: 12px; margin-bottom: 24px; object-fit: cover; max-height: 300px;" />
+                              ` : ''}
+                              
+                              <p style="color: #a1a1aa; font-size: 16px; margin: 0 0 8px 0;">
+                                <strong style="color: #10b981;">@${creator.username}</strong> just released:
+                              </p>
+                              
+                              <h2 style="color: #ffffff; font-size: 24px; margin: 0 0 24px 0; font-weight: 600;">
+                                ${product.name}
+                              </h2>
+                              
+                              <a href="https://loopz.co/product/${product.slug || productId}" 
+                                 style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                                Check it out →
+                              </a>
+                            </td>
+                          </tr>
+                          
+                          <!-- Footer -->
+                          <tr>
+                            <td style="text-align: center; padding-top: 30px;">
+                              <p style="color: #52525b; font-size: 13px; margin: 0;">
+                                You're receiving this because you follow @${creator.username} on Loopz.
+                              </p>
+                              <p style="color: #52525b; font-size: 13px; margin: 8px 0 0 0;">
+                                <a href="https://loopz.co/settings" style="color: #71717a; text-decoration: underline;">Manage email preferences</a>
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </body>
+                </html>
+              `,
+            });
+            emailsSent++;
+          } catch (emailError) {
+            console.error(`Failed to send email to ${follower.username}:`, emailError);
+          }
         }
       }
     }
