@@ -15,91 +15,8 @@ import SubscriptionPlanPicker from "@/components/product/SubscriptionPlanPicker"
 import VideoTrimmer from "@/components/product/VideoTrimmer";
 import VideoFrameSelector from "@/components/product/VideoFrameSelector";
 import { Progress } from "@/components/ui/progress";
-
-// Premium Publishing Overlay Component
-const PublishingOverlay = ({ isPublishing, currentStep }: { isPublishing: boolean; currentStep: number }) => {
-  const steps = [
-    { label: "Uploading media...", icon: "📤" },
-    { label: "Processing files...", icon: "⚙️" },
-    { label: "Verifying content...", icon: "✅" },
-    { label: "Creating product...", icon: "🎨" },
-    { label: "Finalizing...", icon: "🚀" },
-    { label: "Done!", icon: "🎉" }
-  ];
-
-  const progress = Math.min(((currentStep + 1) / steps.length) * 100, 100);
-  const isDone = currentStep >= steps.length - 1;
-
-  if (!isPublishing) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop with blur */}
-      <div className="absolute inset-0 bg-background/90 backdrop-blur-md" />
-      
-      {/* Animated gradient orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
-      </div>
-      
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-md w-full">
-        {/* Animated icon */}
-        <div className="relative mb-6">
-          <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center ${isDone ? '' : 'animate-pulse'}`}>
-            <span className="text-4xl">{steps[currentStep]?.icon || "🎨"}</span>
-          </div>
-          {!isDone && (
-            <div className="absolute inset-0 w-24 h-24 border-2 border-primary/30 border-t-primary rounded-full animate-spin" style={{ animationDuration: '1.5s' }} />
-          )}
-        </div>
-        
-        {/* Title */}
-        <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          {isDone ? "Product Published!" : "Publishing Your Product"}
-        </h2>
-        
-        {/* Current step */}
-        <p className="text-muted-foreground mb-6 h-6" key={currentStep}>
-          {steps[currentStep]?.label || "Processing..."}
-        </p>
-        
-        {/* Progress bar */}
-        <div className="w-full mb-4">
-          <Progress value={progress} className="h-2" />
-        </div>
-        
-        {/* Step indicators */}
-        <div className="flex items-center justify-center gap-3 mb-4">
-          {steps.map((step, i) => (
-            <div
-              key={i}
-              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm transition-all duration-300 ${
-                i < currentStep 
-                  ? 'bg-primary text-primary-foreground scale-90' 
-                  : i === currentStep
-                  ? 'bg-gradient-to-r from-primary to-accent text-white scale-110 shadow-lg'
-                  : 'bg-muted text-muted-foreground scale-75'
-              }`}
-            >
-              {i < currentStep ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <span className="text-xs">{i + 1}</span>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Percentage */}
-        <p className="text-sm font-mono text-muted-foreground">
-          {Math.round(progress)}% complete
-        </p>
-      </div>
-    </div>
-  );
-};
+import UploadProgressOverlay from "@/components/product/UploadProgressOverlay";
+import { useFileUploadProgress, validateTotalFileSize, formatBytes, MAX_PRODUCT_SIZE_BYTES } from "@/hooks/useFileUploadProgress";
 
 const productTypes = [
   { value: "preset", label: "Preset Pack" },
@@ -150,9 +67,11 @@ export default function CreateProduct() {
   // Derive seller status from centralized auth
   const isSeller = profile?.is_seller || false;
   
+  // Upload progress hook
+  const { progress: uploadProgress, uploadFiles, resetProgress, setPhase } = useFileUploadProgress();
+  
   const [loading, setLoading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [publishingStep, setPublishingStep] = useState(0);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [customSlug, setCustomSlug] = useState(false);
@@ -184,6 +103,10 @@ export default function CreateProduct() {
     discountPercent: number | null;
   }[]>([]);
   const [profileId, setProfileId] = useState<string | null>(null);
+  
+  // Compute total file size for validation
+  const totalFileSize = downloadFiles.reduce((acc, f) => acc + f.size, 0);
+  const isOverSizeLimit = totalFileSize > MAX_PRODUCT_SIZE_BYTES;
   
   // Fetch profile ID on mount for plan picker
   useEffect(() => {
@@ -336,15 +259,23 @@ export default function CreateProduct() {
       return;
     }
 
+    // Validate 5GB file size limit
+    if (downloadFiles.length > 0) {
+      const validation = validateTotalFileSize(downloadFiles);
+      if (!validation.valid) {
+        toast.error(validation.message);
+        return;
+      }
+    }
+
     setLoading(true);
     if (publish) {
       setIsPublishing(true);
-      setPublishingStep(0);
+      resetProgress();
     }
 
     try {
-      // Step 0: Uploading media
-      const { data: profile, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("id")
         .eq("user_id", user.id)
@@ -355,10 +286,10 @@ export default function CreateProduct() {
       let coverImageUrl: string | null = null;
       let previewVideoPath: string | null = null;
 
-      // Upload cover image
+      // Upload cover image (small file, use standard upload)
       if (coverImage) {
         const ext = coverImage.name.split(".").pop() || 'jpg';
-        const path = `covers/${profile.id}/${Date.now()}.${ext}`;
+        const path = `covers/${profileData.id}/${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("product-media")
           .upload(path, coverImage);
@@ -372,11 +303,10 @@ export default function CreateProduct() {
         coverImageUrl = publicUrl.publicUrl;
       }
 
-      // Upload preview video
+      // Upload preview video (small file, use standard upload)
       if (previewVideo) {
-        if (publish) setPublishingStep(1); // Processing files
         const ext = previewVideo.name.split(".").pop();
-        previewVideoPath = `previews/${profile.id}/${Date.now()}.${ext}`;
+        previewVideoPath = `previews/${profileData.id}/${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("product-media")
           .upload(previewVideoPath, previewVideo, {
@@ -390,29 +320,28 @@ export default function CreateProduct() {
         }
       }
 
-      // Step 1-2: Processing & Verifying files
-      if (publish) setPublishingStep(2);
-      
+      // Upload product files with real progress tracking
       let downloadUrl: string | null = null;
       let originalFilename: string | null = null;
       const attachments: { name: string; path: string; size: number }[] = [];
       
       if (downloadFiles.length > 0) {
-        for (const file of downloadFiles) {
-          const path = `${user.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._()-]/g, '_')}`;
-          const { error: uploadError } = await supabase.storage
-            .from("product-files")
-            .upload(path, file);
+        const uploadResult = await uploadFiles(
+          downloadFiles,
+          'product-files',
+          (file, index) => `${user.id}/${Date.now()}-${index}-${file.name.replace(/[^a-zA-Z0-9._()-]/g, '_')}`
+        );
 
-          if (uploadError) {
-            console.error('Download file upload error:', uploadError);
-            throw uploadError;
-          }
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || 'Failed to upload files');
+        }
 
+        // Build attachments from uploaded paths
+        for (let i = 0; i < downloadFiles.length; i++) {
           attachments.push({
-            name: file.name,
-            path: path,
-            size: file.size,
+            name: downloadFiles[i].name,
+            path: uploadResult.paths[i],
+            size: downloadFiles[i].size,
           });
         }
         
@@ -422,8 +351,8 @@ export default function CreateProduct() {
         }
       }
 
-      // Step 3: Creating product
-      if (publish) setPublishingStep(3);
+      // Processing phase
+      setPhase('processing');
       
       const priceCents = (pricingType === "free" || pricingType === "subscription") ? 0 : Math.round(parseFloat(price) * 100);
       
@@ -443,6 +372,7 @@ export default function CreateProduct() {
           toast.error("This URL slug is already taken. Please choose another.");
           setLoading(false);
           setIsPublishing(false);
+          resetProgress();
           return;
         }
       }
@@ -464,7 +394,7 @@ export default function CreateProduct() {
           download_url: downloadUrl,
           original_filename: originalFilename,
           attachments: attachments.length > 0 ? attachments : null,
-          creator_id: profile.id,
+          creator_id: profileData.id,
           status: publish ? "published" : "draft",
           subscription_access: subscriptionAccess,
         } as any)
@@ -472,9 +402,6 @@ export default function CreateProduct() {
         .single();
 
       if (error) throw error;
-
-      // Step 4: Finalizing
-      if (publish) setPublishingStep(4);
 
       // Link product to subscription plans if selected
       if (product && selectedSubscriptionPlans.length > 0) {
@@ -501,7 +428,7 @@ export default function CreateProduct() {
           await supabase.functions.invoke('notify-product-launch', {
             body: {
               productId: product.id,
-              creatorProfileId: profile.id,
+              creatorProfileId: profileData.id,
             }
           });
         } catch (notifyError) {
@@ -509,10 +436,10 @@ export default function CreateProduct() {
         }
       }
 
-      // Step 5: Done!
+      // Done phase
       if (publish) {
-        setPublishingStep(5);
-        await new Promise(resolve => setTimeout(resolve, 1200)); // Show "Done!" briefly
+        setPhase('done');
+        await new Promise(resolve => setTimeout(resolve, 1200));
       }
 
       toast.success(publish ? "Product published!" : "Draft saved!");
@@ -523,7 +450,7 @@ export default function CreateProduct() {
     } finally {
       setLoading(false);
       setIsPublishing(false);
-      setPublishingStep(0);
+      resetProgress();
     }
   };
 
@@ -564,7 +491,7 @@ export default function CreateProduct() {
 
   return (
     <>
-      <PublishingOverlay isPublishing={isPublishing} currentStep={publishingStep} />
+      <UploadProgressOverlay isVisible={isPublishing} progress={uploadProgress} />
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <h1 className="text-3xl font-bold mb-8">Create New Product</h1>
 
@@ -1081,8 +1008,24 @@ export default function CreateProduct() {
             <div>
               <Label>Product Files</Label>
               <p className="text-xs text-muted-foreground mb-2">
-                Drag & drop files or folders, or click to browse. ZIP, RAR, 7z, source files, etc.
+                Drag & drop files or folders, or click to browse. Maximum 5GB total per product.
               </p>
+              
+              {/* File size warning */}
+              {downloadFiles.length > 0 && (
+                <div className={`mb-3 p-3 rounded-lg text-sm ${isOverSizeLimit ? 'bg-destructive/10 border border-destructive/30' : 'bg-secondary/30'}`}>
+                  <div className="flex justify-between items-center">
+                    <span className={isOverSizeLimit ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                      Total: {formatBytes(totalFileSize)} / 5 GB
+                    </span>
+                    {isOverSizeLimit && (
+                      <span className="text-destructive text-xs font-medium">
+                        Exceeds limit - please remove files
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="mt-2 space-y-2">
                 {/* List of added files */}
                 {downloadFiles.length > 0 && (
@@ -1158,7 +1101,7 @@ export default function CreateProduct() {
             type="button"
             variant="outline"
             onClick={(e) => handleSubmit(e, false)}
-            disabled={loading}
+            disabled={loading || isOverSizeLimit}
             className="flex-1"
           >
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
@@ -1167,7 +1110,7 @@ export default function CreateProduct() {
           <Button
             type="button"
             onClick={(e) => handleSubmit(e, true)}
-            disabled={loading}
+            disabled={loading || isOverSizeLimit}
             className="flex-1 bg-gradient-to-r from-primary to-accent"
           >
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}

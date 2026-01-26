@@ -102,7 +102,7 @@ const faqCategories: FAQCategory[] = [
       },
       {
         question: 'What file types are supported?',
-        answer: 'We support all common file types: ZIP, RAR, MP4, MOV, WAV, MP3, PNG, JPG, PSD, AI, and more. Maximum file size is 500MB per file. For larger products, use a ZIP file containing all assets.',
+        answer: 'We support all common file types: ZIP, RAR, MP4, MOV, WAV, MP3, PNG, JPG, PSD, AI, and more. Maximum total file size is 5GB per product. You can upload multiple files that together do not exceed this limit.',
       },
       {
         question: 'How does pricing work?',
