@@ -235,7 +235,11 @@ export function EditSectionDialog({
         );
       case 'footer':
         return (
-          <FooterEditor content={section.content as FooterContent} onChange={updateContent} />
+          <FooterEditor 
+            content={section.content as FooterContent} 
+            onChange={updateContent}
+            preset={section.style_options?.preset as string | undefined}
+          />
         );
       case 'card_slideshow':
         return (
@@ -1777,13 +1781,18 @@ function ContactUsEditor({
 function FooterEditor({
   content,
   onChange,
+  preset,
 }: {
   content: FooterContent;
   onChange: (updates: Partial<FooterContent>) => void;
+  preset?: string;
 }) {
+  // Determine layout from preset: style1 = simple, style3 = minimal, style2 or default = multi-column
+  const layout = preset === 'style1' ? 'simple' : preset === 'style3' ? 'minimal' : 'multi-column';
+
   const addColumn = () => {
-    if (content.columns.length >= 4) {
-      toast.error('Maximum 4 columns allowed');
+    if (content.columns.length >= 7) {
+      toast.error('Maximum 7 columns allowed');
       return;
     }
     const newColumn: FooterColumn = {
@@ -1829,6 +1838,55 @@ function FooterEditor({
     updateColumn(columnId, { links: column.links.filter((l) => l.id !== linkId) });
   };
 
+  // Minimal footer - just copyright text
+  if (layout === 'minimal') {
+    return (
+      <div className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          This is a minimal footer with just copyright text.
+        </p>
+        <div>
+          <Label>Copyright Text</Label>
+          <Input
+            value={content.text}
+            onChange={(e) => onChange({ text: e.target.value })}
+            placeholder="© 2026 Your Store. All rights reserved."
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Simple footer - copyright + social links only
+  if (layout === 'simple') {
+    return (
+      <div className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Simple footer with centered social icons and copyright text.
+        </p>
+        <div>
+          <Label>Copyright Text</Label>
+          <Input
+            value={content.text}
+            onChange={(e) => onChange({ text: e.target.value })}
+            placeholder="© 2026 Your Store. All rights reserved."
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <Label>Show Social Links</Label>
+          <Switch
+            checked={content.showSocialLinks}
+            onCheckedChange={(checked) => onChange({ showSocialLinks: checked })}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Social links are pulled from your profile settings.
+        </p>
+      </div>
+    );
+  }
+
+  // Multi-column footer - full editor
   return (
     <div className="space-y-4">
       <div>
