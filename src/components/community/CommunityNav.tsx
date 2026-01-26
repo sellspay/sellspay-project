@@ -41,7 +41,7 @@ export function CommunityNav() {
                 )}
                 <span className="relative flex items-center gap-1.5 sm:gap-2">
                   <item.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="hidden xs:inline sm:inline">{item.label}</span>
+                  <span>{item.label}</span>
                 </span>
               </Link>
             </Button>
