@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
@@ -12,8 +12,7 @@ import { FeaturedCreators } from '@/components/home/FeaturedCreators';
 import { Reveal } from '@/components/home/Reveal';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, TrendingUp, Zap } from 'lucide-react';
-
+import { ArrowRight, ChevronLeft, ChevronRight, Sparkles, TrendingUp, Zap } from 'lucide-react';
 interface Product {
   id: string;
   name: string;
@@ -135,79 +134,10 @@ export default function Home() {
 
       {/* Featured Products Section */}
       <Reveal>
-        <section className="relative py-12 sm:py-20 lg:py-28 overflow-hidden">
-          {/* Subtle background */}
-          <div className="pointer-events-none absolute inset-0 -z-10">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[1000px] h-[400px] sm:h-[600px] bg-gradient-to-r from-primary/3 via-transparent to-primary/3 rounded-full blur-3xl" />
-          </div>
-
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-            {/* Minimal Section Header */}
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 sm:mb-10">
-              <div>
-                <p className="text-xs font-medium text-primary uppercase tracking-[0.2em] mb-1.5 sm:mb-2">Curated</p>
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">
-                  Featured Products
-                </h2>
-              </div>
-              {featuredWithStats.length > 4 && (
-                <Link 
-                  to="/products?featured=true"
-                  className="hidden sm:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
-                >
-                  View all
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              )}
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              </div>
-            ) : featuredWithStats.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <p className="text-muted-foreground mb-4">No featured products yet</p>
-                <Button onClick={() => navigate('/products')} variant="outline" size="sm">
-                  Browse Store
-                </Button>
-              </div>
-            ) : (
-              <>
-                {/* Clean Grid Layout */}
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
-                  {featuredWithStats.slice(0, 8).map((product) => (
-                    <ProductCard 
-                      key={product.id}
-                      product={product} 
-                      showFeaturedBadge={false} 
-                      showType={true}
-                      likeCount={product.likeCount}
-                      commentCount={product.commentCount}
-                      showEngagement={true}
-                      isHot={product.isHot}
-                      size="default"
-                      showCreator={true}
-                    />
-                  ))}
-                </div>
-
-                {/* Mobile View All */}
-                {featuredWithStats.length > 4 && (
-                  <div className="text-center mt-8 sm:hidden">
-                    <Button 
-                      onClick={() => navigate('/products?featured=true')} 
-                      variant="outline"
-                      size="sm"
-                    >
-                      View All Featured
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </section>
+        <FeaturedProductsCarousel 
+          products={featuredWithStats} 
+          loading={loading} 
+        />
       </Reveal>
 
       {/* Value Propositions */}
@@ -295,6 +225,136 @@ export default function Home() {
       <FeaturedCreators />
 
     </div>
+  );
+}
+
+// Featured Products Carousel Component
+interface FeaturedProductsCarouselProps {
+  products: FeaturedProduct[];
+  loading: boolean;
+}
+
+function FeaturedProductsCarousel({ products, loading }: FeaturedProductsCarouselProps) {
+  const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Limit to 12 products max
+  const displayProducts = products.slice(0, 12);
+  
+  const scroll = (direction: 'left' | 'right') => {
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    const cardWidth = container.querySelector('div')?.offsetWidth || 280;
+    const gap = 20;
+    const scrollAmount = (cardWidth + gap) * 4; // Scroll 4 cards at a time
+    container.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  };
+
+  return (
+    <section className="relative py-12 sm:py-20 lg:py-28 overflow-hidden">
+      {/* Subtle background */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[1000px] h-[400px] sm:h-[600px] bg-gradient-to-r from-primary/3 via-transparent to-primary/3 rounded-full blur-3xl" />
+      </div>
+
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        {/* Section Header with scroll controls */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 sm:mb-10">
+          <div>
+            <p className="text-xs font-medium text-primary uppercase tracking-[0.2em] mb-1.5 sm:mb-2">Curated</p>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">
+              Featured Products
+            </h2>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Scroll arrows */}
+            {displayProducts.length > 4 && (
+              <div className="hidden sm:flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-full border-border/50 hover:bg-accent"
+                  onClick={() => scroll('left')}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-full border-border/50 hover:bg-accent"
+                  onClick={() => scroll('right')}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            <Link 
+              to="/products?featured=true"
+              className="hidden sm:flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+            >
+              View all
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        ) : displayProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <p className="text-muted-foreground mb-4">No featured products yet</p>
+            <Button onClick={() => navigate('/products')} variant="outline" size="sm">
+              Browse Store
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Horizontal Scrolling Row - 4 per view */}
+            <div
+              ref={scrollRef}
+              className="flex gap-5 overflow-x-auto scrollbar-hide pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 snap-x snap-mandatory"
+            >
+              {displayProducts.map((product) => (
+                <div 
+                  key={product.id} 
+                  className="flex-shrink-0 w-[calc(50%-10px)] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)] snap-start"
+                >
+                  <ProductCard 
+                    product={product} 
+                    showFeaturedBadge={false} 
+                    showType={true}
+                    likeCount={product.likeCount}
+                    commentCount={product.commentCount}
+                    showEngagement={true}
+                    isHot={product.isHot}
+                    size="default"
+                    showCreator={true}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* View More Button */}
+            <div className="text-center mt-8">
+              <Button 
+                onClick={() => navigate('/products?featured=true')} 
+                variant="outline"
+                size="sm"
+                className="group"
+              >
+                View More
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
 
