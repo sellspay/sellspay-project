@@ -127,8 +127,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Auth state listener
   useEffect(() => {
+    // Set up auth state listener FIRST (before getSession)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (event, session) => {
+        console.log('[Auth] State change:', event);
+        
+        // Handle token refresh failures - this happens when server restarts invalidate sessions
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          console.log('[Auth] Token refresh failed, clearing stale session');
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setIsAdmin(false);
+          setIsOwner(false);
+          setLoading(false);
+          return;
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -144,16 +160,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id);
+    // Get initial session and validate it
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        // If there's a session, verify it's still valid by checking with the server
+        if (session) {
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          
+          if (userError || !user) {
+            // Session is stale/invalid - clear it
+            console.log('[Auth] Stale session detected, signing out:', userError?.message);
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+          
+          // Session is valid
+          setSession(session);
+          setUser(user);
+          fetchProfile(user.id);
+        } else {
+          setSession(null);
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('[Auth] Initialization error:', err);
+        // On any error, clear potentially corrupted state
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-    });
+    };
+
+    initializeAuth();
 
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
