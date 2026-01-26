@@ -244,15 +244,15 @@ function FeaturedProductsCarousel({ products, loading }: FeaturedProductsCarouse
           </div>
         ) : (
           <>
-            {/* Horizontal Scrolling Row - 4 per view */}
+            {/* Horizontal Scrolling Row - 1 large card on mobile, 4 per view on desktop */}
             <div
               ref={scrollRef}
-              className="flex gap-5 overflow-x-auto scrollbar-hide pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 snap-x snap-mandatory"
+              className="flex gap-4 sm:gap-5 overflow-x-auto scrollbar-hide pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 snap-x snap-mandatory"
             >
               {displayProducts.map((product) => (
                 <div 
                   key={product.id} 
-                  className="flex-shrink-0 w-[calc(50%-10px)] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)] snap-start"
+                  className="flex-shrink-0 w-[75vw] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] xl:w-[calc(25%-15px)] snap-start"
                 >
                   <ProductCard 
                     product={product} 
@@ -262,7 +262,7 @@ function FeaturedProductsCarousel({ products, loading }: FeaturedProductsCarouse
                     commentCount={product.commentCount}
                     showEngagement={true}
                     isHot={product.isHot}
-                    size="default"
+                    size="large"
                     showCreator={true}
                   />
                 </div>
