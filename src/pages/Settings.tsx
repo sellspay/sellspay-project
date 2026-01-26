@@ -909,30 +909,30 @@ export default function Settings() {
       <h1 className="text-3xl font-bold mb-8">Settings</h1>
 
       <Tabs defaultValue="profile" className="space-y-8">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="profile" className="gap-2">
-            <User className="w-4 h-4" />
-            Profile
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 gap-1 h-auto p-1">
+          <TabsTrigger value="profile" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
+            <User className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">Profile</span>
           </TabsTrigger>
-          <TabsTrigger value="socials" className="gap-2">
-            <Link2 className="w-4 h-4" />
-            Socials
+          <TabsTrigger value="socials" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
+            <Link2 className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">Socials</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-2">
-            <Bell className="w-4 h-4" />
-            Notifications
+          <TabsTrigger value="notifications" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
+            <Bell className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">Notifications</span>
           </TabsTrigger>
-          <TabsTrigger value="security" className="gap-2">
-            <Shield className="w-4 h-4" />
-            Security
+          <TabsTrigger value="security" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
+            <Shield className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">Security</span>
           </TabsTrigger>
-          <TabsTrigger value="billing" className="gap-2">
-            <CreditCard className="w-4 h-4" />
-            Billing
+          <TabsTrigger value="billing" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
+            <CreditCard className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">Billing</span>
           </TabsTrigger>
-          <TabsTrigger value="seller-email" className="gap-2">
-            <Mail className="w-4 h-4" />
-            Email
+          <TabsTrigger value="seller-email" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
+            <Mail className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">Email</span>
           </TabsTrigger>
         </TabsList>
 
