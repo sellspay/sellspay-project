@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useImperativeHandle, forwardRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,7 +6,7 @@ import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { Plus, GripVertical, Pencil } from 'lucide-react';
 import { ProfileSection, SectionStyleOptions, AnimationType } from './types';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
-import { AnimationPicker, getAnimationStyles, getAnimatedStyles } from './AnimationPicker';
+import { getAnimationStyles, getAnimatedStyles } from './AnimationPicker';
 import {
   DndContext,
   closestCenter,
@@ -38,6 +38,10 @@ interface Profile {
   social_links?: Record<string, string> | null;
 }
 
+export interface LiveProfilePreviewHandle {
+  triggerPreviewAnimation: (sectionId: string) => void;
+}
+
 interface LiveProfilePreviewProps {
   profile: Profile;
   sections: ProfileSection[];
@@ -49,26 +53,23 @@ interface LiveProfilePreviewProps {
 }
 
 // Sortable section wrapper component
-const SortableSectionItem = memo(({ 
-  section, 
-  isSelected, 
-  onSelect,
-  onAddAbove,
-  onAddBelow,
-  onAnimationChange,
-  isFirst,
-  isLast,
-}: { 
+const SortableSectionItem = memo(forwardRef<{ triggerAnimation: () => void }, { 
   section: ProfileSection;
   isSelected: boolean;
   onSelect: () => void;
   onAddAbove: () => void;
   onAddBelow: () => void;
-  onAnimationChange?: (animation: AnimationType) => void;
   isFirst: boolean;
   isLast: boolean;
-}) => {
-  const [isAnimating, setIsAnimating] = React.useState(false);
+}>(({ 
+  section, 
+  isSelected, 
+  onSelect,
+  onAddAbove,
+  onAddBelow,
+  isFirst,
+  isLast,
+}, ref) => {
   const contentRef = React.useRef<HTMLDivElement>(null);
   const {
     attributes,
@@ -78,6 +79,11 @@ const SortableSectionItem = memo(({
     transition,
     isDragging,
   } = useSortable({ id: section.id });
+
+  // Expose trigger method via ref
+  useImperativeHandle(ref, () => ({
+    triggerAnimation: () => handlePreviewAnimation(),
+  }));
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -91,7 +97,6 @@ const SortableSectionItem = memo(({
     // Reset to initial animation state
     const initialStyles = getAnimationStyles(animation);
     Object.assign(contentRef.current.style, initialStyles);
-    setIsAnimating(true);
     
     // Trigger reflow to restart animation
     void contentRef.current.offsetWidth;
@@ -103,13 +108,7 @@ const SortableSectionItem = memo(({
         Object.assign(contentRef.current.style, animatedStyles);
       }
     });
-    
-    // Reset after animation completes
-    setTimeout(() => {
-      setIsAnimating(false);
-    }, 700);
   };
-
   const getStyleClasses = (styleOptions: SectionStyleOptions) => {
     const classes: string[] = [];
     
@@ -150,8 +149,6 @@ const SortableSectionItem = memo(({
     backgroundStyle.backgroundSize = 'cover';
     backgroundStyle.backgroundPosition = 'center';
   }
-
-  const currentAnimation = section.style_options?.animation || 'none';
 
   return (
     <div ref={setNodeRef} style={style} className="relative group">
@@ -195,17 +192,6 @@ const SortableSectionItem = memo(({
         
         {/* Hover dimming overlay - dims content to make buttons visible */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-200 pointer-events-none z-10" />
-        
-        {/* Animation picker button - top center above element */}
-        {onAnimationChange && (
-          <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
-            <AnimationPicker
-              value={currentAnimation}
-              onChange={onAnimationChange}
-              onPreview={handlePreviewAnimation}
-            />
-          </div>
-        )}
         
         {/* Drag handle - visible on hover */}
         <div
@@ -271,7 +257,7 @@ const SortableSectionItem = memo(({
       </div>
     </div>
   );
-});
+}));
 
 SortableSectionItem.displayName = 'SortableSectionItem';
 
@@ -423,7 +409,6 @@ export const LiveProfilePreview = memo(({
                   onSelect={() => onSelectSection(section.id)}
                   onAddAbove={() => onAddSectionAt(index)}
                   onAddBelow={() => onAddSectionAt(index + 1)}
-                  onAnimationChange={onUpdateSectionAnimation ? (anim) => onUpdateSectionAnimation(section.id, anim) : undefined}
                   isFirst={index === 0}
                   isLast={index === sections.length - 1}
                 />

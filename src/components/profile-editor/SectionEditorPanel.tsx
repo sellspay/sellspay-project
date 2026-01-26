@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { ProfileSection, SectionStyleOptions, SectionContent, SECTION_TEMPLATES, FontOption, CustomFont } from './types';
+import { ProfileSection, SectionStyleOptions, SectionContent, SECTION_TEMPLATES, FontOption, CustomFont, AnimationType } from './types';
 import { FontSelector } from './FontSelector';
+import { AnimationPickerInline } from './AnimationPicker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ interface SectionEditorPanelProps {
   onClose: () => void;
   collections?: { id: string; name: string }[];
   products?: { id: string; name: string }[];
+  onPreviewAnimation?: () => void;
 }
 
 export function SectionEditorPanel({
@@ -42,6 +44,7 @@ export function SectionEditorPanel({
   onClose,
   collections = [],
   products = [],
+  onPreviewAnimation,
 }: SectionEditorPanelProps) {
   const [activeTab, setActiveTab] = useState('format');
   const [uploading, setUploading] = useState(false);
@@ -1164,16 +1167,25 @@ export function SectionEditorPanel({
 
   const renderBackgroundTab = () => (
     <div className="space-y-6">
-      {/* Show Container Background Toggle */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Label>Show Container</Label>
-          <p className="text-xs text-muted-foreground">Add a background card behind this section</p>
+      {/* Animation Picker - Prominent at the top */}
+      <AnimationPickerInline
+        value={(section.style_options?.animation as AnimationType) || 'none'}
+        onChange={(animation) => updateStyleOptions({ animation })}
+        onPreview={onPreviewAnimation}
+      />
+      
+      <div className="border-t pt-6">
+        {/* Show Container Background Toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <Label>Show Container</Label>
+            <p className="text-xs text-muted-foreground">Add a background card behind this section</p>
+          </div>
+          <Switch
+            checked={section.style_options?.showBackground ?? false}
+            onCheckedChange={(checked) => updateStyleOptions({ showBackground: checked })}
+          />
         </div>
-        <Switch
-          checked={section.style_options?.showBackground ?? false}
-          onCheckedChange={(checked) => updateStyleOptions({ showBackground: checked })}
-        />
       </div>
 
       {/* Container styling options - only show when container is enabled */}

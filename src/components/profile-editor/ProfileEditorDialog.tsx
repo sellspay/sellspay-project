@@ -38,7 +38,7 @@ import { AddSectionPanel } from './AddSectionPanel';
 import { EditSectionDialog } from './EditSectionDialog';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
 import { CreateCollectionInEditor } from './CreateCollectionInEditor';
-import { AnimationPicker, getAnimationStyles, getAnimatedStyles } from './AnimationPicker';
+import { getAnimationStyles, getAnimatedStyles } from './AnimationPicker';
 import EditCollectionDialog from '@/components/profile/EditCollectionDialog';
 import {
   AlertDialog,
@@ -183,14 +183,12 @@ const SortableCollectionCard = memo(({
         !collection.is_visible && 'opacity-40'
       )}
     >
-      {/* Animation picker button - top left */}
-      {onAnimationChange && (
+      {/* Animation indicator badge */}
+      {currentAnimation !== 'none' && (
         <div className="absolute top-2 left-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
-          <AnimationPicker
-            value={currentAnimation as AnimationType}
-            onChange={onAnimationChange}
-            onPreview={handlePreviewAnimation}
-          />
+          <Badge variant="secondary" className="text-xs gap-1">
+            ✨ {currentAnimation}
+          </Badge>
         </div>
       )}
       
@@ -359,13 +357,12 @@ const SortableSectionCard = memo(({
         !section.is_visible && 'opacity-50'
       )}
     >
-      {/* Animation picker button - top left */}
-      {onAnimationChange && (
+      {/* Animation indicator - show selected animation on hover */}
+      {currentAnimation !== 'none' && (
         <div className="absolute top-2 left-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
-          <AnimationPicker
-            value={currentAnimation as AnimationType}
-            onChange={onAnimationChange}
-          />
+          <Badge variant="secondary" className="text-xs gap-1">
+            ✨ {currentAnimation}
+          </Badge>
         </div>
       )}
       
