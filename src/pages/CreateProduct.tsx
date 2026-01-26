@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, X, Loader2, Sparkles, Check, Crown, FolderOpen, Camera } from "lucide-react";
+import { Upload, X, Loader2, Sparkles, Check, Crown, FolderOpen, Camera, Gift, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -691,52 +691,133 @@ export default function CreateProduct() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <Label>Pricing Type</Label>
-              <div className="flex flex-wrap gap-3 mt-2">
-                <Button
+              <Label className="mb-3 block">Pricing Type</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Free Option */}
+                <button
                   type="button"
-                  variant={pricingType === "free" ? "default" : "outline"}
                   onClick={() => {
                     setPricingType("free");
                     setSelectedSubscriptionPlans([]);
                   }}
+                  className={`relative p-4 rounded-xl border-2 transition-all text-left group ${
+                    pricingType === "free"
+                      ? "border-emerald-500/50 bg-gradient-to-br from-emerald-500/10 to-green-500/5"
+                      : "border-border/50 hover:border-emerald-500/30 bg-card/30"
+                  }`}
                 >
-                  Free
-                </Button>
-                <Button
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                      pricingType === "free" ? "bg-emerald-500/20 text-emerald-400" : "bg-muted text-muted-foreground group-hover:text-emerald-400"
+                    }`}>
+                      <Gift className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="font-semibold block">Free</span>
+                      <p className="text-xs text-muted-foreground">No charge</p>
+                    </div>
+                  </div>
+                  {pricingType === "free" && (
+                    <div className="absolute top-2 right-2">
+                      <Check className="w-4 h-4 text-emerald-500" />
+                    </div>
+                  )}
+                </button>
+
+                {/* One-Time Purchase Option */}
+                <button
                   type="button"
-                  variant={pricingType === "paid" ? "default" : "outline"}
                   onClick={() => {
                     setPricingType("paid");
                     setSelectedSubscriptionPlans([]);
                   }}
+                  className={`relative p-4 rounded-xl border-2 transition-all text-left group ${
+                    pricingType === "paid"
+                      ? "border-blue-500/50 bg-gradient-to-br from-blue-500/10 to-cyan-500/5"
+                      : "border-border/50 hover:border-blue-500/30 bg-card/30"
+                  }`}
                 >
-                  One-Time Purchase
-                </Button>
-                <Button
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                      pricingType === "paid" ? "bg-blue-500/20 text-blue-400" : "bg-muted text-muted-foreground group-hover:text-blue-400"
+                    }`}>
+                      <DollarSign className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="font-semibold block">One-Time</span>
+                      <p className="text-xs text-muted-foreground">Single purchase</p>
+                    </div>
+                  </div>
+                  {pricingType === "paid" && (
+                    <div className="absolute top-2 right-2">
+                      <Check className="w-4 h-4 text-blue-500" />
+                    </div>
+                  )}
+                </button>
+
+                {/* Subscription Only Option */}
+                <button
                   type="button"
-                  variant={pricingType === "subscription" ? "default" : "outline"}
                   onClick={() => {
                     setPricingType("subscription");
                     if (profileId) setShowPlanPicker(true);
                   }}
+                  className={`relative p-4 rounded-xl border-2 transition-all text-left group ${
+                    pricingType === "subscription"
+                      ? "border-violet-500/50 bg-gradient-to-br from-violet-500/10 to-purple-500/5"
+                      : "border-border/50 hover:border-violet-500/30 bg-card/30"
+                  }`}
                 >
-                  <Crown className="w-4 h-4 mr-2" />
-                  Subscription Only
-                </Button>
-                <Button
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                      pricingType === "subscription" ? "bg-violet-500/20 text-violet-400" : "bg-muted text-muted-foreground group-hover:text-violet-400"
+                    }`}>
+                      <Crown className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="font-semibold block">Subscription</span>
+                      <p className="text-xs text-muted-foreground">Members only</p>
+                    </div>
+                  </div>
+                  {pricingType === "subscription" && (
+                    <div className="absolute top-2 right-2">
+                      <Check className="w-4 h-4 text-violet-500" />
+                    </div>
+                  )}
+                </button>
+
+                {/* Both Option */}
+                <button
                   type="button"
-                  variant={pricingType === "both" ? "default" : "outline"}
                   onClick={() => {
                     setPricingType("both");
                     if (profileId) setShowPlanPicker(true);
                   }}
+                  className={`relative p-4 rounded-xl border-2 transition-all text-left group ${
+                    pricingType === "both"
+                      ? "border-amber-500/50 bg-gradient-to-br from-amber-500/10 to-yellow-500/5"
+                      : "border-border/50 hover:border-amber-500/30 bg-card/30"
+                  }`}
                 >
-                  <Crown className="w-4 h-4 mr-2" />
-                  Both (One-Time + Subscription)
-                </Button>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                      pricingType === "both" ? "bg-amber-500/20 text-amber-400" : "bg-muted text-muted-foreground group-hover:text-amber-400"
+                    }`}>
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="font-semibold block">Both</span>
+                      <p className="text-xs text-muted-foreground">Buy or subscribe</p>
+                    </div>
+                  </div>
+                  {pricingType === "both" && (
+                    <div className="absolute top-2 right-2">
+                      <Check className="w-4 h-4 text-amber-500" />
+                    </div>
+                  )}
+                </button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-3">
                 {pricingType === "subscription" && "Only users subscribed to one of your plans can access this product."}
                 {pricingType === "both" && "Users can buy once OR get access through their subscription."}
               </p>
