@@ -565,14 +565,26 @@ export function AddSectionPanel({ open, onClose, onAddSection, onPreviewSection 
     if (presetId && onPreviewSection) {
       const template = SECTION_TEMPLATES.find(t => t.type === selectedType);
       if (template) {
+       let content;
+       if (selectedType === 'footer') {
+         if (presetId === 'style3') {
+           content = { text: '© 2026 Your Store. All rights reserved.', showSocialLinks: false, columns: [], socialLinks: [] };
+         } else if (presetId === 'style1') {
+           content = { text: '© 2026 Your Store. All rights reserved.', showSocialLinks: true, columns: [], socialLinks: [] };
+         } else {
+           content = { text: '© 2026 Your Store. All rights reserved.', showSocialLinks: true, columns: [{ id: '1', title: 'Quick Links', links: [{ id: '1', label: 'Home', url: '/' }] }], socialLinks: [] };
+         }
+       } else {
+         content = JSON.parse(JSON.stringify(template.defaultContent));
+       }
         // Create a preview section
         const previewSection: ProfileSection = {
           id: 'preview-temp',
           profile_id: 'preview',
           section_type: selectedType,
           display_order: 999,
-          content: JSON.parse(JSON.stringify(template.defaultContent)),
-          style_options: template.presets.find(p => p.id === presetId)?.styleOptions || {},
+         content: content,
+         style_options: { ...template.presets.find(p => p.id === presetId)?.styleOptions, preset: presetId },
           is_visible: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
