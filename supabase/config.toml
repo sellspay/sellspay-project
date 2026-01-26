@@ -59,3 +59,15 @@ verify_jwt = false
 
 [functions.get-external-accounts]
 verify_jwt = false
+
+[functions.create-paypal-order]
+verify_jwt = false
+
+[functions.capture-paypal-order]
+verify_jwt = false
+
+[functions.register-paypal-seller]
+verify_jwt = false
+
+[functions.create-paypal-payout]
+verify_jwt = false
