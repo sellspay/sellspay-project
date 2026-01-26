@@ -98,34 +98,34 @@ export default function Spotlight() {
   const pastSpotlights = spotlights.slice(1);
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Hero Section - Immersive Premium Design */}
-      <section className="relative min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section className="relative min-h-[60vh] sm:min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Layered Background */}
         <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 via-background to-background" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(45_100%_50%/0.2),transparent)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,hsl(var(--primary)/0.15),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,hsl(45_100%_50%/0.1),transparent_50%)]" />
 
-        {/* Floating Orbs */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/20 rounded-full blur-[128px] animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '2s' }} />
+        {/* Floating Orbs - Hidden on mobile */}
+        <div className="hidden sm:block absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/20 rounded-full blur-[128px] animate-pulse" />
+        <div className="hidden sm:block absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="hidden sm:block absolute top-1/2 right-1/3 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '2s' }} />
 
         {/* Grid Pattern Overlay */}
         <div className="absolute inset-0 bg-[linear-gradient(hsl(45_100%_50%/0.02)_1px,transparent_1px),linear-gradient(90deg,hsl(45_100%_50%/0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
 
-        <div className="relative z-10 mx-auto max-w-5xl text-center">
+        <div className="relative z-10 mx-auto max-w-5xl text-center px-2">
           <Reveal>
             {/* Floating Badge */}
-            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-sm mb-8 hover:bg-amber-500/15 hover:border-amber-500/30 transition-all duration-300 cursor-default">
+            <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-sm mb-6 sm:mb-8 hover:bg-amber-500/15 hover:border-amber-500/30 transition-all duration-300 cursor-default">
               <div className="relative">
-                <Trophy className="h-4 w-4 text-amber-500" />
+                <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500" />
                 <div className="absolute inset-0 animate-ping">
-                  <Trophy className="h-4 w-4 text-amber-500 opacity-50" />
+                  <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 opacity-50" />
                 </div>
               </div>
-              <span className="text-sm font-medium bg-gradient-to-r from-amber-500 to-amber-300 bg-clip-text text-transparent">
+              <span className="text-xs sm:text-sm font-medium bg-gradient-to-r from-amber-500 to-amber-300 bg-clip-text text-transparent">
                 Celebrating Excellence
               </span>
             </div>
@@ -133,22 +133,22 @@ export default function Spotlight() {
 
           <Reveal delay={100}>
             {/* Icon - Floating Style */}
-            <div className="mb-10 flex justify-center">
+            <div className="mb-6 sm:mb-10 flex justify-center">
               <div className="relative group">
                 {/* Glow layers */}
-                <div className="absolute inset-0 blur-[60px] bg-amber-500/50 rounded-full scale-150 group-hover:scale-[1.75] transition-transform duration-700" />
-                <div className="absolute inset-0 blur-3xl bg-gradient-to-br from-amber-500 to-amber-600 opacity-40 rounded-full scale-125 group-hover:opacity-60 transition-all duration-500" />
+                <div className="absolute inset-0 blur-[40px] sm:blur-[60px] bg-amber-500/50 rounded-full scale-125 sm:scale-150 group-hover:scale-[1.75] transition-transform duration-700" />
+                <div className="absolute inset-0 blur-2xl sm:blur-3xl bg-gradient-to-br from-amber-500 to-amber-600 opacity-40 rounded-full scale-110 sm:scale-125 group-hover:opacity-60 transition-all duration-500" />
 
                 {/* Main Icon Container */}
-                <div className="relative bg-gradient-to-br from-amber-500 to-amber-600 rounded-3xl p-8 shadow-2xl shadow-amber-500/30 group-hover:shadow-amber-500/50 transition-all duration-500 group-hover:scale-105">
-                  <Star className="h-16 w-16 text-white fill-white drop-shadow-lg" />
+                <div className="relative bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl shadow-amber-500/30 group-hover:shadow-amber-500/50 transition-all duration-500 group-hover:scale-105">
+                  <Star className="h-10 w-10 sm:h-16 sm:w-16 text-white fill-white drop-shadow-lg" />
                 </div>
               </div>
             </div>
           </Reveal>
 
           <Reveal delay={200}>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-foreground mb-6 tracking-tight">
+            <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold text-foreground mb-4 sm:mb-6 tracking-tight">
               Creator{' '}
               <span className="relative inline-block">
                 <span className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 bg-clip-text text-transparent bg-[length:200%_auto] animate-[gradient_3s_linear_infinite]">
@@ -160,30 +160,30 @@ export default function Spotlight() {
           </Reveal>
 
           <Reveal delay={300}>
-            <p className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto mb-12 leading-relaxed">
+            <p className="text-base sm:text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto mb-8 sm:mb-12 leading-relaxed px-2">
               Discover the inspiring journeys of creators who've built successful businesses
               <span className="text-foreground font-medium"> and made an impact in our community.</span>
             </p>
           </Reveal>
 
           <Reveal delay={400}>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
               <Button
                 size="lg"
-                className="group relative bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-10 py-7 text-lg font-semibold rounded-2xl shadow-2xl shadow-amber-500/30 hover:shadow-amber-500/50 transition-all duration-500 hover:scale-105 overflow-hidden"
+                className="group relative bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-6 sm:px-10 py-5 sm:py-7 text-base sm:text-lg font-semibold rounded-xl sm:rounded-2xl shadow-2xl shadow-amber-500/30 hover:shadow-amber-500/50 transition-all duration-500 hover:scale-105 overflow-hidden w-full sm:w-auto"
                 onClick={() => setNominateDialogOpen(true)}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                <Crown className="mr-3 h-5 w-5" />
+                <Crown className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
                 Nominate a Creator
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </div>
           </Reveal>
         </div>
 
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+        {/* Scroll Indicator - Hidden on mobile */}
+        <div className="hidden sm:block absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
           <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-2">
             <div className="w-1 h-2 bg-muted-foreground/50 rounded-full animate-pulse" />
           </div>
@@ -192,26 +192,26 @@ export default function Spotlight() {
 
       {/* Featured Creator - Premium Design */}
       {isLoading ? (
-        <section className="relative py-24 px-4 sm:px-6 lg:px-8">
+        <section className="relative py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
           <div className="relative mx-auto max-w-5xl text-center">
             <p className="text-muted-foreground">Loading featured creator...</p>
           </div>
         </section>
       ) : featuredCreator ? (
-        <section className="relative py-24 px-4 sm:px-6 lg:px-8">
+        <section className="relative py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
           {/* Section Divider Gradient */}
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
 
-          {/* Background Effects */}
+          {/* Background Effects - Hidden on mobile */}
           <div className="absolute inset-0 bg-gradient-to-b from-background via-amber-500/5 to-background" />
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-[128px]" />
+          <div className="hidden sm:block absolute left-0 top-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-[128px]" />
 
           <div className="relative mx-auto max-w-5xl">
             <Reveal>
-              <div className="text-center mb-12">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 mb-6">
-                  <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                  <span className="text-sm font-medium text-amber-500">Featured Creator</span>
+              <div className="text-center mb-8 sm:mb-12">
+                <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-amber-500/10 border border-amber-500/20 mb-4 sm:mb-6">
+                  <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 fill-amber-500" />
+                  <span className="text-xs sm:text-sm font-medium text-amber-500">Featured Creator</span>
                 </div>
               </div>
             </Reveal>
@@ -225,62 +225,62 @@ export default function Spotlight() {
 
                   <div className="grid md:grid-cols-3 gap-0">
                     {/* Creator Info */}
-                    <div className="p-10 md:p-12 md:col-span-2">
-                      <div className="flex items-center gap-5 mb-8">
+                    <div className="p-6 sm:p-10 md:p-12 md:col-span-2">
+                      <div className="flex items-center gap-3 sm:gap-5 mb-6 sm:mb-8">
                         <div className="relative">
                           <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-amber-500/50 to-amber-400/50 blur" />
-                          <Avatar className="relative h-24 w-24 border-4 border-amber-500/30">
+                          <Avatar className="relative h-16 w-16 sm:h-24 sm:w-24 border-4 border-amber-500/30">
                             <AvatarImage src={featuredCreator.profile?.avatar_url || ''} />
-                            <AvatarFallback className="text-3xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 text-amber-500">
+                            <AvatarFallback className="text-xl sm:text-3xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 text-amber-500">
                               {featuredCreator.profile?.full_name?.charAt(0) || '?'}
                             </AvatarFallback>
                           </Avatar>
                         </div>
                         <div>
-                          <div className="flex items-center gap-3 mb-1">
-                            <h2 className="text-3xl font-bold text-foreground">
+                          <div className="flex items-center gap-2 sm:gap-3 mb-1">
+                            <h2 className="text-xl sm:text-3xl font-bold text-foreground">
                               {featuredCreator.profile?.full_name}
                             </h2>
                             {featuredCreator.profile?.verified && (
                               <VerifiedBadge size="md" isOwner={featuredCreator.profile?.isAdmin} />
                             )}
                           </div>
-                          <p className="text-muted-foreground text-lg">@{featuredCreator.profile?.username}</p>
+                          <p className="text-muted-foreground text-sm sm:text-lg">@{featuredCreator.profile?.username}</p>
                         </div>
                       </div>
 
-                      <h3 className="text-2xl font-bold text-foreground mb-4">
+                      <h3 className="text-lg sm:text-2xl font-bold text-foreground mb-3 sm:mb-4">
                         {featuredCreator.headline}
                       </h3>
 
-                      <p className="text-muted-foreground leading-relaxed text-lg mb-8">
+                      <p className="text-muted-foreground leading-relaxed text-sm sm:text-lg mb-6 sm:mb-8">
                         {featuredCreator.story}
                       </p>
 
                       {featuredCreator.achievement && (
-                        <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-500/10 border border-amber-500/20 mb-8">
-                          <Trophy className="h-5 w-5 text-amber-500" />
-                          <span className="font-semibold text-amber-500">{featuredCreator.achievement}</span>
+                        <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-500/10 border border-amber-500/20 mb-6 sm:mb-8">
+                          <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
+                          <span className="font-semibold text-amber-500 text-sm sm:text-base">{featuredCreator.achievement}</span>
                         </div>
                       )}
 
-                      <div className="flex gap-8 mb-8">
-                        <div className="flex items-center gap-3">
-                          <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
-                            <Package className="h-6 w-6 text-primary" />
+                      <div className="flex flex-wrap gap-4 sm:gap-8 mb-6 sm:mb-8">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
+                            <Package className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
                           </div>
                           <div>
-                            <span className="text-2xl font-bold text-foreground">{featuredCreator.products_count}</span>
-                            <p className="text-sm text-muted-foreground">Products</p>
+                            <span className="text-lg sm:text-2xl font-bold text-foreground">{featuredCreator.products_count}</span>
+                            <p className="text-xs sm:text-sm text-muted-foreground">Products</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
-                            <Users className="h-6 w-6 text-primary" />
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
+                            <Users className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
                           </div>
                           <div>
-                            <span className="text-2xl font-bold text-foreground">{featuredCreator.followers_count.toLocaleString()}</span>
-                            <p className="text-sm text-muted-foreground">Followers</p>
+                            <span className="text-lg sm:text-2xl font-bold text-foreground">{featuredCreator.followers_count.toLocaleString()}</span>
+                            <p className="text-xs sm:text-sm text-muted-foreground">Followers</p>
                           </div>
                         </div>
                       </div>
@@ -288,7 +288,7 @@ export default function Spotlight() {
                       {featuredCreator.profile?.username && (
                         <Button
                           size="lg"
-                          className="rounded-xl bg-gradient-to-r from-primary to-primary/90 shadow-lg shadow-primary/25"
+                          className="rounded-lg sm:rounded-xl bg-gradient-to-r from-primary to-primary/90 shadow-lg shadow-primary/25 w-full sm:w-auto"
                           asChild
                         >
                           <Link to={`/@${featuredCreator.profile.username}`}>
@@ -301,9 +301,9 @@ export default function Spotlight() {
 
                     {/* Quote Section */}
                     {featuredCreator.quote && (
-                      <div className="p-10 md:p-12 bg-gradient-to-br from-amber-500/10 to-amber-500/5 flex flex-col justify-center border-t md:border-t-0 md:border-l border-amber-500/20">
-                        <Quote className="h-12 w-12 text-amber-500/30 mb-6" />
-                        <blockquote className="text-xl text-foreground italic leading-relaxed">
+                      <div className="p-6 sm:p-10 md:p-12 bg-gradient-to-br from-amber-500/10 to-amber-500/5 flex flex-col justify-center border-t md:border-t-0 md:border-l border-amber-500/20">
+                        <Quote className="h-8 w-8 sm:h-12 sm:w-12 text-amber-500/30 mb-4 sm:mb-6" />
+                        <blockquote className="text-base sm:text-xl text-foreground italic leading-relaxed">
                           "{featuredCreator.quote}"
                         </blockquote>
                       </div>
@@ -317,20 +317,20 @@ export default function Spotlight() {
 
       {/* Past Spotlights Grid - Premium Design */}
       {pastSpotlights.length > 0 && (
-        <section className="relative py-24 px-4 sm:px-6 lg:px-8">
+        <section className="relative py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
           {/* Background */}
           <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/30 to-background" />
-          <div className="absolute right-0 top-1/3 w-80 h-80 bg-primary/10 rounded-full blur-[100px]" />
+          <div className="hidden sm:block absolute right-0 top-1/3 w-80 h-80 bg-primary/10 rounded-full blur-[100px]" />
 
           <div className="relative mx-auto max-w-6xl">
             <Reveal>
-              <div className="text-center mb-12">
-                <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Past Spotlights</h2>
-                <p className="text-muted-foreground text-lg">Creators who've made their mark</p>
+              <div className="text-center mb-8 sm:mb-12">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4">Past Spotlights</h2>
+                <p className="text-muted-foreground text-sm sm:text-lg">Creators who've made their mark</p>
               </div>
             </Reveal>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {pastSpotlights.map((spotlight, index) => (
                 <Reveal key={spotlight.id} delay={index * 100}>
                   <div
