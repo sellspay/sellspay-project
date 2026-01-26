@@ -255,7 +255,7 @@ export function ToolsSidebar({
       </div>
 
       {/* Tools List - Horizontal scroll on mobile, vertical on desktop */}
-      <div className="flex gap-2 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0 lg:space-y-1.5 lg:gap-0 scrollbar-thin">
+      <div className="flex gap-2 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0 lg:space-y-1.5 lg:gap-0 scrollbar-hide -mx-3 px-3 sm:-mx-0 sm:px-0 touch-pan-x">
         {filteredTools.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground w-full">
             <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />

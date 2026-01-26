@@ -14,10 +14,24 @@ export default function Tools() {
     <div className="min-h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] overflow-hidden">
       <div className="container mx-auto px-3 sm:px-4 h-full py-3 sm:py-4">
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-full">
-          {/* Sidebar - Compact on mobile, full on desktop */}
+          {/* Sidebar - Horizontal scroll on mobile, vertical scroll on desktop */}
           <div className="lg:w-80 flex-shrink-0 lg:h-full lg:overflow-hidden">
-            <ScrollArea className="h-auto lg:h-full">
-              <div className="lg:pr-4 pb-2 lg:pb-4">
+            {/* Mobile: No ScrollArea wrapper to allow native horizontal scroll */}
+            <div className="lg:hidden pb-2">
+              <ToolsSidebar
+                selectedTool={selectedTool}
+                onSelectTool={setSelectedTool}
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                creditBalance={creditBalance}
+                isLoadingCredits={isLoading}
+              />
+            </div>
+            {/* Desktop: ScrollArea for vertical scrolling */}
+            <ScrollArea className="hidden lg:block h-full">
+              <div className="pr-4 pb-4">
                 <ToolsSidebar
                   selectedTool={selectedTool}
                   onSelectTool={setSelectedTool}
