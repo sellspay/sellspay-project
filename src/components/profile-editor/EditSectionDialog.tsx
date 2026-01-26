@@ -1850,7 +1850,7 @@ function FooterEditor({
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label>Footer Columns ({content.columns.length}/4)</Label>
+          <Label>Footer Columns ({content.columns.length}/7)</Label>
         </div>
 
         {content.columns.map((column) => (
@@ -1915,7 +1915,7 @@ function FooterEditor({
           variant="outline"
           size="sm"
           onClick={addColumn}
-          disabled={content.columns.length >= 4}
+          disabled={content.columns.length >= 7}
           className="w-full gap-2"
         >
           <Plus className="w-4 h-4" />
