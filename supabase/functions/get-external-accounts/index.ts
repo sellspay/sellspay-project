@@ -53,30 +53,21 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    // Fetch user profile to get stripe_account_id
-    const { data: profile, error: profileError } = await supabaseClient
-      .from("profiles")
-      .select("stripe_account_id, stripe_onboarding_complete")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (profileError) throw new Error(`Profile error: ${profileError.message}`);
+    // Use service role to access private.seller_config via RPC
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseServiceKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
     
-    if (!profile) {
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          accounts: [], 
-          connected: false,
-          message: "No profile found" 
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        }
-      );
-    }
-    if (!profile?.stripe_account_id) {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Fetch seller config using the secure RPC function
+    const { data: sellerConfig, error: configError } = await supabaseAdmin
+      .rpc("get_seller_config", { p_user_id: user.id });
+
+    if (configError) throw new Error(`Seller config error: ${configError.message}`);
+    
+    const config = sellerConfig?.[0];
+    
+    if (!config || !config.stripe_account_id) {
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -90,14 +81,14 @@ serve(async (req) => {
         }
       );
     }
-    logStep("Profile found", { stripeAccountId: profile.stripe_account_id });
+    logStep("Seller config found", { stripeAccountId: config.stripe_account_id });
 
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Fetch external accounts (bank accounts) for the connected account
     const externalAccounts = await stripe.accounts.listExternalAccounts(
-      profile.stripe_account_id,
+      config.stripe_account_id,
       { object: "bank_account", limit: 10 }
     );
     logStep("External accounts fetched", { count: externalAccounts.data.length });
@@ -133,7 +124,7 @@ serve(async (req) => {
         success: true, 
         accounts,
         connected: true,
-        onboardingComplete: profile.stripe_onboarding_complete ?? false,
+        onboardingComplete: config.stripe_onboarding_complete ?? false,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
