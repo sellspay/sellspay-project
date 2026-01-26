@@ -38,6 +38,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { SellerEmailSettings } from "@/components/settings/SellerEmailSettings";
 import { PayoutMethodSelector } from "@/components/settings/PayoutMethodSelector";
 import BannerPositionEditor from "@/components/settings/BannerPositionEditor";
+import { ConnectionsTab } from "@/components/settings/ConnectionsTab";
 
 // Social platform detection
 const detectSocialPlatform = (url: string): { platform: string; icon: React.ReactNode } | null => {
@@ -909,13 +910,17 @@ export default function Settings() {
       <h1 className="text-3xl font-bold mb-8">Settings</h1>
 
       <Tabs defaultValue="profile" className="space-y-8">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 gap-1 h-auto p-1">
+        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 gap-1 h-auto p-1">
           <TabsTrigger value="profile" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
             <User className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">Profile</span>
           </TabsTrigger>
-          <TabsTrigger value="socials" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
+          <TabsTrigger value="connections" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
             <Link2 className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">Connections</span>
+          </TabsTrigger>
+          <TabsTrigger value="socials" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
+            <ExternalLink className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">Socials</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
@@ -1264,6 +1269,11 @@ export default function Settings() {
 
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Connections Tab */}
+        <TabsContent value="connections">
+          <ConnectionsTab />
         </TabsContent>
 
         {/* Notifications Tab */}
