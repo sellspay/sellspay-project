@@ -2027,6 +2027,10 @@ export type Database = {
       }
     }
     Functions: {
+      disconnect_seller_paypal: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       get_active_spotlights: {
         Args: never
         Returns: {
@@ -2061,6 +2065,8 @@ export type Database = {
         Returns: {
           payoneer_payee_id: string
           payoneer_status: string
+          paypal_email: string
+          paypal_payout_enabled: boolean
           stripe_account_id: string
           stripe_onboarding_complete: boolean
         }[]
@@ -2095,6 +2101,10 @@ export type Database = {
       store_seller_resend_key: {
         Args: { p_api_key: string; p_support_email: string }
         Returns: Json
+      }
+      update_seller_paypal_config: {
+        Args: { p_paypal_email: string; p_user_id: string }
+        Returns: undefined
       }
     }
     Enums: {

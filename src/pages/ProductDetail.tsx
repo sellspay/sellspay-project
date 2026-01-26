@@ -21,6 +21,7 @@ import { getFileTypeIcon, getFileTypeLabel } from "@/lib/fileTypeIcons";
 import { SubscriptionPromotion } from "@/components/product/SubscriptionPromotion";
 import { SubscriptionBadge } from "@/components/product/SubscriptionBadge";
 import { useProductViewTracking } from "@/hooks/useViewTracking";
+import { PaymentMethodDialog } from "@/components/checkout/PaymentMethodDialog";
 
 interface Product {
   id: string;
@@ -150,6 +151,7 @@ export default function ProductDetail() {
   const [isSaved, setIsSaved] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
   const [downloadLimitInfo, setDownloadLimitInfo] = useState<{ remaining: number; daysUntilReset?: number } | null>(null);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   
   // Subscription benefits state
   const [planBenefits, setPlanBenefits] = useState<{
@@ -1163,7 +1165,7 @@ export default function ProductDetail() {
     }
   };
 
-  const handlePurchase = async () => {
+  const handlePurchase = () => {
     if (!user) {
       toast.error("Please sign in to purchase");
       return;
@@ -1171,28 +1173,8 @@ export default function ProductDetail() {
 
     if (!product) return;
 
-    setPurchasing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-        body: { product_id: product.id },
-      });
-
-      if (error) throw error;
-
-      if (data?.url) {
-        // Open in new tab to avoid iframe redirect issues
-        window.open(data.url, "_blank");
-        toast.success("Checkout opened in a new tab");
-      } else {
-        throw new Error("No checkout URL returned");
-      }
-    } catch (error) {
-      console.error("Purchase error:", error);
-      const message = error instanceof Error ? error.message : "Failed to start checkout";
-      toast.error(message);
-    } finally {
-      setPurchasing(false);
-    }
+    // Open payment method dialog
+    setShowPaymentDialog(true);
   };
 
   const getYouTubeEmbedUrl = (url: string | null) => {
@@ -2156,6 +2138,18 @@ export default function ProductDetail() {
         onFollow={handleFollowCreator}
         isFollowing={isFollowingCreator}
       />
+
+      {/* Payment Method Dialog */}
+      {product && (
+        <PaymentMethodDialog
+          open={showPaymentDialog}
+          onOpenChange={setShowPaymentDialog}
+          productId={product.id}
+          productName={product.name}
+          priceCents={product.price_cents || 0}
+          currency={product.currency || "USD"}
+        />
+      )}
     </div>
   );
 }
