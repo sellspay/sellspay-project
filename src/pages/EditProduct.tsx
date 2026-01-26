@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import VideoTrimmer from "@/components/product/VideoTrimmer";
 import VideoFrameSelector from "@/components/product/VideoFrameSelector";
+import UploadProgressOverlay from "@/components/product/UploadProgressOverlay";
+import { useFileUploadProgress, validateTotalFileSize, formatBytes, MAX_PRODUCT_SIZE_BYTES } from "@/hooks/useFileUploadProgress";
 
 const productTypes = [
   { value: "preset", label: "Preset Pack" },
@@ -78,8 +80,12 @@ export default function EditProduct() {
   const { user } = useAuth();
   const navigate = useNavigate();
   
+  // Upload progress hook
+  const { progress: uploadProgress, uploadFiles, resetProgress, setPhase } = useFileUploadProgress();
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -115,13 +121,18 @@ export default function EditProduct() {
   const [trimEnd, setTrimEnd] = useState<number | null>(null);
   const [showFrameSelector, setShowFrameSelector] = useState(false);
   
-  // Publishing overlay states
-  const [publishingStep, setPublishingStep] = useState(0);
-  
   // Drag and drop refs
   const fileDropRef = useRef<HTMLDivElement>(null);
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const [attachmentsToRemove, setAttachmentsToRemove] = useState<string[]>([]);
+  
+  // Compute total file size for validation (existing + new - removed)
+  const visibleExistingSize = existingAttachments
+    .filter(att => !attachmentsToRemove.includes(att.path))
+    .reduce((acc, att) => acc + (att.size || 0), 0);
+  const newFilesSize = newDownloadFiles.reduce((acc, f) => acc + f.size, 0);
+  const totalFileSize = visibleExistingSize + newFilesSize;
+  const isOverSizeLimit = totalFileSize > MAX_PRODUCT_SIZE_BYTES;
 
   useEffect(() => {
     if (id && user) {
@@ -407,12 +418,24 @@ export default function EditProduct() {
       return;
     }
 
+    // Validate 5GB file size limit
+    if (newDownloadFiles.length > 0) {
+      const validation = validateTotalFileSize(newDownloadFiles);
+      if (!validation.valid) {
+        toast.error(validation.message);
+        return;
+      }
+    }
+
     setSaving(true);
-    if (publish) setPublishingStep(0);
+    if (publish) {
+      setIsPublishing(true);
+      resetProgress();
+    }
 
     try {
       // Get user's profile
-      const { data: profile, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("id")
         .eq("user_id", user.id)
@@ -422,16 +445,13 @@ export default function EditProduct() {
 
       let coverImageUrl: string | null = existingCoverUrl;
       let previewVideoPath: string | null = existingPreviewVideoPath;
-      let downloadUrl: string | null = existingDownloadUrl;
 
-      if (publish) setPublishingStep(1); // Uploading media
-      
-      // Handle cover image
+      // Handle cover image (small file, use standard upload)
       if (removeCover) {
         coverImageUrl = null;
       } else if (coverImage) {
         const ext = coverImage.name.split(".").pop();
-        const path = `covers/${profile.id}/${Date.now()}.${ext}`;
+        const path = `covers/${profileData.id}/${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("product-media")
           .upload(path, coverImage);
@@ -445,12 +465,12 @@ export default function EditProduct() {
         coverImageUrl = publicUrl.publicUrl;
       }
 
-      // Handle preview video
+      // Handle preview video (small file, use standard upload)
       if (removePreviewVideo) {
         previewVideoPath = null;
       } else if (previewVideo) {
         const ext = previewVideo.name.split(".").pop();
-        previewVideoPath = `previews/${profile.id}/${Date.now()}.${ext}`;
+        previewVideoPath = `previews/${profileData.id}/${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("product-media")
           .upload(previewVideoPath, previewVideo, {
@@ -464,34 +484,36 @@ export default function EditProduct() {
         }
       }
 
-      if (publish) setPublishingStep(2); // Processing files
-      
       // Handle attachments - combine existing (minus removed) with new uploads
       let finalAttachments: { name: string; path: string; size: number }[] = [];
       
       // Keep existing attachments that weren't marked for removal
       finalAttachments = existingAttachments.filter(att => !attachmentsToRemove.includes(att.path));
       
-      // Upload new files
-      for (const file of newDownloadFiles) {
-        const path = `${user.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._()-]/g, '_')}`;
-        const { error: uploadError } = await supabase.storage
-          .from("product-files")
-          .upload(path, file);
+      // Upload new files with real progress tracking
+      if (newDownloadFiles.length > 0) {
+        const uploadResult = await uploadFiles(
+          newDownloadFiles,
+          'product-files',
+          (file, index) => `${user.id}/${Date.now()}-${index}-${file.name.replace(/[^a-zA-Z0-9._()-]/g, '_')}`
+        );
 
-        if (uploadError) {
-          console.error('Download file upload error:', uploadError);
-          throw uploadError;
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || 'Failed to upload files');
         }
 
-        finalAttachments.push({
-          name: file.name,
-          path: path,
-          size: file.size,
-        });
+        // Add uploaded files to attachments
+        for (let i = 0; i < newDownloadFiles.length; i++) {
+          finalAttachments.push({
+            name: newDownloadFiles[i].name,
+            path: uploadResult.paths[i],
+            size: newDownloadFiles[i].size,
+          });
+        }
       }
-      
-      if (publish) setPublishingStep(3); // Verifying content
+
+      // Processing phase
+      setPhase('processing');
       
       // For backward compatibility, set download_url and original_filename to first attachment
       let downloadUrlValue: string | null = null;
@@ -514,12 +536,12 @@ export default function EditProduct() {
         if (slugCheck) {
           toast.error("This URL slug is already taken. Please choose another.");
           setSaving(false);
+          setIsPublishing(false);
+          resetProgress();
           return;
         }
       }
 
-      if (publish) setPublishingStep(4); // Updating product
-      
       // Update product
       const priceCents = (pricingType === "free" || pricingType === "subscription") ? 0 : Math.round(parseFloat(price) * 100);
       
@@ -554,8 +576,9 @@ export default function EditProduct() {
 
       if (error) throw error;
 
+      // Done phase
       if (publish) {
-        setPublishingStep(5); // Done!
+        setPhase('done');
         await new Promise(resolve => setTimeout(resolve, 1200));
       }
       
@@ -566,6 +589,8 @@ export default function EditProduct() {
       toast.error("Failed to update product");
     } finally {
       setSaving(false);
+      setIsPublishing(false);
+      resetProgress();
     }
   };
 
@@ -591,57 +616,12 @@ export default function EditProduct() {
     );
   }
 
-  // Publishing overlay component
-  const PublishingOverlay = () => {
-    const steps = [
-      { label: "Uploading media", icon: "📤" },
-      { label: "Processing files", icon: "⚙️" },
-      { label: "Verifying content", icon: "✅" },
-      { label: "Updating product", icon: "🎨" },
-      { label: "Finalizing", icon: "🚀" },
-      { label: "Done!", icon: "🎉" },
-    ];
-    
-    const progress = ((publishingStep + 1) / steps.length) * 100;
-    
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-md">
-        <div className="w-full max-w-md mx-4 text-center">
-          <div className="mb-8">
-            <div className="text-6xl mb-4 animate-bounce">{steps[publishingStep]?.icon}</div>
-            <h2 className="text-2xl font-bold mb-2">{steps[publishingStep]?.label}</h2>
-            <p className="text-muted-foreground">Please wait...</p>
-          </div>
-          
-          <div className="relative h-2 bg-secondary rounded-full overflow-hidden mb-4">
-            <div 
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-accent transition-all duration-500 ease-out"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          
-          <p className="text-sm text-muted-foreground">{Math.round(progress)}% complete</p>
-          
-          <div className="mt-6 flex justify-center gap-2">
-            {steps.map((step, i) => (
-              <div
-                key={i}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  i <= publishingStep ? 'bg-primary' : 'bg-secondary'
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div className={`container mx-auto px-4 py-8 max-w-3xl transition-all duration-500 ${isDeleted ? 'opacity-0 scale-95 translate-y-4' : 'opacity-100 scale-100'}`}>
-      {/* Publishing overlay */}
-      {saving && publishingStep >= 0 && <PublishingOverlay />}
+    <>
+      {/* Upload progress overlay */}
+      <UploadProgressOverlay isVisible={isPublishing} progress={uploadProgress} isEdit />
       
+      <div className={`container mx-auto px-4 py-8 max-w-3xl transition-all duration-500 ${isDeleted ? 'opacity-0 scale-95 translate-y-4' : 'opacity-100 scale-100'}`}>
       {/* Deletion overlay */}
       {isDeleted && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in">
@@ -1058,8 +1038,24 @@ export default function EditProduct() {
             <div>
               <Label>Product Files</Label>
               <p className="text-xs text-muted-foreground mb-2">
-                Upload multiple files (ZIP, RAR, 7z, source files, etc.) - stored securely and only accessible to buyers/subscribers
+                Upload multiple files. Maximum 5GB total per product.
               </p>
+              
+              {/* File size warning */}
+              {(getVisibleExistingAttachments().length > 0 || newDownloadFiles.length > 0) && (
+                <div className={`mb-3 p-3 rounded-lg text-sm ${isOverSizeLimit ? 'bg-destructive/10 border border-destructive/30' : 'bg-secondary/30'}`}>
+                  <div className="flex justify-between items-center">
+                    <span className={isOverSizeLimit ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                      Total: {formatBytes(totalFileSize)} / 5 GB
+                    </span>
+                    {isOverSizeLimit && (
+                      <span className="text-destructive text-xs font-medium">
+                        Exceeds limit
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="mt-2 space-y-2">
                 {/* List of existing files (not marked for removal) */}
                 {getVisibleExistingAttachments().length > 0 && (
@@ -1163,7 +1159,7 @@ export default function EditProduct() {
             type="button"
             variant="outline"
             onClick={(e) => handleSubmit(e, false)}
-            disabled={saving || loading}
+            disabled={saving || loading || isOverSizeLimit}
             className="flex-1"
           >
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
@@ -1172,7 +1168,7 @@ export default function EditProduct() {
           <Button
             type="button"
             onClick={(e) => handleSubmit(e, true)}
-            disabled={saving || loading}
+            disabled={saving || loading || isOverSizeLimit}
             className="flex-1 bg-gradient-to-r from-primary to-accent"
           >
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
@@ -1180,7 +1176,7 @@ export default function EditProduct() {
           </Button>
         </div>
       </form>
-    </div>
+      </div>
+    </>
   );
 }
-
