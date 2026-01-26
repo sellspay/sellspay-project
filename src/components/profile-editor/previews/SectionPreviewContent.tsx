@@ -1,10 +1,10 @@
-import React, { memo, useState, useEffect } from 'react';
+import React, { memo, useState, useEffect, useRef } from 'react';
 import { ProfileSection, TextContent, ImageContent, ImageWithTextContent, GalleryContent, VideoContent, CollectionContent, AboutMeContent, HeadlineContent, SlidingBannerContent, DividerContent, TestimonialsContent, FAQContent, NewsletterContent, SlideshowContent, BasicListContent, FeaturedProductContent, LogoListContent, ContactUsContent, FooterContent } from '../types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { ChevronRight, ChevronLeft, Quote, Mail, Send } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Quote, Mail, Send, Star, Instagram, Youtube, Twitter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getFontClassName, getCustomFontStyle, useCustomFont } from '../hooks/useCustomFont';
 
@@ -300,7 +300,7 @@ const ImageWithTextPreview = memo(({ section }: { section: ProfileSection }) => 
 });
 ImageWithTextPreview.displayName = 'ImageWithTextPreview';
 
-// Gallery Preview - Updated to handle presets (Issue #5 fix)
+// Gallery Preview - Updated to handle presets
 const GalleryPreview = memo(({ section }: { section: ProfileSection }) => {
   const content = section.content as GalleryContent;
   const preset = section.style_options?.preset || 'style1';
@@ -438,19 +438,95 @@ const VideoPreview = memo(({ content }: { content: VideoContent }) => {
 });
 VideoPreview.displayName = 'VideoPreview';
 
-// Collection Preview
-const CollectionPreview = memo(({ content }: { content: CollectionContent }) => (
-  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-    {[1, 2, 3, 4].map((i) => (
-      <div key={i} className="aspect-square bg-muted rounded-lg flex items-center justify-center">
-        <span className="text-muted-foreground text-sm">Product {i}</span>
+// Collection Preview - Fixed to show 4 columns and support slider
+const CollectionPreview = memo(({ section }: { section: ProfileSection }) => {
+  const content = section.content as CollectionContent;
+  const preset = section.style_options?.preset;
+  const displayStyle = content.displayStyle || (preset === 'style2' ? 'slider' : 'grid');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Show placeholder products (4 items)
+  const placeholderProducts = [1, 2, 3, 4];
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (!scrollRef.current) return;
+    const scrollAmount = 280;
+    scrollRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  };
+
+  // Slider layout
+  if (displayStyle === 'slider') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            {content.collectionId ? 'Collection products' : 'Select a collection'}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              onClick={() => scroll('left')}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              onClick={() => scroll('right')}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <div
+          ref={scrollRef}
+          className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 -mx-2 px-2"
+        >
+          {placeholderProducts.map((i) => (
+            <div key={i} className="flex-shrink-0 w-[200px]">
+              <div className="aspect-video bg-muted rounded-lg flex items-center justify-center mb-2">
+                <span className="text-muted-foreground text-sm">Product {i}</span>
+              </div>
+              <div className="h-3 bg-muted/50 rounded w-3/4 mb-1" />
+              <div className="h-3 bg-primary/20 rounded w-1/4" />
+            </div>
+          ))}
+        </div>
       </div>
-    ))}
-  </div>
-));
+    );
+  }
+
+  // Grid layout (4 columns)
+  return (
+    <div className="space-y-4">
+      {!content.collectionId && (
+        <p className="text-sm text-muted-foreground text-center mb-2">
+          Select a collection to display products
+        </p>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {placeholderProducts.map((i) => (
+          <div key={i}>
+            <div className="aspect-video bg-muted rounded-lg flex items-center justify-center mb-2">
+              <span className="text-muted-foreground text-sm">Product {i}</span>
+            </div>
+            <div className="h-3 bg-muted/50 rounded w-3/4 mb-1" />
+            <div className="h-3 bg-primary/20 rounded w-1/4" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
 CollectionPreview.displayName = 'CollectionPreview';
 
-// About Me Preview - Updated to support custom image (Issue #3 fix)
+// About Me Preview - Updated to support custom image
 const AboutMePreview = memo(({ content }: { content: AboutMeContent }) => (
   <div className="flex flex-col md:flex-row gap-6 items-start">
     {content.showAvatar && (
@@ -669,27 +745,53 @@ const DividerPreview = memo(({ content }: { content: DividerContent }) => {
 });
 DividerPreview.displayName = 'DividerPreview';
 
-// Testimonials Preview
+// Testimonials Preview - with star ratings and improved layout
 const TestimonialsPreview = memo(({ content }: { content: TestimonialsContent }) => {
-  if (content.testimonials.length === 0) {
+  const testimonials = content.testimonials || [];
+  
+  if (testimonials.length === 0) {
     return (
       <div className="text-center py-8">
         {content.title && (
           <h3 className="text-xl font-semibold mb-4">{content.title}</h3>
         )}
-        <p className="text-muted-foreground">No testimonials added yet</p>
+        <p className="text-muted-foreground">Add testimonials to display customer reviews</p>
       </div>
     );
   }
+  
+  // Render star rating
+  const renderStars = (rating?: number) => {
+    if (!rating) return null;
+    return (
+      <div className="flex gap-0.5 mb-2">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={cn(
+              "w-4 h-4",
+              star <= rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"
+            )}
+          />
+        ))}
+      </div>
+    );
+  };
   
   return (
     <div>
       {content.title && (
         <h3 className="text-xl font-semibold mb-6 text-center">{content.title}</h3>
       )}
-      <div className={`grid gap-6 ${content.layout === 'grid' ? 'md:grid-cols-2 lg:grid-cols-3' : ''}`}>
-        {content.testimonials.map((testimonial) => (
+      <div className={cn(
+        "grid gap-6",
+        content.layout === 'grid' && 'md:grid-cols-2 lg:grid-cols-3',
+        content.layout === 'grid-6' && 'md:grid-cols-3 lg:grid-cols-6',
+        content.layout === 'stacked' && 'max-w-2xl mx-auto'
+      )}>
+        {testimonials.map((testimonial) => (
           <div key={testimonial.id} className="bg-background/50 rounded-lg p-6 border">
+            {renderStars(testimonial.rating)}
             <Quote className="h-8 w-8 text-muted-foreground/30 mb-4" />
             <p className="text-foreground mb-4">{testimonial.quote}</p>
             <div className="flex items-center gap-3">
@@ -697,7 +799,7 @@ const TestimonialsPreview = memo(({ content }: { content: TestimonialsContent })
                 {testimonial.avatar ? (
                   <AvatarImage src={testimonial.avatar} />
                 ) : (
-                  <AvatarFallback>{testimonial.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{testimonial.name?.charAt(0) || 'U'}</AvatarFallback>
                 )}
               </Avatar>
               <div>
@@ -975,31 +1077,44 @@ const FeaturedProductPreview = memo(({ content }: { content: FeaturedProductCont
   <div className="flex flex-col md:flex-row gap-8 items-center max-w-3xl mx-auto">
     <div className="flex-1">
       <div className="aspect-square bg-muted rounded-lg flex items-center justify-center">
-        <span className="text-muted-foreground">Product Image</span>
+        <span className="text-muted-foreground">
+          {content.productId ? 'Product Image' : 'Select a product'}
+        </span>
       </div>
     </div>
     <div className="flex-1">
-      <h3 className="text-2xl font-bold mb-2">Featured Product</h3>
+      <h3 className="text-2xl font-bold mb-2">
+        {content.productId ? 'Featured Product' : 'No Product Selected'}
+      </h3>
       {content.showDescription && (
         <p className="text-muted-foreground mb-4">Product description goes here...</p>
       )}
       {content.showPrice && (
         <p className="text-xl font-semibold mb-4">$29.99</p>
       )}
-      <Button>{content.buttonText}</Button>
+      <Button>{content.buttonText || 'View Product'}</Button>
     </div>
   </div>
 ));
 FeaturedProductPreview.displayName = 'FeaturedProductPreview';
 
-// Logo List Preview
+// Logo List Preview - improved with better sizing and placeholders
 const LogoListPreview = memo(({ content }: { content: LogoListContent }) => (
   <div className="text-center">
     {content.title && (
       <h3 className="text-lg font-medium mb-6 text-muted-foreground">{content.title}</h3>
     )}
     {content.logos.length === 0 ? (
-      <p className="text-muted-foreground">No logos added yet</p>
+      <div className="flex flex-wrap justify-center items-center gap-6">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="w-20 h-12 bg-muted/50 rounded-lg flex items-center justify-center border border-dashed border-muted-foreground/20"
+          >
+            <span className="text-muted-foreground/50 text-xs">Logo {i}</span>
+          </div>
+        ))}
+      </div>
     ) : (
       <div className="flex flex-wrap justify-center items-center gap-8">
         {content.logos.map((logo) => (
@@ -1007,7 +1122,10 @@ const LogoListPreview = memo(({ content }: { content: LogoListContent }) => (
             key={logo.id}
             src={logo.imageUrl}
             alt={logo.altText || ''}
-            className={`h-12 object-contain ${content.grayscale ? 'grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all' : ''}`}
+            className={cn(
+              "h-16 object-contain max-w-[120px]",
+              content.grayscale && 'grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all'
+            )}
           />
         ))}
       </div>
@@ -1044,44 +1162,103 @@ const ContactUsPreview = memo(({ content }: { content: ContactUsContent }) => (
 ));
 ContactUsPreview.displayName = 'ContactUsPreview';
 
-// Footer Preview
-const FooterPreview = memo(({ content }: { content: FooterContent }) => (
-  <div className="bg-card text-foreground rounded-lg p-6 border border-border">
-    {content.columns.length > 0 && (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        {content.columns.map((column) => (
-          <div key={column.id}>
-            <h4 className="font-semibold mb-3">{column.title}</h4>
-            <ul className="space-y-2">
-              {column.links.map((link) => (
-                <li key={link.id}>
-                  <a 
-                    href={link.url} 
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
+// Footer Preview - Fixed to render distinct layouts based on preset
+const FooterPreview = memo(({ section }: { section: ProfileSection }) => {
+  const content = section.content as FooterContent;
+  const preset = section.style_options?.preset;
+  
+  // Determine layout from preset
+  const layout = preset === 'style1' ? 'simple' : preset === 'style3' ? 'minimal' : 'multi-column';
+
+  // Minimal Footer - Just copyright text
+  if (layout === 'minimal') {
+    return (
+      <div 
+        className="text-center py-4 rounded-lg"
+        style={{ backgroundColor: content.backgroundColor || undefined }}
+      >
+        <p className="text-sm text-muted-foreground">{content.text}</p>
+      </div>
+    );
+  }
+
+  // Simple Footer - Centered social icons + copyright
+  if (layout === 'simple') {
+    return (
+      <div 
+        className="text-center py-6 rounded-lg space-y-4"
+        style={{ backgroundColor: content.backgroundColor || undefined }}
+      >
+        {content.showSocialLinks && (
+          <div className="flex justify-center gap-4">
+            {/* Social icon circles */}
+            <div className="w-10 h-10 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
+              <Instagram className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div className="w-10 h-10 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
+              <Youtube className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <div className="w-10 h-10 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
+              <Twitter className="w-5 h-5 text-muted-foreground" />
+            </div>
           </div>
-        ))}
+        )}
+        <p className="text-sm text-muted-foreground">{content.text}</p>
       </div>
-    )}
-    
-    {content.showSocialLinks && (
-      <div className="flex justify-center gap-4 mb-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="w-8 h-8 rounded-full bg-muted hover:bg-muted/80 transition-colors" />
-        ))}
+    );
+  }
+
+  // Multi-Column Footer
+  return (
+    <div 
+      className="bg-card text-foreground rounded-lg p-6 border border-border"
+      style={{ backgroundColor: content.backgroundColor || undefined }}
+    >
+      {content.columns.length > 0 && (
+        <div 
+          className="grid gap-6 mb-6"
+          style={{ gridTemplateColumns: `repeat(${Math.min(content.columns.length, 7)}, 1fr)` }}
+        >
+          {content.columns.map((column) => (
+            <div key={column.id}>
+              <h4 className="font-semibold mb-3 text-sm uppercase tracking-wider">{column.title}</h4>
+              <ul className="space-y-2">
+                {column.links.map((link) => (
+                  <li key={link.id}>
+                    <a 
+                      href={link.url} 
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {content.showSocialLinks && (
+        <div className="flex justify-center gap-4 mb-4 pt-4 border-t border-border">
+          <div className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
+            <Instagram className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
+            <Youtube className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors cursor-pointer">
+            <Twitter className="w-4 h-4 text-muted-foreground" />
+          </div>
+        </div>
+      )}
+      
+      <div className="text-center text-sm text-muted-foreground border-t border-border pt-4">
+        {content.text}
       </div>
-    )}
-    
-    <div className="text-center text-sm text-muted-foreground border-t border-border pt-4">
-      {content.text}
     </div>
-  </div>
-));
+  );
+});
 FooterPreview.displayName = 'FooterPreview';
 
 // Main Section Preview Content Component
@@ -1098,7 +1275,7 @@ export const SectionPreviewContent = memo(({ section }: SectionPreviewContentPro
     case 'video':
       return <VideoPreview content={section.content as VideoContent} />;
     case 'collection':
-      return <CollectionPreview content={section.content as CollectionContent} />;
+      return <CollectionPreview section={section} />;
     case 'about_me':
       return <AboutMePreview content={section.content as AboutMeContent} />;
     case 'headline':
@@ -1124,7 +1301,7 @@ export const SectionPreviewContent = memo(({ section }: SectionPreviewContentPro
     case 'contact_us':
       return <ContactUsPreview content={section.content as ContactUsContent} />;
     case 'footer':
-      return <FooterPreview content={section.content as FooterContent} />;
+      return <FooterPreview section={section} />;
     default:
       return <div className="text-muted-foreground">Unknown section type</div>;
   }

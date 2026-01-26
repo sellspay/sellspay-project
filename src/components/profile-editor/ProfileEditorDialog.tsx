@@ -632,13 +632,13 @@ export function ProfileEditorDialog({
 
   const fetchRecentProducts = async () => {
     try {
+      // Fetch ALL creator products for featured product dropdown and other uses
       const { data } = await supabase
         .from('products')
         .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency')
         .eq('creator_id', profileId)
         .eq('status', 'published')
-        .order('created_at', { ascending: false })
-        .limit(6);
+        .order('created_at', { ascending: false });
 
       return data || [];
     } catch (error) {

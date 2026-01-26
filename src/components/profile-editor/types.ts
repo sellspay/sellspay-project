@@ -620,7 +620,15 @@ export const SECTION_TEMPLATES: SectionTemplate[] = [
     category: 'social',
     defaultContent: {
       title: 'What People Say',
-      testimonials: [],
+      testimonials: [
+        {
+          id: '1',
+          name: 'Sarah M.',
+          role: 'Happy Customer',
+          quote: 'Amazing products and excellent customer service! Highly recommend.',
+          rating: 5,
+        },
+      ],
       layout: 'grid',
     } as TestimonialsContent,
     presets: [
