@@ -835,10 +835,18 @@ export function ProfileEditorDialog({
     if (!template) return;
 
     const preset = presetId ? template.presets.find(p => p.id === presetId) : template.presets[0];
-    const content = {
-      ...JSON.parse(JSON.stringify(template.defaultContent)),
-      ...(preset?.contentOverrides || {}),
-    };
+   let content;
+   if (type === 'footer') {
+     if (presetId === 'style3') {
+       content = { text: '© 2026 Your Store. All rights reserved.', showSocialLinks: false, columns: [], socialLinks: [] };
+     } else if (presetId === 'style1') {
+       content = { text: '© 2026 Your Store. All rights reserved.', showSocialLinks: true, columns: [], socialLinks: [] };
+     } else {
+       content = { text: '© 2026 Your Store. All rights reserved.', showSocialLinks: true, columns: [{ id: '1', title: 'Quick Links', links: [{ id: '1', label: 'Home', url: '/' }] }], socialLinks: [] };
+     }
+   } else {
+     content = { ...JSON.parse(JSON.stringify(template.defaultContent)), ...(preset?.contentOverrides || {}) };
+   }
     const styleOptions = {
       ...(preset?.styleOptions || {}),
       preset: presetId || preset?.id || 'style1',
