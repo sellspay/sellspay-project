@@ -222,9 +222,11 @@ serve(async (req) => {
     }
 
     // Check download rate limit (2 per week per product) - skip for owners
+    // Also add a 5-minute grace period so batch downloads of multiple attachments count as one
     if (!isOwner) {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
       
       const { data: recentDownloads, error: downloadCountError } = await supabaseAdmin
         .from("product_downloads")
@@ -237,17 +239,26 @@ serve(async (req) => {
       if (downloadCountError) {
         logStep("Error checking download count", { error: downloadCountError.message });
       } else {
-        const downloadCount = recentDownloads?.length || 0;
-        logStep("Download count check", { count: downloadCount, limit: 2 });
+        // Check if there's a download within the last 5 minutes (grace period for batch downloads)
+        const hasRecentDownload = recentDownloads?.some(d => 
+          new Date(d.downloaded_at) > fiveMinutesAgo
+        );
         
-        if (downloadCount >= 2) {
-          // Calculate when they can download again
-          const oldestDownload = recentDownloads[recentDownloads.length - 1];
-          const oldestDate = new Date(oldestDownload.downloaded_at);
-          const canDownloadAgain = new Date(oldestDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-          const daysLeft = Math.ceil((canDownloadAgain.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+        if (hasRecentDownload) {
+          logStep("Within grace period - not counting as new download");
+        } else {
+          const downloadCount = recentDownloads?.length || 0;
+          logStep("Download count check", { count: downloadCount, limit: 2 });
           
-          throw new Error(`Download limit reached (2 per week). You can download again in ${daysLeft} day(s).`);
+          if (downloadCount >= 2) {
+            // Calculate when they can download again
+            const oldestDownload = recentDownloads[recentDownloads.length - 1];
+            const oldestDate = new Date(oldestDownload.downloaded_at);
+            const canDownloadAgain = new Date(oldestDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+            const daysLeft = Math.ceil((canDownloadAgain.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+            
+            throw new Error(`Download limit reached (2 per week). You can download again in ${daysLeft} day(s).`);
+          }
         }
       }
     }
@@ -289,19 +300,33 @@ serve(async (req) => {
     const filename = targetFilename || extractFilename(targetPath);
     logStep("Resolved filename", { filename, hasStoredFilename: !!targetFilename });
 
-    // Record the download event (only for non-owners)
+    // Record the download event (only for non-owners and outside grace period)
     if (!isOwner) {
-      const { error: recordError } = await supabaseAdmin
+      // Check if there's already a download in the last 5 minutes (batch download grace period)
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const { data: veryRecentDownload } = await supabaseAdmin
         .from("product_downloads")
-        .insert({
-          user_id: profile.id,
-          product_id: productId,
-        });
+        .select("id")
+        .eq("user_id", profile.id)
+        .eq("product_id", productId)
+        .gte("downloaded_at", fiveMinutesAgo.toISOString())
+        .maybeSingle();
       
-      if (recordError) {
-        logStep("Failed to record download", { error: recordError.message });
+      if (!veryRecentDownload) {
+        const { error: recordError } = await supabaseAdmin
+          .from("product_downloads")
+          .insert({
+            user_id: profile.id,
+            product_id: productId,
+          });
+        
+        if (recordError) {
+          logStep("Failed to record download", { error: recordError.message });
+        } else {
+          logStep("Download recorded successfully");
+        }
       } else {
-        logStep("Download recorded successfully");
+        logStep("Skipping download record - within 5-minute grace period");
       }
     }
 
