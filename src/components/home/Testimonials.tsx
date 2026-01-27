@@ -76,7 +76,7 @@ export function Testimonials() {
           role: 'Motion Designer & VFX Artist',
           avatar: deadeyeProfile.avatar_url || undefined,
           rating: 5,
-          quote: 'Finally a marketplace that gets it. Every product I\'ve bought has been exactly as described. No more gambling on quality.',
+          quote: 'Speed. I needed this.',
           verified: deadeyeProfile.verified || false,
         });
       }
