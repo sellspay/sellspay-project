@@ -22,6 +22,8 @@ import { SubscriptionPromotion } from "@/components/product/SubscriptionPromotio
 import { SubscriptionBadge } from "@/components/product/SubscriptionBadge";
 import { useProductViewTracking } from "@/hooks/useViewTracking";
 import { PaymentMethodDialog } from "@/components/checkout/PaymentMethodDialog";
+import { useFileDownloadProgress } from "@/hooks/useFileDownloadProgress";
+import { DownloadProgressOverlay } from "@/components/product/DownloadProgressOverlay";
 
 interface Product {
   id: string;
@@ -152,6 +154,15 @@ export default function ProductDetail() {
   const [savingProduct, setSavingProduct] = useState(false);
   const [downloadLimitInfo, setDownloadLimitInfo] = useState<{ remaining: number; daysUntilReset?: number } | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  
+  // Download progress hook
+  const { 
+    isDownloading: isDownloadingWithProgress, 
+    progress: downloadProgress, 
+    downloadWithProgress, 
+    cancelDownload, 
+    clearProgress: clearDownloadProgress 
+  } = useFileDownloadProgress();
   
   // Subscription benefits state
   const [planBenefits, setPlanBenefits] = useState<{
@@ -1121,31 +1132,31 @@ export default function ProductDetail() {
       }
 
       if (data?.url) {
-        // Use fetch + blob to download with proper filename
         const filename = data.filename || 'download';
         
         try {
-          const response = await fetch(data.url);
-          if (!response.ok) throw new Error('Failed to fetch file');
+          // Use progress-tracked download for real-time feedback
+          const blob = await downloadWithProgress(data.url, filename);
           
-          const blob = await response.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          
-          const link = document.createElement('a');
-          link.href = blobUrl;
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          // Cleanup blob URL
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
-          
-          toast.success(`Downloading ${filename}`);
-          
-          // Refresh download limit info
-          if (product.id) {
-            fetchDownloadLimitInfo(product.id);
+          if (blob) {
+            const blobUrl = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Cleanup blob URL
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+            
+            toast.success(`Downloaded ${filename}`);
+            
+            // Refresh download limit info
+            if (product.id) {
+              fetchDownloadLimitInfo(product.id);
+            }
           }
         } catch (fetchError) {
           // Fallback to window.open if fetch fails (e.g., CORS issues)
@@ -2148,6 +2159,15 @@ export default function ProductDetail() {
           productName={product.name}
           priceCents={product.price_cents || 0}
           currency={product.currency || "USD"}
+        />
+      )}
+
+      {/* Download Progress Overlay */}
+      {isDownloadingWithProgress && (
+        <DownloadProgressOverlay
+          progress={downloadProgress}
+          onCancel={cancelDownload}
+          onClose={clearDownloadProgress}
         />
       )}
     </div>
