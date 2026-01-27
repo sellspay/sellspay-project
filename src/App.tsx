@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth";
 import MainLayout from "@/components/layout/MainLayout";
+import { UsernameSetupDialog } from "@/components/auth/UsernameSetupDialog";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -64,6 +65,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <UsernameSetupDialog />
         <BrowserRouter>
           <Routes>
             {/* Auth pages without layout */}
