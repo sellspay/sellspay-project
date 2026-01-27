@@ -89,10 +89,19 @@ export function ConnectionsTab() {
     setLoading(true);
     try {
       // Get current user's identities from Supabase auth
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const { data: { user: currentUser }, error } = await supabase.auth.getUser();
+      
+      if (error) {
+        console.error("[ConnectionsTab] Error getting user:", error);
+        return;
+      }
       
       if (currentUser) {
         const supabaseIdentities = currentUser.identities || [];
+        
+        console.log("[ConnectionsTab] Current user ID:", currentUser.id);
+        console.log("[ConnectionsTab] Supabase identities:", supabaseIdentities);
+        console.log("[ConnectionsTab] User metadata:", currentUser.user_metadata);
         
         // Check for Google via Supabase identities
         const hasGoogle = supabaseIdentities.some(id => id.provider === "google");
@@ -101,6 +110,8 @@ export function ConnectionsTab() {
         // Check for Discord via user_metadata (our custom flow stores it there)
         const hasDiscord = !!currentUser.user_metadata?.discord_id;
         const discordUsername = currentUser.user_metadata?.discord_username;
+        
+        console.log("[ConnectionsTab] Has Google:", hasGoogle, "Has Discord:", hasDiscord);
         
         const allIdentities: ConnectedIdentity[] = [
           {
@@ -118,7 +129,7 @@ export function ConnectionsTab() {
         setIdentities(allIdentities);
       }
     } catch (error) {
-      console.error("Error loading identities:", error);
+      console.error("[ConnectionsTab] Error loading identities:", error);
     } finally {
       setLoading(false);
     }
