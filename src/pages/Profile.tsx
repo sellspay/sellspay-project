@@ -36,6 +36,7 @@ import { PublicProfileSections } from '@/components/profile/PublicProfileSection
 import CreatorApplicationDialog from '@/components/creator-application/CreatorApplicationDialog';
 import { SellerConfirmDialog } from '@/components/profile/SellerConfirmDialog';
 import { UnfollowConfirmDialog } from '@/components/profile/UnfollowConfirmDialog';
+import { FollowersDialog } from '@/components/profile/FollowersDialog';
 import { createNotification, checkFollowCooldown, recordUnfollow } from '@/lib/notifications';
 import { useProfileViewTracking } from '@/hooks/useViewTracking';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -306,6 +307,8 @@ const ProfilePage: React.FC = () => {
   const [showUnfollowConfirm, setShowUnfollowConfirm] = useState(false);
   const [unfollowLoading, setUnfollowLoading] = useState(false);
   const [unfollowCooldownEnds, setUnfollowCooldownEnds] = useState<Date | null>(null);
+  const [showFollowersDialog, setShowFollowersDialog] = useState(false);
+  const [showFollowingDialog, setShowFollowingDialog] = useState(false);
   const [savedPage, setSavedPage] = useState(0);
   const savedGridRef = useRef<HTMLDivElement>(null);
   const SAVED_ITEMS_PER_PAGE = 30; // 6 columns × 5 rows
@@ -1184,14 +1187,20 @@ const ProfilePage: React.FC = () => {
                 <strong className="text-foreground">{publishedCount}</strong>{' '}
                 <span className="text-muted-foreground">products</span>
               </span>
-              <span>
+              <button
+                onClick={() => setShowFollowersDialog(true)}
+                className="hover:opacity-70 transition-opacity"
+              >
                 <strong className="text-foreground">{followersCount}</strong>{' '}
                 <span className="text-muted-foreground">followers</span>
-              </span>
-              <span>
+              </button>
+              <button
+                onClick={() => setShowFollowingDialog(true)}
+                className="hover:opacity-70 transition-opacity"
+              >
                 <strong className="text-foreground">{followingCount}</strong>{' '}
                 <span className="text-muted-foreground">following</span>
-              </span>
+              </button>
             </div>
 
             {/* Mobile action buttons */}
@@ -1719,6 +1728,24 @@ const ProfilePage: React.FC = () => {
         onConfirm={handleConfirmUnfollow}
         loading={unfollowLoading}
       />
+
+      {/* Followers/Following Dialogs */}
+      {profile && (
+        <>
+          <FollowersDialog
+            open={showFollowersDialog}
+            onOpenChange={setShowFollowersDialog}
+            profileId={profile.id}
+            type="followers"
+          />
+          <FollowersDialog
+            open={showFollowingDialog}
+            onOpenChange={setShowFollowingDialog}
+            profileId={profile.id}
+            type="following"
+          />
+        </>
+      )}
     </TooltipProvider>
   );
 };
