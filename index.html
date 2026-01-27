@@ -1,8 +1,19 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" style="overflow-y: scroll; overflow-x: hidden;">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Critical: Prevent layout shift on initial load by ensuring scrollbar is always visible -->
+    <style>
+      html, body {
+        overflow-y: scroll !important;
+        overflow-x: hidden !important;
+        width: 100% !important;
+        margin-right: 0 !important;
+        padding-right: 0 !important;
+      }
+    </style>
     
     <title>EditorsParadise</title>
     <meta name="description" content="The ultimate marketplace for editors. Discover premium Presets, LUTs, SFX, Templates, Overlays and Fonts crafted by professional creators worldwide." />
