@@ -19,29 +19,18 @@ interface Testimonial {
   verified?: boolean;
 }
 
-// Static testimonials - kagori will be fetched from DB
-const staticTestimonials: Testimonial[] = [
-  {
-    id: '1',
-    name: 'Matthew',
-    username: 'shrimpy',
-    role: 'Video Editor & Creator',
-    avatar: 'https://base44.app/api/apps/69633972141fd631aab3f377/files/public/69633972141fd631aab3f377/c4b776239_IMG_1579.jpg',
-    rating: 5,
-    quote: 'This platform changed how I share my work. The community here actually understands what editors need. Best decision I made for my creative business.',
-    featured: true,
-    verified: true,
-  },
-  {
-    id: '2',
-    name: 'Deadeye',
-    username: 'deadeye',
-    role: 'Content Creator',
-    rating: 5,
-    quote: 'Finally a marketplace that gets it. Every product I\'ve bought has been exactly as described. No more gambling on quality.',
-    verified: true,
-  },
-];
+// Base testimonial for shrimpy (static)
+const shrimpyTestimonial: Testimonial = {
+  id: '1',
+  name: 'Matthew',
+  username: 'shrimpy',
+  role: 'Video Editor & Creator',
+  avatar: 'https://base44.app/api/apps/69633972141fd631aab3f377/files/public/69633972141fd631aab3f377/c4b776239_IMG_1579.jpg',
+  rating: 5,
+  quote: 'This platform changed how I share my work. The community here actually understands what editors need. Best decision I made for my creative business.',
+  featured: true,
+  verified: true,
+};
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -61,24 +50,40 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export function Testimonials() {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>(staticTestimonials);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([shrimpyTestimonial]);
 
   useEffect(() => {
-    async function fetchKagori() {
-      // Query public_profiles view for public access (works for all users including anonymous)
-      const { data: kagoriProfile, error } = await supabase
+    async function fetchProfiles() {
+      // Fetch deadeye and kagori profiles from DB
+      const { data: profiles, error } = await supabase
         .from('public_profiles')
-        .select('id, username, full_name, avatar_url, verified, bio')
-        .eq('username', 'kagori')
-        .maybeSingle();
+        .select('id, username, full_name, avatar_url, verified')
+        .in('username', ['deadeye', 'kagori']);
 
       if (error) {
-        console.error('Error fetching kagori profile:', error);
+        console.error('Error fetching profiles:', error);
         return;
       }
 
+      const dynamicTestimonials: Testimonial[] = [];
+
+      const deadeyeProfile = profiles?.find(p => p.username === 'deadeye');
+      if (deadeyeProfile) {
+        dynamicTestimonials.push({
+          id: '2',
+          name: deadeyeProfile.full_name || 'Deadeye',
+          username: deadeyeProfile.username || 'deadeye',
+          role: 'Motion Designer & VFX Artist',
+          avatar: deadeyeProfile.avatar_url || undefined,
+          rating: 5,
+          quote: 'Finally a marketplace that gets it. Every product I\'ve bought has been exactly as described. No more gambling on quality.',
+          verified: deadeyeProfile.verified || false,
+        });
+      }
+
+      const kagoriProfile = profiles?.find(p => p.username === 'kagori');
       if (kagoriProfile) {
-        const kagoriTestimonial: Testimonial = {
+        dynamicTestimonials.push({
           id: '3',
           name: kagoriProfile.full_name || 'Kagori',
           username: kagoriProfile.username || 'kagori',
@@ -87,12 +92,13 @@ export function Testimonials() {
           rating: 5,
           quote: 'I sell my LUTs here and the platform takes care of everything. Payments, delivery, even handles customer questions. Just works.',
           verified: kagoriProfile.verified || false,
-        };
-        setTestimonials([...staticTestimonials, kagoriTestimonial]);
+        });
       }
+
+      setTestimonials([shrimpyTestimonial, ...dynamicTestimonials]);
     }
 
-    fetchKagori();
+    fetchProfiles();
   }, []);
 
   const featured = testimonials.find(t => t.featured);
