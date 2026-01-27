@@ -107,7 +107,7 @@ export function TopUpDialog({ open, onOpenChange, currentBalance, subscriptionTi
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog modal={false} open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
