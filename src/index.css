@@ -160,18 +160,24 @@
 /* Prevent unnecessary scroll on short content */
 html {
   overflow-x: hidden;
-  /* Reserve space for scrollbar to prevent layout shift when modals/dropdowns open */
-  scrollbar-gutter: stable;
-  /* Always reserve a vertical scrollbar to prevent width changes (Chrome/Windows) */
+  /* Always show scrollbar to prevent layout shift */
   overflow-y: scroll;
+}
+
+/* Force consistent width regardless of scroll state */
+html, body {
+  width: 100%;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
 }
 
 /* Force scrollbar gutter even when overflow is hidden by Radix UI */
 html[data-scroll-locked],
 html[style*="overflow: hidden"],
 html[style*="overflow:hidden"] {
-  scrollbar-gutter: stable !important;
   overflow-y: scroll !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
 }
 
 /* Radix can inject padding-right inline to compensate for scrollbar removal; neutralize it */
@@ -194,6 +200,10 @@ body[data-scroll-locked] {
 /* Also neutralize any inline padding-right even when data-scroll-locked isn't present */
 body[style*="padding-right"] {
   padding-right: 0 !important;
+}
+
+body[style*="margin-right"] {
+  margin-right: 0 !important;
 }
 
 /* Ensure dropdowns and popovers don't cause layout shifts */
