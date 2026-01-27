@@ -6,7 +6,6 @@ import { CommunityNav } from '@/components/community/CommunityNav';
 import { UpdateCard } from '@/components/community/UpdateCard';
 import { UpdateComposer } from '@/components/community/UpdateComposer';
 import { Loader2, Megaphone, Pin } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 
 interface PlatformUpdate {
   id: string;
@@ -60,91 +59,141 @@ export default function Updates() {
   const regularUpdates = updates?.filter((u) => !u.is_pinned) || [];
 
   return (
-    <div className="min-h-screen bg-background relative overflow-x-hidden">
-      {/* Background Effects - Hidden on mobile */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="hidden sm:block absolute top-20 left-1/4 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[128px] animate-pulse" />
-        <div className="hidden sm:block absolute bottom-40 right-1/4 w-[500px] h-[500px] bg-orange-500/8 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[150px]" />
-      </div>
+    <div className="min-h-screen bg-background overflow-x-hidden">
+      {/* Hero Section - Match Community page structure */}
+      <section className="relative min-h-[50vh] sm:min-h-[70vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Layered Background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 via-background to-background" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(35_100%_50%/0.2),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,hsl(25_100%_50%/0.1),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,hsl(35_100%_50%/0.08),transparent_50%)]" />
 
-      <div className="container mx-auto px-3 sm:px-4 py-8 sm:py-12 relative z-10">
-        {/* Hero Section */}
-        <div className="text-center mb-8 sm:mb-12">
-          <div className="inline-flex items-center gap-2 mb-4 sm:mb-6">
-            <Badge 
-              variant="outline" 
-              className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-500/30 text-amber-400"
-            >
-              <Megaphone className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+        {/* Floating Orbs - Hidden on mobile */}
+        <div className="hidden sm:block absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/15 rounded-full blur-[128px] animate-pulse" />
+        <div className="hidden sm:block absolute bottom-1/4 right-1/4 w-80 h-80 bg-orange-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="hidden sm:block absolute top-1/2 right-1/3 w-64 h-64 bg-amber-500/8 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '2s' }} />
+
+        {/* Grid Pattern Overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(hsl(35_100%_50%/0.02)_1px,transparent_1px),linear-gradient(90deg,hsl(35_100%_50%/0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+
+        <div className="relative z-10 mx-auto max-w-5xl text-center px-2">
+          {/* Floating Badge */}
+          <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-sm mb-6 sm:mb-8">
+            <Megaphone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
+            <span className="text-xs sm:text-sm font-medium text-amber-400">
               Official Updates
-            </Badge>
+            </span>
           </div>
-          
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent px-2">
-            Platform Updates
-          </h1>
-          <p className="text-muted-foreground text-sm sm:text-lg max-w-2xl mx-auto px-4">
-            Stay informed about the latest changes, features, and announcements from EditorsParadise.
-          </p>
-        </div>
 
-        {/* Navigation */}
-        <div className="flex justify-center mb-6 sm:mb-8 overflow-x-auto">
-          <CommunityNav />
-        </div>
-
-        {/* Owner Composer */}
-        {isOwner && (
-          <div className="max-w-3xl mx-auto mb-8 sm:mb-10 px-1">
-            <UpdateComposer />
-          </div>
-        )}
-
-        {/* Updates Feed */}
-        <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6 px-1">
-          {/* Pinned Updates */}
-          {pinnedUpdates.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-amber-400 text-sm font-medium">
-                <Pin className="h-4 w-4" />
-                Pinned Updates
+          {/* Icon - Floating Style */}
+          <div className="mb-6 sm:mb-10 flex justify-center">
+            <div className="relative group">
+              <div className="absolute inset-0 blur-[40px] sm:blur-[60px] bg-amber-500/40 rounded-full scale-125 sm:scale-150 group-hover:scale-[1.75] transition-transform duration-700" />
+              <div className="absolute inset-0 blur-2xl sm:blur-3xl bg-gradient-to-br from-amber-500 to-orange-500 opacity-30 rounded-full scale-110 sm:scale-125 group-hover:opacity-50 transition-all duration-500" />
+              <div className="relative bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl shadow-amber-500/30 group-hover:shadow-amber-500/50 transition-all duration-500 group-hover:scale-105">
+                <Megaphone className="h-10 w-10 sm:h-16 sm:w-16 text-white drop-shadow-lg" />
               </div>
-              {pinnedUpdates.map((update) => (
-                <UpdateCard key={update.id} update={update} isOwner={isOwner} />
-              ))}
+            </div>
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold text-foreground mb-4 sm:mb-6 tracking-tight">
+            Platform{' '}
+            <span className="relative inline-block">
+              <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
+                Updates
+              </span>
+              <div className="absolute -inset-1 bg-gradient-to-r from-amber-400/20 to-orange-400/20 blur-lg opacity-50" />
+            </span>
+          </h1>
+
+          <p className="text-base sm:text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto mb-8 sm:mb-12 leading-relaxed px-2">
+            Stay informed about the latest changes, features, and announcements from
+            <span className="text-foreground font-medium"> EditorsParadise.</span>
+          </p>
+
+          {/* Navigation */}
+          <div className="flex justify-center mb-6 sm:mb-8 overflow-x-auto">
+            <CommunityNav />
+          </div>
+        </div>
+
+        {/* Scroll Indicator - Hidden on mobile */}
+        <div className="hidden sm:block absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+          <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-2">
+            <div className="w-1 h-2 bg-muted-foreground/50 rounded-full animate-pulse" />
+          </div>
+        </div>
+      </section>
+
+      {/* Main Content */}
+      <section className="relative py-8 sm:py-12 px-3 sm:px-6 lg:px-8">
+        {/* Section Divider Gradient */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
+
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-amber-500/5 to-background" />
+        <div className="hidden sm:block absolute left-0 top-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-[128px]" />
+        <div className="hidden sm:block absolute right-0 top-1/3 w-80 h-80 bg-orange-500/10 rounded-full blur-[100px]" />
+
+        <div className="relative max-w-3xl mx-auto space-y-6 sm:space-y-8">
+          {/* Owner Composer */}
+          {isOwner && (
+            <div className="mb-8 sm:mb-10">
+              <UpdateComposer />
             </div>
           )}
 
-          {/* Regular Updates */}
-          {isLoading ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : regularUpdates.length > 0 ? (
-            <div className="space-y-4">
-              {pinnedUpdates.length > 0 && (
-                <div className="text-muted-foreground text-sm font-medium pt-4">
-                  All Updates
+          {/* Updates Feed */}
+          <div className="space-y-4 sm:space-y-6">
+            {/* Pinned Updates */}
+            {pinnedUpdates.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-amber-400 text-sm font-medium">
+                  <Pin className="h-4 w-4" />
+                  Pinned Updates
                 </div>
-              )}
-              {regularUpdates.map((update) => (
-                <UpdateCard key={update.id} update={update} isOwner={isOwner} />
-              ))}
-            </div>
-          ) : pinnedUpdates.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
-                <Megaphone className="h-10 w-10 text-amber-400" />
+                {pinnedUpdates.map((update) => (
+                  <UpdateCard key={update.id} update={update} isOwner={isOwner} />
+                ))}
               </div>
-              <h3 className="text-xl font-semibold mb-2">No Updates Yet</h3>
-              <p className="text-muted-foreground">
-                Check back soon for platform announcements and updates.
-              </p>
-            </div>
-          ) : null}
+            )}
+
+            {/* Regular Updates */}
+            {isLoading ? (
+              <div className="flex justify-center py-20">
+                <div className="relative">
+                  <div className="absolute inset-0 blur-xl bg-amber-500/30 rounded-full animate-pulse" />
+                  <Loader2 className="relative h-10 w-10 animate-spin text-amber-400" />
+                </div>
+              </div>
+            ) : regularUpdates.length > 0 ? (
+              <div className="space-y-4">
+                {pinnedUpdates.length > 0 && (
+                  <div className="text-muted-foreground text-sm font-medium pt-4">
+                    All Updates
+                  </div>
+                )}
+                {regularUpdates.map((update) => (
+                  <UpdateCard key={update.id} update={update} isOwner={isOwner} />
+                ))}
+              </div>
+            ) : pinnedUpdates.length === 0 ? (
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="relative text-center py-20 px-8 bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-xl border border-border/50 rounded-3xl">
+                  <div className="inline-flex p-6 rounded-3xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 mb-6">
+                    <Megaphone className="h-12 w-12 text-amber-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-foreground mb-3">No Updates Yet</h3>
+                  <p className="text-muted-foreground text-lg">
+                    Check back soon for platform announcements and updates.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
