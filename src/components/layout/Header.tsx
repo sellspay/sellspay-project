@@ -112,7 +112,7 @@ export default function Header() {
             {user && <NotificationBell />}
             
             {user ? (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0">
                     <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
