@@ -180,42 +180,43 @@ serve(async (req) => {
     }
 
     // ========== LOGIN/SIGNUP FLOW ==========
-    // Check if user exists in Supabase
+    // CRITICAL: Never resolve login by email alone (multiple users can share the same email,
+    // and it can route to the wrong account). Resolve by discord_id first.
     const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    
+
     if (listError) {
       logStep("Error listing users", { error: listError.message });
       return Response.redirect(`${frontendUrl}/login?discord_error=auth_failed`);
     }
 
-    const existingUser = existingUsers.users.find(u => u.email === discordUser.email);
+    const userByDiscordId = existingUsers.users.find(
+      (u) => u.user_metadata?.discord_id === discordUser.id
+    );
+
+    // Fallback only used to display friendlier errors (NOT for selecting the account).
+    const userByEmail = existingUsers.users.find((u) => u.email === discordUser.email);
 
     let userId: string;
     let isNewUser = false;
+    let loginEmail: string;
 
-    if (existingUser) {
-      // User exists with this email
-      userId = existingUser.id;
-      const existingDiscordId = existingUser.user_metadata?.discord_id;
-      logStep("Existing user found", { userId, hasDiscordLinked: !!existingDiscordId });
-      
-      // This is a login attempt - only allow if Discord is already linked
-      if (!existingDiscordId) {
-        logStep("Discord not linked to this account - login denied");
-        return Response.redirect(`${frontendUrl}/login?discord_error=discord_not_linked`);
+    if (userByDiscordId) {
+      userId = userByDiscordId.id;
+      loginEmail = userByDiscordId.email ?? discordUser.email;
+      logStep("User resolved by Discord ID", { userId, loginEmailPresent: !!loginEmail });
+
+      if (!loginEmail) {
+        logStep("Resolved user has no email - cannot generate link", { userId });
+        return Response.redirect(`${frontendUrl}/login?discord_error=link_failed`);
       }
-      
-      // Verify it's the same Discord account
-      if (existingDiscordId !== discordUser.id) {
-        logStep("Different Discord account than what's linked");
-        return Response.redirect(`${frontendUrl}/login?discord_error=wrong_discord_account`);
-      }
-      
-      logStep("Discord is linked, allowing login");
+    } else if (userByEmail) {
+      // Email exists but Discord isn't linked to that user
+      logStep("Email matched but Discord not linked - login denied", { userId: userByEmail.id });
+      return Response.redirect(`${frontendUrl}/login?discord_error=discord_not_linked`);
     } else {
-      // No user with this email exists - create new user (signing up with Discord)
+      // No user exists with this email - create new user (signing up with Discord)
       isNewUser = true;
-      const discordAvatarUrl = discordUser.avatar 
+      const discordAvatarUrl = discordUser.avatar
         ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
         : null;
 
@@ -237,13 +238,14 @@ serve(async (req) => {
       }
 
       userId = newUser.user.id;
+      loginEmail = discordUser.email;
       logStep("New user created via Discord signup", { userId });
     }
 
-    // Generate a magic link for the user to sign in
+    // Generate a magic link for the resolved account
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
-      email: discordUser.email,
+      email: loginEmail,
       options: {
         redirectTo: `${frontendUrl}${stateData.returnTo || "/"}`,
       },
