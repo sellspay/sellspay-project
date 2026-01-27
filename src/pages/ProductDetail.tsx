@@ -24,6 +24,7 @@ import { useProductViewTracking } from "@/hooks/useViewTracking";
 import { PaymentMethodDialog } from "@/components/checkout/PaymentMethodDialog";
 import { useFileDownloadProgress } from "@/hooks/useFileDownloadProgress";
 import { DownloadProgressOverlay } from "@/components/product/DownloadProgressOverlay";
+import { useDownloadLimitCountdown } from "@/hooks/useDownloadLimitCountdown";
 
 interface Product {
   id: string;
@@ -152,7 +153,6 @@ export default function ProductDetail() {
   const [downloading, setDownloading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
-  const [downloadLimitInfo, setDownloadLimitInfo] = useState<{ remaining: number; daysUntilReset?: number } | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   
   // Download progress hook
@@ -236,13 +236,20 @@ export default function ProductDetail() {
     }
   }, [searchParams]);
 
+  // Use the live countdown hook for download limits
+  const { 
+    limitInfo: downloadLimitInfo, 
+    refetch: refetchDownloadLimit,
+    getCountdownString 
+  } = useDownloadLimitCountdown(product?.id, userProfileId, isOwner);
+
   // Refresh download limit info after purchase when product is loaded
   useEffect(() => {
     if (justPurchased && product?.id && userProfileId) {
-      fetchDownloadLimitInfo(product.id);
+      refetchDownloadLimit();
       setJustPurchased(false);
     }
-  }, [justPurchased, product?.id, userProfileId]);
+  }, [justPurchased, product?.id, userProfileId, refetchDownloadLimit]);
 
   useEffect(() => {
     const productIdentifier = id || slug;
@@ -473,7 +480,7 @@ export default function ProductDetail() {
       // Fetch related products (same creator or same type)
       fetchRelatedProducts(productData.creator_id, productData.product_type, productData.id);
       fetchFeaturedProducts(productData.id);
-      fetchDownloadLimitInfo(productData.id);
+      // Download limit is now handled by useDownloadLimitCountdown hook
     } catch (error) {
       console.error("Error fetching product:", error);
       toast.error("Failed to load product");
@@ -519,36 +526,7 @@ export default function ProductDetail() {
     }
   };
 
-  const fetchDownloadLimitInfo = async (productId: string) => {
-    if (!userProfileId) return;
-    
-    try {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
-      const { data: downloads } = await supabase
-        .from("product_downloads")
-        .select("downloaded_at")
-        .eq("user_id", userProfileId)
-        .eq("product_id", productId)
-        .gte("downloaded_at", sevenDaysAgo.toISOString())
-        .order("downloaded_at", { ascending: true });
-      
-      const count = downloads?.length || 0;
-      const remaining = Math.max(0, 2 - count);
-      
-      let daysUntilReset: number | undefined;
-      if (count > 0 && downloads) {
-        const oldestDownload = new Date(downloads[0].downloaded_at);
-        const resetDate = new Date(oldestDownload.getTime() + 7 * 24 * 60 * 60 * 1000);
-        daysUntilReset = Math.ceil((resetDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
-      }
-      
-      setDownloadLimitInfo({ remaining, daysUntilReset });
-    } catch (error) {
-      console.error("Error fetching download limit info:", error);
-    }
-  };
+  // fetchDownloadLimitInfo is now handled by the useDownloadLimitCountdown hook
 
   const fetchComments = async () => {
     const productId = id || (product?.id);
@@ -1216,18 +1194,14 @@ export default function ProductDetail() {
         }
         
         // Refresh download limit info
-        if (product.id) {
-          fetchDownloadLimitInfo(product.id);
-        }
+        refetchDownloadLimit();
       } else if (product.download_url) {
         // Single file (legacy download_url only)
         try {
           const success = await downloadSingleFile(product.id);
           if (success) {
             toast.success("Download complete!");
-            if (product.id) {
-              fetchDownloadLimitInfo(product.id);
-            }
+            refetchDownloadLimit();
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : "Failed to get download link";
@@ -1426,15 +1400,15 @@ export default function ProductDetail() {
                     <Button 
                       className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600"
                       onClick={handleDownload}
-                      disabled={downloading || (downloadLimitInfo?.remaining === 0)}
+                      disabled={downloading || downloadLimitInfo?.isLocked}
                     >
                       {downloading ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       ) : (
                         <Download className="w-4 h-4 mr-2" />
                       )}
-                      {downloadLimitInfo?.remaining === 0 
-                        ? `Limit (${downloadLimitInfo?.daysUntilReset}d)` 
+                      {downloadLimitInfo?.isLocked 
+                        ? `Limit (${getCountdownString()})` 
                         : downloadLimitInfo 
                           ? `Download (${downloadLimitInfo.remaining}/2)`
                           : 'Download'
@@ -1445,15 +1419,15 @@ export default function ProductDetail() {
                     <Button 
                       className="bg-gradient-to-r from-primary to-accent"
                       onClick={handleDownload}
-                      disabled={downloading || (downloadLimitInfo?.remaining === 0)}
+                      disabled={downloading || downloadLimitInfo?.isLocked}
                     >
                       {downloading ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       ) : (
                         <Crown className="w-4 h-4 mr-2" />
                       )}
-                      {downloadLimitInfo?.remaining === 0 
-                        ? `Limit (${downloadLimitInfo?.daysUntilReset}d)` 
+                      {downloadLimitInfo?.isLocked 
+                        ? `Limit (${getCountdownString()})` 
                         : 'Download (Subscriber)'
                       }
                     </Button>
@@ -1472,15 +1446,15 @@ export default function ProductDetail() {
                       <Button 
                         className="bg-gradient-to-r from-primary to-accent"
                         onClick={handleDownload}
-                        disabled={downloading || (downloadLimitInfo?.remaining === 0)}
+                        disabled={downloading || downloadLimitInfo?.isLocked}
                       >
                         {downloading ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         ) : (
                           <Download className="w-4 h-4 mr-2" />
                         )}
-                        {downloadLimitInfo?.remaining === 0 
-                          ? `Limit (${downloadLimitInfo?.daysUntilReset}d)` 
+                        {downloadLimitInfo?.isLocked 
+                          ? `Limit (${getCountdownString()})` 
                           : downloadLimitInfo 
                             ? `Free (${downloadLimitInfo.remaining}/2)`
                             : 'Download Free'
