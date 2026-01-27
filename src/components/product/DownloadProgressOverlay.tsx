@@ -7,6 +7,8 @@ interface DownloadProgressOverlayProps {
   progress: DownloadProgress | null;
   onCancel: () => void;
   onClose: () => void;
+  currentFile?: number;
+  totalFiles?: number;
 }
 
 function formatBytes(bytes: number): string {
@@ -37,10 +39,17 @@ function formatTime(seconds: number): string {
   }
 }
 
-export function DownloadProgressOverlay({ progress, onCancel, onClose }: DownloadProgressOverlayProps) {
+export function DownloadProgressOverlay({ 
+  progress, 
+  onCancel, 
+  onClose,
+  currentFile,
+  totalFiles 
+}: DownloadProgressOverlayProps) {
   if (!progress) return null;
 
   const isComplete = progress.percentage >= 100;
+  const hasMultipleFiles = totalFiles && totalFiles > 1;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
@@ -56,6 +65,11 @@ export function DownloadProgressOverlay({ progress, onCancel, onClose }: Downloa
             <div>
               <h3 className="font-semibold text-foreground">
                 {isComplete ? 'Download Complete' : 'Downloading...'}
+                {hasMultipleFiles && currentFile && (
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    ({currentFile} of {totalFiles})
+                  </span>
+                )}
               </h3>
               <p className="text-sm text-muted-foreground truncate max-w-[280px]">
                 {progress.filename}

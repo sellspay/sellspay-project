@@ -164,6 +164,10 @@ export default function ProductDetail() {
     clearProgress: clearDownloadProgress 
   } = useFileDownloadProgress();
   
+  // Multi-file download tracking
+  const [downloadFileIndex, setDownloadFileIndex] = useState(0);
+  const [downloadTotalFiles, setDownloadTotalFiles] = useState(0);
+  
   // Subscription benefits state
   const [planBenefits, setPlanBenefits] = useState<{
     planId: string;
@@ -1094,11 +1098,61 @@ export default function ProductDetail() {
     }
   };
 
+  // Helper to download a single file with progress
+  const downloadSingleFile = async (
+    productId: string, 
+    attachmentPath?: string, 
+    fallbackFilename?: string
+  ): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke("get-download-url", {
+        body: { productId, attachmentPath },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.url) {
+        const filename = data.filename || fallbackFilename || 'download';
+        
+        try {
+          const blob = await downloadWithProgress(data.url, filename);
+          
+          if (blob) {
+            const blobUrl = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+            return true;
+          }
+        } catch (fetchError) {
+          console.warn("Blob download failed, falling back to window.open:", fetchError);
+          window.open(data.url, '_blank');
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error("Download error:", error);
+      throw error;
+    }
+  };
+
   const handleDownload = async () => {
     if (!product) return;
     
-    // Check if product has a download file
-    if (!product.download_url) {
+    // Get all attachments
+    const attachments = product.attachments as { name: string; path: string; size: number }[] | null;
+    const hasAttachments = attachments && Array.isArray(attachments) && attachments.length > 0;
+    
+    // Check if product has any download files
+    if (!product.download_url && !hasAttachments) {
       toast.error("This product doesn't have a download file attached yet.");
       return;
     }
@@ -1120,52 +1174,65 @@ export default function ProductDetail() {
         return;
       }
       
-      const { data, error } = await supabase.functions.invoke("get-download-url", {
-        body: { productId: product.id },
-      });
-
-      if (error) throw error;
-      
-      // Check if the response contains an error message
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      if (data?.url) {
-        const filename = data.filename || 'download';
+      // Determine what to download
+      if (hasAttachments && attachments.length > 0) {
+        // Multiple attachments - download all of them
+        const totalFiles = attachments.length;
+        let successCount = 0;
         
-        try {
-          // Use progress-tracked download for real-time feedback
-          const blob = await downloadWithProgress(data.url, filename);
+        setDownloadTotalFiles(totalFiles);
+        toast.info(`Downloading ${totalFiles} file${totalFiles > 1 ? 's' : ''}...`);
+        
+        for (let i = 0; i < attachments.length; i++) {
+          const attachment = attachments[i];
+          setDownloadFileIndex(i + 1);
           
-          if (blob) {
-            const blobUrl = URL.createObjectURL(blob);
+          try {
+            const success = await downloadSingleFile(product.id, attachment.path, attachment.name);
+            if (success) {
+              successCount++;
+            }
             
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            // Cleanup blob URL
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
-            
-            toast.success(`Downloaded ${filename}`);
-            
-            // Refresh download limit info
+            // Small delay between downloads to prevent overwhelming the browser
+            if (i < attachments.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          } catch (error) {
+            console.error(`Failed to download ${attachment.name}:`, error);
+            const message = error instanceof Error ? error.message : "Download failed";
+            toast.error(`Failed to download ${attachment.name}: ${message}`);
+            // Continue with other files even if one fails
+          }
+        }
+        
+        // Reset multi-file tracking
+        setDownloadFileIndex(0);
+        setDownloadTotalFiles(0);
+        
+        if (successCount === totalFiles) {
+          toast.success(`Successfully downloaded all ${totalFiles} files!`);
+        } else if (successCount > 0) {
+          toast.warning(`Downloaded ${successCount} of ${totalFiles} files`);
+        }
+        
+        // Refresh download limit info
+        if (product.id) {
+          fetchDownloadLimitInfo(product.id);
+        }
+      } else if (product.download_url) {
+        // Single file (legacy download_url only)
+        try {
+          const success = await downloadSingleFile(product.id);
+          if (success) {
+            toast.success("Download complete!");
             if (product.id) {
               fetchDownloadLimitInfo(product.id);
             }
           }
-        } catch (fetchError) {
-          // Fallback to window.open if fetch fails (e.g., CORS issues)
-          console.warn("Blob download failed, falling back to window.open:", fetchError);
-          window.open(data.url, '_blank');
-          toast.success("Download started!");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to get download link";
+          toast.error(message);
         }
-      } else {
-        throw new Error("No download URL returned");
       }
     } catch (error) {
       console.error("Download error:", error);
@@ -2168,6 +2235,8 @@ export default function ProductDetail() {
           progress={downloadProgress}
           onCancel={cancelDownload}
           onClose={clearDownloadProgress}
+          currentFile={downloadFileIndex}
+          totalFiles={downloadTotalFiles}
         />
       )}
     </div>
