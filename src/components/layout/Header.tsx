@@ -56,10 +56,16 @@ export default function Header() {
         <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 shrink-0">
-            <img 
-              src={platformLogo} 
-              alt="EditorsParadise" 
-              className="h-10 sm:h-14 lg:h-16 w-auto max-w-[140px] sm:max-w-[200px] lg:max-w-[280px]"
+            {/*
+              Reserve explicit width so the header doesn't shift when the logo image finishes loading.
+              (max-width + auto width can reflow on initial paint)
+            */}
+            <img
+              src={platformLogo}
+              alt="EditorsParadise"
+              width={280}
+              height={64}
+              className="h-10 sm:h-14 lg:h-16 w-[140px] sm:w-[200px] lg:w-[280px] object-contain"
             />
             <span className="sr-only">EditorsParadise</span>
           </Link>
