@@ -179,7 +179,7 @@ export default function EditorChatDialog({ open, onOpenChange, chatRoom, onMessa
   const timeRemaining = formatDistanceToNow(new Date(chatRoom.expires_at), { addSuffix: true });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog modal={false} open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg h-[600px] p-0 overflow-hidden bg-gradient-to-b from-background via-background to-background/95 border-primary/20">
         {/* Premium Header */}
         <div className="relative">
