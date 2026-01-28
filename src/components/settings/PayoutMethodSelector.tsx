@@ -185,25 +185,12 @@ export function PayoutMethodSelector({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      // Call edge function - the supabase client automatically includes auth headers
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/initiate-paypal-connect`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ origin: window.location.origin }),
-        }
-      );
+      const { data, error } = await supabase.functions.invoke("initiate-paypal-connect", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { origin: window.location.origin },
+      });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to initiate PayPal connection");
-      }
+      if (error) throw error;
 
       if (data.notConfigured) {
         toast.info("PayPal integration coming soon!");
