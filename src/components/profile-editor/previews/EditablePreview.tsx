@@ -1015,8 +1015,10 @@ function BasicListEditablePreview({ content, section }: { content: BasicListCont
   const ListItemCard = ({ item, index, showImage = true }: { item: typeof items[0] | null; index: number; showImage?: boolean }) => (
     <div className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/30 transition-colors">
       {showImage && (
-        <div className="aspect-video bg-muted flex items-center justify-center">
-          {item?.icon ? (
+        <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
+          {item?.imageUrl ? (
+            <img src={item.imageUrl} alt={item?.text || ''} className="w-full h-full object-cover" />
+          ) : item?.icon ? (
             <span className="text-3xl">{item.icon}</span>
           ) : (
             <ImagePlaceholder className="w-full h-full" />
@@ -1025,7 +1027,7 @@ function BasicListEditablePreview({ content, section }: { content: BasicListCont
       )}
       <div className="p-4">
         <h4 className="font-medium text-foreground">{item?.text || `Add a title`}</h4>
-        <p className="text-sm text-muted-foreground mt-1">Add description here</p>
+        <p className="text-sm text-muted-foreground mt-1">{item?.description || 'Add description here'}</p>
       </div>
     </div>
   );
@@ -1076,7 +1078,9 @@ function BasicListEditablePreview({ content, section }: { content: BasicListCont
           {slots.map((item, i) => (
             <div key={i} className="flex items-center gap-4 p-3 bg-card border border-border rounded-lg hover:border-primary/30 transition-colors">
               <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
-                {item?.icon ? (
+                {item?.imageUrl ? (
+                  <img src={item.imageUrl} alt={item?.text || ''} className="w-full h-full object-cover" />
+                ) : item?.icon ? (
                   <span className="text-2xl">{item.icon}</span>
                 ) : (
                   <ImagePlaceholder className="w-full h-full" />
@@ -1084,7 +1088,7 @@ function BasicListEditablePreview({ content, section }: { content: BasicListCont
               </div>
               <div className="flex-1">
                 <h4 className="font-medium text-foreground">{item?.text || `Add a title`}</h4>
-                <p className="text-sm text-muted-foreground">Add description here</p>
+                <p className="text-sm text-muted-foreground">{item?.description || 'Add description here'}</p>
               </div>
             </div>
           ))}

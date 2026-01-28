@@ -244,6 +244,9 @@ export interface BannerSlideshowContent {
 export interface ListItem {
   id: string;
   text: string;
+  description?: string;
+  imageUrl?: string;
+  linkUrl?: string;
   icon?: string;
 }
 
