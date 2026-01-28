@@ -68,11 +68,12 @@ export function EditorApplicationCard({ profileId }: EditorApplicationCardProps)
 
   const fetchApplication = async () => {
     try {
+      // Fetch application with 'approved' OR 'pending' status (pending after edit)
       const { data, error } = await supabase
         .from('editor_applications')
         .select('*')
         .eq('user_id', profileId)
-        .eq('status', 'approved')
+        .in('status', ['approved', 'pending'])
         .maybeSingle();
 
       if (error) throw error;
@@ -116,6 +117,7 @@ export function EditorApplicationCard({ profileId }: EditorApplicationCardProps)
     
     setSaving(true);
     try {
+      // Update the application - setting status to 'pending' triggers DB notification automatically
       const { error } = await supabase
         .from('editor_applications')
         .update({
@@ -131,7 +133,7 @@ export function EditorApplicationCard({ profileId }: EditorApplicationCardProps)
           },
           languages: editForm.languages,
           services: editForm.services,
-          status: 'pending', // Send back for review
+          status: 'pending', // Send back for review - DB trigger creates admin notification
           updated_at: new Date().toISOString(),
         })
         .eq('id', application.id);
@@ -139,20 +141,14 @@ export function EditorApplicationCard({ profileId }: EditorApplicationCardProps)
       if (error) throw error;
 
       // Also update the profile to remove is_editor temporarily until re-approved
-      await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({ is_editor: false })
         .eq('id', profileId);
 
-      // Send admin notification
-      const { createAdminNotification } = await import('@/lib/notifications');
-      await createAdminNotification({
-        type: 'editor_application',
-        message: `Editor application updated and needs re-review`,
-        applicantId: profileId,
-        applicationType: 'editor',
-        redirectUrl: '/admin',
-      });
+      if (profileError) {
+        console.error('Failed to update profile:', profileError);
+      }
 
       toast.success('Application updated and sent for review');
       setEditDialogOpen(false);
@@ -248,9 +244,16 @@ export function EditorApplicationCard({ profileId }: EditorApplicationCardProps)
               <UserCog className="w-5 h-5 text-primary" />
               Editor Application
             </CardTitle>
-            <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 border-0">
-              Approved
-            </Badge>
+            {application.status === 'approved' ? (
+              <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400 border-0">
+                Approved
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="bg-amber-500/20 text-amber-400 border-0">
+                <Clock className="w-3 h-3 mr-1" />
+                Pending Review
+              </Badge>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
