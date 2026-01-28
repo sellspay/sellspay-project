@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, CreditCard, Wallet } from 'lucide-react';
+import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, CreditCard, Wallet, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useCredits } from '@/hooks/useCredits';
 import platformLogo from '@/assets/ep-logo.png';
@@ -104,10 +104,16 @@ export default function Header() {
                 onClick={() => setTopUpDialogOpen(true)}
                 className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-secondary/80 hover:bg-secondary transition-colors border border-border/50"
               >
-                <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
-                <span className="text-xs sm:text-sm font-medium">
-                  {creditsLoading ? '...' : creditBalance}
-                </span>
+                {creditsLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary animate-spin" />
+                ) : (
+                  <>
+                    <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                    <span className="text-xs sm:text-sm font-medium">
+                      {creditBalance}
+                    </span>
+                  </>
+                )}
               </button>
             )}
 
@@ -149,10 +155,16 @@ export default function Header() {
                       onClick={() => setTopUpDialogOpen(true)}
                       className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/80 hover:bg-secondary transition-colors border border-border/50"
                     >
-                      <Wallet className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">
-                        {creditsLoading ? '...' : creditBalance} Credits
-                      </span>
+                      {creditsLoading ? (
+                        <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                      ) : (
+                        <>
+                          <Wallet className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-medium">
+                            {creditBalance} Credits
+                          </span>
+                        </>
+                      )}
                     </button>
                   </div>
                   
