@@ -10,6 +10,7 @@ export interface ProfileData {
   avatar_url: string | null;
   is_creator: boolean;
   is_seller: boolean;
+  is_editor: boolean;
   verified: boolean;
 }
 
@@ -81,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, user_id, username, full_name, avatar_url, is_creator, is_seller, verified')
+        .select('id, user_id, username, full_name, avatar_url, is_creator, is_seller, is_editor, verified')
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -97,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           avatar_url: data.avatar_url,
           is_creator: data.is_creator || false,
           is_seller: data.is_seller || false,
+          is_editor: data.is_editor || false,
           verified: data.verified || false,
         });
       } else {

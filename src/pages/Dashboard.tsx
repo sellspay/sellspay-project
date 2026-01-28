@@ -14,7 +14,7 @@ import { StatsSummary } from '@/components/dashboard/StatsSummary';
 import { SalesBreakdown } from '@/components/dashboard/SalesBreakdown';
 import { VisitorSourcesTable } from '@/components/dashboard/VisitorSourcesTable';
 import { ConversionFunnel } from '@/components/dashboard/ConversionFunnel';
-
+import { EditorApplicationCard } from '@/components/dashboard/EditorApplicationCard';
 import { EarningsCard } from '@/components/dashboard/EarningsCard';
 import { format, subDays, startOfMonth, eachDayOfInterval } from 'date-fns';
 
@@ -397,6 +397,13 @@ export default function Dashboard() {
           editorEarnings={totalEditorEarnings} 
         />
       </div>
+
+      {/* Editor Application Card - only shown for approved editors */}
+      {profile?.is_editor && profile.id && (
+        <div className="mb-6">
+          <EditorApplicationCard profileId={profile.id} />
+        </div>
+      )}
 
       {/* Analytics Card */}
       <Card className="bg-card">
