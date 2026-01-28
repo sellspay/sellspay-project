@@ -25,6 +25,7 @@ import { PaymentMethodDialog } from "@/components/checkout/PaymentMethodDialog";
 import { useFileDownloadProgress } from "@/hooks/useFileDownloadProgress";
 import { DownloadProgressOverlay } from "@/components/product/DownloadProgressOverlay";
 import { useDownloadLimitCountdown } from "@/hooks/useDownloadLimitCountdown";
+import { AttachmentsSection } from "@/components/product/AttachmentsSection";
 
 interface Product {
   id: string;
@@ -1955,81 +1956,12 @@ export default function ProductDetail() {
           )}
 
           {/* Attachments Section - Main Content */}
-          {(() => {
-            // Build attachments list from attachments array (new format) or legacy download_url
-            const attachmentsList: { name: string; path?: string; size?: number }[] = [];
-            
-            // Check for new attachments format first
-            if (product.attachments && Array.isArray(product.attachments) && product.attachments.length > 0) {
-              product.attachments.forEach((att: any) => {
-                attachmentsList.push({ 
-                  name: att.name || 'Attachment', 
-                  path: att.path,
-                  size: att.size 
-                });
-              });
-            } else if (product.download_url) {
-              // Legacy format: single download_url
-              let displayFilename = (product as any).original_filename || null;
-              
-              if (!displayFilename) {
-                const downloadPath = product.download_url;
-                const pathParts = downloadPath.split('/');
-                const filenamePart = pathParts[pathParts.length - 1];
-                
-                const timestampMatch = filenamePart.match(/^\d{13,}-(.+)$/);
-                if (timestampMatch && timestampMatch[1]) {
-                  displayFilename = timestampMatch[1];
-                } else {
-                  displayFilename = filenamePart;
-                }
-              }
-              
-              attachmentsList.push({ 
-                name: displayFilename || 'Download File', 
-                path: product.download_url 
-              });
-            }
-            
-            if (attachmentsList.length === 0) return null;
-            
-            const hasAccess = isOwner || hasPurchased || (product.pricing_type === "free" && isFollowingCreator);
-            
-            return (
-              <div className="mt-6">
-                <h3 className="font-semibold mb-4 text-foreground">
-                  Attachments
-                </h3>
-                <div className="flex flex-col gap-2">
-                  {attachmentsList.map((attachment, index) => {
-                    const IconComponent = getFileTypeIcon(attachment.name);
-                    
-                    return (
-                      <div 
-                        key={index} 
-                        className="flex items-center gap-3 px-4 py-3 bg-muted/30 rounded-lg border border-border/50"
-                      >
-                        <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
-                          <IconComponent className="w-5 h-5 text-muted-foreground" />
-                        </div>
-                        <span className="text-sm font-medium text-foreground truncate flex-1" title={attachment.name}>
-                          {attachment.name}
-                        </span>
-                        {!hasAccess && (
-                          <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                {!hasAccess && product.pricing_type !== "free" && (
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Purchase to unlock attachments
-                  </p>
-                )}
-              </div>
-            );
-          })()}
+          <AttachmentsSection 
+            product={product} 
+            isOwner={isOwner} 
+            hasPurchased={hasPurchased}
+            isFollowingCreator={isFollowingCreator}
+          />
 
           <Separator className="mt-6" />
         </div>
