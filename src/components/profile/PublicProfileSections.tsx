@@ -16,6 +16,8 @@ interface CollectionProduct {
   price_cents: number | null;
   currency: string | null;
   pricing_type?: string | null;
+  subscription_access?: string | null;
+  included_in_subscription?: boolean | null;
   created_at?: string | null;
   likeCount?: number;
   commentCount?: number;
@@ -74,6 +76,14 @@ export function PublicProfileSections({
     const run = async () => {
       setLoading(true);
       try {
+        // Fetch active subscription plans for this creator (used to tag products included in subscription)
+        const { data: activePlans } = await supabase
+          .from('creator_subscription_plans')
+          .select('id')
+          .eq('creator_id', profileId)
+          .eq('is_active', true);
+        const activePlanIds = (activePlans || []).map((p) => p.id);
+
         // Fetch sections
         let sectionsQuery = supabase
           .from("profile_sections")
@@ -126,7 +136,7 @@ export function PublicProfileSections({
             const productIds = items.map((item) => item.product_id);
             const { data: productsData, error: productsError } = await supabase
               .from("products")
-              .select("id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency, pricing_type, created_at")
+              .select("id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency, pricing_type, subscription_access, created_at")
               .in("id", productIds)
               .eq("status", "published");
 
@@ -162,9 +172,21 @@ export function PublicProfileSections({
             }
 
             // Issue #4 fix: Preserve the display_order from collection_items
+            const includedIds = new Set<string>();
+            if (activePlanIds.length > 0 && productsData && productsData.length > 0) {
+              const pIds = productsData.map((p) => p.id);
+              const { data: includedRows } = await supabase
+                .from('subscription_plan_products')
+                .select('product_id')
+                .in('plan_id', activePlanIds)
+                .in('product_id', pIds);
+              (includedRows || []).forEach((r) => includedIds.add(r.product_id));
+            }
+
             const productMap = new Map(
               (productsData || []).map(p => [p.id, {
                 ...p,
+                included_in_subscription: includedIds.has(p.id),
                 likeCount: likeMap.get(p.id) || 0,
                 commentCount: commentMap.get(p.id) || 0,
               }])
