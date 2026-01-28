@@ -70,6 +70,7 @@ interface Product {
   preview_video_url: string | null;
   pricing_type: string | null;
   subscription_access?: string | null;
+  included_in_subscription?: boolean | null;
   price_cents: number | null;
   currency: string | null;
   status: string | null;
@@ -127,6 +128,7 @@ interface Collection {
     currency: string | null;
     pricing_type?: string | null;
     subscription_access?: string | null;
+    included_in_subscription?: boolean | null;
     created_at?: string | null;
     likeCount?: number;
     commentCount?: number;
@@ -166,12 +168,14 @@ function formatPrice(
   cents: number | null,
   currency: string | null,
   pricingType?: string | null,
-  subscriptionAccess?: string | null
+  subscriptionAccess?: string | null,
+  includedInSubscription?: boolean | null
 ): string {
   if (
     pricingType === 'subscription' ||
     pricingType === 'subscription_only' ||
-    subscriptionAccess === 'subscription_only'
+    subscriptionAccess === 'subscription_only' ||
+    Boolean(includedInSubscription)
   ) {
     return 'Subscription';
   }
@@ -257,7 +261,13 @@ function ProductCard({
 
         {/* Price Badge */}
         <div className="absolute top-2 left-2 rounded bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground backdrop-blur-sm">
-          {formatPrice(product.price_cents, product.currency, product.pricing_type, product.subscription_access)}
+          {formatPrice(
+            product.price_cents,
+            product.currency,
+            product.pricing_type,
+            product.subscription_access,
+            product.included_in_subscription
+          )}
         </div>
 
         {/* Title overlay at bottom */}
@@ -357,6 +367,14 @@ const ProfilePage: React.FC = () => {
   };
   const fetchCollections = async (profileId: string, isOwn: boolean) => {
     try {
+      // Determine which products are included in this creator's active subscription plans
+      const { data: activePlans } = await supabase
+        .from('creator_subscription_plans')
+        .select('id')
+        .eq('creator_id', profileId)
+        .eq('is_active', true);
+      const activePlanIds = (activePlans || []).map((p) => p.id);
+
       // Fetch collections for this profile
       let query = supabase
         .from('collections')
@@ -396,6 +414,18 @@ const ProfilePage: React.FC = () => {
               .in('id', productIds)
               .eq('status', 'published');
 
+            // Mark products that are included in any active subscription plan
+            const includedIds = new Set<string>();
+            if (activePlanIds.length > 0 && productsData && productsData.length > 0) {
+              const pIds = productsData.map((p) => p.id);
+              const { data: includedRows } = await supabase
+                .from('subscription_plan_products')
+                .select('product_id')
+                .in('plan_id', activePlanIds)
+                .in('product_id', pIds);
+              (includedRows || []).forEach((r) => includedIds.add(r.product_id));
+            }
+
             // Get like and comment counts for products
             let likeMap = new Map<string, number>();
             let commentMap = new Map<string, number>();
@@ -424,6 +454,7 @@ const ProfilePage: React.FC = () => {
 
             const publishedProducts = (productsData || []).map(p => ({
               ...p,
+              included_in_subscription: includedIds.has(p.id),
               likeCount: likeMap.get(p.id) || 0,
               commentCount: commentMap.get(p.id) || 0,
             }));
@@ -608,6 +639,24 @@ const ProfilePage: React.FC = () => {
       }
 
       const { data: productsData } = await productQuery;
+
+      // Determine which products are included in this creator's active subscription plans
+      const includedInSubscription = new Set<string>();
+      const { data: activePlans } = await supabase
+        .from('creator_subscription_plans')
+        .select('id')
+        .eq('creator_id', data.id)
+        .eq('is_active', true);
+      const activePlanIds = (activePlans || []).map((p) => p.id);
+      if (activePlanIds.length > 0 && productsData && productsData.length > 0) {
+        const pIds = productsData.map((p) => p.id);
+        const { data: includedRows } = await supabase
+          .from('subscription_plan_products')
+          .select('product_id')
+          .in('plan_id', activePlanIds)
+          .in('product_id', pIds);
+        (includedRows || []).forEach((r) => includedInSubscription.add(r.product_id));
+      }
       
       // Fetch like counts for each product
       if (productsData && productsData.length > 0) {
@@ -639,6 +688,7 @@ const ProfilePage: React.FC = () => {
         
         const productsWithCounts = productsData.map(p => ({
           ...p,
+          included_in_subscription: includedInSubscription.has(p.id),
           likeCount: likeMap.get(p.id) || 0,
           commentCount: commentMap.get(p.id) || 0,
         }));

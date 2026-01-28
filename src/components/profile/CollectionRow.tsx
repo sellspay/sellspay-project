@@ -15,6 +15,7 @@ interface Product {
   currency: string | null;
   pricing_type?: string | null;
   subscription_access?: string | null;
+  included_in_subscription?: boolean | null;
   locked?: boolean | null;
   created_at?: string | null;
   likeCount?: number;
@@ -94,7 +95,8 @@ function ProductCardWithPreview({
   const isSubscriptionOnly =
     product.pricing_type === 'subscription' ||
     product.pricing_type === 'subscription_only' ||
-    product.subscription_access === 'subscription_only';
+    product.subscription_access === 'subscription_only' ||
+    Boolean(product.included_in_subscription);
   const isLocked = product.locked || product.pricing_type === 'paid';
 
   const handleMouseEnter = () => {
