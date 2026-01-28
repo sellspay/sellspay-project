@@ -231,29 +231,12 @@ export default function Settings() {
         }
       }
       
-      // Fetch seller config from edge function (for Stripe status)
-      if ((data as Record<string, unknown>)?.is_seller) {
-        await fetchSellerConfig();
-      }
+      // Stripe status is now fetched by PayoutMethodSelector via check-payoneer-status
+      // to avoid duplicate API calls
     } catch (error) {
       console.error("Error fetching profile:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchSellerConfig = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke("check-connect-status");
-      
-      if (error) throw error;
-      
-      if (data) {
-        setStripeAccountId(data.connected ? "connected" : null);
-        setStripeOnboardingComplete(data.onboarding_complete || false);
-      }
-    } catch (error) {
-      console.error("Error fetching seller config:", error);
     }
   };
 
@@ -1598,6 +1581,10 @@ export default function Settings() {
                 onStripeDisconnected={() => {
                   setStripeAccountId(null);
                   setStripeOnboardingComplete(false);
+                }}
+                onStripeStatusLoaded={(connected, complete) => {
+                  setStripeAccountId(connected ? "connected" : null);
+                  setStripeOnboardingComplete(complete);
                 }}
               />
               
