@@ -38,6 +38,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { SellerEmailSettings } from "@/components/settings/SellerEmailSettings";
 import { PayoutMethodSelector } from "@/components/settings/PayoutMethodSelector";
 import BannerPositionEditor from "@/components/settings/BannerPositionEditor";
+import { StripeOnboardingGuide } from "@/components/settings/StripeOnboardingGuide";
 import { ConnectionsTab } from "@/components/settings/ConnectionsTab";
 
 // Social platform detection
@@ -151,6 +152,9 @@ export default function Settings() {
   const [otpSent, setOtpSent] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [switchingAccountType, setSwitchingAccountType] = useState(false);
+  
+  // Stripe onboarding guide
+  const [showStripeGuide, setShowStripeGuide] = useState(false);
   
   // Email change
   const [showEmailChangeDialog, setShowEmailChangeDialog] = useState(false);
@@ -858,8 +862,15 @@ export default function Settings() {
     }
   };
 
+  // Show the guide dialog first when user clicks "Connect Stripe"
+  const handleConnectStripeClick = () => {
+    setShowStripeGuide(true);
+  };
+
+  // Actually perform the Stripe connect after user reads the guide
   const handleConnectStripe = async () => {
     setConnectingStripe(true);
+    setShowStripeGuide(false);
     // Open blank window immediately (from user click) to avoid popup blocker
     const newWindow = window.open("about:blank", "_blank");
     
@@ -1584,7 +1595,7 @@ export default function Settings() {
               <PayoutMethodSelector
                 stripeConnected={!!stripeAccountId}
                 stripeOnboardingComplete={stripeOnboardingComplete}
-                onConnectStripe={handleConnectStripe}
+                onConnectStripe={handleConnectStripeClick}
                 connectingStripe={connectingStripe}
                 checkingStripeStatus={checkingStripeStatus}
                 onCheckStripeStatus={checkStripeStatus}
@@ -1592,6 +1603,14 @@ export default function Settings() {
                   setStripeAccountId(null);
                   setStripeOnboardingComplete(false);
                 }}
+              />
+              
+              {/* Stripe Onboarding Guide Dialog */}
+              <StripeOnboardingGuide
+                open={showStripeGuide}
+                onOpenChange={setShowStripeGuide}
+                onContinue={handleConnectStripe}
+                isLoading={connectingStripe}
               />
 
               <Separator />
