@@ -12,6 +12,7 @@ interface Product {
   preview_video_url: string | null;
   youtube_url: string | null;
   pricing_type: string | null;
+  subscription_access?: string | null;
   price_cents: number | null;
   currency: string | null;
   product_type: string | null;
@@ -69,7 +70,7 @@ const productTypeLabels: Record<string, string> = {
 
 function formatPrice(cents: number | null, currency: string | null, pricingType?: string | null): string {
   // If subscription-only, show that instead of "Free"
-  if (pricingType === 'subscription') return 'Subscription';
+  if (pricingType === 'subscription' || pricingType === 'subscription_only') return 'Subscription';
   if (!cents || cents === 0) return 'Free';
   const amount = cents / 100;
   const cur = currency?.toUpperCase() || 'USD';
@@ -111,7 +112,10 @@ export default function ProductCard({
   const showVideo = canShowVideo && (isHovered || !hasThumbnail);
 
   const isLarge = size === 'large';
-  const isSubscriptionOnly = product.pricing_type === 'subscription';
+  const isSubscriptionOnly =
+    product.pricing_type === 'subscription' ||
+    product.pricing_type === 'subscription_only' ||
+    product.subscription_access === 'subscription_only';
   const isFree = !isSubscriptionOnly && (!product.price_cents || product.price_cents === 0);
 
   // Fetch creator info from public_profiles view (excludes sensitive PII)

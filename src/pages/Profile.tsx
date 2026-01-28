@@ -69,6 +69,7 @@ interface Product {
   youtube_url: string | null;
   preview_video_url: string | null;
   pricing_type: string | null;
+  subscription_access?: string | null;
   price_cents: number | null;
   currency: string | null;
   status: string | null;
@@ -88,6 +89,7 @@ interface Purchase {
     youtube_url: string | null;
     preview_video_url: string | null;
     pricing_type: string | null;
+    subscription_access?: string | null;
     status?: string | null;
   } | null;
 }
@@ -103,6 +105,7 @@ interface SavedProduct {
     youtube_url: string | null;
     preview_video_url: string | null;
     pricing_type: string | null;
+    subscription_access?: string | null;
     price_cents: number | null;
     currency: string | null;
     status?: string | null;
@@ -123,6 +126,7 @@ interface Collection {
     price_cents: number | null;
     currency: string | null;
     pricing_type?: string | null;
+    subscription_access?: string | null;
     created_at?: string | null;
     likeCount?: number;
     commentCount?: number;
@@ -158,7 +162,19 @@ const getPreviewVideoUrl = (path: string | null): string | null => {
 
 // Product Card with Video Preview
 // Helper to format price
-function formatPrice(cents: number | null, currency: string | null): string {
+function formatPrice(
+  cents: number | null,
+  currency: string | null,
+  pricingType?: string | null,
+  subscriptionAccess?: string | null
+): string {
+  if (
+    pricingType === 'subscription' ||
+    pricingType === 'subscription_only' ||
+    subscriptionAccess === 'subscription_only'
+  ) {
+    return 'Subscription';
+  }
   if (!cents || cents === 0) return 'Free';
   const amount = cents / 100;
   const cur = currency?.toUpperCase() || 'USD';
@@ -241,7 +257,7 @@ function ProductCard({
 
         {/* Price Badge */}
         <div className="absolute top-2 left-2 rounded bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground backdrop-blur-sm">
-          {formatPrice(product.price_cents, product.currency)}
+          {formatPrice(product.price_cents, product.currency, product.pricing_type, product.subscription_access)}
         </div>
 
         {/* Title overlay at bottom */}
@@ -376,7 +392,7 @@ const ProfilePage: React.FC = () => {
             const productIds = items.map((item) => item.product_id);
             const { data: productsData } = await supabase
               .from('products')
-              .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency, pricing_type, created_at')
+              .select('id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency, pricing_type, subscription_access, created_at')
               .in('id', productIds)
               .eq('status', 'published');
 
@@ -583,7 +599,7 @@ const ProfilePage: React.FC = () => {
       // Fetch all products if own profile, only published for others
       const productQuery = supabase
         .from('products')
-        .select('id, name, cover_image_url, youtube_url, preview_video_url, pricing_type, price_cents, currency, status, created_at')
+        .select('id, name, cover_image_url, youtube_url, preview_video_url, pricing_type, subscription_access, price_cents, currency, status, created_at')
         .eq('creator_id', data.id)
         .order('created_at', { ascending: false });
 
@@ -648,6 +664,7 @@ const ProfilePage: React.FC = () => {
               youtube_url,
               preview_video_url,
               pricing_type,
+              subscription_access,
               status
             )
           `)
@@ -685,7 +702,7 @@ const ProfilePage: React.FC = () => {
           const savedProductIds = savedRows.map((r) => r.product_id);
           const { data: savedProductsData, error: productsError } = await supabase
             .from('products')
-            .select('id, name, cover_image_url, youtube_url, preview_video_url, pricing_type, price_cents, currency, status')
+            .select('id, name, cover_image_url, youtube_url, preview_video_url, pricing_type, subscription_access, price_cents, currency, status')
             .in('id', savedProductIds)
             .eq('status', 'published');
 
