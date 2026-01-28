@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { ProfileSection, SectionStyleOptions, SectionContent, SECTION_TEMPLATES, FontOption, CustomFont, AnimationType } from './types';
 import { FontSelector } from './FontSelector';
 import { AnimationPickerInline } from './AnimationPicker';
+import { GalleryEditor } from './GalleryEditor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -646,83 +647,12 @@ export function SectionEditorPanel({
         );
 
       case 'gallery':
-        const galleryImages = (section.content as any).images || [];
-        const galleryPreset = section.style_options?.preset || 'style1';
-        const galleryImageCount = galleryPreset === 'style3' ? 4 : 6; // Masonry = 4, others = 6
-        const galleryColumns = galleryPreset === 'style2' ? 2 : 3;
-
-        const handleGalleryImageUpload = (file: File, index: number) => {
-          handleImageUpload(file, (url) => {
-            const newImages = [...galleryImages];
-            newImages[index] = { url, altText: '' };
-            updateContent({ images: newImages });
-          });
-        };
-
-        const handleGalleryImageRemove = (index: number) => {
-          const newImages = [...galleryImages];
-          newImages[index] = null;
-          updateContent({ images: newImages.filter(Boolean) });
-        };
-
         return (
-          <div className="space-y-4">
-            <Label>Gallery Images ({galleryImageCount} slots)</Label>
-            <div className={cn("grid gap-2", galleryColumns === 2 ? "grid-cols-2" : "grid-cols-3")}>
-              {Array.from({ length: galleryImageCount }, (_, index) => {
-                const img = galleryImages[index];
-                return (
-                  <div key={index} className="space-y-1">
-                    {img?.url ? (
-                      <div className="relative">
-                        <img
-                          src={img.url}
-                          alt=""
-                          className="w-full aspect-square object-cover rounded-lg"
-                        />
-                        <div className="absolute bottom-1 left-1 right-1 flex gap-1">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="flex-1 text-xs h-7"
-                            onClick={() => document.getElementById(`gallery-upload-${section.id}-${index}`)?.click()}
-                          >
-                            Replace
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="text-xs h-7"
-                            onClick={() => handleGalleryImageRemove(index)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => document.getElementById(`gallery-upload-${section.id}-${index}`)?.click()}
-                      >
-                        <Upload className="h-5 w-5 mb-1 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{index + 1}</span>
-                      </div>
-                    )}
-                    <input
-                      id={`gallery-upload-${section.id}-${index}`}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleGalleryImageUpload(file, index);
-                      }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <GalleryEditor
+            section={section}
+            onUpload={handleImageUpload}
+            updateContent={updateContent}
+          />
         );
 
       case 'slideshow':
