@@ -772,64 +772,20 @@ export function PayoutMethodSelector({
                 <CardDescription>Fast, worldwide payments to your PayPal account</CardDescription>
               </div>
             </div>
-            {paypalConnected ? (
-              <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400">
-                <CheckCircle className="w-3 h-3 mr-1" />
-                Connected
-              </Badge>
-            ) : loading ? (
-              <Badge variant="secondary" className="bg-muted text-muted-foreground">
-                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                Checking…
-              </Badge>
-            ) : null}
+            <Badge variant="secondary" className="bg-muted text-muted-foreground">
+              Coming Soon
+            </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            {paypalConnected
-              ? `Connected as ${paypalEmail}. Receive payouts directly to your PayPal balance.`
-              : loading
-              ? "Checking your PayPal connection…"
-              : "Connect your PayPal account to receive fast, worldwide payouts."}
+            PayPal integration is coming soon! This will allow you to receive fast, worldwide payouts directly to your PayPal balance.
           </p>
 
           <div className="flex flex-wrap gap-2">
-            {paypalConnected ? (
-              <>
-                {preferredMethod !== "paypal" && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => handleSetPreferredMethod("paypal")}
-                    disabled={savingPreference}
-                  >
-                    Set as Primary
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => setShowDisconnectPaypalDialog(true)}
-                >
-                  <Unlink className="w-4 h-4 mr-2" />
-                  Disconnect
-                </Button>
-              </>
-            ) : (
-              <Button onClick={handleConnectPaypal} disabled={connectingPaypal}>
-                {connectingPaypal ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Connecting...
-                  </>
-                ) : loading ? (
-                  "Connect PayPal"
-                ) : (
-                  "Connect PayPal"
-                )}
-              </Button>
-            )}
+            <Button variant="outline" disabled className="opacity-50">
+              Coming Soon
+            </Button>
           </div>
 
           <div className="pt-2 text-xs text-muted-foreground space-y-1">
