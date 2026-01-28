@@ -20,7 +20,24 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Upload, X, Plus, AlignLeft, AlignCenter, AlignRight, Trash2, Star } from 'lucide-react';
+import { Upload, X, Plus, AlignLeft, AlignCenter, AlignRight, Trash2, Star, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  arrayMove,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   ProfileSection,
   TextContent,
@@ -687,66 +704,135 @@ function GalleryEditor({
   onUpload: (file: File, onSuccess: (url: string) => void) => void;
   uploading: boolean;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 4,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
   
   // Calculate expected slots based on preset
   const preset = section.style_options?.preset;
   const columns = content.columns || 3;
   const rows = content.rows || 2;
   const layout = content.layout || 'grid';
+  const isMasonry = preset === 'style3' || layout === 'masonry';
   
   // Calculate total slots needed
   const getSlotCount = () => {
     if (preset === 'style1') return 6; // 3x2
     if (preset === 'style2') return 6; // 2x3
-    if (preset === 'style3' || layout === 'masonry') return 6; // masonry
+    if (isMasonry) return 4; // masonry
     return columns * rows;
   };
   
   const slotCount = getSlotCount();
   const slots = Array.from({ length: slotCount }, (_, i) => content.images[i] || null);
 
+  const sortableIds = content.images
+    .slice(0, slotCount)
+    .map((_, i) => String(i));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = Number(active.id);
+    const newIndex = Number(over.id);
+    if (Number.isNaN(oldIndex) || Number.isNaN(newIndex)) return;
+    const limited = content.images.slice(0, slotCount);
+    const reordered = arrayMove(limited, oldIndex, newIndex);
+    // Preserve any images beyond slotCount (shouldn't happen, but keep safe)
+    const remainder = content.images.slice(slotCount);
+    onChange({ images: [...reordered, ...remainder] });
+  };
+
+  function SortableImageTile({
+    id,
+    idx,
+    img,
+  }: {
+    id: string;
+    idx: number;
+    img: { url: string; altText?: string } | null;
+  }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id,
+      disabled: !img?.url,
+    });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.6 : 1,
+    };
+
+    return (
+      <div ref={setNodeRef} style={style} className="relative group aspect-square">
+        {img ? (
+          <>
+            {/* Drag handle */}
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              className="absolute top-1 left-1 z-10 p-1 rounded bg-background/60 border border-border opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+            >
+              <GripVertical className="w-3 h-3 text-foreground" />
+            </button>
+
+            <img
+              src={img.url}
+              alt={img.altText || ''}
+              className="w-full h-full object-cover rounded-lg"
+            />
+            <Button
+              variant="destructive"
+              size="icon"
+              className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
+              onClick={() => onChange({ images: content.images.filter((_, i) => i !== idx) })}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => document.getElementById(`gallery-upload-${section.id}`)?.click()}
+            disabled={uploading}
+            className="w-full h-full border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary/50 bg-muted/30"
+          >
+            <Plus className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{idx + 1}</span>
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div>
         <Label>Gallery Images ({content.images.length}/{slotCount})</Label>
-        <div
-          className="grid gap-2 mt-2"
-          style={{ gridTemplateColumns: `repeat(${Math.min(columns, 3)}, 1fr)` }}
-        >
-          {slots.map((img, idx) => (
-            <div key={idx} className="relative group aspect-square">
-              {img ? (
-                <>
-                  <img
-                    src={img.url}
-                    alt={img.altText || ''}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
-                    onClick={() => onChange({ images: content.images.filter((_, i) => i !== idx) })}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </>
-              ) : (
-                <button
-                  onClick={() => inputRef.current?.click()}
-                  disabled={uploading}
-                  className="w-full h-full border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary/50 bg-muted/30"
-                >
-                  <Plus className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">{idx + 1}</span>
-                </button>
-              )}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sortableIds} strategy={rectSortingStrategy}>
+            <div
+              className="grid gap-2 mt-2"
+              style={{
+                gridTemplateColumns: `repeat(${Math.min(isMasonry ? 2 : columns, 3)}, 1fr)`,
+              }}
+            >
+              {slots.map((img, idx) => (
+                <SortableImageTile key={idx} id={String(idx)} idx={idx} img={img} />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
         <input
-          ref={inputRef}
+          id={`gallery-upload-${section.id}`}
           type="file"
           accept="image/*"
           className="hidden"
