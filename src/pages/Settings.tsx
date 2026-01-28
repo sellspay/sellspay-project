@@ -860,18 +860,28 @@ export default function Settings() {
 
   const handleConnectStripe = async () => {
     setConnectingStripe(true);
+    // Open blank window immediately (from user click) to avoid popup blocker
+    const newWindow = window.open("about:blank", "_blank");
+    
     try {
       const { data, error } = await supabase.functions.invoke("create-connect-account");
 
       if (error) throw error;
 
       if (data?.url) {
-        window.open(data.url, "_blank");
-        toast.success("Stripe onboarding opened in a new tab");
+        if (newWindow) {
+          newWindow.location.href = data.url;
+          toast.success("Stripe onboarding opened in a new tab");
+        } else {
+          // Fallback: redirect current page if popup was blocked
+          window.location.href = data.url;
+        }
       } else {
+        newWindow?.close();
         throw new Error("No onboarding URL returned");
       }
     } catch (error) {
+      newWindow?.close();
       console.error("Stripe connect error:", error);
       const message = error instanceof Error ? error.message : "Failed to connect Stripe";
       toast.error(message);
