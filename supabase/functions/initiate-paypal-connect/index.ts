@@ -85,7 +85,9 @@ serve(async (req) => {
     // PayPal OAuth URL - using Identity API for login
     // We're using the "Log in with PayPal" flow which gives us verified user info
     const redirectUri = `${supabaseUrl}/functions/v1/paypal-oauth-callback`;
-    const scopes = "openid email profile"; // Request email and profile info
+    // PayPal can reject some scopes depending on app configuration (shows "invalid scope").
+    // We only require OpenID + verified email for connecting payouts.
+    const scopes = "openid email";
     
     // PayPal sandbox vs live
     const isLive = Deno.env.get("PAYPAL_ENVIRONMENT") === "live";
