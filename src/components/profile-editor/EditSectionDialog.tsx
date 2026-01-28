@@ -293,7 +293,10 @@ export function EditSectionDialog({
         return (
           <BasicListEditor
             content={section.content as BasicListContent}
+            section={section}
             onChange={updateContent}
+            onUpload={handleImageUpload}
+            uploading={uploading}
           />
         );
       default:
@@ -1020,18 +1023,40 @@ function FeaturedProductEditor({
 
 function BasicListEditor({
   content,
+  section,
   onChange,
+  onUpload,
+  uploading,
 }: {
   content: BasicListContent;
+  section: ProfileSection;
   onChange: (updates: Partial<BasicListContent>) => void;
+  onUpload: (file: File, onSuccess: (url: string) => void) => void;
+  uploading: boolean;
 }) {
   const items = content.items || [];
+  const preset = section.style_options?.preset;
+  
+  // Determine max items based on preset
+  const getMaxItems = () => {
+    if (preset === 'style1') return 3; // 3 Column Cards
+    if (preset === 'style2') return 2; // 2 Column
+    if (preset === 'style3') return 3; // Horizontal List
+    return 10; // Simple list - unlimited
+  };
+  
+  const maxItems = getMaxItems();
+  const isCardLayout = preset === 'style1' || preset === 'style2' || preset === 'style3';
 
   const addItem = () => {
+    if (items.length >= maxItems) return;
     const newItem: ListItem = {
       id: Date.now().toString(),
-      text: '',
-      icon: 'check',
+      text: `Item ${items.length + 1}`,
+      description: 'Add description here',
+      imageUrl: '',
+      linkUrl: '',
+      icon: '',
     };
     onChange({ items: [...items, newItem] });
   };
@@ -1044,6 +1069,12 @@ function BasicListEditor({
 
   const removeItem = (index: number) => {
     onChange({ items: items.filter((_, i) => i !== index) });
+  };
+  
+  const handleItemImageUpload = (index: number, file: File) => {
+    onUpload(file, (url) => {
+      updateItem(index, { imageUrl: url });
+    });
   };
 
   return (
@@ -1059,29 +1090,109 @@ function BasicListEditor({
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label>List Items</Label>
-          <Button variant="outline" size="sm" onClick={addItem}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Item
-          </Button>
+          <Label>List Items ({items.length}/{maxItems})</Label>
+          {items.length < maxItems && (
+            <Button variant="outline" size="sm" onClick={addItem}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add Item
+            </Button>
+          )}
         </div>
 
         {items.map((item, index) => (
-          <div key={item.id} className="flex gap-2 items-start">
-            <Input
-              value={item.text}
-              onChange={(e) => updateItem(index, { text: e.target.value })}
-              placeholder={`Item ${index + 1}`}
-              className="flex-1"
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => removeItem(index)}
-              className="h-10 w-10 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+          <div key={item.id} className="border border-border rounded-lg p-3 space-y-3">
+            {/* Image upload for card layouts */}
+            {isCardLayout && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Image</Label>
+                {item.imageUrl ? (
+                  <div className="relative mt-1">
+                    <img
+                      src={item.imageUrl}
+                      alt=""
+                      className="w-full h-24 object-cover rounded-lg"
+                    />
+                    <div className="absolute bottom-1 left-1 right-1 flex gap-1">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="flex-1 text-xs h-6"
+                        onClick={() => document.getElementById(`list-item-upload-${section.id}-${index}`)?.click()}
+                        disabled={uploading}
+                      >
+                        Replace
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="text-xs h-6"
+                        onClick={() => updateItem(index, { imageUrl: '' })}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="mt-1 border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => document.getElementById(`list-item-upload-${section.id}-${index}`)?.click()}
+                  >
+                    <Upload className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Upload image</p>
+                  </div>
+                )}
+                <input
+                  id={`list-item-upload-${section.id}-${index}`}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleItemImageUpload(index, file);
+                  }}
+                />
+              </div>
+            )}
+            
+            {/* Title */}
+            <div className="flex gap-2 items-start">
+              <div className="flex-1 space-y-2">
+                <Input
+                  value={item.text}
+                  onChange={(e) => updateItem(index, { text: e.target.value })}
+                  placeholder="Title"
+                />
+                
+                {/* Description for card layouts */}
+                {isCardLayout && (
+                  <Input
+                    value={item.description || ''}
+                    onChange={(e) => updateItem(index, { description: e.target.value })}
+                    placeholder="Description"
+                    className="text-sm"
+                  />
+                )}
+                
+                {/* Link URL for card layouts */}
+                {isCardLayout && (
+                  <Input
+                    value={item.linkUrl || ''}
+                    onChange={(e) => updateItem(index, { linkUrl: e.target.value })}
+                    placeholder="Link URL (optional)"
+                    className="text-sm"
+                  />
+                )}
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => removeItem(index)}
+                className="h-10 w-10 text-destructive hover:text-destructive shrink-0"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         ))}
 
@@ -1092,22 +1203,24 @@ function BasicListEditor({
         )}
       </div>
 
-      <div>
-        <Label>Style</Label>
-        <Select
-          value={content.style || 'bullet'}
-          onValueChange={(value) => onChange({ style: value as BasicListContent['style'] })}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="bullet">Bullet Points</SelectItem>
-            <SelectItem value="numbered">Numbered</SelectItem>
-            <SelectItem value="icon">Icons</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {!isCardLayout && (
+        <div>
+          <Label>Style</Label>
+          <Select
+            value={content.style || 'bullet'}
+            onValueChange={(value) => onChange({ style: value as BasicListContent['style'] })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bullet">Bullet Points</SelectItem>
+              <SelectItem value="numbered">Numbered</SelectItem>
+              <SelectItem value="icon">Icons</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   );
 }
