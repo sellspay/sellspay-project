@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import Step1PersonalInfo from './Step1PersonalInfo';
 import Step2Rates from './Step2Rates';
 import Step3Services from './Step3Services';
+import Step4StripeSetup from './Step4StripeSetup';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -41,6 +42,8 @@ const initialFormData: ApplicationFormData = {
   services: [],
 };
 
+const TOTAL_STEPS = 4;
+
 // Calculate days remaining before rejected user can reapply
 const getDaysUntilReapply = (reviewedAt: string): number => {
   const reviewedDate = new Date(reviewedAt);
@@ -56,6 +59,7 @@ export default function EditorApplicationDialog({ open, onOpenChange }: EditorAp
   const [formData, setFormData] = useState<ApplicationFormData>(initialFormData);
   const [submitting, setSubmitting] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [stripeConnected, setStripeConnected] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [applicationStatus, setApplicationStatus] = useState<{
     status: 'none' | 'pending' | 'approved' | 'rejected';
@@ -127,7 +131,8 @@ export default function EditorApplicationDialog({ open, onOpenChange }: EditorAp
 
   const canProceedStep1 = formData.displayName && formData.aboutMe && formData.country && formData.city;
   const canProceedStep2 = formData.hourlyRate > 0 && formData.languages.length > 0;
-  const canSubmit = formData.services.length > 0;
+  const canProceedStep3 = formData.services.length > 0;
+  const canSubmit = stripeConnected;
 
   const handleSubmit = async () => {
     if (!user) {
@@ -301,10 +306,12 @@ export default function EditorApplicationDialog({ open, onOpenChange }: EditorAp
             {/* Progress */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Step {step} of 3</span>
-                <span>{step === 1 ? 'Personal Info' : step === 2 ? 'Rates & Languages' : 'Services'}</span>
+                <span>Step {step} of {TOTAL_STEPS}</span>
+                <span>
+                  {step === 1 ? 'Personal Info' : step === 2 ? 'Rates & Languages' : step === 3 ? 'Services' : 'Payment Setup'}
+                </span>
               </div>
-              <Progress value={(step / 3) * 100} className="h-2" />
+              <Progress value={(step / TOTAL_STEPS) * 100} className="h-2" />
             </div>
 
             {/* Steps */}
@@ -327,6 +334,12 @@ export default function EditorApplicationDialog({ open, onOpenChange }: EditorAp
                 updateFormData={updateFormData}
               />
             )}
+            {step === 4 && (
+              <Step4StripeSetup
+                stripeConnected={stripeConnected}
+                onStripeStatusChange={setStripeConnected}
+              />
+            )}
 
             {/* Navigation */}
             <div className="flex justify-between pt-4 border-t">
@@ -337,10 +350,14 @@ export default function EditorApplicationDialog({ open, onOpenChange }: EditorAp
                 {step === 1 ? 'Cancel' : 'Back'}
               </Button>
               
-              {step < 3 ? (
+              {step < TOTAL_STEPS ? (
                 <Button
                   onClick={() => setStep(step + 1)}
-                  disabled={step === 1 ? !canProceedStep1 : !canProceedStep2}
+                  disabled={
+                    step === 1 ? !canProceedStep1 : 
+                    step === 2 ? !canProceedStep2 : 
+                    !canProceedStep3
+                  }
                 >
                   Next
                 </Button>
