@@ -103,8 +103,9 @@ serve(async (req) => {
       Deno.env.get("PAYPAL_CLIENT_SECRET")
     );
 
-    // Get Stripe connection status
-    const stripeConnected = !!(config?.stripe_account_id && config?.stripe_onboarding_complete);
+    // Get Stripe connection status (separate connected vs fully verified)
+    const stripeAccountLinked = !!config?.stripe_account_id;
+    const stripeOnboardingComplete = !!config?.stripe_onboarding_complete;
 
     return new Response(
       JSON.stringify({
@@ -117,8 +118,9 @@ serve(async (req) => {
         paypalConfigured,
         paypalEmail: config?.paypal_email || null,
         paypalConnected: config?.paypal_payout_enabled || false,
-        // Stripe fields
-        stripeConnected,
+        // Stripe fields - separate "linked" from "fully verified"
+        stripeConnected: stripeAccountLinked,
+        stripeOnboardingComplete,
         preferredPayoutMethod: config?.preferred_payout_method || "stripe",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }

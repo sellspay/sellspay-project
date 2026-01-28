@@ -35,6 +35,7 @@ interface PayoutMethodSelectorProps {
   checkingStripeStatus: boolean;
   onCheckStripeStatus: () => void;
   onStripeDisconnected?: () => void;
+  onStripeStatusLoaded?: (connected: boolean, onboardingComplete: boolean) => void;
 }
 
 interface BankAccount {
@@ -55,6 +56,7 @@ export function PayoutMethodSelector({
   checkingStripeStatus,
   onCheckStripeStatus,
   onStripeDisconnected,
+  onStripeStatusLoaded,
 }: PayoutMethodSelectorProps) {
   const [preferredMethod, setPreferredMethod] = useState<"stripe" | "payoneer" | "paypal">("stripe");
   const [payoneerEmail, setPayoneerEmail] = useState("");
@@ -161,6 +163,14 @@ export function PayoutMethodSelector({
         setPaypalEmail(data.paypalEmail || "");
         setPaypalConnected(data.paypalConnected || false);
         setPreferredMethod(data.preferredPayoutMethod || "stripe");
+        
+        // Notify parent of Stripe status from this unified call
+        if (onStripeStatusLoaded) {
+          onStripeStatusLoaded(
+            data.stripeConnected || false,
+            data.stripeOnboardingComplete || false
+          );
+        }
       }
     } catch (error) {
       console.error("Error fetching Payoneer status:", error);
