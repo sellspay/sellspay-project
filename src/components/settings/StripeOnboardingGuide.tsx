@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 interface StripeOnboardingGuideProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onContinue: (popup: Window | null) => void;
+  onContinue: () => void;
   isLoading?: boolean;
 }
 
@@ -99,9 +99,8 @@ export function StripeOnboardingGuide({
           </Button>
           <Button 
             onClick={() => {
-              // Open popup immediately on user click to avoid popup blocker
-              const popup = window.open("about:blank", "_blank");
-              onContinue(popup);
+              // Do not open a blank window; only navigate after URL is returned.
+              onContinue();
             }} 
             disabled={isLoading}
           >
