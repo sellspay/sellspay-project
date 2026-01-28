@@ -67,7 +67,9 @@ const productTypeLabels: Record<string, string> = {
   other: "Other",
 };
 
-function formatPrice(cents: number | null, currency: string | null): string {
+function formatPrice(cents: number | null, currency: string | null, pricingType?: string | null): string {
+  // If subscription-only, show that instead of "Free"
+  if (pricingType === 'subscription') return 'Subscription';
   if (!cents || cents === 0) return 'Free';
   const amount = cents / 100;
   const cur = currency?.toUpperCase() || 'USD';
@@ -109,7 +111,8 @@ export default function ProductCard({
   const showVideo = canShowVideo && (isHovered || !hasThumbnail);
 
   const isLarge = size === 'large';
-  const isFree = !product.price_cents || product.price_cents === 0;
+  const isSubscriptionOnly = product.pricing_type === 'subscription';
+  const isFree = !isSubscriptionOnly && (!product.price_cents || product.price_cents === 0);
 
   // Fetch creator info from public_profiles view (excludes sensitive PII)
   useEffect(() => {
@@ -261,15 +264,20 @@ export default function ProductCard({
 
           {/* Minimal Price Badge */}
           <div className={`absolute top-2.5 left-2.5 flex items-center gap-1 rounded-md backdrop-blur-sm border transition-all duration-300 ${
-            isFree 
-              ? 'bg-white/10 border-white/20 text-white/90 px-2 py-0.5' 
-              : 'bg-black/50 border-white/10 text-white/90 px-2 py-0.5'
+            isSubscriptionOnly
+              ? 'bg-violet-500/20 border-violet-400/30 text-violet-300 px-2 py-0.5'
+              : isFree 
+                ? 'bg-white/10 border-white/20 text-white/90 px-2 py-0.5' 
+                : 'bg-black/50 border-white/10 text-white/90 px-2 py-0.5'
           } text-[10px] font-medium tracking-wide`}>
-            {isFree && (
+            {isSubscriptionOnly && (
+              <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />
+            )}
+            {isFree && !isSubscriptionOnly && (
               <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
             )}
-            <span className={isFree ? 'uppercase tracking-wider' : ''}>
-              {formatPrice(product.price_cents, product.currency)}
+            <span className={(isFree || isSubscriptionOnly) ? 'uppercase tracking-wider' : ''}>
+              {formatPrice(product.price_cents, product.currency, product.pricing_type)}
             </span>
           </div>
 
