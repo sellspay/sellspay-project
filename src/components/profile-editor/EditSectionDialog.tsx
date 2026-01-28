@@ -303,7 +303,7 @@ export function EditSectionDialog({
 
   return (
     <Dialog open={!!section} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-2xl h-[90svh] max-h-[90svh] flex flex-col min-h-0 overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{template?.name || 'Edit Section'}</DialogTitle>
         </DialogHeader>
