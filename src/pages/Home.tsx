@@ -12,7 +12,7 @@ import { FeaturedCreators } from '@/components/home/FeaturedCreators';
 import { Reveal } from '@/components/home/Reveal';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ChevronLeft, ChevronRight, Sparkles, TrendingUp, Zap, Music, Palette, Film, Type, Layers, GraduationCap, FolderOpen, Sliders, Wand2 } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Sparkles, TrendingUp, Zap, Music, Palette, Film, Type, Layers, GraduationCap, FolderOpen, Sliders, Wand2, Image, Brush, Box } from 'lucide-react';
 interface Product {
   id: string;
   name: string;
@@ -323,6 +323,9 @@ const CATEGORY_OPTIONS = [
   { id: 'tutorial', label: 'Tutorials', icon: GraduationCap },
   { id: 'project_file', label: 'Project Files', icon: FolderOpen },
   { id: 'font', label: 'Fonts', icon: Type },
+  { id: 'digital_art', label: 'Digital Art', icon: Image },
+  { id: 'art', label: 'Art', icon: Brush },
+  { id: '3d_artist', label: '3D Artist', icon: Box },
 ];
 
 interface CategoryExplorerProps {

@@ -52,6 +52,9 @@ const productTypes = [
   { value: "transition", label: "Transition Pack", icon: "🎬" },
   { value: "color_grading", label: "Color Grading", icon: "🎭" },
   { value: "motion_graphics", label: "Motion Graphics", icon: "🎪" },
+  { value: "digital_art", label: "Digital Art", icon: "🖼️" },
+  { value: "art", label: "Art", icon: "🎨" },
+  { value: "3d_artist", label: "3D Artist", icon: "🧊" },
   { value: "other", label: "Other", icon: "📦" },
 ];
 

@@ -31,6 +31,9 @@ const productTypes = [
   { value: "transition", label: "Transition Pack" },
   { value: "color_grading", label: "Color Grading" },
   { value: "motion_graphics", label: "Motion Graphics" },
+  { value: "digital_art", label: "Digital Art" },
+  { value: "art", label: "Art" },
+  { value: "3d_artist", label: "3D Artist" },
   { value: "other", label: "Other" },
 ];
 
