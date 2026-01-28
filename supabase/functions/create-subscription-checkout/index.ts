@@ -90,10 +90,13 @@ serve(async (req) => {
     const creatorStripeAccountId = sellerConfig?.[0]?.stripe_account_id || null;
     const stripeOnboardingComplete = sellerConfig?.[0]?.stripe_onboarding_complete || false;
 
-    if (!creatorStripeAccountId || !stripeOnboardingComplete) {
-      throw new Error("Creator has not completed Stripe onboarding");
-    }
-    logStep("Creator Stripe account found", { accountId: creatorStripeAccountId });
+    // Allow subscriptions even if creator hasn't onboarded - funds go to platform
+    const useConnect = creatorStripeAccountId && stripeOnboardingComplete;
+    logStep("Payment routing decision", { 
+      useConnect, 
+      hasStripeAccount: !!creatorStripeAccountId, 
+      onboardingComplete: stripeOnboardingComplete 
+    });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
@@ -176,11 +179,13 @@ serve(async (req) => {
       totalApplicationFee,
       applicationFeePercent: `${applicationFeePercent}%`,
       creatorPayout,
+      useConnect,
     });
 
-    // Create checkout session with Connect
     const origin = req.headers.get("origin") || "http://localhost:5173";
-    const session = await stripe.checkout.sessions.create({
+
+    // Build checkout session config
+    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
@@ -192,7 +197,17 @@ serve(async (req) => {
       mode: "subscription",
       success_url: `${origin}/profile?subscription=success`,
       cancel_url: `${origin}/profile?subscription=cancelled`,
-      subscription_data: {
+      metadata: {
+        plan_id: plan.id,
+        buyer_profile_id: buyerProfile.id,
+        creator_user_id: creatorProfile.user_id,
+        use_connect: useConnect ? "true" : "false",
+      },
+    };
+
+    // Only use Connect if creator has completed onboarding
+    if (useConnect) {
+      sessionConfig.subscription_data = {
         application_fee_percent: applicationFeePercent,
         transfer_data: {
           destination: creatorStripeAccountId,
@@ -204,18 +219,30 @@ serve(async (req) => {
           stripe_fee_cents: stripeProcessingFee.toString(),
           creator_payout_cents: creatorPayout.toString(),
         },
-      },
-      metadata: {
-        plan_id: plan.id,
-        buyer_profile_id: buyerProfile.id,
-      },
-    });
+      };
+      logStep("Using Connect transfer to creator", { destination: creatorStripeAccountId });
+    } else {
+      // No Connect - funds stay in platform account, tracked for later payout
+      sessionConfig.subscription_data = {
+        metadata: {
+          plan_id: plan.id,
+          buyer_profile_id: buyerProfile.id,
+          creator_user_id: creatorProfile.user_id,
+          platform_fee_cents: platformFee.toString(),
+          stripe_fee_cents: stripeProcessingFee.toString(),
+          creator_payout_cents: creatorPayout.toString(),
+          pending_transfer: "true", // Mark for later transfer when creator onboards
+        },
+      };
+      logStep("Platform collection mode - creator not yet onboarded");
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     logStep("Checkout session created", { 
       sessionId: session.id, 
       url: session.url,
-      applicationFeePercent: `${applicationFeePercent}%`,
-      creatorPayout,
+      useConnect,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
