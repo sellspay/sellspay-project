@@ -14,6 +14,7 @@ interface Product {
   price_cents: number | null;
   currency: string | null;
   pricing_type?: string | null;
+  subscription_access?: string | null;
   locked?: boolean | null;
   created_at?: string | null;
   likeCount?: number;
@@ -60,6 +61,9 @@ const formatDate = (dateString: string | null | undefined) => {
 
 // Helper to format price
 const formatPrice = (priceCents: number | null, currency: string | null, pricingType?: string | null): string => {
+  if (pricingType === 'subscription' || pricingType === 'subscription_only') {
+    return 'Subscription';
+  }
   if (pricingType === 'free' || priceCents === null || priceCents === 0) {
     return 'Free';
   }
@@ -87,6 +91,10 @@ function ProductCardWithPreview({
   
   const thumbnail = product.cover_image_url || getYouTubeThumbnail(product.youtube_url);
   const previewVideoUrl = getPreviewVideoUrl(product.preview_video_url);
+  const isSubscriptionOnly =
+    product.pricing_type === 'subscription' ||
+    product.pricing_type === 'subscription_only' ||
+    product.subscription_access === 'subscription_only';
   const isLocked = product.locked || product.pricing_type === 'paid';
 
   const handleMouseEnter = () => {
@@ -151,11 +159,13 @@ function ProductCardWithPreview({
         
         {/* Price Badge - Top Right */}
         <div className={`absolute top-2 right-2 px-2.5 py-1 rounded-full text-[11px] font-semibold shadow-sm ${
-          product.pricing_type === 'free' || product.price_cents === null || product.price_cents === 0
+          (!isSubscriptionOnly && (product.pricing_type === 'free' || product.price_cents === null || product.price_cents === 0))
             ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
             : 'bg-background/95 backdrop-blur-md text-foreground border border-border/50'
         }`}>
-          {formatPrice(product.price_cents, product.currency, product.pricing_type)}
+          {isSubscriptionOnly
+            ? 'Subscription'
+            : formatPrice(product.price_cents, product.currency, product.pricing_type)}
         </div>
         
         {/* Play indicator - Bottom Left */}
