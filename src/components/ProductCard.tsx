@@ -13,6 +13,7 @@ interface Product {
   youtube_url: string | null;
   pricing_type: string | null;
   subscription_access?: string | null;
+  included_in_subscription?: boolean | null;
   price_cents: number | null;
   currency: string | null;
   product_type: string | null;
@@ -68,7 +69,9 @@ const productTypeLabels: Record<string, string> = {
   other: "Other",
 };
 
-function formatPrice(cents: number | null, currency: string | null, pricingType?: string | null): string {
+function formatPrice(cents: number | null, currency: string | null, pricingType?: string | null, isSubIncluded?: boolean): string {
+  // If included in subscription plan, always show "Subscription"
+  if (isSubIncluded) return 'Subscription';
   // If subscription-only, show that instead of "Free"
   if (pricingType === 'subscription' || pricingType === 'subscription_only') return 'Subscription';
   if (!cents || cents === 0) return 'Free';
@@ -115,7 +118,8 @@ export default function ProductCard({
   const isSubscriptionOnly =
     product.pricing_type === 'subscription' ||
     product.pricing_type === 'subscription_only' ||
-    product.subscription_access === 'subscription_only';
+    product.subscription_access === 'subscription_only' ||
+    Boolean(product.included_in_subscription);
   const isFree = !isSubscriptionOnly && (!product.price_cents || product.price_cents === 0);
 
   // Fetch creator info from public_profiles view (excludes sensitive PII)
@@ -281,7 +285,7 @@ export default function ProductCard({
               <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
             )}
             <span className={(isFree || isSubscriptionOnly) ? 'uppercase tracking-wider' : ''}>
-              {formatPrice(product.price_cents, product.currency, product.pricing_type)}
+              {formatPrice(product.price_cents, product.currency, product.pricing_type, Boolean(product.included_in_subscription))}
             </span>
           </div>
 
