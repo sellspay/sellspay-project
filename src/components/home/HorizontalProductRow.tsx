@@ -12,6 +12,8 @@ interface Product {
   cover_image_url: string | null;
   preview_video_url: string | null;
   pricing_type: string | null;
+  subscription_access?: string | null;
+  included_in_subscription?: boolean | null;
   price_cents: number | null;
   currency: string | null;
   youtube_url: string | null;

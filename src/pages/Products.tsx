@@ -29,6 +29,8 @@ interface Product {
   preview_video_url: string | null;
   youtube_url: string | null;
   pricing_type: string | null;
+  subscription_access?: string | null;
+  included_in_subscription?: boolean | null;
   price_cents: number | null;
   currency: string | null;
   tags: string[] | null;
@@ -92,7 +94,7 @@ export default function Products() {
     async function fetchProducts() {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, status, product_type, featured, cover_image_url, preview_video_url, youtube_url, pricing_type, price_cents, currency, tags, created_at, creator_id')
+        .select('id, name, description, status, product_type, featured, cover_image_url, preview_video_url, youtube_url, pricing_type, subscription_access, price_cents, currency, tags, created_at, creator_id')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
 
@@ -100,7 +102,30 @@ export default function Products() {
         console.error('Failed to load products:', error);
         setProducts([]);
       } else {
-        setProducts(data || []);
+        const base = (data || []) as Product[];
+
+        // Universal subscription tagging: if a product is included in ANY active subscription plan,
+        // it should display the "Subscription" badge (even if price is 0).
+        const ids = base.map((p) => p.id);
+        const includedIds = new Set<string>();
+        if (ids.length > 0) {
+          const { data: includedRows } = await supabase
+            .from('subscription_plan_products')
+            .select('product_id, creator_subscription_plans!inner(is_active)')
+            .in('product_id', ids)
+            .eq('creator_subscription_plans.is_active', true);
+
+          (includedRows || []).forEach((r: any) => {
+            if (r?.product_id) includedIds.add(r.product_id);
+          });
+        }
+
+        setProducts(
+          base.map((p) => ({
+            ...p,
+            included_in_subscription: includedIds.has(p.id),
+          }))
+        );
       }
       setLoading(false);
     }

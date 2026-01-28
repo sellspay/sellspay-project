@@ -22,6 +22,8 @@ interface Product {
   cover_image_url: string | null;
   preview_video_url: string | null;
   pricing_type: string | null;
+  subscription_access?: string | null;
+  included_in_subscription?: boolean | null;
   price_cents: number | null;
   currency: string | null;
   youtube_url: string | null;
@@ -47,7 +49,7 @@ export default function Home() {
     async function fetchProducts() {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, price_cents, currency, youtube_url, tags, created_at, creator_id')
+        .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, subscription_access, price_cents, currency, youtube_url, tags, created_at, creator_id')
         .eq('status', 'published')
         .order('created_at', { ascending: false });
 
@@ -55,10 +57,31 @@ export default function Home() {
         console.error('Failed to load products:', error);
         setProducts([]);
       } else {
-        setProducts(data || []);
+        const base = (data || []) as Product[];
+
+        // Universal subscription tagging for home sections (featured + category explorer)
+        const ids = base.map((p) => p.id);
+        const includedIds = new Set<string>();
+        if (ids.length > 0) {
+          const { data: includedRows } = await supabase
+            .from('subscription_plan_products')
+            .select('product_id, creator_subscription_plans!inner(is_active)')
+            .in('product_id', ids)
+            .eq('creator_subscription_plans.is_active', true);
+          (includedRows || []).forEach((r: any) => {
+            if (r?.product_id) includedIds.add(r.product_id);
+          });
+        }
+
+        const enriched = base.map((p) => ({
+          ...p,
+          included_in_subscription: includedIds.has(p.id),
+        }));
+
+        setProducts(enriched);
         
         // Fetch engagement stats for featured products
-        const featured = (data || []).filter(p => p.featured === true);
+        const featured = enriched.filter(p => p.featured === true);
         if (featured.length > 0) {
           const productIds = featured.map(p => p.id);
           
@@ -94,7 +117,7 @@ export default function Home() {
           const sevenDaysAgo = new Date();
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
           
-          const featuredWithEngagement: FeaturedProduct[] = featured.map(p => {
+           const featuredWithEngagement: FeaturedProduct[] = featured.map(p => {
             const likes = likeMap.get(p.id) || 0;
             const commentsCount = commentMap.get(p.id) || 0;
             const isRecent = p.created_at ? new Date(p.created_at) > sevenDaysAgo : false;
