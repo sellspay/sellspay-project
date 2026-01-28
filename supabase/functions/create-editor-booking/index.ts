@@ -138,6 +138,7 @@ serve(async (req) => {
     }
 
     // Get editor's profile with subscription tier
+    logStep("Fetching editor profile", { editorId });
     const { data: editorProfile, error: editorError } = await supabaseClient
       .from("profiles")
       .select("id, user_id, full_name, username, subscription_tier")
@@ -145,13 +146,16 @@ serve(async (req) => {
       .single();
 
     if (editorError || !editorProfile) {
+      logStep("Editor profile fetch failed", { error: editorError?.message });
       return new Response(
         JSON.stringify({ error: `Failed to fetch editor profile: ${editorError?.message || 'Not found'}` }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    logStep("Editor profile fetched", { userId: editorProfile.user_id, username: editorProfile.username });
 
     // Get editor's seller config from private schema
+    logStep("Fetching seller config", { userId: editorProfile.user_id });
     const { data: sellerConfig, error: configError } = await supabaseClient.rpc(
       "get_seller_config",
       { p_user_id: editorProfile.user_id }
@@ -160,6 +164,7 @@ serve(async (req) => {
     if (configError) {
       logStep("Error getting seller config", { error: configError.message });
     }
+    logStep("Seller config result", { sellerConfig, hasData: !!sellerConfig?.length });
 
     // Extract Stripe info from seller config
     const stripeAccountId = sellerConfig?.[0]?.stripe_account_id || null;
@@ -167,8 +172,9 @@ serve(async (req) => {
 
     // Verify editor has completed Stripe onboarding
     if (!stripeAccountId || !stripeOnboardingComplete) {
+      logStep("Editor missing Stripe setup", { stripeAccountId, stripeOnboardingComplete });
       return new Response(
-        JSON.stringify({ error: "Editor has not completed Stripe onboarding" }),
+        JSON.stringify({ error: "This editor hasn't set up payments yet. They need to complete Stripe onboarding before accepting bookings." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
