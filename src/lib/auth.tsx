@@ -129,6 +129,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Auth state listener
   useEffect(() => {
+    // Check if this is a new browser session and user didn't want to be remembered
+    const tempSession = sessionStorage.getItem('tempSession');
+    const wasRemembered = localStorage.getItem('rememberMe') === 'true';
+    
+    // If tempSession flag exists in a previous session but not in current sessionStorage,
+    // it means browser was closed and reopened - clear the session
+    if (!wasRemembered && !tempSession && localStorage.getItem('supabase.auth.token')) {
+      // Session should be cleared - user didn't want to be remembered
+      supabase.auth.signOut();
+    }
+    
     // Set up auth state listener FIRST (before getSession)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -253,6 +264,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    
+    // Check if user wants to be remembered
+    const rememberMe = localStorage.getItem('rememberMe') === 'true';
+    if (!rememberMe) {
+      // Mark session as temporary - will be cleared on browser close
+      sessionStorage.setItem('tempSession', 'true');
+    } else {
+      sessionStorage.removeItem('tempSession');
+    }
+    
     return { error };
   };
 

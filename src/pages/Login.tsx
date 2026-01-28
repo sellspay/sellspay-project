@@ -20,6 +20,10 @@ export default function Login() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetMessage, setResetMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    // Default to true if user previously selected remember me
+    return localStorage.getItem('rememberMe') === 'true';
+  });
 
   // 2FA State
   const [showMfaVerification, setShowMfaVerification] = useState(false);
@@ -87,6 +91,9 @@ export default function Login() {
         
         emailToUse = email;
       }
+      
+      // Store remember me preference
+      localStorage.setItem('rememberMe', rememberMe.toString());
       
       const { error } = await signIn(emailToUse, password);
       if (error) throw error;
@@ -515,6 +522,23 @@ export default function Login() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+              </div>
+
+              {/* Remember Me */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-border/50 bg-card/40 text-primary focus:ring-primary/20 focus:ring-2 cursor-pointer"
+                />
+                <label 
+                  htmlFor="rememberMe" 
+                  className="text-sm text-muted-foreground cursor-pointer select-none"
+                >
+                  Remember me
+                </label>
               </div>
 
               {error && (
