@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,7 +88,13 @@ const isExpiredRejection = (reviewedAt: string | null): boolean => {
 export default function Admin() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
+  // Get initial tab from URL query param
+  const urlTab = searchParams.get('tab');
+  const validTabs = ['users', 'manage-users', 'products', 'featured', 'spotlight', 'editor-applications', 'creator-applications', 'settings'];
+  const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'users';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [users, setUsers] = useState<Profile[]>([]);
@@ -747,7 +753,7 @@ export default function Admin() {
       </div>
 
       {/* Data Tables */}
-      <Tabs defaultValue="users" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="flex-wrap">
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="manage-users">

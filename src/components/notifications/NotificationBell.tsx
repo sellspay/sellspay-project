@@ -287,8 +287,12 @@ export function NotificationBell() {
       setAdminUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
-    // Navigate if there's a redirect URL
-    if (notification.redirect_url) {
+    // Navigate with tab context based on notification type
+    if (notification.type === "editor_application") {
+      navigate("/admin?tab=editor-applications");
+    } else if (notification.type === "creator_application") {
+      navigate("/admin?tab=creator-applications");
+    } else if (notification.redirect_url) {
       navigate(notification.redirect_url);
     }
   };
