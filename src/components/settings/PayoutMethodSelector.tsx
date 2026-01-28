@@ -72,6 +72,9 @@ export function PayoutMethodSelector({
   const [paypalConnected, setPaypalConnected] = useState(false);
   // showPaypalDialog removed - now using OAuth redirect flow
   const [connectingPaypal, setConnectingPaypal] = useState(false);
+  const [paypalAuthUrl, setPaypalAuthUrl] = useState<string | null>(null);
+  const [paypalAuthUrlPrefetchedAt, setPaypalAuthUrlPrefetchedAt] = useState<number | null>(null);
+  const [statusLoadSlow, setStatusLoadSlow] = useState(false);
   const [showDisconnectPaypalDialog, setShowDisconnectPaypalDialog] = useState(false);
   const [disconnectingPaypal, setDisconnectingPaypal] = useState(false);
   
@@ -89,6 +92,17 @@ export function PayoutMethodSelector({
   useEffect(() => {
     fetchPayoneerStatus();
   }, []);
+
+  // If the status call is slow/cold-starting, don't block the entire Billing tab UI.
+  useEffect(() => {
+    if (!loading) return;
+    const t = window.setTimeout(() => {
+      // Let the UI render even if the status call hasn't returned yet.
+      setStatusLoadSlow(true);
+      setLoading(false);
+    }, 4000);
+    return () => window.clearTimeout(t);
+  }, [loading]);
 
   useEffect(() => {
     if (stripeOnboardingComplete) {
@@ -171,15 +185,53 @@ export function PayoutMethodSelector({
             data.stripeOnboardingComplete || false
           );
         }
+
+        // Prefetch PayPal OAuth URL so the button click can redirect instantly.
+        // Safe because the state token is stored with a 10-minute expiry.
+        if (!data.paypalConnected && data.paypalConfigured) {
+          void prefetchPaypalAuthUrl();
+        }
       }
     } catch (error) {
       console.error("Error fetching Payoneer status:", error);
     } finally {
+      setStatusLoadSlow(false);
       setLoading(false);
     }
   };
 
+  const prefetchPaypalAuthUrl = async () => {
+    // If we already have a fresh URL, skip.
+    if (paypalAuthUrl && paypalAuthUrlPrefetchedAt && Date.now() - paypalAuthUrlPrefetchedAt < 8 * 60 * 1000) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke("initiate-paypal-connect", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { origin: window.location.origin },
+      });
+
+      if (error) return;
+      if (data?.success && data?.authUrl) {
+        setPaypalAuthUrl(data.authUrl);
+        setPaypalAuthUrlPrefetchedAt(Date.now());
+      }
+    } catch {
+      // Silent: prefetch should never block the UI.
+    }
+  };
+
   const handleConnectPaypal = async () => {
+    // If we already prefetched a fresh OAuth URL, redirect immediately.
+    if (paypalAuthUrl && paypalAuthUrlPrefetchedAt && Date.now() - paypalAuthUrlPrefetchedAt < 9 * 60 * 1000) {
+      window.location.href = paypalAuthUrl;
+      return;
+    }
+
     setConnectingPaypal(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -198,6 +250,8 @@ export function PayoutMethodSelector({
       }
 
       if (data.success && data.authUrl) {
+        setPaypalAuthUrl(data.authUrl);
+        setPaypalAuthUrlPrefetchedAt(Date.now());
         // Redirect user to PayPal for real OAuth login
         window.location.href = data.authUrl;
       } else {
@@ -371,16 +425,13 @@ export function PayoutMethodSelector({
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
+      {statusLoadSlow && (
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          Loading payout status is taking longer than usual. You can still connect providers now, and the status will update when it finishes.
+        </div>
+      )}
       {/* Bank Account Section - Only shown when Stripe is connected */}
       {stripeOnboardingComplete && (
         <Card className="border-primary/50 bg-gradient-to-br from-primary/5 to-transparent">
@@ -726,6 +777,11 @@ export function PayoutMethodSelector({
                 <CheckCircle className="w-3 h-3 mr-1" />
                 Connected
               </Badge>
+            ) : loading ? (
+              <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                Checking…
+              </Badge>
             ) : null}
           </div>
         </CardHeader>
@@ -733,6 +789,8 @@ export function PayoutMethodSelector({
           <p className="text-sm text-muted-foreground">
             {paypalConnected
               ? `Connected as ${paypalEmail}. Receive payouts directly to your PayPal balance.`
+              : loading
+              ? "Checking your PayPal connection…"
               : "Connect your PayPal account to receive fast, worldwide payouts."}
           </p>
 
@@ -765,6 +823,8 @@ export function PayoutMethodSelector({
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Connecting...
                   </>
+                ) : loading ? (
+                  "Connect PayPal"
                 ) : (
                   "Connect PayPal"
                 )}
