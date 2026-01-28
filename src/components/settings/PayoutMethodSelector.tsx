@@ -510,7 +510,8 @@ export function PayoutMethodSelector({
               </Badge>
             ) : stripeConnected ? (
               <Badge variant="secondary" className="bg-amber-500/20 text-amber-400">
-                Pending
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                Pending Review
               </Badge>
             ) : null}
           </div>
@@ -520,7 +521,7 @@ export function PayoutMethodSelector({
             {stripeOnboardingComplete
               ? "Your bank account is connected through Stripe. Payouts arrive in 1-3 business days."
               : stripeConnected
-              ? "Complete your Stripe onboarding to receive payments."
+              ? "Your information is being reviewed by Stripe. This typically takes a few minutes, but can take up to 24 hours. Click refresh to check status."
               : "Connect your bank account through Stripe to receive payments. We take a 5% platform fee."}
           </p>
 
