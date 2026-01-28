@@ -2076,6 +2076,7 @@ export type Database = {
         Returns: {
           community_members: number
           premium_products: number
+          total_downloads: number
           verified_creators: number
           verified_sellers: number
         }[]
