@@ -211,7 +211,17 @@ function AboutMePreview({ content }: { content: AboutMeContent }) {
   return (
     <div className="p-6 text-center">
       {content.showAvatar && (
-        <div className="w-20 h-20 rounded-full bg-primary/20 mx-auto mb-4" />
+        <div className="w-20 h-20 rounded-full bg-primary/20 mx-auto mb-4 overflow-hidden flex items-center justify-center">
+          {content.imageUrl ? (
+            <img 
+              src={content.imageUrl} 
+              alt="About me" 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-2xl text-primary">A</span>
+          )}
+        </div>
       )}
       <h3 className="text-xl font-semibold text-foreground mb-2">{content.title}</h3>
       <p className="text-muted-foreground max-w-md mx-auto">{content.description}</p>

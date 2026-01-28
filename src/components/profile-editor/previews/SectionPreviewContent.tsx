@@ -530,12 +530,20 @@ CollectionPreview.displayName = 'CollectionPreview';
 const AboutMePreview = memo(({ content }: { content: AboutMeContent }) => (
   <div className="flex flex-col md:flex-row gap-6 items-start">
     {content.showAvatar && (
-      <Avatar className="h-20 w-20 flex-shrink-0">
+      <div className="h-20 w-20 flex-shrink-0 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
         {content.imageUrl ? (
-          <AvatarImage src={content.imageUrl} alt="About me" className="object-cover" />
-        ) : null}
-        <AvatarFallback className="text-2xl bg-primary/10">A</AvatarFallback>
-      </Avatar>
+          <img 
+            src={content.imageUrl} 
+            alt="About me" 
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : (
+          <span className="text-2xl text-primary">A</span>
+        )}
+      </div>
     )}
     <div>
       <h3 className="text-xl font-semibold mb-2">{content.title}</h3>
