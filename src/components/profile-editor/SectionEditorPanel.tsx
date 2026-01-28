@@ -1520,19 +1520,27 @@ export function SectionEditorPanel({
           </TabsTrigger>
         </TabsList>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <TabsContent value="format" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
           <ScrollArea className="h-full">
-            <TabsContent value="format" className="p-4 mt-0">
+            <div className="p-4">
               {renderFormatTab()}
-            </TabsContent>
-            <TabsContent value="background" className="p-4 mt-0">
-              {renderBackgroundTab()}
-            </TabsContent>
-            <TabsContent value="color" className="p-4 mt-0">
-              {renderColorSchemeTab()}
-            </TabsContent>
+            </div>
           </ScrollArea>
-        </div>
+        </TabsContent>
+        <TabsContent value="background" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
+          <ScrollArea className="h-full">
+            <div className="p-4">
+              {renderBackgroundTab()}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="color" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
+          <ScrollArea className="h-full">
+            <div className="p-4">
+              {renderColorSchemeTab()}
+            </div>
+          </ScrollArea>
+        </TabsContent>
       </Tabs>
 
       {/* Delete Button */}
