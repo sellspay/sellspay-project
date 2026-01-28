@@ -1498,8 +1498,8 @@ export function SectionEditorPanel({
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 shrink-0">
           <TabsTrigger
             value="format"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
@@ -1520,17 +1520,19 @@ export function SectionEditorPanel({
           </TabsTrigger>
         </TabsList>
 
-        <ScrollArea className="flex-1">
-          <TabsContent value="format" className="p-4 mt-0">
-            {renderFormatTab()}
-          </TabsContent>
-          <TabsContent value="background" className="p-4 mt-0">
-            {renderBackgroundTab()}
-          </TabsContent>
-          <TabsContent value="color" className="p-4 mt-0">
-            {renderColorSchemeTab()}
-          </TabsContent>
-        </ScrollArea>
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            <TabsContent value="format" className="p-4 mt-0">
+              {renderFormatTab()}
+            </TabsContent>
+            <TabsContent value="background" className="p-4 mt-0">
+              {renderBackgroundTab()}
+            </TabsContent>
+            <TabsContent value="color" className="p-4 mt-0">
+              {renderColorSchemeTab()}
+            </TabsContent>
+          </ScrollArea>
+        </div>
       </Tabs>
 
       {/* Delete Button */}
