@@ -207,6 +207,19 @@ export function ConnectionsTab() {
       }
     } catch (error: any) {
       console.error("Error connecting provider:", error);
+      if (
+        providerId === "google" &&
+        typeof error?.message === "string" &&
+        error.message.toLowerCase().includes("manual") &&
+        error.message.toLowerCase().includes("link") &&
+        error.message.toLowerCase().includes("disabled")
+      ) {
+        toast.error(
+          "Google linking is disabled in backend auth settings. Enable manual account linking, then try again."
+        );
+        setConnectingProvider(null);
+        return;
+      }
       if (error.message?.includes("already linked") || error.message?.includes("already registered")) {
         toast.error("This account is already connected to another user.");
       } else if (error.message?.includes("User not found")) {
