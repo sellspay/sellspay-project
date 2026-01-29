@@ -47,10 +47,38 @@ export function ConnectionsTab() {
   const [loading, setLoading] = useState(true);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
 
-  // Handle Discord link success/error from URL params
+  // Handle OAuth link success/error from URL params
   useEffect(() => {
     const discordLinked = searchParams.get('discord_linked');
     const discordError = searchParams.get('discord_error');
+    
+    // Handle Google link success - after redirect from Google OAuth
+    // The URL will contain hash fragment with access_token if successful
+    const handleGoogleLinkSuccess = async () => {
+      // Check if we just came back from Google OAuth (tab=connections in URL means we redirected here)
+      const tab = searchParams.get('tab');
+      if (tab === 'connections') {
+        // Small delay to ensure auth state is updated
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Check if Google was just linked by refreshing user data
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser) {
+          const hasGoogle = currentUser.identities?.some(id => id.provider === "google");
+          const previouslyHadGoogle = identities.find(i => i.provider === "google")?.connected;
+          
+          // If Google is now linked but wasn't before (and we have loaded identities already)
+          if (hasGoogle && !previouslyHadGoogle && identities.length > 0) {
+            toast.success('Google connected successfully!');
+          }
+        }
+        
+        // Reload identities regardless
+        loadIdentities();
+      }
+    };
+    
+    handleGoogleLinkSuccess();
     
     if (discordLinked === 'success') {
       toast.success('Discord connected successfully!');
@@ -139,14 +167,24 @@ export function ConnectionsTab() {
     setConnectingProvider(providerId);
     try {
       if (providerId === "google") {
-        const { error } = await supabase.auth.linkIdentity({
+        // Use Supabase's native linkIdentity for Google
+        // This is secure because it requires an active session and is managed server-side
+        const { data, error } = await supabase.auth.linkIdentity({
           provider: "google",
           options: {
             redirectTo: `${window.location.origin}/settings?tab=connections`,
           },
         });
         
-        if (error) throw error;
+        if (error) {
+          console.error("[ConnectionsTab] Google link error:", error);
+          throw error;
+        }
+        
+        // If we get data.url, we need to redirect manually
+        if (data?.url) {
+          window.location.href = data.url;
+        }
       } else if (providerId === "discord") {
         // For Discord, we need to use our custom flow
         const { data, error } = await supabase.functions.invoke("initiate-discord-login", {
@@ -169,14 +207,16 @@ export function ConnectionsTab() {
       }
     } catch (error: any) {
       console.error("Error connecting provider:", error);
-      if (error.message?.includes("already linked")) {
+      if (error.message?.includes("already linked") || error.message?.includes("already registered")) {
         toast.error("This account is already connected to another user.");
+      } else if (error.message?.includes("User not found")) {
+        toast.error("Session expired. Please log in again.");
       } else {
-        toast.error(error.message || "Failed to connect account");
+        toast.error(error.message || "Failed to connect account. Please try again.");
       }
-    } finally {
       setConnectingProvider(null);
     }
+    // Note: Don't set connectingProvider to null on success - we're redirecting
   };
 
   const handleDisconnectProvider = async (providerId: string) => {
