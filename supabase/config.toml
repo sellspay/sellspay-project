@@ -1,5 +1,8 @@
 project_id = "cdpfchadvvfdupkgzeiy"
 
+[auth]
+enable_manual_linking = true
+
 [functions.create-checkout-session]
 verify_jwt = false
 
