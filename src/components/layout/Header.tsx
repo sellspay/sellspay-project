@@ -55,15 +55,12 @@ export default function Header() {
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0 group">
+          <Link to="/" className="flex items-center shrink-0 group">
             <img 
               src={sellspayLogo} 
               alt="Sellspay" 
-              className="h-7 sm:h-8 lg:h-9 w-auto group-hover:opacity-80 transition-opacity"
+              className="h-8 sm:h-9 lg:h-10 w-auto group-hover:opacity-80 transition-opacity"
             />
-            <span className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-primary via-fuchsia-500 to-cyan-400 bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
-              Sellspay
-            </span>
           </Link>
 
           {/* Desktop Navigation */}
