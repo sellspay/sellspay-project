@@ -45,18 +45,17 @@ export default function HeroSection() {
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
       <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
-          {/* Main headline with brand name for Google verification */}
+          {/* Logo */}
+          <div className="mb-6 sm:mb-8">
+            <img 
+              src={sellspayLogo} 
+              alt="Sellspay" 
+              className="h-24 sm:h-32 lg:h-40 xl:h-48 w-auto mx-auto drop-shadow-2xl"
+            />
+          </div>
+          
+          {/* Main headline */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight mb-4 sm:mb-6">
-            <span className="flex items-center justify-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-              <img 
-                src={sellspayLogo} 
-                alt="Sellspay" 
-                className="h-8 sm:h-10 lg:h-12 w-auto"
-              />
-              <span className="text-lg sm:text-xl lg:text-2xl font-semibold text-primary tracking-widest uppercase">
-                Sellspay
-              </span>
-            </span>
             <span className="text-foreground drop-shadow-lg">Level Up Your</span>
             <br />
             <span className="relative inline-block">
