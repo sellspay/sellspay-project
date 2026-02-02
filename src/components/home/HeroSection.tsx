@@ -45,12 +45,29 @@ export default function HeroSection() {
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
       <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
-          {/* Logo */}
-          <div className="mb-6 sm:mb-8">
+          {/* Logo with professional glow integration */}
+          <div className="mb-8 sm:mb-10 relative">
+            {/* Outer glow ring */}
+            <div 
+              className="absolute inset-0 -m-4 sm:-m-6 rounded-full opacity-40 blur-2xl"
+              style={{
+                background: 'radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, rgba(217, 70, 239, 0.2) 50%, transparent 70%)'
+              }}
+            />
+            {/* Inner glow */}
+            <div 
+              className="absolute inset-0 -m-2 rounded-full opacity-60 blur-xl"
+              style={{
+                background: 'radial-gradient(circle, rgba(139, 92, 246, 0.5) 0%, transparent 60%)'
+              }}
+            />
             <img 
               src={sellspayLogo} 
               alt="Sellspay" 
-              className="h-24 sm:h-32 lg:h-40 xl:h-48 w-auto mx-auto drop-shadow-2xl"
+              className="relative h-20 sm:h-24 lg:h-28 w-auto mx-auto"
+              style={{
+                filter: 'drop-shadow(0 0 30px rgba(168, 85, 247, 0.4)) drop-shadow(0 0 60px rgba(139, 92, 246, 0.2))'
+              }}
             />
           </div>
           
