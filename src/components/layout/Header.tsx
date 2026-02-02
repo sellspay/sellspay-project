@@ -15,6 +15,7 @@ import { useCredits } from '@/hooks/useCredits';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { TopUpDialog } from '@/components/credits/TopUpDialog';
 import EditorChatIcon from '@/components/chat/EditorChatIcon';
+import sellspayLogo from '@/assets/sellspay-s-logo.png';
 
 const navItems = [
   { name: 'Store', path: '/products' },
@@ -53,12 +54,16 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
-          {/* Logo - Text Based */}
+          {/* Logo */}
           <Link to="/" className="flex items-center gap-2 shrink-0 group">
+            <img 
+              src={sellspayLogo} 
+              alt="Sellspay" 
+              className="h-7 sm:h-8 lg:h-9 w-auto group-hover:opacity-80 transition-opacity"
+            />
             <span className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-primary via-fuchsia-500 to-cyan-400 bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
               Sellspay
             </span>
-            <span className="sr-only">Sellspay</span>
           </Link>
 
           {/* Desktop Navigation */}

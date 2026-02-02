@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { ArrowRight, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import heroCosmicBg from '@/assets/hero-cosmic-bg.png';
+import sellspayLogo from '@/assets/sellspay-s-logo.png';
 
 const floatingWords = ['Presets', 'LUTs', 'SFX', 'Templates', 'Overlays', 'Fonts'];
 
@@ -46,8 +47,15 @@ export default function HeroSection() {
       <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           {/* Main headline with brand name for Google verification */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight mb-4 sm:mb-6">
-            <span className="block text-sm sm:text-lg font-semibold text-primary tracking-widest uppercase mb-1 sm:mb-2">
-              Sellspay
+            <span className="flex items-center justify-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+              <img 
+                src={sellspayLogo} 
+                alt="Sellspay" 
+                className="h-8 sm:h-10 lg:h-12 w-auto"
+              />
+              <span className="text-lg sm:text-xl lg:text-2xl font-semibold text-primary tracking-widest uppercase">
+                Sellspay
+              </span>
             </span>
             <span className="text-foreground drop-shadow-lg">Level Up Your</span>
             <br />
