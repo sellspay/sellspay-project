@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Twitter, Instagram, Youtube } from 'lucide-react';
+import sellspayLogo from '@/assets/sellspay-s-logo.png';
 
 const navLinks = [
   { name: 'Products', path: '/products' },
@@ -31,11 +32,13 @@ export default function Footer() {
       <div className="mx-auto max-w-6xl px-6 lg:px-8 py-16 lg:py-20">
         {/* Main Content - Centered Layout */}
         <div className="flex flex-col items-center text-center space-y-10">
-          {/* Brand */}
+          {/* Brand Logo */}
           <Link to="/" className="group">
-            <span className="text-xl font-bold bg-gradient-to-r from-primary via-fuchsia-500 to-cyan-400 bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
-              Sellspay
-            </span>
+            <img 
+              src={sellspayLogo} 
+              alt="Sellspay" 
+              className="h-16 sm:h-20 w-auto group-hover:opacity-80 transition-opacity"
+            />
           </Link>
 
           {/* Navigation Links - Inline */}
@@ -70,21 +73,36 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="mt-14 pt-8 border-t border-border/10">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-            <p className="text-xs text-muted-foreground/50">
-              © {new Date().getFullYear()} Sellspay
+          <div className="flex flex-col items-center gap-4">
+            {/* Powered by Sellspay */}
+            <p className="text-xs text-muted-foreground/70">
+              Powered by{' '}
+              <a 
+                href="https://sellspay.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                Sellspay
+              </a>
             </p>
-            <span className="hidden sm:block text-muted-foreground/20">·</span>
-            <div className="flex items-center gap-6">
-              {legalLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                >
-                  {link.name}
-                </Link>
-              ))}
+            
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
+              <p className="text-xs text-muted-foreground/50">
+                © {new Date().getFullYear()} Sellspay
+              </p>
+              <span className="hidden sm:block text-muted-foreground/20">·</span>
+              <div className="flex items-center gap-6">
+                {legalLinks.map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                  >
+                    {link.name}
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
         </div>
