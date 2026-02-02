@@ -31,15 +31,15 @@ const faqCategories: FAQCategory[] = [
     gradient: 'from-emerald-500 to-teal-600',
     items: [
       {
-        question: 'What is EditorsParadise?',
-        answer: 'EditorsParadise is the ultimate marketplace for video editors, motion designers, and content creators. We connect creators who sell digital products (LUTs, presets, templates, sound effects) with buyers looking for high-quality assets to enhance their content.',
+        question: 'What is Sellspay?',
+        answer: 'Sellspay is the ultimate marketplace for video editors, motion designers, and content creators. We connect creators who sell digital products (LUTs, presets, templates, sound effects) with buyers looking for high-quality assets to enhance their content.',
       },
       {
         question: 'How do I create an account?',
         answer: 'Click the "Sign Up" button in the top navigation bar. You can create an account using your email address. After signing up, you\'ll have immediate access to browse products, follow creators, and make purchases.',
       },
       {
-        question: 'Is EditorsParadise free to use?',
+        question: 'Is Sellspay free to use?',
         answer: 'Yes! Creating an account and browsing products is completely free. You only pay when you purchase products. If you want to sell products, there\'s no monthly fee – we only take a small platform fee when you make a sale.',
       },
       {
@@ -52,7 +52,7 @@ const faqCategories: FAQCategory[] = [
       },
       {
         question: 'What devices are supported?',
-        answer: 'EditorsParadise works on any device with a modern web browser – desktop, laptop, tablet, or mobile phone. The digital products you purchase can be downloaded and used on any compatible editing software.',
+        answer: 'Sellspay works on any device with a modern web browser – desktop, laptop, tablet, or mobile phone. The digital products you purchase can be downloaded and used on any compatible editing software.',
       },
     ],
   },

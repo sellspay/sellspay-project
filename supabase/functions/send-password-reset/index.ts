@@ -38,7 +38,7 @@ serve(async (req) => {
       type: "recovery",
       email: email,
       options: {
-        redirectTo: "https://editorsparadise.lovable.app/reset-password",
+        redirectTo: "https://sellspay.com/reset-password",
       },
     });
 
@@ -89,7 +89,7 @@ serve(async (req) => {
           <!-- Logo/Brand -->
           <tr>
             <td style="text-align: center; padding-bottom: 32px;">
-              <h1 style="margin: 0; font-size: 28px; font-weight: 700; background: linear-gradient(135deg, #a855f7, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">EditorsParadise</h1>
+              <h1 style="margin: 0; font-size: 28px; font-weight: 700; background: linear-gradient(135deg, #a855f7, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Sellspay</h1>
             </td>
           </tr>
           
@@ -129,7 +129,7 @@ serve(async (req) => {
           <tr>
             <td style="text-align: center; padding-top: 32px;">
               <p style="margin: 0; font-size: 12px; color: #52525b;">
-                © ${new Date().getFullYear()} EditorsParadise. All rights reserved.
+                © ${new Date().getFullYear()} Sellspay. All rights reserved.
               </p>
             </td>
           </tr>
@@ -142,9 +142,9 @@ serve(async (req) => {
     `;
 
     const { error: emailError } = await resend.emails.send({
-      from: "EditorsParadise <noreply@editorsparadise.org>",
+      from: "Sellspay <noreply@sellspay.com>",
       to: [email],
-      subject: "Reset Your Password - EditorsParadise",
+      subject: "Reset Your Password - Sellspay",
       html: emailHtml,
     });
     if (emailError) {

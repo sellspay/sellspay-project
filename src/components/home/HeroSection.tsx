@@ -47,7 +47,7 @@ export default function HeroSection() {
           {/* Main headline with brand name for Google verification */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight mb-4 sm:mb-6">
             <span className="block text-sm sm:text-lg font-semibold text-primary tracking-widest uppercase mb-1 sm:mb-2">
-              EditorsParadise
+              Sellspay
             </span>
             <span className="text-foreground drop-shadow-lg">Level Up Your</span>
             <br />

@@ -5,4 +5,4 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const PRODUCTION_DOMAIN = "https://editorsparadise.org";
+export const PRODUCTION_DOMAIN = "https://sellspay.com";

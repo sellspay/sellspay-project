@@ -17,7 +17,7 @@ serve(async (req) => {
     const errorDescription = url.searchParams.get("error_description");
 
     // Redirect URL for the frontend
-    const frontendUrl = "https://editorsparadise.lovable.app";
+    const frontendUrl = "https://sellspay.com";
 
     if (error) {
       logStep("OAuth error from Discord", { error, errorDescription });

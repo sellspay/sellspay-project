@@ -34,7 +34,7 @@ export default function Refunds() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">Overview</h2>
             <p className="text-muted-foreground">
-              EditorsParadise is a marketplace for digital products including presets, LUTs, templates, 
+              Sellspay is a marketplace for digital products including presets, LUTs, templates, 
               sound effects, and other creative assets. Due to the nature of digital goods, all sales 
               are generally final once a product has been downloaded. However, we understand that issues 
               can arise, and we're committed to resolving legitimate concerns.
@@ -146,7 +146,7 @@ export default function Refunds() {
             <h2 className="text-2xl font-semibold text-foreground">How to Request a Refund</h2>
             <ol className="list-decimal pl-6 space-y-3 text-muted-foreground">
               <li>
-                Email <span className="text-foreground font-medium">support@editorsparadise.org</span> with 
+                Email <span className="text-foreground font-medium">support@sellspay.com</span> with 
                 the subject line "Refund Request"
               </li>
               <li>
@@ -231,10 +231,10 @@ export default function Refunds() {
               <p className="text-muted-foreground">
                 If you have questions about our refund policy or need assistance with a 
                 refund request, please contact our support team at{' '}
-                <span className="text-foreground font-medium">support@editorsparadise.org</span>.
+                <span className="text-foreground font-medium">support@sellspay.com</span>.
               </p>
               <div className="flex flex-wrap gap-3">
-                <a href="mailto:support@editorsparadise.org">
+                <a href="mailto:support@sellspay.com">
                   <Button variant="outline">Contact Support</Button>
                 </a>
                 <Link to="/faq">

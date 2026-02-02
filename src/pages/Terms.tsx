@@ -12,7 +12,7 @@ export default function Terms() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">1. Acceptance of Terms</h2>
             <p>
-              By accessing and using EditorsParadise ("the Platform"), you agree to be bound by these 
+              By accessing and using Sellspay ("the Platform"), you agree to be bound by these 
               Terms of Service. If you do not agree to these terms, please do not use our services.
             </p>
           </section>
@@ -20,7 +20,7 @@ export default function Terms() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">2. Description of Service</h2>
             <p>
-              EditorsParadise is a marketplace platform that connects creators with digital products, 
+              Sellspay is a marketplace platform that connects creators with digital products, 
               tools, and services for video editing and content creation. We provide:
             </p>
             <ul className="list-disc pl-6 space-y-2">
@@ -53,7 +53,7 @@ export default function Terms() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">4. Creator & Seller Terms</h2>
             <p>
-              To sell products on EditorsParadise, you must apply and be approved as a Creator. As a seller, you agree to:
+              To sell products on Sellspay, you must apply and be approved as a Creator. As a seller, you agree to:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Only sell products you have the legal right to distribute</li>
@@ -91,7 +91,7 @@ export default function Terms() {
             <h3 className="text-xl font-medium text-foreground mt-4">Revenue Split</h3>
             <ul className="list-disc pl-6 space-y-2">
               <li>Sellers receive 95% of each sale after Stripe processing fees</li>
-              <li>EditorsParadise retains a 5% platform commission</li>
+              <li>Sellspay retains a 5% platform commission</li>
               <li>Stripe processing fees (approximately 2.9% + $0.30) are deducted from the seller's share</li>
             </ul>
 
@@ -106,7 +106,7 @@ export default function Terms() {
             <ul className="list-disc pl-6 space-y-2">
               <li>Standard payouts (Stripe): Free, 1-3 business days</li>
               <li>Instant payouts (Stripe): 3% fee, immediate transfer</li>
-              <li>Payoneer payouts: Free from EditorsParadise; Payoneer may charge their own withdrawal fees</li>
+              <li>Payoneer payouts: Free from Sellspay; Payoneer may charge their own withdrawal fees</li>
             </ul>
 
             <h3 className="text-xl font-medium text-foreground mt-4">Minimum Payout & Holding Period</h3>
@@ -132,16 +132,16 @@ export default function Terms() {
               <li>You must apply and be approved as an Editor</li>
               <li>Accurately represent your skills, experience, and availability</li>
               <li>Set your own hourly rates (displayed to clients)</li>
-              <li>EditorsParadise takes a 5% platform fee on all editor bookings</li>
+              <li>Sellspay takes a 5% platform fee on all editor bookings</li>
               <li>The remaining 95% (minus Stripe fees) is transferred to your connected Stripe account</li>
-              <li>Disputes between editors and clients will be mediated by EditorsParadise</li>
+              <li>Disputes between editors and clients will be mediated by Sellspay</li>
             </ul>
           </section>
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">8. Pro Tools & Credits</h2>
             <p>
-              EditorsParadise offers AI-powered audio tools that operate on a credits system:
+              Sellspay offers AI-powered audio tools that operate on a credits system:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>New users receive 3 free credits upon registration</li>
@@ -179,8 +179,8 @@ export default function Terms() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">10. Intellectual Property</h2>
             <p>
-              All content on EditorsParadise, including but not limited to text, graphics, logos, 
-              and software, is the property of EditorsParadise or its content suppliers and is 
+              All content on Sellspay, including but not limited to text, graphics, logos, 
+              and software, is the property of Sellspay or its content suppliers and is 
               protected by intellectual property laws.
             </p>
             <p>
@@ -213,7 +213,7 @@ export default function Terms() {
               <li>Digital products are generally non-refundable once downloaded</li>
               <li>Refunds may be issued for products that don't match their description or are defective</li>
               <li>Creator subscription refunds are not available after the billing period has started</li>
-              <li>EditorsParadise reserves the right to mediate disputes between buyers and sellers</li>
+              <li>Sellspay reserves the right to mediate disputes between buyers and sellers</li>
               <li>Unjustified chargebacks may result in account suspension</li>
             </ul>
             <p className="mt-2">
@@ -224,7 +224,7 @@ export default function Terms() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">13. Account Suspension & Termination</h2>
             <p>
-              EditorsParadise reserves the right to suspend or terminate accounts that violate these terms. 
+              Sellspay reserves the right to suspend or terminate accounts that violate these terms. 
               Grounds for suspension include but are not limited to:
             </p>
             <ul className="list-disc pl-6 space-y-2">
@@ -242,7 +242,7 @@ export default function Terms() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">14. Limitation of Liability</h2>
             <p>
-              EditorsParadise shall not be liable for any indirect, incidental, special, 
+              Sellspay shall not be liable for any indirect, incidental, special, 
               consequential, or punitive damages resulting from your use of the platform. 
               We do not guarantee the quality, accuracy, or suitability of products sold by third-party creators.
             </p>
@@ -262,7 +262,7 @@ export default function Terms() {
             <p>
               For questions about these Terms of Service, please contact us at:
             </p>
-            <p className="text-foreground">support@editorsparadise.org</p>
+            <p className="text-foreground">support@sellspay.com</p>
           </section>
         </div>
       </div>

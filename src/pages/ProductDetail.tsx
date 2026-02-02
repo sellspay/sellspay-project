@@ -987,7 +987,7 @@ export default function ProductDetail() {
 
   const handleShare = async () => {
     // Build the correct shareable URL using custom domain + slug or id
-    const PRODUCTION_DOMAIN = "https://editorsparadise.org";
+    const PRODUCTION_DOMAIN = "https://sellspay.com";
     const productPath = product?.slug 
       ? `/p/${product.slug}` 
       : `/product/${product?.id}`;

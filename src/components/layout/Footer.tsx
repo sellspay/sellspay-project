@@ -15,9 +15,9 @@ const legalLinks = [
 ];
 
 const socialLinks = [
-  { name: 'Twitter', icon: Twitter, url: 'https://twitter.com/editorsparadise' },
-  { name: 'Instagram', icon: Instagram, url: 'https://instagram.com/editorsparadise' },
-  { name: 'YouTube', icon: Youtube, url: 'https://youtube.com/@editorsparadise' },
+  { name: 'Twitter', icon: Twitter, url: 'https://twitter.com/sellspay' },
+  { name: 'Instagram', icon: Instagram, url: 'https://instagram.com/sellspay' },
+  { name: 'YouTube', icon: Youtube, url: 'https://youtube.com/@sellspay' },
 ];
 
 export default function Footer() {
@@ -33,8 +33,8 @@ export default function Footer() {
         <div className="flex flex-col items-center text-center space-y-10">
           {/* Brand */}
           <Link to="/" className="group">
-            <span className="text-xl font-semibold text-foreground tracking-tight group-hover:text-primary transition-colors">
-              EditorsParadise
+            <span className="text-xl font-bold bg-gradient-to-r from-primary via-fuchsia-500 to-cyan-400 bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
+              Sellspay
             </span>
           </Link>
 
@@ -72,7 +72,7 @@ export default function Footer() {
         <div className="mt-14 pt-8 border-t border-border/10">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
             <p className="text-xs text-muted-foreground/50">
-              © {new Date().getFullYear()} EditorsParadise
+              © {new Date().getFullYear()} Sellspay
             </p>
             <span className="hidden sm:block text-muted-foreground/20">·</span>
             <div className="flex items-center gap-6">

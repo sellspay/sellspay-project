@@ -89,7 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
       </head>
       <body>
         <div class="container">
-          <div class="logo">✨ EditorsParadise</div>
+          <div class="logo">✨ Sellspay</div>
           <h2 style="margin: 0 0 16px 0; color: #fff;">Your Verification Code</h2>
           <p class="message">Use the following code to complete your two-factor authentication setup:</p>
           <div class="code-box">
@@ -97,7 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           <p class="message">This code will expire in 10 minutes. If you didn't request this code, please ignore this email.</p>
           <div class="footer">
-            <p>This email was sent by EditorsParadise. If you have questions, contact support.</p>
+            <p>This email was sent by Sellspay. If you have questions, contact support.</p>
           </div>
         </div>
       </body>
@@ -110,9 +110,9 @@ const handler = async (req: Request): Promise<Response> => {
       const resend = new Resend(resendApiKey);
       
       const { error: emailError } = await resend.emails.send({
-        from: "EditorsParadise <noreply@editorsparadise.org>",
+        from: "Sellspay <noreply@sellspay.com>",
         to: [email],
-        subject: "Your EditorsParadise Verification Code",
+        subject: "Your Sellspay Verification Code",
         html: emailHtml,
       });
 
