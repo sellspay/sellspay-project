@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
-import { ArrowRight, Play, Sparkles } from 'lucide-react';
+import { ArrowRight, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import heroCosmicBg from '@/assets/hero-cosmic-bg.png';
 import sellspayLogo from '@/assets/sellspay-s-logo.png';
 
 const floatingWords = ['Presets', 'LUTs', 'SFX', 'Templates', 'Overlays', 'Fonts'];
@@ -19,108 +20,121 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0a0a0f]">
-      {/* Animated gradient background */}
-      <div className="absolute inset-0">
-        {/* Primary gradient orbs */}
-        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '4s' }} />
-        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-fuchsia-600/15 rounded-full blur-[100px] animate-pulse" style={{ animationDuration: '6s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-violet-600/10 rounded-full blur-[150px]" />
-        
-        {/* Accent orbs */}
-        <div className="absolute top-20 right-20 w-[300px] h-[300px] bg-cyan-500/10 rounded-full blur-[80px] animate-pulse" style={{ animationDuration: '5s' }} />
-        <div className="absolute bottom-20 left-20 w-[250px] h-[250px] bg-blue-500/10 rounded-full blur-[60px] animate-pulse" style={{ animationDuration: '7s' }} />
-        
-        {/* Grid overlay for depth */}
-        <div 
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-            backgroundSize: '50px 50px'
-          }}
+    <section className="relative min-h-[80vh] sm:min-h-[90vh] flex items-center overflow-hidden">
+      {/* Cosmic background image */}
+      <div className="absolute inset-0 z-0">
+        {/* Background image */}
+        <img 
+          src={heroCosmicBg} 
+          alt="" 
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ imageRendering: 'auto' }}
+          loading="eager"
+          fetchPriority="high"
         />
         
-        {/* Radial vignette */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,#0a0a0f_70%)]" />
+        {/* Bottom fade to background */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
       </div>
 
-      {/* Floating particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-white/20 rounded-full animate-pulse"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${2 + Math.random() * 3}s`
-            }}
-          />
-        ))}
-      </div>
+      {/* Floating decorative elements - hidden on mobile */}
+      <div className="hidden sm:block absolute top-20 right-[15%] w-3 h-3 bg-primary rounded-full animate-bounce opacity-60 z-10" style={{ animationDuration: '3s' }} />
+      <div className="hidden sm:block absolute top-40 left-[10%] w-2 h-2 bg-accent rounded-full animate-bounce opacity-40 z-10" style={{ animationDuration: '4s', animationDelay: '1s' }} />
+      <div className="hidden sm:block absolute bottom-32 right-[25%] w-4 h-4 bg-primary/50 rounded-full animate-bounce opacity-50 z-10" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }} />
+      <div className="hidden sm:block absolute bottom-20 left-[20%] w-2 h-2 bg-accent/60 rounded-full animate-bounce opacity-30 z-10" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }} />
 
-      {/* Main content */}
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
-        <div className="flex flex-col items-center text-center">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
+      <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+          {/* Logo with professional glow integration */}
+          <div className="mb-8 sm:mb-10 relative">
+            {/* Outer glow ring */}
+            <div 
+              className="absolute inset-0 -m-4 sm:-m-6 rounded-full opacity-40 blur-2xl"
+              style={{
+                background: 'radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, rgba(217, 70, 239, 0.2) 50%, transparent 70%)'
+              }}
+            />
+            {/* Inner glow */}
+            <div 
+              className="absolute inset-0 -m-2 rounded-full opacity-60 blur-xl"
+              style={{
+                background: 'radial-gradient(circle, rgba(139, 92, 246, 0.5) 0%, transparent 60%)'
+              }}
+            />
+            <img 
+              src={sellspayLogo} 
+              alt="Sellspay" 
+              className="relative h-20 sm:h-24 lg:h-28 w-auto mx-auto"
+              style={{
+                filter: 'drop-shadow(0 0 30px rgba(168, 85, 247, 0.4)) drop-shadow(0 0 60px rgba(139, 92, 246, 0.2))'
+              }}
+            />
+          </div>
           
-          {/* Logo section with glass container */}
-          <div className="relative mb-8 sm:mb-12">
-            {/* Glass backdrop */}
-            <div className="absolute inset-0 -m-6 sm:-m-8 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl" />
-            
-            {/* Logo */}
-            <div className="relative p-4 sm:p-6">
-              <img 
-                src={sellspayLogo} 
-                alt="Sellspay" 
-                className="h-20 sm:h-28 lg:h-36 w-auto mx-auto"
-              />
-            </div>
-            
-            {/* Decorative corner accents */}
-            <div className="absolute -top-1 -left-1 w-4 h-4 border-l-2 border-t-2 border-primary/50 rounded-tl-lg" />
-            <div className="absolute -top-1 -right-1 w-4 h-4 border-r-2 border-t-2 border-primary/50 rounded-tr-lg" />
-            <div className="absolute -bottom-1 -left-1 w-4 h-4 border-l-2 border-b-2 border-cyan-400/50 rounded-bl-lg" />
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 border-r-2 border-b-2 border-cyan-400/50 rounded-br-lg" />
-          </div>
-
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6 sm:mb-8">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">The Creator Marketplace</span>
-          </div>
-
           {/* Main headline */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight mb-6 sm:mb-8">
-            <span className="text-white">Level Up Your</span>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight mb-4 sm:mb-6">
+            <span className="text-foreground drop-shadow-lg">Level Up Your</span>
             <br />
-            <span className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
-              Creative Workflow
+            <span className="relative inline-block">
+              <span
+                className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-2xl"
+                style={{
+                  textShadow: '0 0 40px rgba(168, 85, 247, 0.5), 0 0 80px rgba(168, 85, 247, 0.3)',
+                  filter: 'drop-shadow(0 0 20px rgba(168, 85, 247, 0.4))'
+                }}
+              >
+                Creative Workflow
+              </span>
+              {/* Glow effect layer */}
+              <span 
+                className="absolute inset-0 bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent blur-sm opacity-50"
+                aria-hidden="true"
+              >
+                Creative Workflow
+              </span>
+              {/* Underline decoration */}
+              <svg
+                className="absolute -bottom-2 left-0 w-full"
+                viewBox="0 0 300 12"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M2 8.5C50 2.5 100 2.5 150 8.5C200 14.5 250 2.5 298 8.5"
+                  stroke="url(#gradient)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  className="drop-shadow-lg"
+                  style={{ filter: 'drop-shadow(0 0 8px rgba(168, 85, 247, 0.8))' }}
+                />
+                <defs>
+                  <linearGradient id="gradient" x1="0" y1="0" x2="300" y2="0">
+                    <stop stopColor="#a855f7" />
+                    <stop offset="0.5" stopColor="#d946ef" />
+                    <stop offset="1" stopColor="#22d3ee" />
+                  </linearGradient>
+                </defs>
+              </svg>
             </span>
           </h1>
 
           {/* Subtitle with rotating words */}
-          <p className="text-lg sm:text-xl lg:text-2xl text-white/60 max-w-2xl mb-10 sm:mb-12 leading-relaxed">
-            Discover premium{' '}
-            <span className="text-white font-semibold" key={activeWord}>
-              {floatingWords[activeWord]}
-            </span>{' '}
-            crafted by
+          <p className="text-lg sm:text-xl lg:text-2xl text-muted-foreground max-w-2xl mb-8 sm:mb-10 leading-relaxed px-2">
+            Discover premium <span className="text-foreground font-semibold animate-fade-in" key={activeWord}>{floatingWords[activeWord]}</span> crafted by
             <br className="hidden sm:block" />
             professional creators worldwide.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-12 sm:mb-16 w-full sm:w-auto px-4 sm:px-0">
             <Button
               asChild
               size="lg"
-              className="h-14 px-8 text-lg rounded-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 shadow-lg shadow-purple-500/25 group border-0"
+              className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 group w-full sm:w-auto"
             >
               <Link to="/products">
                 Explore Store
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
             {!user ? (
@@ -128,7 +142,7 @@ export default function HeroSection() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-14 px-8 text-lg rounded-full border-white/20 bg-white/5 backdrop-blur-sm hover:bg-white/10 text-white"
+                className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg rounded-full border-2 hover:bg-foreground/5 w-full sm:w-auto"
               >
                 <Link to="/signup">
                   Join for Free
@@ -139,10 +153,10 @@ export default function HeroSection() {
                 asChild
                 size="lg"
                 variant="outline"
-                className="h-14 px-8 text-lg rounded-full border-white/20 bg-white/5 backdrop-blur-sm hover:bg-white/10 text-white group"
+                className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg rounded-full border-2 hover:bg-foreground/5 group w-full sm:w-auto"
               >
                 <Link to="/creators">
-                  <Play className="mr-2 h-5 w-5 fill-current" />
+                  <Play className="mr-2 h-4 w-4 sm:h-5 sm:w-5 fill-current" />
                   Meet Creators
                 </Link>
               </Button>
@@ -151,8 +165,8 @@ export default function HeroSection() {
         </div>
       </div>
 
-      {/* Bottom gradient fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background to-transparent" />
+      {/* Bottom fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
     </section>
   );
 }
