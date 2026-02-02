@@ -12,7 +12,7 @@ export default function Privacy() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">1. Introduction</h2>
             <p>
-              EditorsParadise ("we", "our", or "us") is committed to protecting your privacy. 
+              Sellspay ("we", "our", or "us") is committed to protecting your privacy. 
               This Privacy Policy explains how we collect, use, and share information about you 
               when you use our platform.
             </p>
@@ -159,7 +159,7 @@ export default function Privacy() {
             <p>
               If you have questions about this Privacy Policy, please contact us at:
             </p>
-            <p className="text-foreground">privacy@editorsparadise.org</p>
+            <p className="text-foreground">privacy@sellspay.com</p>
           </section>
         </div>
       </div>

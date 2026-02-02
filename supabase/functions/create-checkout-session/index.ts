@@ -230,7 +230,7 @@ serve(async (req) => {
       }
     }
 
-    const origin = req.headers.get("origin") || "https://editorsparadise.org";
+    const origin = req.headers.get("origin") || "https://sellspay.com";
 
     // Build checkout session config based on whether creator has Stripe
     const sessionConfig: Stripe.Checkout.SessionCreateParams = {

@@ -963,7 +963,7 @@ const ProfilePage: React.FC = () => {
   };
 
   const copyProfileLink = () => {
-    const PRODUCTION_DOMAIN = "https://editorsparadise.org";
+    const PRODUCTION_DOMAIN = "https://sellspay.com";
     const url = `${PRODUCTION_DOMAIN}/@${profile?.username}`;
     navigator.clipboard.writeText(url);
     toast.success('Profile link copied!');

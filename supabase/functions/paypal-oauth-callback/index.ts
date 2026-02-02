@@ -17,7 +17,7 @@ serve(async (req) => {
     const errorDescription = url.searchParams.get("error_description");
 
     // Redirect URL for the frontend
-    const frontendUrl = "https://editorsparadise.lovable.app/settings";
+    const frontendUrl = "https://sellspay.com/settings";
 
     if (error) {
       logStep("OAuth error from PayPal", { error, errorDescription });

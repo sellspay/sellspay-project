@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, CreditCard, Wallet, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useCredits } from '@/hooks/useCredits';
-import platformLogo from '@/assets/ep-logo.png';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { TopUpDialog } from '@/components/credits/TopUpDialog';
 import EditorChatIcon from '@/components/chat/EditorChatIcon';
@@ -54,20 +53,12 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
         <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0">
-            {/*
-              Reserve explicit width so the header doesn't shift when the logo image finishes loading.
-              (max-width + auto width can reflow on initial paint)
-            */}
-            <img
-              src={platformLogo}
-              alt="EditorsParadise"
-              width={280}
-              height={64}
-              className="h-10 sm:h-14 lg:h-16 w-[140px] sm:w-[200px] lg:w-[280px] object-contain"
-            />
-            <span className="sr-only">EditorsParadise</span>
+          {/* Logo - Text Based */}
+          <Link to="/" className="flex items-center gap-2 shrink-0 group">
+            <span className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-primary via-fuchsia-500 to-cyan-400 bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
+              Sellspay
+            </span>
+            <span className="sr-only">Sellspay</span>
           </Link>
 
           {/* Desktop Navigation */}

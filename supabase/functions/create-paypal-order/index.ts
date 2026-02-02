@@ -197,11 +197,11 @@ serve(async (req) => {
         }),
       }],
       application_context: {
-        brand_name: "Editors Paradise",
+        brand_name: "Sellspay",
         landing_page: "NO_PREFERENCE",
         user_action: "PAY_NOW",
-        return_url: `${req.headers.get("origin") || "https://editorsparadise.lovable.app"}/product/${product_id}?paypal=success`,
-        cancel_url: `${req.headers.get("origin") || "https://editorsparadise.lovable.app"}/product/${product_id}?paypal=canceled`,
+        return_url: `${req.headers.get("origin") || "https://sellspay.com"}/product/${product_id}?paypal=success`,
+        cancel_url: `${req.headers.get("origin") || "https://sellspay.com"}/product/${product_id}?paypal=canceled`,
       },
     };
 
