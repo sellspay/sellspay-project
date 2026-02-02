@@ -1,198 +1,80 @@
 
 
-# Direct Bank Account Payouts for Sellers
+# Direct Bank Account Payouts for Sellers via Payoneer
 
-## Understanding the Payhip Screenshot
+## Current Status
 
-The image you shared shows **buyer payment methods** (Visa, Mastercard, PayPal, Discover) - these are the methods **buyers use to pay for products**. Your platform already supports all of these through Stripe Checkout, which automatically accepts:
-- Visa
-- Mastercard  
-- American Express
-- Discover
-- Apple Pay / Google Pay
-- PayPal (via your PayPal integration)
+Payoneer integration is **partially implemented**:
 
-**The actual seller request is different**: They want to **receive payouts** to their bank accounts in countries where Stripe Connect and PayPal aren't available.
+### ✅ Already Built
+- `supabase/functions/register-payoneer-payee/index.ts` - Registers seller with Payoneer
+- `supabase/functions/create-payoneer-payout/index.ts` - Creates payout to seller's Payoneer
+- `supabase/functions/disconnect-payoneer/index.ts` - Disconnects Payoneer account
+- `supabase/functions/check-payoneer-status/index.ts` - Checks Payoneer connection status
+- UI in `PayoutMethodSelector.tsx` - Email input, connect/disconnect buttons
 
-## Current Seller Payout Architecture
+### ⏳ Pending
+- **Payoneer API credentials** - Need `PAYONEER_PARTNER_ID`, `PAYONEER_API_USERNAME`, `PAYONEER_API_PASSWORD`, `PAYONEER_PROGRAM_ID`
+- The edge functions currently return `notConfigured: true` when secrets are missing
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│                    CURRENT PAYOUT OPTIONS                     │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  Stripe Connect ───► Bank Account (via Stripe)               │
-│  (46 countries)      └── Instant or Standard payouts         │
-│                                                              │
-│  PayPal ──────────► PayPal Balance                           │
-│  (200+ countries)    └── Then withdraw to local bank         │
-│                                                              │
-│  Payoneer ─────────► (Partially implemented)                 │
-│  (200+ countries)    └── Pending API integration             │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
-
-## The Problem
-
-Sellers in countries like:
-- Pakistan, Bangladesh, Nigeria, Kenya, Philippines, Vietnam, Egypt, Morocco, etc.
-
-Cannot use **Stripe Connect** (not available) and may have restrictions with PayPal. They need a way to enter their **local bank account details** (IBAN, SWIFT, or local account number) and receive payouts directly.
-
-## Proposed Solution: Wise (TransferWise) Business API
-
-Wise supports **payouts to 80+ currencies** and **bank accounts in 50+ countries** - including many not covered by Stripe Connect.
-
-### How It Would Work
+## How Payoneer Works
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│                    NEW PAYOUT FLOW WITH WISE                     │
+│                    PAYONEER PAYOUT FLOW                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  1. SELLER CONNECTS BANK                                        │
-│     ┌─────────────────────────────────────────┐                │
-│     │  Country: [Nigeria         ▼]          │                │
-│     │  Bank Name: [First Bank Nigeria]        │                │
-│     │  Account Number: [1234567890]           │                │
-│     │  Account Name: [John Doe]               │                │
-│     │  SWIFT/BIC: [FBNING LA]                 │                │
-│     └─────────────────────────────────────────┘                │
+│  1. SELLER CONNECTS                                             │
+│     • Enters Payoneer email in settings                         │
+│     • Platform registers them as a payee via Payoneer API       │
+│     • Payoneer verifies the account (status: pending → active)  │
 │                                                                 │
-│  2. WITHDRAWAL REQUEST                                          │
-│     • Seller clicks "Withdraw" (minimum $10)                    │
-│     • Platform calls Wise API to create transfer                │
-│     • Funds sent in local currency (NGN, PKR, etc.)            │
+│  2. SELLER WITHDRAWS                                            │
+│     • Clicks "Withdraw" in dashboard (min $10)                  │
+│     • Platform calls create-payoneer-payout                     │
+│     • Payoneer sends funds to seller's bank/card                │
 │     • Arrives in 1-3 business days                              │
 │                                                                 │
-│  3. WISE HANDLES                                                │
-│     • Currency conversion (low fees ~0.5-1%)                    │
-│     • International bank transfer                               │
-│     • Compliance and verification                               │
+│  3. PAYONEER HANDLES                                            │
+│     • 200+ countries supported                                  │
+│     • Local bank transfers                                      │
+│     • Prepaid Mastercard option                                 │
+│     • Multi-currency accounts                                   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Implementation Plan
+## Countries Supported by Payoneer (but NOT Stripe Connect)
 
-### Phase 1: Database & Seller Config
+✅ Pakistan, Bangladesh, Nigeria, Kenya, Philippines, Vietnam, Egypt, Morocco, Ghana, Tanzania, Uganda, Nepal, Sri Lanka, and 150+ more
 
-**Update seller configuration** to store bank account details:
-- Country code
-- Currency
-- Bank name
-- Account number / IBAN
-- Account holder name
-- SWIFT / BIC code
-- Routing number (for some countries)
+## To Complete the Integration
 
-### Phase 2: UI - Bank Account Form
+### Step 1: Get Payoneer Partner Account
+1. Apply at https://www.payoneer.com/partners/
+2. Get approved as a marketplace partner
+3. Receive API credentials (Partner ID, API username/password, Program ID)
 
-**Add a "Direct Bank Transfer" option** in `PayoutMethodSelector.tsx`:
-- Country dropdown (filtered to Wise-supported countries)
-- Dynamic form fields based on country (each country has different requirements)
-- Secure storage of bank details via RPC to `private.seller_config`
-- Display connected bank info with masked account number
+### Step 2: Add Secrets
+Add these secrets to the project:
+- `PAYONEER_PARTNER_ID`
+- `PAYONEER_API_USERNAME`
+- `PAYONEER_API_PASSWORD`
+- `PAYONEER_PROGRAM_ID`
 
-### Phase 3: Edge Function - Create Wise Payout
+### Step 3: Test the Flow
+Once credentials are added:
+1. Seller enters Payoneer email
+2. API registers them as payee
+3. Status changes to "active" after Payoneer verification
+4. Seller can request payouts
 
-**New edge function**: `create-wise-payout`
-- Authenticate seller
-- Validate minimum withdrawal ($10)
-- Get bank details from seller config
-- Create quote via Wise API (shows exact amount in local currency)
-- Create recipient (if not exists)
-- Create and fund transfer
-- Mark purchases as transferred
-- Return transfer status and estimated arrival
+## Current UI in Settings > Billing
 
-### Phase 4: Wise API Integration
+The Payoneer section is already in the UI showing:
+- "Connect Payoneer" button when not connected
+- Email input dialog
+- Status badge (pending/active)
+- Disconnect option
 
-**Required Wise API calls:**
-1. `POST /v2/profiles` - Get Wise profile ID
-2. `POST /v2/quotes` - Get conversion quote (USD → local currency)
-3. `POST /v1/accounts` - Create recipient account
-4. `POST /v1/transfers` - Create transfer
-5. `POST /v3/profiles/{profileId}/transfers/{transferId}/payments` - Fund transfer
-
-### Required Secrets
-
-The following secrets need to be configured:
-- `WISE_API_KEY` - Wise Business API token
-- `WISE_PROFILE_ID` - Your Wise business profile ID
-
----
-
-## Technical Details
-
-### Country-Specific Bank Fields
-
-Different countries require different information:
-
-| Country | Required Fields |
-|---------|----------------|
-| Nigeria | Account Number, Bank Code |
-| Pakistan | IBAN |
-| India | IFSC Code, Account Number |
-| Philippines | Account Number, Bank Code |
-| Bangladesh | Account Number, Bank Name |
-| Kenya | Account Number, Bank Code |
-| Europe (SEPA) | IBAN, BIC |
-| USA | Routing Number, Account Number |
-
-### Updated PayoutMethodSelector UI
-
-The billing settings would show:
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  Payout Methods                                              │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  💳 Stripe Connect              [Connected ✓]                │
-│     Bank of America ****1234                                 │
-│     Instant & standard payouts                               │
-│                                                              │
-│  🅿️ PayPal                      [Connected ✓]                │
-│     john@example.com                                         │
-│                                                              │
-│  🏦 Direct Bank Transfer        [Connect Bank]               │ ← NEW
-│     For countries not supported by Stripe                    │
-│     Powered by Wise • 50+ countries                          │
-│                                                              │
-│  💰 Payoneer                    [Coming Soon]                │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
-
-### Files to Create/Modify
-
-| File | Change |
-|------|--------|
-| `supabase/functions/create-wise-payout/index.ts` | New edge function for Wise payouts |
-| `supabase/functions/check-wise-status/index.ts` | Check if bank is connected |
-| `src/components/settings/PayoutMethodSelector.tsx` | Add bank account UI section |
-| `src/components/settings/BankAccountForm.tsx` | New component for bank details form |
-| `private.seller_config` | Add columns for bank details (via RPC) |
-
-### Alternative: Complete Payoneer Integration
-
-Your Payoneer edge functions are already partially built. Payoneer also supports:
-- 200+ countries
-- Local bank payouts
-- Lower fees for high volume
-
-If you already have a Payoneer partnership, we could finish that integration instead of adding Wise.
-
-## Recommendation
-
-**Start with Wise** because:
-1. Simpler API than Payoneer
-2. No complex merchant onboarding required
-3. Sellers don't need a Wise account
-4. Transparent, low fees
-5. Wide country coverage including Pakistan, Nigeria, Philippines, Bangladesh, Kenya
-
-Would you like me to proceed with implementing the Wise integration for direct bank payouts?
-
+**No additional code changes needed** - just the API credentials!
