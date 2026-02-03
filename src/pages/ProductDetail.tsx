@@ -252,15 +252,26 @@ export default function ProductDetail() {
     }
   }, [justPurchased, product?.id, userProfileId, refetchDownloadLimit]);
 
+  // Fetch product when route changes (id or slug). Keep userProfileId in deps so owner-state
+  // and creator badges can update once the current user's profile is known.
   useEffect(() => {
     const productIdentifier = id || slug;
     if (productIdentifier) {
       fetchProduct();
-      fetchLikes();
-      fetchComments();
-      fetchSavedStatus();
     }
   }, [id, slug, userProfileId]);
+
+  // IMPORTANT: Engagement fetches must run *after* we have a concrete product id.
+  // When visiting via slug, product.id is only available after fetchProduct completes.
+  useEffect(() => {
+    const productId = id || product?.id;
+    if (!productId) return;
+
+    fetchLikes();
+    fetchComments();
+    fetchSavedStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, product?.id, userProfileId]);
 
   // Check if user has purchased this product (after product is loaded)
   useEffect(() => {
