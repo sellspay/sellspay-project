@@ -698,7 +698,8 @@ export default function ProductDetail() {
 
   const handleSave = async () => {
     if (!user) {
-      toast.error("Please sign in to save products");
+      const currentPath = window.location.pathname + window.location.search;
+      navigate(`/login?next=${encodeURIComponent(currentPath)}`);
       return;
     }
     
@@ -734,7 +735,8 @@ export default function ProductDetail() {
 
   const handleLike = async () => {
     if (!user) {
-      toast.error("Please sign in to like products");
+      const currentPath = window.location.pathname + window.location.search;
+      navigate(`/login?next=${encodeURIComponent(currentPath)}`);
       return;
     }
     
@@ -779,7 +781,8 @@ export default function ProductDetail() {
 
   const handleSubmitComment = async () => {
     if (!user) {
-      toast.error("Please sign in to comment");
+      const currentPath = window.location.pathname + window.location.search;
+      navigate(`/login?next=${encodeURIComponent(currentPath)}`);
       return;
     }
     
@@ -846,7 +849,8 @@ export default function ProductDetail() {
 
   const handleCommentLike = async (commentId: string) => {
     if (!user) {
-      toast.error("Please sign in to like comments");
+      const currentPath = window.location.pathname + window.location.search;
+      navigate(`/login?next=${encodeURIComponent(currentPath)}`);
       return;
     }
     
@@ -1070,7 +1074,9 @@ export default function ProductDetail() {
   // Handle access button click
   const handleAccessClick = () => {
     if (!user) {
-      navigate("/login");
+      // Redirect to login with current URL as next param so user returns here after auth
+      const currentPath = window.location.pathname + window.location.search;
+      navigate(`/login?next=${encodeURIComponent(currentPath)}`);
       return;
     }
     
