@@ -58,7 +58,7 @@ serve(async (req) => {
 
     // Get the origin for redirect URL
     const body = await req.json().catch(() => ({}));
-    const origin = body.origin || "https://editorsparadise.lovable.app";
+    const origin = body.origin || "https://sellspay.com";
     
     // Create a state token to prevent CSRF and link back to user
     const stateData = {

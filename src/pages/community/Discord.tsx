@@ -424,7 +424,7 @@ export default function Discord() {
                     <div className="w-3 h-3 rounded-full bg-[#f4bf4f]" />
                     <div className="w-3 h-3 rounded-full bg-[#61c554]" />
                   </div>
-                  <span className="ml-4 text-sm text-[#b9bbbe]">EditorsParadise</span>
+                  <span className="ml-4 text-sm text-[#b9bbbe]">SellsPay</span>
                 </div>
                 
                 {/* Channels */}

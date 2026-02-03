@@ -581,7 +581,7 @@ export default function CreateProduct() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {slug ? (
-                    <>Preview: <span className="font-mono text-primary">editorsparadise.org/p/{slug}</span></>
+                    <>Preview: <span className="font-mono text-primary">sellspay.com/p/{slug}</span></>
                   ) : (
                     "Leave empty to auto-generate from title"
                   )}

@@ -243,7 +243,7 @@ serve(async (req) => {
       }
     }
 
-    const origin = req.headers.get("origin") || "https://editorsparadise.com";
+    const origin = req.headers.get("origin") || "https://sellspay.com";
 
     // No existing subscription - create new checkout session
     const session = await stripe.checkout.sessions.create({

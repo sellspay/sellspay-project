@@ -125,7 +125,7 @@ export default function ResetPassword() {
         <div className="auth-card">
           {/* Left Panel */}
           <div className="auth-left hidden lg:block">
-            <div className="brand">EditorsParadise</div>
+            <div className="brand">SellsPay</div>
             <h1>Set New Password</h1>
             <p>Create a new password for your migrated account.</p>
             <ul>

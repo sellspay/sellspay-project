@@ -267,6 +267,6 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
-    return Response.redirect(`https://editorsparadise.lovable.app/login?discord_error=${encodeURIComponent(errorMessage)}`);
+    return Response.redirect(`https://sellspay.com/login?discord_error=${encodeURIComponent(errorMessage)}`);
   }
 });

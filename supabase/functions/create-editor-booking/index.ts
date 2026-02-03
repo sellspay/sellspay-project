@@ -239,7 +239,7 @@ serve(async (req) => {
     }
 
     // Get origin for redirect URLs
-    const origin = req.headers.get("origin") || "https://editorsparadise.org";
+    const origin = req.headers.get("origin") || "https://sellspay.com";
 
     // Create Checkout Session with Stripe Connect
     const session = await stripe.checkout.sessions.create({

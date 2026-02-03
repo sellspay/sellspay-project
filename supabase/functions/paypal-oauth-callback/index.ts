@@ -148,6 +148,6 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
-    return Response.redirect(`https://editorsparadise.lovable.app/settings?paypal_error=${encodeURIComponent(errorMessage)}`);
+    return Response.redirect(`https://sellspay.com/settings?paypal_error=${encodeURIComponent(errorMessage)}`);
   }
 });
