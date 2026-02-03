@@ -36,7 +36,13 @@ serve(async (req) => {
   }
 
   try {
-    logStep("Webhook received");
+    const timestamp = new Date().toISOString();
+    logStep("Webhook received", { 
+      timestamp,
+      method: req.method,
+      url: req.url,
+      hasSignature: !!req.headers.get("stripe-signature"),
+    });
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
@@ -341,15 +347,54 @@ serve(async (req) => {
         // Handle one-time payment checkout (product purchase)
         const productId = metadata.product_id;
         const buyerProfileId = metadata.buyer_profile_id;
-        const platformFeeCents = parseInt(metadata.platform_fee_cents || "0");
-        const creatorPayoutCents = parseInt(metadata.creator_payout_cents || "0");
+        let platformFeeCents = parseInt(metadata.platform_fee_cents || "0");
+        let creatorPayoutCents = parseInt(metadata.creator_payout_cents || "0");
 
         if (!productId) {
-          logStep("Missing product_id in metadata, not a product purchase");
+          logStep("Missing product_id in metadata, not a product purchase", { 
+            sessionId: session.id,
+            metadata,
+            amount_total: session.amount_total,
+          });
           return new Response(JSON.stringify({ received: true }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
+
+        // Get amount from session (fallback if metadata is missing)
+        let amountCents = session.amount_total || 0;
+        
+        // If amounts are missing from metadata, calculate from session amount
+        if ((platformFeeCents === 0 || creatorPayoutCents === 0) && amountCents > 0) {
+          logStep("Recalculating fees from session amount", { amountCents, originalPlatformFee: platformFeeCents, originalCreatorPayout: creatorPayoutCents });
+          // Platform fee is 5%
+          platformFeeCents = Math.round(amountCents * 0.05);
+          creatorPayoutCents = amountCents - platformFeeCents;
+        }
+
+        // If we still have no amount, try to get from product price
+        if (amountCents === 0) {
+          const { data: product } = await supabaseAdmin
+            .from("products")
+            .select("price_cents")
+            .eq("id", productId)
+            .single();
+          
+          if (product?.price_cents) {
+            amountCents = product.price_cents;
+            platformFeeCents = Math.round(amountCents * 0.05);
+            creatorPayoutCents = amountCents - platformFeeCents;
+            logStep("Using product price as fallback", { productId, price_cents: product.price_cents });
+          }
+        }
+
+        logStep("Processing product purchase", {
+          productId,
+          sessionAmount: session.amount_total,
+          finalAmount: amountCents,
+          platformFee: platformFeeCents,
+          creatorPayout: creatorPayoutCents,
+        });
 
         let finalBuyerProfileId = buyerProfileId;
 
@@ -367,7 +412,7 @@ serve(async (req) => {
         }
 
         if (!finalBuyerProfileId) {
-          logStep("No buyer profile found, cannot record purchase");
+          logStep("No buyer profile found, cannot record purchase", { sessionId: session.id, email: session.customer_email });
           return new Response(JSON.stringify({ received: true, note: "No buyer profile" }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -377,29 +422,35 @@ serve(async (req) => {
         const creatorHasStripe = metadata.creator_has_stripe === "true";
         
         // Create purchase record - mark as transferred if direct transfer happened
-        const { error: purchaseError } = await supabaseAdmin.from("purchases").insert({
+        const purchaseData = {
           buyer_id: finalBuyerProfileId,
           product_id: productId,
-          amount_cents: session.amount_total || 0,
+          amount_cents: amountCents,
           platform_fee_cents: platformFeeCents,
           creator_payout_cents: creatorPayoutCents,
           stripe_checkout_session_id: session.id,
           stripe_payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
           status: "completed",
-          transferred: creatorHasStripe, // true if direct transfer, false if platform holds funds
+          transferred: creatorHasStripe,
           transferred_at: creatorHasStripe ? new Date().toISOString() : null,
-        });
+        };
+        
+        logStep("Inserting purchase record", purchaseData);
+        
+        const { error: purchaseError } = await supabaseAdmin.from("purchases").insert(purchaseData);
 
         if (purchaseError) {
-          logStep("Failed to create purchase record", { error: purchaseError.message });
+          logStep("Failed to create purchase record", { error: purchaseError.message, purchaseData });
           throw new Error(`Failed to create purchase: ${purchaseError.message}`);
         }
 
         logStep("Purchase recorded successfully", { 
           productId, 
           buyerProfileId: finalBuyerProfileId,
+          amountCents,
+          platformFeeCents,
+          creatorPayoutCents,
           transferred: creatorHasStripe,
-          creatorPayout: creatorPayoutCents,
         });
       }
     }
