@@ -77,7 +77,7 @@ serve(async (req) => {
     const userEmail = userPii?.[0]?.email || user.email;
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const origin = req.headers.get("origin") || "https://editorsparadise.org";
+    const origin = req.headers.get("origin") || "https://sellspay.com";
 
     let accountId = sellerConfig?.[0]?.stripe_account_id;
 

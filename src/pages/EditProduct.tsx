@@ -701,7 +701,7 @@ export default function EditProduct() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {slug ? (
-                    <>Preview: <span className="font-mono text-primary">editorsparadise.com/p/{slug}</span></>
+                    <>Preview: <span className="font-mono text-primary">sellspay.com/p/{slug}</span></>
                   ) : (
                     "Leave empty to use product ID in URL"
                   )}

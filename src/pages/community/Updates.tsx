@@ -108,7 +108,7 @@ export default function Updates() {
 
           <p className="text-base sm:text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto mb-8 sm:mb-12 leading-relaxed px-2">
             Stay informed about the latest changes, features, and announcements from
-            <span className="text-foreground font-medium"> EditorsParadise.</span>
+              <span className="text-foreground font-medium"> SellsPay.</span>
           </p>
 
           {/* Navigation */}

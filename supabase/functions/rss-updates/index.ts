@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
       : new Date().toISOString();
 
     // Base URL for the site
-    const siteUrl = 'https://editorsparadise.com';
+    const siteUrl = 'https://sellspay.com';
     const feedUrl = `${supabaseUrl}/functions/v1/rss-updates`;
 
     // Generate Atom feed
@@ -72,23 +72,23 @@ Deno.serve(async (req) => {
       <summary type="text">${escapeXml(update.content.slice(0, 200))}${update.content.length > 200 ? '...' : ''}</summary>
       <content type="html"><![CDATA[<p>${update.content.replace(/\n/g, '<br/>')}</p><p><strong>Category:</strong> ${update.category}</p>]]></content>
       <author>
-        <name>EditorsParadise</name>
+        <name>SellsPay</name>
       </author>
     </entry>`).join('');
 
     const atomFeed = `<?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <title>EditorsParadise Platform Updates</title>
-  <subtitle>Official announcements and updates from EditorsParadise</subtitle>
+  <title>SellsPay Platform Updates</title>
+  <subtitle>Official announcements and updates from SellsPay</subtitle>
   <link href="${siteUrl}/community/updates" rel="alternate" type="text/html"/>
   <link href="${feedUrl}" rel="self" type="application/atom+xml"/>
-  <id>urn:uuid:editorsparadise-platform-updates</id>
+  <id>urn:uuid:sellspay-platform-updates</id>
   <updated>${lastUpdated}</updated>
   <author>
-    <name>EditorsParadise</name>
+    <name>SellsPay</name>
     <uri>${siteUrl}</uri>
   </author>
-  <rights>© ${new Date().getFullYear()} EditorsParadise. All rights reserved.</rights>
+  <rights>© ${new Date().getFullYear()} SellsPay. All rights reserved.</rights>
   <icon>${siteUrl}/favicon.ico</icon>
   <logo>${siteUrl}/logo.png</logo>
   ${entries}

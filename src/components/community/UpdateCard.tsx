@@ -116,13 +116,13 @@ export function UpdateCard({ update, isOwner }: UpdateCardProps) {
               <Avatar className="h-10 w-10 ring-2 ring-amber-500/50 shadow-lg shadow-amber-500/20">
                 <AvatarImage src={platformLogo} className="object-contain p-0.5" />
                 <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-500 text-white font-bold">
-                  EP
+                  SP
                 </AvatarFallback>
               </Avatar>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-foreground">
-                    EditorsParadise
+                    SellsPay
                   </span>
                   {/* BOT Badge */}
                   <Badge 

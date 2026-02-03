@@ -72,7 +72,7 @@ serve(async (req) => {
       logStep("Existing customer found", { customerId });
     }
 
-    const origin = req.headers.get("origin") || "https://editorsparadise.org";
+    const origin = req.headers.get("origin") || "https://sellspay.com";
 
     // Create one-time payment checkout session (not subscription)
     const session = await stripe.checkout.sessions.create({

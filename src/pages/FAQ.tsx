@@ -683,7 +683,7 @@ export default function FAQ() {
                     className="rounded-xl border-primary/30 hover:bg-primary/10 hover:border-primary/50"
                     asChild
                   >
-                    <a href="mailto:support@editorsparadise.com">
+                    <a href="mailto:support@sellspay.com">
                       Send Email
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </a>
