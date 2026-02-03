@@ -15,7 +15,7 @@ import { useCredits } from '@/hooks/useCredits';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { TopUpDialog } from '@/components/credits/TopUpDialog';
 import EditorChatIcon from '@/components/chat/EditorChatIcon';
-import sellspayLogo from '@/assets/sellspay-s-logo.png';
+import sellspayLogo from '@/assets/sellspay-nav-logo.png';
 
 const navItems = [
   { name: 'Store', path: '/products' },
@@ -59,7 +59,7 @@ export default function Header() {
             <img 
               src={sellspayLogo} 
               alt="Sellspay" 
-              className="h-8 sm:h-9 lg:h-10 w-auto group-hover:opacity-80 transition-opacity"
+              className="h-10 sm:h-11 lg:h-12 w-auto group-hover:opacity-80 transition-opacity"
             />
           </Link>
 
