@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { ChevronLeft, Eye, EyeOff, Loader2, Check, X } from 'lucide-react';
@@ -9,6 +9,7 @@ import authBg from '@/assets/auth-bg.png';
 
 export default function Signup() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signUp, signInWithGoogle } = useAuth();
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
@@ -27,9 +28,12 @@ export default function Signup() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      // Redirect to 'next' param if provided, otherwise home
+      const params = new URLSearchParams(location.search);
+      const next = params.get('next');
+      navigate(next || '/');
     }
-  }, [user, navigate]);
+  }, [user, navigate, location.search]);
 
   useEffect(() => {
     const checkUsername = async () => {
@@ -122,10 +126,13 @@ export default function Signup() {
 
       toast({
         title: 'Account created!',
-        description: 'Welcome to EditorsParadise.',
+        description: 'Welcome to SellsPay.',
       });
 
-      navigate('/');
+      // Redirect to 'next' param if provided, otherwise home
+      const params = new URLSearchParams(location.search);
+      const next = params.get('next');
+      navigate(next || '/');
     } catch (err: any) {
       const msg = String(err?.message || '');
       if (/already/i.test(msg) || /registered/i.test(msg)) {
@@ -208,7 +215,7 @@ export default function Signup() {
 
         <p className="text-white/50 mb-8">
           Already have an account?{' '}
-          <Link to="/login" className="text-white font-medium hover:underline">
+          <Link to={`/login${location.search}`} className="text-white font-medium hover:underline">
             Log in
           </Link>
         </p>

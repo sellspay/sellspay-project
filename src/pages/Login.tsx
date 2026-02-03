@@ -327,7 +327,7 @@ export default function Login() {
         {!showForgotPassword && !showMfaVerification && (
           <p className="text-muted-foreground mb-8">
             Don't have an account?{' '}
-            <Link to="/signup" className="text-foreground font-medium hover:underline">
+            <Link to={`/signup${location.search}`} className="text-foreground font-medium hover:underline">
               Sign up
             </Link>
             .
