@@ -1,80 +1,109 @@
 
+# Fix Plan: Stripe Negative Balance & Missing Earnings Issues
 
-# Direct Bank Account Payouts for Sellers via Payoneer
+## Overview
 
-## Current Status
+There are **three critical issues** to address:
 
-Payoneer integration is **partially implemented**:
+1. **Negative Stripe balance** ($-1.62) caused by low-value transaction fees exceeding revenue
+2. **Webhook not firing** - purchases aren't being recorded with correct amounts
+3. **Dashboard not showing earnings** - because purchase data has $0 amounts
 
-### ✅ Already Built
-- `supabase/functions/register-payoneer-payee/index.ts` - Registers seller with Payoneer
-- `supabase/functions/create-payoneer-payout/index.ts` - Creates payout to seller's Payoneer
-- `supabase/functions/disconnect-payoneer/index.ts` - Disconnects Payoneer account
-- `supabase/functions/check-payoneer-status/index.ts` - Checks Payoneer connection status
-- UI in `PayoutMethodSelector.tsx` - Email input, connect/disconnect buttons
+---
 
-### ⏳ Pending
-- **Payoneer API credentials** - Need `PAYONEER_PARTNER_ID`, `PAYONEER_API_USERNAME`, `PAYONEER_API_PASSWORD`, `PAYONEER_PROGRAM_ID`
-- The edge functions currently return `notConfigured: true` when secrets are missing
+## Issue 1: Negative Balance Explanation (No Code Fix Needed)
 
-## How Payoneer Works
+**What happened:**
+- You made a $1.00 test purchase to your own store
+- Stripe charged processing fees: **$0.33** (2.9% + $0.30)
+- Since this was likely a direct payment (no Connect account), additional platform costs may have accumulated
+- Result: **$1.00 revenue - $1.62+ in fees = -$0.62** (or more with Connect fees)
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    PAYONEER PAYOUT FLOW                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. SELLER CONNECTS                                             │
-│     • Enters Payoneer email in settings                         │
-│     • Platform registers them as a payee via Payoneer API       │
-│     • Payoneer verifies the account (status: pending → active)  │
-│                                                                 │
-│  2. SELLER WITHDRAWS                                            │
-│     • Clicks "Withdraw" in dashboard (min $10)                  │
-│     • Platform calls create-payoneer-payout                     │
-│     • Payoneer sends funds to seller's bank/card                │
-│     • Arrives in 1-3 business days                              │
-│                                                                 │
-│  3. PAYONEER HANDLES                                            │
-│     • 200+ countries supported                                  │
-│     • Local bank transfers                                      │
-│     • Prepaid Mastercard option                                 │
-│     • Multi-currency accounts                                   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Why the $4.99 minimum exists:**
+The minimum price of $4.99 exists precisely to prevent this - on a $4.99 sale:
+- Stripe fee: ~$0.44 (2.9% of $4.99 + $0.30)
+- Platform 5% fee: $0.25
+- Creator receives: ~$4.30 (positive!)
 
-## Countries Supported by Payoneer (but NOT Stripe Connect)
+**Resolution:**
+This is a one-time test cost. Your next real sale at $4.99+ will start recovering this negative balance. No immediate action required unless you want to manually add funds to your Stripe account.
 
-✅ Pakistan, Bangladesh, Nigeria, Kenya, Philippines, Vietnam, Egypt, Morocco, Ghana, Tanzania, Uganda, Nepal, Sri Lanka, and 150+ more
+---
 
-## To Complete the Integration
+## Issue 2: Stripe Webhook Not Configured (ACTION REQUIRED)
 
-### Step 1: Get Payoneer Partner Account
-1. Apply at https://www.payoneer.com/partners/
-2. Get approved as a marketplace partner
-3. Receive API credentials (Partner ID, API username/password, Program ID)
+**The Problem:**
+The `checkout.session.completed` webhook events aren't reaching your edge function. Last recorded event was Jan 24.
 
-### Step 2: Add Secrets
-Add these secrets to the project:
-- `PAYONEER_PARTNER_ID`
-- `PAYONEER_API_USERNAME`
-- `PAYONEER_API_PASSWORD`
-- `PAYONEER_PROGRAM_ID`
+**Manual Fix Required (You must do this in Stripe Dashboard):**
 
-### Step 3: Test the Flow
-Once credentials are added:
-1. Seller enters Payoneer email
-2. API registers them as payee
-3. Status changes to "active" after Payoneer verification
-4. Seller can request payouts
+1. Go to **Stripe Dashboard → Developers → Webhooks**
+2. Click **"+ Add Endpoint"**
+3. Add this endpoint URL:
+   ```
+   https://cdpfchadvvfdupkgzeiy.supabase.co/functions/v1/stripe-webhook
+   ```
+4. Select events to listen for:
+   - `checkout.session.completed`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.paid`
+   - `account.updated`
+5. Copy the **Webhook Signing Secret** and update it in your project secrets
 
-## Current UI in Settings > Billing
+**Note:** The `STRIPE_WEBHOOK_SECRET` in your secrets may be outdated or from a different endpoint.
 
-The Payoneer section is already in the UI showing:
-- "Connect Payoneer" button when not connected
-- Email input dialog
-- Status badge (pending/active)
-- Disconnect option
+---
 
-**No additional code changes needed** - just the API credentials!
+## Issue 3: Purchase Records Have $0 Amounts
+
+**The Problem:**
+All purchases in the database show `amount_cents: 0` because they were created manually or via a code path that didn't set the amounts.
+
+**Solution - Backfill existing purchases:**
+
+I'll update the `stripe-webhook/index.ts` to ensure purchase amounts are always recorded correctly. The current code looks correct, but the webhook wasn't firing.
+
+Once the webhook is configured (Issue 2), new purchases will be recorded correctly.
+
+---
+
+## Technical Changes
+
+### 1. Add Webhook Configuration Check
+
+Add a diagnostic endpoint or logging to verify webhook connectivity.
+
+### 2. Improve Error Handling in Webhook
+
+Ensure all purchase metadata is captured even if some fields are missing:
+
+**File:** `supabase/functions/stripe-webhook/index.ts`
+- Add fallback for `amount_total` from session
+- Log all incoming webhooks for debugging
+- Add retry logic for database insertions
+
+### 3. Dashboard: Handle Legacy Purchases
+
+**File:** `src/components/dashboard/EarningsCard.tsx` or query logic
+- For purchases with `amount_cents = 0`, attempt to recalculate from product price
+- Or: Add a one-time migration to fix existing records
+
+---
+
+## Recommended Immediate Actions
+
+1. **Configure Stripe Webhook** (manual - see Issue 2 above)
+2. **Verify webhook secret** is up to date in project secrets
+3. **Test with a $4.99+ product** to confirm the full flow works
+4. **The $1.62 negative balance** will naturally recover with your next few sales
+
+---
+
+## Future Prevention
+
+Consider adding:
+- Stripe webhook health monitoring
+- Alert when webhook fails
+- UI validation that prevents products under $4.99 from being published
