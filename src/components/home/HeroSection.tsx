@@ -3,8 +3,6 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import heroBg from '@/assets/hero-cinematic.jpg';
-
 interface SiteContent {
   hero_media_type: 'image' | 'video';
   hero_image_url: string | null;
@@ -87,9 +85,10 @@ export default function HeroSection() {
     return () => clearInterval(interval);
   }, [content.hero_rotating_words.length]);
 
+  // Use video URL or image URL, with no fallback image (just dark bg)
   const backgroundMedia = content.hero_media_type === 'video' && content.hero_video_url
     ? content.hero_video_url
-    : content.hero_image_url || heroBg;
+    : content.hero_image_url;
 
   // Parallax transforms based on scroll
   const parallaxSlow = scrollY * 0.3;
@@ -121,12 +120,14 @@ export default function HeroSection() {
               setVideoLoaded(true);
             }}
           />
-        ) : (
+        ) : backgroundMedia ? (
           <img 
             src={backgroundMedia} 
             alt="" 
             className="w-full h-[120%] object-cover object-center"
           />
+        ) : (
+          <div className="w-full h-[120%] bg-background" />
         )}
         {/* Subtle vignette overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-background/50 via-transparent to-background/20" />
