@@ -19,24 +19,10 @@ export function AIStudioPromo() {
               <span className="block text-4xl sm:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl">Thousands of creators</span>
               <span className="block mt-2">
                 <span className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl">choose </span>
-                <span className="relative inline-block">
-                  {/* Start Selling link - positioned in front of SellsPay, NOT connected */}
-                  <button
-                    onClick={() => navigate('/signup')}
-                    className="absolute -top-10 sm:-top-12 lg:-top-14 left-0 text-base sm:text-lg lg:text-xl text-foreground underline decoration-2 underline-offset-8 hover:text-primary hover:decoration-primary transition-colors duration-300 cursor-pointer"
-                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                    aria-label="Start selling on SellsPay"
-                  >
-                    Start Selling
-                  </button>
-
-                  <span 
-                    className="text-primary text-6xl sm:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem]"
-                    style={{ fontFamily: "'Georgia', serif" }}
-                  >
-                    SellsPay
-                  </span>
-                </span>
+                <span 
+                  className="text-primary text-6xl sm:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem]"
+                  style={{ fontFamily: "'Georgia', serif" }}
+                >SellsPay</span>
               </span>
             </h2>
           </div>
@@ -48,14 +34,25 @@ export function AIStudioPromo() {
                 Stop jumping between platforms. Your storefront, tools, and payments — 
                 <span className="text-primary font-medium"> unified.</span>
               </p>
-              <div className="space-y-6 lg:max-w-[40%]">
-                <p className="text-base sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-                  We built SellsPay for creators who are tired of stitching together 
-                  five different services just to sell a preset pack.
-                </p>
-                <p className="text-base sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-                  Sell. Create with AI tools. Get paid instantly. No more going site to site.
-                </p>
+              <div className="lg:max-w-[40%]">
+                {/* Start Selling - Large text link above the paragraphs */}
+                <button
+                  onClick={() => navigate('/signup')}
+                  className="text-2xl sm:text-3xl lg:text-4xl text-foreground underline decoration-2 underline-offset-[12px] hover:text-primary hover:decoration-primary transition-colors duration-300 cursor-pointer mb-10 block"
+                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                >
+                  Start Selling
+                </button>
+
+                <div className="space-y-6">
+                  <p className="text-base sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
+                    We built SellsPay for creators who are tired of stitching together 
+                    five different services just to sell a preset pack.
+                  </p>
+                  <p className="text-base sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
+                    Sell. Create with AI tools. Get paid instantly. No more going site to site.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
