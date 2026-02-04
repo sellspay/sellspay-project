@@ -27,7 +27,7 @@ import { useCredits } from '@/hooks/useCredits';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { TopUpDialog } from '@/components/credits/TopUpDialog';
 import EditorChatIcon from '@/components/chat/EditorChatIcon';
-import sellspayLogo from '@/assets/sellspay-nav-logo.png';
+import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { cn } from '@/lib/utils';
 
 // Product categories for dropdown
@@ -81,33 +81,39 @@ export default function Header() {
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path.split('?')[0]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border/30 shadow-lg shadow-black/10">
+      {/* Premium top highlight line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+      
       <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Left side: Logo + Main Nav */}
           <div className="flex items-center gap-8">
             {/* Logo */}
-            <Link to="/" className="flex items-center shrink-0 group">
+            <Link to="/" className="flex items-center gap-2 shrink-0 group">
               <img 
                 src={sellspayLogo} 
                 alt="SellsPay" 
-                className="h-8 w-auto group-hover:opacity-80 transition-opacity"
+                className="h-9 w-auto transition-transform duration-300 group-hover:scale-105"
               />
+              <span className="hidden sm:inline text-lg font-bold tracking-tight text-foreground">
+                SellsPay
+              </span>
             </Link>
 
             {/* Desktop Navigation with Dropdowns */}
             <NavigationMenu className="hidden lg:flex">
-              <NavigationMenuList className="gap-0">
+              <NavigationMenuList className="gap-1">
                 {/* Store - Click to navigate, hover for dropdown */}
                 <NavigationMenuItem>
                   <Link 
                     to="/products"
-                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group"
+                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-foreground/70 hover:text-foreground transition-all duration-200 rounded-lg hover:bg-white/5"
                   >
                     Store
                   </Link>
                   <NavigationMenuContent>
-                    <div className="w-[400px] p-4 bg-card border border-border">
+                    <div className="w-[400px] p-4 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/30">
                       <div className="grid gap-1">
                         {productCategories.map((item) => {
                           const Icon = item.icon;
@@ -115,10 +121,10 @@ export default function Header() {
                             <Link
                               key={item.path}
                               to={item.path}
-                              className="flex items-center gap-4 p-3 hover:bg-muted/50 transition-colors group"
+                              className="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 transition-all duration-200 group"
                             >
-                              <div className="flex h-10 w-10 items-center justify-center bg-muted group-hover:bg-primary/10 transition-colors">
-                                <Icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                                <Icon className="h-5 w-5 text-primary" />
                               </div>
                               <div>
                                 <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
@@ -141,8 +147,8 @@ export default function Header() {
                   <Link 
                     to="/creators" 
                     className={cn(
-                      "inline-flex h-10 items-center justify-center px-4 text-sm font-medium transition-colors",
-                      isActive('/creators') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                      "inline-flex h-10 items-center justify-center px-4 text-sm font-medium transition-all duration-200 rounded-lg",
+                      isActive('/creators') ? 'text-foreground bg-white/5' : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
                     )}
                   >
                     Creators
@@ -153,18 +159,18 @@ export default function Header() {
                 <NavigationMenuItem>
                   <Link 
                     to="/tools"
-                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-foreground/70 hover:text-foreground transition-all duration-200 rounded-lg hover:bg-white/5"
                   >
                     Tools
                   </Link>
                   <NavigationMenuContent>
-                    <div className="w-[320px] p-4 bg-card border border-border">
+                    <div className="w-[320px] p-4 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/30">
                       <div className="grid gap-1">
                         {toolsItems.map((item) => (
                           <Link
                             key={item.path}
                             to={item.path}
-                            className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors group"
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-all duration-200 group"
                           >
                             <div>
                               <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
@@ -174,7 +180,7 @@ export default function Header() {
                                 {item.description}
                               </div>
                             </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all" />
+                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                           </Link>
                         ))}
                       </div>
@@ -184,17 +190,17 @@ export default function Header() {
 
                 {/* Community Dropdown */}
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="h-10 px-4 text-sm font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-transparent data-[state=open]:bg-transparent">
+                  <NavigationMenuTrigger className="h-10 px-4 text-sm font-medium text-foreground/70 hover:text-foreground bg-transparent hover:bg-white/5 data-[state=open]:bg-white/5 rounded-lg transition-all duration-200">
                     Community
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <div className="w-[280px] p-4 bg-card border border-border">
+                    <div className="w-[280px] p-4 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/30">
                       <div className="grid gap-1">
                         {communityItems.map((item) => (
                           <Link
                             key={item.path}
                             to={item.path}
-                            className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors group"
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-all duration-200 group"
                           >
                             <div>
                               <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
@@ -204,7 +210,7 @@ export default function Header() {
                                 {item.description}
                               </div>
                             </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all" />
+                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                           </Link>
                         ))}
                       </div>
@@ -213,16 +219,16 @@ export default function Header() {
                 </NavigationMenuItem>
 
                 {/* Divider */}
-                <div className="h-5 w-px bg-border mx-2" />
+                <div className="h-5 w-px bg-border/50 mx-2" />
 
                 {/* Hire Editors - Standout */}
                 <NavigationMenuItem>
                   <Link 
                     to="/hire-editors" 
-                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-semibold text-primary hover:text-primary/80 transition-all duration-200 rounded-lg hover:bg-primary/10"
                   >
                     Hire Editors
-                    <ArrowRight className="ml-1 h-4 w-4" />
+                    <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </NavigationMenuItem>
               </NavigationMenuList>
@@ -230,11 +236,11 @@ export default function Header() {
           </div>
 
           {/* Right Side */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Pricing Link - Desktop only */}
             <Link 
               to="/pricing" 
-              className="hidden lg:inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="hidden lg:inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-foreground/70 hover:text-foreground transition-all duration-200 rounded-lg hover:bg-white/5"
             >
               Pricing
             </Link>
@@ -243,14 +249,14 @@ export default function Header() {
             {user && (
               <button
                 onClick={() => setTopUpDialogOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 hover:bg-muted transition-colors border border-border/50"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 transition-all duration-200 border border-primary/20"
               >
                 {creditsLoading ? (
                   <Loader2 className="h-4 w-4 text-primary animate-spin" />
                 ) : (
                   <>
                     <Wallet className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-medium text-foreground">
                       {creditBalance}
                     </span>
                   </>
@@ -365,13 +371,13 @@ export default function Header() {
               <div className="flex items-center gap-3">
                 <Link 
                   to="/login" 
-                  className="hidden sm:inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  className="hidden sm:inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-foreground/70 hover:text-foreground transition-all duration-200 rounded-lg hover:bg-white/5"
                 >
                   Sign In
                 </Link>
                 <Button 
                   asChild 
-                  className="h-10 px-5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="h-10 px-5 text-sm font-semibold rounded-lg"
                 >
                   <Link to="/signup">Start Free Now</Link>
                 </Button>
@@ -382,7 +388,7 @@ export default function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden h-9 w-9"
+              className="lg:hidden h-9 w-9 rounded-lg"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -392,7 +398,7 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-border/40">
+          <div className="lg:hidden py-4 border-t border-border/30 animate-fade-in">
             <nav className="flex flex-col gap-1">
               {/* Store Section */}
               <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -403,50 +409,50 @@ export default function Header() {
                   key={item.path}
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                  className="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5 transition-all duration-200 rounded-lg mx-2"
                 >
                   {item.name}
                 </Link>
               ))}
               
-              <div className="h-px bg-border my-2" />
+              <div className="h-px bg-border/30 my-2 mx-4" />
               
               {/* Other Links */}
               <Link
                 to="/creators"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5 transition-all duration-200 rounded-lg mx-2"
               >
                 Creators
               </Link>
               <Link
                 to="/tools"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5 transition-all duration-200 rounded-lg mx-2"
               >
                 Tools
               </Link>
               <Link
                 to="/community"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5 transition-all duration-200 rounded-lg mx-2"
               >
                 Community
               </Link>
               <Link
                 to="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                className="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5 transition-all duration-200 rounded-lg mx-2"
               >
                 Pricing
               </Link>
               
-              <div className="h-px bg-border my-2" />
+              <div className="h-px bg-border/30 my-2 mx-4" />
               
               <Link
                 to="/hire-editors"
                 onClick={() => setMobileMenuOpen(false)}
-                className="mx-4 py-2.5 text-sm font-semibold text-center text-primary border border-primary hover:bg-primary/10 transition-colors"
+                className="mx-4 py-2.5 text-sm font-semibold text-center text-primary border border-primary/50 rounded-lg hover:bg-primary/10 transition-all duration-200"
               >
                 Hire Editors →
               </Link>
