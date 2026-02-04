@@ -72,7 +72,7 @@ export function AIToolsReveal() {
     if (!section || !text || cards.length === 0) return;
 
     const panelCount = steps.length;
-    const cardHeight = 420; // Landscape rectangle height
+    const cardHeight = 500; // Landscape rectangle height
 
     // Set initial styles
     gsap.set(section, { backgroundColor: steps[0].bg });
@@ -141,67 +141,65 @@ export function AIToolsReveal() {
     <section ref={sectionRef} className="relative w-full">
       {/* Full viewport pinned area */}
       <div className="relative h-screen w-full overflow-hidden">
-        <div className="mx-auto flex h-full max-w-7xl items-center px-8 gap-12">
-          {/* Left text - MASSIVE typography */}
-          <div
-            ref={textRef}
-            className="relative z-10 flex-1"
+        {/* Text positioned absolutely on the left */}
+        <div
+          ref={textRef}
+          className="absolute left-[5%] top-1/2 -translate-y-1/2 z-10"
+        >
+          <h2 
+            data-headline 
+            className="text-[5rem] md:text-[7rem] lg:text-[9rem] xl:text-[10rem] font-black leading-[0.85] tracking-[-0.02em]"
+            style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
           >
-            <h2 
-              data-headline 
-              className="text-[4.5rem] md:text-[6rem] lg:text-[8rem] font-black leading-[0.9] tracking-tight"
-              style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
-            >
-              <span className="block">AI Studio</span>
-              <span className="block">Tools</span>
-            </h2>
-          </div>
+            <span className="block">AI Studio</span>
+            <span className="block">Tools</span>
+          </h2>
+        </div>
 
-          {/* Right card stack area - Landscape rectangle cards */}
-          <div className="relative flex-shrink-0">
-            <div className="relative w-[680px] h-[420px] overflow-hidden rounded-[28px]">
-              {/* Cards container */}
-              {steps.map((step, idx) => (
-                <div
-                  key={idx}
-                  ref={(el) => { cardsRef.current[idx] = el; }}
-                  className="absolute inset-0 will-change-transform"
+        {/* Card positioned on the right side, vertically centered */}
+        <div className="absolute right-[5%] top-1/2 -translate-y-1/2">
+          <div className="relative w-[55vw] max-w-[900px] h-[500px] overflow-hidden rounded-[32px]">
+            {/* Cards container */}
+            {steps.map((step, idx) => (
+              <div
+                key={idx}
+                ref={(el) => { cardsRef.current[idx] = el; }}
+                className="absolute inset-0 will-change-transform"
+              >
+                {/* The actual card */}
+                <div 
+                  className="relative h-full w-full rounded-[32px] border border-white/10 overflow-hidden"
+                  style={{
+                    backgroundColor: cardColors[idx],
+                    boxShadow: '0 -20px 60px -15px rgba(0,0,0,0.6)',
+                  }}
                 >
-                  {/* The actual card */}
-                  <div 
-                    className="relative h-full w-full rounded-[28px] border border-white/15 overflow-hidden"
-                    style={{
-                      backgroundColor: cardColors[idx],
-                      boxShadow: '0 -15px 50px -10px rgba(0,0,0,0.5)',
-                    }}
-                  >
-                    {/* Card content placeholder */}
-                    <div className="h-full w-full flex items-center justify-center">
-                      <span 
-                        className="text-2xl font-medium"
-                        style={{ 
-                          color: cardColors[idx] === '#1a1a1a' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' 
-                        }}
-                      >
-                        Panel {idx + 1}
-                      </span>
-                    </div>
+                  {/* Card content placeholder */}
+                  <div className="h-full w-full flex items-center justify-center">
+                    <span 
+                      className="text-3xl font-medium"
+                      style={{ 
+                        color: cardColors[idx] === '#1a1a1a' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)' 
+                      }}
+                    >
+                      Panel {idx + 1}
+                    </span>
                   </div>
                 </div>
-              ))}
+              </div>
+            ))}
 
-              {/* Prompt box overlay */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-5 flex justify-center z-50">
-                <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/15 bg-black/70 px-4 py-3 backdrop-blur-xl">
-                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-sm">
-                    🔊
-                  </div>
-                  <div className="min-w-[200px] text-sm text-white/80">
-                    Describe what you want…
-                  </div>
-                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-sm">
-                    ⬆️
-                  </div>
+            {/* Prompt box overlay */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center z-50">
+              <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/15 bg-black/70 px-5 py-3.5 backdrop-blur-xl">
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-base">
+                  🔊
+                </div>
+                <div className="min-w-[260px] text-sm text-white/80">
+                  Describe what you want to create…
+                </div>
+                <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-base">
+                  ⬆️
                 </div>
               </div>
             </div>
