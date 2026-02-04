@@ -19,22 +19,8 @@ const logos = [
 ];
 
 export default function SlidingBanner() {
-  const renderItems = () => (
-    <>
-      {logos.map((logo, index) => (
-        <div
-          key={index}
-          className="flex items-center justify-center px-4 sm:px-6 shrink-0"
-        >
-          <img 
-            src={logo.src} 
-            alt={logo.name}
-            className="h-7 sm:h-8 w-auto object-contain grayscale invert opacity-60"
-          />
-        </div>
-      ))}
-    </>
-  );
+  // Duplicate logos array to ensure seamless loop
+  const duplicatedLogos = [...logos, ...logos];
 
   return (
     <div className="relative w-full py-4 sm:py-5 overflow-hidden border-y border-border/30">
@@ -42,27 +28,33 @@ export default function SlidingBanner() {
       <div className="absolute left-0 top-0 bottom-0 w-20 sm:w-32 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-20 sm:w-32 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
       
-      {/* Two identical tracks for seamless loop */}
-      <div className="flex">
-        <div className="flex shrink-0 animate-banner-marquee">
-          {renderItems()}
-        </div>
-        <div className="flex shrink-0 animate-banner-marquee">
-          {renderItems()}
-        </div>
+      {/* Scrolling track - uses translate to scroll the first set, second set fills gap */}
+      <div className="flex animate-marquee-scroll">
+        {duplicatedLogos.map((logo, index) => (
+          <div
+            key={index}
+            className="flex items-center justify-center px-4 sm:px-6 shrink-0"
+          >
+            <img 
+              src={logo.src} 
+              alt={logo.name}
+              className="h-7 sm:h-8 w-auto object-contain grayscale invert opacity-60"
+            />
+          </div>
+        ))}
       </div>
 
       <style>{`
-        @keyframes banner-marquee {
+        @keyframes marquee-scroll {
           0% {
             transform: translateX(0);
           }
           100% {
-            transform: translateX(-100%);
+            transform: translateX(-50%);
           }
         }
-        .animate-banner-marquee {
-          animation: banner-marquee 25s linear infinite;
+        .animate-marquee-scroll {
+          animation: marquee-scroll 20s linear infinite;
         }
       `}</style>
     </div>
