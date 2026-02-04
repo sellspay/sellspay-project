@@ -98,11 +98,14 @@ export default function Header() {
             {/* Desktop Navigation with Dropdowns */}
             <NavigationMenu className="hidden lg:flex">
               <NavigationMenuList className="gap-0">
-                {/* Store Dropdown */}
+                {/* Store - Click to navigate, hover for dropdown */}
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="h-10 px-4 text-sm font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-transparent data-[state=open]:bg-transparent">
+                  <Link 
+                    to="/products"
+                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group"
+                  >
                     Store
-                  </NavigationMenuTrigger>
+                  </Link>
                   <NavigationMenuContent>
                     <div className="w-[400px] p-4 bg-card border border-border">
                       <div className="grid gap-1">
@@ -146,11 +149,14 @@ export default function Header() {
                   </Link>
                 </NavigationMenuItem>
 
-                {/* Tools Dropdown */}
+                {/* Tools - Click to navigate, hover for dropdown */}
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="h-10 px-4 text-sm font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-transparent data-[state=open]:bg-transparent">
+                  <Link 
+                    to="/tools"
+                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
                     Tools
-                  </NavigationMenuTrigger>
+                  </Link>
                   <NavigationMenuContent>
                     <div className="w-[320px] p-4 bg-card border border-border">
                       <div className="grid gap-1">
@@ -171,17 +177,6 @@ export default function Header() {
                             <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all" />
                           </Link>
                         ))}
-                        <div className="border-t border-border mt-2 pt-2">
-                          <Link
-                            to="/tools"
-                            className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors group"
-                          >
-                            <span className="text-sm font-medium text-primary">
-                              View All Tools
-                            </span>
-                            <ArrowRight className="h-4 w-4 text-primary" />
-                          </Link>
-                        </div>
                       </div>
                     </div>
                   </NavigationMenuContent>
