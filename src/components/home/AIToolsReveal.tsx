@@ -1,102 +1,96 @@
-import { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useRef } from "react";
+import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
-type Card = { id: string; src: string; alt?: string };
-
 export function AIToolsReveal() {
   const navigate = useNavigate();
+  const ref = useRef<HTMLDivElement | null>(null);
 
-  // Placeholder cards - replace with your real assets
-  const cards: Card[] = useMemo(
-    () => [
-      { id: "c1", src: "/placeholder.svg", alt: "Tool 1" },
-      { id: "c2", src: "/placeholder.svg", alt: "Tool 2" },
-      { id: "c3", src: "/placeholder.svg", alt: "Tool 3" },
-      { id: "c4", src: "/placeholder.svg", alt: "Tool 4" },
-    ],
-    []
+  // Scroll progress for this section (normal scroll, no pin)
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start end", "end start"],
+  });
+
+  // Smooth the progress
+  const p = useSpring(scrollYProgress, { stiffness: 100, damping: 25 });
+
+  // BACKGROUND COLOR changes on scroll
+  const bg = useTransform(
+    p,
+    [0, 0.3, 0.6, 1],
+    ["#05060B", "#0B1020", "#140A18", "#070A12"]
   );
 
-  // Background + text color cycling themes
-  const themes = useMemo(
-    () => [
-      { bg: "#05060B", accent: "#7C5CFF" },
-      { bg: "#0B1020", accent: "#3DBBFF" },
-      { bg: "#140A18", accent: "#FF4C9A" },
-      { bg: "#070A12", accent: "#FF6A2A" },
-    ],
-    []
+  // Accent/text color changes on scroll
+  const accent = useTransform(
+    p,
+    [0, 0.3, 0.6, 1],
+    ["#7C5CFF", "#3DBBFF", "#FF4C9A", "#FF6A2A"]
   );
 
-  const [themeIndex, setThemeIndex] = useState(0);
-  const [stack, setStack] = useState(cards);
+  // Text reveal (fade in as section enters view)
+  const textOpacity = useTransform(p, [0, 0.15, 0.25], [0, 0, 1]);
+  const textY = useTransform(p, [0, 0.15, 0.25], [40, 40, 0]);
 
-  // Auto-cycle themes and cards every 1.8 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setThemeIndex((i) => (i + 1) % themes.length);
+  // Frame reveal
+  const frameOpacity = useTransform(p, [0.05, 0.2, 0.3], [0, 0, 1]);
+  const frameY = useTransform(p, [0.05, 0.2, 0.3], [60, 60, 0]);
+  const frameScale = useTransform(p, [0.2, 0.35], [0.95, 1]);
 
-      setStack((prev) => {
-        const next = [...prev];
-        const first = next.shift();
-        if (first) next.push(first);
-        return next;
-      });
-    }, 1800);
+  // Card motion - lateral slide + parallax (both directions based on scroll)
+  const card1X = useTransform(p, [0.2, 0.8], [-60, 40]);
+  const card1Y = useTransform(p, [0.2, 0.8], [30, -20]);
+  const card1Rot = useTransform(p, [0.2, 0.8], [-4, 3]);
 
-    return () => clearInterval(interval);
-  }, [themes.length]);
+  const card2X = useTransform(p, [0.2, 0.8], [60, -40]);
+  const card2Y = useTransform(p, [0.2, 0.8], [20, -15]);
+  const card2Rot = useTransform(p, [0.2, 0.8], [4, -3]);
 
-  const theme = themes[themeIndex];
+  const card3X = useTransform(p, [0.2, 0.8], [-40, 30]);
+  const card3Y = useTransform(p, [0.2, 0.8], [15, -25]);
+
+  const card4X = useTransform(p, [0.2, 0.8], [40, -30]);
+  const card4Y = useTransform(p, [0.2, 0.8], [10, -20]);
+
+  // Prompt box reveal
+  const promptOpacity = useTransform(p, [0.25, 0.4], [0, 1]);
+  const promptY = useTransform(p, [0.25, 0.4], [20, 0]);
+
+  // Button reveal
+  const buttonOpacity = useTransform(p, [0.3, 0.45], [0, 1]);
+  const buttonY = useTransform(p, [0.3, 0.45], [20, 0]);
 
   return (
-    <section className="relative min-h-[85vh] overflow-hidden">
-      {/* Animated background */}
-      <motion.div
-        className="absolute inset-0"
-        animate={{ backgroundColor: theme.bg }}
-        transition={{ duration: 0.8, ease: "easeInOut" }}
-      />
+    <section ref={ref} className="relative min-h-[90vh] overflow-hidden">
+      {/* Scroll-driven background */}
+      <motion.div className="absolute inset-0" style={{ backgroundColor: bg }} />
 
-      {/* Vignette overlay */}
+      {/* Vignette */}
       <div className="pointer-events-none absolute inset-0 opacity-50 [background:radial-gradient(ellipse_at_center,transparent_20%,rgba(0,0,0,0.75)_100%)]" />
 
-      <div className="relative z-10 mx-auto grid h-full max-w-7xl grid-cols-1 gap-8 px-6 py-16 md:grid-cols-2 md:items-center md:py-20 lg:gap-12 lg:py-24">
-        {/* Left text */}
+      <div className="relative z-10 mx-auto grid h-full min-h-[90vh] max-w-7xl grid-cols-1 gap-8 px-6 py-16 md:grid-cols-2 md:items-center md:py-20 lg:gap-12 lg:py-24">
+        {/* Left text - reveals on scroll */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
           className="flex flex-col justify-center"
+          style={{ opacity: textOpacity, y: textY }}
         >
           <motion.h1
             className="text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl"
-            animate={{ color: theme.accent }}
-            transition={{ duration: 0.8, ease: "easeInOut" }}
+            style={{ color: accent }}
           >
             AI Studio
           </motion.h1>
 
-          <motion.p
-            className="mt-4 text-lg leading-relaxed text-white/80 md:text-xl"
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.6 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
+          <p className="mt-4 text-lg leading-relaxed text-white/80 md:text-xl">
             Professional AI tools for modern creators. Generate SFX, isolate vocals,
             create images, and more — all in one place.
-          </motion.p>
+          </p>
 
           <motion.div
             className="mt-8"
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.6 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            style={{ opacity: buttonOpacity, y: buttonY }}
           >
             <Button
               size="lg"
@@ -108,57 +102,44 @@ export function AIToolsReveal() {
           </motion.div>
         </motion.div>
 
-        {/* Right card frame */}
+        {/* Right card frame - reveals on scroll */}
         <motion.div
           className="relative flex items-center justify-center"
-          initial={{ opacity: 0, y: 28, scale: 0.98 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
+          style={{ opacity: frameOpacity, y: frameY, scale: frameScale }}
         >
           <GlassFrame>
             <div className="relative h-[280px] w-full overflow-hidden rounded-[22px] sm:h-[320px] md:h-[380px]">
               {/* Animated waveform background */}
-              <Waveform accent={theme.accent} />
+              <Waveform accent={accent} />
 
-              {/* Card stack - cycles automatically */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="relative h-[180px] w-[280px] sm:h-[220px] sm:w-[360px] md:h-[260px] md:w-[420px]">
-                  <AnimatePresence mode="popLayout">
-                    {stack.slice(0, 3).map((card, i) => (
-                      <motion.img
-                        key={card.id}
-                        src={card.src}
-                        alt={card.alt ?? ""}
-                        className="absolute left-1/2 top-1/2 h-full w-full rounded-2xl object-cover bg-white/10"
-                        initial={{ 
-                          x: "-50%", 
-                          y: "-50%",
-                          scale: 0.9,
-                          opacity: 0 
-                        }}
-                        animate={{
-                          x: "-50%",
-                          y: `calc(-50% + ${i * 12}px)`,
-                          scale: 1 - i * 0.04,
-                          opacity: 1 - i * 0.15,
-                          zIndex: 30 - i,
-                        }}
-                        exit={{
-                          x: "100%",
-                          y: "-50%",
-                          opacity: 0,
-                          scale: 0.8,
-                        }}
-                        transition={{ duration: 0.55, ease: "easeOut" }}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </div>
+              {/* Cards with lateral + parallax motion */}
+              <motion.img
+                src="/placeholder.svg"
+                className="absolute left-3 top-3 h-[100px] w-[140px] rounded-2xl object-cover bg-white/10 sm:left-4 sm:top-4 sm:h-[120px] sm:w-[170px] md:left-6 md:top-6 md:h-[140px] md:w-[200px]"
+                style={{ x: card1X, y: card1Y, rotate: card1Rot }}
+                alt="Tool 1"
+              />
+              <motion.img
+                src="/placeholder.svg"
+                className="absolute right-3 top-3 h-[100px] w-[140px] rounded-2xl object-cover bg-white/10 sm:right-4 sm:top-4 sm:h-[120px] sm:w-[170px] md:right-6 md:top-6 md:h-[140px] md:w-[200px]"
+                style={{ x: card2X, y: card2Y, rotate: card2Rot }}
+                alt="Tool 2"
+              />
+              <motion.img
+                src="/placeholder.svg"
+                className="absolute left-3 bottom-16 h-[100px] w-[140px] rounded-2xl object-cover bg-white/10 sm:left-4 sm:bottom-18 sm:h-[120px] sm:w-[170px] md:left-6 md:bottom-20 md:h-[140px] md:w-[200px]"
+                style={{ x: card3X, y: card3Y }}
+                alt="Tool 3"
+              />
+              <motion.img
+                src="/placeholder.svg"
+                className="absolute right-3 bottom-16 h-[100px] w-[140px] rounded-2xl object-cover bg-white/10 sm:right-4 sm:bottom-18 sm:h-[120px] sm:w-[170px] md:right-6 md:bottom-20 md:h-[140px] md:w-[200px]"
+                style={{ x: card4X, y: card4Y }}
+                alt="Tool 4"
+              />
 
-              {/* Prompt box */}
-              <PromptBox accent={theme.accent} />
+              {/* Prompt box - reveals on scroll */}
+              <PromptBox accent={accent} opacity={promptOpacity} y={promptY} />
             </div>
           </GlassFrame>
         </motion.div>
@@ -188,28 +169,31 @@ function GlassFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Waveform({ accent }: { accent: string }) {
+function Waveform({ accent }: { accent: any }) {
   return (
     <motion.div
       className="absolute inset-0"
-      animate={{ opacity: [0.5, 0.8, 0.5] }}
-      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
       style={{
-        background: `radial-gradient(circle at 30% 40%, ${accent}44 0%, transparent 50%),
-                     radial-gradient(circle at 70% 60%, ${accent}33 0%, transparent 50%)`,
+        background: useTransform(accent, (a: string) => 
+          `radial-gradient(circle at 30% 40%, ${a}44 0%, transparent 50%),
+           radial-gradient(circle at 70% 60%, ${a}33 0%, transparent 50%)`
+        ),
       }}
     />
   );
 }
 
-function PromptBox({ accent }: { accent: string }) {
+interface PromptBoxProps {
+  accent: any;
+  opacity: any;
+  y: any;
+}
+
+function PromptBox({ accent, opacity, y }: PromptBoxProps) {
   return (
     <motion.div
       className="absolute bottom-3 left-1/2 w-[92%] max-w-[520px] -translate-x-1/2 rounded-2xl border border-white/15 bg-black/35 px-4 py-3 text-white/85 shadow-[0_15px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:bottom-4 sm:px-5 sm:py-4"
-      initial={{ opacity: 0, y: 14 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.6 }}
-      transition={{ duration: 0.55, ease: "easeOut", delay: 0.2 }}
+      style={{ opacity, y }}
     >
       <div className="flex items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -218,8 +202,7 @@ function PromptBox({ accent }: { accent: string }) {
           </div>
           <motion.div
             className="text-sm font-medium sm:text-base"
-            animate={{ color: accent }}
-            transition={{ duration: 0.8, ease: "easeInOut" }}
+            style={{ color: accent }}
           >
             Generate your SFX…
           </motion.div>
