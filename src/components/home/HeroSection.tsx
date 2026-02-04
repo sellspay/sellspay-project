@@ -34,15 +34,15 @@ export default function HeroSection() {
 
       <div className="container mx-auto px-6 sm:px-8 lg:px-12 relative z-10">
         <div className="text-center flex flex-col items-center max-w-7xl mx-auto pt-20 pb-32">
-          {/* Badge - Larger */}
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full border border-primary/40 bg-primary/15 backdrop-blur-sm mb-10 sm:mb-12">
-            <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
-            <span className="text-base sm:text-lg text-primary font-semibold tracking-wide">
+          {/* Badge - Clean, no glow */}
+          <div className="inline-flex items-center gap-3 px-6 py-3 border border-primary bg-transparent mb-10 sm:mb-12">
+            <span className="w-2 h-2 bg-primary" />
+            <span className="text-base sm:text-lg text-primary font-semibold tracking-wide uppercase">
               The #1 Marketplace for Creators
             </span>
           </div>
 
-          {/* MASSIVE headline - Elegant serif style */}
+          {/* MASSIVE headline - Clean, no shadows */}
           <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[140px] font-bold tracking-tighter leading-[0.9] mb-10 sm:mb-12">
             <span className="text-foreground block font-light italic">
               Create with
@@ -58,22 +58,22 @@ export default function HeroSection() {
             </span>
           </h1>
 
-          {/* Subtitle - Larger, more impactful */}
-          <p className="text-xl sm:text-2xl md:text-3xl text-foreground/80 max-w-4xl mb-12 sm:mb-16 leading-relaxed font-light">
+          {/* Subtitle - Clean */}
+          <p className="text-xl sm:text-2xl md:text-3xl text-foreground/70 max-w-4xl mb-12 sm:mb-16 leading-relaxed font-light">
             Discover thousands of high-quality digital assets from professional creators. 
             Everything you need to level up your work.
           </p>
 
-          {/* CTA Buttons - MASSIVE */}
-          <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 w-full sm:w-auto">
+          {/* CTA Buttons - Bold, no shadows, straight edges */}
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 w-full sm:w-auto">
             <Button 
               asChild 
               size="lg" 
-              className="h-16 sm:h-18 px-12 sm:px-16 text-lg sm:text-xl rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold group shadow-2xl shadow-primary/30 transition-all duration-300 hover:scale-105"
+              className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5"
             >
               <Link to="/products">
                 Start Browsing
-                <ArrowRight className="ml-3 h-6 w-6 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="ml-3 h-6 w-6" />
               </Link>
             </Button>
             {!user ? (
@@ -81,7 +81,7 @@ export default function HeroSection() {
                 asChild 
                 size="lg" 
                 variant="outline" 
-                className="h-16 sm:h-18 px-12 sm:px-16 text-lg sm:text-xl rounded-full border-2 border-foreground/30 bg-foreground/5 backdrop-blur-sm hover:bg-foreground/10 hover:border-foreground/50 font-semibold transition-all duration-300"
+                className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl border-2 border-foreground text-foreground bg-transparent hover:bg-foreground hover:text-background font-bold uppercase tracking-wider transition-all duration-200"
               >
                 <Link to="/signup">
                   Create Account
@@ -92,7 +92,7 @@ export default function HeroSection() {
                 asChild 
                 size="lg" 
                 variant="outline" 
-                className="h-16 sm:h-18 px-12 sm:px-16 text-lg sm:text-xl rounded-full border-2 border-foreground/30 bg-foreground/5 backdrop-blur-sm hover:bg-foreground/10 hover:border-foreground/50 font-semibold transition-all duration-300"
+                className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl border-2 border-foreground text-foreground bg-transparent hover:bg-foreground hover:text-background font-bold uppercase tracking-wider transition-all duration-200"
               >
                 <Link to="/creators">
                   Meet Creators
