@@ -34,7 +34,7 @@ export default function Refunds() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">Overview</h2>
             <p className="text-muted-foreground">
-              Sellspay is a marketplace for digital products including presets, LUTs, templates, 
+              SellsPay is a marketplace for digital products including presets, LUTs, templates, 
               sound effects, and other creative assets. Due to the nature of digital goods, all sales 
               are generally final once a product has been downloaded. However, we understand that issues 
               can arise, and we're committed to resolving legitimate concerns.
