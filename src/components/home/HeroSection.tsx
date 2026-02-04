@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
-import { ArrowRight, Play } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import heroBg from '@/assets/hero-cinematic.jpg';
 
@@ -24,7 +23,7 @@ const defaultContent: SiteContent = {
   hero_headline: 'Create with',
   hero_subheadline: 'Premium',
   hero_rotating_words: ['Presets', 'LUTs', 'SFX', 'Templates', 'Overlays', 'Fonts', 'Tutorials'],
-  hero_subtitle: 'Discover thousands of high-quality digital assets from professional creators. Everything you need to level up your work.',
+  hero_subtitle: 'Discover thousands of high-quality digital assets from professional creators.',
   hero_stats: { assets: '5,000+', creators: '500+', downloads: '50k+' }
 };
 
@@ -34,6 +33,21 @@ export default function HeroSection() {
   const [content, setContent] = useState<SiteContent>(defaultContent);
   const [videoFailed, setVideoFailed] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (sectionRef.current) {
+        const rect = sectionRef.current.getBoundingClientRect();
+        if (rect.bottom > 0) {
+          setScrollY(window.scrollY);
+        }
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -44,7 +58,6 @@ export default function HeroSection() {
         .single();
       
       if (error) {
-        // If RLS or network errors happen, keep defaults (but log for debugging)
         console.error('Failed to fetch hero site content:', error);
         return;
       }
@@ -62,13 +75,6 @@ export default function HeroSection() {
         });
         setVideoFailed(false);
         setVideoLoaded(false);
-        if (import.meta.env.DEV) {
-          console.log('[Hero] content loaded', {
-            hero_media_type: data.hero_media_type,
-            hero_video_url: data.hero_video_url,
-            hero_image_url: data.hero_image_url,
-          });
-        }
       }
     };
     fetchContent();
@@ -85,10 +91,18 @@ export default function HeroSection() {
     ? content.hero_video_url
     : content.hero_image_url || heroBg;
 
+  // Parallax transforms based on scroll
+  const parallaxSlow = scrollY * 0.3;
+  const parallaxMedium = scrollY * 0.5;
+  const parallaxFast = scrollY * 0.7;
+
   return (
-    <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
-      {/* MASSIVE Full-width cinematic background */}
-      <div className="absolute inset-0 z-0">
+    <section ref={sectionRef} className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
+      {/* Full-width cinematic background with parallax */}
+      <div 
+        className="absolute inset-0 z-0"
+        style={{ transform: `translateY(${parallaxSlow}px)` }}
+      >
         {content.hero_media_type === 'video' && content.hero_video_url && !videoFailed ? (
           <video 
             key={content.hero_video_url}
@@ -98,127 +112,147 @@ export default function HeroSection() {
             loop 
             playsInline
             preload="auto"
-            className="w-full h-full object-cover object-center brightness-110 contrast-110 saturate-125"
+            className="w-full h-[120%] object-cover object-center"
             onError={() => {
               console.error('Hero video failed to load:', content.hero_video_url);
               setVideoFailed(true);
             }}
             onLoadedData={() => {
               setVideoLoaded(true);
-              if (import.meta.env.DEV) console.log('[Hero] video loaded');
             }}
           />
         ) : (
           <img 
             src={backgroundMedia} 
             alt="" 
-            className="w-full h-full object-cover object-center"
+            className="w-full h-[120%] object-cover object-center"
           />
         )}
-        {/* Gradient overlays for text readability */}
-        <div
-          className={
-            content.hero_media_type === 'video'
-              ? 'absolute inset-0 bg-gradient-to-t from-background/35 via-background/10 to-transparent'
-              : 'absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/30'
-          }
-        />
-        <div
-          className={
-            content.hero_media_type === 'video'
-              ? 'absolute inset-0 bg-gradient-to-r from-background/10 via-transparent to-background/10'
-              : 'absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-background/50'
-          }
-        />
+        {/* Subtle vignette overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background/50 via-transparent to-background/20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/30 via-transparent to-background/30" />
       </div>
 
-      <div className="container mx-auto px-6 sm:px-8 lg:px-12 relative z-10">
-        <div className="text-center flex flex-col items-center max-w-7xl mx-auto pt-20 pb-32">
-          {/* MASSIVE headline - Dark charcoal for light video backgrounds */}
-          <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[140px] font-bold tracking-tighter leading-[0.9] mb-10 sm:mb-12">
-            <span className="block font-light italic" style={{ color: 'hsl(var(--hero-text))' }}>
-              {content.hero_headline}
-            </span>
-            <span className="block mt-2 sm:mt-4" style={{ color: 'hsl(var(--hero-text))' }}>
-              {content.hero_subheadline}{' '}
+      {/* LEFT SIDE - Vertical text */}
+      <div 
+        className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 z-20 hidden md:flex flex-col items-center gap-6"
+        style={{ transform: `translateY(calc(-50% + ${parallaxMedium * 0.3}px))` }}
+      >
+        <div className="w-px h-20 bg-white/30" />
+        <span 
+          className="text-xs sm:text-sm font-light tracking-[0.3em] uppercase text-white/70 whitespace-nowrap"
+          style={{ 
+            writingMode: 'vertical-rl',
+            textOrientation: 'mixed',
+            transform: 'rotate(180deg)'
+          }}
+        >
+          Digital Assets
+        </span>
+        <div className="w-px h-12 bg-white/30" />
+        <span 
+          className="text-xs font-medium tracking-wider text-white/50"
+          style={{ 
+            writingMode: 'vertical-rl',
+            textOrientation: 'mixed',
+            transform: 'rotate(180deg)'
+          }}
+        >
+          ★★★★★★★
+        </span>
+      </div>
+
+      {/* RIGHT SIDE - Vertical text */}
+      <div 
+        className="absolute right-4 sm:right-8 top-1/3 z-20 hidden md:flex flex-col items-center gap-4"
+        style={{ transform: `translateY(${parallaxFast * 0.2}px)` }}
+      >
+        <div className="border border-white/40 px-3 py-6">
+          <span 
+            className="text-xs font-bold tracking-[0.2em] uppercase text-white/90"
+            style={{ 
+              writingMode: 'vertical-rl',
+              textOrientation: 'mixed'
+            }}
+          >
+            Creativity defines us.
+          </span>
+        </div>
+      </div>
+
+      {/* CENTER CONTENT */}
+      <div className="relative z-10 w-full px-6 sm:px-8 lg:px-16">
+        <div className="flex flex-col items-center text-center max-w-7xl mx-auto">
+          
+          {/* Small subheadline above main */}
+          <span 
+            className="text-lg sm:text-xl md:text-2xl font-light tracking-wide mb-4 text-white/80"
+            style={{ transform: `translateY(${parallaxMedium * 0.1}px)` }}
+          >
+            {content.hero_headline}
+          </span>
+
+          {/* MASSIVE Main headline */}
+          <h1 
+            className="text-[12vw] sm:text-[10vw] md:text-[9vw] lg:text-[8vw] font-bold tracking-tighter leading-[0.9] text-white uppercase"
+            style={{ transform: `translateY(${parallaxMedium * 0.15}px)` }}
+          >
+            <span className="block">
+              #{content.hero_subheadline}{' '}
               <span 
                 key={activeWord} 
-                className="inline-block animate-fade-in"
-                style={{ color: 'hsl(var(--hero-accent))' }}
+                className="inline-block animate-fade-in text-white"
               >
                 {content.hero_rotating_words[activeWord]}
               </span>
             </span>
           </h1>
 
-          {/* Subtitle - Muted dark for readability */}
-          <p className="text-xl sm:text-2xl md:text-3xl max-w-4xl mb-12 sm:mb-16 leading-relaxed font-light" style={{ color: 'hsl(var(--hero-text-muted))' }}>
-            {content.hero_subtitle}
-          </p>
-
-          {/* CTA Buttons - Vibrant purple primary, dark outline secondary */}
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 w-full sm:w-auto">
+          {/* Pill button - "discover" style */}
+          <div 
+            className="mt-10 sm:mt-14"
+            style={{ transform: `translateY(${parallaxMedium * 0.2}px)` }}
+          >
             <Button 
               asChild 
-              size="lg" 
-              className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl font-bold uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5 btn-hero-primary"
+              variant="outline"
+              className="h-14 sm:h-16 px-10 sm:px-14 text-base sm:text-lg font-medium tracking-wider rounded-full bg-transparent border-2 border-white/60 text-white hover:bg-white hover:text-black transition-all duration-300"
             >
               <Link to="/products">
-                Start Browsing
-                <ArrowRight className="ml-3 h-6 w-6" />
+                discover
               </Link>
             </Button>
-            {!user ? (
-              <Button 
-                asChild 
-                size="lg" 
-                variant="outline" 
-                className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl font-bold uppercase tracking-wider transition-all duration-200 btn-hero-outline"
-              >
-                <Link to="/signup">
-                  Create Account
-                </Link>
-              </Button>
-            ) : (
-              <Button 
-                asChild 
-                size="lg" 
-                variant="outline" 
-                className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl font-bold uppercase tracking-wider transition-all duration-200 btn-hero-outline"
-              >
-                <Link to="/creators">
-                  Meet Creators
-                </Link>
-              </Button>
-            )}
-          </div>
-
-          {/* Stats row - Dark text for light backgrounds */}
-          <div className="flex items-center gap-10 sm:gap-16 mt-20 sm:mt-28">
-            <div className="text-center">
-              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold" style={{ color: 'hsl(var(--hero-text))' }}>{content.hero_stats.assets}</div>
-              <div className="text-base sm:text-lg mt-1" style={{ color: 'hsl(var(--hero-text-muted))' }}>Digital Assets</div>
-            </div>
-            <div className="w-px h-16" style={{ backgroundColor: 'hsl(var(--hero-text) / 0.2)' }} />
-            <div className="text-center">
-              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold" style={{ color: 'hsl(var(--hero-text))' }}>{content.hero_stats.creators}</div>
-              <div className="text-base sm:text-lg mt-1" style={{ color: 'hsl(var(--hero-text-muted))' }}>Pro Creators</div>
-            </div>
-            <div className="w-px h-16" style={{ backgroundColor: 'hsl(var(--hero-text) / 0.2)' }} />
-            <div className="text-center">
-              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold" style={{ color: 'hsl(var(--hero-text))' }}>{content.hero_stats.downloads}</div>
-              <div className="text-base sm:text-lg mt-1" style={{ color: 'hsl(var(--hero-text-muted))' }}>Downloads</div>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 animate-bounce" style={{ color: 'hsl(var(--hero-text-muted))' }}>
-        <span className="text-sm font-medium">Scroll to explore</span>
-        <div className="w-6 h-10 rounded-full border-2 flex items-start justify-center p-1.5" style={{ borderColor: 'hsl(var(--hero-text) / 0.3)' }}>
-          <div className="w-1.5 h-3 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(var(--hero-text) / 0.4)' }} />
+      {/* BOTTOM LEFT - Decorative elements */}
+      <div 
+        className="absolute bottom-8 sm:bottom-12 left-6 sm:left-10 z-20 flex items-center gap-4"
+        style={{ transform: `translateY(${-parallaxFast * 0.1}px)` }}
+      >
+        <span className="text-white/50 text-sm font-bold tracking-widest">★★★★★★★</span>
+        <span className="text-white/40 text-xs font-light">sellspay.com</span>
+      </div>
+
+      {/* BOTTOM RIGHT - Stats/tagline block */}
+      <div 
+        className="absolute bottom-8 sm:bottom-12 right-6 sm:right-10 z-20 text-right hidden sm:block"
+        style={{ transform: `translateY(${-parallaxMedium * 0.15}px)` }}
+      >
+        <div className="text-white/80 text-sm sm:text-base font-medium leading-relaxed">
+          <span className="block">{content.hero_stats.assets}</span>
+          <span className="block">Assets</span>
+          <span className="block mt-2 text-white/50 text-xs tracking-wider">#endless creativity</span>
         </div>
+      </div>
+
+      {/* Scroll indicator - minimal */}
+      <div 
+        className="absolute bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2"
+        style={{ opacity: Math.max(0, 1 - scrollY / 200) }}
+      >
+        <div className="w-px h-12 bg-white/30 animate-pulse" />
       </div>
     </section>
   );
