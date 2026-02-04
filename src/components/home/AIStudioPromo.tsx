@@ -13,15 +13,18 @@ export function AIStudioPromo() {
       <section className="relative py-32 sm:py-48 lg:py-56 overflow-hidden">
         <div className="relative z-10 px-6 sm:px-8 lg:px-12">
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-12 lg:gap-20">
-            {/* Left: Big headline */}
+            {/* Left: Big headline - single flowing block */}
             <div className="flex-1">
-              <h2 
-                className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-foreground leading-[1.05] tracking-tight"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-              >
-                Thousands of creators
-                <br />
-                choose <span className="text-primary">SellsPay</span>
+              <h2 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-foreground leading-[1.05] tracking-tight">
+                <span style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+                  Thousands of creators choose{' '}
+                </span>
+                <span 
+                  className="text-primary"
+                  style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600 }}
+                >
+                  SellsPay
+                </span>
               </h2>
             </div>
             
