@@ -6,11 +6,13 @@ interface MangaViewProps {
   config: ToolConfig;
 }
 
-const beforeAfterPairs = [
-  { before: 'from-pink-800/30 to-slate-900', after: 'from-rose-500/40 to-pink-900/60' },
-  { before: 'from-pink-700/25 to-slate-900', after: 'from-fuchsia-500/45 to-rose-800/50' },
-  { before: 'from-pink-900/35 to-slate-900', after: 'from-pink-400/50 to-fuchsia-900/60' },
-  { before: 'from-pink-800/20 to-slate-900', after: 'from-rose-400/55 to-pink-800/55' },
+const gridGradients = [
+  'from-pink-900/60 to-slate-900',
+  'from-rose-600/50 to-black',
+  'from-fuchsia-900/40 to-slate-900',
+  'from-pink-700/40 to-black',
+  'from-rose-800/30 to-slate-900',
+  'from-pink-700/50 to-black',
 ];
 
 export function MangaView({ config }: MangaViewProps) {
@@ -22,56 +24,50 @@ export function MangaView({ config }: MangaViewProps) {
       transition={{ duration: 0.4 }}
       className="relative h-full min-h-[500px] sm:min-h-[600px] lg:min-h-[700px] flex flex-col"
     >
-      {/* Before/After Grid */}
+      {/* Bento Grid - 2 tall left + 4 small right */}
       <div className="flex-1 p-4 sm:p-6 bg-gradient-to-br from-pink-900/20 via-slate-900/60 to-black">
         <div className="grid grid-cols-4 grid-rows-2 gap-2 sm:gap-3 h-full">
-          {beforeAfterPairs.map((pair, i) => (
-            <>
-              {/* Before Card */}
-              <div 
-                key={`before-${i}`}
-                className={`bg-gradient-to-br ${pair.before} relative overflow-hidden border border-pink-500/10`}
-              >
-                <span className="absolute top-2 left-2 text-[10px] sm:text-xs text-pink-300/50 uppercase tracking-wider font-medium">
-                  Before
-                </span>
-                {/* Mock photo lines */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-20">
-                  <div className="w-16 h-20 border border-pink-400/30 flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border border-pink-400/30" />
-                  </div>
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          {/* Left tall image 1 */}
+          <div className={`row-span-2 bg-gradient-to-br ${gridGradients[0]} relative overflow-hidden border border-pink-500/10`}>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+            <div className="absolute top-6 left-6 w-10 h-10 border-l-2 border-t-2 border-pink-400/20" />
+            <span className="absolute bottom-4 left-4 text-xs text-pink-300/50 uppercase tracking-wider">Before</span>
+          </div>
+          
+          {/* Center tall image 2 */}
+          <div className={`row-span-2 bg-gradient-to-br ${gridGradients[1]} relative overflow-hidden border border-rose-500/20`}>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            {/* Manga style indicator */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 border border-rose-400/30 bg-black/20 backdrop-blur-sm flex items-center justify-center">
+                <Wand2 className="w-6 h-6 sm:w-8 sm:h-8 text-rose-400/70" />
               </div>
-              
-              {/* After Card */}
-              <div 
-                key={`after-${i}`}
-                className={`bg-gradient-to-br ${pair.after} relative overflow-hidden border border-rose-500/20`}
-              >
-                <span className="absolute top-2 left-2 text-[10px] sm:text-xs text-rose-200/60 uppercase tracking-wider font-medium">
-                  After
-                </span>
-                {/* Mock manga style lines */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-30">
-                  <div className="w-16 h-20 flex flex-col gap-1 items-center justify-center">
-                    <div className="w-full h-1 bg-rose-300/40" />
-                    <div className="w-3/4 h-1 bg-rose-300/40" />
-                    <div className="w-full h-1 bg-rose-300/40" />
-                    <div className="w-1/2 h-1 bg-rose-300/40" />
-                  </div>
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-                
-                {/* Manga sparkle effect on some cards */}
-                {i === 1 && (
-                  <div className="absolute top-4 right-4 text-rose-300/60">
-                    <Wand2 className="w-4 h-4" />
-                  </div>
-                )}
-              </div>
-            </>
-          ))}
+            </div>
+            <span className="absolute bottom-4 left-4 text-xs text-rose-300/60 uppercase tracking-wider">After</span>
+          </div>
+          
+          {/* Top right images */}
+          <div className={`bg-gradient-to-br ${gridGradients[2]} relative overflow-hidden border border-pink-500/10`}>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+            <span className="absolute top-2 left-2 text-[10px] text-pink-300/40 uppercase">Before</span>
+          </div>
+          <div className={`bg-gradient-to-br ${gridGradients[3]} relative overflow-hidden border border-pink-500/10`}>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+            <div className="absolute bottom-4 right-4 w-6 h-6 border-r-2 border-b-2 border-pink-400/20" />
+            <span className="absolute top-2 left-2 text-[10px] text-pink-300/40 uppercase">After</span>
+          </div>
+          
+          {/* Bottom right images */}
+          <div className={`bg-gradient-to-br ${gridGradients[4]} relative overflow-hidden border border-pink-500/10`}>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+            <span className="absolute top-2 left-2 text-[10px] text-pink-300/40 uppercase">Before</span>
+          </div>
+          <div className={`bg-gradient-to-br ${gridGradients[5]} relative overflow-hidden border border-pink-500/10`}>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            <span className="absolute bottom-3 right-3 text-xs font-medium text-pink-200/70 bg-black/40 backdrop-blur-sm px-3 py-1.5 border border-pink-500/20">
+              Manga Generator
+            </span>
+          </div>
         </div>
       </div>
 
