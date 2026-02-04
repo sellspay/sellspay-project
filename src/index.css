@@ -298,6 +298,60 @@ body[style*="margin-right"] {
   animation: marquee 30s linear infinite;
 }
 
+/* Premium Button Styles - Bevel, Emboss, Gradient */
+.btn-premium {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    hsl(12 76% 68%) 0%,
+    hsl(12 76% 61%) 45%,
+    hsl(12 76% 52%) 100%
+  );
+  border: 1px solid hsl(12 76% 45% / 0.6);
+  box-shadow:
+    /* Outer shadow for depth */
+    0 4px 12px hsl(12 76% 20% / 0.5),
+    0 2px 4px hsl(0 0% 0% / 0.3),
+    /* Inner highlight at top - bevel effect */
+    inset 0 1px 1px hsl(12 76% 85% / 0.5),
+    inset 0 2px 4px hsl(12 76% 80% / 0.25),
+    /* Inner shadow at bottom - emboss effect */
+    inset 0 -1px 2px hsl(12 76% 30% / 0.4);
+  text-shadow: 0 1px 1px hsl(12 76% 25% / 0.4);
+  transition: all 0.2s ease;
+}
+
+.btn-premium:hover {
+  background: linear-gradient(
+    180deg,
+    hsl(12 76% 72%) 0%,
+    hsl(12 76% 65%) 45%,
+    hsl(12 76% 56%) 100%
+  );
+  box-shadow:
+    0 6px 16px hsl(12 76% 20% / 0.6),
+    0 3px 6px hsl(0 0% 0% / 0.35),
+    inset 0 1px 2px hsl(12 76% 90% / 0.6),
+    inset 0 2px 6px hsl(12 76% 85% / 0.3),
+    inset 0 -1px 3px hsl(12 76% 28% / 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-premium:active {
+  background: linear-gradient(
+    180deg,
+    hsl(12 76% 55%) 0%,
+    hsl(12 76% 58%) 45%,
+    hsl(12 76% 65%) 100%
+  );
+  box-shadow:
+    0 2px 6px hsl(12 76% 20% / 0.4),
+    0 1px 2px hsl(0 0% 0% / 0.25),
+    inset 0 2px 4px hsl(12 76% 30% / 0.5),
+    inset 0 -1px 1px hsl(12 76% 75% / 0.3);
+  transform: translateY(0);
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .reveal,
