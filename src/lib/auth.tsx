@@ -279,9 +279,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    // Let Lovable Cloud handle redirect/callback automatically
-    // Overriding redirect_uri breaks the state/callback validation (400 Invalid request)
-    const result = await lovable.auth.signInWithOAuth('google');
+    // Redirect back into the SPA so we can read the URL fragment (#access_token...)
+    // Note: fragments are not sent to servers, which is why hitting oauth.lovable.app/callback
+    // directly results in “Missing state parameter”.
+    const redirectUri = `${window.location.origin}/~oauth/callback`;
+
+    const result = await lovable.auth.signInWithOAuth('google', {
+      redirect_uri: redirectUri,
+    });
 
     return { error: result.error ?? null };
   };

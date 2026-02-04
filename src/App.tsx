@@ -8,6 +8,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import { UsernameSetupDialog } from "@/components/auth/UsernameSetupDialog";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
+import OAuthCallback from "./pages/OAuthCallback";
 import Signup from "./pages/Signup";
 import ResetPassword from "./pages/ResetPassword";
 import Products from "./pages/Products";
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/~oauth/callback" element={<OAuthCallback />} />
             
             {/* Main pages with layout */}
             <Route path="/" element={<MainLayout><Home /></MainLayout>} />
