@@ -78,6 +78,19 @@ export function SiteContentEditor() {
 
   const MAX_FILE_SIZE_MB = 50; // 50MB limit for site assets
   const UPLOAD_TIMEOUT_MS = 60000; // 60 second timeout
+  const VERIFY_TIMEOUT_MS = 15000; // 15s - verify asset is reachable after upload
+
+  const verifyPublicUrlReachable = async (url: string): Promise<boolean> => {
+    try {
+      const controller = new AbortController();
+      const t = window.setTimeout(() => controller.abort(), VERIFY_TIMEOUT_MS);
+      const res = await fetch(url, { method: 'HEAD', signal: controller.signal });
+      window.clearTimeout(t);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  };
 
   const uploadFile = async (file: File, folder: string): Promise<string | null> => {
     // File size validation
@@ -112,6 +125,14 @@ export function SiteContentEditor() {
       }
 
       const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
+
+      // Verify the file is actually reachable (prevents “looks uploaded” but can’t load elsewhere)
+      const reachable = await verifyPublicUrlReachable(publicUrl);
+      if (!reachable) {
+        toast.error('Upload finished, but the file is not reachable yet. Please try again in a moment.');
+        return null;
+      }
+
       return publicUrl;
     } catch (error: any) {
       console.error('Upload failed:', error);
@@ -142,7 +163,7 @@ export function SiteContentEditor() {
         } else {
           setContent({ ...content, hero_media_type: 'image', hero_image_url: url });
         }
-        toast.success('Hero media uploaded successfully!');
+        toast.success('Hero media uploaded successfully! (Don\'t forget to Save Changes)');
       }
     } catch (error: any) {
       console.error('Hero upload error:', error);
