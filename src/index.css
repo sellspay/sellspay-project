@@ -4,36 +4,36 @@
 
 @layer base {
   :root {
-    /* Premium Dark Theme - Deep Black with Cool Violet Accent */
-    --background: 240 10% 4%;
+    /* Premium Dark Theme - Deep Black with Bold Red Accent */
+    --background: 0 0% 4%;
     --foreground: 0 0% 98%;
-    --card: 240 8% 7%;
+    --card: 0 0% 7%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 8% 7%;
+    --popover: 0 0% 7%;
     --popover-foreground: 0 0% 98%;
-    /* Sophisticated Violet - Premium & Luxurious */
-    --primary: 262 83% 68%;
-    --primary-foreground: 240 10% 4%;
-    --secondary: 240 6% 10%;
+    /* Bold Red - Premium & Striking */
+    --primary: 0 72% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 85%;
-    --muted: 240 6% 12%;
+    --muted: 0 0% 12%;
     --muted-foreground: 0 0% 50%;
-    --accent: 240 6% 10%;
+    --accent: 0 0% 10%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 6% 14%;
-    --input: 240 6% 14%;
-    --ring: 262 83% 68%;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 0 72% 55%;
     --radius: 0rem;
-    --sidebar-background: 240 8% 5%;
+    --sidebar-background: 0 0% 5%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 262 83% 68%;
-    --sidebar-primary-foreground: 240 10% 4%;
-    --sidebar-accent: 240 6% 10%;
+    --sidebar-primary: 0 72% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 10%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 6% 12%;
-    --sidebar-ring: 262 83% 68%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 0 72% 55%;
   }
 }
 
