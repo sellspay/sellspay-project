@@ -1,46 +1,41 @@
-import { Sparkles, Wand2, Video, Music, Mic, Layers, Cpu, Zap } from 'lucide-react';
-
-// AI tools and platforms that creators use
+// AI tools and platforms that creators use - with real logos
 const partners = [
-  { name: 'Sora', icon: Sparkles },
-  { name: 'Veo', icon: Video },
-  { name: 'Nano Banana', icon: Zap },
-  { name: 'Kling', icon: Wand2 },
-  { name: 'Seedance', icon: Layers },
-  { name: 'Seedream', icon: Layers },
-  { name: 'Flux', icon: Cpu },
-  { name: 'ElevenLabs', icon: Mic },
-  { name: 'Runway', icon: Video },
-  { name: 'Midjourney', icon: Sparkles },
-  { name: 'OpenAI', icon: Cpu },
-  { name: 'Topaz AI', icon: Wand2 },
+  { name: 'OpenAI', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg' },
+  { name: 'Midjourney', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e6/Midjourney_Emblem.png' },
+  { name: 'Runway', logo: 'https://images.seeklogo.com/logo-png/52/1/runway-logo-png_seeklogo-523703.png' },
+  { name: 'ElevenLabs', logo: 'https://images.seeklogo.com/logo-png/61/1/elevenlabs-logo-png_seeklogo-610844.png' },
+  { name: 'Sora', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg' },
+  { name: 'Kling', logo: 'https://framerusercontent.com/images/7NLMd59EzeMffhR3fSWAkQWec.png' },
+  { name: 'Topaz AI', logo: 'https://images.seeklogo.com/logo-png/52/2/topaz-labs-logo-png_seeklogo-522489.png' },
+  { name: 'Flux', logo: 'https://blackforestlabs.ai/wp-content/uploads/2024/07/bfl-logo-t-1-1.svg' },
 ];
 
 export function PartnerLogos() {
   const allPartners = [...partners, ...partners];
 
   return (
-    <section className="relative py-4 overflow-hidden bg-background">
-      {/* Edge fade masks - seamless blend into background */}
+    <section className="relative py-5 overflow-hidden bg-background border-y border-border/20">
+      {/* Edge fade masks */}
       <div className="absolute left-0 top-0 bottom-0 w-20 sm:w-32 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-20 sm:w-32 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
       
-      {/* Scrolling content - clean, professional */}
+      {/* Scrolling content */}
       <div className="flex animate-marquee">
-        {allPartners.map((partner, index) => {
-          const Icon = partner.icon;
-          return (
-            <div
-              key={`${partner.name}-${index}`}
-              className="flex items-center gap-2 px-6 sm:px-8 shrink-0"
-            >
-              <Icon className="h-4 w-4 text-foreground/40" strokeWidth={1.5} />
-              <span className="text-sm font-medium text-foreground/40 whitespace-nowrap tracking-wide">
-                {partner.name}
-              </span>
-            </div>
-          );
-        })}
+        {allPartners.map((partner, index) => (
+          <div
+            key={`${partner.name}-${index}`}
+            className="flex items-center gap-2.5 px-8 sm:px-10 shrink-0"
+          >
+            <img 
+              src={partner.logo} 
+              alt={partner.name}
+              className="h-5 w-5 object-contain opacity-50 grayscale"
+            />
+            <span className="text-sm font-medium text-foreground/50 whitespace-nowrap tracking-wide">
+              {partner.name}
+            </span>
+          </div>
+        ))}
       </div>
     </section>
   );
