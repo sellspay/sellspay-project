@@ -279,9 +279,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    // Use Lovable Cloud managed OAuth (ensures correct provider config + redirect handling)
+    // Use Lovable Cloud managed OAuth.
+    // IMPORTANT: Google BYOK setups often only whitelist the *published* domain redirect,
+    // while the preview domain changes per build. If we pass the preview origin here,
+    // Google can throw `redirect_uri_mismatch`.
+    // So in preview we force redirect back to the stable published URL.
+    const isPreview = window.location.hostname.includes("id-preview--");
+    const redirectUri = isPreview ? "https://sellspay.lovable.app" : window.location.origin;
+
     const result = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: window.location.origin,
+      redirect_uri: redirectUri,
     });
 
     return { error: result.error ?? null };
