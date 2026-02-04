@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Reveal } from './Reveal';
-import { Sparkles, Mic, Wand2, Film } from 'lucide-react';
+import { AudioWaveform, MicVocal, Brush, Clapperboard } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { SFXView, VocalView, MangaView, VideoView, ToolType, ToolConfig } from './toolkit';
 
@@ -9,7 +9,7 @@ const tools: ToolConfig[] = [
   {
     id: 'sfx',
     name: 'SFX Generator',
-    icon: Sparkles,
+    icon: AudioWaveform,
     prompts: [
       'Cinematic explosion with debris...',
       'Sci-fi laser beam charging up...',
@@ -22,7 +22,7 @@ const tools: ToolConfig[] = [
   {
     id: 'vocal',
     name: 'Vocal Remover',
-    icon: Mic,
+    icon: MicVocal,
     prompts: [
       'Extract vocals from track...',
       'Isolate instrumental stems...',
@@ -35,7 +35,7 @@ const tools: ToolConfig[] = [
   {
     id: 'manga',
     name: 'Manga Generator',
-    icon: Wand2,
+    icon: Brush,
     prompts: [
       'Anime hero in dynamic pose...',
       'Kawaii character design...',
@@ -48,7 +48,7 @@ const tools: ToolConfig[] = [
   {
     id: 'video',
     name: 'Video Generator',
-    icon: Film,
+    icon: Clapperboard,
     prompts: [
       'Drone shot over mountains...',
       'Slow-motion water splash...',
