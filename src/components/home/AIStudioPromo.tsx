@@ -8,12 +8,12 @@ export function AIStudioPromo() {
   return (
     <Reveal>
       <section className="relative py-32 sm:py-40 lg:py-52 overflow-hidden">
-        {/* Background wave graphic */}
+        {/* Background wave graphic - full width */}
         <img 
           src={promoWave} 
           alt="" 
           aria-hidden="true"
-          className="absolute top-1/2 right-0 -translate-y-1/2 w-[70%] max-w-[1200px] h-auto opacity-30 pointer-events-none select-none"
+          className="absolute top-1/2 left-0 right-0 -translate-y-1/2 w-full h-auto opacity-60 pointer-events-none select-none object-cover"
         />
         
         {/* Full width container - no max-width constraint */}
