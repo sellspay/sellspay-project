@@ -32,14 +32,21 @@ export default function HeroSection() {
   const { user } = useAuth();
   const [activeWord, setActiveWord] = useState(0);
   const [content, setContent] = useState<SiteContent>(defaultContent);
+  const [videoFailed, setVideoFailed] = useState(false);
 
   useEffect(() => {
     const fetchContent = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('site_content')
         .select('hero_media_type, hero_image_url, hero_video_url, hero_headline, hero_subheadline, hero_rotating_words, hero_subtitle, hero_stats')
         .eq('id', 'main')
         .single();
+      
+      if (error) {
+        // If RLS or network errors happen, keep defaults (but log for debugging)
+        console.error('Failed to fetch hero site content:', error);
+        return;
+      }
       
       if (data) {
         setContent({
@@ -52,6 +59,7 @@ export default function HeroSection() {
           hero_subtitle: data.hero_subtitle || defaultContent.hero_subtitle,
           hero_stats: (data.hero_stats as SiteContent['hero_stats']) || defaultContent.hero_stats
         });
+        setVideoFailed(false);
       }
     };
     fetchContent();
@@ -72,14 +80,19 @@ export default function HeroSection() {
     <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
       {/* MASSIVE Full-width cinematic background */}
       <div className="absolute inset-0 -z-10">
-        {content.hero_media_type === 'video' && content.hero_video_url ? (
+        {content.hero_media_type === 'video' && content.hero_video_url && !videoFailed ? (
           <video 
+            key={content.hero_video_url}
             src={content.hero_video_url} 
             autoPlay 
             muted 
             loop 
             playsInline
             className="w-full h-full object-cover object-center"
+            onError={() => {
+              console.error('Hero video failed to load:', content.hero_video_url);
+              setVideoFailed(true);
+            }}
           />
         ) : (
           <img 
