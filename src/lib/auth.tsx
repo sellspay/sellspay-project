@@ -279,12 +279,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    // Use custom redirect to sellspay.com domain
-    const redirectUri = 'https://sellspay.com/~oauth/callback';
-
-    const result = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: redirectUri,
-    });
+    // Let Lovable Cloud handle redirect/callback automatically
+    // Overriding redirect_uri breaks the state/callback validation (400 Invalid request)
+    const result = await lovable.auth.signInWithOAuth('google');
 
     return { error: result.error ?? null };
   };
