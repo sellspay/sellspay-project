@@ -420,6 +420,12 @@ serve(async (req) => {
 
         // Check if creator received direct transfer (has Stripe connected)
         const creatorHasStripe = metadata.creator_has_stripe === "true";
+        const fundsFlowMode = metadata.funds_flow_mode || (creatorHasStripe ? "CONNECT" : "MOR");
+        
+        // Calculate available_on date (7 days from now for MOR mode)
+        const availableOn = creatorHasStripe 
+          ? new Date().toISOString() 
+          : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
         
         // Create purchase record - mark as transferred if direct transfer happened
         const purchaseData = {
@@ -433,6 +439,9 @@ serve(async (req) => {
           status: "completed",
           transferred: creatorHasStripe,
           transferred_at: creatorHasStripe ? new Date().toISOString() : null,
+          funds_flow_mode: fundsFlowMode,
+          available_on: availableOn,
+          dispute_status: "none",
         };
         
         logStep("Inserting purchase record", purchaseData);

@@ -263,6 +263,7 @@ serve(async (req) => {
         creator_tier: creatorTier || "none",
         creator_payout_cents: creatorPayout.toString(),
         creator_has_stripe: creatorHasStripe ? "true" : "false",
+        funds_flow_mode: creatorHasStripe ? "CONNECT" : "MOR",
       },
     };
 

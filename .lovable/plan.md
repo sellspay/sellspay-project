@@ -1,6 +1,28 @@
 
 # Hybrid Payments Architecture Implementation Plan
 
+## ✅ Phase 1: COMPLETED - Database Schema & Foundation
+
+### Completed Items:
+- [x] Created `country_eligibility` table with 60+ countries seeded
+- [x] Added `seller_mode`, `seller_country_code`, `seller_kyc_status`, `seller_status` to profiles
+- [x] Added `funds_flow_mode`, `available_on`, `dispute_status` to purchases
+- [x] Created `wallet_ledger_entries` table with RLS policies
+- [x] Created `payouts` table with RLS policies
+- [x] Created `admin_audit_log` table
+- [x] Created `get_seller_wallet_balance()` database function
+- [x] Created `release_held_funds()` database function for cron jobs
+- [x] Created `check-country-eligibility` edge function
+- [x] Created `get-wallet-balance` edge function
+- [x] Created `CountryEligibilityEditor` admin component
+- [x] Created `PayoutQueue` admin component
+- [x] Created `WalletCard` dashboard component
+- [x] Updated `create-checkout-session` to include `funds_flow_mode`
+- [x] Updated `stripe-webhook` to store `funds_flow_mode` and `available_on`
+- [x] Added "Countries" and "Payouts" tabs to Admin page
+
+---
+
 ## Executive Summary
 This plan implements a compliant, scalable hybrid payments system that supports both **Stripe Connect sellers** (eligible countries) and **Platform MoR (Merchant of Record) sellers** (non-eligible countries). The system allows sellers from any country to sell digital products while maintaining proper payment processing compliance.
 
