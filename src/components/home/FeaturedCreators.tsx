@@ -24,7 +24,6 @@ export function FeaturedCreators() {
 
   useEffect(() => {
     async function fetchCreators() {
-      // Use public_profiles view - includes is_owner computed field
       const { data, error } = await supabase
         .from('public_profiles')
         .select('id, user_id, username, full_name, avatar_url, verified, bio, is_owner')
@@ -54,15 +53,15 @@ export function FeaturedCreators() {
   if (loading || creators.length === 0) return null;
 
   return (
-    <section className="py-12 sm:py-20 lg:py-28">
+    <section className="py-20 sm:py-28 lg:py-36">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
-        <Reveal className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8 sm:mb-10">
+        <Reveal className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-12 sm:mb-16">
           <div>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-1 sm:mb-2">
-              Featured Creators
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-2">
+              Meet our creators
             </h2>
-            <p className="text-sm sm:text-lg text-muted-foreground">
-              Meet the talented people behind the products
+            <p className="text-muted-foreground text-base sm:text-lg">
+              The people behind the products
             </p>
           </div>
           <Button asChild variant="ghost" className="group hidden sm:flex">
@@ -73,30 +72,29 @@ export function FeaturedCreators() {
           </Button>
         </Reveal>
 
-        <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4 lg:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 sm:gap-8">
           {creators.map((creator, index) => {
-            // Only render creators with a valid username for proper routing
             if (!creator.username) return null;
             
             return (
-              <Reveal key={creator.id} delay={index * 80} blur>
+              <Reveal key={creator.id} delay={index * 80}>
                 <Link
                   to={`/@${creator.username}`}
-                  className="group flex flex-col items-center text-center p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-transparent hover:border-border hover:bg-card/50 transition-all duration-300"
+                  className="group flex flex-col items-center text-center"
                 >
-                  <Avatar className="h-14 w-14 sm:h-20 sm:w-20 lg:h-24 lg:w-24 mb-2 sm:mb-4 ring-2 ring-transparent group-hover:ring-primary/30 transition-all">
+                  <Avatar className="h-20 w-20 sm:h-24 sm:w-24 lg:h-28 lg:w-28 mb-4 ring-2 ring-border group-hover:ring-foreground/30 transition-all duration-300">
                     <AvatarImage src={creator.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm sm:text-xl font-medium">
+                    <AvatarFallback className="bg-muted text-muted-foreground text-xl font-medium">
                       {(creator.full_name || creator.username || 'U')[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1">
-                    <span className="font-medium text-foreground text-xs sm:text-sm lg:text-base truncate max-w-[70px] sm:max-w-[100px]">
-                      {creator.full_name || creator.username || 'Creator'}
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="font-medium text-foreground text-sm sm:text-base group-hover:underline">
+                      {creator.full_name || creator.username}
                     </span>
                     {creator.verified && <VerifiedBadge size="sm" isOwner={creator.isAdmin} />}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-muted-foreground">
+                  <span className="text-xs sm:text-sm text-muted-foreground">
                     @{creator.username}
                   </span>
                 </Link>
@@ -105,7 +103,7 @@ export function FeaturedCreators() {
           })}
         </div>
 
-        <div className="mt-8 text-center sm:hidden">
+        <div className="mt-12 text-center sm:hidden">
           <Button asChild variant="outline">
             <Link to="/creators">View All Creators</Link>
           </Button>
