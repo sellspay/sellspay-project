@@ -24,12 +24,12 @@ export default function SlidingBanner() {
       {logos.map((logo, index) => (
         <div
           key={index}
-          className="flex items-center justify-center px-6 sm:px-10 shrink-0"
+          className="flex items-center justify-center px-4 sm:px-6 shrink-0"
         >
           <img 
             src={logo.src} 
             alt={logo.name}
-            className="h-5 sm:h-6 w-auto object-contain grayscale opacity-50"
+            className="h-7 sm:h-8 w-auto object-contain grayscale invert opacity-60"
           />
         </div>
       ))}
