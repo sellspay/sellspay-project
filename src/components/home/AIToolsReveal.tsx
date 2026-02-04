@@ -24,20 +24,20 @@ export function AIToolsReveal() {
       bg: "#0a0a0a", 
       text: "#ffffff", 
       subtext: "rgba(255,255,255,0.70)",
-      headline: ["Generate anything", "from Simple prompts"],
+      headline: ["Building", "made simple"],
       image: aiPanel1,
     },
     { 
       bg: "#ffffff", 
       text: "#111111", 
       subtext: "rgba(0,0,0,0.70)",
-      headline: ["Generate SFX", "made Simple"],
+      headline: ["Generate SFX", "with prompts"],
     },
     { 
       bg: "#0a0a0a", 
       text: "#ffffff", 
       subtext: "rgba(255,255,255,0.70)",
-      headline: ["Isolate", "Vocals"],
+      headline: ["Create", "images"],
     },
     { 
       bg: "#e76e50", 
@@ -49,13 +49,13 @@ export function AIToolsReveal() {
       bg: "#50A9E7", 
       text: "#0a0a0a", 
       subtext: "rgba(10,10,10,0.75)",
-      headline: ["Edit", "Videos"],
+      headline: ["Sell", "products"],
     },
     { 
       bg: "#0a0a0a", 
       text: "#ffffff", 
       subtext: "rgba(255,255,255,0.70)",
-      headline: ["All In", "One Place"],
+      headline: ["All in", "one"],
     },
   ];
 
@@ -83,16 +83,23 @@ export function AIToolsReveal() {
     gsap.set(section, { backgroundColor: steps[0].bg });
     gsap.set(text.querySelector("[data-headline]"), { color: steps[0].text });
 
-    // Stack offset values
-    const stackOffsetY = -20; // How much each card moves up when stacked
-    const stackScale = 0.95; // How much each card scales down when stacked
+    // Stack silhouette values (small offsets so you see the edges behind)
+    const stackSpacing = 22;
+    const scaleStep = 0.025;
 
-    // Set initial card positions - all cards start below except first
+    const getStackY = (activeIndex: number, cardIndex: number) =>
+      -(activeIndex - cardIndex) * stackSpacing;
+
+    const getStackScale = (activeIndex: number, cardIndex: number) =>
+      1 - (activeIndex - cardIndex) * scaleStep;
+
+    // Set initial card positions
     cards.forEach((card, idx) => {
       gsap.set(card, {
         y: idx === 0 ? 0 : cardHeight,
         scale: 1,
-        zIndex: panelCount - idx, // Reverse z-index so new cards come on top
+        // newer cards should be on top
+        zIndex: idx + 1,
       });
     });
 
@@ -120,23 +127,27 @@ export function AIToolsReveal() {
       const startTime = i;
       const nextCardIndex = i + 1;
       
-      // Current card scales down and moves up to create stacking effect
-      tl.to(cards[i], {
-        y: stackOffsetY * (i + 1),
-        scale: stackScale - (i * 0.02), // Each stacked card gets slightly smaller
-        duration: 1,
-      }, startTime);
+      // Reposition all previously revealed cards into their stacked silhouette positions
+      // Example: when card 2 becomes active, card1 -> -spacing, card0 -> -2*spacing
+      tl.to(
+        cards.slice(0, nextCardIndex),
+        {
+          duration: 1,
+          y: (index: number) => getStackY(nextCardIndex, index),
+          scale: (index: number) => getStackScale(nextCardIndex, index),
+        },
+        startTime
+      );
       
       // Next card slides UP from below to the front
       tl.to(cards[nextCardIndex], {
         y: 0,
+        scale: 1,
         duration: 1,
       }, startTime);
       
-      // Bring the new card to front z-index
-      tl.set(cards[nextCardIndex], {
-        zIndex: panelCount + i + 1,
-      }, startTime);
+      // Bring the new card above the stack
+      tl.set(cards[nextCardIndex], { zIndex: nextCardIndex + 10 }, startTime);
       
       // Change background color
       tl.to(section, { 
