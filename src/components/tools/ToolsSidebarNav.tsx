@@ -16,7 +16,7 @@ export function ToolsSidebarNav({
   const freeTools = availableTools.filter(t => !t.isPro);
 
   return (
-    <div className="w-64 flex-shrink-0 border-r border-border/50 bg-background/50 flex flex-col h-full">
+    <div className="w-64 flex-shrink-0 border-r border-border/50 bg-background/50 flex flex-col h-screen sticky top-0">
       {/* Header */}
       <div className="p-4 border-b border-border/50">
         <h2 className="text-lg font-semibold text-foreground">AI Studio</h2>
