@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Reveal } from './Reveal';
 import { AudioWaveform, MicVocal, Brush, Clapperboard } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
-import { SFXView, VocalView, MangaView, VideoView, ToolType, ToolConfig } from './toolkit';
+import { StudioGridView, ToolType, ToolConfig } from './toolkit';
 
 const tools: ToolConfig[] = [
   {
@@ -112,10 +112,10 @@ export function ToolsShowcase() {
           {/* Header */}
           <div className="text-center mb-10 sm:mb-14">
             <h2 className="text-7xl sm:text-8xl lg:text-9xl xl:text-[10rem] font-serif font-normal text-foreground tracking-tight italic">
-              AI Toolkit
+              AI Studio
             </h2>
             <p className="text-xl sm:text-2xl text-muted-foreground mt-4 max-w-2xl mx-auto">
-              The only organized AI platform for creators
+              Professional AI tools for modern creators
             </p>
             
             {/* CTA Button */}
@@ -123,7 +123,7 @@ export function ToolsShowcase() {
               onClick={() => navigate('/tools')}
               className="mt-8 px-12 py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-colors duration-200"
             >
-              Go to Toolkit
+              Explore Tools
             </button>
           </div>
 
@@ -134,10 +134,9 @@ export function ToolsShowcase() {
             
             {/* Card with subtle border - fixed 16:11 aspect ratio for taller box */}
             <div className="relative overflow-hidden border border-foreground/10 bg-card/30" style={{ aspectRatio: '16 / 11' }}>
-              {/* Floating toggle bar at top */}
               <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 z-20">
                 <div className="flex items-center gap-1 bg-card/95 backdrop-blur-md border border-foreground/20 px-3 py-2">
-                  <span className="text-sm font-medium text-foreground pr-3 border-r border-foreground/20">AI Toolkit</span>
+                  <span className="text-sm font-medium text-foreground pr-3 border-r border-foreground/20">AI Studio</span>
                   <div className="flex items-center gap-1 pl-2">
                     {tools.map((tool) => {
                       const Icon = tool.icon;
@@ -161,20 +160,14 @@ export function ToolsShowcase() {
                 </div>
               </div>
 
-              {/* Tool-specific view content */}
+              {/* Unified Studio Grid View */}
               <AnimatePresence mode="wait">
-                {activeTool === 'sfx' && (
-                  <SFXView key="sfx" config={activeConfig} displayedText={displayedText} />
-                )}
-                {activeTool === 'vocal' && (
-                  <VocalView key="vocal" config={activeConfig} />
-                )}
-                {activeTool === 'manga' && (
-                  <MangaView key="manga" config={activeConfig} />
-                )}
-                {activeTool === 'video' && (
-                  <VideoView key="video" config={activeConfig} displayedText={displayedText} />
-                )}
+                <StudioGridView 
+                  key={activeTool} 
+                  config={activeConfig} 
+                  displayedText={displayedText}
+                  toolId={activeTool}
+                />
               </AnimatePresence>
               
               {/* Decorative corner accents */}
