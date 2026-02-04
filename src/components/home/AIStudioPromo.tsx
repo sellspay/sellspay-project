@@ -21,7 +21,13 @@ export function AIStudioPromo() {
               >
                 <span className="whitespace-nowrap text-4xl sm:text-5xl lg:text-6xl xl:text-7xl">Thousands of creators</span>
                 <br />
-                <span className="whitespace-nowrap text-5xl sm:text-6xl lg:text-7xl xl:text-8xl">choose <span className="text-primary">SellsPay</span></span>
+                <span className="whitespace-nowrap">
+                  <span className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl">choose </span>
+                  <span 
+                    className="text-primary text-6xl sm:text-7xl lg:text-8xl xl:text-9xl"
+                    style={{ fontFamily: "'Georgia', serif" }}
+                  >SellsPay</span>
+                </span>
               </h2>
             </div>
             
