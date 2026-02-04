@@ -1519,6 +1519,66 @@ export type Database = {
         }
         Relationships: []
       }
+      site_content: {
+        Row: {
+          created_at: string | null
+          hero_headline: string | null
+          hero_image_url: string | null
+          hero_media_type: string | null
+          hero_rotating_words: string[] | null
+          hero_stats: Json | null
+          hero_subheadline: string | null
+          hero_subtitle: string | null
+          hero_video_url: string | null
+          id: string
+          manga_thumbnails: Json | null
+          sfx_thumbnails: Json | null
+          tools_subtitle: string | null
+          tools_title: string | null
+          updated_at: string | null
+          video_thumbnails: Json | null
+          vocal_thumbnails: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          hero_headline?: string | null
+          hero_image_url?: string | null
+          hero_media_type?: string | null
+          hero_rotating_words?: string[] | null
+          hero_stats?: Json | null
+          hero_subheadline?: string | null
+          hero_subtitle?: string | null
+          hero_video_url?: string | null
+          id?: string
+          manga_thumbnails?: Json | null
+          sfx_thumbnails?: Json | null
+          tools_subtitle?: string | null
+          tools_title?: string | null
+          updated_at?: string | null
+          video_thumbnails?: Json | null
+          vocal_thumbnails?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          hero_headline?: string | null
+          hero_image_url?: string | null
+          hero_media_type?: string | null
+          hero_rotating_words?: string[] | null
+          hero_stats?: Json | null
+          hero_subheadline?: string | null
+          hero_subtitle?: string | null
+          hero_video_url?: string | null
+          id?: string
+          manga_thumbnails?: Json | null
+          sfx_thumbnails?: Json | null
+          tools_subtitle?: string | null
+          tools_title?: string | null
+          updated_at?: string | null
+          video_thumbnails?: Json | null
+          vocal_thumbnails?: Json | null
+        }
+        Relationships: []
+      }
       stripe_events: {
         Row: {
           event_type: string
