@@ -12,15 +12,14 @@ import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
-  NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, 
-  CreditCard, Wallet, Loader2, ChevronDown, Package, Users, Sparkles,
-  Wand2, Music, FileVideo, Mic, Film, Headphones, ArrowRight
+  CreditCard, Wallet, Loader2, Package, Sparkles,
+  Wand2, Music, FileVideo, Film, Headphones, ArrowRight
 } from 'lucide-react';
 import { useState } from 'react';
 import { useCredits } from '@/hooks/useCredits';
@@ -57,6 +56,26 @@ const communityItems = [
   { name: 'Discord', path: '/community/discord', description: 'Join our community' },
 ];
 
+// Premium nav link styles
+const navLinkStyles = cn(
+  "relative px-4 py-2 text-sm font-medium text-foreground/70",
+  "rounded-lg transition-all duration-300",
+  "hover:text-foreground",
+  "before:absolute before:inset-0 before:rounded-lg before:opacity-0",
+  "before:bg-gradient-to-b before:from-white/10 before:to-transparent",
+  "before:transition-opacity before:duration-300",
+  "hover:before:opacity-100",
+  "after:absolute after:inset-[1px] after:rounded-[7px] after:opacity-0",
+  "after:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.2)]",
+  "hover:after:opacity-100 after:transition-opacity after:duration-300"
+);
+
+const activeNavLinkStyles = cn(
+  navLinkStyles,
+  "text-foreground bg-white/5",
+  "shadow-[inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.2)]"
+);
+
 export default function Header() {
   const { user, profile, isAdmin, signOut } = useAuth();
   const location = useLocation();
@@ -81,53 +100,100 @@ export default function Header() {
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path.split('?')[0]);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border/30 shadow-lg shadow-black/10">
-      {/* Premium top highlight line */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+    <header className={cn(
+      "sticky top-0 z-50 w-full",
+      // Premium glassmorphic background
+      "bg-gradient-to-b from-background/95 to-background/85 backdrop-blur-2xl",
+      // 3D bevel effect - top highlight
+      "before:absolute before:inset-x-0 before:top-0 before:h-[1px]",
+      "before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent",
+      // 3D emboss effect - bottom shadow
+      "after:absolute after:inset-x-0 after:bottom-0 after:h-[1px]",
+      "after:bg-gradient-to-r after:from-transparent after:via-black/40 after:to-transparent",
+      // Outer shadow for depth
+      "shadow-[0_4px_24px_-4px_rgba(0,0,0,0.5),0_1px_2px_rgba(0,0,0,0.3)]",
+      // Border for definition
+      "border-b border-white/[0.05]"
+    )}>
+      {/* Inner highlight line for extra depth */}
+      <div className="absolute inset-x-4 top-[1px] h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
       
       <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Left side: Logo + Main Nav */}
           <div className="flex items-center gap-8">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 shrink-0 group">
-              <img 
-                src={sellspayLogo} 
-                alt="SellsPay" 
-                className="h-9 w-auto transition-transform duration-300 group-hover:scale-105"
-              />
+            {/* Logo with 3D effect */}
+            <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
+              <div className={cn(
+                "relative p-1.5 rounded-xl",
+                "bg-gradient-to-b from-white/10 to-transparent",
+                "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_8px_rgba(0,0,0,0.3)]",
+                "transition-all duration-300 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.4)]",
+                "group-hover:scale-105"
+              )}>
+                <img 
+                  src={sellspayLogo} 
+                  alt="SellsPay" 
+                  className="h-8 w-auto"
+                />
+              </div>
               <span className="hidden sm:inline text-lg font-bold tracking-tight text-foreground">
                 SellsPay
               </span>
             </Link>
 
-            {/* Desktop Navigation with Dropdowns */}
+            {/* Desktop Navigation with Premium Dropdowns */}
             <NavigationMenu className="hidden lg:flex">
               <NavigationMenuList className="gap-1">
                 {/* Store - Click to navigate, hover for dropdown */}
                 <NavigationMenuItem>
                   <Link 
                     to="/products"
-                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-foreground/70 hover:text-foreground transition-all duration-200 rounded-lg hover:bg-white/5"
+                    className={cn(
+                      "inline-flex h-10 items-center justify-center",
+                      isActive('/products') ? activeNavLinkStyles : navLinkStyles
+                    )}
                   >
                     Store
                   </Link>
                   <NavigationMenuContent>
-                    <div className="w-[400px] p-4 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/30">
-                      <div className="grid gap-1">
+                    <div className={cn(
+                      "w-[420px] p-5",
+                      // Premium card styling
+                      "bg-gradient-to-b from-card/98 to-card/95 backdrop-blur-2xl",
+                      // 3D border effects
+                      "border border-white/10",
+                      "shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]",
+                      "rounded-2xl"
+                    )}>
+                      {/* Inner highlight */}
+                      <div className="absolute inset-x-4 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
+                      
+                      <div className="grid gap-1.5">
                         {productCategories.map((item) => {
                           const Icon = item.icon;
                           return (
                             <Link
                               key={item.path}
                               to={item.path}
-                              className="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 transition-all duration-200 group"
+                              className={cn(
+                                "flex items-center gap-4 p-3 rounded-xl transition-all duration-300 group",
+                                "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                                "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_2px_8px_rgba(0,0,0,0.2)]"
+                              )}
                             >
-                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                              <div className={cn(
+                                "flex h-11 w-11 items-center justify-center rounded-xl",
+                                "bg-gradient-to-b from-primary/20 to-primary/10",
+                                "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.2)]",
+                                "transition-all duration-300",
+                                "group-hover:from-primary/30 group-hover:to-primary/15",
+                                "group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_8px_rgba(0,0,0,0.3)]"
+                              )}>
                                 <Icon className="h-5 w-5 text-primary" />
                               </div>
                               <div>
-                                <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                                <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
                                   {item.name}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
@@ -147,8 +213,8 @@ export default function Header() {
                   <Link 
                     to="/creators" 
                     className={cn(
-                      "inline-flex h-10 items-center justify-center px-4 text-sm font-medium transition-all duration-200 rounded-lg",
-                      isActive('/creators') ? 'text-foreground bg-white/5' : 'text-foreground/70 hover:text-foreground hover:bg-white/5'
+                      "inline-flex h-10 items-center justify-center",
+                      isActive('/creators') ? activeNavLinkStyles : navLinkStyles
                     )}
                   >
                     Creators
@@ -159,28 +225,43 @@ export default function Header() {
                 <NavigationMenuItem>
                   <Link 
                     to="/tools"
-                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-foreground/70 hover:text-foreground transition-all duration-200 rounded-lg hover:bg-white/5"
+                    className={cn(
+                      "inline-flex h-10 items-center justify-center",
+                      isActive('/tools') ? activeNavLinkStyles : navLinkStyles
+                    )}
                   >
                     Tools
                   </Link>
                   <NavigationMenuContent>
-                    <div className="w-[320px] p-4 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/30">
-                      <div className="grid gap-1">
+                    <div className={cn(
+                      "w-[340px] p-5",
+                      "bg-gradient-to-b from-card/98 to-card/95 backdrop-blur-2xl",
+                      "border border-white/10",
+                      "shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]",
+                      "rounded-2xl"
+                    )}>
+                      <div className="absolute inset-x-4 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
+                      
+                      <div className="grid gap-1.5">
                         {toolsItems.map((item) => (
                           <Link
                             key={item.path}
                             to={item.path}
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-all duration-200 group"
+                            className={cn(
+                              "flex items-center justify-between p-3 rounded-xl transition-all duration-300 group",
+                              "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                              "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_2px_8px_rgba(0,0,0,0.2)]"
+                            )}
                           >
                             <div>
-                              <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                              <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
                                 {item.name}
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {item.description}
                               </div>
                             </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
                           </Link>
                         ))}
                       </div>
@@ -190,27 +271,46 @@ export default function Header() {
 
                 {/* Community Dropdown */}
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="h-10 px-4 text-sm font-medium text-foreground/70 hover:text-foreground bg-transparent hover:bg-white/5 data-[state=open]:bg-white/5 rounded-lg transition-all duration-200">
+                  <NavigationMenuTrigger className={cn(
+                    "h-10 px-4 text-sm font-medium bg-transparent rounded-lg",
+                    "text-foreground/70 hover:text-foreground",
+                    "data-[state=open]:text-foreground data-[state=open]:bg-white/5",
+                    "transition-all duration-300",
+                    "hover:bg-gradient-to-b hover:from-white/10 hover:to-transparent",
+                    "data-[state=open]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.3)]"
+                  )}>
                     Community
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <div className="w-[280px] p-4 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl shadow-black/30">
-                      <div className="grid gap-1">
+                    <div className={cn(
+                      "w-[300px] p-5",
+                      "bg-gradient-to-b from-card/98 to-card/95 backdrop-blur-2xl",
+                      "border border-white/10",
+                      "shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]",
+                      "rounded-2xl"
+                    )}>
+                      <div className="absolute inset-x-4 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
+                      
+                      <div className="grid gap-1.5">
                         {communityItems.map((item) => (
                           <Link
                             key={item.path}
                             to={item.path}
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-all duration-200 group"
+                            className={cn(
+                              "flex items-center justify-between p-3 rounded-xl transition-all duration-300 group",
+                              "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                              "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_2px_8px_rgba(0,0,0,0.2)]"
+                            )}
                           >
                             <div>
-                              <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                              <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
                                 {item.name}
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {item.description}
                               </div>
                             </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
                           </Link>
                         ))}
                       </div>
@@ -218,17 +318,30 @@ export default function Header() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
 
-                {/* Divider */}
-                <div className="h-5 w-px bg-border/50 mx-2" />
+                {/* Divider with 3D effect */}
+                <div className={cn(
+                  "h-6 w-[1px] mx-3",
+                  "bg-gradient-to-b from-transparent via-white/20 to-transparent",
+                  "shadow-[1px_0_0_rgba(0,0,0,0.3)]"
+                )} />
 
-                {/* Hire Editors - Standout */}
+                {/* Hire Editors - Premium Standout */}
                 <NavigationMenuItem>
                   <Link 
                     to="/hire-editors" 
-                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-semibold text-primary hover:text-primary/80 transition-all duration-200 rounded-lg hover:bg-primary/10"
+                    className={cn(
+                      "inline-flex h-10 items-center justify-center px-5 text-sm font-semibold",
+                      "text-primary rounded-xl transition-all duration-300",
+                      "bg-gradient-to-b from-primary/20 to-primary/10",
+                      "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_8px_rgba(0,0,0,0.2)]",
+                      "border border-primary/30",
+                      "hover:from-primary/30 hover:to-primary/15",
+                      "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)]",
+                      "hover:border-primary/40"
+                    )}
                   >
                     Hire Editors
-                    <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </NavigationMenuItem>
               </NavigationMenuList>
@@ -240,23 +353,34 @@ export default function Header() {
             {/* Pricing Link - Desktop only */}
             <Link 
               to="/pricing" 
-              className="hidden lg:inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-foreground/70 hover:text-foreground transition-all duration-200 rounded-lg hover:bg-white/5"
+              className={cn(
+                "hidden lg:inline-flex h-10 items-center justify-center",
+                isActive('/pricing') ? activeNavLinkStyles : navLinkStyles
+              )}
             >
               Pricing
             </Link>
 
-            {/* Credit Wallet - Only show when logged in */}
+            {/* Credit Wallet - Premium 3D style */}
             {user && (
               <button
                 onClick={() => setTopUpDialogOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 transition-all duration-200 border border-primary/20"
+                className={cn(
+                  "hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl",
+                  "bg-gradient-to-b from-primary/20 to-primary/10",
+                  "border border-primary/30",
+                  "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_8px_rgba(0,0,0,0.2)]",
+                  "transition-all duration-300",
+                  "hover:from-primary/30 hover:to-primary/15",
+                  "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)]"
+                )}
               >
                 {creditsLoading ? (
                   <Loader2 className="h-4 w-4 text-primary animate-spin" />
                 ) : (
                   <>
                     <Wallet className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="text-sm font-semibold text-foreground">
                       {creditBalance}
                     </span>
                   </>
@@ -273,26 +397,45 @@ export default function Header() {
             {user ? (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 p-0">
-                    <Avatar className="h-9 w-9">
+                  <Button 
+                    variant="ghost" 
+                    className={cn(
+                      "relative h-10 w-10 p-0 rounded-xl",
+                      "bg-gradient-to-b from-white/10 to-transparent",
+                      "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_8px_rgba(0,0,0,0.2)]",
+                      "border border-white/10",
+                      "hover:from-white/15 hover:to-white/5",
+                      "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)]"
+                    )}
+                  >
+                    <Avatar className="h-8 w-8">
                       <AvatarImage src={avatarUrl || undefined} />
-                      <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                      <AvatarFallback className="bg-primary/20 text-primary text-sm font-semibold">
                         {(username || user.email)?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-card border-border">
-                  <div className="flex items-center gap-2 p-2">
-                    <Avatar className="h-8 w-8">
+                <DropdownMenuContent 
+                  align="end" 
+                  className={cn(
+                    "w-60 p-2",
+                    "bg-gradient-to-b from-card/98 to-card/95 backdrop-blur-2xl",
+                    "border border-white/10",
+                    "shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]",
+                    "rounded-2xl"
+                  )}
+                >
+                  <div className="flex items-center gap-3 p-3 mb-1">
+                    <Avatar className="h-10 w-10 shadow-lg">
                       <AvatarImage src={avatarUrl || undefined} />
-                      <AvatarFallback className="bg-primary/20 text-primary">
+                      <AvatarFallback className="bg-primary/20 text-primary font-semibold">
                         {(username || user.email)?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">{fullName || username || 'User'}</span>
-                      <span className="text-xs text-muted-foreground">{user.email}</span>
+                      <span className="text-sm font-semibold text-foreground">{fullName || username || 'User'}</span>
+                      <span className="text-xs text-muted-foreground truncate max-w-[140px]">{user.email}</span>
                     </div>
                   </div>
                   
@@ -300,14 +443,21 @@ export default function Header() {
                   <div className="sm:hidden px-2 pb-2">
                     <button
                       onClick={() => setTopUpDialogOpen(true)}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 transition-colors border border-border/50"
+                      className={cn(
+                        "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl",
+                        "bg-gradient-to-b from-primary/20 to-primary/10",
+                        "border border-primary/30",
+                        "shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]",
+                        "transition-all duration-300",
+                        "hover:from-primary/30 hover:to-primary/15"
+                      )}
                     >
                       {creditsLoading ? (
                         <Loader2 className="h-4 w-4 text-primary animate-spin" />
                       ) : (
                         <>
                           <Wallet className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-medium">
+                          <span className="text-sm font-semibold text-foreground">
                             {creditBalance} Credits
                           </span>
                         </>
@@ -315,55 +465,86 @@ export default function Header() {
                     </button>
                   </div>
                   
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className="bg-white/10 my-1" />
+                  
                   {(isCreator || isSeller) && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/dashboard" className="flex items-center gap-2">
-                        <LayoutDashboard className="h-4 w-4" />
-                        Dashboard
+                    <DropdownMenuItem asChild className={cn(
+                      "rounded-xl px-3 py-2.5 cursor-pointer",
+                      "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                      "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                    )}>
+                      <Link to="/dashboard" className="flex items-center gap-3">
+                        <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Dashboard</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
                   {(isCreator || isSeller) && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/create-product" className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        Create Product
+                    <DropdownMenuItem asChild className={cn(
+                      "rounded-xl px-3 py-2.5 cursor-pointer",
+                      "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                      "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                    )}>
+                      <Link to="/create-product" className="flex items-center gap-3">
+                        <Plus className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Create Product</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
                   {(isCreator || isSeller || isAdmin) && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/subscription-plans" className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        Subscription Plans
+                    <DropdownMenuItem asChild className={cn(
+                      "rounded-xl px-3 py-2.5 cursor-pointer",
+                      "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                      "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                    )}>
+                      <Link to="/subscription-plans" className="flex items-center gap-3">
+                        <CreditCard className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Subscription Plans</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      Profile
+                  <DropdownMenuItem asChild className={cn(
+                    "rounded-xl px-3 py-2.5 cursor-pointer",
+                    "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                    "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                  )}>
+                    <Link to="/profile" className="flex items-center gap-3">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Profile</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/settings" className="flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      Settings
+                  <DropdownMenuItem asChild className={cn(
+                    "rounded-xl px-3 py-2.5 cursor-pointer",
+                    "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                    "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                  )}>
+                    <Link to="/settings" className="flex items-center gap-3">
+                      <Settings className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Settings</span>
                     </Link>
                   </DropdownMenuItem>
                   {isAdmin && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin" className="flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4" />
-                        Admin
+                    <DropdownMenuItem asChild className={cn(
+                      "rounded-xl px-3 py-2.5 cursor-pointer",
+                      "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                      "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                    )}>
+                      <Link to="/admin" className="flex items-center gap-3">
+                        <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Admin</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => signOut()} className="text-destructive">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
+                  <DropdownMenuSeparator className="bg-white/10 my-1" />
+                  <DropdownMenuItem 
+                    onClick={() => signOut()} 
+                    className={cn(
+                      "rounded-xl px-3 py-2.5 cursor-pointer text-destructive",
+                      "hover:bg-destructive/10 focus:bg-destructive/10"
+                    )}
+                  >
+                    <LogOut className="h-4 w-4 mr-3" />
+                    <span className="font-medium">Sign Out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -371,13 +552,16 @@ export default function Header() {
               <div className="flex items-center gap-3">
                 <Link 
                   to="/login" 
-                  className="hidden sm:inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-foreground/70 hover:text-foreground transition-all duration-200 rounded-lg hover:bg-white/5"
+                  className={cn(
+                    "hidden sm:inline-flex h-10 items-center justify-center",
+                    navLinkStyles
+                  )}
                 >
                   Sign In
                 </Link>
                 <Button 
                   asChild 
-                  className="h-10 px-5 text-sm font-semibold rounded-lg"
+                  className="h-10 px-6 text-sm font-semibold rounded-xl"
                 >
                   <Link to="/signup">Start Free Now</Link>
                 </Button>
@@ -388,7 +572,13 @@ export default function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden h-9 w-9 rounded-lg"
+              className={cn(
+                "lg:hidden h-10 w-10 rounded-xl",
+                "bg-gradient-to-b from-white/10 to-transparent",
+                "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_8px_rgba(0,0,0,0.2)]",
+                "border border-white/10",
+                "hover:from-white/15 hover:to-white/5"
+              )}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -398,8 +588,11 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-border/30 animate-fade-in">
-            <nav className="flex flex-col gap-1">
+          <div className={cn(
+            "lg:hidden py-5 animate-fade-in",
+            "border-t border-white/10"
+          )}>
+            <nav className="flex flex-col gap-2">
               {/* Store Section */}
               <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Store
@@ -409,50 +602,77 @@ export default function Header() {
                   key={item.path}
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5 transition-all duration-200 rounded-lg mx-2"
+                  className={cn(
+                    "mx-3 px-4 py-3 text-sm font-medium text-foreground rounded-xl",
+                    "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                    "transition-all duration-300"
+                  )}
                 >
                   {item.name}
                 </Link>
               ))}
               
-              <div className="h-px bg-border/30 my-2 mx-4" />
+              <div className="h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent my-2 mx-6" />
               
               {/* Other Links */}
               <Link
                 to="/creators"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5 transition-all duration-200 rounded-lg mx-2"
+                className={cn(
+                  "mx-3 px-4 py-3 text-sm font-medium text-foreground rounded-xl",
+                  "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                  "transition-all duration-300"
+                )}
               >
                 Creators
               </Link>
               <Link
                 to="/tools"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5 transition-all duration-200 rounded-lg mx-2"
+                className={cn(
+                  "mx-3 px-4 py-3 text-sm font-medium text-foreground rounded-xl",
+                  "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                  "transition-all duration-300"
+                )}
               >
                 Tools
               </Link>
               <Link
                 to="/community"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5 transition-all duration-200 rounded-lg mx-2"
+                className={cn(
+                  "mx-3 px-4 py-3 text-sm font-medium text-foreground rounded-xl",
+                  "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                  "transition-all duration-300"
+                )}
               >
                 Community
               </Link>
               <Link
                 to="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-2.5 text-sm font-medium text-foreground hover:bg-white/5 transition-all duration-200 rounded-lg mx-2"
+                className={cn(
+                  "mx-3 px-4 py-3 text-sm font-medium text-foreground rounded-xl",
+                  "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
+                  "transition-all duration-300"
+                )}
               >
                 Pricing
               </Link>
               
-              <div className="h-px bg-border/30 my-2 mx-4" />
+              <div className="h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent my-2 mx-6" />
               
               <Link
                 to="/hire-editors"
                 onClick={() => setMobileMenuOpen(false)}
-                className="mx-4 py-2.5 text-sm font-semibold text-center text-primary border border-primary/50 rounded-lg hover:bg-primary/10 transition-all duration-200"
+                className={cn(
+                  "mx-3 py-3 text-sm font-semibold text-center text-primary rounded-xl",
+                  "bg-gradient-to-b from-primary/20 to-primary/10",
+                  "border border-primary/30",
+                  "shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]",
+                  "transition-all duration-300",
+                  "hover:from-primary/30 hover:to-primary/15"
+                )}
               >
                 Hire Editors →
               </Link>
