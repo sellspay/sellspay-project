@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
-import { ArrowRight, Play } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const floatingWords = ['Presets', 'LUTs', 'SFX', 'Templates', 'Overlays', 'Fonts'];
+const floatingWords = ['Presets', 'LUTs', 'SFX', 'Templates', 'Overlays', 'Fonts', 'Tutorials'];
 
 export default function HeroSection() {
   const { user } = useAuth();
@@ -13,61 +13,61 @@ export default function HeroSection() {
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveWord(prev => (prev + 1) % floatingWords.length);
-    }, 2500);
+    }, 2000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <section className="relative min-h-[70vh] sm:min-h-[80vh] flex items-center justify-center">
-      {/* Clean minimal background */}
+    <section className="relative min-h-[85vh] lg:min-h-[90vh] flex items-center justify-center overflow-hidden">
+      {/* Dramatic gradient background */}
       <div className="absolute inset-0 -z-10">
-        {/* Subtle gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-muted/20" />
-        {/* Very subtle noise texture effect via gradient */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(0_0%_20%/0.3),transparent)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-background/95 to-background" />
+        {/* Subtle warm glow */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/5 rounded-full blur-[150px]" />
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
-        <div className="text-center flex flex-col items-center">
-          {/* Small label */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border/50 bg-card/50 mb-6 sm:mb-8">
-            <span className="text-xs sm:text-sm text-muted-foreground font-medium">
-              The marketplace for creators
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center flex flex-col items-center max-w-6xl mx-auto">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full border border-primary/30 bg-primary/10 mb-8 sm:mb-10">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-sm sm:text-base text-primary font-medium tracking-wide">
+              The #1 Marketplace for Creators
             </span>
           </div>
 
-          {/* Main headline - Artlist style large typography */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-6 sm:mb-8 leading-[1.1]">
-            <span className="text-foreground">
-              Premium digital assets
+          {/* MASSIVE headline */}
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-[120px] font-bold tracking-tighter leading-[0.95] mb-8 sm:mb-10">
+            <span className="text-foreground block">
+              Premium Digital
             </span>
-            <br />
-            <span className="text-foreground">
-              for{' '}
+            <span className="text-foreground block mt-2">
+              Assets for{' '}
               <span 
                 key={activeWord} 
-                className="inline-block text-muted-foreground animate-fade-in"
+                className="inline-block text-primary animate-fade-in"
               >
                 {floatingWords[activeWord]}
               </span>
             </span>
           </h1>
 
-          {/* Subtitle - clean and minimal */}
-          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mb-8 sm:mb-12 leading-relaxed">
-            Discover thousands of high-quality assets created by professional editors and designers worldwide.
+          {/* Subtitle - larger */}
+          <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mb-10 sm:mb-14 leading-relaxed">
+            Discover thousands of high-quality assets from professional editors and designers. 
+            Everything you need to level up your creative work.
           </p>
 
-          {/* CTA Buttons - Artlist style */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+          {/* CTA Buttons - BIGGER */}
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 w-full sm:w-auto">
             <Button 
               asChild 
               size="lg" 
-              className="h-12 sm:h-14 px-8 sm:px-10 text-base sm:text-lg rounded-full bg-foreground text-background hover:bg-foreground/90 font-medium group"
+              className="h-14 sm:h-16 px-10 sm:px-14 text-base sm:text-lg rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold group shadow-lg shadow-primary/25"
             >
               <Link to="/products">
-                Browse Store
-                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-x-1" />
+                Start Browsing
+                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
             {!user ? (
@@ -75,10 +75,10 @@ export default function HeroSection() {
                 asChild 
                 size="lg" 
                 variant="outline" 
-                className="h-12 sm:h-14 px-8 sm:px-10 text-base sm:text-lg rounded-full border-border hover:bg-card hover:border-foreground/20 font-medium"
+                className="h-14 sm:h-16 px-10 sm:px-14 text-base sm:text-lg rounded-full border-2 border-border hover:bg-card hover:border-foreground/30 font-semibold"
               >
                 <Link to="/signup">
-                  Start Free
+                  Create Account
                 </Link>
               </Button>
             ) : (
@@ -86,14 +86,31 @@ export default function HeroSection() {
                 asChild 
                 size="lg" 
                 variant="outline" 
-                className="h-12 sm:h-14 px-8 sm:px-10 text-base sm:text-lg rounded-full border-border hover:bg-card hover:border-foreground/20 font-medium group"
+                className="h-14 sm:h-16 px-10 sm:px-14 text-base sm:text-lg rounded-full border-2 border-border hover:bg-card hover:border-foreground/30 font-semibold"
               >
                 <Link to="/creators">
-                  <Play className="mr-2 h-4 w-4 sm:h-5 sm:w-5 fill-current" />
                   Meet Creators
                 </Link>
               </Button>
             )}
+          </div>
+
+          {/* Quick stats under CTA */}
+          <div className="flex items-center gap-8 sm:gap-12 mt-14 sm:mt-20 text-muted-foreground">
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl font-bold text-foreground">5,000+</div>
+              <div className="text-sm sm:text-base">Assets</div>
+            </div>
+            <div className="w-px h-10 bg-border" />
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl font-bold text-foreground">500+</div>
+              <div className="text-sm sm:text-base">Creators</div>
+            </div>
+            <div className="w-px h-10 bg-border" />
+            <div className="text-center">
+              <div className="text-2xl sm:text-3xl font-bold text-foreground">50k+</div>
+              <div className="text-sm sm:text-base">Downloads</div>
+            </div>
           </div>
         </div>
       </div>

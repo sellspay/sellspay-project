@@ -236,9 +236,9 @@ export default function ProductCard({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={`relative overflow-hidden rounded-xl bg-card border border-border/50 group-hover:border-primary/30 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-primary/5 ${isLarge ? 'rounded-2xl' : ''}`}>
-        {/* Media Container */}
-        <div className={`relative ${isLarge ? 'aspect-[4/3]' : 'aspect-video'} overflow-hidden`}>
+      <div className={`relative overflow-hidden rounded-2xl bg-card border border-border/50 group-hover:border-primary/40 transition-all duration-300 group-hover:shadow-2xl group-hover:shadow-primary/10 ${isLarge ? 'rounded-3xl' : ''}`}>
+        {/* Media Container - BIGGER aspect ratio */}
+        <div className={`relative ${isLarge ? 'aspect-[4/3]' : 'aspect-[16/10]'} overflow-hidden`}>
           {/* Video Preview */}
           {canShowVideo && (
             <video
@@ -334,20 +334,20 @@ export default function ProductCard({
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
         </div>
 
-        {/* Product Info */}
-        <div className={`${isLarge ? 'p-5' : 'p-3'}`}>
-          <h3 className={`truncate font-semibold text-foreground group-hover:text-primary transition-colors ${isLarge ? 'text-lg' : 'text-sm'}`}>
+        {/* Product Info - BIGGER */}
+        <div className={`${isLarge ? 'p-6' : 'p-4'}`}>
+          <h3 className={`truncate font-bold text-foreground group-hover:text-primary transition-colors ${isLarge ? 'text-xl' : 'text-base'}`}>
             {product.name}
           </h3>
           
           {/* Creator Username & Date */}
           {showCreator && (
-            <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+            <div className={`flex items-center gap-2 mt-2 ${isLarge ? 'text-sm' : 'text-xs'} text-muted-foreground`}>
               {creator?.username && (
                 <Link
                   to={`/@${creator.username}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors font-medium"
                 >
                   @{creator.username}
                 </Link>
@@ -363,16 +363,16 @@ export default function ProductCard({
           
           {/* Engagement Stats */}
           {showEngagement && (likeCount !== undefined || commentCount !== undefined) && (
-            <div className={`flex items-center gap-4 ${isLarge ? 'mt-3' : 'mt-2'} text-muted-foreground`}>
+            <div className={`flex items-center gap-4 ${isLarge ? 'mt-4' : 'mt-3'} text-muted-foreground`}>
               {likeCount !== undefined && (
-                <span className={`flex items-center gap-1.5 ${isLarge ? 'text-sm' : 'text-xs'}`}>
-                  <Heart className={`${isLarge ? 'h-4 w-4' : 'h-3 w-3'}`} />
+                <span className={`flex items-center gap-1.5 ${isLarge ? 'text-base' : 'text-sm'}`}>
+                  <Heart className={`${isLarge ? 'h-5 w-5' : 'h-4 w-4'}`} />
                   {likeCount}
                 </span>
               )}
               {commentCount !== undefined && (
-                <span className={`flex items-center gap-1.5 ${isLarge ? 'text-sm' : 'text-xs'}`}>
-                  <MessageCircle className={`${isLarge ? 'h-4 w-4' : 'h-3 w-3'}`} />
+                <span className={`flex items-center gap-1.5 ${isLarge ? 'text-base' : 'text-sm'}`}>
+                  <MessageCircle className={`${isLarge ? 'h-5 w-5' : 'h-4 w-4'}`} />
                   {commentCount}
                 </span>
               )}

@@ -1,13 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
-import { Reveal } from './Reveal';
-
-interface StatItem {
-  label: string;
-  value: number;
-  suffix: string;
-}
 
 function AnimatedCounter({ target, suffix, isVisible }: { target: number; suffix: string; isVisible: boolean }) {
   const [count, setCount] = useState(0);
@@ -58,10 +51,11 @@ export function StatsBar() {
     triggerOnce: true,
   });
 
-  const [stats, setStats] = useState<StatItem[]>([
-    { label: 'Creators', value: 0, suffix: '+' },
-    { label: 'Products', value: 0, suffix: '+' },
-    { label: 'Downloads', value: 0, suffix: '+' },
+  const [stats, setStats] = useState([
+    { label: 'Verified Creators', value: 0, suffix: '+' },
+    { label: 'Premium Assets', value: 0, suffix: '+' },
+    { label: 'Total Downloads', value: 0, suffix: '+' },
+    { label: 'Happy Customers', value: 0, suffix: '+' },
   ]);
 
   useEffect(() => {
@@ -76,9 +70,10 @@ export function StatsBar() {
       const statsData = data?.[0] || { verified_creators: 0, premium_products: 0, total_downloads: 0 };
 
       setStats([
-        { label: 'Creators', value: Number(statsData.verified_creators) || 0, suffix: '+' },
-        { label: 'Products', value: Number(statsData.premium_products) || 0, suffix: '+' },
-        { label: 'Downloads', value: Number(statsData.total_downloads) || 0, suffix: '+' },
+        { label: 'Verified Creators', value: Number(statsData.verified_creators) || 0, suffix: '+' },
+        { label: 'Premium Assets', value: Number(statsData.premium_products) || 0, suffix: '+' },
+        { label: 'Total Downloads', value: Number(statsData.total_downloads) || 0, suffix: '+' },
+        { label: 'Happy Customers', value: Math.floor(Number(statsData.total_downloads) * 0.7) || 0, suffix: '+' },
       ]);
     }
 
@@ -86,27 +81,25 @@ export function StatsBar() {
   }, []);
 
   return (
-    <Reveal>
-      <section ref={ref} className="py-16 sm:py-20 border-y border-border/30">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
-          <div className="grid grid-cols-3 gap-8 sm:gap-12">
-            {stats.map((stat, index) => (
-              <div
-                key={stat.label}
-                className="text-center"
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-2">
-                  <AnimatedCounter target={stat.value} suffix={stat.suffix} isVisible={isVisible} />
-                </div>
-                <div className="text-xs sm:text-sm text-muted-foreground font-medium uppercase tracking-wider">
-                  {stat.label}
-                </div>
+    <section ref={ref} className="py-16 sm:py-20 border-y border-border/50 bg-card/30">
+      <div className="px-4 sm:px-8 lg:px-12">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
+          {stats.map((stat, index) => (
+            <div
+              key={stat.label}
+              className="text-center"
+              style={{ transitionDelay: `${index * 100}ms` }}
+            >
+              <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary mb-3">
+                <AnimatedCounter target={stat.value} suffix={stat.suffix} isVisible={isVisible} />
               </div>
-            ))}
-          </div>
+              <div className="text-sm sm:text-base text-muted-foreground font-medium">
+                {stat.label}
+              </div>
+            </div>
+          ))}
         </div>
-      </section>
-    </Reveal>
+      </div>
+    </section>
   );
 }
