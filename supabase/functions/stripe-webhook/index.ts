@@ -588,6 +588,212 @@ serve(async (req) => {
       }
     }
 
+    // Handle refund events
+    if (event.type === "charge.refunded") {
+      const charge = event.data.object as Stripe.Charge;
+      logStep("Processing charge.refunded", { chargeId: charge.id, amountRefunded: charge.amount_refunded });
+
+      // Find the purchase by payment intent
+      const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : null;
+      
+      if (paymentIntentId) {
+        const { data: purchase, error: purchaseError } = await supabaseAdmin
+          .from("purchases")
+          .select("id, product_id, creator_payout_cents, products!inner(creator_id)")
+          .eq("stripe_payment_intent_id", paymentIntentId)
+          .single();
+
+        if (purchaseError) {
+          logStep("Could not find purchase for refund", { paymentIntentId, error: purchaseError.message });
+        } else if (purchase) {
+          const productsData = purchase.products as unknown as { creator_id: string | null };
+          const sellerId = productsData?.creator_id;
+          const refundAmountCents = charge.amount_refunded;
+          
+          // Calculate proportional creator share (refund amount * creator share ratio)
+          const originalCreatorPayout = purchase.creator_payout_cents || 0;
+          const refundCreatorShare = Math.round(refundAmountCents * 0.95); // 95% creator share
+          
+          logStep("Creating refund debit ledger entry", { 
+            sellerId, 
+            purchaseId: purchase.id, 
+            refundAmountCents,
+            refundCreatorShare 
+          });
+
+          // Create refund_debit ledger entry
+          if (sellerId) {
+            const { error: ledgerError } = await supabaseAdmin
+              .from("wallet_ledger_entries")
+              .insert({
+                seller_id: sellerId,
+                order_id: purchase.id,
+                order_type: "purchase",
+                entry_type: "refund_debit",
+                amount_cents: -refundCreatorShare,
+                status: "available",
+                description: `Refund debit for order ${purchase.id}`,
+              });
+
+            if (ledgerError) {
+              logStep("Failed to create refund ledger entry", { error: ledgerError.message });
+            } else {
+              logStep("Refund ledger entry created", { sellerId, amount: -refundCreatorShare });
+            }
+          }
+
+          // Update purchase status
+          await supabaseAdmin
+            .from("purchases")
+            .update({ status: "refunded" })
+            .eq("id", purchase.id);
+        }
+      }
+    }
+
+    // Handle dispute created
+    if (event.type === "charge.dispute.created") {
+      const dispute = event.data.object as Stripe.Dispute;
+      logStep("Processing charge.dispute.created", { 
+        disputeId: dispute.id, 
+        chargeId: dispute.charge,
+        amount: dispute.amount,
+        reason: dispute.reason 
+      });
+
+      const chargeId = typeof dispute.charge === "string" ? dispute.charge : null;
+      
+      if (chargeId) {
+        // Retrieve the charge to get payment intent
+        const charge = await stripe.charges.retrieve(chargeId);
+        const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : null;
+
+        if (paymentIntentId) {
+          const { data: purchase, error: purchaseError } = await supabaseAdmin
+            .from("purchases")
+            .select("id, creator_payout_cents, products!inner(creator_id)")
+            .eq("stripe_payment_intent_id", paymentIntentId)
+            .single();
+
+          if (!purchaseError && purchase) {
+            const productsData = purchase.products as unknown as { creator_id: string | null };
+            const sellerId = productsData?.creator_id;
+            const disputeAmount = dispute.amount;
+            const creatorShare = Math.round(disputeAmount * 0.95);
+
+            // Update purchase dispute status
+            await supabaseAdmin
+              .from("purchases")
+              .update({ dispute_status: "disputed" })
+              .eq("id", purchase.id);
+
+            // Create chargeback_debit ledger entry (locked)
+            if (sellerId) {
+              const { error: ledgerError } = await supabaseAdmin
+                .from("wallet_ledger_entries")
+                .insert({
+                  seller_id: sellerId,
+                  order_id: purchase.id,
+                  order_type: "purchase",
+                  entry_type: "chargeback_debit",
+                  amount_cents: -creatorShare,
+                  status: "locked",
+                  description: `Dispute hold: ${dispute.reason} (${dispute.id})`,
+                });
+
+              if (ledgerError) {
+                logStep("Failed to create dispute ledger entry", { error: ledgerError.message });
+              } else {
+                logStep("Dispute ledger entry created (locked)", { sellerId, amount: -creatorShare });
+              }
+            }
+
+            // Notify admin
+            await supabaseAdmin.from("admin_notifications").insert({
+              type: "dispute_created",
+              message: `New dispute: $${(disputeAmount / 100).toFixed(2)} - Reason: ${dispute.reason}`,
+              redirect_url: "/admin?tab=disputes",
+            });
+
+            logStep("Dispute recorded and admin notified", { disputeId: dispute.id, purchaseId: purchase.id });
+          }
+        }
+      }
+    }
+
+    // Handle dispute closed
+    if (event.type === "charge.dispute.closed") {
+      const dispute = event.data.object as Stripe.Dispute;
+      logStep("Processing charge.dispute.closed", { 
+        disputeId: dispute.id, 
+        status: dispute.status,
+        outcome: (dispute as any).evidence_details?.due_by 
+      });
+
+      const chargeId = typeof dispute.charge === "string" ? dispute.charge : null;
+      
+      if (chargeId) {
+        const charge = await stripe.charges.retrieve(chargeId);
+        const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : null;
+
+        if (paymentIntentId) {
+          const { data: purchase } = await supabaseAdmin
+            .from("purchases")
+            .select("id, products!inner(creator_id)")
+            .eq("stripe_payment_intent_id", paymentIntentId)
+            .single();
+
+          if (purchase) {
+            const productsData = purchase.products as unknown as { creator_id: string | null };
+            const sellerId = productsData?.creator_id;
+
+            // Check dispute outcome
+            // won = seller keeps money, lost/needs_response_expired = money taken
+            const disputeWon = dispute.status === "won";
+
+            if (disputeWon) {
+              // Seller won - reverse the locked debit
+              await supabaseAdmin
+                .from("wallet_ledger_entries")
+                .update({ status: "reversed" })
+                .eq("order_id", purchase.id)
+                .eq("entry_type", "chargeback_debit")
+                .eq("status", "locked");
+
+              await supabaseAdmin
+                .from("purchases")
+                .update({ dispute_status: "won" })
+                .eq("id", purchase.id);
+
+              logStep("Dispute won - locked funds reversed", { purchaseId: purchase.id });
+            } else {
+              // Seller lost - make debit permanent
+              await supabaseAdmin
+                .from("wallet_ledger_entries")
+                .update({ status: "available" })
+                .eq("order_id", purchase.id)
+                .eq("entry_type", "chargeback_debit")
+                .eq("status", "locked");
+
+              await supabaseAdmin
+                .from("purchases")
+                .update({ dispute_status: "lost" })
+                .eq("id", purchase.id);
+
+              logStep("Dispute lost - debit finalized", { purchaseId: purchase.id });
+            }
+
+            // Notify admin of outcome
+            await supabaseAdmin.from("admin_notifications").insert({
+              type: "dispute_closed",
+              message: `Dispute ${dispute.id} ${disputeWon ? "WON" : "LOST"} - $${(dispute.amount / 100).toFixed(2)}`,
+              redirect_url: "/admin?tab=disputes",
+            });
+          }
+        }
+      }
+    }
+
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

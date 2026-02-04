@@ -68,13 +68,14 @@
 
 ---
 
-## 🔄 Phase 5: IN PROGRESS - Dispute & Refund Handling
+## ✅ Phase 5: COMPLETED - Dispute & Refund Handling
 
-### Remaining:
-- [ ] Handle charge.refunded webhook event (create refund_debit ledger entry)
-- [ ] Handle charge.dispute.created (lock seller balance)
-- [ ] Handle charge.dispute.closed (unlock or debit based on outcome)
-- [ ] Create DisputesPanel admin component
+### Completed Items:
+- [x] Handle charge.refunded webhook event (create refund_debit ledger entry)
+- [x] Handle charge.dispute.created (lock seller balance, create chargeback_debit entry)
+- [x] Handle charge.dispute.closed (unlock or finalize debit based on outcome)
+- [x] Create DisputesPanel admin component with active/resolved tabs
+- [x] Add Disputes tab to Admin page
 
 ---
 This plan implements a compliant, scalable hybrid payments system that supports both **Stripe Connect sellers** (eligible countries) and **Platform MoR (Merchant of Record) sellers** (non-eligible countries). The system allows sellers from any country to sell digital products while maintaining proper payment processing compliance.
