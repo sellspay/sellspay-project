@@ -49,9 +49,7 @@ export default function HeroSection() {
       <div className="text-center max-w-4xl mx-[166px] my-0 px-0 py-[4px] flex-col flex items-center justify-center">
 
           {/* App name - primary H1 for Google verification (MUST be prominent!) */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground mb-4 sm:mb-6 drop-shadow-lg">
-            SellsPay
-          </h1>
+          
 
           {/* Tagline */}
           <p className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight mb-4 sm:mb-6">
