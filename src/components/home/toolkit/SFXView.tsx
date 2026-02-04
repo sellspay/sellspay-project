@@ -23,7 +23,7 @@ export function SFXView({ config, displayedText }: SFXViewProps) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.4 }}
-      className="relative h-full min-h-[500px] sm:min-h-[600px] lg:min-h-[700px] flex flex-col"
+      className="absolute inset-0 flex flex-col"
     >
       {/* Waveform Background */}
       <div className="flex-1 bg-gradient-to-br from-amber-900/40 via-stone-900/60 to-black relative overflow-hidden">

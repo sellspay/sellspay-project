@@ -33,7 +33,7 @@ export function VideoView({ config, displayedText }: VideoViewProps) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.4 }}
-      className="relative h-full min-h-[500px] sm:min-h-[600px] lg:min-h-[700px] flex flex-col"
+      className="absolute inset-0 flex flex-col"
     >
       {/* Main Video Display */}
       <div className="flex-1 flex flex-col p-4 sm:p-6 bg-gradient-to-br from-cyan-900/20 via-slate-900/60 to-black">
