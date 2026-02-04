@@ -28,14 +28,14 @@ export function AIStudioPromo() {
             </h2>
           </div>
 
-          {/* Editorial text - full width split */}
+          {/* Editorial text with CTA - full width split */}
           <div className="px-6 sm:px-12 lg:px-20 mb-24 sm:mb-32">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-12 lg:gap-24">
               <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl text-foreground leading-relaxed font-light lg:max-w-[50%]">
                 Stop jumping between platforms. Your storefront, tools, and payments — 
                 <span className="text-primary font-medium"> unified.</span>
               </p>
-              <div className="space-y-6 lg:max-w-[40%]">
+              <div className="space-y-8 lg:max-w-[40%]">
                 <p className="text-base sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
                   We built SellsPay for creators who are tired of stitching together 
                   five different services just to sell a preset pack.
@@ -43,6 +43,13 @@ export function AIStudioPromo() {
                 <p className="text-base sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
                   Sell. Create with AI tools. Get paid instantly. No more going site to site.
                 </p>
+                <Button 
+                  onClick={() => navigate('/signup')}
+                  size="lg"
+                  className="px-12 h-14 text-base font-medium mt-4"
+                >
+                  Start Selling
+                </Button>
               </div>
             </div>
           </div>
@@ -66,21 +73,10 @@ export function AIStudioPromo() {
           </div>
 
           {/* Placeholder - full width */}
-          <div className="px-6 sm:px-12 lg:px-20 pt-16 sm:pt-20 border-t border-dashed border-border/40">
+          <div className="px-6 sm:px-12 lg:px-20 py-16 sm:py-20 border-t border-dashed border-border/40">
             <p className="text-muted-foreground/50 text-sm uppercase tracking-widest">
               Additional elements — placeholder
             </p>
-          </div>
-
-          {/* CTA */}
-          <div className="px-6 sm:px-12 lg:px-20 mt-16 sm:mt-20">
-            <Button 
-              onClick={() => navigate('/signup')}
-              size="lg"
-              className="px-14 h-16 text-lg font-medium"
-            >
-              Start Selling
-            </Button>
           </div>
 
         </div>
