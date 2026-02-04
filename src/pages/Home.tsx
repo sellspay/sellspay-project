@@ -195,19 +195,19 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
   }
 
   return (
-    <section className="py-16 sm:py-24">
-      {/* Section Header - Full width */}
-      <div className="px-4 sm:px-8 lg:px-12 mb-10">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20">
-              <Sparkles className="h-7 w-7 text-primary" />
+    <section className="py-20 sm:py-28 lg:py-36">
+      {/* Section Header - Full width, MASSIVE */}
+      <div className="px-6 sm:px-8 lg:px-12 mb-14 sm:mb-20">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+          <div className="flex items-start gap-5">
+            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
+              <Sparkles className="h-10 w-10 text-primary" />
             </div>
             <div>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground tracking-tight">
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground tracking-tight">
                 Featured Assets
               </h2>
-              <p className="text-muted-foreground text-base sm:text-lg mt-1">
+              <p className="text-lg sm:text-xl text-muted-foreground mt-2">
                 Hand-picked by our editorial team
               </p>
             </div>
@@ -215,17 +215,17 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
           <Button 
             onClick={() => navigate('/products')} 
             variant="outline"
-            className="rounded-full px-8 h-12 text-base font-medium group border-2"
+            className="rounded-full px-10 h-14 text-lg font-medium group border-2 hover:bg-primary/10 hover:border-primary/50"
           >
             View All
-            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
           </Button>
         </div>
       </div>
 
-      {/* EDGE-TO-EDGE Dense Grid */}
-      <div className="px-2 sm:px-4 lg:px-6">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3 lg:gap-4">
+      {/* EDGE-TO-EDGE Dense Grid - BIGGER gaps and cards */}
+      <div className="px-3 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
           {displayProducts.slice(0, 12).map((product, index) => (
             <div 
               key={product.id}
@@ -250,14 +250,14 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
         </div>
       </div>
 
-      {/* Load More CTA */}
-      <div className="text-center mt-12 px-4">
+      {/* Load More CTA - BIGGER */}
+      <div className="text-center mt-16 sm:mt-20 px-6">
         <Button 
           onClick={() => navigate('/products')} 
-          className="rounded-full px-12 h-14 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+          className="rounded-full px-14 h-16 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-2xl shadow-primary/25 transition-all duration-300 hover:scale-105"
         >
           Explore All Assets
-          <ArrowRight className="ml-2 h-5 w-5" />
+          <ArrowRight className="ml-3 h-6 w-6" />
         </Button>
       </div>
     </section>
@@ -288,25 +288,25 @@ function CategoryShowcase({ products }: CategoryShowcaseProps) {
   if (products.length === 0) return null;
 
   return (
-    <section className="py-16 sm:py-24 bg-card/50">
-      {/* Section Header */}
-      <div className="px-4 sm:px-8 lg:px-12 mb-10">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20">
-            <TrendingUp className="h-7 w-7 text-primary" />
+    <section className="py-20 sm:py-28 lg:py-36 bg-card/50">
+      {/* Section Header - MASSIVE */}
+      <div className="px-6 sm:px-8 lg:px-12 mb-14 sm:mb-20">
+        <div className="flex items-start gap-5 mb-10 sm:mb-14">
+          <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
+            <TrendingUp className="h-10 w-10 text-primary" />
           </div>
           <div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground tracking-tight">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground tracking-tight">
               Browse by Category
             </h2>
-            <p className="text-muted-foreground text-base sm:text-lg mt-1">
+            <p className="text-lg sm:text-xl text-muted-foreground mt-2">
               Find exactly what you're looking for
             </p>
           </div>
         </div>
 
-        {/* Category Pills - Large & Bold */}
-        <div className="flex flex-wrap gap-3">
+        {/* Category Pills - BIGGER & Bold */}
+        <div className="flex flex-wrap gap-4">
           {SHOWCASE_CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat.id;
             const count = products.filter(p => p.product_type === cat.id).length;
@@ -316,17 +316,17 @@ function CategoryShowcase({ products }: CategoryShowcaseProps) {
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
                 className={`
-                  flex items-center gap-2.5 px-6 py-3 rounded-full text-base font-medium
+                  flex items-center gap-3 px-8 py-4 rounded-full text-lg font-semibold
                   transition-all duration-200
                   ${isActive 
-                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25' 
+                    ? 'bg-primary text-primary-foreground shadow-2xl shadow-primary/30 scale-105' 
                     : 'bg-card text-foreground border-2 border-border hover:border-primary/50 hover:bg-card/80'
                   }
                 `}
               >
-                <span className="text-lg">{cat.icon}</span>
+                <span className="text-xl">{cat.icon}</span>
                 {cat.label}
-                <span className={`text-sm ${isActive ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                <span className={`text-base ${isActive ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                   ({count})
                 </span>
               </button>
@@ -335,10 +335,10 @@ function CategoryShowcase({ products }: CategoryShowcaseProps) {
         </div>
       </div>
 
-      {/* Products Grid - Dense */}
-      <div className="px-2 sm:px-4 lg:px-6">
+      {/* Products Grid - Dense, BIGGER */}
+      <div className="px-3 sm:px-6 lg:px-8">
         {displayProducts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {displayProducts.map((product) => (
               <ProductCard 
                 key={product.id} 
@@ -350,23 +350,23 @@ function CategoryShowcase({ products }: CategoryShowcaseProps) {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="text-muted-foreground text-lg mb-2">No products in this category yet</p>
-            <p className="text-sm text-muted-foreground/70">Check back soon!</p>
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <p className="text-xl text-muted-foreground mb-2">No products in this category yet</p>
+            <p className="text-base text-muted-foreground/70">Check back soon!</p>
           </div>
         )}
       </div>
 
-      {/* View Category CTA */}
+      {/* View Category CTA - BIGGER */}
       {displayProducts.length > 0 && (
-        <div className="text-center mt-10 px-4">
+        <div className="text-center mt-14 sm:mt-20 px-6">
           <Button 
             onClick={() => navigate(`/products?type=${activeCategory}`)}
             variant="outline"
-            className="rounded-full px-10 h-12 text-base font-medium group border-2"
+            className="rounded-full px-12 h-14 text-lg font-medium group border-2 hover:bg-primary/10 hover:border-primary/50"
           >
             View All {SHOWCASE_CATEGORIES.find(c => c.id === activeCategory)?.label}
-            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
           </Button>
         </div>
       )}
