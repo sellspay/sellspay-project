@@ -4,7 +4,6 @@ import { Play, Flame, Heart, MessageCircle, Bookmark, Crown } from 'lucide-react
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
-import { playClickSound } from '@/hooks/useClickSound';
 
 interface Product {
   id: string;
@@ -229,7 +228,6 @@ export default function ProductCard({
     <Link
       to={`/product/${product.id}`}
       className="group block h-full"
-      onClick={playClickSound}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
