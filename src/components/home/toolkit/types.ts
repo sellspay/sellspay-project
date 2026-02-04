@@ -1,4 +1,4 @@
-export type ToolType = 'sfx' | 'vocal' | 'manga' | 'video';
+export type ToolType = 'sfx' | 'vocal' | 'manga' | 'video' | 'nano-banana';
 
 export interface ToolConfig {
   id: ToolType;

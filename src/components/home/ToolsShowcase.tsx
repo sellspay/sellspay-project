@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Reveal } from './Reveal';
 import { AudioWaveform, MicVocal, Brush, Clapperboard, Sparkles } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
-import { SFXView, VocalView, MangaView, VideoView, StudioGridView, ToolType, ToolConfig } from './toolkit';
+import { NanoBananaView, SFXView, VocalView, MangaView, VideoView, StudioGridView, ToolType, ToolConfig } from './toolkit';
 import { supabase } from '@/integrations/supabase/client';
-import nanoBananaLogo from '@/assets/logos/nano-banana.png';
+import { Button } from '@/components/ui/button';
 
 interface ThumbnailItem {
   url: string;
@@ -74,6 +74,19 @@ const tools: ToolConfig[] = [
     accentColor: 'text-cyan-400',
     bgGradient: 'from-cyan-900/40 to-slate-900',
   },
+  {
+    id: 'nano-banana',
+    name: 'Generate Anything',
+    icon: Sparkles,
+    prompts: [
+      'Hyperreal product shot, studio lighting...',
+      'Surreal cinematic scene, wide angle...',
+      'Minimal poster design, bold typography...',
+      'Cute character concept, clean linework...',
+    ],
+    accentColor: 'text-primary',
+    bgGradient: 'from-primary/20 to-muted/20',
+  },
 ];
 
 export function ToolsShowcase() {
@@ -123,6 +136,7 @@ export function ToolsShowcase() {
       case 'vocal': return siteContent.vocal_thumbnails;
       case 'manga': return siteContent.manga_thumbnails;
       case 'video': return siteContent.video_thumbnails;
+      case 'nano-banana': return [];
       default: return [];
     }
   }, [activeTool, siteContent]);
@@ -174,6 +188,8 @@ export function ToolsShowcase() {
         return <MangaView key="manga" config={activeConfig} />;
       case 'video':
         return <VideoView key="video" config={activeConfig} displayedText={displayedText} />;
+      case 'nano-banana':
+        return <NanoBananaView key="nano-banana" displayedText={displayedText} />;
       default:
         return null;
     }
@@ -192,29 +208,14 @@ export function ToolsShowcase() {
               {siteContent.tools_subtitle}
             </p>
             
-            {/* CTA Buttons */}
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button
+            <div className="mt-8 flex items-center justify-center">
+              <Button
+                size="lg"
                 onClick={() => navigate('/tools')}
-                className="px-12 py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-colors duration-200"
+                className="h-auto py-4 px-12 text-lg rounded-none"
               >
                 Explore Tools
-              </button>
-              
-              {/* Nano Banana - Generate Anything Button */}
-              <button
-                onClick={() => navigate('/tools?tool=nano-banana')}
-                className="group relative px-8 py-4 bg-gradient-to-r from-yellow-500 via-orange-500 to-pink-500 hover:from-yellow-400 hover:via-orange-400 hover:to-pink-400 text-white font-semibold text-lg transition-all duration-300 flex items-center gap-3 overflow-hidden"
-              >
-                <img 
-                  src={nanoBananaLogo} 
-                  alt="Nano Banana" 
-                  className="w-7 h-7 object-contain relative z-10"
-                />
-                <span className="relative z-10">Generate Anything</span>
-                <Sparkles className="w-5 h-5 relative z-10 animate-pulse" />
-                <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-orange-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </button>
+              </Button>
             </div>
           </div>
 
