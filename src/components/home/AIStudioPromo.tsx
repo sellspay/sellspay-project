@@ -16,12 +16,12 @@ export function AIStudioPromo() {
             {/* Left: Two-line headline, left-aligned - NO WRAPPING */}
             <div className="flex-shrink-0">
               <h2 
-                className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl text-foreground leading-[1.15] tracking-tight"
+                className="text-foreground leading-[1.15] tracking-tight"
                 style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
               >
-                <span className="whitespace-nowrap">Thousands of creators</span>
+                <span className="whitespace-nowrap text-4xl sm:text-5xl lg:text-6xl xl:text-7xl">Thousands of creators</span>
                 <br />
-                <span className="whitespace-nowrap">choose <span className="text-primary">SellsPay</span></span>
+                <span className="whitespace-nowrap text-5xl sm:text-6xl lg:text-7xl xl:text-8xl">choose <span className="text-primary">SellsPay</span></span>
               </h2>
             </div>
             
