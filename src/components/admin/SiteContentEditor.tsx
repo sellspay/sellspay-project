@@ -16,6 +16,25 @@ interface ThumbnailItem {
   label?: string;
 }
 
+interface ToolBanner {
+  id: string;
+  label: string;
+  key: keyof SiteContent;
+}
+
+const TOOL_BANNERS: ToolBanner[] = [
+  { id: 'sfx-generator', label: 'SFX Generator', key: 'tool_sfx_banner_url' },
+  { id: 'voice-isolator', label: 'Voice Isolator', key: 'tool_vocal_banner_url' },
+  { id: 'sfx-isolator', label: 'SFX Isolator', key: 'tool_manga_banner_url' },
+  { id: 'music-splitter', label: 'Music Splitter', key: 'tool_video_banner_url' },
+  { id: 'audio-cutter', label: 'Audio Cutter', key: 'tool_audio_cutter_banner_url' },
+  { id: 'audio-joiner', label: 'Audio Joiner', key: 'tool_audio_joiner_banner_url' },
+  { id: 'audio-converter', label: 'Audio Converter', key: 'tool_audio_converter_banner_url' },
+  { id: 'audio-recorder', label: 'Audio Recorder', key: 'tool_audio_recorder_banner_url' },
+  { id: 'waveform-generator', label: 'Waveform Generator', key: 'tool_waveform_banner_url' },
+  { id: 'video-to-audio', label: 'Video to Audio', key: 'tool_video_to_audio_banner_url' },
+];
+
 interface SiteContent {
   id: string;
   hero_media_type: 'image' | 'video';
@@ -32,6 +51,17 @@ interface SiteContent {
   vocal_thumbnails: ThumbnailItem[];
   manga_thumbnails: ThumbnailItem[];
   video_thumbnails: ThumbnailItem[];
+  // Tool banners
+  tool_sfx_banner_url: string | null;
+  tool_vocal_banner_url: string | null;
+  tool_manga_banner_url: string | null;
+  tool_video_banner_url: string | null;
+  tool_audio_cutter_banner_url: string | null;
+  tool_audio_joiner_banner_url: string | null;
+  tool_audio_converter_banner_url: string | null;
+  tool_audio_recorder_banner_url: string | null;
+  tool_waveform_banner_url: string | null;
+  tool_video_to_audio_banner_url: string | null;
 }
 
 const BUCKET = 'site-assets';
@@ -67,6 +97,16 @@ export function SiteContentEditor() {
         vocal_thumbnails: (data.vocal_thumbnails as unknown as ThumbnailItem[]) || [],
         manga_thumbnails: (data.manga_thumbnails as unknown as ThumbnailItem[]) || [],
         video_thumbnails: (data.video_thumbnails as unknown as ThumbnailItem[]) || [],
+        tool_sfx_banner_url: data.tool_sfx_banner_url || null,
+        tool_vocal_banner_url: data.tool_vocal_banner_url || null,
+        tool_manga_banner_url: data.tool_manga_banner_url || null,
+        tool_video_banner_url: data.tool_video_banner_url || null,
+        tool_audio_cutter_banner_url: data.tool_audio_cutter_banner_url || null,
+        tool_audio_joiner_banner_url: data.tool_audio_joiner_banner_url || null,
+        tool_audio_converter_banner_url: data.tool_audio_converter_banner_url || null,
+        tool_audio_recorder_banner_url: data.tool_audio_recorder_banner_url || null,
+        tool_waveform_banner_url: data.tool_waveform_banner_url || null,
+        tool_video_to_audio_banner_url: data.tool_video_to_audio_banner_url || null,
       });
     } catch (error) {
       console.error('Failed to fetch site content:', error);
@@ -238,6 +278,16 @@ export function SiteContentEditor() {
           vocal_thumbnails: JSON.parse(JSON.stringify(content.vocal_thumbnails)),
           manga_thumbnails: JSON.parse(JSON.stringify(content.manga_thumbnails)),
           video_thumbnails: JSON.parse(JSON.stringify(content.video_thumbnails)),
+          tool_sfx_banner_url: content.tool_sfx_banner_url,
+          tool_vocal_banner_url: content.tool_vocal_banner_url,
+          tool_manga_banner_url: content.tool_manga_banner_url,
+          tool_video_banner_url: content.tool_video_banner_url,
+          tool_audio_cutter_banner_url: content.tool_audio_cutter_banner_url,
+          tool_audio_joiner_banner_url: content.tool_audio_joiner_banner_url,
+          tool_audio_converter_banner_url: content.tool_audio_converter_banner_url,
+          tool_audio_recorder_banner_url: content.tool_audio_recorder_banner_url,
+          tool_waveform_banner_url: content.tool_waveform_banner_url,
+          tool_video_to_audio_banner_url: content.tool_video_to_audio_banner_url,
         })
         .eq('id', 'main');
 
@@ -620,6 +670,39 @@ export function SiteContentEditor() {
             </CardContent>
           </Card>
 
+          {/* Tool Banner Images */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Image className="h-5 w-5" />
+                Tool Banner Images
+              </CardTitle>
+              <CardDescription>Full-width banner images for each tool on the Tools page (21:9 aspect ratio recommended)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {TOOL_BANNERS.map((banner) => (
+                  <ToolBannerUploader
+                    key={banner.id}
+                    label={banner.label}
+                    bannerUrl={content[banner.key] as string | null}
+                    uploading={uploading === banner.id}
+                    onUpload={async (file) => {
+                      setUploading(banner.id);
+                      const url = await uploadFile(file, 'tool-banners');
+                      if (url) {
+                        setContent({ ...content, [banner.key]: url });
+                        toast.success(`${banner.label} banner uploaded!`);
+                      }
+                      setUploading(null);
+                    }}
+                    onRemove={() => setContent({ ...content, [banner.key]: null })}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Thumbnail Grids for each tool */}
           <ThumbnailGridEditor
             title="SFX Generator Thumbnails"
@@ -764,5 +847,79 @@ function ThumbnailGridEditor({
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+interface ToolBannerUploaderProps {
+  label: string;
+  bannerUrl: string | null;
+  uploading: boolean;
+  onUpload: (file: File) => void;
+  onRemove: () => void;
+}
+
+function ToolBannerUploader({ label, bannerUrl, uploading, onUpload, onRemove }: ToolBannerUploaderProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">{label}</Label>
+      <div className="relative aspect-[21/9] border overflow-hidden bg-muted/30 group">
+        {bannerUrl ? (
+          <>
+            <img 
+              src={bannerUrl} 
+              alt={label}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => inputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Replace
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={onRemove}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </>
+        ) : (
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="w-full h-full flex flex-col items-center justify-center gap-2 hover:bg-muted/50 transition-colors"
+          >
+            {uploading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <Upload className="h-8 w-8 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Upload Banner</span>
+                <span className="text-xs text-muted-foreground/60">21:9 aspect ratio</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onUpload(file);
+          e.target.value = '';
+        }}
+      />
+    </div>
   );
 }

@@ -1533,6 +1533,16 @@ export type Database = {
           id: string
           manga_thumbnails: Json | null
           sfx_thumbnails: Json | null
+          tool_audio_converter_banner_url: string | null
+          tool_audio_cutter_banner_url: string | null
+          tool_audio_joiner_banner_url: string | null
+          tool_audio_recorder_banner_url: string | null
+          tool_manga_banner_url: string | null
+          tool_sfx_banner_url: string | null
+          tool_video_banner_url: string | null
+          tool_video_to_audio_banner_url: string | null
+          tool_vocal_banner_url: string | null
+          tool_waveform_banner_url: string | null
           tools_subtitle: string | null
           tools_title: string | null
           updated_at: string | null
@@ -1552,6 +1562,16 @@ export type Database = {
           id?: string
           manga_thumbnails?: Json | null
           sfx_thumbnails?: Json | null
+          tool_audio_converter_banner_url?: string | null
+          tool_audio_cutter_banner_url?: string | null
+          tool_audio_joiner_banner_url?: string | null
+          tool_audio_recorder_banner_url?: string | null
+          tool_manga_banner_url?: string | null
+          tool_sfx_banner_url?: string | null
+          tool_video_banner_url?: string | null
+          tool_video_to_audio_banner_url?: string | null
+          tool_vocal_banner_url?: string | null
+          tool_waveform_banner_url?: string | null
           tools_subtitle?: string | null
           tools_title?: string | null
           updated_at?: string | null
@@ -1571,6 +1591,16 @@ export type Database = {
           id?: string
           manga_thumbnails?: Json | null
           sfx_thumbnails?: Json | null
+          tool_audio_converter_banner_url?: string | null
+          tool_audio_cutter_banner_url?: string | null
+          tool_audio_joiner_banner_url?: string | null
+          tool_audio_recorder_banner_url?: string | null
+          tool_manga_banner_url?: string | null
+          tool_sfx_banner_url?: string | null
+          tool_video_banner_url?: string | null
+          tool_video_to_audio_banner_url?: string | null
+          tool_vocal_banner_url?: string | null
+          tool_waveform_banner_url?: string | null
           tools_subtitle?: string | null
           tools_title?: string | null
           updated_at?: string | null
