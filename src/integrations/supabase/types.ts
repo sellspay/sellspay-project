@@ -1538,7 +1538,9 @@ export type Database = {
           tool_audio_joiner_banner_url: string | null
           tool_audio_recorder_banner_url: string | null
           tool_manga_banner_url: string | null
+          tool_music_splitter_banner_url: string | null
           tool_sfx_banner_url: string | null
+          tool_sfx_isolator_banner_url: string | null
           tool_video_banner_url: string | null
           tool_video_to_audio_banner_url: string | null
           tool_vocal_banner_url: string | null
@@ -1567,7 +1569,9 @@ export type Database = {
           tool_audio_joiner_banner_url?: string | null
           tool_audio_recorder_banner_url?: string | null
           tool_manga_banner_url?: string | null
+          tool_music_splitter_banner_url?: string | null
           tool_sfx_banner_url?: string | null
+          tool_sfx_isolator_banner_url?: string | null
           tool_video_banner_url?: string | null
           tool_video_to_audio_banner_url?: string | null
           tool_vocal_banner_url?: string | null
@@ -1596,7 +1600,9 @@ export type Database = {
           tool_audio_joiner_banner_url?: string | null
           tool_audio_recorder_banner_url?: string | null
           tool_manga_banner_url?: string | null
+          tool_music_splitter_banner_url?: string | null
           tool_sfx_banner_url?: string | null
+          tool_sfx_isolator_banner_url?: string | null
           tool_video_banner_url?: string | null
           tool_video_to_audio_banner_url?: string | null
           tool_vocal_banner_url?: string | null
