@@ -15,7 +15,6 @@ import { useCredits } from '@/hooks/useCredits';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { TopUpDialog } from '@/components/credits/TopUpDialog';
 import EditorChatIcon from '@/components/chat/EditorChatIcon';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 import sellspayLogo from '@/assets/sellspay-nav-logo.png';
 
 const navItems = [
@@ -94,10 +93,7 @@ export default function Header() {
           </nav>
 
           {/* Right Side */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Theme Toggle */}
-            <ThemeToggle />
-
+          <div className="flex items-center gap-1.5 sm:gap-3">
             {/* Credit Wallet - Only show when logged in */}
             {user && (
               <button

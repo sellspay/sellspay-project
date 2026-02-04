@@ -294,8 +294,8 @@ const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
 
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
-      {/* Cosmic Background Image - only show in dark mode */}
-      <div className="absolute inset-0 pointer-events-none dark:block hidden">
+      {/* Cosmic Background Image */}
+      <div className="absolute inset-0 pointer-events-none">
         <img 
           src={authBg} 
           alt="" 
@@ -304,11 +304,6 @@ const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
         />
         {/* Dark overlay for readability */}
         <div className="absolute inset-0 bg-black/40" />
-      </div>
-      
-      {/* Light mode gradient background */}
-      <div className="absolute inset-0 pointer-events-none dark:hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
       </div>
 
       {/* Back to Home */}
@@ -324,14 +319,14 @@ const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-16">
         {/* Premium Welcome Text */}
         <div className="mb-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-3 tracking-tight">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 tracking-tight">
             {showMfaVerification 
               ? 'Two-Factor Authentication' 
               : showForgotPassword 
                 ? 'Reset Password' 
                 : 'Welcome Back'}
           </h1>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-white/60">
             {showMfaVerification
               ? 'Enter the code sent to your email'
               : showForgotPassword 
@@ -384,14 +379,14 @@ const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
               <p className="text-destructive text-sm text-center">{error}</p>
             )}
 
-              <button
-                onClick={handleMfaVerify}
-                disabled={verifyingOtp || otpCode.length !== 6}
-                className="w-full h-12 rounded-lg bg-gradient-to-r from-primary via-accent to-primary border border-primary/60 text-primary-foreground font-medium shadow-lg shadow-primary/30 transition-all duration-300 hover:shadow-xl hover:shadow-primary/40 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {verifyingOtp && <Loader2 className="w-4 h-4 animate-spin" />}
-                {verifyingOtp ? 'Verifying...' : 'Verify & Sign In'}
-              </button>
+            <button
+              onClick={handleMfaVerify}
+              disabled={verifyingOtp || otpCode.length !== 6}
+              className="w-full h-12 rounded-lg bg-gradient-to-r from-primary via-accent to-primary border border-primary/60 text-white font-medium shadow-[0_0_30px_hsl(var(--primary)/0.4)] transition-all duration-300 hover:shadow-[0_0_40px_hsl(var(--primary)/0.6)] disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {verifyingOtp && <Loader2 className="w-4 h-4 animate-spin" />}
+              {verifyingOtp ? 'Verifying...' : 'Verify & Sign In'}
+            </button>
 
             <div className="flex items-center justify-between">
               <button
@@ -438,7 +433,7 @@ const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-medium transition-all duration-300 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/30 disabled:opacity-50"
+                className="w-full h-12 rounded-lg bg-card/40 border border-border/50 text-white font-medium transition-all duration-300 hover:bg-gradient-to-r hover:from-primary hover:via-accent hover:to-primary hover:border-primary/60 hover:shadow-[0_0_30px_hsl(var(--primary)/0.6),0_0_60px_hsl(var(--primary)/0.3)] disabled:opacity-50"
               >
                 {loading ? 'Sending...' : 'Send Reset Link'}
               </button>
@@ -459,7 +454,7 @@ const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={googleLoading}
-                className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-card border border-border text-foreground font-medium transition-all duration-300 hover:bg-secondary hover:shadow-md disabled:opacity-50"
+                className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-card/40 border border-border/50 text-white font-medium transition-all duration-300 hover:bg-white hover:text-black hover:border-white/60 hover:shadow-[0_0_30px_rgba(255,255,255,0.6)] disabled:opacity-50"
               >
                 {googleLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -478,7 +473,7 @@ const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
                 type="button"
                 onClick={handleDiscordSignIn}
                 disabled={discordLoading}
-                className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-[#5865F2] border border-[#5865F2] text-white font-medium transition-all duration-300 hover:bg-[#4752C4] hover:shadow-lg hover:shadow-[#5865F2]/30 disabled:opacity-50"
+                className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-card/40 border border-border/50 text-white font-medium transition-all duration-300 hover:bg-[#5865F2] hover:border-[#5865F2]/60 hover:shadow-[0_0_30px_rgba(88,101,242,0.6),0_0_60px_rgba(88,101,242,0.3)] disabled:opacity-50"
               >
                 {discordLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -494,10 +489,10 @@ const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
             {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
+                <div className="w-full border-t border-white/10" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-background px-4 text-sm text-muted-foreground">or</span>
+                <span className="bg-transparent backdrop-blur-sm px-4 text-sm text-muted-foreground">or</span>
               </div>
             </div>
 
@@ -569,7 +564,7 @@ const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-medium transition-all duration-300 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/30 disabled:opacity-50"
+                className="w-full h-12 rounded-lg bg-card/40 border border-border/50 text-white font-medium transition-all duration-300 hover:bg-gradient-to-r hover:from-primary hover:via-accent hover:to-primary hover:border-primary/60 hover:shadow-[0_0_30px_hsl(var(--primary)/0.6),0_0_60px_hsl(var(--primary)/0.3)] disabled:opacity-50"
               >
                 {loading ? 'Logging in...' : 'Log In'}
               </button>
