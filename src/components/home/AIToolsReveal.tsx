@@ -72,7 +72,7 @@ export function AIToolsReveal() {
     if (!section || !text || cards.length === 0) return;
 
     const panelCount = steps.length;
-    const cardHeight = 640; // Taller rectangle
+    const cardHeight = 420; // Landscape rectangle height
 
     // Set initial styles
     gsap.set(section, { backgroundColor: steps[0].bg });
@@ -157,9 +157,9 @@ export function AIToolsReveal() {
             </h2>
           </div>
 
-          {/* Right card stack area - Rectangle portrait cards */}
+          {/* Right card stack area - Landscape rectangle cards */}
           <div className="relative flex-shrink-0">
-            <div className="relative w-[420px] h-[640px] overflow-hidden rounded-[28px]">
+            <div className="relative w-[680px] h-[420px] overflow-hidden rounded-[28px]">
               {/* Cards container */}
               {steps.map((step, idx) => (
                 <div
