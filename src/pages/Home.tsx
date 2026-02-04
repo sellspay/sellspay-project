@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import HeroSection from '@/components/home/HeroSection';
 import { PartnerLogos } from '@/components/home/PartnerLogos';
 import { ToolsShowcase } from '@/components/home/ToolsShowcase';
+import { AIStudioPromo } from '@/components/home/AIStudioPromo';
 import { ValueProps } from '@/components/home/ValueProps';
 import { FeaturedCreators } from '@/components/home/FeaturedCreators';
 import { Reveal } from '@/components/home/Reveal';
@@ -156,6 +157,9 @@ export default function Home() {
 
       {/* AI Tools Showcase */}
       <ToolsShowcase />
+
+      {/* AI Studio Promo Section */}
+      <AIStudioPromo />
 
       {/* Value Propositions */}
       <ValueProps />
