@@ -41,12 +41,16 @@
   </head>
 
   <body>
-    <!-- Google OAuth branding verification: ensure app name is present in static HTML even if JS is disabled -->
-    <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">SellsPay</div>
+    <!-- 
+      Google OAuth branding verification: 
+      "SellsPay" must appear prominently in raw HTML (even JS-disabled).
+    -->
+    <h1 style="position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;font-size:48px;font-weight:800;">SellsPay</h1>
     <noscript>
-      <div style="padding:24px; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:#000; color:#fff;">
-        <h1 style="margin:0; font-size:28px; letter-spacing:0.02em;">SellsPay</h1>
-        <p style="margin:10px 0 0; opacity:0.72;">Enable JavaScript to use the app.</p>
+      <div style="padding:32px; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:#000; color:#fff;">
+        <h1 style="margin:0 0 16px; font-size:48px; font-weight:800; letter-spacing:-0.02em;">SellsPay</h1>
+        <p style="margin:0; font-size:18px; opacity:0.8;">The ultimate marketplace for digital creators.</p>
+        <p style="margin:8px 0 0; opacity:0.6;">Enable JavaScript to use the app.</p>
       </div>
     </noscript>
     <div id="root"></div>

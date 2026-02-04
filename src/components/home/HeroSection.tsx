@@ -46,8 +46,8 @@ export default function HeroSection() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
       <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
 
-          {/* App name - primary H1 for Google verification */}
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground mb-2 sm:mb-3">
+          {/* App name - primary H1 for Google verification (MUST be prominent!) */}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground mb-4 sm:mb-6 drop-shadow-lg">
             SellsPay
           </h1>
 
