@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Reveal } from './Reveal';
 import { AudioWaveform, MicVocal, Brush, Clapperboard } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
-import { StudioGridView, ToolType, ToolConfig } from './toolkit';
+import { SFXView, VocalView, MangaView, VideoView, StudioGridView, ToolType, ToolConfig } from './toolkit';
 
 const tools: ToolConfig[] = [
   {
@@ -105,6 +105,22 @@ export function ToolsShowcase() {
     setIsTyping(true);
   }, [activeTool]);
 
+  // Render the appropriate view based on active tool
+  const renderToolView = () => {
+    switch (activeTool) {
+      case 'sfx':
+        return <SFXView key="sfx" config={activeConfig} displayedText={displayedText} />;
+      case 'vocal':
+        return <VocalView key="vocal" config={activeConfig} />;
+      case 'manga':
+        return <MangaView key="manga" config={activeConfig} />;
+      case 'video':
+        return <VideoView key="video" config={activeConfig} displayedText={displayedText} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <Reveal>
       <section className="py-16 sm:py-24">
@@ -127,12 +143,12 @@ export function ToolsShowcase() {
             </button>
           </div>
 
-          {/* Fixed aspect ratio Card Container */}
-          <div className="relative mx-auto w-full" style={{ maxWidth: '1400px' }}>
+          {/* Main Tool Showcase Card */}
+          <div className="relative mx-auto w-full mb-8" style={{ maxWidth: '1400px' }}>
             {/* Subtle border accent */}
             <div className="absolute -inset-px bg-gradient-to-br from-foreground/10 via-transparent to-foreground/5 pointer-events-none" />
             
-            {/* Card with subtle border - fixed 16:11 aspect ratio for taller box */}
+            {/* Card with subtle border - fixed 16:11 aspect ratio */}
             <div className="relative overflow-hidden border border-foreground/10 bg-card/30" style={{ aspectRatio: '16 / 11' }}>
               <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 z-20">
                 <div className="flex items-center gap-1 bg-card/95 backdrop-blur-md border border-foreground/20 px-3 py-2">
@@ -160,14 +176,9 @@ export function ToolsShowcase() {
                 </div>
               </div>
 
-              {/* Unified Studio Grid View */}
+              {/* Original Tool-Specific Views */}
               <AnimatePresence mode="wait">
-                <StudioGridView 
-                  key={activeTool} 
-                  config={activeConfig} 
-                  displayedText={displayedText}
-                  toolId={activeTool}
-                />
+                {renderToolView()}
               </AnimatePresence>
               
               {/* Decorative corner accents */}
@@ -179,6 +190,19 @@ export function ToolsShowcase() {
                 <div className="absolute bottom-6 left-6 w-14 h-px bg-foreground/20" />
                 <div className="absolute bottom-6 left-6 w-px h-14 bg-foreground/20" />
               </div>
+            </div>
+          </div>
+
+          {/* NEW: Additional Grid Gallery Below */}
+          <div className="relative mx-auto w-full" style={{ maxWidth: '1400px' }}>
+            <div className="absolute -inset-px bg-gradient-to-br from-foreground/10 via-transparent to-foreground/5 pointer-events-none" />
+            
+            <div className="relative overflow-hidden border border-foreground/10 bg-card/30" style={{ aspectRatio: '16 / 7' }}>
+              <StudioGridView 
+                config={activeConfig} 
+                displayedText={displayedText}
+                toolId={activeTool}
+              />
             </div>
           </div>
         </div>
