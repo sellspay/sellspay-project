@@ -25,8 +25,8 @@ interface ToolBanner {
 const TOOL_BANNERS: ToolBanner[] = [
   { id: 'sfx-generator', label: 'SFX Generator', key: 'tool_sfx_banner_url' },
   { id: 'voice-isolator', label: 'Voice Isolator', key: 'tool_vocal_banner_url' },
-  { id: 'sfx-isolator', label: 'SFX Isolator', key: 'tool_manga_banner_url' },
-  { id: 'music-splitter', label: 'Music Splitter', key: 'tool_video_banner_url' },
+  { id: 'sfx-isolator', label: 'SFX Isolator', key: 'tool_sfx_isolator_banner_url' },
+  { id: 'music-splitter', label: 'Music Splitter', key: 'tool_music_splitter_banner_url' },
   { id: 'audio-cutter', label: 'Audio Cutter', key: 'tool_audio_cutter_banner_url' },
   { id: 'audio-joiner', label: 'Audio Joiner', key: 'tool_audio_joiner_banner_url' },
   { id: 'audio-converter', label: 'Audio Converter', key: 'tool_audio_converter_banner_url' },
@@ -54,8 +54,8 @@ interface SiteContent {
   // Tool banners
   tool_sfx_banner_url: string | null;
   tool_vocal_banner_url: string | null;
-  tool_manga_banner_url: string | null;
-  tool_video_banner_url: string | null;
+  tool_sfx_isolator_banner_url: string | null;
+  tool_music_splitter_banner_url: string | null;
   tool_audio_cutter_banner_url: string | null;
   tool_audio_joiner_banner_url: string | null;
   tool_audio_converter_banner_url: string | null;
@@ -99,8 +99,8 @@ export function SiteContentEditor() {
         video_thumbnails: (data.video_thumbnails as unknown as ThumbnailItem[]) || [],
         tool_sfx_banner_url: data.tool_sfx_banner_url || null,
         tool_vocal_banner_url: data.tool_vocal_banner_url || null,
-        tool_manga_banner_url: data.tool_manga_banner_url || null,
-        tool_video_banner_url: data.tool_video_banner_url || null,
+        tool_sfx_isolator_banner_url: data.tool_sfx_isolator_banner_url || null,
+        tool_music_splitter_banner_url: data.tool_music_splitter_banner_url || null,
         tool_audio_cutter_banner_url: data.tool_audio_cutter_banner_url || null,
         tool_audio_joiner_banner_url: data.tool_audio_joiner_banner_url || null,
         tool_audio_converter_banner_url: data.tool_audio_converter_banner_url || null,
@@ -280,8 +280,8 @@ export function SiteContentEditor() {
           video_thumbnails: JSON.parse(JSON.stringify(content.video_thumbnails)),
           tool_sfx_banner_url: content.tool_sfx_banner_url,
           tool_vocal_banner_url: content.tool_vocal_banner_url,
-          tool_manga_banner_url: content.tool_manga_banner_url,
-          tool_video_banner_url: content.tool_video_banner_url,
+          tool_sfx_isolator_banner_url: content.tool_sfx_isolator_banner_url,
+          tool_music_splitter_banner_url: content.tool_music_splitter_banner_url,
           tool_audio_cutter_banner_url: content.tool_audio_cutter_banner_url,
           tool_audio_joiner_banner_url: content.tool_audio_joiner_banner_url,
           tool_audio_converter_banner_url: content.tool_audio_converter_banner_url,
