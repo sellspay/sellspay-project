@@ -34,14 +34,6 @@ export default function HeroSection() {
 
       <div className="container mx-auto px-6 sm:px-8 lg:px-12 relative z-10">
         <div className="text-center flex flex-col items-center max-w-7xl mx-auto pt-20 pb-32">
-          {/* Badge - Clean, no glow */}
-          <div className="inline-flex items-center gap-3 px-6 py-3 border border-primary bg-transparent mb-10 sm:mb-12">
-            <span className="w-2 h-2 bg-primary" />
-            <span className="text-base sm:text-lg text-primary font-semibold tracking-wide uppercase">
-              The #1 Marketplace for Creators
-            </span>
-          </div>
-
           {/* MASSIVE headline - Clean, no shadows */}
           <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[140px] font-bold tracking-tighter leading-[0.9] mb-10 sm:mb-12">
             <span className="text-foreground block font-light italic">
