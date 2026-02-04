@@ -14,7 +14,7 @@ export function ToolDetailView({ tool, bannerUrl, onLaunch }: ToolDetailViewProp
   const Icon = tool.icon;
   
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="min-h-full">
       {/* Hero Section - Full viewport height, massive banner */}
       <section className="relative w-full min-h-[85vh] flex items-center">
         {/* Background Image/Gradient */}
