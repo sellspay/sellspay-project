@@ -36,6 +36,7 @@ interface PayoutMethodSelectorProps {
   onCheckStripeStatus: () => void;
   onStripeDisconnected?: () => void;
   onStripeStatusLoaded?: (connected: boolean, onboardingComplete: boolean) => void;
+  sellerMode?: "CONNECT" | "MOR" | null;
 }
 
 interface BankAccount {
@@ -57,7 +58,9 @@ export function PayoutMethodSelector({
   onCheckStripeStatus,
   onStripeDisconnected,
   onStripeStatusLoaded,
+  sellerMode,
 }: PayoutMethodSelectorProps) {
+  const isMorMode = sellerMode === "MOR";
   const [preferredMethod, setPreferredMethod] = useState<"stripe" | "payoneer" | "paypal">("stripe");
   const [payoneerEmail, setPayoneerEmail] = useState("");
   const [payoneerStatus, setPayoneerStatus] = useState<string | null>(null);
@@ -531,8 +534,9 @@ export function PayoutMethodSelector({
 
       <p className="text-sm font-medium text-muted-foreground">Payout Providers</p>
 
-      {/* Stripe Section */}
-      <Card className={`${preferredMethod === "stripe" ? "border-primary" : "border-border"}`}>
+      {/* Stripe Section - Hidden for MOR mode unless already connected */}
+      {(!isMorMode || stripeConnected || stripeOnboardingComplete) && (
+      <Card className={`${preferredMethod === "stripe" ? "border-primary" : "border-border"} ${isMorMode && !stripeOnboardingComplete ? "opacity-60" : ""}`}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -542,9 +546,14 @@ export function PayoutMethodSelector({
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   Stripe Connect
-                  {preferredMethod === "stripe" && (
+                  {preferredMethod === "stripe" && !isMorMode && (
                     <Badge variant="secondary" className="bg-primary/20 text-primary text-xs">
                       Primary
+                    </Badge>
+                  )}
+                  {isMorMode && !stripeOnboardingComplete && (
+                    <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">
+                      Not Available
                     </Badge>
                   )}
                 </CardTitle>
@@ -566,7 +575,9 @@ export function PayoutMethodSelector({
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            {stripeOnboardingComplete
+            {isMorMode && !stripeOnboardingComplete
+              ? "Stripe Connect is not available in your region. Use PayPal or Payoneer for withdrawals."
+              : stripeOnboardingComplete
               ? "Your bank account is connected through Stripe. Payouts arrive in 1-3 business days."
               : stripeConnected
               ? "Your information is being reviewed by Stripe. This typically takes a few minutes, but can take up to 24 hours. Click refresh to check status."
@@ -641,15 +652,18 @@ export function PayoutMethodSelector({
             )}
           </div>
 
+          {!isMorMode && (
           <div className="pt-2 text-xs text-muted-foreground space-y-1">
             <p>✓ Standard withdrawal: <span className="text-emerald-500 font-medium">Free</span> (1-3 business days)</p>
             <p>✓ Instant withdrawal: <span className="text-amber-500 font-medium">3% fee</span></p>
           </div>
+          )}
         </CardContent>
       </Card>
+      )}
 
       {/* Payoneer Section */}
-      <Card className={`${preferredMethod === "payoneer" ? "border-primary" : "border-border"}`}>
+      <Card className={`${preferredMethod === "payoneer" ? "border-primary" : "border-border"} ${isMorMode ? "ring-1 ring-amber-500/30" : ""}`}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -662,6 +676,11 @@ export function PayoutMethodSelector({
                   {preferredMethod === "payoneer" && (
                     <Badge variant="secondary" className="bg-primary/20 text-primary text-xs">
                       Primary
+                    </Badge>
+                  )}
+                  {isMorMode && payoneerStatus !== "active" && (
+                    <Badge variant="secondary" className="bg-amber-500/20 text-amber-400 text-xs">
+                      Recommended
                     </Badge>
                   )}
                 </CardTitle>
@@ -753,7 +772,7 @@ export function PayoutMethodSelector({
       </Card>
 
       {/* PayPal Section */}
-      <Card className={`${preferredMethod === "paypal" ? "border-primary" : "border-border"}`}>
+      <Card className={`${preferredMethod === "paypal" ? "border-primary" : "border-border"} ${isMorMode ? "ring-1 ring-amber-500/30" : ""}`}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -766,6 +785,11 @@ export function PayoutMethodSelector({
                   {preferredMethod === "paypal" && (
                     <Badge variant="secondary" className="bg-primary/20 text-primary text-xs">
                       Primary
+                    </Badge>
+                  )}
+                  {isMorMode && !paypalConnected && (
+                    <Badge variant="secondary" className="bg-amber-500/20 text-amber-400 text-xs">
+                      Recommended
                     </Badge>
                   )}
                 </CardTitle>

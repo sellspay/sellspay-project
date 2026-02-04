@@ -23,7 +23,7 @@
 
 ---
 
-## 🔄 Phase 2: IN PROGRESS - Seller Mode & UI Components
+## ✅ Phase 2: COMPLETED - Seller Mode & UI Components
 
 ### Completed Items:
 - [x] Created `CountryEligibilityBadge` component for showing eligibility status
@@ -32,13 +32,51 @@
 - [x] Created country code mapping utility (`src/lib/countryCodeMap.ts`)
 - [x] Updated creator application to set `seller_country_code` in profile on submission
 - [x] Updated `create-connect-account` to check eligibility and set seller_mode
-
-### Remaining:
-- [ ] Check country eligibility on Stripe onboarding and conditionally show MOR flow
+- [x] Updated `PayoutMethodSelector` to accept `sellerMode` prop and show conditional UI:
+  - Hides Stripe Connect for MOR sellers (unless already connected)
+  - Shows "Recommended" badge on PayPal/Payoneer for MOR sellers
+  - Adds ring highlight to MOR payout options
 
 ---
 
-## Executive Summary
+## ✅ Phase 3: COMPLETED - Request Payout Flow
+
+### Completed Items:
+- [x] Wallet Ledger System (database functions, WalletCard, get-wallet-balance)
+- [x] Checkout flow updates (funds_flow_mode, available_on in purchases)
+- [x] Created unified `request-payout` edge function that:
+  - Checks available balance and minimum threshold ($20)
+  - For CONNECT sellers: Auto-processes via Stripe immediately
+  - For MOR sellers: Creates payout request for admin approval
+  - Notifies admin of new payout requests
+- [x] Updated WalletCard with payout request dialog:
+  - Provider selection (Stripe/PayPal/Payoneer)
+  - Instant vs standard payout option for Stripe
+  - Shows "Recommended" badge for MOR sellers
+  - Success confirmation with approval status
+
+---
+
+## ✅ Phase 4: COMPLETED - Admin Payout Approval
+
+### Completed Items:
+- [x] PayoutQueue admin component with approve/deny functionality
+- [x] Created `process-payout` edge function to execute approved payouts via PayPal/Payoneer
+- [x] Added "Process Now" button to automatically execute approved payouts
+- [x] Audit logging for admin actions
+- [x] CSV export for payout reports
+
+---
+
+## 🔄 Phase 5: IN PROGRESS - Dispute & Refund Handling
+
+### Remaining:
+- [ ] Handle charge.refunded webhook event (create refund_debit ledger entry)
+- [ ] Handle charge.dispute.created (lock seller balance)
+- [ ] Handle charge.dispute.closed (unlock or debit based on outcome)
+- [ ] Create DisputesPanel admin component
+
+---
 This plan implements a compliant, scalable hybrid payments system that supports both **Stripe Connect sellers** (eligible countries) and **Platform MoR (Merchant of Record) sellers** (non-eligible countries). The system allows sellers from any country to sell digital products while maintaining proper payment processing compliance.
 
 ---

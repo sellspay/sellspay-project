@@ -59,11 +59,12 @@ export default function PayoutQueue() {
   const [statusFilter, setStatusFilter] = useState<string>("requested");
   const [actionDialog, setActionDialog] = useState<{
     payout: Payout;
-    action: "approve" | "deny" | "mark_sent";
+    action: "approve" | "deny" | "mark_sent" | "process";
   } | null>(null);
   const [adminNotes, setAdminNotes] = useState("");
   const [externalRef, setExternalRef] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [processingPayoutId, setProcessingPayoutId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPayouts();
@@ -119,42 +120,58 @@ export default function PayoutQueue() {
     const { payout, action } = actionDialog;
 
     try {
-      let updateData: Record<string, unknown> = {};
+      if (action === "process") {
+        // Call process-payout edge function
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Not authenticated");
 
-      if (action === "approve") {
-        updateData = {
-          status: "approved",
-          approved_at: new Date().toISOString(),
-          admin_notes: adminNotes || null,
-        };
-      } else if (action === "deny") {
-        updateData = {
-          status: "cancelled",
-          admin_notes: adminNotes || "Denied by admin",
-        };
-      } else if (action === "mark_sent") {
-        updateData = {
-          status: "sent",
-          sent_at: new Date().toISOString(),
-          external_reference: externalRef || null,
-          admin_notes: adminNotes || null,
-        };
+        const response = await supabase.functions.invoke("process-payout", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: { payoutId: payout.id },
+        });
+
+        if (response.error) throw new Error(response.error.message);
+        if (!response.data.success) throw new Error(response.data.error);
+
+        toast.success(`Payout of $${(payout.amount_cents / 100).toFixed(2)} processed via ${payout.provider_type}!`);
+      } else {
+        let updateData: Record<string, unknown> = {};
+
+        if (action === "approve") {
+          updateData = {
+            status: "approved",
+            approved_at: new Date().toISOString(),
+            admin_notes: adminNotes || null,
+          };
+        } else if (action === "deny") {
+          updateData = {
+            status: "cancelled",
+            admin_notes: adminNotes || "Denied by admin",
+          };
+        } else if (action === "mark_sent") {
+          updateData = {
+            status: "sent",
+            sent_at: new Date().toISOString(),
+            external_reference: externalRef || null,
+            admin_notes: adminNotes || null,
+          };
+        }
+
+        const { error } = await supabase
+          .from("payouts")
+          .update(updateData)
+          .eq("id", payout.id);
+
+        if (error) throw error;
+
+        toast.success(
+          action === "approve"
+            ? "Payout approved"
+            : action === "deny"
+            ? "Payout denied"
+            : "Payout marked as sent"
+        );
       }
-
-      const { error } = await supabase
-        .from("payouts")
-        .update(updateData)
-        .eq("id", payout.id);
-
-      if (error) throw error;
-
-      toast.success(
-        action === "approve"
-          ? "Payout approved"
-          : action === "deny"
-          ? "Payout denied"
-          : "Payout marked as sent"
-      );
 
       setActionDialog(null);
       setAdminNotes("");
@@ -162,9 +179,33 @@ export default function PayoutQueue() {
       fetchPayouts();
     } catch (error) {
       console.error("Error updating payout:", error);
-      toast.error("Failed to update payout");
+      toast.error(error instanceof Error ? error.message : "Failed to update payout");
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleProcessPayout = async (payout: Payout) => {
+    setProcessingPayoutId(payout.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await supabase.functions.invoke("process-payout", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { payoutId: payout.id },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+      if (!response.data.success) throw new Error(response.data.error);
+
+      toast.success(`Payout of $${(payout.amount_cents / 100).toFixed(2)} sent via ${payout.provider_type}!`);
+      fetchPayouts();
+    } catch (error) {
+      console.error("Error processing payout:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to process payout");
+    } finally {
+      setProcessingPayoutId(null);
     }
   };
 
@@ -388,15 +429,29 @@ export default function PayoutQueue() {
                               </>
                             )}
                             {payout.status === "approved" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  setActionDialog({ payout, action: "mark_sent" })
-                                }
-                              >
-                                Mark Sent
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => handleProcessPayout(payout)}
+                                  disabled={processingPayoutId === payout.id}
+                                >
+                                  {processingPayoutId === payout.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    "Process Now"
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    setActionDialog({ payout, action: "mark_sent" })
+                                  }
+                                >
+                                  Mark Sent
+                                </Button>
+                              </>
                             )}
                             {payout.status === "failed" && (
                               <AlertCircle className="h-4 w-4 text-red-500" />

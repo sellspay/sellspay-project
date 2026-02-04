@@ -1604,6 +1604,7 @@ export default function Settings() {
                   setStripeAccountId(connected ? "connected" : null);
                   setStripeOnboardingComplete(complete);
                 }}
+                sellerMode={sellerMode}
               />
               
               {/* Stripe Onboarding Guide Dialog */}
