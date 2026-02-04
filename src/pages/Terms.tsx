@@ -12,7 +12,7 @@ export default function Terms() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">1. Acceptance of Terms</h2>
             <p>
-              By accessing and using Sellspay ("the Platform"), you agree to be bound by these 
+              By accessing and using SellsPay ("the Platform"), you agree to be bound by these 
               Terms of Service. If you do not agree to these terms, please do not use our services.
             </p>
           </section>
@@ -20,7 +20,7 @@ export default function Terms() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">2. Description of Service</h2>
             <p>
-              Sellspay is a marketplace platform that connects creators with digital products, 
+              SellsPay is a marketplace platform that connects creators with digital products, 
               tools, and services for video editing and content creation. We provide:
             </p>
             <ul className="list-disc pl-6 space-y-2">
