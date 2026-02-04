@@ -134,33 +134,34 @@ export default function HeroSection() {
 
       <div className="container mx-auto px-6 sm:px-8 lg:px-12 relative z-10">
         <div className="text-center flex flex-col items-center max-w-7xl mx-auto pt-20 pb-32">
-          {/* MASSIVE headline - Clean, no shadows */}
+          {/* MASSIVE headline - Dark charcoal for light video backgrounds */}
           <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[140px] font-bold tracking-tighter leading-[0.9] mb-10 sm:mb-12">
-            <span className="text-foreground block font-light italic">
+            <span className="block font-light italic" style={{ color: 'hsl(var(--hero-text))' }}>
               {content.hero_headline}
             </span>
-            <span className="text-foreground block mt-2 sm:mt-4">
+            <span className="block mt-2 sm:mt-4" style={{ color: 'hsl(var(--hero-text))' }}>
               {content.hero_subheadline}{' '}
               <span 
                 key={activeWord} 
-                className="inline-block text-primary animate-fade-in"
+                className="inline-block animate-fade-in"
+                style={{ color: 'hsl(var(--hero-accent))' }}
               >
                 {content.hero_rotating_words[activeWord]}
               </span>
             </span>
           </h1>
 
-          {/* Subtitle - Clean */}
-          <p className="text-xl sm:text-2xl md:text-3xl text-foreground/70 max-w-4xl mb-12 sm:mb-16 leading-relaxed font-light">
+          {/* Subtitle - Muted dark for readability */}
+          <p className="text-xl sm:text-2xl md:text-3xl max-w-4xl mb-12 sm:mb-16 leading-relaxed font-light" style={{ color: 'hsl(var(--hero-text-muted))' }}>
             {content.hero_subtitle}
           </p>
 
-          {/* CTA Buttons - Bold, no shadows, straight edges */}
+          {/* CTA Buttons - Vibrant purple primary, dark outline secondary */}
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 w-full sm:w-auto">
             <Button 
               asChild 
               size="lg" 
-              className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5"
+              className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl font-bold uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5 btn-hero-primary"
             >
               <Link to="/products">
                 Start Browsing
@@ -172,7 +173,7 @@ export default function HeroSection() {
                 asChild 
                 size="lg" 
                 variant="outline" 
-                className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl border-2 border-foreground text-foreground bg-transparent hover:bg-foreground hover:text-background font-bold uppercase tracking-wider transition-all duration-200"
+                className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl font-bold uppercase tracking-wider transition-all duration-200 btn-hero-outline"
               >
                 <Link to="/signup">
                   Create Account
@@ -183,7 +184,7 @@ export default function HeroSection() {
                 asChild 
                 size="lg" 
                 variant="outline" 
-                className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl border-2 border-foreground text-foreground bg-transparent hover:bg-foreground hover:text-background font-bold uppercase tracking-wider transition-all duration-200"
+                className="h-16 sm:h-18 px-14 sm:px-20 text-lg sm:text-xl font-bold uppercase tracking-wider transition-all duration-200 btn-hero-outline"
               >
                 <Link to="/creators">
                   Meet Creators
@@ -192,31 +193,31 @@ export default function HeroSection() {
             )}
           </div>
 
-          {/* Stats row - Larger numbers */}
-          <div className="flex items-center gap-10 sm:gap-16 mt-20 sm:mt-28 text-foreground/90">
+          {/* Stats row - Dark text for light backgrounds */}
+          <div className="flex items-center gap-10 sm:gap-16 mt-20 sm:mt-28">
             <div className="text-center">
-              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground">{content.hero_stats.assets}</div>
-              <div className="text-base sm:text-lg text-muted-foreground mt-1">Digital Assets</div>
+              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold" style={{ color: 'hsl(var(--hero-text))' }}>{content.hero_stats.assets}</div>
+              <div className="text-base sm:text-lg mt-1" style={{ color: 'hsl(var(--hero-text-muted))' }}>Digital Assets</div>
             </div>
-            <div className="w-px h-16 bg-foreground/20" />
+            <div className="w-px h-16" style={{ backgroundColor: 'hsl(var(--hero-text) / 0.2)' }} />
             <div className="text-center">
-              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground">{content.hero_stats.creators}</div>
-              <div className="text-base sm:text-lg text-muted-foreground mt-1">Pro Creators</div>
+              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold" style={{ color: 'hsl(var(--hero-text))' }}>{content.hero_stats.creators}</div>
+              <div className="text-base sm:text-lg mt-1" style={{ color: 'hsl(var(--hero-text-muted))' }}>Pro Creators</div>
             </div>
-            <div className="w-px h-16 bg-foreground/20" />
+            <div className="w-px h-16" style={{ backgroundColor: 'hsl(var(--hero-text) / 0.2)' }} />
             <div className="text-center">
-              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground">{content.hero_stats.downloads}</div>
-              <div className="text-base sm:text-lg text-muted-foreground mt-1">Downloads</div>
+              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold" style={{ color: 'hsl(var(--hero-text))' }}>{content.hero_stats.downloads}</div>
+              <div className="text-base sm:text-lg mt-1" style={{ color: 'hsl(var(--hero-text-muted))' }}>Downloads</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-muted-foreground animate-bounce">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 animate-bounce" style={{ color: 'hsl(var(--hero-text-muted))' }}>
         <span className="text-sm font-medium">Scroll to explore</span>
-        <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/50 flex items-start justify-center p-1.5">
-          <div className="w-1.5 h-3 bg-muted-foreground/50 rounded-full animate-pulse" />
+        <div className="w-6 h-10 rounded-full border-2 flex items-start justify-center p-1.5" style={{ borderColor: 'hsl(var(--hero-text) / 0.3)' }}>
+          <div className="w-1.5 h-3 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(var(--hero-text) / 0.4)' }} />
         </div>
       </div>
     </section>
