@@ -248,6 +248,11 @@ const { user, signIn, signOut, resetPassword, signInWithGoogle } = useAuth();
     setGoogleLoading(true);
     setError(null);
     try {
+      // Persist where to go after OAuth finishes
+      const params = new URLSearchParams(location.search);
+      const next = params.get('next') || '/';
+      localStorage.setItem('postAuthRedirect', next);
+
       const { error } = await signInWithGoogle();
       if (error) throw error;
     } catch (err: any) {
