@@ -4,11 +4,14 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger);
 
+import aiPanel1 from "@/assets/ai-panel-1.png";
+
 type Step = {
   bg: string;
   text: string;
   subtext: string;
   headline: string[];
+  image?: string;
 };
 
 export function AIToolsReveal() {
@@ -21,7 +24,8 @@ export function AIToolsReveal() {
       bg: "#0a0a0a", 
       text: "#ffffff", 
       subtext: "rgba(255,255,255,0.70)",
-      headline: ["AI Studio", "Tools"],
+      headline: ["Generate anything", "from Simple prompts"],
+      image: aiPanel1,
     },
     { 
       bg: "#ffffff", 
@@ -72,7 +76,8 @@ export function AIToolsReveal() {
     if (!section || !text || cards.length === 0) return;
 
     const panelCount = steps.length;
-    const cardHeight = 500; // Landscape rectangle height
+    // Use viewport-relative height for responsive card stacking
+    const cardHeight = window.innerHeight * 0.6;
 
     // Set initial styles
     gsap.set(section, { backgroundColor: steps[0].bg });
@@ -141,65 +146,77 @@ export function AIToolsReveal() {
     <section ref={sectionRef} className="relative w-full">
       {/* Full viewport pinned area */}
       <div className="relative h-screen w-full overflow-hidden">
-        {/* Text positioned absolutely on the left */}
-        <div
-          ref={textRef}
-          className="absolute left-[5%] top-1/2 -translate-y-1/2 z-10"
-        >
-          <h2 
-            data-headline 
-            className="text-[5rem] md:text-[7rem] lg:text-[9rem] xl:text-[10rem] font-black leading-[0.85] tracking-[-0.02em]"
-            style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
+        {/* Responsive container for proper spacing */}
+        <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-0 px-4 lg:px-0">
+          
+          {/* Text - stacked on mobile, left side on desktop */}
+          <div
+            ref={textRef}
+            className="lg:absolute lg:left-[4%] xl:left-[5%] lg:top-1/2 lg:-translate-y-1/2 z-10 text-center lg:text-left lg:max-w-[35%] xl:max-w-[40%]"
           >
-            <span className="block">AI Studio</span>
-            <span className="block">Tools</span>
-          </h2>
-        </div>
+            <h2 
+              data-headline 
+              className="text-[2.5rem] sm:text-[3.5rem] md:text-[4.5rem] lg:text-[5rem] xl:text-[6rem] 2xl:text-[7rem] font-black leading-[0.9] tracking-[-0.02em]"
+              style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
+            >
+              <span className="block">Generate anything</span>
+              <span className="block">from Simple prompts</span>
+            </h2>
+          </div>
 
-        {/* Card positioned on the right side, vertically centered */}
-        <div className="absolute right-[5%] top-1/2 -translate-y-1/2">
-          <div className="relative w-[55vw] max-w-[900px] h-[500px] overflow-hidden rounded-[32px]">
-            {/* Cards container */}
-            {steps.map((step, idx) => (
-              <div
-                key={idx}
-                ref={(el) => { cardsRef.current[idx] = el; }}
-                className="absolute inset-0 will-change-transform"
-              >
-                {/* The actual card */}
-                <div 
-                  className="relative h-full w-full rounded-[32px] border border-white/10 overflow-hidden"
-                  style={{
-                    backgroundColor: cardColors[idx],
-                    boxShadow: '0 -20px 60px -15px rgba(0,0,0,0.6)',
-                  }}
+          {/* Card - below text on mobile, right side on desktop */}
+          <div className="lg:absolute lg:right-[3%] xl:right-[4%] lg:top-1/2 lg:-translate-y-1/2">
+            <div className="relative w-[90vw] sm:w-[80vw] md:w-[70vw] lg:w-[50vw] xl:w-[52vw] max-w-[850px] aspect-[16/10] overflow-hidden rounded-[20px] sm:rounded-[28px] lg:rounded-[32px]">
+              {/* Cards container */}
+              {steps.map((step, idx) => (
+                <div
+                  key={idx}
+                  ref={(el) => { cardsRef.current[idx] = el; }}
+                  className="absolute inset-0 will-change-transform"
                 >
-                  {/* Card content placeholder */}
-                  <div className="h-full w-full flex items-center justify-center">
-                    <span 
-                      className="text-3xl font-medium"
-                      style={{ 
-                        color: cardColors[idx] === '#1a1a1a' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)' 
-                      }}
-                    >
-                      Panel {idx + 1}
-                    </span>
+                  {/* The actual card */}
+                  <div 
+                    className="relative h-full w-full rounded-[20px] sm:rounded-[28px] lg:rounded-[32px] border border-white/10 overflow-hidden"
+                    style={{
+                      backgroundColor: cardColors[idx],
+                      boxShadow: '0 -20px 60px -15px rgba(0,0,0,0.6)',
+                    }}
+                  >
+                    {/* Card content - image or placeholder */}
+                    {step.image ? (
+                      <img 
+                        src={step.image} 
+                        alt={step.headline.join(' ')} 
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center">
+                        <span 
+                          className="text-xl sm:text-2xl lg:text-3xl font-medium"
+                          style={{ 
+                            color: cardColors[idx] === '#1a1a1a' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)' 
+                          }}
+                        >
+                          Panel {idx + 1}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            {/* Prompt box overlay */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center z-50">
-              <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/15 bg-black/70 px-5 py-3.5 backdrop-blur-xl">
-                <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-base">
-                  🔊
-                </div>
-                <div className="min-w-[260px] text-sm text-white/80">
-                  Describe what you want to create…
-                </div>
-                <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-base">
-                  ⬆️
+              {/* Prompt box overlay */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-3 sm:bottom-4 lg:bottom-6 flex justify-center z-50">
+                <div className="pointer-events-auto flex items-center gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border border-white/15 bg-black/70 px-3 sm:px-5 py-2.5 sm:py-3.5 backdrop-blur-xl">
+                  <div className="grid h-7 w-7 sm:h-9 sm:w-9 place-items-center rounded-lg sm:rounded-xl bg-white/10 text-sm sm:text-base">
+                    🔊
+                  </div>
+                  <div className="min-w-[160px] sm:min-w-[220px] lg:min-w-[260px] text-xs sm:text-sm text-white/80">
+                    Describe what you want to create…
+                  </div>
+                  <div className="grid h-7 w-7 sm:h-9 sm:w-9 place-items-center rounded-lg sm:rounded-xl bg-white/10 text-sm sm:text-base">
+                    ⬆️
+                  </div>
                 </div>
               </div>
             </div>
