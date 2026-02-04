@@ -101,7 +101,7 @@ export default function Header() {
 
   return (
     <header className={cn(
-      "sticky top-0 z-50 w-full",
+      "fixed top-0 z-50 w-full",
       // Transparent glassmorphic background
       "bg-background/60 backdrop-blur-xl",
       // Clean border
