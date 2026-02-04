@@ -16,7 +16,7 @@ export default function HeroSection() {
     }, 2000);
     return () => clearInterval(interval);
   }, []);
-  return <section className="relative min-h-[80vh] sm:min-h-[90vh] flex items-center overflow-hidden">
+  return <section className="relative min-h-[70vh] sm:min-h-[80vh] lg:min-h-[90vh] flex items-center overflow-hidden">
       {/* Cosmic background image */}
       <div className="absolute inset-0 z-0">
         {/* Background image */}
@@ -46,13 +46,9 @@ export default function HeroSection() {
     }} />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
-      <div className="text-center max-w-4xl mx-[166px] my-0 px-0 py-[4px] flex-col flex items-center justify-center">
-
-          {/* App name - primary H1 for Google verification (MUST be prominent!) */}
-          
-
+        <div className="text-center max-w-4xl mx-auto flex flex-col items-center justify-center py-1">
           {/* Tagline */}
-          <p className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold tracking-tight mb-3 sm:mb-6 px-2">
              <span className="text-foreground drop-shadow-lg">
                Level Up Your
              </span>
@@ -69,7 +65,7 @@ export default function HeroSection() {
                 Creative Workflow
               </span>
               {/* Underline decoration */}
-              <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg className="absolute -bottom-1 sm:-bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M2 8.5C50 2.5 100 2.5 150 8.5C200 14.5 250 2.5 298 8.5" stroke="url(#gradient)" strokeWidth="3" strokeLinecap="round" className="drop-shadow-lg" style={{
                 filter: 'drop-shadow(0 0 8px rgba(168, 85, 247, 0.8))'
               }} />
@@ -82,33 +78,37 @@ export default function HeroSection() {
                 </defs>
               </svg>
             </span>
-          </p>
+          </h1>
 
           {/* Subtitle with rotating words */}
-          <p className="text-lg sm:text-xl lg:text-2xl text-muted-foreground max-w-2xl mb-8 sm:mb-10 leading-relaxed px-2">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-2xl mb-6 sm:mb-10 leading-relaxed px-4">
             Discover premium <span className="text-foreground font-semibold animate-fade-in" key={activeWord}>{floatingWords[activeWord]}</span> crafted by
             <br className="hidden sm:block" />
             professional creators worldwide.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-12 sm:mb-16 w-full sm:w-auto px-4 sm:px-0">
-            <Button asChild size="lg" className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 group w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-16 w-full sm:w-auto px-4 sm:px-0">
+            <Button asChild size="lg" className="h-11 sm:h-14 px-5 sm:px-8 text-sm sm:text-lg rounded-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 group w-full sm:w-auto">
               <Link to="/products">
                 Explore Store
                 <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
-            {!user ? <Button asChild size="lg" variant="outline" className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg rounded-full border-2 hover:bg-foreground/5 w-full sm:w-auto">
+            {!user ? (
+              <Button asChild size="lg" variant="outline" className="h-11 sm:h-14 px-5 sm:px-8 text-sm sm:text-lg rounded-full border-2 hover:bg-foreground/5 w-full sm:w-auto">
                 <Link to="/signup">
                   Join for Free
                 </Link>
-              </Button> : <Button asChild size="lg" variant="outline" className="h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg rounded-full border-2 hover:bg-foreground/5 group w-full sm:w-auto">
+              </Button>
+            ) : (
+              <Button asChild size="lg" variant="outline" className="h-11 sm:h-14 px-5 sm:px-8 text-sm sm:text-lg rounded-full border-2 hover:bg-foreground/5 group w-full sm:w-auto">
                 <Link to="/creators">
                   <Play className="mr-2 h-4 w-4 sm:h-5 sm:w-5 fill-current" />
                   Meet Creators
                 </Link>
-              </Button>}
+              </Button>
+            )}
           </div>
         </div>
       </div>

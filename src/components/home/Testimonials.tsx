@@ -105,20 +105,20 @@ export function Testimonials() {
   const others = testimonials.filter(t => !t.featured);
 
   return (
-    <section className="relative py-24 lg:py-32 overflow-hidden">
+    <section className="relative py-16 sm:py-24 lg:py-32 overflow-hidden">
       {/* Background gradient */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background via-muted/30 to-background" />
       
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
         {/* Header */}
-        <Reveal className="text-center mb-16 lg:mb-20">
-          <p className="text-primary font-medium mb-4 tracking-wide uppercase text-sm">
+        <Reveal className="text-center mb-10 sm:mb-16 lg:mb-20">
+          <p className="text-primary font-medium mb-3 sm:mb-4 tracking-wide uppercase text-xs sm:text-sm">
             Real Feedback
           </p>
-          <h2 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-6 tracking-tight">
+          <h2 className="text-2xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-4 sm:mb-6 tracking-tight">
             Creators Love Us
           </h2>
-          <p className="text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-sm sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
             Don't just take our word for it
           </p>
         </Reveal>
@@ -128,43 +128,43 @@ export function Testimonials() {
           {/* Featured testimonial - large */}
           {featured && (
             <Reveal delay={100} className="lg:col-span-7">
-              <div className="relative h-full p-8 lg:p-10 rounded-3xl bg-gradient-to-br from-primary/10 via-card to-card border border-primary/20 overflow-hidden">
+              <div className="relative h-full p-5 sm:p-8 lg:p-10 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-primary/10 via-card to-card border border-primary/20 overflow-hidden">
                 {/* Decorative quote */}
-                <Quote className="absolute top-6 right-6 h-24 w-24 text-primary/10" />
+                <Quote className="absolute top-4 sm:top-6 right-4 sm:right-6 h-16 w-16 sm:h-24 sm:w-24 text-primary/10" />
                 
                 <div className="relative z-10">
                   <StarRating rating={featured.rating} />
                   
-                  <blockquote className="mt-8 mb-10">
-                    <p className="text-xl lg:text-2xl xl:text-3xl font-medium text-foreground leading-relaxed">
+                  <blockquote className="mt-5 sm:mt-8 mb-6 sm:mb-10">
+                    <p className="text-base sm:text-xl lg:text-2xl xl:text-3xl font-medium text-foreground leading-relaxed">
                       "{featured.quote}"
                     </p>
                   </blockquote>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <Avatar className="h-14 w-14 ring-2 ring-primary/20">
+                      <Avatar className="h-11 w-11 sm:h-14 sm:w-14 ring-2 ring-primary/20">
                         <AvatarImage src={featured.avatar} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+                        <AvatarFallback className="bg-primary/10 text-primary text-base sm:text-lg font-semibold">
                           {featured.name[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-foreground text-lg">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <span className="font-semibold text-foreground text-sm sm:text-lg">
                             @{featured.username || featured.name.toLowerCase().replace(' ', '')}
                           </span>
                           {featured.verified && (
                             <VerifiedBadge size="md" />
                           )}
                         </div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-xs sm:text-sm text-muted-foreground">
                           {featured.role}
                         </div>
                       </div>
                     </div>
                     {featured.username && (
-                      <Button asChild variant="outline" size="sm" className="hidden sm:flex">
+                      <Button asChild variant="outline" size="sm" className="hidden lg:flex">
                         <Link to={`/@${featured.username}`}>
                           View Profile
                         </Link>
@@ -177,14 +177,14 @@ export function Testimonials() {
           )}
 
           {/* Other testimonials - stacked */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-5 space-y-4 sm:space-y-6">
             {others.map((testimonial, index) => (
               <Reveal key={testimonial.id} delay={200 + index * 100}>
-                <div className="relative p-6 lg:p-8 rounded-2xl bg-card/80 border border-border/50 hover:border-primary/50 transition-colors">
+                <div className="relative p-4 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl bg-card/80 border border-border/50 hover:border-primary/50 transition-colors">
                   <StarRating rating={testimonial.rating} />
                   
-                  <blockquote className="mt-5 mb-6">
-                    <p className="text-foreground/90 leading-relaxed">
+                  <blockquote className="mt-4 sm:mt-5 mb-4 sm:mb-6">
+                    <p className="text-sm sm:text-base text-foreground/90 leading-relaxed">
                       "{testimonial.quote}"
                     </p>
                   </blockquote>
