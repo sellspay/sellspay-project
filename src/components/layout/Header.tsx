@@ -58,12 +58,12 @@ export default function Header() {
           <Link to="/" className="flex items-center shrink-0 group">
             <img 
               src={sellspayLogo} 
-                alt="Sellspay" 
+              alt="SellsPay" 
               className="h-10 sm:h-11 lg:h-12 w-auto group-hover:opacity-80 transition-opacity"
             />
-             <span className="ml-2 hidden sm:inline text-sm font-semibold tracking-tight text-foreground">
-                Sellspay
-             </span>
+            <span className="ml-2 hidden sm:inline text-sm font-semibold tracking-tight text-foreground">
+              SellsPay
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
