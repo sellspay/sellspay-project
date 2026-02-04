@@ -12,18 +12,22 @@ export function AIStudioPromo() {
     <Reveal>
       <section className="relative py-32 sm:py-48 lg:py-56 overflow-hidden">
         <div className="relative z-10 px-6 sm:px-8 lg:px-12">
-          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-12 lg:gap-20">
-            {/* Left: Big headline - single flowing block */}
+          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-16 lg:gap-24">
+            {/* Left: Structured headline with intentional breaks */}
             <div className="flex-1">
-              <h2 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-foreground leading-[1.05] tracking-tight">
-                <span style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                  Thousands of creators choose{' '}
-                </span>
-                <span 
-                  className="text-primary"
-                  style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600 }}
-                >
-                  SellsPay
+              <h2 
+                className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl leading-[1.1] tracking-tight"
+                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              >
+                <span className="text-foreground block">Thousands of creators</span>
+                <span className="block mt-1 sm:mt-2">
+                  <span className="text-foreground">choose </span>
+                  <span 
+                    className="text-primary italic"
+                    style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500 }}
+                  >
+                    SellsPay
+                  </span>
                 </span>
               </h2>
             </div>
