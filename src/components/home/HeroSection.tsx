@@ -88,7 +88,7 @@ export default function HeroSection() {
   return (
     <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
       {/* MASSIVE Full-width cinematic background */}
-      <div className="absolute inset-0 -z-10">
+      <div className="absolute inset-0 z-0">
         {content.hero_media_type === 'video' && content.hero_video_url && !videoFailed ? (
           <video 
             key={content.hero_video_url}
@@ -213,7 +213,7 @@ export default function HeroSection() {
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-muted-foreground animate-bounce">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-muted-foreground animate-bounce">
         <span className="text-sm font-medium">Scroll to explore</span>
         <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/50 flex items-start justify-center p-1.5">
           <div className="w-1.5 h-3 bg-muted-foreground/50 rounded-full animate-pulse" />
