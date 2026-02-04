@@ -53,32 +53,33 @@ export function FeaturedCreators() {
   if (loading || creators.length === 0) return null;
 
   return (
-    <section className="py-20 sm:py-28 lg:py-36">
-      <div className="px-4 sm:px-8 lg:px-12">
-        <Reveal className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-14 sm:mb-20">
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20">
-              <Users className="h-7 w-7 text-primary" />
+    <section className="py-24 sm:py-32 lg:py-40">
+      <div className="px-6 sm:px-8 lg:px-12">
+        {/* Section Header - MASSIVE */}
+        <Reveal className="flex flex-col sm:flex-row sm:items-end justify-between gap-8 mb-16 sm:mb-24">
+          <div className="flex items-start gap-5">
+            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
+              <Users className="h-10 w-10 text-primary" />
             </div>
             <div>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground tracking-tight mb-2">
+              <h2 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold text-foreground tracking-tight mb-3">
                 Meet Our Creators
               </h2>
-              <p className="text-muted-foreground text-lg sm:text-xl">
+              <p className="text-xl sm:text-2xl text-muted-foreground">
                 The talented people behind the products
               </p>
             </div>
           </div>
-          <Button asChild variant="outline" className="rounded-full px-8 h-12 text-base font-medium group border-2">
+          <Button asChild variant="outline" className="rounded-full px-10 h-14 text-lg font-medium group border-2 hover:bg-primary/10 hover:border-primary/50 transition-all">
             <Link to="/creators">
               View All Creators
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>
         </Reveal>
 
-        {/* Creator Grid - BIGGER avatars */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-6 sm:gap-8">
+        {/* Creator Grid - MASSIVE avatars */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-8 sm:gap-10">
           {creators.map((creator, index) => {
             if (!creator.username) return null;
             
@@ -88,19 +89,19 @@ export function FeaturedCreators() {
                   to={`/@${creator.username}`}
                   className="group flex flex-col items-center text-center"
                 >
-                  <Avatar className="h-24 w-24 sm:h-28 sm:w-28 lg:h-32 lg:w-32 mb-5 ring-3 ring-border group-hover:ring-primary/50 transition-all duration-300 group-hover:scale-105">
+                  <Avatar className="h-28 w-28 sm:h-32 sm:w-32 lg:h-36 lg:w-36 mb-6 ring-4 ring-border group-hover:ring-primary/50 transition-all duration-300 group-hover:scale-105">
                     <AvatarImage src={creator.avatar_url || undefined} />
-                    <AvatarFallback className="bg-card text-muted-foreground text-2xl font-semibold">
+                    <AvatarFallback className="bg-card text-muted-foreground text-3xl font-semibold">
                       {(creator.full_name || creator.username || 'U')[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="font-semibold text-foreground text-base sm:text-lg group-hover:text-primary transition-colors">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-foreground text-lg sm:text-xl group-hover:text-primary transition-colors">
                       {creator.full_name || creator.username}
                     </span>
                     {creator.verified && <VerifiedBadge size="sm" isOwner={creator.isAdmin} />}
                   </div>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-base text-muted-foreground">
                     @{creator.username}
                   </span>
                 </Link>

@@ -81,19 +81,19 @@ export function StatsBar() {
   }, []);
 
   return (
-    <section ref={ref} className="py-16 sm:py-20 border-y border-border/50 bg-card/30">
-      <div className="px-4 sm:px-8 lg:px-12">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
+    <section ref={ref} className="py-20 sm:py-28 lg:py-32 border-y border-border/50 bg-card/30">
+      <div className="px-6 sm:px-8 lg:px-12">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-10 sm:gap-14 lg:gap-16">
           {stats.map((stat, index) => (
             <div
               key={stat.label}
               className="text-center"
               style={{ transitionDelay: `${index * 100}ms` }}
             >
-              <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary mb-3">
+              <div className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-primary mb-4">
                 <AnimatedCounter target={stat.value} suffix={stat.suffix} isVisible={isVisible} />
               </div>
-              <div className="text-sm sm:text-base text-muted-foreground font-medium">
+              <div className="text-base sm:text-lg lg:text-xl text-muted-foreground font-medium">
                 {stat.label}
               </div>
             </div>
