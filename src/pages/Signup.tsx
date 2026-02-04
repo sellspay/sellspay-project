@@ -176,18 +176,18 @@ const { user, signUp, signInWithGoogle } = useAuth();
   const getInputBorderClass = (status: 'idle' | 'checking' | 'available' | 'taken') => {
     switch (status) {
       case 'available':
-        return 'border-purple-500/50 focus:border-purple-500/70';
+        return 'border-primary/50 focus:border-primary/70';
       case 'taken':
         return 'border-destructive/50 focus:border-destructive/70';
       default:
-        return 'border-white/10 focus:border-purple-500/50';
+        return 'border-border focus:border-primary/50';
     }
   };
 
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
-      {/* Cosmic Background Image */}
-      <div className="absolute inset-0 pointer-events-none">
+      {/* Cosmic Background Image - only show in dark mode */}
+      <div className="absolute inset-0 pointer-events-none dark:block hidden">
         <img 
           src={authBg} 
           alt="" 
@@ -196,6 +196,11 @@ const { user, signUp, signInWithGoogle } = useAuth();
         />
         {/* Dark overlay for readability */}
         <div className="absolute inset-0 bg-black/40" />
+      </div>
+      
+      {/* Light mode gradient background */}
+      <div className="absolute inset-0 pointer-events-none dark:hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
       </div>
 
       {/* Back to Home */}
@@ -211,17 +216,17 @@ const { user, signUp, signInWithGoogle } = useAuth();
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 py-16">
         {/* Premium Welcome Text */}
         <div className="mb-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 tracking-tight">
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-3 tracking-tight">
             Join the Community
           </h1>
-          <p className="text-lg text-white/60">
+          <p className="text-lg text-muted-foreground">
             Create your account and start your journey
           </p>
         </div>
 
-        <p className="text-white/50 mb-8">
+        <p className="text-muted-foreground mb-8">
           Already have an account?{' '}
-          <Link to={`/login${location.search}`} className="text-white font-medium hover:underline">
+          <Link to={`/login${location.search}`} className="text-foreground font-medium hover:underline">
             Log in
           </Link>
         </p>
@@ -232,7 +237,7 @@ const { user, signUp, signInWithGoogle } = useAuth();
             type="button"
             onClick={handleGoogleSignUp}
             disabled={googleLoading}
-            className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-card/40 border border-border/50 text-white font-medium transition-all duration-300 hover:bg-white hover:text-black hover:border-white/60 hover:shadow-[0_0_30px_rgba(255,255,255,0.6)] disabled:opacity-50"
+            className="w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-card border border-border text-foreground font-medium transition-all duration-300 hover:bg-secondary hover:shadow-md disabled:opacity-50"
           >
             {googleLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -348,7 +353,7 @@ const { user, signUp, signInWithGoogle } = useAuth();
             <button
               type="submit"
               disabled={loading || usernameStatus === 'taken' || emailStatus === 'taken'}
-              className="w-full h-12 rounded-lg bg-card/40 border border-border/50 text-white font-medium transition-all duration-300 hover:bg-gradient-to-r hover:from-primary hover:via-accent hover:to-primary hover:border-primary/60 hover:shadow-[0_0_30px_hsl(var(--primary)/0.6),0_0_60px_hsl(var(--primary)/0.3)] disabled:opacity-50"
+              className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-medium transition-all duration-300 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/30 disabled:opacity-50"
             >
               {loading ? 'Creating Account...' : 'Sign Up'}
             </button>
