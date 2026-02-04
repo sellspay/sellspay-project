@@ -33,6 +33,7 @@ export default function HeroSection() {
   const [activeWord, setActiveWord] = useState(0);
   const [content, setContent] = useState<SiteContent>(defaultContent);
   const [videoFailed, setVideoFailed] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -60,6 +61,14 @@ export default function HeroSection() {
           hero_stats: (data.hero_stats as SiteContent['hero_stats']) || defaultContent.hero_stats
         });
         setVideoFailed(false);
+        setVideoLoaded(false);
+        if (import.meta.env.DEV) {
+          console.log('[Hero] content loaded', {
+            hero_media_type: data.hero_media_type,
+            hero_video_url: data.hero_video_url,
+            hero_image_url: data.hero_image_url,
+          });
+        }
       }
     };
     fetchContent();
@@ -88,10 +97,15 @@ export default function HeroSection() {
             muted 
             loop 
             playsInline
+            preload="auto"
             className="w-full h-full object-cover object-center"
             onError={() => {
               console.error('Hero video failed to load:', content.hero_video_url);
               setVideoFailed(true);
+            }}
+            onLoadedData={() => {
+              setVideoLoaded(true);
+              if (import.meta.env.DEV) console.log('[Hero] video loaded');
             }}
           />
         ) : (
@@ -107,6 +121,16 @@ export default function HeroSection() {
       </div>
 
       <div className="container mx-auto px-6 sm:px-8 lg:px-12 relative z-10">
+        {import.meta.env.DEV && (
+          <div className="absolute top-6 left-6 rounded-md border bg-background/70 px-3 py-1 text-xs text-foreground backdrop-blur">
+            Hero media: {content.hero_media_type}
+            {content.hero_media_type === 'video' ? (
+              <span className="ml-2 text-muted-foreground">
+                {videoFailed ? 'failed (fallback)' : videoLoaded ? 'loaded' : 'loading…'}
+              </span>
+            ) : null}
+          </div>
+        )}
         <div className="text-center flex flex-col items-center max-w-7xl mx-auto pt-20 pb-32">
           {/* MASSIVE headline - Clean, no shadows */}
           <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[140px] font-bold tracking-tighter leading-[0.9] mb-10 sm:mb-12">
