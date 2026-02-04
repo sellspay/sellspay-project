@@ -8,21 +8,53 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from '@/components/ui/navigation-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, CreditCard, Wallet, Loader2 } from 'lucide-react';
+import { 
+  Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, 
+  CreditCard, Wallet, Loader2, ChevronDown, Package, Users, Sparkles,
+  Wand2, Music, FileVideo, Mic, Film, Headphones, ArrowRight
+} from 'lucide-react';
 import { useState } from 'react';
 import { useCredits } from '@/hooks/useCredits';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { TopUpDialog } from '@/components/credits/TopUpDialog';
 import EditorChatIcon from '@/components/chat/EditorChatIcon';
 import sellspayLogo from '@/assets/sellspay-nav-logo.png';
+import { cn } from '@/lib/utils';
 
-const navItems = [
-  { name: 'Store', path: '/products' },
-  { name: 'Creators', path: '/creators' },
-  { name: 'Tools', path: '/tools' },
-  { name: 'Pricing', path: '/pricing' },
-  { name: 'Community', path: '/community' },
+// Product categories for dropdown
+const productCategories = [
+  { name: 'All Products', path: '/products', icon: Package, description: 'Browse all assets' },
+  { name: 'LUTs', path: '/products?type=lut', icon: Wand2, description: 'Color grading presets' },
+  { name: 'Presets', path: '/products?type=preset', icon: Sparkles, description: 'Editing presets' },
+  { name: 'SFX', path: '/products?type=sfx', icon: Music, description: 'Sound effects' },
+  { name: 'Templates', path: '/products?type=template', icon: FileVideo, description: 'Project templates' },
+  { name: 'Overlays', path: '/products?type=overlay', icon: Film, description: 'Video overlays' },
+  { name: 'Tutorials', path: '/products?type=tutorial', icon: Headphones, description: 'Learn from pros' },
+];
+
+// Tools dropdown items
+const toolsItems = [
+  { name: 'Music Splitter', path: '/tools?tool=music-splitter', description: 'Separate vocals & stems' },
+  { name: 'Voice Isolator', path: '/tools?tool=voice-isolator', description: 'Extract voice from audio' },
+  { name: 'SFX Generator', path: '/tools?tool=sfx-generator', description: 'AI-powered sound effects' },
+  { name: 'Audio Converter', path: '/tools?tool=audio-converter', description: 'Convert audio formats' },
+  { name: 'Waveform Generator', path: '/tools?tool=waveform-generator', description: 'Create audio waveforms' },
+];
+
+// Community dropdown items
+const communityItems = [
+  { name: 'Updates', path: '/community/updates', description: 'Platform news & updates' },
+  { name: 'Spotlight', path: '/community/spotlight', description: 'Featured creators' },
+  { name: 'Discord', path: '/community/discord', description: 'Join our community' },
 ];
 
 export default function Header() {
@@ -34,78 +66,196 @@ export default function Header() {
   
   const { creditBalance, isLoading: creditsLoading, subscription } = useCredits();
   
-  // Get subscription tier from subscription data
   const subscriptionTier = subscription ? 
     subscription.credits === 60 ? 'starter' :
     subscription.credits === 150 ? 'pro' :
     subscription.credits === 300 ? 'enterprise' : null
   : null;
 
-  // Derive values from centralized profile state
   const isCreator = profile?.is_creator || false;
   const isSeller = profile?.is_seller || false;
   const avatarUrl = profile?.avatar_url || null;
   const username = profile?.username || null;
   const fullName = profile?.full_name || null;
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path.split('?')[0]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
-        <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
-          {/* Logo */}
-          <Link to="/" className="flex items-center shrink-0 group">
-            <img 
-              src={sellspayLogo} 
-              alt="SellsPay" 
-              className="h-10 sm:h-11 lg:h-12 w-auto group-hover:opacity-80 transition-opacity"
-            />
-            <span className="ml-2 hidden sm:inline text-sm font-semibold tracking-tight text-foreground">
-              SellsPay
-            </span>
-          </Link>
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-md">
+      <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          {/* Left side: Logo + Main Nav */}
+          <div className="flex items-center gap-8">
+            {/* Logo */}
+            <Link to="/" className="flex items-center shrink-0 group">
+              <img 
+                src={sellspayLogo} 
+                alt="SellsPay" 
+                className="h-8 w-auto group-hover:opacity-80 transition-opacity"
+              />
+            </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
-                  isActive(item.path)
-                    ? 'bg-secondary text-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
+            {/* Desktop Navigation with Dropdowns */}
+            <NavigationMenu className="hidden lg:flex">
+              <NavigationMenuList className="gap-0">
+                {/* Store Dropdown */}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="h-10 px-4 text-sm font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-transparent data-[state=open]:bg-transparent">
+                    Store
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <div className="w-[400px] p-4 bg-card border border-border">
+                      <div className="grid gap-1">
+                        {productCategories.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              className="flex items-center gap-4 p-3 hover:bg-muted/50 transition-colors group"
+                            >
+                              <div className="flex h-10 w-10 items-center justify-center bg-muted group-hover:bg-primary/10 transition-colors">
+                                <Icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                                  {item.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {item.description}
+                                </div>
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
 
-            {/* Hire Editors Button - Standout with animated gradient */}
-            <Button 
-              asChild 
-              size="sm"
-              className="ml-2 rounded-full text-white text-xs font-medium relative overflow-hidden bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 bg-[length:200%_100%] animate-[gradient-wave_2s_ease-in-out_infinite]"
-            >
-              <Link to="/hire-editors">Hire Editors</Link>
-            </Button>
-          </nav>
+                {/* Creators - Simple Link */}
+                <NavigationMenuItem>
+                  <Link 
+                    to="/creators" 
+                    className={cn(
+                      "inline-flex h-10 items-center justify-center px-4 text-sm font-medium transition-colors",
+                      isActive('/creators') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    Creators
+                  </Link>
+                </NavigationMenuItem>
+
+                {/* Tools Dropdown */}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="h-10 px-4 text-sm font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-transparent data-[state=open]:bg-transparent">
+                    Tools
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <div className="w-[320px] p-4 bg-card border border-border">
+                      <div className="grid gap-1">
+                        {toolsItems.map((item) => (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors group"
+                          >
+                            <div>
+                              <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                                {item.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {item.description}
+                              </div>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all" />
+                          </Link>
+                        ))}
+                        <div className="border-t border-border mt-2 pt-2">
+                          <Link
+                            to="/tools"
+                            className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors group"
+                          >
+                            <span className="text-sm font-medium text-primary">
+                              View All Tools
+                            </span>
+                            <ArrowRight className="h-4 w-4 text-primary" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+
+                {/* Community Dropdown */}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="h-10 px-4 text-sm font-medium text-muted-foreground hover:text-foreground bg-transparent hover:bg-transparent data-[state=open]:bg-transparent">
+                    Community
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <div className="w-[280px] p-4 bg-card border border-border">
+                      <div className="grid gap-1">
+                        {communityItems.map((item) => (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors group"
+                          >
+                            <div>
+                              <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                                {item.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {item.description}
+                              </div>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all" />
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+
+                {/* Divider */}
+                <div className="h-5 w-px bg-border mx-2" />
+
+                {/* Hire Editors - Standout */}
+                <NavigationMenuItem>
+                  <Link 
+                    to="/hire-editors" 
+                    className="inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Hire Editors
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
+          </div>
 
           {/* Right Side */}
-          <div className="flex items-center gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Pricing Link - Desktop only */}
+            <Link 
+              to="/pricing" 
+              className="hidden lg:inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Pricing
+            </Link>
+
             {/* Credit Wallet - Only show when logged in */}
             {user && (
               <button
                 onClick={() => setTopUpDialogOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-secondary/80 hover:bg-secondary transition-colors border border-border/50"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-muted/50 hover:bg-muted transition-colors border border-border/50"
               >
                 {creditsLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary animate-spin" />
+                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
                 ) : (
                   <>
-                    <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
-                    <span className="text-xs sm:text-sm font-medium">
+                    <Wallet className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">
                       {creditBalance}
                     </span>
                   </>
@@ -113,25 +263,25 @@ export default function Header() {
               </button>
             )}
 
-            {/* Editor Chat Icon - Only show when user has active booking chat */}
+            {/* Editor Chat Icon */}
             {user && <EditorChatIcon />}
 
-            {/* Notification Bell - Only show when logged in */}
+            {/* Notification Bell */}
             {user && <NotificationBell />}
             
             {user ? (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0">
-                    <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
+                  <Button variant="ghost" className="relative h-9 w-9 p-0">
+                    <Avatar className="h-9 w-9">
                       <AvatarImage src={avatarUrl || undefined} />
-                      <AvatarFallback className="bg-primary/20 text-primary text-xs sm:text-sm">
+                      <AvatarFallback className="bg-primary/20 text-primary text-sm">
                         {(username || user.email)?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56 bg-card border-border">
                   <div className="flex items-center gap-2 p-2">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={avatarUrl || undefined} />
@@ -149,7 +299,7 @@ export default function Header() {
                   <div className="sm:hidden px-2 pb-2">
                     <button
                       onClick={() => setTopUpDialogOpen(true)}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary/80 hover:bg-secondary transition-colors border border-border/50"
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-muted/80 transition-colors border border-border/50"
                     >
                       {creditsLoading ? (
                         <Loader2 className="h-4 w-4 text-primary animate-spin" />
@@ -217,16 +367,18 @@ export default function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <Button variant="ghost" asChild size="sm" className="text-xs sm:text-sm px-2 sm:px-3">
-                  <Link to="/login">Sign In</Link>
-                </Button>
+              <div className="flex items-center gap-3">
+                <Link 
+                  to="/login" 
+                  className="hidden sm:inline-flex h-10 items-center justify-center px-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Sign In
+                </Link>
                 <Button 
                   asChild 
-                  size="sm"
-                  className="rounded-full text-white text-xs sm:text-sm font-medium relative overflow-hidden bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 bg-[length:200%_100%] animate-[gradient-wave_2s_ease-in-out_infinite] hover:shadow-lg hover:shadow-primary/30 transition-shadow px-3 sm:px-4"
+                  className="h-10 px-5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  <Link to="/signup">Join free</Link>
+                  <Link to="/signup">Start Free Now</Link>
                 </Button>
               </div>
             )}
@@ -235,10 +387,10 @@ export default function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden h-8 w-8 sm:h-9 sm:w-9"
+              className="lg:hidden h-9 w-9"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
         </div>
@@ -246,27 +398,62 @@ export default function Header() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="lg:hidden py-4 border-t border-border/40">
-            <nav className="flex flex-col gap-2">
-              {navItems.map((item) => (
+            <nav className="flex flex-col gap-1">
+              {/* Store Section */}
+              <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Store
+              </div>
+              {productCategories.slice(0, 4).map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    isActive(item.path)
-                      ? 'bg-secondary text-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-                  }`}
+                  className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
                 >
                   {item.name}
                 </Link>
               ))}
+              
+              <div className="h-px bg-border my-2" />
+              
+              {/* Other Links */}
+              <Link
+                to="/creators"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+              >
+                Creators
+              </Link>
+              <Link
+                to="/tools"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+              >
+                Tools
+              </Link>
+              <Link
+                to="/community"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+              >
+                Community
+              </Link>
+              <Link
+                to="/pricing"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+              >
+                Pricing
+              </Link>
+              
+              <div className="h-px bg-border my-2" />
+              
               <Link
                 to="/hire-editors"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-1.5 text-xs font-medium text-white rounded-lg bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 bg-[length:200%_100%] animate-gradient-wave"
+                className="mx-4 py-2.5 text-sm font-semibold text-center text-primary border border-primary hover:bg-primary/10 transition-colors"
               >
-                Hire Editors
+                Hire Editors →
               </Link>
             </nav>
           </div>
