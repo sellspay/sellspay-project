@@ -123,15 +123,12 @@ export default function Header() {
           {/* Left side: Logo + Main Nav */}
           <div className="flex items-center gap-8">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
+            <Link to="/" className="flex items-center shrink-0 group">
               <img 
                 src={sellspayLogo} 
                 alt="SellsPay" 
                 className="h-9 w-auto transition-transform duration-300 group-hover:scale-105"
               />
-              <span className="hidden sm:inline text-lg font-bold tracking-tight text-foreground">
-                SellsPay
-              </span>
             </Link>
 
             {/* Desktop Navigation with Premium Dropdowns */}
