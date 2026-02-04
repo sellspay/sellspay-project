@@ -1,20 +1,15 @@
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { toolsData, ToolData } from "./toolsData";
-import { Sparkles, Coins } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 interface ToolsSidebarNavProps {
   selectedToolId: string | null;
   onSelectTool: (toolId: string) => void;
-  creditBalance?: number;
-  isLoadingCredits?: boolean;
 }
 
 export function ToolsSidebarNav({ 
   selectedToolId, 
-  onSelectTool,
-  creditBalance = 0,
-  isLoadingCredits = false
+  onSelectTool
 }: ToolsSidebarNavProps) {
   const availableTools = toolsData.filter(t => t.available);
   const proTools = availableTools.filter(t => t.isPro);
@@ -25,12 +20,7 @@ export function ToolsSidebarNav({
       {/* Header */}
       <div className="p-4 border-b border-border/50">
         <h2 className="text-lg font-semibold text-foreground">AI Studio</h2>
-        <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-          <Coins className="w-4 h-4 text-amber-500" />
-          <span>
-            {isLoadingCredits ? "..." : creditBalance} credits
-          </span>
-        </div>
+        <p className="text-sm text-muted-foreground mt-1">Powerful audio tools</p>
       </div>
       
       {/* Tool Lists */}
@@ -98,7 +88,7 @@ function ToolNavItem({ tool, isSelected, onClick }: ToolNavItemProps) {
       )} />
       <span className="text-sm font-medium truncate flex-1">{tool.title}</span>
       {tool.isPro && (
-        <Sparkles className="w-3 h-3 text-amber-500 flex-shrink-0" />
+        <Sparkles className="w-3 h-3 text-primary flex-shrink-0" />
       )}
     </button>
   );
