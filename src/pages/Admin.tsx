@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog, Globe, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,8 @@ import DeleteProductDialog from "@/components/admin/DeleteProductDialog";
 import ViewCreatorApplicationDialog from "@/components/admin/ViewCreatorApplicationDialog";
 import SpotlightNominationsDialog from "@/components/admin/SpotlightNominationsDialog";
 import SpotlightLeaderboard from "@/components/admin/SpotlightLeaderboard";
+import CountryEligibilityEditor from "@/components/admin/CountryEligibilityEditor";
+import PayoutQueue from "@/components/admin/PayoutQueue";
 import { CreatorApplication, PRODUCT_TYPE_OPTIONS } from "@/components/creator-application/types";
 
 interface Profile {
@@ -92,7 +94,7 @@ export default function Admin() {
   
   // Get initial tab from URL query param
   const urlTab = searchParams.get('tab');
-  const validTabs = ['users', 'manage-users', 'products', 'featured', 'spotlight', 'editor-applications', 'creator-applications', 'settings'];
+  const validTabs = ['users', 'manage-users', 'products', 'featured', 'spotlight', 'editor-applications', 'creator-applications', 'countries', 'payouts', 'settings'];
   const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'users';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
@@ -785,6 +787,14 @@ export default function Admin() {
                 {pendingCreatorAppsCount}
               </span>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="countries">
+            <Globe className="w-4 h-4 mr-1.5" />
+            Countries
+          </TabsTrigger>
+          <TabsTrigger value="payouts">
+            <Wallet className="w-4 h-4 mr-1.5" />
+            Payouts
           </TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -1718,6 +1728,16 @@ export default function Admin() {
           onApprove={(id) => { handleCreatorAppAction(id, 'approve'); setViewingCreatorApp(null); }}
           onReject={(id) => { handleCreatorAppAction(id, 'reject'); setViewingCreatorApp(null); }}
         />
+
+        {/* Countries Tab */}
+        <TabsContent value="countries">
+          <CountryEligibilityEditor />
+        </TabsContent>
+
+        {/* Payouts Tab */}
+        <TabsContent value="payouts">
+          <PayoutQueue />
+        </TabsContent>
 
         {/* Settings Tab */}
         <TabsContent value="settings">

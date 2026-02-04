@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action_type: string
+          admin_user_id: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          new_value: Json | null
+          notes: string | null
+          old_value: Json | null
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_user_id: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          notes?: string | null
+          old_value?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_user_id?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          notes?: string | null
+          old_value?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: []
+      }
       admin_notifications: {
         Row: {
           applicant_id: string | null
@@ -190,6 +229,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      country_eligibility: {
+        Row: {
+          connect_eligible: boolean | null
+          country_code: string
+          country_name: string
+          notes: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          connect_eligible?: boolean | null
+          country_code: string
+          country_name: string
+          notes?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          connect_eligible?: boolean | null
+          country_code?: string
+          country_name?: string
+          notes?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       creator_applications: {
         Row: {
@@ -733,6 +799,79 @@ export type Database = {
         }
         Relationships: []
       }
+      payouts: {
+        Row: {
+          admin_notes: string | null
+          amount_cents: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          currency: string | null
+          external_reference: string | null
+          failure_reason: string | null
+          id: string
+          provider_type: string
+          requested_at: string | null
+          seller_id: string
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount_cents: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          currency?: string | null
+          external_reference?: string | null
+          failure_reason?: string | null
+          id?: string
+          provider_type: string
+          requested_at?: string | null
+          seller_id: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          amount_cents?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          currency?: string | null
+          external_reference?: string | null
+          failure_reason?: string | null
+          id?: string
+          provider_type?: string
+          requested_at?: string | null
+          seller_id?: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payouts_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payouts_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payouts_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paypal_oauth_states: {
         Row: {
           created_at: string
@@ -1129,6 +1268,10 @@ export type Database = {
           mfa_enabled: boolean | null
           previous_username: string | null
           previous_username_available_at: string | null
+          seller_country_code: string | null
+          seller_kyc_status: string | null
+          seller_mode: string | null
+          seller_status: string | null
           show_recent_uploads: boolean | null
           social_links: Json | null
           subscription_tier: string | null
@@ -1166,6 +1309,10 @@ export type Database = {
           mfa_enabled?: boolean | null
           previous_username?: string | null
           previous_username_available_at?: string | null
+          seller_country_code?: string | null
+          seller_kyc_status?: string | null
+          seller_mode?: string | null
+          seller_status?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
           subscription_tier?: string | null
@@ -1203,6 +1350,10 @@ export type Database = {
           mfa_enabled?: boolean | null
           previous_username?: string | null
           previous_username_available_at?: string | null
+          seller_country_code?: string | null
+          seller_kyc_status?: string | null
+          seller_mode?: string | null
+          seller_status?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
           subscription_tier?: string | null
@@ -1257,9 +1408,12 @@ export type Database = {
       purchases: {
         Row: {
           amount_cents: number
+          available_on: string | null
           buyer_id: string
           created_at: string
           creator_payout_cents: number
+          dispute_status: string | null
+          funds_flow_mode: string | null
           id: string
           platform_fee_cents: number
           product_id: string
@@ -1272,9 +1426,12 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
+          available_on?: string | null
           buyer_id: string
           created_at?: string
           creator_payout_cents: number
+          dispute_status?: string | null
+          funds_flow_mode?: string | null
           id?: string
           platform_fee_cents: number
           product_id: string
@@ -1287,9 +1444,12 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
+          available_on?: string | null
           buyer_id?: string
           created_at?: string
           creator_payout_cents?: number
+          dispute_status?: string | null
+          funds_flow_mode?: string | null
           id?: string
           platform_fee_cents?: number
           product_id?: string
@@ -1810,6 +1970,70 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_ledger_entries: {
+        Row: {
+          amount_cents: number
+          available_on: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          entry_type: string
+          id: string
+          order_id: string | null
+          order_type: string | null
+          seller_id: string
+          status: string | null
+        }
+        Insert: {
+          amount_cents: number
+          available_on?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          entry_type: string
+          id?: string
+          order_id?: string | null
+          order_type?: string | null
+          seller_id: string
+          status?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          available_on?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          entry_type?: string
+          id?: string
+          order_id?: string | null
+          order_type?: string | null
+          seller_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_ledger_entries_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_ledger_entries_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_ledger_entries_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       public_identities: {
@@ -2101,6 +2325,16 @@ export type Database = {
         Args: { p_seller_user_id: string }
         Returns: string
       }
+      get_seller_wallet_balance: {
+        Args: { p_seller_id: string }
+        Returns: {
+          available_cents: number
+          locked_cents: number
+          pending_cents: number
+          total_earned_cents: number
+          total_withdrawn_cents: number
+        }[]
+      }
       has_pro_subscription: { Args: { p_user_id: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -2120,6 +2354,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
+      release_held_funds: { Args: never; Returns: number }
       store_seller_resend_key: {
         Args: { p_api_key: string; p_support_email: string }
         Returns: Json
