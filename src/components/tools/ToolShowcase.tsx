@@ -80,19 +80,21 @@ export function ToolShowcase({
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
+    <div className="h-screen bg-background flex overflow-hidden">
+      {/* Sidebar (fixed) */}
       <ToolsSidebarNav
         selectedToolId={selectedToolId}
         onSelectTool={handleSelectToolInSidebar}
       />
 
-      {/* Main Content */}
-      <ToolDetailView
-        tool={selectedTool}
-        bannerUrl={getBannerUrl(selectedToolId)}
-        onLaunch={handleLaunchTool}
-      />
+      {/* Main Content (only this column scrolls) */}
+      <div className="flex-1 overflow-y-auto">
+        <ToolDetailView
+          tool={selectedTool}
+          bannerUrl={getBannerUrl(selectedToolId)}
+          onLaunch={handleLaunchTool}
+        />
+      </div>
     </div>
   );
 }
