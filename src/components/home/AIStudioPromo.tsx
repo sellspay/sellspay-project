@@ -13,15 +13,15 @@ export function AIStudioPromo() {
       <section className="relative py-32 sm:py-40 lg:py-52 overflow-hidden">
         <div className="relative z-10 px-6 sm:px-8 lg:px-16">
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-start justify-between gap-16 lg:gap-32">
-            {/* Left: Two-line headline, left-aligned */}
-            <div className="flex-1">
+            {/* Left: Two-line headline, left-aligned - NO WRAPPING */}
+            <div className="flex-shrink-0">
               <h2 
-                className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl text-foreground leading-[1.1] tracking-tight"
+                className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl text-foreground leading-[1.15] tracking-tight"
                 style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
               >
-                Thousands of creators
+                <span className="whitespace-nowrap">Thousands of creators</span>
                 <br />
-                choose <span className="text-primary">SellsPay</span>
+                <span className="whitespace-nowrap">choose <span className="text-primary">SellsPay</span></span>
               </h2>
             </div>
             
