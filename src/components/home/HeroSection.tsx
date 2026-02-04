@@ -81,10 +81,9 @@ export default function HeroSection() {
           </h1>
 
           {/* Subtitle with rotating words */}
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-2xl mb-6 sm:mb-10 leading-relaxed px-4">
-            Discover premium <span className="text-foreground font-semibold animate-fade-in" key={activeWord}>{floatingWords[activeWord]}</span> crafted by
-            <br className="hidden sm:block" />
-            professional creators worldwide.
+          <p className="text-sm sm:text-lg md:text-xl lg:text-2xl text-muted-foreground max-w-2xl mb-6 sm:mb-10 leading-relaxed px-6 sm:px-4">
+            Discover premium <span className="text-foreground font-semibold animate-fade-in" key={activeWord}>{floatingWords[activeWord]}</span> crafted by{" "}
+            <span className="whitespace-nowrap">professional creators</span> worldwide.
           </p>
 
           {/* CTA Buttons */}
