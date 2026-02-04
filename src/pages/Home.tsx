@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import HeroSection from '@/components/home/HeroSection';
-import { PartnerLogos } from '@/components/home/PartnerLogos';
+import SlidingBanner from '@/components/home/SlidingBanner';
 import { ToolsShowcase } from '@/components/home/ToolsShowcase';
 import { AIStudioPromo } from '@/components/home/AIStudioPromo';
 import { ValueProps } from '@/components/home/ValueProps';
@@ -143,8 +143,8 @@ export default function Home() {
       {/* Hero Section */}
       <HeroSection />
 
-      {/* Partner Logos */}
-      <PartnerLogos />
+      {/* Sliding Logos Banner */}
+      <SlidingBanner />
 
       {/* MASSIVE Content Grid - Featured Products */}
       <Reveal>
