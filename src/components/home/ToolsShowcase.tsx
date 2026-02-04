@@ -136,9 +136,9 @@ export function ToolsShowcase() {
             <div className="relative overflow-hidden border border-foreground/10 bg-card/30" style={{ aspectRatio: '16 / 11' }}>
               {/* Floating toggle bar at top */}
               <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 z-20">
-                <div className="flex items-center gap-2 bg-card/95 backdrop-blur-md border border-foreground/20 px-4 py-3">
-                  <span className="text-base font-semibold text-foreground pr-3 border-r border-foreground/20">AI Toolkit</span>
-                  <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 bg-card/95 backdrop-blur-md border border-foreground/20 px-3 py-2">
+                  <span className="text-sm font-medium text-foreground pr-3 border-r border-foreground/20">AI Toolkit</span>
+                  <div className="flex items-center gap-1 pl-2">
                     {tools.map((tool) => {
                       const Icon = tool.icon;
                       const isActive = activeTool === tool.id;
@@ -146,10 +146,10 @@ export function ToolsShowcase() {
                         <button
                           key={tool.id}
                           onClick={() => setActiveTool(tool.id)}
-                          className={`w-10 h-10 flex items-center justify-center border transition-all duration-200 ${
+                          className={`w-9 h-9 flex items-center justify-center transition-all duration-200 ${
                             isActive 
-                              ? 'border-primary/50 bg-primary/20' 
-                              : 'border-foreground/10 bg-muted/30 hover:bg-muted/50'
+                              ? 'border-2 border-primary bg-primary/10' 
+                              : 'border border-foreground/10 bg-transparent hover:bg-muted/30'
                           }`}
                           title={tool.name}
                         >
