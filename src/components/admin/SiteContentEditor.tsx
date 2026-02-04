@@ -76,23 +76,48 @@ export function SiteContentEditor() {
     }
   };
 
+  const MAX_FILE_SIZE_MB = 50; // 50MB limit for site assets
+  const UPLOAD_TIMEOUT_MS = 60000; // 60 second timeout
+
   const uploadFile = async (file: File, folder: string): Promise<string | null> => {
+    // File size validation
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > MAX_FILE_SIZE_MB) {
+      toast.error(`File too large (${fileSizeMB.toFixed(1)}MB). Max size is ${MAX_FILE_SIZE_MB}MB.`);
+      return null;
+    }
+
     const fileExt = file.name.split('.').pop();
     const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     
-    const { error } = await supabase.storage.from(BUCKET).upload(fileName, file, {
+    // Create upload promise with timeout
+    const uploadPromise = supabase.storage.from(BUCKET).upload(fileName, file, {
       cacheControl: '3600',
       upsert: false
     });
 
-    if (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload file');
+    const timeoutPromise = new Promise<{ error: Error }>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Upload timed out after ${UPLOAD_TIMEOUT_MS / 1000} seconds. Try a smaller file or check your connection.`));
+      }, UPLOAD_TIMEOUT_MS);
+    });
+
+    try {
+      const result = await Promise.race([uploadPromise, timeoutPromise]);
+      
+      if ('error' in result && result.error) {
+        console.error('Upload error:', result.error);
+        toast.error(result.error.message || 'Failed to upload file');
+        return null;
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
+      return publicUrl;
+    } catch (error: any) {
+      console.error('Upload failed:', error);
+      toast.error(error.message || 'Upload failed. Please try again.');
       return null;
     }
-
-    const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
-    return publicUrl;
   };
 
   const handleHeroFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,20 +127,30 @@ export function SiteContentEditor() {
     const isVideo = file.type.startsWith('video/');
     const folder = isVideo ? 'hero-videos' : 'hero-images';
     
-    setUploading('hero');
-    const url = await uploadFile(file, folder);
-    setUploading(null);
-
-    if (url) {
-      if (isVideo) {
-        setContent({ ...content, hero_media_type: 'video', hero_video_url: url });
-      } else {
-        setContent({ ...content, hero_media_type: 'image', hero_image_url: url });
-      }
-      toast.success('Hero media uploaded');
-    }
+    // Show file info in loading state
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    toast.info(`Uploading ${file.name} (${fileSizeMB}MB)...`);
     
-    if (heroFileRef.current) heroFileRef.current.value = '';
+    setUploading('hero');
+    
+    try {
+      const url = await uploadFile(file, folder);
+      
+      if (url) {
+        if (isVideo) {
+          setContent({ ...content, hero_media_type: 'video', hero_video_url: url });
+        } else {
+          setContent({ ...content, hero_media_type: 'image', hero_image_url: url });
+        }
+        toast.success('Hero media uploaded successfully!');
+      }
+    } catch (error: any) {
+      console.error('Hero upload error:', error);
+      toast.error('Failed to upload hero media');
+    } finally {
+      setUploading(null);
+      if (heroFileRef.current) heroFileRef.current.value = '';
+    }
   };
 
   const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>, toolType: 'sfx' | 'vocal' | 'manga' | 'video') => {
