@@ -1,206 +1,161 @@
-import { useRef } from "react";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import React, { useLayoutEffect, useRef } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
+gsap.registerPlugin(ScrollTrigger);
+
+type Step = {
+  bg: string;
+  text: string;
+  subtext: string;
+};
+
 export function AIToolsReveal() {
   const navigate = useNavigate();
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const sectionRef = useRef<HTMLDivElement | null>(null);
+  const pinRef = useRef<HTMLDivElement | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const textRef = useRef<HTMLDivElement | null>(null);
 
-  // Scroll progress through the tall container (creates the pin effect)
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
+  const steps: Step[] = [
+    { bg: "#07070A", text: "#C9B8FF", subtext: "rgba(255,255,255,0.65)" },
+    { bg: "#0A0F1D", text: "#7EE7FF", subtext: "rgba(255,255,255,0.65)" },
+    { bg: "#16080B", text: "#FF7A90", subtext: "rgba(255,255,255,0.65)" },
+    { bg: "#081013", text: "#7CFFB2", subtext: "rgba(255,255,255,0.65)" },
+    { bg: "#10081A", text: "#D8A7FF", subtext: "rgba(255,255,255,0.65)" },
+  ];
 
-  // Smooth the progress
-  const p = useSpring(scrollYProgress, { stiffness: 120, damping: 30 });
+  useLayoutEffect(() => {
+    const section = sectionRef.current;
+    const pin = pinRef.current;
+    const track = trackRef.current;
+    const text = textRef.current;
+    if (!section || !pin || !track || !text) return;
 
-  // BACKGROUND COLOR changes on scroll
-  const bg = useTransform(
-    p,
-    [0, 0.3, 0.6, 1],
-    ["#05060B", "#0B1020", "#140A18", "#070A12"]
-  );
+    const panelCount = steps.length;
+    const panelHeight = pin.clientHeight;
 
-  // Accent/text color changes on scroll
-  const accent = useTransform(
-    p,
-    [0, 0.3, 0.6, 1],
-    ["#7C5CFF", "#3DBBFF", "#FF4C9A", "#FF6A2A"]
-  );
+    // Set initial styles
+    gsap.set(section, { backgroundColor: steps[0].bg });
+    gsap.set(text.querySelector("[data-title]"), { color: steps[0].text });
+    gsap.set(text.querySelector("[data-sub]"), { color: steps[0].subtext });
 
-  // Text reveal (fade in as section enters view)
-  const textOpacity = useTransform(p, [0, 0.08, 0.15], [0, 0, 1]);
-  const textY = useTransform(p, [0, 0.08, 0.15], [60, 60, 0]);
+    // Timeline scrubbed by scroll
+    const tl = gsap.timeline({
+      defaults: { ease: "none" },
+      scrollTrigger: {
+        trigger: section,
+        start: "top top",
+        end: () => `+=${(panelCount - 1) * window.innerHeight}`,
+        scrub: true,
+        pin: pin,
+        pinSpacing: true,
+        anticipatePin: 1,
+        invalidateOnRefresh: true,
+      },
+    });
 
-  // Frame reveal
-  const frameOpacity = useTransform(p, [0.05, 0.12, 0.2], [0, 0, 1]);
-  const frameY = useTransform(p, [0.05, 0.12, 0.2], [80, 80, 0]);
-  const frameScale = useTransform(p, [0.12, 0.25], [0.92, 1]);
+    // Move the image stack up exactly one viewport per step
+    tl.to(track, {
+      y: -(panelCount - 1) * panelHeight,
+    }, 0);
 
-  // Card motion - lateral slide + parallax (both directions based on scroll)
-  const card1X = useTransform(p, [0.15, 0.9], [-80, 50]);
-  const card1Y = useTransform(p, [0.15, 0.9], [40, -30]);
-  const card1Rot = useTransform(p, [0.15, 0.9], [-6, 4]);
+    // Background + text color changes per step
+    for (let i = 1; i < panelCount; i++) {
+      const t = i;
+      tl.to(section, { backgroundColor: steps[i].bg }, t - 0.001);
+      tl.to(text.querySelector("[data-title]"), { color: steps[i].text }, t - 0.001);
+      tl.to(text.querySelector("[data-sub]"), { color: steps[i].subtext }, t - 0.001);
+    }
 
-  const card2X = useTransform(p, [0.15, 0.9], [80, -50]);
-  const card2Y = useTransform(p, [0.15, 0.9], [30, -25]);
-  const card2Rot = useTransform(p, [0.15, 0.9], [6, -4]);
+    tl.duration(panelCount - 1);
 
-  const card3X = useTransform(p, [0.15, 0.9], [-50, 40]);
-  const card3Y = useTransform(p, [0.15, 0.9], [25, -35]);
+    const onResize = () => ScrollTrigger.refresh();
+    window.addEventListener("resize", onResize);
 
-  const card4X = useTransform(p, [0.15, 0.9], [50, -40]);
-  const card4Y = useTransform(p, [0.15, 0.9], [20, -30]);
-
-  // Prompt box reveal
-  const promptOpacity = useTransform(p, [0.2, 0.35], [0, 1]);
-  const promptY = useTransform(p, [0.2, 0.35], [30, 0]);
-
-  // Button reveal
-  const buttonOpacity = useTransform(p, [0.25, 0.4], [0, 1]);
-  const buttonY = useTransform(p, [0.25, 0.4], [30, 0]);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      ScrollTrigger.getAll().forEach(st => st.kill());
+      tl.kill();
+    };
+  }, []);
 
   return (
-    // Tall container creates the scroll runway for the pin effect
-    <div ref={containerRef} className="relative h-[300vh]">
-      {/* Sticky inner section - stays pinned while scrolling through container */}
-      <div className="sticky top-0 h-screen overflow-hidden">
-        {/* Scroll-driven background */}
-        <motion.div className="absolute inset-0" style={{ backgroundColor: bg }} />
-
-        <div className="relative z-10 mx-auto grid h-full max-w-7xl grid-cols-1 gap-8 px-6 md:grid-cols-2 md:items-center lg:gap-12">
-          {/* Left text - reveals on scroll */}
-          <motion.div
-            className="flex flex-col justify-center"
-            style={{ opacity: textOpacity, y: textY }}
+    <section ref={sectionRef} className="relative w-full">
+      {/* Pinned viewport - page STOPS here while scrub happens */}
+      <div ref={pinRef} className="relative h-screen w-full overflow-hidden">
+        <div className="mx-auto flex h-full max-w-6xl items-center px-6">
+          {/* Left text */}
+          <div
+            ref={textRef}
+            className="relative z-10 w-[420px] shrink-0"
           >
-            <motion.h1
-              className="text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl"
-              style={{ color: accent }}
-            >
+            <h2 data-title className="text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl">
               AI Studio
-            </motion.h1>
-
-            <p className="mt-4 text-lg leading-relaxed text-white/80 md:text-xl">
+            </h2>
+            <p data-sub className="mt-4 text-lg leading-relaxed md:text-xl">
               Professional AI tools for modern creators. Generate SFX, isolate vocals,
-              create images, and more — all in one place.
+              create images — all in one place.
             </p>
-
-            <motion.div
-              className="mt-8"
-              style={{ opacity: buttonOpacity, y: buttonY }}
+            <Button
+              size="lg"
+              onClick={() => navigate("/tools")}
+              className="mt-8 h-auto py-4 px-12 text-lg rounded-none"
             >
-              <Button
-                size="lg"
-                onClick={() => navigate("/tools")}
-                className="h-auto py-4 px-12 text-lg rounded-none"
-              >
-                Explore Tools
-              </Button>
-            </motion.div>
-          </motion.div>
-
-          {/* Right card frame - reveals on scroll */}
-          <motion.div
-            className="relative flex items-center justify-center"
-            style={{ opacity: frameOpacity, y: frameY, scale: frameScale }}
-          >
-            <GlassFrame>
-              <div className="relative h-[280px] w-full overflow-hidden rounded-[22px] sm:h-[320px] md:h-[380px]">
-                {/* Animated gradient background */}
-                <Waveform accent={accent} />
-
-                {/* Cards with lateral + parallax motion */}
-                <motion.img
-                  src="/placeholder.svg"
-                  className="absolute left-3 top-3 h-[100px] w-[140px] rounded-2xl object-cover bg-white/10 sm:left-4 sm:top-4 sm:h-[120px] sm:w-[170px] md:left-6 md:top-6 md:h-[140px] md:w-[200px]"
-                  style={{ x: card1X, y: card1Y, rotate: card1Rot }}
-                  alt="Tool 1"
-                />
-                <motion.img
-                  src="/placeholder.svg"
-                  className="absolute right-3 top-3 h-[100px] w-[140px] rounded-2xl object-cover bg-white/10 sm:right-4 sm:top-4 sm:h-[120px] sm:w-[170px] md:right-6 md:top-6 md:h-[140px] md:w-[200px]"
-                  style={{ x: card2X, y: card2Y, rotate: card2Rot }}
-                  alt="Tool 2"
-                />
-                <motion.img
-                  src="/placeholder.svg"
-                  className="absolute left-3 bottom-16 h-[100px] w-[140px] rounded-2xl object-cover bg-white/10 sm:left-4 sm:bottom-18 sm:h-[120px] sm:w-[170px] md:left-6 md:bottom-20 md:h-[140px] md:w-[200px]"
-                  style={{ x: card3X, y: card3Y }}
-                  alt="Tool 3"
-                />
-                <motion.img
-                  src="/placeholder.svg"
-                  className="absolute right-3 bottom-16 h-[100px] w-[140px] rounded-2xl object-cover bg-white/10 sm:right-4 sm:bottom-18 sm:h-[120px] sm:w-[170px] md:right-6 md:bottom-20 md:h-[140px] md:w-[200px]"
-                  style={{ x: card4X, y: card4Y }}
-                  alt="Tool 4"
-                />
-
-                {/* Prompt box - reveals on scroll */}
-                <PromptBox accent={accent} opacity={promptOpacity} y={promptY} />
-              </div>
-            </GlassFrame>
-          </motion.div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GlassFrame({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="relative w-full max-w-[600px] rounded-[28px] border border-white/15 bg-white/5 p-3 backdrop-blur-xl sm:p-4">
-      {/* inner border */}
-      <div className="pointer-events-none absolute inset-2 rounded-[22px] border border-white/10" />
-      <div className="relative">{children}</div>
-    </div>
-  );
-}
-
-function Waveform({ accent }: { accent: any }) {
-  return (
-    <motion.div
-      className="absolute inset-0"
-      style={{
-        background: useTransform(accent, (a: string) => 
-          `radial-gradient(circle at 30% 40%, ${a}33 0%, transparent 50%),
-           radial-gradient(circle at 70% 60%, ${a}22 0%, transparent 50%)`
-        ),
-      }}
-    />
-  );
-}
-
-interface PromptBoxProps {
-  accent: any;
-  opacity: any;
-  y: any;
-}
-
-function PromptBox({ accent, opacity, y }: PromptBoxProps) {
-  return (
-    <motion.div
-      className="absolute bottom-3 left-1/2 w-[92%] max-w-[520px] -translate-x-1/2 rounded-2xl border border-white/15 bg-black/35 px-4 py-3 text-white/85 backdrop-blur-xl sm:bottom-4 sm:px-5 sm:py-4"
-      style={{ opacity, y }}
-    >
-      <div className="flex items-center justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="grid h-8 w-8 place-items-center rounded-xl bg-white/10 sm:h-10 sm:w-10">
-            🔊
+              Explore Tools
+            </Button>
           </div>
-          <motion.div
-            className="text-sm font-medium sm:text-base"
-            style={{ color: accent }}
-          >
-            Generate your SFX…
-          </motion.div>
-        </div>
-        <div className="grid h-8 w-8 place-items-center rounded-xl bg-white/10 sm:h-10 sm:w-10">
-          ⬆️
+
+          {/* Right card area */}
+          <div className="relative flex flex-1 justify-center">
+            <div className="relative w-[900px] max-w-full">
+              {/* Glass frame - NO glow */}
+              <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl">
+                <div className="m-[10px] rounded-[22px] border border-white/10 bg-black/30">
+                  <div className="p-4">
+                    {/* Reveal window */}
+                    <div className="relative h-[520px] overflow-hidden rounded-[18px] bg-black/10">
+                      {/* TRACK: stack of panels, moves up/down with scroll */}
+                      <div ref={trackRef} className="will-change-transform">
+                        {steps.map((_, idx) => (
+                          <div
+                            key={idx}
+                            className="h-[520px] w-full p-3"
+                          >
+                            {/* Replace with real collage/cards per step */}
+                            <div className="h-full w-full rounded-2xl bg-white/10 flex items-center justify-center">
+                              <span className="text-white/40 text-2xl font-medium">
+                                Panel {idx + 1}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Prompt box overlay */}
+                      <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center">
+                        <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/15 bg-black/40 px-4 py-3 backdrop-blur-xl">
+                          <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+                            🔊
+                          </div>
+                          <div className="min-w-[280px] text-sm text-white/80">
+                            Describe what you want to create…
+                          </div>
+                          <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
+                            ⬆️
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </motion.div>
+    </section>
   );
 }
