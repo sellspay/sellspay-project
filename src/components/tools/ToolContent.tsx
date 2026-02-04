@@ -16,6 +16,7 @@ const VoiceIsolator = lazy(() => import("@/pages/tools/VoiceIsolator"));
 const SFXIsolator = lazy(() => import("@/pages/tools/SFXIsolator"));
 const MusicSplitter = lazy(() => import("@/pages/tools/MusicSplitter"));
 const SFXGenerator = lazy(() => import("@/pages/tools/SFXGenerator"));
+const NanoBanana = lazy(() => import("@/pages/tools/NanoBanana"));
 
 interface ToolContentProps {
   toolId: string | null;
@@ -108,6 +109,8 @@ export function ToolContent({ toolId }: ToolContentProps) {
         return <WaveformGenerator />;
       case "sfx-generator":
         return <SFXGenerator />;
+      case "nano-banana":
+        return <NanoBanana />;
       default:
         return null;
     }

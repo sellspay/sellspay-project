@@ -17,6 +17,7 @@ export const PRO_TOOLS = [
   "voice-isolator",
   "sfx-isolator",
   "music-splitter",
+  "nano-banana",
 ];
 
 export function useProToolsSubscription() {
