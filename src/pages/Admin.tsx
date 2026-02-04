@@ -21,6 +21,7 @@ import SpotlightNominationsDialog from "@/components/admin/SpotlightNominationsD
 import SpotlightLeaderboard from "@/components/admin/SpotlightLeaderboard";
 import CountryEligibilityEditor from "@/components/admin/CountryEligibilityEditor";
 import PayoutQueue from "@/components/admin/PayoutQueue";
+import DisputesPanel from "@/components/admin/DisputesPanel";
 import { CreatorApplication, PRODUCT_TYPE_OPTIONS } from "@/components/creator-application/types";
 
 interface Profile {
@@ -94,7 +95,7 @@ export default function Admin() {
   
   // Get initial tab from URL query param
   const urlTab = searchParams.get('tab');
-  const validTabs = ['users', 'manage-users', 'products', 'featured', 'spotlight', 'editor-applications', 'creator-applications', 'countries', 'payouts', 'settings'];
+  const validTabs = ['users', 'manage-users', 'products', 'featured', 'spotlight', 'editor-applications', 'creator-applications', 'countries', 'payouts', 'disputes', 'settings'];
   const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'users';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
@@ -1737,6 +1738,11 @@ export default function Admin() {
         {/* Payouts Tab */}
         <TabsContent value="payouts">
           <PayoutQueue />
+        </TabsContent>
+
+        {/* Disputes Tab */}
+        <TabsContent value="disputes">
+          <DisputesPanel />
         </TabsContent>
 
         {/* Settings Tab */}
