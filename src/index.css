@@ -42,12 +42,10 @@
   body { @apply bg-background text-foreground; }
 }
 
-/* Auth styles */
+/* Auth styles - NO GLOWS */
 .auth-bg {
   min-height: 100vh;
-  background: radial-gradient(700px 500px at 0% 40%, hsl(168 84% 45% / 0.15), transparent 60%),
-    radial-gradient(700px 500px at 100% 80%, hsl(168 84% 35% / 0.12), transparent 60%),
-    hsl(var(--background));
+  background: hsl(var(--background));
 }
 .auth-shell { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
 .auth-card { width: min(980px, 100%); display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 1.5rem; border-radius: 1.25rem; background: hsl(0 0% 100% / 0.04); border: 1px solid hsl(0 0% 100% / 0.08); backdrop-filter: blur(18px); }
