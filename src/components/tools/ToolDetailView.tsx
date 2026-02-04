@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Sparkles, Check } from "lucide-react";
 import { ToolData } from "./toolsData";
 import { cn } from "@/lib/utils";
+import Footer from "@/components/layout/Footer";
 
 interface ToolDetailViewProps {
   tool: ToolData;
@@ -211,9 +212,12 @@ export function ToolDetailView({ tool, bannerUrl, onLaunch }: ToolDetailViewProp
             >
               Use Now
               <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
+          </Button>
           </div>
         </section>
+        
+        {/* Footer inside right content area */}
+        <Footer />
       </div>
     </div>
   );
