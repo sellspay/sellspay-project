@@ -280,8 +280,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     // HARDCODED canonical redirect — Google requires exact match.
-    // We always use sellspay.com (non-www) because that's what user confirmed.
-    const redirectUri = 'https://sellspay.com/~/oauth/callback';
+    // Path is /~oauth/callback (NOT /~/oauth/callback)
+    const redirectUri = 'https://sellspay.com/~oauth/callback';
 
     const result = await lovable.auth.signInWithOAuth('google', {
       redirect_uri: redirectUri,
