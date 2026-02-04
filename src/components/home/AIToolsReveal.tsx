@@ -51,24 +51,37 @@ export function AIToolsReveal() {
         start: "top top",
         end: () => `+=${(panelCount - 1) * window.innerHeight}`,
         scrub: true,
-        pin: section, // Pin the whole section
+        pin: section,
         pinSpacing: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
       },
     });
 
-    // Move the image stack up exactly one panel height per step
-    tl.to(track, {
-      y: -(panelCount - 1) * panelHeight,
-    }, 0);
-
-    // Background + text color changes per step
-    for (let i = 1; i < panelCount; i++) {
-      const t = i;
-      tl.to(section, { backgroundColor: steps[i].bg }, t - 0.001);
-      tl.to(text.querySelector("[data-title]"), { color: steps[i].text }, t - 0.001);
-      tl.to(text.querySelector("[data-sub]"), { color: steps[i].subtext }, t - 0.001);
+    // Animate each step: panel moves + colors change TOGETHER
+    for (let i = 0; i < panelCount - 1; i++) {
+      const startTime = i;
+      const endTime = i + 1;
+      
+      // Move track to next panel
+      tl.to(track, {
+        y: -(i + 1) * panelHeight,
+        duration: 1,
+      }, startTime);
+      
+      // Change colors at same time
+      tl.to(section, { 
+        backgroundColor: steps[i + 1].bg,
+        duration: 0.3,
+      }, startTime);
+      tl.to(text.querySelector("[data-title]"), { 
+        color: steps[i + 1].text,
+        duration: 0.3,
+      }, startTime);
+      tl.to(text.querySelector("[data-sub]"), { 
+        color: steps[i + 1].subtext,
+        duration: 0.3,
+      }, startTime);
     }
 
     tl.duration(panelCount - 1);
