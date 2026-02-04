@@ -18,7 +18,7 @@ export function AIToolsReveal() {
   const sectionRef = useRef<HTMLDivElement | null>(null);
   const textRef = useRef<HTMLDivElement | null>(null);
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
-
+  const headlineLineRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const steps: Step[] = [
     { 
       bg: "#0a0a0a", 
@@ -31,7 +31,7 @@ export function AIToolsReveal() {
       bg: "#ffffff", 
       text: "#111111", 
       subtext: "rgba(0,0,0,0.70)",
-      headline: ["Generate", "Sounds"],
+      headline: ["Generate SFX", "made Simple"],
     },
     { 
       bg: "#0a0a0a", 
@@ -106,6 +106,10 @@ export function AIToolsReveal() {
       },
     });
 
+    // Get headline text elements
+    const line1 = headlineLineRefs.current[0];
+    const line2 = headlineLineRefs.current[1];
+
     // Animate each step
     for (let i = 0; i < panelCount - 1; i++) {
       const startTime = i;
@@ -128,6 +132,14 @@ export function AIToolsReveal() {
         color: steps[i + 1].text,
         duration: 0.3,
       }, startTime);
+
+      // Update headline text at midpoint of transition
+      if (line1 && line2) {
+        tl.call(() => {
+          line1.textContent = steps[i + 1].headline[0];
+          line2.textContent = steps[i + 1].headline[1];
+        }, [], startTime + 0.15);
+      }
     }
 
     tl.duration(panelCount - 1);
@@ -159,8 +171,18 @@ export function AIToolsReveal() {
               className="text-[2.5rem] sm:text-[3.5rem] md:text-[4.5rem] lg:text-[5rem] xl:text-[6rem] 2xl:text-[7rem] font-black leading-[0.9] tracking-[-0.02em]"
               style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
             >
-              <span className="block">Generate anything</span>
-              <span className="block">from Simple prompts</span>
+              <span 
+                ref={(el) => { headlineLineRefs.current[0] = el; }}
+                className="block"
+              >
+                Generate anything
+              </span>
+              <span 
+                ref={(el) => { headlineLineRefs.current[1] = el; }}
+                className="block"
+              >
+                from Simple prompts
+              </span>
             </h2>
           </div>
 
