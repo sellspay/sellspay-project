@@ -1,13 +1,21 @@
-// AI tools and platforms that creators use - with real logos
+import openaiLogo from '@/assets/logos/openai.png';
+import midjourneyLogo from '@/assets/logos/midjourney.png';
+import runwayLogo from '@/assets/logos/runway.png';
+import elevenlabsLogo from '@/assets/logos/elevenlabs.png';
+import soraLogo from '@/assets/logos/sora.png';
+import klingLogo from '@/assets/logos/kling.png';
+import topazLogo from '@/assets/logos/topaz.png';
+import fluxLogo from '@/assets/logos/flux.jpg';
+
 const partners = [
-  { name: 'OpenAI', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg' },
-  { name: 'Midjourney', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e6/Midjourney_Emblem.png' },
-  { name: 'Runway', logo: 'https://images.seeklogo.com/logo-png/52/1/runway-logo-png_seeklogo-523703.png' },
-  { name: 'ElevenLabs', logo: 'https://images.seeklogo.com/logo-png/61/1/elevenlabs-logo-png_seeklogo-610844.png' },
-  { name: 'Sora', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg' },
-  { name: 'Kling', logo: 'https://framerusercontent.com/images/7NLMd59EzeMffhR3fSWAkQWec.png' },
-  { name: 'Topaz AI', logo: 'https://images.seeklogo.com/logo-png/52/2/topaz-labs-logo-png_seeklogo-522489.png' },
-  { name: 'Flux', logo: 'https://blackforestlabs.ai/wp-content/uploads/2024/07/bfl-logo-t-1-1.svg' },
+  { name: 'OpenAI', logo: openaiLogo },
+  { name: 'Midjourney', logo: midjourneyLogo },
+  { name: 'Runway', logo: runwayLogo },
+  { name: 'ElevenLabs', logo: elevenlabsLogo },
+  { name: 'Sora', logo: soraLogo },
+  { name: 'Kling', logo: klingLogo },
+  { name: 'Topaz AI', logo: topazLogo },
+  { name: 'Flux', logo: fluxLogo },
 ];
 
 export function PartnerLogos() {
@@ -29,7 +37,7 @@ export function PartnerLogos() {
             <img 
               src={partner.logo} 
               alt={partner.name}
-              className="h-5 w-5 object-contain opacity-50 grayscale"
+              className="h-6 w-6 object-contain rounded-sm opacity-60 grayscale"
             />
             <span className="text-sm font-medium text-foreground/50 whitespace-nowrap tracking-wide">
               {partner.name}
