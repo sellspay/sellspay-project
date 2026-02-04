@@ -37,7 +37,7 @@ export default function Footer() {
             <Link to="/" className="group">
               <img 
                 src={sellspayLogo} 
-                alt="Sellspay" 
+                alt="SellsPay" 
                 className="h-10 w-auto group-hover:opacity-80 transition-opacity"
               />
             </Link>
