@@ -6,9 +6,18 @@ import { AnimatePresence } from 'framer-motion';
 import { SFXView, VocalView, MangaView, VideoView, StudioGridView, ToolType, ToolConfig } from './toolkit';
 import { supabase } from '@/integrations/supabase/client';
 
+interface ThumbnailItem {
+  url: string;
+  label?: string;
+}
+
 interface SiteToolsContent {
   tools_title: string;
   tools_subtitle: string;
+  sfx_thumbnails: ThumbnailItem[];
+  vocal_thumbnails: ThumbnailItem[];
+  manga_thumbnails: ThumbnailItem[];
+  video_thumbnails: ThumbnailItem[];
 }
 
 const tools: ToolConfig[] = [
@@ -74,7 +83,11 @@ export function ToolsShowcase() {
   const [isTyping, setIsTyping] = useState(true);
   const [siteContent, setSiteContent] = useState<SiteToolsContent>({
     tools_title: 'AI Studio',
-    tools_subtitle: 'Professional AI tools for modern creators'
+    tools_subtitle: 'Professional AI tools for modern creators',
+    sfx_thumbnails: [],
+    vocal_thumbnails: [],
+    manga_thumbnails: [],
+    video_thumbnails: [],
   });
 
   // Fetch site content
@@ -82,14 +95,18 @@ export function ToolsShowcase() {
     const fetchContent = async () => {
       const { data } = await supabase
         .from('site_content')
-        .select('tools_title, tools_subtitle')
+        .select('tools_title, tools_subtitle, sfx_thumbnails, vocal_thumbnails, manga_thumbnails, video_thumbnails')
         .eq('id', 'main')
         .single();
       
       if (data) {
         setSiteContent({
           tools_title: data.tools_title || 'AI Studio',
-          tools_subtitle: data.tools_subtitle || 'Professional AI tools for modern creators'
+          tools_subtitle: data.tools_subtitle || 'Professional AI tools for modern creators',
+          sfx_thumbnails: (data.sfx_thumbnails as unknown as ThumbnailItem[]) || [],
+          vocal_thumbnails: (data.vocal_thumbnails as unknown as ThumbnailItem[]) || [],
+          manga_thumbnails: (data.manga_thumbnails as unknown as ThumbnailItem[]) || [],
+          video_thumbnails: (data.video_thumbnails as unknown as ThumbnailItem[]) || [],
         });
       }
     };
@@ -97,6 +114,17 @@ export function ToolsShowcase() {
   }, []);
 
   const activeConfig = useMemo(() => tools.find(t => t.id === activeTool)!, [activeTool]);
+
+  // Get thumbnails for active tool
+  const activeThumbnails = useMemo(() => {
+    switch (activeTool) {
+      case 'sfx': return siteContent.sfx_thumbnails;
+      case 'vocal': return siteContent.vocal_thumbnails;
+      case 'manga': return siteContent.manga_thumbnails;
+      case 'video': return siteContent.video_thumbnails;
+      default: return [];
+    }
+  }, [activeTool, siteContent]);
 
   // Typewriter effect
   useEffect(() => {
@@ -227,6 +255,7 @@ export function ToolsShowcase() {
             config={activeConfig} 
             displayedText={displayedText}
             toolId={activeTool}
+            thumbnails={activeThumbnails}
           />
         </div>
       </section>
