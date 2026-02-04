@@ -200,29 +200,24 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
 
   return (
     <section className="py-20 sm:py-28 lg:py-36">
-      {/* Section Header - Full width, MASSIVE */}
+      {/* Section Header - Full width, editorial */}
       <div className="px-6 sm:px-8 lg:px-12 mb-14 sm:mb-20">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-          <div className="flex items-start gap-5">
-            <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
-              <Sparkles className="h-10 w-10 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground tracking-tight">
-                Featured Assets
-              </h2>
-              <p className="text-lg sm:text-xl text-muted-foreground mt-2">
-                Hand-picked by our editorial team
-              </p>
-            </div>
+          <div>
+            <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground mb-3">
+              Curated Collection
+            </p>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground tracking-tight">
+              Featured Assets
+            </h2>
           </div>
           <Button 
             onClick={() => navigate('/products')} 
-            variant="outline"
-            className="px-10 h-14 text-lg font-medium group border-2 hover:bg-primary/10 hover:border-primary/50"
+            variant="ghost"
+            className="px-0 h-auto text-base font-medium group text-foreground/70 hover:text-foreground hover:bg-transparent"
           >
             View All
-            <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Button>
         </div>
       </div>
