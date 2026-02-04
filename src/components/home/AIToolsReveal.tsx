@@ -15,27 +15,28 @@ type Step = {
 export function AIToolsReveal() {
   const navigate = useNavigate();
   const sectionRef = useRef<HTMLDivElement | null>(null);
-  const pinRef = useRef<HTMLDivElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const textRef = useRef<HTMLDivElement | null>(null);
 
   const steps: Step[] = [
-    { bg: "#07070A", text: "#C9B8FF", subtext: "rgba(255,255,255,0.65)" },
-    { bg: "#0A0F1D", text: "#7EE7FF", subtext: "rgba(255,255,255,0.65)" },
-    { bg: "#16080B", text: "#FF7A90", subtext: "rgba(255,255,255,0.65)" },
-    { bg: "#081013", text: "#7CFFB2", subtext: "rgba(255,255,255,0.65)" },
-    { bg: "#10081A", text: "#D8A7FF", subtext: "rgba(255,255,255,0.65)" },
+    { bg: "#0a0a0a", text: "#C9B8FF", subtext: "rgba(255,255,255,0.70)" }, // 1 gray
+    { bg: "#ffffff", text: "#111111", subtext: "rgba(0,0,0,0.70)" },       // 2 white
+    { bg: "#0a0a0a", text: "#C9B8FF", subtext: "rgba(255,255,255,0.70)" }, // 3 gray
+    { bg: "#e76e50", text: "#0a0a0a", subtext: "rgba(10,10,10,0.75)" },    // 4 light red
+    { bg: "#50A9E7", text: "#0a0a0a", subtext: "rgba(10,10,10,0.75)" },    // 5 light blue
+    { bg: "#0a0a0a", text: "#C9B8FF", subtext: "rgba(255,255,255,0.70)" }, // 6 gray end
   ];
 
   useLayoutEffect(() => {
     const section = sectionRef.current;
-    const pin = pinRef.current;
+    const viewport = viewportRef.current;
     const track = trackRef.current;
     const text = textRef.current;
-    if (!section || !pin || !track || !text) return;
+    if (!section || !viewport || !track || !text) return;
 
     const panelCount = steps.length;
-    const panelHeight = pin.clientHeight;
+    const panelHeight = viewport.clientHeight; // Use viewport height (520px)
 
     // Set initial styles
     gsap.set(section, { backgroundColor: steps[0].bg });
@@ -50,14 +51,14 @@ export function AIToolsReveal() {
         start: "top top",
         end: () => `+=${(panelCount - 1) * window.innerHeight}`,
         scrub: true,
-        pin: pin,
+        pin: section, // Pin the whole section
         pinSpacing: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
       },
     });
 
-    // Move the image stack up exactly one viewport per step
+    // Move the image stack up exactly one panel height per step
     tl.to(track, {
       y: -(panelCount - 1) * panelHeight,
     }, 0);
@@ -84,8 +85,8 @@ export function AIToolsReveal() {
 
   return (
     <section ref={sectionRef} className="relative w-full">
-      {/* Pinned viewport - page STOPS here while scrub happens */}
-      <div ref={pinRef} className="relative h-screen w-full overflow-hidden">
+      {/* Full viewport pinned area */}
+      <div className="relative h-screen w-full overflow-hidden">
         <div className="mx-auto flex h-full max-w-6xl items-center px-6">
           {/* Left text */}
           <div
@@ -102,7 +103,7 @@ export function AIToolsReveal() {
             <Button
               size="lg"
               onClick={() => navigate("/tools")}
-              className="mt-8 h-auto py-4 px-12 text-lg rounded-none"
+              className="mt-8 h-auto py-4 px-12 text-lg"
             >
               Explore Tools
             </Button>
@@ -111,12 +112,15 @@ export function AIToolsReveal() {
           {/* Right card area */}
           <div className="relative flex flex-1 justify-center">
             <div className="relative w-[900px] max-w-full">
-              {/* Glass frame - NO glow */}
+              {/* Glass frame - clean, no glow */}
               <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-xl">
                 <div className="m-[10px] rounded-[22px] border border-white/10 bg-black/30">
                   <div className="p-4">
-                    {/* Reveal window */}
-                    <div className="relative h-[520px] overflow-hidden rounded-[18px] bg-black/10">
+                    {/* Reveal window - viewport ref here */}
+                    <div 
+                      ref={viewportRef} 
+                      className="relative h-[520px] overflow-hidden rounded-[18px] bg-black/10"
+                    >
                       {/* TRACK: stack of panels, moves up/down with scroll */}
                       <div ref={trackRef} className="will-change-transform">
                         {steps.map((_, idx) => (
