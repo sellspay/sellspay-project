@@ -122,21 +122,13 @@ export default function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* Left side: Logo + Main Nav */}
           <div className="flex items-center gap-8">
-            {/* Logo with 3D effect */}
+            {/* Logo */}
             <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-              <div className={cn(
-                "relative p-1.5 rounded-xl",
-                "bg-gradient-to-b from-white/10 to-transparent",
-                "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_8px_rgba(0,0,0,0.3)]",
-                "transition-all duration-300 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.4)]",
-                "group-hover:scale-105"
-              )}>
-                <img 
-                  src={sellspayLogo} 
-                  alt="SellsPay" 
-                  className="h-8 w-auto"
-                />
-              </div>
+              <img 
+                src={sellspayLogo} 
+                alt="SellsPay" 
+                className="h-9 w-auto transition-transform duration-300 group-hover:scale-105"
+              />
               <span className="hidden sm:inline text-lg font-bold tracking-tight text-foreground">
                 SellsPay
               </span>
@@ -396,21 +388,22 @@ export default function Header() {
             
             {user ? (
               <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
                     className={cn(
-                      "relative h-10 w-10 p-0 rounded-xl",
-                      "bg-gradient-to-b from-white/10 to-transparent",
-                      "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_8px_rgba(0,0,0,0.2)]",
-                      "border border-white/10",
-                      "hover:from-white/15 hover:to-white/5",
-                      "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)]"
+                      "relative h-10 w-10 p-0 rounded-full",
+                      "transition-all duration-300",
+                      "hover:ring-2 hover:ring-primary/30 hover:ring-offset-2 hover:ring-offset-background"
                     )}
                   >
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={avatarUrl || undefined} />
-                      <AvatarFallback className="bg-primary/20 text-primary text-sm font-semibold">
+                    <Avatar className={cn(
+                      "h-10 w-10 rounded-full",
+                      "ring-2 ring-white/10",
+                      "transition-all duration-300"
+                    )}>
+                      <AvatarImage src={avatarUrl || undefined} className="rounded-full" />
+                      <AvatarFallback className="bg-primary/20 text-primary text-sm font-semibold rounded-full">
                         {(username || user.email)?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -419,17 +412,23 @@ export default function Header() {
                 <DropdownMenuContent 
                   align="end" 
                   className={cn(
-                    "w-60 p-2",
+                    "w-64 p-3",
                     "bg-gradient-to-b from-card/98 to-card/95 backdrop-blur-2xl",
                     "border border-white/10",
                     "shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]",
-                    "rounded-2xl"
+                    "rounded-2xl overflow-hidden"
                   )}
                 >
-                  <div className="flex items-center gap-3 p-3 mb-1">
-                    <Avatar className="h-10 w-10 shadow-lg">
-                      <AvatarImage src={avatarUrl || undefined} />
-                      <AvatarFallback className="bg-primary/20 text-primary font-semibold">
+                  {/* Inner highlight */}
+                  <div className="absolute inset-x-4 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
+                  
+                  <div className={cn(
+                    "flex items-center gap-3 p-3 mb-2 rounded-xl",
+                    "bg-gradient-to-r from-white/[0.05] to-transparent"
+                  )}>
+                    <Avatar className="h-11 w-11 ring-2 ring-primary/20 shadow-lg">
+                      <AvatarImage src={avatarUrl || undefined} className="rounded-full" />
+                      <AvatarFallback className="bg-primary/20 text-primary font-semibold rounded-full">
                         {(username || user.email)?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
