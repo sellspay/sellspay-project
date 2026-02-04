@@ -2336,6 +2336,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      generate_username_from_email: {
+        Args: { p_email: string }
+        Returns: string
+      }
       get_active_spotlights: {
         Args: never
         Returns: {
