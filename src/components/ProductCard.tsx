@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, Star, Flame, Heart, MessageCircle, Bookmark, Sparkles, Crown } from 'lucide-react';
+import { Play, Flame, Heart, MessageCircle, Bookmark, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
@@ -70,9 +70,7 @@ const productTypeLabels: Record<string, string> = {
 };
 
 function formatPrice(cents: number | null, currency: string | null, pricingType?: string | null, isSubIncluded?: boolean): string {
-  // If included in subscription plan, always show "Subscription"
   if (isSubIncluded) return 'Subscription';
-  // If subscription-only, show that instead of "Free"
   if (pricingType === 'subscription' || pricingType === 'subscription_only') return 'Subscription';
   if (!cents || cents === 0) return 'Free';
   const amount = cents / 100;
@@ -122,7 +120,6 @@ export default function ProductCard({
     Boolean(product.included_in_subscription);
   const isFree = !isSubscriptionOnly && (!product.price_cents || product.price_cents === 0);
 
-  // Fetch creator info from public_profiles view (excludes sensitive PII)
   useEffect(() => {
     const fetchCreator = async () => {
       if (!showCreator || !product.creator_id) return;
@@ -138,7 +135,6 @@ export default function ProductCard({
     fetchCreator();
   }, [showCreator, product.creator_id]);
 
-  // Fetch user profile and saved status
   useEffect(() => {
     const fetchUserData = async () => {
       if (!user) {
@@ -156,7 +152,6 @@ export default function ProductCard({
       if (profile) {
         setUserProfileId(profile.id);
         
-        // Check if product is saved
         const { data: saved } = await supabase
           .from("saved_products")
           .select("id")
@@ -232,13 +227,14 @@ export default function ProductCard({
   return (
     <Link
       to={`/product/${product.id}`}
-      className="group block"
+      className="group block h-full"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={`relative overflow-hidden rounded-2xl bg-card border border-border/50 group-hover:border-primary/40 transition-all duration-300 group-hover:shadow-2xl group-hover:shadow-primary/10 ${isLarge ? 'rounded-3xl' : ''}`}>
-        {/* Media Container - BIGGER aspect ratio */}
-        <div className={`relative ${isLarge ? 'aspect-[4/3]' : 'aspect-[16/10]'} overflow-hidden`}>
+      {/* STRAIGHT EDGES - No rounded corners, tight borders */}
+      <div className="relative overflow-hidden bg-card border-0 h-full">
+        {/* Media Container - Edge to edge, no gaps */}
+        <div className={`relative ${isLarge ? 'aspect-[4/5]' : 'aspect-[4/5]'} overflow-hidden`}>
           {/* Video Preview */}
           {canShowVideo && (
             <video
@@ -270,109 +266,94 @@ export default function ProductCard({
             </div>
           ) : null}
 
-          {/* Minimal Price Badge */}
-          <div className={`absolute top-2.5 left-2.5 flex items-center gap-1 rounded-md backdrop-blur-sm border transition-all duration-300 ${
+          {/* Price Badge - Top Left */}
+          <div className={`absolute top-3 left-3 flex items-center gap-1.5 backdrop-blur-md border transition-all duration-300 ${
             isSubscriptionOnly
-              ? 'bg-violet-500/20 border-violet-400/30 text-violet-300 px-2 py-0.5'
+              ? 'bg-violet-500/30 border-violet-400/40 text-violet-200 px-2.5 py-1'
               : isFree 
-                ? 'bg-white/10 border-white/20 text-white/90 px-2 py-0.5' 
-                : 'bg-black/50 border-white/10 text-white/90 px-2 py-0.5'
-          } text-[10px] font-medium tracking-wide`}>
-            {isSubscriptionOnly && (
-              <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />
-            )}
+                ? 'bg-emerald-500/30 border-emerald-400/40 text-emerald-200 px-2.5 py-1' 
+                : 'bg-black/60 border-white/20 text-white px-2.5 py-1'
+          } text-xs font-semibold tracking-wide`}>
             {isFree && !isSubscriptionOnly && (
-              <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 bg-emerald-400" />
             )}
-            <span className={(isFree || isSubscriptionOnly) ? 'uppercase tracking-wider' : ''}>
+            <span className="uppercase tracking-wider">
               {formatPrice(product.price_cents, product.currency, product.pricing_type, Boolean(product.included_in_subscription))}
             </span>
           </div>
 
-          {/* Minimal "Hot" Badge */}
+          {/* Hot Badge */}
           {isHot && (
-            <div className="absolute top-2.5 left-[4.5rem] flex items-center gap-1 rounded-md bg-amber-500/20 border border-amber-400/30 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-amber-300 tracking-wider uppercase">
-              <Flame className="h-2.5 w-2.5" />
+            <div className="absolute top-3 left-[5.5rem] flex items-center gap-1.5 bg-amber-500/30 border border-amber-400/40 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-amber-200 tracking-wider uppercase">
+              <Flame className="h-3 w-3" />
               Hot
             </div>
           )}
 
-          {/* Premium Featured Badge */}
+          {/* Featured Badge - Premium Gold */}
           {showFeaturedBadge && product.featured && (
-            <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 rounded-lg overflow-hidden">
-              {/* Animated gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 animate-shimmer bg-[length:200%_100%]" />
-              <div className="relative flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-amber-950 tracking-wider uppercase">
-                <Crown className="h-3 w-3" />
-                Featured
-              </div>
+            <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-400 px-2.5 py-1 text-xs font-bold text-amber-950 tracking-wider uppercase">
+              <Crown className="h-3 w-3" />
+              Featured
             </div>
           )}
 
-          {/* Save Button - shows on hover */}
+          {/* Save Button */}
           {!product.featured && (
             <button
               onClick={handleSave}
               disabled={savingProduct}
-              className={`absolute top-2.5 right-2.5 p-1.5 rounded-md bg-black/40 backdrop-blur-sm border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-black/60 ${
-                isSaved ? 'text-primary' : 'text-white/70 hover:text-white'
+              className={`absolute top-3 right-3 p-2 bg-black/50 backdrop-blur-md border border-white/20 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-black/70 ${
+                isSaved ? 'text-primary' : 'text-white/80 hover:text-white'
               }`}
               title={isSaved ? "Remove from saved" : "Save product"}
             >
-              <Bookmark className={`h-3.5 w-3.5 ${isSaved ? 'fill-primary' : ''}`} />
+              <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-primary' : ''}`} />
             </button>
           )}
 
           {/* Product Type Badge */}
           {showType && product.product_type && (
-            <div className="absolute bottom-2.5 left-2.5 rounded-md bg-black/50 border border-white/10 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white/80 tracking-wide">
+            <div className="absolute bottom-3 left-3 bg-black/60 border border-white/20 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-white/90 tracking-wide">
               {productTypeLabels[product.product_type] || product.product_type}
             </div>
           )}
 
-          {/* Premium hover gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          {/* Bottom gradient overlay */}
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
         </div>
 
-        {/* Product Info - BIGGER */}
-        <div className={`${isLarge ? 'p-6' : 'p-4'}`}>
-          <h3 className={`truncate font-bold text-foreground group-hover:text-primary transition-colors ${isLarge ? 'text-xl' : 'text-base'}`}>
+        {/* Product Info - Minimal, Clean */}
+        <div className={`absolute inset-x-0 bottom-0 ${isLarge ? 'p-5' : 'p-4'}`}>
+          <h3 className={`truncate font-bold text-white group-hover:text-primary transition-colors ${isLarge ? 'text-lg' : 'text-sm'}`}>
             {product.name}
           </h3>
           
-          {/* Creator Username & Date */}
-          {showCreator && (
-            <div className={`flex items-center gap-2 mt-2 ${isLarge ? 'text-sm' : 'text-xs'} text-muted-foreground`}>
-              {creator?.username && (
-                <Link
-                  to={`/@${creator.username}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="hover:text-primary transition-colors font-medium"
-                >
-                  @{creator.username}
-                </Link>
-              )}
-              {creator?.username && createdAt && <span className="opacity-50">•</span>}
-              {createdAt && (
-                <span className="opacity-70">
-                  {new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              )}
+          {/* Creator Username */}
+          {showCreator && creator?.username && (
+            <div className={`mt-1 ${isLarge ? 'text-sm' : 'text-xs'} text-white/70`}>
+              <Link
+                to={`/@${creator.username}`}
+                onClick={(e) => e.stopPropagation()}
+                className="hover:text-primary transition-colors"
+              >
+                @{creator.username}
+              </Link>
             </div>
           )}
           
           {/* Engagement Stats */}
           {showEngagement && (likeCount !== undefined || commentCount !== undefined) && (
-            <div className={`flex items-center gap-4 ${isLarge ? 'mt-4' : 'mt-3'} text-muted-foreground`}>
+            <div className={`flex items-center gap-4 ${isLarge ? 'mt-3' : 'mt-2'} text-white/60`}>
               {likeCount !== undefined && (
-                <span className={`flex items-center gap-1.5 ${isLarge ? 'text-base' : 'text-sm'}`}>
-                  <Heart className={`${isLarge ? 'h-5 w-5' : 'h-4 w-4'}`} />
+                <span className={`flex items-center gap-1 ${isLarge ? 'text-sm' : 'text-xs'}`}>
+                  <Heart className="h-3.5 w-3.5" />
                   {likeCount}
                 </span>
               )}
               {commentCount !== undefined && (
-                <span className={`flex items-center gap-1.5 ${isLarge ? 'text-base' : 'text-sm'}`}>
-                  <MessageCircle className={`${isLarge ? 'h-5 w-5' : 'h-4 w-4'}`} />
+                <span className={`flex items-center gap-1 ${isLarge ? 'text-sm' : 'text-xs'}`}>
+                  <MessageCircle className="h-3.5 w-3.5" />
                   {commentCount}
                 </span>
               )}

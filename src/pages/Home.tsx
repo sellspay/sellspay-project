@@ -215,7 +215,7 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
           <Button 
             onClick={() => navigate('/products')} 
             variant="outline"
-            className="rounded-full px-10 h-14 text-lg font-medium group border-2 hover:bg-primary/10 hover:border-primary/50"
+            className="px-10 h-14 text-lg font-medium group border-2 hover:bg-primary/10 hover:border-primary/50"
           >
             View All
             <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -223,14 +223,13 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
         </div>
       </div>
 
-      {/* EDGE-TO-EDGE Dense Grid - BIGGER gaps and cards */}
-      <div className="px-3 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
+      {/* EDGE-TO-EDGE Masonry-style Grid - ZERO gaps, straight edges */}
+      <div className="px-0">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-[2px]">
           {displayProducts.slice(0, 12).map((product, index) => (
             <div 
               key={product.id}
               className={`${
-                // Make first item larger on desktop
                 index === 0 ? 'sm:col-span-2 sm:row-span-2' : ''
               }`}
             >
@@ -250,11 +249,11 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
         </div>
       </div>
 
-      {/* Load More CTA - BIGGER */}
+      {/* Load More CTA - Clean, no glow */}
       <div className="text-center mt-16 sm:mt-20 px-6">
         <Button 
           onClick={() => navigate('/products')} 
-          className="rounded-full px-14 h-16 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-2xl shadow-primary/25 transition-all duration-300 hover:scale-105"
+          className="px-14 h-16 text-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300"
         >
           Explore All Assets
           <ArrowRight className="ml-3 h-6 w-6" />
@@ -305,8 +304,8 @@ function CategoryShowcase({ products }: CategoryShowcaseProps) {
           </div>
         </div>
 
-        {/* Category Pills - BIGGER & Bold */}
-        <div className="flex flex-wrap gap-4">
+        {/* Category Pills - BIGGER & Bold, Straight edges */}
+        <div className="flex flex-wrap gap-3">
           {SHOWCASE_CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat.id;
             const count = products.filter(p => p.product_type === cat.id).length;
@@ -316,11 +315,11 @@ function CategoryShowcase({ products }: CategoryShowcaseProps) {
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
                 className={`
-                  flex items-center gap-3 px-8 py-4 rounded-full text-lg font-semibold
-                  transition-all duration-200
+                  flex items-center gap-3 px-8 py-4 text-lg font-semibold
+                  transition-all duration-200 border
                   ${isActive 
-                    ? 'bg-primary text-primary-foreground shadow-2xl shadow-primary/30 scale-105' 
-                    : 'bg-card text-foreground border-2 border-border hover:border-primary/50 hover:bg-card/80'
+                    ? 'bg-primary text-primary-foreground border-primary' 
+                    : 'bg-card text-foreground border-border hover:border-primary/50 hover:bg-card/80'
                   }
                 `}
               >
@@ -335,10 +334,10 @@ function CategoryShowcase({ products }: CategoryShowcaseProps) {
         </div>
       </div>
 
-      {/* Products Grid - Dense, BIGGER */}
-      <div className="px-3 sm:px-6 lg:px-8">
+      {/* Products Grid - ZERO gaps, straight edges */}
+      <div className="px-0">
         {displayProducts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-[2px]">
             {displayProducts.map((product) => (
               <ProductCard 
                 key={product.id} 
@@ -357,13 +356,13 @@ function CategoryShowcase({ products }: CategoryShowcaseProps) {
         )}
       </div>
 
-      {/* View Category CTA - BIGGER */}
+      {/* View Category CTA - Clean */}
       {displayProducts.length > 0 && (
         <div className="text-center mt-14 sm:mt-20 px-6">
           <Button 
             onClick={() => navigate(`/products?type=${activeCategory}`)}
             variant="outline"
-            className="rounded-full px-12 h-14 text-lg font-medium group border-2 hover:bg-primary/10 hover:border-primary/50"
+            className="px-12 h-14 text-lg font-medium group border-2 hover:bg-primary/10 hover:border-primary/50"
           >
             View All {SHOWCASE_CATEGORIES.find(c => c.id === activeCategory)?.label}
             <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
