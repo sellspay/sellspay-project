@@ -1,40 +1,43 @@
-import { Reveal } from './Reveal';
-
-// Using text-based logos for a clean, professional look
+// Editor tools and AI platforms marquee
 const partners = [
-  { name: 'Microsoft', logo: '⊞' },
-  { name: 'Google', logo: null },
-  { name: 'Apple', logo: '' },
-  { name: 'Adobe', logo: null },
-  { name: 'Netflix', logo: null },
-  { name: 'Spotify', logo: null },
-  { name: 'Amazon', logo: null },
-  { name: 'Disney', logo: null },
-  { name: 'Warner Bros', logo: null },
-  { name: 'Sony', logo: null },
+  { name: 'After Effects', logo: 'https://upload.wikimedia.org/wikipedia/commons/c/cb/Adobe_After_Effects_CC_icon.svg' },
+  { name: 'Premiere Pro', logo: 'https://upload.wikimedia.org/wikipedia/commons/4/40/Adobe_Premiere_Pro_CC_icon.svg' },
+  { name: 'DaVinci Resolve', logo: 'https://upload.wikimedia.org/wikipedia/commons/9/90/DaVinci_Resolve_17_logo.svg' },
+  { name: 'Final Cut Pro', logo: 'https://upload.wikimedia.org/wikipedia/en/9/9f/Final_Cut_Pro_X_10.6_icon.png' },
+  { name: 'OpenAI', logo: 'https://upload.wikimedia.org/wikipedia/commons/4/4d/OpenAI_Logo.svg' },
+  { name: 'Midjourney', logo: null },
+  { name: 'Runway', logo: null },
+  { name: 'CapCut', logo: 'https://upload.wikimedia.org/wikipedia/en/b/b0/CapCut_logo.svg' },
+  { name: 'Photoshop', logo: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Adobe_Photoshop_CC_icon.svg' },
+  { name: 'Blender', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/0c/Blender_logo_no_text.svg' },
+  { name: 'Cinema 4D', logo: null },
+  { name: 'Topaz AI', logo: null },
 ];
 
 export function PartnerLogos() {
   const allPartners = [...partners, ...partners, ...partners];
 
   return (
-    <section className="relative py-12 sm:py-16 overflow-hidden">
-      {/* Subtle top/bottom borders only */}
-      <div className="absolute inset-x-0 top-0 h-px bg-border/20" />
-      <div className="absolute inset-x-0 bottom-0 h-px bg-border/20" />
+    <section className="relative py-10 sm:py-14 overflow-hidden">
+      {/* Edge fade masks - seamless blend */}
+      <div className="absolute left-0 top-0 bottom-0 w-32 sm:w-48 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-32 sm:w-48 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
       
-      {/* Edge fade masks - blend seamlessly */}
-      <div className="absolute left-0 top-0 bottom-0 w-40 sm:w-64 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-      <div className="absolute right-0 top-0 bottom-0 w-40 sm:w-64 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
-      
-      {/* Scrolling logos - minimal, professional */}
+      {/* Scrolling logos - clean, no shadows */}
       <div className="flex animate-marquee">
         {allPartners.map((partner, index) => (
           <div
             key={`${partner.name}-${index}`}
-            className="flex items-center justify-center px-10 sm:px-16 shrink-0"
+            className="flex items-center gap-3 px-8 sm:px-12 shrink-0"
           >
-            <span className="text-xl sm:text-2xl font-semibold text-foreground/30 hover:text-foreground/60 transition-colors duration-300 whitespace-nowrap tracking-wide">
+            {partner.logo ? (
+              <img 
+                src={partner.logo} 
+                alt={partner.name}
+                className="h-6 sm:h-8 w-auto opacity-40 hover:opacity-70 transition-opacity duration-300 grayscale"
+              />
+            ) : null}
+            <span className="text-base sm:text-lg font-medium text-foreground/40 hover:text-foreground/70 transition-colors duration-300 whitespace-nowrap">
               {partner.name}
             </span>
           </div>
