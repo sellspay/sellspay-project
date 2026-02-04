@@ -46,13 +46,11 @@ export default function HeroSection() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl relative z-10">
       <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
 
-          {/* Brand name (keep visible for Google OAuth crawler) */}
-          <p className="text-xs sm:text-sm font-semibold tracking-[0.28em] uppercase text-foreground/90 mb-4 sm:mb-6">
-            SellsPay
-          </p>
-          
           {/* Main headline */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight mb-4 sm:mb-6">
+            <span className="block text-xs sm:text-sm font-semibold tracking-[0.28em] uppercase text-muted-foreground mb-3 sm:mb-5">
+              SellsPay
+            </span>
              <span className="text-foreground drop-shadow-lg">
                Level Up Your
              </span>
