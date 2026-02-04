@@ -4,6 +4,12 @@ import { Reveal } from './Reveal';
 import { AudioWaveform, MicVocal, Brush, Clapperboard } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { SFXView, VocalView, MangaView, VideoView, StudioGridView, ToolType, ToolConfig } from './toolkit';
+import { supabase } from '@/integrations/supabase/client';
+
+interface SiteToolsContent {
+  tools_title: string;
+  tools_subtitle: string;
+}
 
 const tools: ToolConfig[] = [
   {
@@ -66,6 +72,29 @@ export function ToolsShowcase() {
   const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
+  const [siteContent, setSiteContent] = useState<SiteToolsContent>({
+    tools_title: 'AI Studio',
+    tools_subtitle: 'Professional AI tools for modern creators'
+  });
+
+  // Fetch site content
+  useEffect(() => {
+    const fetchContent = async () => {
+      const { data } = await supabase
+        .from('site_content')
+        .select('tools_title, tools_subtitle')
+        .eq('id', 'main')
+        .single();
+      
+      if (data) {
+        setSiteContent({
+          tools_title: data.tools_title || 'AI Studio',
+          tools_subtitle: data.tools_subtitle || 'Professional AI tools for modern creators'
+        });
+      }
+    };
+    fetchContent();
+  }, []);
 
   const activeConfig = useMemo(() => tools.find(t => t.id === activeTool)!, [activeTool]);
 
@@ -128,10 +157,10 @@ export function ToolsShowcase() {
           {/* Header */}
           <div className="text-center mb-10 sm:mb-14">
             <h2 className="text-7xl sm:text-8xl lg:text-9xl xl:text-[10rem] font-serif font-normal text-foreground tracking-tight italic">
-              AI Studio
+              {siteContent.tools_title}
             </h2>
             <p className="text-xl sm:text-2xl text-muted-foreground mt-4 max-w-2xl mx-auto">
-              Professional AI tools for modern creators
+              {siteContent.tools_subtitle}
             </p>
             
             {/* CTA Button */}

@@ -3,30 +3,91 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import { ArrowRight, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import heroBg from '@/assets/hero-cinematic.jpg';
 
-const floatingWords = ['Presets', 'LUTs', 'SFX', 'Templates', 'Overlays', 'Fonts', 'Tutorials'];
+interface SiteContent {
+  hero_media_type: 'image' | 'video';
+  hero_image_url: string | null;
+  hero_video_url: string | null;
+  hero_headline: string;
+  hero_subheadline: string;
+  hero_rotating_words: string[];
+  hero_subtitle: string;
+  hero_stats: { assets: string; creators: string; downloads: string };
+}
+
+const defaultContent: SiteContent = {
+  hero_media_type: 'image',
+  hero_image_url: null,
+  hero_video_url: null,
+  hero_headline: 'Create with',
+  hero_subheadline: 'Premium',
+  hero_rotating_words: ['Presets', 'LUTs', 'SFX', 'Templates', 'Overlays', 'Fonts', 'Tutorials'],
+  hero_subtitle: 'Discover thousands of high-quality digital assets from professional creators. Everything you need to level up your work.',
+  hero_stats: { assets: '5,000+', creators: '500+', downloads: '50k+' }
+};
 
 export default function HeroSection() {
   const { user } = useAuth();
   const [activeWord, setActiveWord] = useState(0);
+  const [content, setContent] = useState<SiteContent>(defaultContent);
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      const { data } = await supabase
+        .from('site_content')
+        .select('hero_media_type, hero_image_url, hero_video_url, hero_headline, hero_subheadline, hero_rotating_words, hero_subtitle, hero_stats')
+        .eq('id', 'main')
+        .single();
+      
+      if (data) {
+        setContent({
+          hero_media_type: (data.hero_media_type as 'image' | 'video') || 'image',
+          hero_image_url: data.hero_image_url,
+          hero_video_url: data.hero_video_url,
+          hero_headline: data.hero_headline || defaultContent.hero_headline,
+          hero_subheadline: data.hero_subheadline || defaultContent.hero_subheadline,
+          hero_rotating_words: data.hero_rotating_words?.length ? data.hero_rotating_words : defaultContent.hero_rotating_words,
+          hero_subtitle: data.hero_subtitle || defaultContent.hero_subtitle,
+          hero_stats: (data.hero_stats as SiteContent['hero_stats']) || defaultContent.hero_stats
+        });
+      }
+    };
+    fetchContent();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveWord(prev => (prev + 1) % floatingWords.length);
+      setActiveWord(prev => (prev + 1) % content.hero_rotating_words.length);
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [content.hero_rotating_words.length]);
+
+  const backgroundMedia = content.hero_media_type === 'video' && content.hero_video_url
+    ? content.hero_video_url
+    : content.hero_image_url || heroBg;
 
   return (
     <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
-      {/* MASSIVE Full-width cinematic background image */}
+      {/* MASSIVE Full-width cinematic background */}
       <div className="absolute inset-0 -z-10">
-        <img 
-          src={heroBg} 
-          alt="" 
-          className="w-full h-full object-cover object-center"
-        />
+        {content.hero_media_type === 'video' && content.hero_video_url ? (
+          <video 
+            src={content.hero_video_url} 
+            autoPlay 
+            muted 
+            loop 
+            playsInline
+            className="w-full h-full object-cover object-center"
+          />
+        ) : (
+          <img 
+            src={backgroundMedia} 
+            alt="" 
+            className="w-full h-full object-cover object-center"
+          />
+        )}
         {/* Gradient overlays for text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/30" />
         <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-background/50" />
@@ -37,23 +98,22 @@ export default function HeroSection() {
           {/* MASSIVE headline - Clean, no shadows */}
           <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[140px] font-bold tracking-tighter leading-[0.9] mb-10 sm:mb-12">
             <span className="text-foreground block font-light italic">
-              Create with
+              {content.hero_headline}
             </span>
             <span className="text-foreground block mt-2 sm:mt-4">
-              Premium{' '}
+              {content.hero_subheadline}{' '}
               <span 
                 key={activeWord} 
                 className="inline-block text-primary animate-fade-in"
               >
-                {floatingWords[activeWord]}
+                {content.hero_rotating_words[activeWord]}
               </span>
             </span>
           </h1>
 
           {/* Subtitle - Clean */}
           <p className="text-xl sm:text-2xl md:text-3xl text-foreground/70 max-w-4xl mb-12 sm:mb-16 leading-relaxed font-light">
-            Discover thousands of high-quality digital assets from professional creators. 
-            Everything you need to level up your work.
+            {content.hero_subtitle}
           </p>
 
           {/* CTA Buttons - Bold, no shadows, straight edges */}
@@ -96,17 +156,17 @@ export default function HeroSection() {
           {/* Stats row - Larger numbers */}
           <div className="flex items-center gap-10 sm:gap-16 mt-20 sm:mt-28 text-foreground/90">
             <div className="text-center">
-              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground">5,000+</div>
+              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground">{content.hero_stats.assets}</div>
               <div className="text-base sm:text-lg text-muted-foreground mt-1">Digital Assets</div>
             </div>
             <div className="w-px h-16 bg-foreground/20" />
             <div className="text-center">
-              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground">500+</div>
+              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground">{content.hero_stats.creators}</div>
               <div className="text-base sm:text-lg text-muted-foreground mt-1">Pro Creators</div>
             </div>
             <div className="w-px h-16 bg-foreground/20" />
             <div className="text-center">
-              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground">50k+</div>
+              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground">{content.hero_stats.downloads}</div>
               <div className="text-base sm:text-lg text-muted-foreground mt-1">Downloads</div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog, Globe, Wallet, ScrollText } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog, Globe, Wallet, ScrollText, Layout } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import CountryEligibilityEditor from "@/components/admin/CountryEligibilityEdito
 import PayoutQueue from "@/components/admin/PayoutQueue";
 import DisputesPanel from "@/components/admin/DisputesPanel";
 import { AuditLogPanel } from "@/components/admin/AuditLogPanel";
+import { SiteContentEditor } from "@/components/admin/SiteContentEditor";
 import { CreatorApplication, PRODUCT_TYPE_OPTIONS } from "@/components/creator-application/types";
 
 interface Profile {
@@ -96,7 +97,7 @@ export default function Admin() {
   
   // Get initial tab from URL query param
   const urlTab = searchParams.get('tab');
-  const validTabs = ['users', 'manage-users', 'products', 'featured', 'spotlight', 'editor-applications', 'creator-applications', 'countries', 'payouts', 'disputes', 'audit-log', 'settings'];
+  const validTabs = ['users', 'manage-users', 'products', 'featured', 'spotlight', 'editor-applications', 'creator-applications', 'countries', 'payouts', 'disputes', 'audit-log', 'site-content', 'settings'];
   const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'users';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
@@ -805,6 +806,10 @@ export default function Admin() {
           <TabsTrigger value="audit-log">
             <ScrollText className="w-4 h-4 mr-1.5" />
             Audit Log
+          </TabsTrigger>
+          <TabsTrigger value="site-content">
+            <Layout className="w-4 h-4 mr-1.5" />
+            Site Content
           </TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -1757,6 +1762,11 @@ export default function Admin() {
         {/* Audit Log Tab */}
         <TabsContent value="audit-log">
           <AuditLogPanel />
+        </TabsContent>
+
+        {/* Site Content Tab */}
+        <TabsContent value="site-content">
+          <SiteContentEditor />
         </TabsContent>
 
         {/* Settings Tab */}
