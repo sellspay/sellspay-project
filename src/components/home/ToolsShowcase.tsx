@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Reveal } from './Reveal';
-import { AudioWaveform, MicVocal, Brush, Clapperboard } from 'lucide-react';
+import { AudioWaveform, MicVocal, Brush, Clapperboard, Sparkles } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { SFXView, VocalView, MangaView, VideoView, StudioGridView, ToolType, ToolConfig } from './toolkit';
 import { supabase } from '@/integrations/supabase/client';
+import nanoBananaLogo from '@/assets/logos/nano-banana.png';
 
 interface ThumbnailItem {
   url: string;
@@ -191,13 +192,30 @@ export function ToolsShowcase() {
               {siteContent.tools_subtitle}
             </p>
             
-            {/* CTA Button */}
-            <button
-              onClick={() => navigate('/tools')}
-              className="mt-8 px-12 py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-colors duration-200"
-            >
-              Explore Tools
-            </button>
+            {/* CTA Buttons */}
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button
+                onClick={() => navigate('/tools')}
+                className="px-12 py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg transition-colors duration-200"
+              >
+                Explore Tools
+              </button>
+              
+              {/* Nano Banana - Generate Anything Button */}
+              <button
+                onClick={() => navigate('/tools?tool=nano-banana')}
+                className="group relative px-8 py-4 bg-gradient-to-r from-yellow-500 via-orange-500 to-pink-500 hover:from-yellow-400 hover:via-orange-400 hover:to-pink-400 text-white font-semibold text-lg transition-all duration-300 flex items-center gap-3 overflow-hidden"
+              >
+                <img 
+                  src={nanoBananaLogo} 
+                  alt="Nano Banana" 
+                  className="w-7 h-7 object-contain relative z-10"
+                />
+                <span className="relative z-10">Generate Anything</span>
+                <Sparkles className="w-5 h-5 relative z-10 animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 via-orange-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </button>
+            </div>
           </div>
 
           {/* Main Tool Showcase Card */}
