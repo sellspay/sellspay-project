@@ -103,7 +103,7 @@ const App = () => (
             <Route path="/:atUsername" element={<AtUsernameRoute />} />
             
             {/* Tools */}
-            <Route path="/tools" element={<MainLayout><Tools /></MainLayout>} />
+            <Route path="/tools" element={<MainLayout hideFooter><Tools /></MainLayout>} />
             <Route path="/tools/audio-cutter" element={<MainLayout><AudioCutter /></MainLayout>} />
             <Route path="/tools/audio-recorder" element={<MainLayout><AudioRecorder /></MainLayout>} />
             <Route path="/tools/audio-joiner" element={<MainLayout><AudioJoiner /></MainLayout>} />
