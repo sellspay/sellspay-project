@@ -1,5 +1,6 @@
 import { Reveal } from './Reveal';
 import { useNavigate } from 'react-router-dom';
+import promoWave from '@/assets/promo-wave.png';
 
 export function AIStudioPromo() {
   const navigate = useNavigate();
@@ -7,6 +8,14 @@ export function AIStudioPromo() {
   return (
     <Reveal>
       <section className="relative py-32 sm:py-40 lg:py-52 overflow-hidden">
+        {/* Background wave graphic */}
+        <img 
+          src={promoWave} 
+          alt="" 
+          aria-hidden="true"
+          className="absolute top-1/2 right-0 -translate-y-1/2 w-[70%] max-w-[1200px] h-auto opacity-30 pointer-events-none select-none"
+        />
+        
         {/* Full width container - no max-width constraint */}
         <div className="relative z-10">
           
