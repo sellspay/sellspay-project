@@ -116,6 +116,23 @@ export function SiteContentEditor() {
     }
   };
 
+  const persistContentPatch = async (patch: Partial<SiteContent>) => {
+    // Only persist the columns we actually patch.
+    // (Do not send the entire content object; it increases the chance of overwriting.)
+    const { error } = await supabase
+      .from('site_content')
+      .update(patch as unknown as Record<string, Json>)
+      .eq('id', 'main');
+
+    if (error) {
+      console.error('Failed to persist site content patch:', error);
+      toast.error('Failed to save changes');
+      return false;
+    }
+
+    return true;
+  };
+
   const MAX_FILE_SIZE_MB = 50; // 50MB limit for site assets
   const UPLOAD_TIMEOUT_MS = 60000; // 60 second timeout
   const VERIFY_TIMEOUT_MS = 15000; // 15s - verify asset is reachable after upload
@@ -229,23 +246,33 @@ export function SiteContentEditor() {
     }
 
     const key = `${toolType}_thumbnails` as keyof SiteContent;
+    const nextThumbnails = [...(content[key] as ThumbnailItem[]), ...newThumbnails];
+
+    // Optimistic UI update
     setContent({
       ...content,
-      [key]: [...(content[key] as ThumbnailItem[]), ...newThumbnails]
+      [key]: nextThumbnails,
     });
-    
+
+    // Persist immediately so refresh/live pages reflect the change
+    const ok = await persistContentPatch({
+      [key]: JSON.parse(JSON.stringify(nextThumbnails)),
+    } as unknown as Partial<SiteContent>);
+
     setUploading(null);
-    toast.success(`${newThumbnails.length} thumbnail(s) added`);
+    if (ok) toast.success(`${newThumbnails.length} thumbnail(s) added and saved`);
   };
 
   const removeThumbnail = (toolType: 'sfx' | 'vocal' | 'manga' | 'video', index: number) => {
     if (!content) return;
     const key = `${toolType}_thumbnails` as keyof SiteContent;
     const current = content[key] as ThumbnailItem[];
-    setContent({
-      ...content,
-      [key]: current.filter((_, i) => i !== index)
-    });
+
+    const next = current.filter((_, i) => i !== index);
+    setContent({ ...content, [key]: next });
+    void persistContentPatch({
+      [key]: JSON.parse(JSON.stringify(next)),
+    } as unknown as Partial<SiteContent>);
   };
 
   const updateThumbnailLabel = (toolType: 'sfx' | 'vocal' | 'manga' | 'video', index: number, label: string) => {
@@ -254,6 +281,11 @@ export function SiteContentEditor() {
     const current = [...(content[key] as ThumbnailItem[])];
     current[index] = { ...current[index], label };
     setContent({ ...content, [key]: current });
+
+    // Persist label edits without requiring manual save
+    void persistContentPatch({
+      [key]: JSON.parse(JSON.stringify(current)),
+    } as unknown as Partial<SiteContent>);
   };
 
   const handleSave = async () => {
