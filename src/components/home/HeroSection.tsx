@@ -98,7 +98,7 @@ export default function HeroSection() {
             loop 
             playsInline
             preload="auto"
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover object-center brightness-110 contrast-110 saturate-125"
             onError={() => {
               console.error('Hero video failed to load:', content.hero_video_url);
               setVideoFailed(true);
@@ -119,14 +119,14 @@ export default function HeroSection() {
         <div
           className={
             content.hero_media_type === 'video'
-              ? 'absolute inset-0 bg-gradient-to-t from-background/60 via-background/25 to-background/10'
+              ? 'absolute inset-0 bg-gradient-to-t from-background/35 via-background/10 to-transparent'
               : 'absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/30'
           }
         />
         <div
           className={
             content.hero_media_type === 'video'
-              ? 'absolute inset-0 bg-gradient-to-r from-background/25 via-transparent to-background/25'
+              ? 'absolute inset-0 bg-gradient-to-r from-background/10 via-transparent to-background/10'
               : 'absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-background/50'
           }
         />
