@@ -40,6 +40,7 @@ import { PayoutMethodSelector } from "@/components/settings/PayoutMethodSelector
 import BannerPositionEditor from "@/components/settings/BannerPositionEditor";
 import { StripeOnboardingGuide } from "@/components/settings/StripeOnboardingGuide";
 import { ConnectionsTab } from "@/components/settings/ConnectionsTab";
+import { SellerModeIndicator } from "@/components/settings/SellerModeIndicator";
 
 // Social platform detection
 const detectSocialPlatform = (url: string): { platform: string; icon: React.ReactNode } | null => {
@@ -141,6 +142,10 @@ export default function Settings() {
   const [isSeller, setIsSeller] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
   
+  // Seller Mode & Country (for hybrid payments)
+  const [sellerMode, setSellerMode] = useState<"CONNECT" | "MOR" | null>(null);
+  const [sellerCountryCode, setSellerCountryCode] = useState<string | null>(null);
+  
   // Security
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
@@ -220,6 +225,10 @@ export default function Settings() {
         setLastUsernameChangedAt((data as Record<string, unknown>).last_username_changed_at as string | null);
         setPreviousUsername((data as Record<string, unknown>).previous_username as string | null);
         setPreviousUsernameAvailableAt((data as Record<string, unknown>).previous_username_available_at as string | null);
+        
+        // Seller mode & country for hybrid payments
+        setSellerMode((data as Record<string, unknown>).seller_mode as "CONNECT" | "MOR" | null);
+        setSellerCountryCode((data as Record<string, unknown>).seller_country_code as string | null);
         
         // Load social links
         if (data.social_links && typeof data.social_links === 'object') {
@@ -1570,6 +1579,15 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Seller Mode Indicator - shows CONNECT vs MOR based on country */}
+              {isSeller && (
+                <SellerModeIndicator
+                  sellerMode={sellerMode}
+                  countryCode={sellerCountryCode}
+                  onModeChange={(mode) => setSellerMode(mode)}
+                />
+              )}
+              
               {/* Payout Method Selector */}
               <PayoutMethodSelector
                 stripeConnected={!!stripeAccountId}

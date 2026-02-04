@@ -28,11 +28,13 @@
 ### Completed Items:
 - [x] Created `CountryEligibilityBadge` component for showing eligibility status
 - [x] Created `SellerModeIndicator` component for displaying CONNECT vs MOR mode
+- [x] Integrated SellerModeIndicator into Settings billing tab
+- [x] Created country code mapping utility (`src/lib/countryCodeMap.ts`)
+- [x] Updated creator application to set `seller_country_code` in profile on submission
+- [x] Updated `create-connect-account` to check eligibility and set seller_mode
 
-### In Progress:
-- [ ] Integrate SellerModeIndicator into Settings billing tab
-- [ ] Update creator application to set seller_mode based on country
-- [ ] Update create-connect-account to check eligibility and set seller_mode
+### Remaining:
+- [ ] Check country eligibility on Stripe onboarding and conditionally show MOR flow
 
 ---
 
