@@ -46,6 +46,11 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Keep tab title exactly matching the app name for OAuth verification crawlers
+    document.title = 'SellsPay';
+  }, []);
+
+  useEffect(() => {
     async function fetchProducts() {
       const { data, error } = await supabase
         .from('products')
