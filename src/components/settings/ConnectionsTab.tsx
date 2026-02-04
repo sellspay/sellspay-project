@@ -16,19 +16,6 @@ interface ConnectedIdentity {
 
 const PROVIDERS = [
   {
-    id: "google",
-    name: "Google",
-    icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24">
-        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-      </svg>
-    ),
-    color: "bg-white hover:bg-gray-50 text-gray-700 border-gray-200",
-  },
-  {
     id: "discord",
     name: "Discord",
     icon: (
@@ -51,34 +38,6 @@ export function ConnectionsTab() {
   useEffect(() => {
     const discordLinked = searchParams.get('discord_linked');
     const discordError = searchParams.get('discord_error');
-    
-    // Handle Google link success - after redirect from Google OAuth
-    // The URL will contain hash fragment with access_token if successful
-    const handleGoogleLinkSuccess = async () => {
-      // Check if we just came back from Google OAuth (tab=connections in URL means we redirected here)
-      const tab = searchParams.get('tab');
-      if (tab === 'connections') {
-        // Small delay to ensure auth state is updated
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Check if Google was just linked by refreshing user data
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        if (currentUser) {
-          const hasGoogle = currentUser.identities?.some(id => id.provider === "google");
-          const previouslyHadGoogle = identities.find(i => i.provider === "google")?.connected;
-          
-          // If Google is now linked but wasn't before (and we have loaded identities already)
-          if (hasGoogle && !previouslyHadGoogle && identities.length > 0) {
-            toast.success('Google connected successfully!');
-          }
-        }
-        
-        // Reload identities regardless
-        loadIdentities();
-      }
-    };
-    
-    handleGoogleLinkSuccess();
     
     if (discordLinked === 'success') {
       toast.success('Discord connected successfully!');
@@ -131,22 +90,13 @@ export function ConnectionsTab() {
         console.log("[ConnectionsTab] Supabase identities:", supabaseIdentities);
         console.log("[ConnectionsTab] User metadata:", currentUser.user_metadata);
         
-        // Check for Google via Supabase identities
-        const hasGoogle = supabaseIdentities.some(id => id.provider === "google");
-        const googleIdentity = supabaseIdentities.find(id => id.provider === "google");
-        
         // Check for Discord via user_metadata (our custom flow stores it there)
         const hasDiscord = !!currentUser.user_metadata?.discord_id;
         const discordUsername = currentUser.user_metadata?.discord_username;
         
-        console.log("[ConnectionsTab] Has Google:", hasGoogle, "Has Discord:", hasDiscord);
+        console.log("[ConnectionsTab] Has Discord:", hasDiscord);
         
         const allIdentities: ConnectedIdentity[] = [
-          {
-            provider: "google",
-            email: googleIdentity?.identity_data?.email,
-            connected: hasGoogle,
-          },
           {
             provider: "discord",
             email: discordUsername ? `@${discordUsername}` : undefined,
@@ -166,26 +116,7 @@ export function ConnectionsTab() {
   const handleConnectProvider = async (providerId: string) => {
     setConnectingProvider(providerId);
     try {
-      if (providerId === "google") {
-        // Use Supabase's native linkIdentity for Google
-        // This is secure because it requires an active session and is managed server-side
-        const { data, error } = await supabase.auth.linkIdentity({
-          provider: "google",
-          options: {
-            redirectTo: `${window.location.origin}/settings?tab=connections`,
-          },
-        });
-        
-        if (error) {
-          console.error("[ConnectionsTab] Google link error:", error);
-          throw error;
-        }
-        
-        // If we get data.url, we need to redirect manually
-        if (data?.url) {
-          window.location.href = data.url;
-        }
-      } else if (providerId === "discord") {
+      if (providerId === "discord") {
         // For Discord, we need to use our custom flow
         const { data, error } = await supabase.functions.invoke("initiate-discord-login", {
           body: { 
@@ -207,19 +138,6 @@ export function ConnectionsTab() {
       }
     } catch (error: any) {
       console.error("Error connecting provider:", error);
-      if (
-        providerId === "google" &&
-        typeof error?.message === "string" &&
-        error.message.toLowerCase().includes("manual") &&
-        error.message.toLowerCase().includes("link") &&
-        error.message.toLowerCase().includes("disabled")
-      ) {
-        toast.error(
-          "Google linking is disabled in backend auth settings. Enable manual account linking, then try again."
-        );
-        setConnectingProvider(null);
-        return;
-      }
       if (error.message?.includes("already linked") || error.message?.includes("already registered")) {
         toast.error("This account is already connected to another user.");
       } else if (error.message?.includes("User not found")) {
@@ -243,11 +161,10 @@ export function ConnectionsTab() {
       
       // Count connected methods
       const supabaseIdentities = currentUser.identities || [];
-      const hasGoogle = supabaseIdentities.some(id => id.provider === "google");
       const hasDiscord = !!currentUser.user_metadata?.discord_id;
       const hasEmail = supabaseIdentities.some(id => id.provider === "email");
       
-      const connectedCount = [hasGoogle, hasDiscord, hasEmail].filter(Boolean).length;
+      const connectedCount = [hasDiscord, hasEmail].filter(Boolean).length;
       
       if (connectedCount <= 1) {
         toast.error("You must keep at least one login method connected.");
@@ -270,20 +187,6 @@ export function ConnectionsTab() {
         await loadIdentities();
         return;
       }
-      
-      // For other providers (Google), use Supabase's unlinkIdentity
-      const identity = supabaseIdentities.find(id => id.provider === providerId);
-      if (!identity) {
-        toast.error("Identity not found");
-        return;
-      }
-      
-      const { error } = await supabase.auth.unlinkIdentity(identity);
-      
-      if (error) throw error;
-      
-      toast.success(`${PROVIDERS.find(p => p.id === providerId)?.name} disconnected`);
-      await loadIdentities();
     } catch (error: any) {
       console.error("Error disconnecting provider:", error);
       toast.error(error.message || "Failed to disconnect account");
