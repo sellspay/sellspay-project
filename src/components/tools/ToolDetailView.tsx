@@ -1,18 +1,27 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Sparkles, Check } from "lucide-react";
+import { ArrowRight, Sparkles, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { ToolData } from "./toolsData";
 import { cn } from "@/lib/utils";
 import Footer from "@/components/layout/Footer";
+import { useState } from "react";
+
+interface ThumbnailItem {
+  url: string;
+  label?: string;
+}
 
 interface ToolDetailViewProps {
   tool: ToolData;
   bannerUrl: string | null;
+  thumbnails?: ThumbnailItem[];
   onLaunch: () => void;
 }
 
-export function ToolDetailView({ tool, bannerUrl, onLaunch }: ToolDetailViewProps) {
+export function ToolDetailView({ tool, bannerUrl, thumbnails = [], onLaunch }: ToolDetailViewProps) {
   const Icon = tool.icon;
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const visibleCount = 4;
   
   return (
     <div className="min-h-full">
@@ -114,6 +123,77 @@ export function ToolDetailView({ tool, bannerUrl, onLaunch }: ToolDetailViewProp
             </div>
           </div>
         </section>
+        
+        {/* Gallery Section - Only show if thumbnails exist */}
+        {thumbnails.length > 0 && (
+          <section className="px-8 sm:px-12 md:px-16 lg:px-20 py-20 bg-secondary/20 border-t border-border/30">
+            <div className="max-w-6xl">
+              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-8">Gallery</h2>
+              
+              {/* Gallery Grid with Navigation */}
+              <div className="relative">
+                {/* Left Arrow */}
+                {galleryIndex > 0 && (
+                  <button
+                    onClick={() => setGalleryIndex(Math.max(0, galleryIndex - visibleCount))}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 flex items-center justify-center bg-background/90 backdrop-blur border border-border hover:bg-secondary transition-colors"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                )}
+                
+                {/* Thumbnails Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {thumbnails.slice(galleryIndex, galleryIndex + visibleCount).map((thumb, i) => (
+                    <div 
+                      key={`${galleryIndex}-${i}`}
+                      className="relative aspect-video overflow-hidden border border-border/50 group"
+                    >
+                      <img 
+                        src={thumb.url} 
+                        alt={thumb.label || `Gallery image ${i + 1}`}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      {thumb.label && (
+                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
+                          <span className="text-xs text-white/90">{thumb.label}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Right Arrow */}
+                {galleryIndex + visibleCount < thumbnails.length && (
+                  <button
+                    onClick={() => setGalleryIndex(Math.min(thumbnails.length - visibleCount, galleryIndex + visibleCount))}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 flex items-center justify-center bg-background/90 backdrop-blur border border-border hover:bg-secondary transition-colors"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+              
+              {/* Pagination dots */}
+              {thumbnails.length > visibleCount && (
+                <div className="flex justify-center gap-2 mt-6">
+                  {Array.from({ length: Math.ceil(thumbnails.length / visibleCount) }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setGalleryIndex(i * visibleCount)}
+                      className={cn(
+                        "w-2 h-2 rounded-full transition-colors",
+                        Math.floor(galleryIndex / visibleCount) === i 
+                          ? "bg-primary" 
+                          : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                      )}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
         
         {/* How to Use */}
         <section className="px-8 sm:px-12 md:px-16 lg:px-20 py-20 bg-secondary/20 border-t border-border/30">

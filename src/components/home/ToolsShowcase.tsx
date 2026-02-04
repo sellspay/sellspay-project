@@ -250,12 +250,12 @@ export function ToolsShowcase() {
             </div>
           </div>
 
-          {/* Full-width Carousel Gallery Below */}
+          {/* Full-width Carousel Gallery Below - uses fallback gradients (thumbnails are for /tools pages) */}
           <StudioGridView 
             config={activeConfig} 
             displayedText={displayedText}
             toolId={activeTool}
-            thumbnails={activeThumbnails}
+            thumbnails={[]}
           />
         </div>
       </section>
