@@ -46,17 +46,39 @@ serve(async (req) => {
     const user = userData.user;
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Get user's profile id
+    // Get user's profile
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("id")
+      .select("id, seller_country_code, seller_mode")
       .eq("user_id", user.id)
       .single();
 
     if (profileError || !profile) {
       throw new Error("Profile not found");
     }
-    logStep("Profile found", { profileId: profile.id });
+    logStep("Profile found", { profileId: profile.id, countryCode: profile.seller_country_code });
+
+    // Check country eligibility for Stripe Connect
+    const countryCode = profile.seller_country_code;
+    if (countryCode) {
+      const { data: eligibility } = await supabaseAdmin
+        .from("country_eligibility")
+        .select("connect_eligible, country_name")
+        .eq("country_code", countryCode)
+        .single();
+
+      if (eligibility && !eligibility.connect_eligible) {
+        logStep("Country not eligible for Stripe Connect", { countryCode, countryName: eligibility.country_name });
+        return new Response(JSON.stringify({ 
+          error: `Stripe Connect is not available in ${eligibility.country_name || countryCode}. Please use PayPal or Payoneer for payouts.`,
+          notEligible: true,
+          alternativeMethods: ["paypal", "payoneer"]
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+    }
 
     // Get existing seller config from private schema
     const { data: sellerConfig, error: configError } = await supabaseAdmin.rpc(
@@ -93,6 +115,7 @@ serve(async (req) => {
           transfers: { requested: true },
         },
         business_type: "individual",
+        ...(countryCode && { country: countryCode }),
       });
 
       accountId = account.id;
@@ -104,7 +127,16 @@ serve(async (req) => {
         p_stripe_account_id: accountId
       });
 
-      logStep("Stripe account ID saved to private config");
+      // Update profile with seller_mode = CONNECT
+      await supabaseAdmin
+        .from("profiles")
+        .update({ 
+          seller_mode: "CONNECT",
+          seller_status: "pending"
+        })
+        .eq("id", profile.id);
+
+      logStep("Stripe account ID saved and seller_mode set to CONNECT");
     } else {
       logStep("Using existing Connect account", { accountId });
     }

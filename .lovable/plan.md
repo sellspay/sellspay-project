@@ -23,6 +23,19 @@
 
 ---
 
+## 🔄 Phase 2: IN PROGRESS - Seller Mode & UI Components
+
+### Completed Items:
+- [x] Created `CountryEligibilityBadge` component for showing eligibility status
+- [x] Created `SellerModeIndicator` component for displaying CONNECT vs MOR mode
+
+### In Progress:
+- [ ] Integrate SellerModeIndicator into Settings billing tab
+- [ ] Update creator application to set seller_mode based on country
+- [ ] Update create-connect-account to check eligibility and set seller_mode
+
+---
+
 ## Executive Summary
 This plan implements a compliant, scalable hybrid payments system that supports both **Stripe Connect sellers** (eligible countries) and **Platform MoR (Merchant of Record) sellers** (non-eligible countries). The system allows sellers from any country to sell digital products while maintaining proper payment processing compliance.
 
