@@ -78,10 +78,20 @@ import { EditablePreview } from './previews/EditablePreview';
 import { FontSelector } from './FontSelector';
 import { ColorPicker } from './ColorPicker';
 
+interface ProductData {
+  id: string;
+  name: string;
+  cover_image_url?: string | null;
+  price_cents?: number | null;
+  currency?: string | null;
+  excerpt?: string | null;
+  description?: string | null;
+}
+
 interface EditSectionDialogProps {
   section: ProfileSection | null;
   collections: { id: string; name: string }[];
-  products?: { id: string; name: string }[];
+  products?: ProductData[];
   onUpdate: (section: ProfileSection) => void;
   onDelete: (sectionId: string) => void;
   onClose: () => void;
@@ -962,8 +972,25 @@ function FeaturedProductEditor({
 }: {
   content: FeaturedProductContent;
   onChange: (updates: Partial<FeaturedProductContent>) => void;
-  products: { id: string; name: string }[];
+  products: ProductData[];
 }) {
+  // Handle product selection with metadata caching
+  const handleProductSelect = (productId: string) => {
+    const selectedProduct = products.find(p => p.id === productId);
+    if (selectedProduct) {
+      onChange({
+        productId: productId,
+        productName: selectedProduct.name,
+        productImageUrl: selectedProduct.cover_image_url || '',
+        productPriceCents: selectedProduct.price_cents || 0,
+        productCurrency: selectedProduct.currency || 'USD',
+        productDescription: selectedProduct.excerpt || selectedProduct.description || '',
+      });
+    } else {
+      onChange({ productId: productId });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -971,7 +998,7 @@ function FeaturedProductEditor({
         {products.length > 0 ? (
           <Select
             value={content.productId || ''}
-            onValueChange={(value) => onChange({ productId: value })}
+            onValueChange={handleProductSelect}
           >
             <SelectTrigger>
               <SelectValue placeholder="Choose a product to feature" />
