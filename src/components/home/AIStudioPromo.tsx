@@ -19,19 +19,24 @@ export function AIStudioPromo() {
               <span className="block text-4xl sm:text-5xl lg:text-6xl xl:text-7xl 2xl:text-8xl">Thousands of creators</span>
               <span className="block mt-2">
                 <span className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl">choose </span>
-                {/* Start Selling link - inline before SellsPay */}
-                <button
-                  onClick={() => navigate('/signup')}
-                  className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl text-foreground underline decoration-2 underline-offset-8 hover:text-primary hover:decoration-primary transition-colors duration-300 cursor-pointer"
-                  style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                >
-                  Start Selling
-                </button>
-                <span className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl"> with </span>
-                <span 
-                  className="text-primary text-6xl sm:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem]"
-                  style={{ fontFamily: "'Georgia', serif" }}
-                >SellsPay</span>
+                <span className="relative inline-block">
+                  {/* Start Selling link - positioned in front of SellsPay, NOT connected */}
+                  <button
+                    onClick={() => navigate('/signup')}
+                    className="absolute -top-10 sm:-top-12 lg:-top-14 left-0 text-base sm:text-lg lg:text-xl text-foreground underline decoration-2 underline-offset-8 hover:text-primary hover:decoration-primary transition-colors duration-300 cursor-pointer"
+                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+                    aria-label="Start selling on SellsPay"
+                  >
+                    Start Selling
+                  </button>
+
+                  <span 
+                    className="text-primary text-6xl sm:text-7xl lg:text-8xl xl:text-9xl 2xl:text-[10rem]"
+                    style={{ fontFamily: "'Georgia', serif" }}
+                  >
+                    SellsPay
+                  </span>
+                </span>
               </span>
             </h2>
           </div>
