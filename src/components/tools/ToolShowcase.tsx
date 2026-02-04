@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { toolsData, ToolData } from "./toolsData";
 import { supabase } from "@/integrations/supabase/client";
-import { ToolShowcaseHeader } from "@/components/tools/showcase/ToolShowcaseHeader";
-import { ToolBentoGrid } from "@/components/tools/showcase/ToolBentoGrid";
+import { ToolsSidebarNav } from "./ToolsSidebarNav";
+import { ToolDetailView } from "./ToolDetailView";
 
 interface ToolBanners {
   tool_sfx_banner_url: string | null;
@@ -43,6 +43,7 @@ export function ToolShowcase({
   isLoadingCredits 
 }: ToolShowcaseProps) {
   const [banners, setBanners] = useState<ToolBanners | null>(null);
+  const [selectedToolId, setSelectedToolId] = useState<string>("sfx-generator");
 
   // Fetch banners from database
   useEffect(() => {
@@ -60,7 +61,9 @@ export function ToolShowcase({
     fetchBanners();
   }, []);
 
-  const availableTools = useMemo(() => toolsData.filter((t) => t.available), []);
+  const selectedTool = useMemo(() => {
+    return toolsData.find(t => t.id === selectedToolId) || toolsData[0];
+  }, [selectedToolId]);
 
   const getBannerUrl = (toolId: string): string | null => {
     if (!banners) return null;
@@ -68,20 +71,30 @@ export function ToolShowcase({
     return key ? banners[key] : null;
   };
 
+  const handleSelectToolInSidebar = (toolId: string) => {
+    setSelectedToolId(toolId);
+  };
+
+  const handleLaunchTool = () => {
+    onSelectTool(selectedToolId);
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      <ToolShowcaseHeader
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <ToolsSidebarNav
+        selectedToolId={selectedToolId}
+        onSelectTool={handleSelectToolInSidebar}
         creditBalance={creditBalance}
         isLoadingCredits={isLoadingCredits}
       />
 
-      <main className="px-3 sm:px-4 md:px-8 py-4 md:py-8">
-        <ToolBentoGrid
-          tools={availableTools}
-          getBannerUrl={getBannerUrl}
-          onSelectTool={onSelectTool}
-        />
-      </main>
+      {/* Main Content */}
+      <ToolDetailView
+        tool={selectedTool}
+        bannerUrl={getBannerUrl(selectedToolId)}
+        onLaunch={handleLaunchTool}
+      />
     </div>
   );
 }
