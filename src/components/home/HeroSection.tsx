@@ -116,21 +116,23 @@ export default function HeroSection() {
           />
         )}
         {/* Gradient overlays for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/30" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-background/50" />
+        <div
+          className={
+            content.hero_media_type === 'video'
+              ? 'absolute inset-0 bg-gradient-to-t from-background/60 via-background/25 to-background/10'
+              : 'absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/30'
+          }
+        />
+        <div
+          className={
+            content.hero_media_type === 'video'
+              ? 'absolute inset-0 bg-gradient-to-r from-background/25 via-transparent to-background/25'
+              : 'absolute inset-0 bg-gradient-to-r from-background/50 via-transparent to-background/50'
+          }
+        />
       </div>
 
       <div className="container mx-auto px-6 sm:px-8 lg:px-12 relative z-10">
-        {import.meta.env.DEV && (
-          <div className="absolute top-6 left-6 rounded-md border bg-background/70 px-3 py-1 text-xs text-foreground backdrop-blur">
-            Hero media: {content.hero_media_type}
-            {content.hero_media_type === 'video' ? (
-              <span className="ml-2 text-muted-foreground">
-                {videoFailed ? 'failed (fallback)' : videoLoaded ? 'loaded' : 'loading…'}
-              </span>
-            ) : null}
-          </div>
-        )}
         <div className="text-center flex flex-col items-center max-w-7xl mx-auto pt-20 pb-32">
           {/* MASSIVE headline - Clean, no shadows */}
           <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl xl:text-[140px] font-bold tracking-tighter leading-[0.9] mb-10 sm:mb-12">
