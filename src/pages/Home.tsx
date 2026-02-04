@@ -10,7 +10,7 @@ import { FeaturedCreators } from '@/components/home/FeaturedCreators';
 import { Reveal } from '@/components/home/Reveal';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ChevronLeft, ChevronRight, Sparkles, Flame, TrendingUp } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Sparkles, Flame } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -160,10 +160,6 @@ export default function Home() {
       {/* Value Propositions */}
       <ValueProps />
 
-      {/* Category Showcase - Full Width Dense Grid */}
-      <Reveal>
-        <CategoryShowcase products={products} />
-      </Reveal>
 
       {/* Featured Creators */}
       <FeaturedCreators />
@@ -267,112 +263,3 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
   );
 }
 
-// Category Showcase - Dense grid per category
-const SHOWCASE_CATEGORIES = [
-  { id: 'lut', label: 'LUTs', icon: '🎨' },
-  { id: 'preset', label: 'Presets', icon: '⚡' },
-  { id: 'sfx', label: 'Sound Effects', icon: '🔊' },
-  { id: 'template', label: 'Templates', icon: '📐' },
-  { id: 'overlay', label: 'Overlays', icon: '✨' },
-  { id: 'tutorial', label: 'Tutorials', icon: '📚' },
-];
-
-interface CategoryShowcaseProps {
-  products: Product[];
-}
-
-function CategoryShowcase({ products }: CategoryShowcaseProps) {
-  const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState('lut');
-  
-  const filteredProducts = products.filter(p => p.product_type === activeCategory);
-  const displayProducts = filteredProducts.slice(0, 8);
-
-  if (products.length === 0) return null;
-
-  return (
-    <section className="py-20 sm:py-28 lg:py-36 bg-card/50">
-      {/* Section Header - MASSIVE */}
-      <div className="px-6 sm:px-8 lg:px-12 mb-14 sm:mb-20">
-        <div className="flex items-start gap-5 mb-10 sm:mb-14">
-          <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
-            <TrendingUp className="h-10 w-10 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-foreground tracking-tight">
-              Browse by Category
-            </h2>
-            <p className="text-lg sm:text-xl text-muted-foreground mt-2">
-              Find exactly what you're looking for
-            </p>
-          </div>
-        </div>
-
-        {/* Category Pills - BIGGER & Bold, Straight edges */}
-        <div className="flex flex-wrap gap-3">
-          {SHOWCASE_CATEGORIES.map((cat) => {
-            const isActive = activeCategory === cat.id;
-            const count = products.filter(p => p.product_type === cat.id).length;
-            
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`
-                  flex items-center gap-3 px-8 py-4 text-lg font-semibold
-                  transition-all duration-200 border
-                  ${isActive 
-                    ? 'bg-primary text-primary-foreground border-primary' 
-                    : 'bg-card text-foreground border-border hover:border-primary/50 hover:bg-card/80'
-                  }
-                `}
-              >
-                <span className="text-xl">{cat.icon}</span>
-                {cat.label}
-                <span className={`text-base ${isActive ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                  ({count})
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Products Grid - ZERO gaps, straight edges */}
-      <div className="px-0">
-        {displayProducts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-[2px]">
-            {displayProducts.map((product) => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                showFeaturedBadge={true} 
-                showType={false}
-                showCreator={true}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <p className="text-xl text-muted-foreground mb-2">No products in this category yet</p>
-            <p className="text-base text-muted-foreground/70">Check back soon!</p>
-          </div>
-        )}
-      </div>
-
-      {/* View Category CTA - Clean */}
-      {displayProducts.length > 0 && (
-        <div className="text-center mt-14 sm:mt-20 px-6">
-          <Button 
-            onClick={() => navigate(`/products?type=${activeCategory}`)}
-            variant="outline"
-            className="px-12 h-14 text-lg font-medium group border-2 hover:bg-primary/10 hover:border-primary/50"
-          >
-            View All {SHOWCASE_CATEGORIES.find(c => c.id === activeCategory)?.label}
-            <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-          </Button>
-        </div>
-      )}
-    </section>
-  );
-}
