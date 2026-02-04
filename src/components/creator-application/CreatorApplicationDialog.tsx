@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Loader2, ArrowLeft, ArrowRight, Send } from 'lucide-react';
+import { getCountryCode } from '@/lib/countryCodeMap';
 
 import Step1PersonalInfo from './Step1PersonalInfo';
 import Step2ProductTypes from './Step2ProductTypes';
@@ -160,6 +161,9 @@ export default function CreatorApplicationDialog({
 
       if (!profile) throw new Error('Profile not found');
 
+      // Get country code for seller mode determination
+      const countryCode = getCountryCode(formData.country);
+
       // Insert application
       const { error } = await supabase
         .from('creator_applications')
@@ -175,6 +179,14 @@ export default function CreatorApplicationDialog({
         });
 
       if (error) throw error;
+
+      // Update profile with country code for seller mode determination
+      if (countryCode) {
+        await supabase
+          .from('profiles')
+          .update({ seller_country_code: countryCode })
+          .eq('id', profile.id);
+      }
 
       // Get username for notification message
       const { data: profileData } = await supabase
