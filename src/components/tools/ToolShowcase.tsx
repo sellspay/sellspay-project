@@ -85,8 +85,6 @@ export function ToolShowcase({
       <ToolsSidebarNav
         selectedToolId={selectedToolId}
         onSelectTool={handleSelectToolInSidebar}
-        creditBalance={creditBalance}
-        isLoadingCredits={isLoadingCredits}
       />
 
       {/* Main Content */}
