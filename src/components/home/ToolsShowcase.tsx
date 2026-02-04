@@ -128,12 +128,12 @@ export function ToolsShowcase() {
           </div>
 
           {/* Fixed aspect ratio Card Container */}
-          <div className="relative mx-auto w-full" style={{ maxWidth: '1200px' }}>
+          <div className="relative mx-auto w-full" style={{ maxWidth: '1400px' }}>
             {/* Subtle border accent */}
             <div className="absolute -inset-px bg-gradient-to-br from-foreground/10 via-transparent to-foreground/5 pointer-events-none" />
             
-            {/* Card with subtle border - fixed 16:10 aspect ratio */}
-            <div className="relative overflow-hidden border border-foreground/10 bg-card/30" style={{ aspectRatio: '16 / 10' }}>
+            {/* Card with subtle border - fixed 16:11 aspect ratio for taller box */}
+            <div className="relative overflow-hidden border border-foreground/10 bg-card/30" style={{ aspectRatio: '16 / 11' }}>
               {/* Floating toggle bar at top */}
               <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 z-20">
                 <div className="flex items-center gap-2 bg-card/95 backdrop-blur-md border border-foreground/20 px-4 py-3">
