@@ -102,12 +102,12 @@ export default function Header() {
   return (
     <header className={cn(
       "sticky top-0 z-50 w-full",
-      // Solid background with subtle transparency
-      "bg-background/98 backdrop-blur-md",
+      // Transparent glassmorphic background
+      "bg-background/60 backdrop-blur-xl",
       // Clean border
-      "border-b border-border/50",
+      "border-b border-white/10",
       // Subtle shadow
-      "shadow-lg shadow-black/20"
+      "shadow-lg shadow-black/10"
     )}>
       {/* Top accent line */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
