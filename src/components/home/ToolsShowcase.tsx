@@ -193,18 +193,12 @@ export function ToolsShowcase() {
             </div>
           </div>
 
-          {/* NEW: Additional Grid Gallery Below */}
-          <div className="relative mx-auto w-full" style={{ maxWidth: '1400px' }}>
-            <div className="absolute -inset-px bg-gradient-to-br from-foreground/10 via-transparent to-foreground/5 pointer-events-none" />
-            
-            <div className="relative overflow-hidden border border-foreground/10 bg-card/30" style={{ aspectRatio: '16 / 7' }}>
-              <StudioGridView 
-                config={activeConfig} 
-                displayedText={displayedText}
-                toolId={activeTool}
-              />
-            </div>
-          </div>
+          {/* Full-width Carousel Gallery Below */}
+          <StudioGridView 
+            config={activeConfig} 
+            displayedText={displayedText}
+            toolId={activeTool}
+          />
         </div>
       </section>
     </Reveal>
