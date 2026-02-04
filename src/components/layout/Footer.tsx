@@ -92,7 +92,7 @@ export default function Footer() {
                 href={social.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-full bg-muted/20 text-muted-foreground/60 transition-all duration-300 hover:text-white hover:bg-gradient-to-r hover:from-purple-600 hover:to-violet-500 hover:shadow-[0_0_15px_rgba(147,51,234,0.4)]"
+                className="p-2 rounded-full bg-muted/20 text-muted-foreground/60 transition-all duration-300 hover:text-primary-foreground hover:bg-primary hover:shadow-lg hover:shadow-primary/40"
                 aria-label={social.name}
               >
                 <social.icon className="h-4 w-4" />
