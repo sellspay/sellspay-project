@@ -12,7 +12,8 @@ export default function MainLayout({ children, hideFooter = false }: MainLayoutP
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1">{children}</main>
+      {/* Header is fixed (h-16), so offset page content */}
+      <main className="flex-1 pt-16">{children}</main>
       {!hideFooter && (
         <>
           <PreFooterBanner />
