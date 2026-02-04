@@ -1,429 +1,258 @@
 
-# Hybrid Payments Architecture Implementation Plan
 
-## ✅ Phase 1: COMPLETED - Database Schema & Foundation
+# AI Toolkit Showcase Redesign - Tool-Specific Views
 
-### Completed Items:
-- [x] Created `country_eligibility` table with 60+ countries seeded
-- [x] Added `seller_mode`, `seller_country_code`, `seller_kyc_status`, `seller_status` to profiles
-- [x] Added `funds_flow_mode`, `available_on`, `dispute_status` to purchases
-- [x] Created `wallet_ledger_entries` table with RLS policies
-- [x] Created `payouts` table with RLS policies
-- [x] Created `admin_audit_log` table
-- [x] Created `get_seller_wallet_balance()` database function
-- [x] Created `release_held_funds()` database function for cron jobs
-- [x] Created `check-country-eligibility` edge function
-- [x] Created `get-wallet-balance` edge function
-- [x] Created `CountryEligibilityEditor` admin component
-- [x] Created `PayoutQueue` admin component
-- [x] Created `WalletCard` dashboard component
-- [x] Updated `create-checkout-session` to include `funds_flow_mode`
-- [x] Updated `stripe-webhook` to store `funds_flow_mode` and `available_on`
-- [x] Added "Countries" and "Payouts" tabs to Admin page
+## Overview
+Redesign the AI Toolkit section to display **unique, tool-appropriate layouts** for each toggle button. Each tool will have a completely different visual representation that matches its actual functionality, instead of the generic bento grid currently used for all tools.
 
 ---
 
-## ✅ Phase 2: COMPLETED - Seller Mode & UI Components
+## Tool-Specific View Designs
 
-### Completed Items:
-- [x] Created `CountryEligibilityBadge` component for showing eligibility status
-- [x] Created `SellerModeIndicator` component for displaying CONNECT vs MOR mode
-- [x] Integrated SellerModeIndicator into Settings billing tab
-- [x] Created country code mapping utility (`src/lib/countryCodeMap.ts`)
-- [x] Updated creator application to set `seller_country_code` in profile on submission
-- [x] Updated `create-connect-account` to check eligibility and set seller_mode
-- [x] Updated `PayoutMethodSelector` to accept `sellerMode` prop and show conditional UI:
-  - Hides Stripe Connect for MOR sellers (unless already connected)
-  - Shows "Recommended" badge on PayPal/Payoneer for MOR sellers
-  - Adds ring highlight to MOR payout options
+### 1. SFX Generator View
+**Layout**: Full-width animated waveform visualization with prompt input
 
----
-
-## ✅ Phase 3: COMPLETED - Request Payout Flow
-
-### Completed Items:
-- [x] Wallet Ledger System (database functions, WalletCard, get-wallet-balance)
-- [x] Checkout flow updates (funds_flow_mode, available_on in purchases)
-- [x] Created unified `request-payout` edge function that:
-  - Checks available balance and minimum threshold ($20)
-  - For CONNECT sellers: Auto-processes via Stripe immediately
-  - For MOR sellers: Creates payout request for admin approval
-  - Notifies admin of new payout requests
-- [x] Updated WalletCard with payout request dialog:
-  - Provider selection (Stripe/PayPal/Payoneer)
-  - Instant vs standard payout option for Stripe
-  - Shows "Recommended" badge for MOR sellers
-  - Success confirmation with approval status
-
----
-
-## ✅ Phase 4: COMPLETED - Admin Payout Approval
-
-### Completed Items:
-- [x] PayoutQueue admin component with approve/deny functionality
-- [x] Created `process-payout` edge function to execute approved payouts via PayPal/Payoneer
-- [x] Added "Process Now" button to automatically execute approved payouts
-- [x] Audit logging for admin actions
-- [x] CSV export for payout reports
-
----
-
-## ✅ Phase 5: COMPLETED - Dispute & Refund Handling
-
-### Completed Items:
-- [x] Handle charge.refunded webhook event (create refund_debit ledger entry)
-- [x] Handle charge.dispute.created (lock seller balance, create chargeback_debit entry)
-- [x] Handle charge.dispute.closed (unlock or finalize debit based on outcome)
-- [x] Create DisputesPanel admin component with active/resolved tabs
-- [x] Add Disputes tab to Admin page
-
----
-
-## ✅ Phase 6: COMPLETED - Admin Dashboard Enhancements
-
-### Completed Items:
-- [x] Countries tab for country eligibility management
-- [x] Payouts tab for admin payout queue and approval
-- [x] Disputes tab for handling active disputes
-- [x] Audit Log tab for viewing all admin actions with filtering/search
-
----
-
-## 🎉 IMPLEMENTATION COMPLETE
-
-All phases of the Hybrid Payments Architecture have been successfully implemented:
-1. ✅ Database Schema & Foundation
-2. ✅ Seller Mode & UI Components  
-3. ✅ Request Payout Flow
-4. ✅ Admin Payout Approval
-5. ✅ Dispute & Refund Handling
-6. ✅ Admin Dashboard Enhancements
-
----
-This plan implements a compliant, scalable hybrid payments system that supports both **Stripe Connect sellers** (eligible countries) and **Platform MoR (Merchant of Record) sellers** (non-eligible countries). The system allows sellers from any country to sell digital products while maintaining proper payment processing compliance.
-
----
-
-## Current State Analysis
-
-### What Already Exists
-1. **Seller Onboarding**: Uses `is_creator`, `is_seller`, `is_editor` flags in `profiles` table
-2. **Stripe Connect**: Working integration via `create-connect-account` edge function
-3. **Checkout Flow**: Already branches between direct transfer and platform-held funds in `create-checkout-session`
-4. **Earnings Tracking**: Uses `purchases.transferred` boolean to track platform-held vs direct-transferred funds
-5. **Payout System**: `create-payout` edge function handles transfers and payouts to connected accounts
-6. **Private Seller Config**: `private.seller_config` table stores Stripe, PayPal, Payoneer credentials
-
-### What Needs to Be Built
-1. **Country Eligibility System**: Admin-managed table of Stripe-supported countries
-2. **Seller Mode**: Explicit `CONNECT` vs `MOR` mode per seller
-3. **Enhanced Wallet Ledger**: Proper ledger with holds, debits, refunds, disputes
-4. **Funds Flow Mode Tagging**: Every order tagged with its payment mode
-5. **Admin Payout Queue**: Manual approval workflow for MoR payouts
-6. **Dispute/Refund Handling**: Balance locking and reversal logic
-
----
-
-## Database Schema Changes
-
-### 1. New Table: `country_eligibility`
-```sql
-CREATE TABLE public.country_eligibility (
-  country_code TEXT PRIMARY KEY,         -- ISO 3166-1 alpha-2 (US, GB, etc.)
-  country_name TEXT NOT NULL,            -- Display name
-  connect_eligible BOOLEAN DEFAULT false,
-  notes TEXT,                            -- e.g., "individual only", "business only"
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  updated_by UUID REFERENCES auth.users(id)
-);
+```text
++---------------------------------------------------------------+
+|                                                               |
+|   ▁▂▃▅▇█▇▅▃▂▁▂▃▅▇█▇▅▃▂▁▂▃▅▇█▇▅▃▂▁▂▃▅▇█▇▅▃▂▁▂▃▅▇█▇▅▃▂▁       |
+|   ▁▂▃▅▇█▇▅▃▂▁▂▃▅▇█▇▅▃▂▁▂▃▅▇█▇▅▃▂▁▂▃▅▇█▇▅▃▂▁▂▃▅▇█▇▅▃▂▁       |
+|                     (Animated waveform bars)                   |
+|                                                               |
++---------------------------------------------------------------+
+|  [Image] [Video]  "Cinematic explosion with debris...|"  [>]  |
++---------------------------------------------------------------+
 ```
 
-### 2. Modify `profiles` Table
-Add new columns for seller mode tracking:
-```sql
-ALTER TABLE public.profiles ADD COLUMN seller_mode TEXT CHECK (seller_mode IN ('CONNECT', 'MOR'));
-ALTER TABLE public.profiles ADD COLUMN seller_country_code TEXT;
-ALTER TABLE public.profiles ADD COLUMN seller_kyc_status TEXT DEFAULT 'not_started' 
-  CHECK (seller_kyc_status IN ('not_started', 'in_review', 'verified', 'rejected'));
-ALTER TABLE public.profiles ADD COLUMN seller_status TEXT DEFAULT 'pending'
-  CHECK (seller_status IN ('pending', 'active', 'restricted', 'suspended'));
+**Elements**:
+- Animated waveform bars spanning full width (80-120 bars)
+- Bars animate with subtle randomized heights using CSS keyframes
+- Amber/orange gradient background
+- Bottom: Typewriter prompt input bar with generate button
+
+---
+
+### 2. Voice Isolator View
+**Layout**: 2-panel split showing original vs separated audio
+
+```text
++-----------------------------+-----------------------------+
+|                             |                             |
+|    ORIGINAL AUDIO           |      SEPARATED STEMS        |
+|                             |                             |
+|    [Waveform display]       |    [Vocals waveform]        |
+|    ▁▂▃▅▇█▇▅▃▂▁▂▃▅▇█        |    ▁▂▅█▇▂▁▃▅█▇▅▃           |
+|                             |                             |
+|    song.mp3                 |    [Instrumental waveform]  |
+|                             |    ▃▅▇█▇▅▃▂▁▂▃▅▇           |
+|                             |                             |
++-----------------------------+-----------------------------+
+|         [+ Upload File]  Drag & drop or click to add      |
++-----------------------------------------------------------+
 ```
 
-### 3. Modify `purchases` Table
-Add funds flow mode:
-```sql
-ALTER TABLE public.purchases ADD COLUMN funds_flow_mode TEXT 
-  CHECK (funds_flow_mode IN ('CONNECT', 'MOR'));
-ALTER TABLE public.purchases ADD COLUMN available_on TIMESTAMPTZ; -- 7-day hold
-ALTER TABLE public.purchases ADD COLUMN dispute_status TEXT;      -- disputed, resolved
+**Elements**:
+- Left panel: Original audio with single waveform
+- Right panel: Two split waveforms (Vocals + Instrumental)
+- Purple gradient theme
+- Bottom: File upload dropzone (no text input)
+
+---
+
+### 3. Manga Generator View
+**Layout**: Before/After image grid with generate button
+
+```text
++---------------+---------------+---------------+---------------+
+|               |               |               |               |
+|   [BEFORE]    |   [AFTER]     |   [BEFORE]    |   [AFTER]     |
+|   Photo/      |   Manga       |   Photo/      |   Manga       |
+|   Sketch      |   Style       |   Sketch      |   Style       |
+|               |               |               |               |
++---------------+---------------+---------------+---------------+
+|               |               |               |               |
+|   [BEFORE]    |   [AFTER]     |   [BEFORE]    |   [AFTER]     |
+|               |               |               |               |
++---------------+---------------+---------------+---------------+
+|                    [Generate Result]                          |
++---------------------------------------------------------------+
 ```
 
-### 4. New Table: `wallet_ledger_entries`
-```sql
-CREATE TABLE public.wallet_ledger_entries (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  seller_id UUID NOT NULL REFERENCES public.profiles(id),
-  order_id UUID,                          -- Reference to purchase or booking
-  order_type TEXT,                        -- 'purchase', 'booking', 'subscription'
-  entry_type TEXT NOT NULL CHECK (entry_type IN (
-    'credit',           -- Earnings from sale
-    'debit',            -- Withdrawal/payout
-    'hold_release',     -- 7-day hold cleared
-    'refund_debit',     -- Refund reversal
-    'chargeback_debit', -- Dispute loss
-    'fee_debit',        -- Platform fee
-    'payout_debit'      -- Payout executed
-  )),
-  amount_cents INTEGER NOT NULL,
-  currency TEXT DEFAULT 'USD',
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'available', 'locked', 'reversed')),
-  available_on TIMESTAMPTZ,               -- When funds become available
-  description TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+**Elements**:
+- 4x2 grid of before/after pairs
+- Each pair has "Before" and "After" labels
+- Pink/rose gradient theme
+- Bottom: Large "Generate Result" button (no text input)
+
+---
+
+### 4. Video Generator View
+**Layout**: One large video with thumbnail slider
+
+```text
++---------------------------------------------------------------+
+|                                                               |
+|                    [LARGE VIDEO PREVIEW]                       |
+|                                                               |
+|                         ▶ Play                                 |
+|                                                               |
++---------------------------------------------------------------+
+|   [thumb 1]   |   [thumb 2]   |   [thumb 3]   |   [thumb 4]   |
++---------------------------------------------------------------+
+|  [Image] [Video]  "Drone shot over mountains...|"  [Generate] |
++---------------------------------------------------------------+
+```
+
+**Elements**:
+- Large main video display area (16:9 aspect)
+- Horizontal thumbnail slider with 4 video previews
+- Cyan/teal gradient theme
+- Bottom: Typewriter prompt input bar (text-to-video)
+
+---
+
+## Technical Implementation
+
+### Component Structure
+
+```tsx
+// Render different content based on activeTool
+{activeTool === 'sfx' && <SFXView config={activeConfig} displayedText={displayedText} />}
+{activeTool === 'vocal' && <VocalView config={activeConfig} />}
+{activeTool === 'manga' && <MangaView config={activeConfig} />}
+{activeTool === 'video' && <VideoView config={activeConfig} displayedText={displayedText} />}
+```
+
+### Animated Waveform (SFX)
+
+```tsx
+// Generate animated bars
+const [waveformBars] = useState(() => 
+  Array.from({ length: 100 }, () => Math.random() * 0.6 + 0.2)
 );
 
-CREATE INDEX idx_ledger_seller ON wallet_ledger_entries(seller_id);
-CREATE INDEX idx_ledger_status ON wallet_ledger_entries(status);
+// CSS animation with staggered delays
+{waveformBars.map((height, i) => (
+  <div
+    key={i}
+    className="w-1 bg-amber-500/60 rounded-full animate-pulse"
+    style={{
+      height: `${height * 100}%`,
+      animationDelay: `${i * 0.02}s`,
+      animationDuration: `${0.8 + Math.random() * 0.4}s`
+    }}
+  />
+))}
 ```
 
-### 5. New Table: `payout_profiles`
-Extends existing `private.seller_config`:
-```sql
-ALTER TABLE private.seller_config 
-ADD COLUMN preferred_payout_provider TEXT CHECK (
-  preferred_payout_provider IN ('STRIPE', 'PAYPAL', 'PAYONEER', 'WISE', 'BANK', 'CRYPTO', 'MANUAL')
-);
+### Split Panel Waveforms (Voice Isolator)
+
+```tsx
+// Two-column layout with separate waveform visualizations
+<div className="grid grid-cols-2 gap-4 h-full">
+  {/* Original side */}
+  <div className="border border-foreground/10 p-6 flex flex-col">
+    <span className="text-xs text-muted-foreground mb-4">ORIGINAL</span>
+    <WaveformDisplay color="purple" />
+    <span className="text-sm mt-auto">song.mp3</span>
+  </div>
+  
+  {/* Separated side */}
+  <div className="border border-foreground/10 p-6 space-y-4">
+    <span className="text-xs text-muted-foreground">SEPARATED</span>
+    <WaveformDisplay color="violet" label="Vocals" />
+    <WaveformDisplay color="green" label="Instrumental" />
+  </div>
+</div>
 ```
 
-### 6. New Table: `payouts`
-```sql
-CREATE TABLE public.payouts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  seller_id UUID NOT NULL REFERENCES public.profiles(id),
-  amount_cents INTEGER NOT NULL,
-  currency TEXT DEFAULT 'USD',
-  provider_type TEXT NOT NULL CHECK (provider_type IN (
-    'STRIPE', 'PAYPAL', 'PAYONEER', 'WISE', 'BANK', 'CRYPTO', 'MANUAL'
-  )),
-  status TEXT DEFAULT 'requested' CHECK (status IN (
-    'requested', 'approved', 'processing', 'sent', 'failed', 'cancelled'
-  )),
-  requested_at TIMESTAMPTZ DEFAULT now(),
-  approved_at TIMESTAMPTZ,
-  approved_by UUID REFERENCES auth.users(id),
-  sent_at TIMESTAMPTZ,
-  external_reference TEXT,                -- PayPal transaction ID, etc.
-  admin_notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+### Before/After Grid (Manga)
 
-CREATE INDEX idx_payouts_seller ON payouts(seller_id);
-CREATE INDEX idx_payouts_status ON payouts(status);
+```tsx
+// 4 pairs of before/after gradient cards
+const pairs = [
+  { before: 'from-pink-800/40', after: 'from-rose-600/50' },
+  { before: 'from-pink-700/30', after: 'from-fuchsia-500/40' },
+  // ...
+];
+
+<div className="grid grid-cols-4 gap-2">
+  {pairs.map((pair, i) => (
+    <>
+      <div className={`aspect-[3/4] bg-gradient-to-br ${pair.before} relative`}>
+        <span className="absolute top-2 left-2 text-[10px] text-foreground/50">BEFORE</span>
+      </div>
+      <div className={`aspect-[3/4] bg-gradient-to-br ${pair.after} relative`}>
+        <span className="absolute top-2 left-2 text-[10px] text-foreground/50">AFTER</span>
+      </div>
+    </>
+  ))}
+</div>
 ```
 
-### 7. New Table: `admin_audit_log`
-```sql
-CREATE TABLE public.admin_audit_log (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  admin_user_id UUID NOT NULL REFERENCES auth.users(id),
-  action_type TEXT NOT NULL,              -- 'payout_approved', 'seller_restricted', etc.
-  target_type TEXT,                       -- 'seller', 'payout', 'country'
-  target_id UUID,
-  old_value JSONB,
-  new_value JSONB,
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+### Video Thumbnail Slider
+
+```tsx
+// Large video + horizontal thumbnails
+<div className="flex flex-col h-full">
+  {/* Main video */}
+  <div className="flex-1 bg-gradient-to-br from-cyan-800/50 relative">
+    <PlayButton />
+  </div>
+  
+  {/* Thumbnail row */}
+  <div className="flex gap-2 mt-4">
+    {[1, 2, 3, 4].map(i => (
+      <div key={i} className="flex-1 aspect-video bg-gradient-to-br from-teal-700/40" />
+    ))}
+  </div>
+</div>
 ```
 
 ---
 
-## Implementation Phases
+## Bottom Action Bar Logic
 
-### Phase 1: Country Eligibility System (Foundation)
+Each tool gets a different action bar:
 
-**Files to Create/Modify:**
+| Tool | Action Bar Type |
+|------|----------------|
+| SFX Generator | Typewriter prompt + Generate button |
+| Voice Isolator | File upload dropzone |
+| Manga Generator | "Generate Result" button only |
+| Video Generator | Typewriter prompt + Generate button |
 
-1. **Database Migration**: Create `country_eligibility` table with initial Stripe-supported countries
-2. **Edge Function**: `check-country-eligibility` - Returns eligibility for a given country
-3. **Admin UI Component**: `src/components/admin/CountryEligibilityEditor.tsx`
-4. **Admin Page Tab**: Add "Countries" tab to `/admin`
+```tsx
+// Conditional bottom bar
+{(activeTool === 'sfx' || activeTool === 'video') && (
+  <PromptInputBar displayedText={displayedText} accentColor={activeConfig.accentColor} />
+)}
 
-**Initial Data Seeding:**
-Pre-populate with Stripe's current supported countries (US, UK, EU, Australia, etc.) as `connect_eligible = true`
+{activeTool === 'vocal' && (
+  <FileUploadBar />
+)}
 
-### Phase 2: Seller Mode & Onboarding Branching
-
-**Files to Modify:**
-
-1. **`src/components/creator-application/`**:
-   - Add country selection step
-   - Show different UI based on eligibility
-   - For CONNECT: "Stripe payout supported"
-   - For MOR: "Platform payouts (PayPal/Payoneer)"
-
-2. **`supabase/functions/create-connect-account/index.ts`**:
-   - Check country eligibility first
-   - Refuse Stripe onboarding for MOR-only countries
-   - Set `seller_mode = 'CONNECT'` on success
-
-3. **New Edge Function**: `onboard-mor-seller`
-   - Collect minimal KYC (name, address, ID)
-   - Set `seller_mode = 'MOR'`
-   - Require payout profile setup
-
-### Phase 3: Wallet Ledger System
-
-**Files to Create:**
-
-1. **Database Functions**:
-   - `get_seller_wallet_balance(seller_id)` - Returns available, pending, locked
-   - `create_ledger_entry(...)` - Adds new ledger row
-   - `release_held_funds()` - Cron-triggered, moves pending → available
-
-2. **Edge Function**: `get-wallet-balance` - API for dashboard
-3. **UI Component**: `src/components/dashboard/WalletCard.tsx` - Enhanced balance display
-
-### Phase 4: Checkout Flow Updates
-
-**Files to Modify:**
-
-1. **`supabase/functions/create-checkout-session/index.ts`**:
-   ```
-   - Lookup seller's mode
-   - Set session metadata: funds_flow_mode = seller.seller_mode
-   - CONNECT mode: Use transfer_data (existing)
-   - MOR mode: Platform charge only (existing)
-   ```
-
-2. **`supabase/functions/stripe-webhook/index.ts`**:
-   ```
-   - On payment success:
-     - Store funds_flow_mode in purchase record
-     - Create wallet_ledger_entry with available_on = now + 7 days
-     - For MOR: Set status = 'pending'
-   ```
-
-### Phase 5: Payout System Overhaul
-
-**Files to Create/Modify:**
-
-1. **New Edge Function**: `request-payout`
-   - Check available balance (not pending/locked)
-   - Check minimum threshold ($20)
-   - Create payout record with status = 'requested'
-   - For CONNECT sellers: Auto-approve if balance > min
-   - For MOR sellers: Require admin approval
-
-2. **New Edge Function**: `process-payout`
-   - Called by admin or auto for CONNECT
-   - Routes to appropriate provider (Stripe/PayPal/Payoneer)
-   - Creates payout_debit ledger entry
-
-3. **Admin UI**: `src/components/admin/PayoutQueue.tsx`
-   - List pending payout requests
-   - Approve/deny with notes
-   - Export CSV
-
-### Phase 6: Dispute & Refund Handling
-
-**Files to Modify:**
-
-1. **`supabase/functions/stripe-webhook/index.ts`**:
-   ```
-   - charge.refunded: Create refund_debit ledger entry
-   - charge.dispute.created: Lock seller balance, create dispute record
-   - charge.dispute.closed: Unlock or debit based on outcome
-   ```
-
-2. **Admin UI**: `src/components/admin/DisputesPanel.tsx`
-   - View active disputes
-   - See affected sellers and locked amounts
-
-### Phase 7: Admin Dashboard Enhancements
-
-**New Admin Tabs:**
-
-1. **Countries**: Edit country eligibility
-2. **Payouts**: Approve/manage payout queue
-3. **Disputes**: Handle active disputes
-4. **Audit Log**: View all admin actions
-
----
-
-## Security & Compliance
-
-### RLS Policies
-
-```sql
--- wallet_ledger_entries: Sellers see only their own
-CREATE POLICY "Sellers view own ledger" ON wallet_ledger_entries
-FOR SELECT USING (seller_id IN (
-  SELECT id FROM profiles WHERE user_id = auth.uid()
-));
-
--- payouts: Sellers see own, admins see all
-CREATE POLICY "Sellers view own payouts" ON payouts
-FOR SELECT USING (seller_id IN (
-  SELECT id FROM profiles WHERE user_id = auth.uid()
-) OR public.has_role(auth.uid(), 'admin'));
-
--- country_eligibility: Public read, admin write
-CREATE POLICY "Anyone can read countries" ON country_eligibility
-FOR SELECT USING (true);
-
-CREATE POLICY "Admins can modify countries" ON country_eligibility
-FOR ALL USING (public.has_role(auth.uid(), 'admin'));
+{activeTool === 'manga' && (
+  <GenerateButton />
+)}
 ```
 
-### Payout Controls
+---
 
-- **Minimum threshold**: $20 (configurable)
-- **Max daily payout**: $10,000 per seller (configurable)
-- **7-day hold** on all earnings before withdrawal
-- **Negative balance blocking**: No withdrawals until resolved
-- **MoR payouts require admin approval**
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/home/ToolsShowcase.tsx` | Complete redesign with 4 unique view components |
 
 ---
 
-## Edge Cases Handled
+## Visual Theming Per Tool
 
-1. **Seller changes country**: Lock account, require admin review, potentially change mode
-2. **Partial refunds**: Pro-rate the ledger debit based on refund percentage
-3. **Currency handling**: All amounts stored in cents, display conversion in UI
-4. **Negative balances**: Block withdrawals, show warning in dashboard
-5. **Multiple payout profiles**: Only one active per provider type
-
----
-
-## File Summary
-
-| Type | Path | Action |
-|------|------|--------|
-| Migration | `supabase/migrations/xxx_hybrid_payments.sql` | Create tables & columns |
-| Edge Fn | `supabase/functions/check-country-eligibility/` | New |
-| Edge Fn | `supabase/functions/onboard-mor-seller/` | New |
-| Edge Fn | `supabase/functions/get-wallet-balance/` | New |
-| Edge Fn | `supabase/functions/request-payout/` | New |
-| Edge Fn | `supabase/functions/process-payout/` | New |
-| Edge Fn | `supabase/functions/create-checkout-session/` | Modify |
-| Edge Fn | `supabase/functions/stripe-webhook/` | Modify |
-| Edge Fn | `supabase/functions/create-payout/` | Replace with new system |
-| Component | `src/components/admin/CountryEligibilityEditor.tsx` | New |
-| Component | `src/components/admin/PayoutQueue.tsx` | New |
-| Component | `src/components/admin/DisputesPanel.tsx` | New |
-| Component | `src/components/admin/AuditLog.tsx` | New |
-| Component | `src/components/dashboard/WalletCard.tsx` | New |
-| Page | `src/pages/Admin.tsx` | Add new tabs |
-| Page | `src/pages/Dashboard.tsx` | Integrate new wallet UI |
-
----
-
-## Technical Notes
-
-- **All amounts in cents**: Prevents floating point errors
-- **Ledger is append-only**: Never modify entries, only add reversals
-- **Webhook idempotency**: Existing `stripe_events` table prevents duplicates
-- **Background jobs**: Hold release can use Supabase scheduled functions or external cron
-- **No static country lists**: All eligibility data comes from database
+| Tool | Primary Colors | Accent |
+|------|---------------|--------|
+| SFX Generator | Amber/Orange/Stone | `text-amber-400` |
+| Voice Isolator | Purple/Violet/Fuchsia | `text-purple-400` |
+| Manga Generator | Pink/Rose/Red | `text-pink-400` |
+| Video Generator | Cyan/Teal/Sky | `text-cyan-400` |
 
