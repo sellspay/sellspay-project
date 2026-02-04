@@ -129,6 +129,16 @@ export const tools: Tool[] = [
   },
   // Generators
   {
+    id: "nano-banana",
+    title: "Nano Banana",
+    description: "Generate anything with AI - images, art & more",
+    icon: Wand2,
+    category: "generators",
+    badge: "New",
+    available: true,
+    isPro: true,
+  },
+  {
     id: "manga-generator",
     title: "Manga Generator",
     description: "Create manga-style illustrations with AI",
