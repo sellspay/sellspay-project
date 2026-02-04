@@ -44,18 +44,21 @@ export function AIToolsReveal() {
     if (!section || !text || cards.length === 0) return;
 
     const panelCount = steps.length;
+    const cardHeight = 520;
 
     // Set initial styles
     gsap.set(section, { backgroundColor: steps[0].bg });
     gsap.set(text.querySelector("[data-title]"), { color: steps[0].text });
     gsap.set(text.querySelector("[data-sub]"), { color: steps[0].subtext });
 
-    // Set initial card positions - all stacked at same position, z-index determines visibility
+    // Set initial card positions:
+    // - First card (idx 0) is visible at y: 0
+    // - All other cards start BELOW (off-screen) at y: cardHeight
+    // - Z-index: HIGHER for later cards so they stack ON TOP
     cards.forEach((card, idx) => {
       gsap.set(card, {
-        y: 0,
-        scale: 1 - (idx * 0.02), // Slightly smaller for cards behind
-        zIndex: panelCount - idx,
+        y: idx === 0 ? 0 : cardHeight, // First card visible, rest below
+        zIndex: idx, // Higher index = higher z-index = stacks on top
       });
     });
 
@@ -74,15 +77,14 @@ export function AIToolsReveal() {
       },
     });
 
-    // Animate each step: card stacks up + colors change TOGETHER
+    // Animate each step: next card slides UP from below to stack ON TOP
     for (let i = 0; i < panelCount - 1; i++) {
       const startTime = i;
+      const nextCardIndex = i + 1;
       
-      // Move current card UP to stack at top (revealing the one behind)
-      // Each card moves up by its height + some offset to stack
-      tl.to(cards[i], {
-        y: -(520 + 40), // Move up past the viewport + gap for stacking
-        scale: 0.9,
+      // Next card slides UP from below (y: cardHeight -> y: 0)
+      tl.to(cards[nextCardIndex], {
+        y: 0,
         duration: 1,
       }, startTime);
       
@@ -141,23 +143,20 @@ export function AIToolsReveal() {
 
           {/* Right card stack area */}
           <div className="relative flex flex-1 justify-center">
-            <div className="relative w-[500px] h-[520px]">
-              {/* Cards container - all cards positioned absolutely, stacked */}
+            <div className="relative w-[500px] h-[520px] overflow-hidden rounded-[24px]">
+              {/* Cards container - all cards positioned absolutely */}
               {steps.map((step, idx) => (
                 <div
                   key={idx}
                   ref={(el) => { cardsRef.current[idx] = el; }}
                   className="absolute inset-0 will-change-transform"
-                  style={{
-                    zIndex: steps.length - idx,
-                  }}
                 >
                   {/* The actual card */}
                   <div 
                     className="relative h-full w-full rounded-[24px] border border-white/15 overflow-hidden"
                     style={{
                       backgroundColor: cardColors[idx],
-                      boxShadow: '0 25px 80px -20px rgba(0,0,0,0.6)',
+                      boxShadow: '0 -10px 40px -10px rgba(0,0,0,0.4)',
                     }}
                   >
                     {/* Card content placeholder */}
@@ -175,18 +174,8 @@ export function AIToolsReveal() {
                 </div>
               ))}
 
-              {/* Cards peeking behind effect - static visual hints */}
-              <div 
-                className="absolute left-1/2 -translate-x-1/2 w-[92%] h-[25px] rounded-t-[20px] border border-white/8 bg-white/5"
-                style={{ top: '-20px', zIndex: 0 }}
-              />
-              <div 
-                className="absolute left-1/2 -translate-x-1/2 w-[84%] h-[18px] rounded-t-[16px] border border-white/5 bg-white/3"
-                style={{ top: '-35px', zIndex: -1 }}
-              />
-
               {/* Prompt box overlay */}
-              <div className="pointer-events-none absolute inset-x-0 -bottom-16 flex justify-center z-50">
+              <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center z-50">
                 <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-white/15 bg-black/70 px-4 py-3 backdrop-blur-xl">
                   <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/10">
                     🔊
