@@ -102,21 +102,15 @@ export default function Header() {
   return (
     <header className={cn(
       "sticky top-0 z-50 w-full",
-      // Premium glassmorphic background
-      "bg-gradient-to-b from-background/95 to-background/85 backdrop-blur-2xl",
-      // 3D bevel effect - top highlight
-      "before:absolute before:inset-x-0 before:top-0 before:h-[1px]",
-      "before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent",
-      // 3D emboss effect - bottom shadow
-      "after:absolute after:inset-x-0 after:bottom-0 after:h-[1px]",
-      "after:bg-gradient-to-r after:from-transparent after:via-black/40 after:to-transparent",
-      // Outer shadow for depth
-      "shadow-[0_4px_24px_-4px_rgba(0,0,0,0.5),0_1px_2px_rgba(0,0,0,0.3)]",
-      // Border for definition
-      "border-b border-white/[0.05]"
+      // Solid background with subtle transparency
+      "bg-background/98 backdrop-blur-md",
+      // Clean border
+      "border-b border-border/50",
+      // Subtle shadow
+      "shadow-lg shadow-black/20"
     )}>
-      {/* Inner highlight line for extra depth */}
-      <div className="absolute inset-x-4 top-[1px] h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      {/* Top accent line */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
       
       <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
@@ -148,17 +142,13 @@ export default function Header() {
                   <NavigationMenuContent>
                     <div className={cn(
                       "w-[420px] p-5",
-                      // Premium card styling
-                      "bg-gradient-to-b from-card/98 to-card/95 backdrop-blur-2xl",
-                      // 3D border effects
-                      "border border-white/10",
-                      "shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]",
-                      "rounded-2xl"
+                      // Solid card styling
+                      "bg-card border border-border",
+                      "shadow-xl shadow-black/30",
+                      "rounded-xl"
                     )}>
-                      {/* Inner highlight */}
-                      <div className="absolute inset-x-4 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
                       
-                      <div className="grid gap-1.5">
+                      <div className="grid gap-1">
                         {productCategories.map((item) => {
                           const Icon = item.icon;
                           return (
@@ -166,18 +156,15 @@ export default function Header() {
                               key={item.path}
                               to={item.path}
                               className={cn(
-                                "flex items-center gap-4 p-3 rounded-xl transition-all duration-300 group",
-                                "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                                "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_2px_8px_rgba(0,0,0,0.2)]"
+                                "flex items-center gap-4 p-3 rounded-lg transition-all duration-200 group",
+                                "hover:bg-muted"
                               )}
                             >
                               <div className={cn(
-                                "flex h-11 w-11 items-center justify-center rounded-xl",
-                                "bg-gradient-to-b from-primary/20 to-primary/10",
-                                "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_4px_rgba(0,0,0,0.2)]",
-                                "transition-all duration-300",
-                                "group-hover:from-primary/30 group-hover:to-primary/15",
-                                "group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_8px_rgba(0,0,0,0.3)]"
+                                "flex h-10 w-10 items-center justify-center rounded-lg",
+                                "bg-primary/15",
+                                "transition-colors duration-200",
+                                "group-hover:bg-primary/25"
                               )}>
                                 <Icon className="h-5 w-5 text-primary" />
                               </div>
@@ -223,23 +210,19 @@ export default function Header() {
                   </Link>
                   <NavigationMenuContent>
                     <div className={cn(
-                      "w-[340px] p-5",
-                      "bg-gradient-to-b from-card/98 to-card/95 backdrop-blur-2xl",
-                      "border border-white/10",
-                      "shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]",
-                      "rounded-2xl"
+                      "w-[320px] p-4",
+                      "bg-card border border-border",
+                      "shadow-xl shadow-black/30",
+                      "rounded-xl"
                     )}>
-                      <div className="absolute inset-x-4 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
-                      
-                      <div className="grid gap-1.5">
+                      <div className="grid gap-1">
                         {toolsItems.map((item) => (
                           <Link
                             key={item.path}
                             to={item.path}
                             className={cn(
-                              "flex items-center justify-between p-3 rounded-xl transition-all duration-300 group",
-                              "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                              "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_2px_8px_rgba(0,0,0,0.2)]"
+                              "flex items-center justify-between p-3 rounded-lg transition-all duration-200 group",
+                              "hover:bg-muted"
                             )}
                           >
                             <div>
@@ -272,23 +255,19 @@ export default function Header() {
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
                     <div className={cn(
-                      "w-[300px] p-5",
-                      "bg-gradient-to-b from-card/98 to-card/95 backdrop-blur-2xl",
-                      "border border-white/10",
-                      "shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]",
-                      "rounded-2xl"
+                      "w-[280px] p-4",
+                      "bg-card border border-border",
+                      "shadow-xl shadow-black/30",
+                      "rounded-xl"
                     )}>
-                      <div className="absolute inset-x-4 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
-                      
-                      <div className="grid gap-1.5">
+                      <div className="grid gap-1">
                         {communityItems.map((item) => (
                           <Link
                             key={item.path}
                             to={item.path}
                             className={cn(
-                              "flex items-center justify-between p-3 rounded-xl transition-all duration-300 group",
-                              "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                              "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_2px_8px_rgba(0,0,0,0.2)]"
+                              "flex items-center justify-between p-3 rounded-lg transition-all duration-200 group",
+                              "hover:bg-muted"
                             )}
                           >
                             <div>
@@ -409,19 +388,15 @@ export default function Header() {
                 <DropdownMenuContent 
                   align="end" 
                   className={cn(
-                    "w-64 p-3",
-                    "bg-gradient-to-b from-card/98 to-card/95 backdrop-blur-2xl",
-                    "border border-white/10",
-                    "shadow-[0_20px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]",
-                    "rounded-2xl overflow-hidden"
+                    "w-60 p-2",
+                    "bg-card border border-border",
+                    "shadow-xl shadow-black/30",
+                    "rounded-xl"
                   )}
                 >
-                  {/* Inner highlight */}
-                  <div className="absolute inset-x-4 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
-                  
                   <div className={cn(
-                    "flex items-center gap-3 p-3 mb-2 rounded-xl",
-                    "bg-gradient-to-r from-white/[0.05] to-transparent"
+                    "flex items-center gap-3 p-3 mb-2 rounded-lg",
+                    "bg-muted/50"
                   )}>
                     <Avatar className="h-11 w-11 ring-2 ring-primary/20 shadow-lg">
                       <AvatarImage src={avatarUrl || undefined} className="rounded-full" />
@@ -440,12 +415,9 @@ export default function Header() {
                     <button
                       onClick={() => setTopUpDialogOpen(true)}
                       className={cn(
-                        "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl",
-                        "bg-gradient-to-b from-primary/20 to-primary/10",
-                        "border border-primary/30",
-                        "shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]",
-                        "transition-all duration-300",
-                        "hover:from-primary/30 hover:to-primary/15"
+                        "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg",
+                        "bg-primary/15 hover:bg-primary/25",
+                        "transition-colors duration-200"
                       )}
                     >
                       {creditsLoading ? (
@@ -461,13 +433,13 @@ export default function Header() {
                     </button>
                   </div>
                   
-                  <DropdownMenuSeparator className="bg-white/10 my-1" />
+                  <DropdownMenuSeparator className="bg-border my-1" />
                   
                   {(isCreator || isSeller) && (
                     <DropdownMenuItem asChild className={cn(
-                      "rounded-xl px-3 py-2.5 cursor-pointer",
-                      "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                      "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                      "rounded-lg px-3 py-2.5 cursor-pointer",
+                      "hover:bg-muted",
+                      "focus:bg-muted"
                     )}>
                       <Link to="/dashboard" className="flex items-center gap-3">
                         <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
@@ -477,9 +449,9 @@ export default function Header() {
                   )}
                   {(isCreator || isSeller) && (
                     <DropdownMenuItem asChild className={cn(
-                      "rounded-xl px-3 py-2.5 cursor-pointer",
-                      "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                      "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                      "rounded-lg px-3 py-2.5 cursor-pointer",
+                      "hover:bg-muted",
+                      "focus:bg-muted"
                     )}>
                       <Link to="/create-product" className="flex items-center gap-3">
                         <Plus className="h-4 w-4 text-muted-foreground" />
@@ -489,9 +461,9 @@ export default function Header() {
                   )}
                   {(isCreator || isSeller || isAdmin) && (
                     <DropdownMenuItem asChild className={cn(
-                      "rounded-xl px-3 py-2.5 cursor-pointer",
-                      "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                      "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                      "rounded-lg px-3 py-2.5 cursor-pointer",
+                      "hover:bg-muted",
+                      "focus:bg-muted"
                     )}>
                       <Link to="/subscription-plans" className="flex items-center gap-3">
                         <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -500,9 +472,9 @@ export default function Header() {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem asChild className={cn(
-                    "rounded-xl px-3 py-2.5 cursor-pointer",
-                    "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                    "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                    "rounded-lg px-3 py-2.5 cursor-pointer",
+                    "hover:bg-muted",
+                    "focus:bg-muted"
                   )}>
                     <Link to="/profile" className="flex items-center gap-3">
                       <User className="h-4 w-4 text-muted-foreground" />
@@ -510,9 +482,9 @@ export default function Header() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className={cn(
-                    "rounded-xl px-3 py-2.5 cursor-pointer",
-                    "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                    "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                    "rounded-lg px-3 py-2.5 cursor-pointer",
+                    "hover:bg-muted",
+                    "focus:bg-muted"
                   )}>
                     <Link to="/settings" className="flex items-center gap-3">
                       <Settings className="h-4 w-4 text-muted-foreground" />
@@ -521,9 +493,9 @@ export default function Header() {
                   </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem asChild className={cn(
-                      "rounded-xl px-3 py-2.5 cursor-pointer",
-                      "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                      "focus:bg-gradient-to-r focus:from-white/[0.08] focus:to-transparent"
+                      "rounded-lg px-3 py-2.5 cursor-pointer",
+                      "hover:bg-muted",
+                      "focus:bg-muted"
                     )}>
                       <Link to="/admin" className="flex items-center gap-3">
                         <ShieldCheck className="h-4 w-4 text-muted-foreground" />
@@ -531,12 +503,12 @@ export default function Header() {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuSeparator className="bg-white/10 my-1" />
-                  <DropdownMenuItem 
+                  <DropdownMenuSeparator className="bg-border my-1" />
+                  <DropdownMenuItem
                     onClick={() => signOut()} 
                     className={cn(
-                      "rounded-xl px-3 py-2.5 cursor-pointer text-destructive",
-                      "hover:bg-destructive/10 focus:bg-destructive/10"
+                      "rounded-lg px-3 py-2.5 cursor-pointer text-destructive",
+                      "hover:bg-destructive/10"
                     )}
                   >
                     <LogOut className="h-4 w-4 mr-3" />
