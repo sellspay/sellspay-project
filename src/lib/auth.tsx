@@ -279,13 +279,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    // HARDCODED canonical redirect — Google requires exact match.
-    // Path is /~oauth/callback (NOT /~/oauth/callback)
-    const redirectUri = 'https://sellspay.com/~oauth/callback';
-
-    const result = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: redirectUri,
-    });
+    // Let Lovable Cloud handle the redirect_uri automatically
+    // Custom redirect_uri breaks the state parameter flow
+    const result = await lovable.auth.signInWithOAuth('google');
 
     return { error: result.error ?? null };
   };
