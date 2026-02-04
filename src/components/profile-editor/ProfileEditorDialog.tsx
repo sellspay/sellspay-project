@@ -76,6 +76,8 @@ interface Product {
   preview_video_url: string | null;
   price_cents: number | null;
   currency: string | null;
+  excerpt?: string | null;
+  description?: string | null;
 }
 
 interface Collection {
@@ -1282,7 +1284,7 @@ export function ProfileEditorDialog({
       <EditSectionDialog
         section={editingSection}
         collections={initialCollections}
-        products={recentProducts.map(p => ({ id: p.id, name: p.name }))}
+        products={recentProducts}
         onUpdate={updateSection}
         onDelete={deleteSection}
         onClose={() => setEditingSection(null)}
