@@ -285,7 +285,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Google can throw `redirect_uri_mismatch`.
     // So in preview we force redirect back to the stable published URL.
     const isPreview = window.location.hostname.includes("id-preview--");
-    const redirectUri = isPreview ? "https://sellspay.lovable.app" : window.location.origin;
+    const redirectBase = isPreview ? "https://sellspay.lovable.app" : window.location.origin;
+
+    // Lovable Cloud managed Google OAuth expects the callback path suffix.
+    // Google will throw `redirect_uri_mismatch` unless the *exact* callback URL is whitelisted.
+    const redirectUri = `${redirectBase}/~auth/callback`;
 
     const result = await lovable.auth.signInWithOAuth('google', {
       redirect_uri: redirectUri,
