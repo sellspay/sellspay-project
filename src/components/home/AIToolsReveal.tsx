@@ -52,6 +52,9 @@ const STEPS: Step[] = [
 const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a1a1a"];
 const STEP_DISTANCE_DESKTOP = 500;
 const STEP_DISTANCE_MOBILE = 300;
+const STACK_Y = 10;
+const STACK_SCALE = 0.02;
+const TOP_CARD_SCALE = 0.97;
 
 export function AIToolsReveal() {
   const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -147,6 +150,27 @@ export function AIToolsReveal() {
             // Card slides up from 100% (below) to 0% (covering previous)
             const yPercent = 100 - (clampedCardProgress * 100);
             gsap.set(card, { yPercent });
+          });
+
+          // Make the already-revealed cards look like a physical stack
+          // (top card slightly smaller so the larger card beneath peeks around it)
+          cards.forEach((card, i) => {
+            if (i > activeIdx) {
+              // Not revealed yet
+              gsap.set(card, { y: 0, scale: 1 });
+              return;
+            }
+
+            const fromTop = activeIdx - i; // 0 = top, 1 = one behind, ...
+            const y = fromTop * STACK_Y;
+            const scale = fromTop === 0
+              ? TOP_CARD_SCALE
+              : Math.max(0.86, 1 - ((fromTop - 1) * STACK_SCALE));
+
+            gsap.set(card, {
+              y,
+              scale,
+            });
           });
         },
       });
