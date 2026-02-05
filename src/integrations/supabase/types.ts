@@ -1532,6 +1532,18 @@ export type Database = {
           hero_video_url: string | null
           id: string
           manga_thumbnails: Json | null
+          reveal_panel_1_media_type: string | null
+          reveal_panel_1_media_url: string | null
+          reveal_panel_2_media_type: string | null
+          reveal_panel_2_media_url: string | null
+          reveal_panel_3_media_type: string | null
+          reveal_panel_3_media_url: string | null
+          reveal_panel_4_media_type: string | null
+          reveal_panel_4_media_url: string | null
+          reveal_panel_5_media_type: string | null
+          reveal_panel_5_media_url: string | null
+          reveal_panel_6_media_type: string | null
+          reveal_panel_6_media_url: string | null
           sfx_thumbnails: Json | null
           tool_audio_converter_banner_url: string | null
           tool_audio_cutter_banner_url: string | null
@@ -1563,6 +1575,18 @@ export type Database = {
           hero_video_url?: string | null
           id?: string
           manga_thumbnails?: Json | null
+          reveal_panel_1_media_type?: string | null
+          reveal_panel_1_media_url?: string | null
+          reveal_panel_2_media_type?: string | null
+          reveal_panel_2_media_url?: string | null
+          reveal_panel_3_media_type?: string | null
+          reveal_panel_3_media_url?: string | null
+          reveal_panel_4_media_type?: string | null
+          reveal_panel_4_media_url?: string | null
+          reveal_panel_5_media_type?: string | null
+          reveal_panel_5_media_url?: string | null
+          reveal_panel_6_media_type?: string | null
+          reveal_panel_6_media_url?: string | null
           sfx_thumbnails?: Json | null
           tool_audio_converter_banner_url?: string | null
           tool_audio_cutter_banner_url?: string | null
@@ -1594,6 +1618,18 @@ export type Database = {
           hero_video_url?: string | null
           id?: string
           manga_thumbnails?: Json | null
+          reveal_panel_1_media_type?: string | null
+          reveal_panel_1_media_url?: string | null
+          reveal_panel_2_media_type?: string | null
+          reveal_panel_2_media_url?: string | null
+          reveal_panel_3_media_type?: string | null
+          reveal_panel_3_media_url?: string | null
+          reveal_panel_4_media_type?: string | null
+          reveal_panel_4_media_url?: string | null
+          reveal_panel_5_media_type?: string | null
+          reveal_panel_5_media_url?: string | null
+          reveal_panel_6_media_type?: string | null
+          reveal_panel_6_media_url?: string | null
           sfx_thumbnails?: Json | null
           tool_audio_converter_banner_url?: string | null
           tool_audio_cutter_banner_url?: string | null
