@@ -3,7 +3,7 @@ import { Loader2, Lock, Wand2 } from "lucide-react";
 import { tools, Tool } from "./ToolsSidebar";
 import { Button } from "@/components/ui/button";
 import { ProToolsGate } from "./ProToolsGate";
-import { useCredits } from "@/hooks/useCredits";
+import { useSubscription } from "@/hooks/useSubscription";
 
 // Lazy load tool components
 const AudioCutter = lazy(() => import("@/pages/tools/AudioCutter"));
@@ -68,10 +68,10 @@ function WelcomeContent() {
 
 export function ToolContent({ toolId }: ToolContentProps) {
   const { 
-    creditBalance,
+    credits: creditBalance,
     isProTool, 
     goToPricing
-  } = useCredits();
+  } = useSubscription();
 
   if (!toolId) {
     return <WelcomeContent />;

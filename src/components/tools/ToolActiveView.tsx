@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { getToolById, ToolData } from "./toolsData";
 import { ProToolsGate } from "./ProToolsGate";
-import { useCredits } from "@/hooks/useCredits";
+import { useSubscription } from "@/hooks/useSubscription";
 
 // Lazy load tool components
 const AudioCutter = lazy(() => import("@/pages/tools/AudioCutter"));
@@ -43,7 +43,7 @@ export function ToolActiveView({
 }: ToolActiveViewProps) {
   const [showIntro, setShowIntro] = useState(true);
   const [isReady, setIsReady] = useState(false);
-  const { isProTool, goToPricing } = useCredits();
+  const { isProTool, goToPricing } = useSubscription();
   
   const tool = getToolById(toolId);
 

@@ -10,4 +10,4 @@
  export { useVibecoderOperations } from './hooks/useVibecoderOperations';
  export { useBrandProfile } from './hooks/useBrandProfile';
  export { useGeneratedAssets } from './hooks/useGeneratedAssets';
- export { useVibecoderCredits } from './hooks/useVibecoderCredits';
+ export { useSubscription as useVibecoderCredits } from '@/hooks/useSubscription';

@@ -22,9 +22,9 @@ import {
   Wand2, Music, FileVideo, Film, Headphones, ArrowRight
 } from 'lucide-react';
 import { useState } from 'react';
-import { useCredits } from '@/hooks/useCredits';
+import { useSubscription } from '@/hooks/useSubscription';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
-import { TopUpDialog } from '@/components/credits/TopUpDialog';
+import { CreditFuelGauge } from '@/components/subscription/CreditFuelGauge';
 import EditorChatIcon from '@/components/chat/EditorChatIcon';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { cn } from '@/lib/utils';
@@ -81,15 +81,7 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [topUpDialogOpen, setTopUpDialogOpen] = useState(false);
-  
-  const { creditBalance, isLoading: creditsLoading, subscription } = useCredits();
-  
-  const subscriptionTier = subscription ? 
-    subscription.credits === 60 ? 'starter' :
-    subscription.credits === 150 ? 'pro' :
-    subscription.credits === 300 ? 'enterprise' : null
-  : null;
+  const { credits, loading: creditsLoading, plan } = useSubscription();
 
   const isCreator = profile?.is_creator || false;
   const isSeller = profile?.is_seller || false;
@@ -349,7 +341,7 @@ export default function Header() {
                   <>
                     <Wallet className="h-4 w-4 text-primary" />
                     <span className="text-sm font-semibold text-foreground">
-                      {creditBalance}
+                      {credits}
                     </span>
                   </>
                 )}
@@ -649,13 +641,7 @@ export default function Header() {
         )}
       </div>
       
-      {/* Top Up Dialog */}
-      <TopUpDialog
-        open={topUpDialogOpen}
-        onOpenChange={setTopUpDialogOpen}
-        currentBalance={creditBalance}
-        subscriptionTier={subscriptionTier}
-      />
+      {/* Credit Fuel Gauge is now inline */}
     </header>
   );
 }

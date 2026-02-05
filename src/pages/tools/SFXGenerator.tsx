@@ -16,8 +16,8 @@ import {
   Lightbulb
 } from "lucide-react";
 import { SFXWaveform } from "@/components/tools/SFXWaveform";
-import { useCredits } from "@/hooks/useCredits";
-import { OutOfCreditsDialog } from "@/components/tools/OutOfCreditsDialog";
+import { useSubscription } from "@/hooks/useSubscription";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 
 export default function SFXGenerator() {
   const [prompt, setPrompt] = useState("");
@@ -30,7 +30,7 @@ export default function SFXGenerator() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isGeneratingRef = useRef(false); // Guard against double-clicks
   
-  const { deductCredit, creditBalance, canUseTool } = useCredits();
+  const { deductCredits, credits: creditBalance, canUseFeature } = useSubscription();
 
   const handleEnhancePrompt = async () => {
     if (!prompt.trim()) {

@@ -1243,6 +1243,9 @@ export type Database = {
           seller_status: string | null
           show_recent_uploads: boolean | null
           social_links: Json | null
+          stripe_subscription_id: string | null
+          subscription_expires_at: string | null
+          subscription_plan: string | null
           subscription_tier: string | null
           suspended: boolean | null
           updated_at: string | null
@@ -1285,6 +1288,9 @@ export type Database = {
           seller_status?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
+          stripe_subscription_id?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan?: string | null
           subscription_tier?: string | null
           suspended?: boolean | null
           updated_at?: string | null
@@ -1327,6 +1333,9 @@ export type Database = {
           seller_status?: string | null
           show_recent_uploads?: boolean | null
           social_links?: Json | null
+          stripe_subscription_id?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan?: string | null
           subscription_tier?: string | null
           suspended?: boolean | null
           updated_at?: string | null
@@ -1341,6 +1350,13 @@ export type Database = {
             columns: ["active_project_id"]
             isOneToOne: false
             referencedRelation: "vibecoder_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_subscription_plan_fkey"
+            columns: ["subscription_plan"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -1917,6 +1933,60 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          badge_type: string | null
+          created_at: string | null
+          display_order: number | null
+          id: string
+          image_gen_access: boolean | null
+          is_active: boolean | null
+          monthly_credits: number
+          name: string
+          price_cents: number
+          seller_fee_percent: number | null
+          stripe_price_id: string | null
+          stripe_yearly_price_id: string | null
+          vibecoder_access: boolean | null
+          video_gen_access: boolean | null
+          yearly_price_cents: number | null
+        }
+        Insert: {
+          badge_type?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id: string
+          image_gen_access?: boolean | null
+          is_active?: boolean | null
+          monthly_credits?: number
+          name: string
+          price_cents: number
+          seller_fee_percent?: number | null
+          stripe_price_id?: string | null
+          stripe_yearly_price_id?: string | null
+          vibecoder_access?: boolean | null
+          video_gen_access?: boolean | null
+          yearly_price_cents?: number | null
+        }
+        Update: {
+          badge_type?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          image_gen_access?: boolean | null
+          is_active?: boolean | null
+          monthly_credits?: number
+          name?: string
+          price_cents?: number
+          seller_fee_percent?: number | null
+          stripe_price_id?: string | null
+          stripe_yearly_price_id?: string | null
+          vibecoder_access?: boolean | null
+          video_gen_access?: boolean | null
+          yearly_price_cents?: number | null
+        }
+        Relationships: []
+      }
       support_messages: {
         Row: {
           created_at: string
@@ -2250,6 +2320,27 @@ export type Database = {
           },
         ]
       }
+      user_wallets: {
+        Row: {
+          balance: number
+          created_at: string | null
+          last_refill_at: string | null
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string | null
+          last_refill_at?: string | null
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string | null
+          last_refill_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       verification_codes: {
         Row: {
           code: string
@@ -2405,6 +2496,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      wallet_transactions: {
+        Row: {
+          action: string
+          amount: number
+          created_at: string | null
+          description: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -2644,6 +2762,19 @@ export type Database = {
       }
     }
     Functions: {
+      add_credits: {
+        Args: {
+          p_action: string
+          p_amount: number
+          p_description?: string
+          p_user_id: string
+        }
+        Returns: number
+      }
+      deduct_credits: {
+        Args: { p_action: string; p_amount: number; p_user_id: string }
+        Returns: boolean
+      }
       delete_project_fully: {
         Args: { p_project_id: string }
         Returns: undefined

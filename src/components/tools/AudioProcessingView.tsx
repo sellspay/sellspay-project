@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AudioWaveformPlayer } from "./AudioWaveformPlayer";
-import { useCredits } from "@/hooks/useCredits";
-import { OutOfCreditsDialog } from "./OutOfCreditsDialog";
+import { useSubscription } from "@/hooks/useSubscription";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 
 interface StemResult {
   url: string;
@@ -44,7 +44,7 @@ export function AudioProcessingView({
   const [showOutOfCredits, setShowOutOfCredits] = useState(false);
   const isProcessingRef = useRef(false); // Guard against double-clicks/drops
 
-  const { deductCredit, canUseTool } = useCredits();
+  const { deductCredits, canUseFeature } = useSubscription();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
