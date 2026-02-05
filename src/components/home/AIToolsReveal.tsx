@@ -170,7 +170,7 @@ export function AIToolsReveal() {
         tl.call(() => {
           line1.textContent = steps[i + 1].headline[0];
           line2.textContent = steps[i + 1].headline[1];
-        }, [], startTime + animationDuration * 0.25);
+        }, [], startTime + animationDuration * 0.85);
       }
     }
 
