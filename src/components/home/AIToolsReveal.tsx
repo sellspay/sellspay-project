@@ -138,16 +138,28 @@ export function AIToolsReveal() {
     // Ensure we start at panel 1.
     setHeadline(0);
 
-    const updateHeadlineFromProgress = (progress: number) => {
-      const totalTransitions = panelCount - 1;
-      const stepP = 1 / totalTransitions;
+    // Hide headline until we actually render the first “reveal”.
+    // This prevents seeing text before the pinned sequence begins.
+    const line1ElInit = headlineLineRefs.current[0];
+    const line2ElInit = headlineLineRefs.current[1];
+    if (line1ElInit && line2ElInit) {
+      gsap.set([line1ElInit, line2ElInit], { opacity: 0, y: 10 });
+    }
+
+    // Use *timeline time* (not raw ScrollTrigger progress) so the headline switch
+    // happens during the animation part of each step, not during the pause.
+    const updateHeadlineFromProgress = (progress: number, timeline: gsap.core.Timeline) => {
       const clamped = Math.max(0, Math.min(1, progress));
+      const totalTime = timeline.duration();
+      const t = clamped * totalTime;
 
-      const base = Math.max(0, Math.min(totalTransitions - 1, Math.floor(clamped / stepP)));
-      const local = (clamped - base * stepP) / stepP;
+      const stepIndex = Math.max(0, Math.min(panelCount - 1, Math.floor(t / stepDuration)));
+      const withinStep = t - stepIndex * stepDuration;
+      const animT = Math.min(1, withinStep / animationDuration); // 0..1 (pause clamps to 1)
 
-      // Switch only when the next card is mostly in place.
-      const idx = local >= 0.8 ? base + 1 : base;
+      // Swap once the next panel is visibly moving in (not after it's already done).
+      // 0.35 = ~35% through the animation portion.
+      const idx = animT >= 0.35 ? stepIndex + 1 : stepIndex;
       setHeadline(Math.min(panelCount - 1, idx));
     };
 
@@ -162,8 +174,8 @@ export function AIToolsReveal() {
         pinSpacing: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
-        onUpdate: (self) => updateHeadlineFromProgress(self.progress),
-        onRefresh: (self) => updateHeadlineFromProgress(self.progress),
+        onUpdate: (self) => updateHeadlineFromProgress(self.progress, tl),
+        onRefresh: (self) => updateHeadlineFromProgress(self.progress, tl),
       },
     });
 
