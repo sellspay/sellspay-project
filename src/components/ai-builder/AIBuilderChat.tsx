@@ -278,9 +278,9 @@ Make it look like a high-end luxury creator's store with dark theme and premium 
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Header - fixed at top */}
-      <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-border/30">
+      <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-border/30">
         <div className="flex items-center gap-2">
           <img src={sellspayLogo} alt="" className="w-6 h-6 object-contain" />
           <span className="font-medium">AI Assistant</span>
@@ -390,28 +390,8 @@ Make it look like a high-end luxury creator's store with dark theme and premium 
         )}
       </div>
 
-      {/* Quick actions when chat has messages - fixed */}
-      {!isEmpty && !isLoading && (
-        <div className="flex-shrink-0 px-6 py-3 border-t border-border/20">
-          <div className="flex flex-wrap gap-2">
-            {QUICK_ACTIONS.map((action) => (
-              <Button
-                key={action.label}
-                variant="outline"
-                size="sm"
-                onClick={() => sendMessage(action.prompt)}
-                disabled={isLoading}
-                className="text-xs h-7 px-3 bg-muted/30"
-              >
-                {action.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Input - fixed at bottom */}
-      <form onSubmit={handleSubmit} className="flex-shrink-0 p-4 border-t border-border/30 bg-background">
+      <form onSubmit={handleSubmit} className="shrink-0 p-4 border-t border-border/30 bg-background">
         <div className="flex gap-2 items-center">
           {/* Plus menu with options */}
           <DropdownMenu>
