@@ -6,6 +6,7 @@
  import { toast } from 'sonner';
  import { supabase } from '@/integrations/supabase/client';
  import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
+import { getPatternRegistrySummary } from './layoutPatterns';
  
  interface AIBuilderChatProps {
    profileId: string;
@@ -22,6 +23,18 @@
    timestamp: Date;
  }
  
+// Rotating placeholder examples for the input
+const PLACEHOLDER_EXAMPLES = [
+  "A dark anime storefront for selling editing packs",
+  "A premium SaaS-style site for my digital tools",
+  "A clean creator store with bold visuals and strong CTAs",
+  "A minimalist portfolio for my design work",
+  "A high-energy gaming store with neon accents",
+  "A professional coaching page with testimonials",
+  "An elegant photography portfolio with gallery focus",
+  "A bold hip-hop inspired store for beats and samples",
+];
+
  const QUICK_ACTIONS = [
    { label: 'Premium', prompt: 'Make it look premium and luxurious with glassmorphism effects' },
    { label: 'Modern', prompt: 'Create a clean modern design with bold typography' },
@@ -34,6 +47,15 @@
    const [messages, setMessages] = useState<ChatMessage[]>([]);
    const [isLoading, setIsLoading] = useState(false);
    const scrollRef = useRef<HTMLDivElement>(null);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  // Rotate placeholder examples
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex(prev => (prev + 1) % PLACEHOLDER_EXAMPLES.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
  
    // Scroll to bottom on new messages
    useEffect(() => {
@@ -65,6 +87,7 @@
        const context = {
          sections: layout.sections,
          mode: 'ai_builder' as const,
+        patternRegistry: getPatternRegistrySummary(),
        };
  
        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/storefront-vibecoder`;
@@ -172,9 +195,9 @@
              </div>
  
              <div className="space-y-3 max-w-sm">
-               <h3 className="text-xl font-semibold">AI-Powered Builder</h3>
+                <h3 className="text-xl font-semibold">What do you want to build?</h3>
                <p className="text-sm text-muted-foreground leading-relaxed">
-                 Describe your vision and watch it come to life. Start from scratch or use a quick action.
+                  Describe your idea. The AI will design the entire storefront for you.
                </p>
              </div>
  
@@ -271,9 +294,9 @@
            <Input
              value={input}
              onChange={(e) => setInput(e.target.value)}
-             placeholder="Describe your vision..."
+              placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
              disabled={isLoading}
-             className="flex-1 h-10 bg-muted/30 border-border/40"
+              className="flex-1 h-10 bg-muted/30 border-border/40 transition-all"
            />
  
            <Button
