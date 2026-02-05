@@ -336,9 +336,18 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
      );
    }, [headlineLines[0], headlineLines[1]]);
  
-   return (
-     <section ref={sectionRef} className="relative w-full will-change-transform">
-       <div className="relative min-h-[100svh] w-full overflow-x-hidden overflow-y-visible">
+    return (
+      <section
+        ref={sectionRef}
+        className="relative w-full will-change-transform overflow-x-hidden"
+      >
+        {/*
+          IMPORTANT:
+          Avoid mixing `overflow-x-hidden` with `overflow-y-visible` on the same element.
+          Per CSS overflow rules, that combination can compute to `overflow-y:auto` and create
+          an unintended inner scrollbar during the deck's vertical stacking animation.
+        */}
+        <div className="relative min-h-[100svh] w-full overflow-visible">
          <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-4 sm:gap-6 lg:gap-0 px-4 sm:px-6 lg:px-0 py-8 lg:py-0">
            <div
              ref={textRef}
