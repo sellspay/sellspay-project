@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Undo2, Loader2, Code2, Blocks, Sparkles, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Eye, Loader2, Code2, Blocks, Sparkles, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AIBuilderChat } from './AIBuilderChat';
 import { AIBuilderPreview } from './AIBuilderPreview';
 import { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
 import { VibecoderPreview } from './VibecoderPreview';
 import { VibecoderChat } from './VibecoderChat';
+import { ProjectSidebar } from './ProjectSidebar';
 import { useStreamingCode } from './useStreamingCode';
+import { useVibecoderProjects } from './hooks/useVibecoderProjects';
 import { toast } from 'sonner';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import {
@@ -41,9 +43,28 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [username, setUsername] = useState<string | null>(null);
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // Mode toggle: blocks (existing) or vibecoder (new generative)
   const [mode, setMode] = useState<BuilderMode>('blocks');
+  
+  // Project management
+  const {
+    projects,
+    activeProjectId,
+    activeProject,
+    messages,
+    loading: projectsLoading,
+    messagesLoading,
+    createProject,
+    deleteProject,
+    renameProject,
+    selectProject,
+    addMessage,
+    rateMessage,
+    getLastCodeSnapshot,
+    getPreviousCodeSnapshot,
+  } = useVibecoderProjects();
   
   // Streaming code state for Vibecoder mode
   const { 
@@ -52,11 +73,15 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     streamCode, 
     cancelStream, 
     resetCode,
+    setCode,
     DEFAULT_CODE 
   } = useStreamingCode({
     onComplete: async (finalCode) => {
       // Save to project_files on completion
       await saveVibecoderCode(finalCode);
+      
+      // Add assistant message with code snapshot
+      await addMessage('assistant', 'Generated your storefront design.', finalCode);
     },
     onError: (err) => {
       toast.error(err.message);
@@ -105,8 +130,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
       // Load saved vibecoder code if exists
       if (filesResp.data?.content) {
-        // Set the saved code via streaming hook
-        // Note: The hook starts with DEFAULT_CODE, so we need to update it
+        setCode(filesResp.data.content);
       }
 
       // Set username for View Live link
@@ -118,7 +142,17 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     };
 
     loadLayout();
-  }, [profileId]);
+  }, [profileId, setCode]);
+
+  // Load code from last message when switching projects
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastSnapshot = getLastCodeSnapshot();
+      if (lastSnapshot) {
+        setCode(lastSnapshot);
+      }
+    }
+  }, [activeProjectId, messages, getLastCodeSnapshot, setCode]);
 
   // Save vibecoder code to project_files
   const saveVibecoderCode = async (codeContent: string) => {
@@ -157,14 +191,32 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     setHistory(prev => [...prev.slice(-19), state]);
   }, []);
 
-  // Undo last change
-  const handleUndo = useCallback(() => {
+  // Undo last change (blocks mode)
+  const handleBlocksUndo = useCallback(() => {
     if (history.length === 0) return;
     const previous = history[history.length - 1];
     setHistory(prev => prev.slice(0, -1));
     saveLayout(previous);
     toast.success('Reverted changes');
   }, [history, saveLayout]);
+
+  // Undo for Vibecoder (restore previous code snapshot)
+  const handleVibecoderUndo = useCallback(() => {
+    const previousSnapshot = getPreviousCodeSnapshot();
+    if (previousSnapshot) {
+      setCode(previousSnapshot);
+      saveVibecoderCode(previousSnapshot);
+      toast.success('Reverted to previous version');
+    }
+  }, [getPreviousCodeSnapshot, setCode]);
+
+  // Restore specific code version
+  const handleRestoreCode = useCallback((codeSnapshot: string) => {
+    setCode(codeSnapshot);
+    saveVibecoderCode(codeSnapshot);
+    addMessage('system', 'Restored to a previous version.');
+    toast.success('Restored previous version');
+  }, [setCode, addMessage]);
 
   // Publish the AI layout
   const handlePublish = async () => {
@@ -210,11 +262,53 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   };
 
   // Vibecoder send message handler
-  const handleVibecoderMessage = (prompt: string) => {
+  const handleVibecoderMessage = async (prompt: string) => {
+    // Ensure we have a project
+    let projectId = activeProjectId;
+    if (!projectId) {
+      const newProject = await createProject('New Storefront');
+      if (!newProject) {
+        toast.error('Failed to create project');
+        return;
+      }
+      projectId = newProject.id;
+    }
+
+    // Add user message to history
+    await addMessage('user', prompt);
+    
+    // Stream the code generation
     streamCode(prompt, code !== DEFAULT_CODE ? code : undefined);
   };
 
-  if (loading) {
+  // Handle new project creation
+  const handleCreateProject = async () => {
+    const project = await createProject('New Storefront');
+    if (project) {
+      resetCode();
+      toast.success('New project created');
+    }
+  };
+
+  // Handle project deletion
+  const handleDeleteProject = async (projectId: string) => {
+    const success = await deleteProject(projectId);
+    if (success) {
+      toast.success('Project deleted');
+    } else {
+      toast.error('Failed to delete project');
+    }
+  };
+
+  // Handle project rename
+  const handleRenameProject = async (projectId: string, newName: string) => {
+    const success = await renameProject(projectId, newName);
+    if (!success) {
+      toast.error('Failed to rename project');
+    }
+  };
+
+  if (loading || projectsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -239,6 +333,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const isEmpty = mode === 'blocks' 
     ? layout.sections.length === 0 
     : code === DEFAULT_CODE;
+
+  const canVibecoderUndo = messages.filter(m => m.code_snapshot).length > 1;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -306,17 +402,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         </TooltipProvider>
 
         <div className="flex items-center gap-2">
-          {mode === 'blocks' && history.length > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleUndo}
-              className="gap-1.5 text-muted-foreground"
-            >
-              <Undo2 className="w-4 h-4" />
-              Undo
-            </Button>
-          )}
           {isPublished && username && (
             <Button
               variant="outline"
@@ -346,6 +431,21 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
       {/* Main content - split view */}
       <div className="flex-1 flex min-h-0">
+        {/* Project sidebar (only for Vibecoder mode) */}
+        {mode === 'vibecoder' && (
+          <ProjectSidebar
+            projects={projects}
+            activeProjectId={activeProjectId}
+            loading={projectsLoading}
+            onSelectProject={selectProject}
+            onCreateProject={handleCreateProject}
+            onDeleteProject={handleDeleteProject}
+            onRenameProject={handleRenameProject}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          />
+        )}
+
         {/* Preview panel */}
         <div 
           className="flex-1 border-r border-border/30 bg-muted/20 overflow-hidden relative"
@@ -359,7 +459,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         </div>
 
         {/* Chat panel */}
-        <div className="w-[480px] shrink-0 flex flex-col bg-background overflow-hidden">
+        <div className="w-[420px] shrink-0 flex flex-col bg-background overflow-hidden">
           {mode === 'blocks' ? (
             <AIBuilderChat
               profileId={profileId}
@@ -368,7 +468,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
                 pushHistory(layout);
                 saveLayout(newLayout);
               }}
-              onUndo={handleUndo}
+              onUndo={handleBlocksUndo}
               canUndo={history.length > 0}
               onBuildingChange={setIsBuilding}
             />
@@ -378,7 +478,13 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
               isStreaming={isStreaming}
               onCancel={cancelStream}
               onReset={resetCode}
+              onUndo={handleVibecoderUndo}
               hasCode={code !== DEFAULT_CODE}
+              canUndo={canVibecoderUndo}
+              messages={messages}
+              onRateMessage={rateMessage}
+              onRestoreCode={handleRestoreCode}
+              projectName={activeProject?.name}
             />
           )}
         </div>

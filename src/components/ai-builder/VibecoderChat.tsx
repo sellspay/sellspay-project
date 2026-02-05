@@ -1,23 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Loader2, Wand2, Square, RefreshCw, Code2, Sparkles } from 'lucide-react';
-import { toast } from 'sonner';
+import { Send, Loader2, Square, RefreshCw, Code2, Sparkles, Undo2 } from 'lucide-react';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
+import { VibecoderMessageBubble } from './VibecoderMessageBubble';
+import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 
 interface VibecoderChatProps {
   onSendMessage: (message: string) => void;
   isStreaming: boolean;
   onCancel: () => void;
   onReset: () => void;
+  onUndo: () => void;
   hasCode: boolean;
-}
-
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
+  canUndo: boolean;
+  messages: VibecoderMessage[];
+  onRateMessage: (messageId: string, rating: -1 | 0 | 1) => void;
+  onRestoreCode: (codeSnapshot: string) => void;
+  projectName?: string;
 }
 
 const QUICK_PROMPTS = [
@@ -39,10 +39,15 @@ export function VibecoderChat({
   isStreaming, 
   onCancel, 
   onReset,
-  hasCode 
+  onUndo,
+  hasCode,
+  canUndo,
+  messages,
+  onRateMessage,
+  onRestoreCode,
+  projectName,
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -59,52 +64,18 @@ export function VibecoderChat({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isStreaming]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isStreaming) return;
-
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
     onSendMessage(input.trim());
     setInput('');
-
-    // Add assistant "working" message
-    const assistantMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: 'Generating your design...',
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, assistantMessage]);
   };
 
   const handleQuickPrompt = (prompt: string) => {
     if (isStreaming) return;
-    
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: prompt,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMessage]);
     onSendMessage(prompt);
-
-    const assistantMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: 'Generating your design...',
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, assistantMessage]);
   };
 
   const isEmpty = messages.length === 0;
@@ -118,7 +89,12 @@ export function VibecoderChat({
             <img src={sellspayLogo} alt="" className="w-6 h-6 object-contain" />
             <Sparkles className="w-3 h-3 text-violet-400 absolute -top-1 -right-1" />
           </div>
-          <span className="font-medium">Vibecoder</span>
+          <div className="flex flex-col">
+            <span className="font-medium text-sm">{projectName || 'Vibecoder'}</span>
+            <span className="text-[10px] text-muted-foreground">
+              {messages.length} messages
+            </span>
+          </div>
           <span className="text-[10px] px-1.5 py-0.5 bg-violet-500/20 text-violet-400 rounded border border-violet-500/30 font-medium">
             BETA
           </span>
@@ -129,18 +105,32 @@ export function VibecoderChat({
             </span>
           )}
         </div>
-        {hasCode && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onReset}
-            className="gap-1.5 text-muted-foreground"
-            disabled={isStreaming}
-          >
-            <RefreshCw className="w-4 h-4" />
-            Reset
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {canUndo && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onUndo}
+              className="gap-1.5 text-muted-foreground"
+              disabled={isStreaming}
+            >
+              <Undo2 className="w-4 h-4" />
+              Undo
+            </Button>
+          )}
+          {hasCode && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onReset}
+              className="gap-1.5 text-muted-foreground"
+              disabled={isStreaming}
+            >
+              <RefreshCw className="w-4 h-4" />
+              Reset
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Chat area */}
@@ -185,22 +175,25 @@ export function VibecoderChat({
           </div>
         ) : (
           <div className="space-y-4">
-            {messages.map((msg) => (
-              <div
+            {messages.map((msg, index) => (
+              <VibecoderMessageBubble
                 key={msg.id}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] px-4 py-2.5 rounded-2xl ${
-                    msg.role === 'user'
-                      ? 'bg-violet-500/20 border border-violet-500/30 text-foreground'
-                      : 'bg-muted/50 border border-border/50 text-muted-foreground'
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                message={msg}
+                onRate={(rating) => onRateMessage(msg.id, rating)}
+                onRestoreCode={msg.code_snapshot ? () => onRestoreCode(msg.code_snapshot!) : undefined}
+                canRestore={index < messages.length - 1 && !!msg.code_snapshot}
+              />
+            ))}
+            {isStreaming && (
+              <div className="flex justify-start">
+                <div className="bg-muted/50 border border-border/50 rounded-2xl px-4 py-2.5">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Generating code...</span>
+                  </div>
                 </div>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
