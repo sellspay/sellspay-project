@@ -19,15 +19,16 @@ import { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboardi
    header: Record<string, any>;
  }
  
- export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
-   const navigate = useNavigate();
-   const [layout, setLayout] = useState<AILayout>({ sections: [], theme: {}, header: {} });
-   const [isPublished, setIsPublished] = useState(false);
-   const [loading, setLoading] = useState(true);
-   const [publishing, setPublishing] = useState(false);
-   const [history, setHistory] = useState<AILayout[]>([]);
-  const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
+    const navigate = useNavigate();
+    const [layout, setLayout] = useState<AILayout>({ sections: [], theme: {}, header: {} });
+    const [isPublished, setIsPublished] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [publishing, setPublishing] = useState(false);
+    const [history, setHistory] = useState<AILayout[]>([]);
+    const [isBuilding, setIsBuilding] = useState(false);
+   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
+   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Show onboarding on first visit
   useEffect(() => {
@@ -185,27 +186,28 @@ import { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboardi
          </div>
        </header>
  
-       {/* Main content - split view */}
-       <div className="flex-1 flex min-h-0">
-         {/* Preview panel */}
-         <div className="flex-1 border-r border-border/30 bg-muted/20 overflow-hidden">
-           <AIBuilderPreview layout={layout} isEmpty={isEmpty} />
-         </div>
- 
-         {/* Chat panel */}
-         <div className="w-[480px] shrink-0 flex flex-col bg-background">
-           <AIBuilderChat
-             profileId={profileId}
-             layout={layout}
-             onLayoutChange={(newLayout) => {
-               pushHistory(layout);
-               saveLayout(newLayout);
-             }}
-             onUndo={handleUndo}
-             canUndo={history.length > 0}
-           />
-         </div>
-       </div>
-     </div>
-   );
- }
+        {/* Main content - split view */}
+        <div className="flex-1 flex min-h-0">
+          {/* Preview panel - completely isolated from chat */}
+          <div className="flex-1 border-r border-border/30 bg-muted/20 overflow-hidden relative isolate">
+            <AIBuilderPreview layout={layout} isEmpty={isEmpty} isBuilding={isBuilding} />
+          </div>
+
+          {/* Chat panel - contained to its own space */}
+          <div className="w-[480px] shrink-0 flex flex-col bg-background overflow-hidden">
+            <AIBuilderChat
+              profileId={profileId}
+              layout={layout}
+              onLayoutChange={(newLayout) => {
+                pushHistory(layout);
+                saveLayout(newLayout);
+              }}
+              onUndo={handleUndo}
+              canUndo={history.length > 0}
+              onBuildingChange={setIsBuilding}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
