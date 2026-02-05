@@ -1,4 +1,4 @@
- import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
  import { supabase } from '@/integrations/supabase/client';
  import { ChatMessage, VibecoderOp, VibecoderResponse, BrandProfile, AssetRequest } from '../types';
  import { ProfileSection, SECTION_TEMPLATES } from '../../types';
@@ -12,9 +12,100 @@
  export function useVibecoderChat({ profileId, sections, brandProfile }: UseVibecoderChatProps) {
    const [messages, setMessages] = useState<ChatMessage[]>([]);
    const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [historyOffset, setHistoryOffset] = useState(0);
+  const PAGE_SIZE = 20;
    const [pendingOps, setPendingOps] = useState<VibecoderOp[] | null>(null);
    const [pendingAssetRequests, setPendingAssetRequests] = useState<AssetRequest[] | null>(null);
    const [error, setError] = useState<string | null>(null);
+
+  // Load persisted chat history on mount
+  useEffect(() => {
+    if (!profileId) return;
+
+    const loadHistory = async () => {
+      setIsLoadingHistory(true);
+      try {
+        // Count total for "has more"
+        const { count } = await supabase
+          .from('storefront_ai_conversations')
+          .select('id', { count: 'exact', head: true })
+          .eq('profile_id', profileId);
+
+        // Fetch last PAGE_SIZE messages (newest first, then reverse for display)
+        const { data, error: fetchError } = await supabase
+          .from('storefront_ai_conversations')
+          .select('*')
+          .eq('profile_id', profileId)
+          .order('created_at', { ascending: false })
+          .range(0, PAGE_SIZE - 1);
+
+        if (fetchError) throw fetchError;
+
+        const loaded: ChatMessage[] = (data || []).reverse().map(row => ({
+          id: row.id,
+          role: row.role as 'user' | 'assistant',
+          content: row.content,
+          operations: (row.operations as unknown) as VibecoderOp[] | undefined,
+          asset_requests: (row.asset_requests as unknown) as AssetRequest[] | undefined,
+          timestamp: new Date(row.created_at),
+          status: 'applied' as const, // historical messages are already applied
+        }));
+
+        setMessages(loaded);
+        setHistoryOffset(loaded.length);
+        setHasMoreHistory((count || 0) > PAGE_SIZE);
+      } catch (err) {
+        console.error('Failed to load chat history:', err);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadHistory();
+  }, [profileId]);
+
+  // Load more (older) messages
+  const loadMoreHistory = useCallback(async () => {
+    if (isLoadingHistory || !hasMoreHistory) return;
+
+    setIsLoadingHistory(true);
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('storefront_ai_conversations')
+        .select('*')
+        .eq('profile_id', profileId)
+        .order('created_at', { ascending: false })
+        .range(historyOffset, historyOffset + PAGE_SIZE - 1);
+
+      if (fetchError) throw fetchError;
+
+      const older: ChatMessage[] = (data || []).reverse().map(row => ({
+        id: row.id,
+        role: row.role as 'user' | 'assistant',
+        content: row.content,
+        operations: (row.operations as unknown) as VibecoderOp[] | undefined,
+        asset_requests: (row.asset_requests as unknown) as AssetRequest[] | undefined,
+        timestamp: new Date(row.created_at),
+        status: 'applied' as const,
+      }));
+
+      if (older.length > 0) {
+        // Prepend older messages
+        setMessages(prev => [...older, ...prev]);
+        setHistoryOffset(prev => prev + older.length);
+      }
+
+      if (older.length < PAGE_SIZE) {
+        setHasMoreHistory(false);
+      }
+    } catch (err) {
+      console.error('Failed to load more history:', err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [profileId, historyOffset, isLoadingHistory, hasMoreHistory]);
  
    const sendMessage = useCallback(async (text: string) => {
      if (!text.trim() || isLoading) return;
@@ -206,11 +297,21 @@
      setPendingOps(null);
      setPendingAssetRequests(null);
      setError(null);
-   }, []);
+    setHistoryOffset(0);
+    setHasMoreHistory(false);
+    // Optionally: also delete from DB if user wants a fresh start
+    supabase
+      .from('storefront_ai_conversations')
+      .delete()
+      .eq('profile_id', profileId)
+      .then(() => {});
+   }, [profileId]);
  
    return {
      messages,
      isLoading,
+    isLoadingHistory,
+    hasMoreHistory,
      error,
      pendingOps,
      pendingAssetRequests,
@@ -220,5 +321,6 @@
      regenerate,
      clearChat,
       clearPendingAssetRequests,
+    loadMoreHistory,
    };
  }

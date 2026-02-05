@@ -2,7 +2,7 @@
  import { Button } from '@/components/ui/button';
  import { Input } from '@/components/ui/input';
  import { ScrollArea } from '@/components/ui/scroll-area';
- import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check } from 'lucide-react';
+import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp } from 'lucide-react';
  import { useVibecoderChat } from './hooks/useVibecoderChat';
  import { useVibecoderOperations } from './hooks/useVibecoderOperations';
  import { useBrandProfile } from './hooks/useBrandProfile';
@@ -46,6 +46,8 @@
    const {
      messages,
      isLoading,
+      isLoadingHistory,
+      hasMoreHistory,
      pendingOps,
      pendingAssetRequests,
      sendMessage,
@@ -53,6 +55,7 @@
      regenerate,
      clearChat,
       clearPendingAssetRequests,
+      loadMoreHistory,
    } = useVibecoderChat({ profileId, sections, brandProfile });
  
    const { applyOperations } = useVibecoderOperations({
@@ -140,7 +143,7 @@
      sendMessage(prompt);
    };
  
-   const isEmpty = messages.length === 0;
+    const isEmpty = messages.length === 0 && !isLoadingHistory;
    const isWorking = isLoading || isApplying || generating;
  
    return (
@@ -187,6 +190,33 @@
  
        {/* Chat area */}
        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+          {/* Load more history button */}
+          {hasMoreHistory && (
+            <div className="flex justify-center mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={loadMoreHistory}
+                disabled={isLoadingHistory}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {isLoadingHistory ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <ChevronUp className="w-4 h-4 mr-1" />
+                )}
+                View older messages
+              </Button>
+            </div>
+          )}
+
+          {/* Loading history indicator */}
+          {isLoadingHistory && messages.length === 0 && (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
          {isEmpty ? (
            <div className="flex flex-col items-center justify-center h-full text-center space-y-6 py-8">
              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
