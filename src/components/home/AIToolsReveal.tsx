@@ -50,7 +50,8 @@ const STEPS: Step[] = [
 ];
 
 const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a1a1a"];
-const STEP_DISTANCE = 500;
+const STEP_DISTANCE_DESKTOP = 500;
+const STEP_DISTANCE_MOBILE = 300;
 
 export function AIToolsReveal() {
   const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -58,6 +59,7 @@ export function AIToolsReveal() {
   const deckRef = useRef<HTMLDivElement | null>(null);
   const headlineLineRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const activeHeadlineIndexRef = useRef<number>(-1);
+  const [isMobile, setIsMobile] = useState(false);
 
   const [headlineLines, setHeadlineLines] = useState<[string, string]>([
     STEPS[0].headline[0],
@@ -65,6 +67,14 @@ export function AIToolsReveal() {
   ]);
 
   const panelCount = STEPS.length;
+  const stepDistance = isMobile ? STEP_DISTANCE_MOBILE : STEP_DISTANCE_DESKTOP;
+
+  useLayoutEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useLayoutEffect(() => {
     const section = sectionRef.current;
@@ -77,7 +87,7 @@ export function AIToolsReveal() {
       if (!text || cards.length === 0) return;
 
       const headlineEl = text.querySelector("[data-headline]") as HTMLElement | null;
-      const totalScrollDistance = (panelCount - 1) * STEP_DISTANCE;
+      const totalScrollDistance = (panelCount - 1) * stepDistance;
 
       gsap.set(section, { backgroundColor: STEPS[0].bg });
       if (headlineEl) gsap.set(headlineEl, { color: STEPS[0].text });
@@ -132,8 +142,8 @@ export function AIToolsReveal() {
           ease: "none",
           scrollTrigger: {
             trigger: section,
-            start: () => `top+=${i * STEP_DISTANCE} top`,
-            end: () => `top+=${(i + 1) * STEP_DISTANCE} top`,
+            start: () => `top+=${i * stepDistance} top`,
+            end: () => `top+=${(i + 1) * stepDistance} top`,
             scrub: true,
             invalidateOnRefresh: true,
           },
@@ -160,7 +170,7 @@ export function AIToolsReveal() {
     }, sectionRef);
 
     return () => ctx.revert();
-  }, [panelCount]);
+  }, [panelCount, stepDistance]);
 
   useLayoutEffect(() => {
     const line1 = headlineLineRefs.current[0];
@@ -176,15 +186,15 @@ export function AIToolsReveal() {
 
   return (
     <section ref={sectionRef} className="relative w-full will-change-transform">
-      <div className="relative h-screen w-full overflow-hidden">
-        <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-0 px-4 lg:px-0">
+      <div className="relative min-h-[100svh] w-full overflow-hidden">
+        <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-4 sm:gap-6 lg:gap-0 px-4 sm:px-6 lg:px-0 py-8 lg:py-0">
           <div
             ref={textRef}
-            className="lg:absolute lg:left-[4%] xl:left-[5%] lg:top-1/2 lg:-translate-y-1/2 z-10 text-center lg:text-left lg:max-w-[35%] xl:max-w-[40%]"
+            className="lg:absolute lg:left-[4%] xl:left-[5%] lg:top-1/2 lg:-translate-y-1/2 z-10 text-center lg:text-left w-full lg:w-auto lg:max-w-[35%] xl:max-w-[40%] order-1 lg:order-none"
           >
             <h2
               data-headline
-              className="text-[2.5rem] sm:text-[3.5rem] md:text-[4.5rem] lg:text-[5rem] xl:text-[6rem] 2xl:text-[7rem] font-black leading-[0.9] tracking-[-0.02em]"
+              className="text-[2rem] sm:text-[2.5rem] md:text-[3.5rem] lg:text-[4rem] xl:text-[5rem] 2xl:text-[6rem] font-black leading-[0.95] tracking-[-0.02em]"
               style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
             >
               <span ref={(el) => { headlineLineRefs.current[0] = el; }} className="block">
@@ -195,10 +205,10 @@ export function AIToolsReveal() {
               </span>
             </h2>
           </div>
-          <div className="lg:absolute lg:right-[3%] xl:right-[4%] lg:top-1/2 lg:-translate-y-1/2">
+          <div className="lg:absolute lg:right-[3%] xl:right-[4%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:block">
             <div
               ref={deckRef}
-              className="deck relative w-[90vw] sm:w-[80vw] md:w-[70vw] lg:w-[50vw] xl:w-[52vw] max-w-[850px] aspect-[16/10]"
+              className="deck relative w-[85vw] sm:w-[75vw] md:w-[65vw] lg:w-[48vw] xl:w-[50vw] max-w-[800px] aspect-[16/10]"
             >
               {STEPS.map((step, idx) => (
                 <div
@@ -207,7 +217,7 @@ export function AIToolsReveal() {
                   style={{ transform: "translate3d(0,0,0)" }}
                 >
                   <div
-                    className="h-full w-full rounded-[20px] sm:rounded-[28px] lg:rounded-[32px] border border-white/10 overflow-hidden shadow-2xl"
+                    className="h-full w-full rounded-[16px] sm:rounded-[20px] md:rounded-[24px] lg:rounded-[28px] border border-white/10 overflow-hidden shadow-xl lg:shadow-2xl"
                     style={{ backgroundColor: CARD_COLORS[idx] }}
                   >
                     {step.image ? (
@@ -221,7 +231,7 @@ export function AIToolsReveal() {
                     ) : (
                       <div className="h-full w-full flex items-center justify-center">
                         <span
-                          className="text-xl sm:text-2xl lg:text-3xl font-medium"
+                          className="text-base sm:text-xl md:text-2xl lg:text-3xl font-medium"
                           style={{
                             color: CARD_COLORS[idx] === "#1a1a1a" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
                           }}

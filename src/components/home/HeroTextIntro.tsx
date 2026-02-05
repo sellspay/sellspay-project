@@ -53,16 +53,16 @@ export function HeroTextIntro() {
 
   return (
     <Reveal>
-      <section className="pt-16 sm:pt-20 pb-8 sm:pb-10 text-center px-6">
+      <section className="pt-10 sm:pt-14 md:pt-16 lg:pt-20 pb-6 sm:pb-8 md:pb-10 text-center px-4 sm:px-6">
         {/* Small label above */}
-        <span className="text-lg sm:text-xl md:text-2xl font-light tracking-wide mb-4 block text-muted-foreground">
+        <span className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl font-light tracking-wide mb-2 sm:mb-3 md:mb-4 block text-muted-foreground">
           {content.hero_headline}
         </span>
 
         {/* MASSIVE shifting headline */}
-        <h2 className="text-[12vw] sm:text-[10vw] md:text-[9vw] lg:text-[8vw] font-bold tracking-tighter leading-[0.9] text-foreground uppercase">
+        <h2 className="text-[10vw] sm:text-[9vw] md:text-[8vw] lg:text-[7vw] xl:text-[6vw] font-bold tracking-tighter leading-[0.95] text-foreground uppercase">
           <span className="block">
-            #{content.hero_subheadline}{' '}
+            <span className="text-[8vw] sm:text-[7vw] md:text-[6vw] lg:text-[5vw] xl:text-[4vw]">#</span>{content.hero_subheadline}{' '}
             <span
               key={activeWord}
               className="inline-block animate-fade-in text-primary"
