@@ -55,13 +55,37 @@ const PLACEHOLDER_EXAMPLES = [
    { label: 'Bold', prompt: 'Make it bold and eye-catching with vibrant colors' },
  ];
  
- export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUndo, onBuildingChange }: AIBuilderChatProps) {
-   const [input, setInput] = useState('');
-   const [messages, setMessages] = useState<ChatMessage[]>([]);
-   const [isLoading, setIsLoading] = useState(false);
+export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUndo, onBuildingChange }: AIBuilderChatProps) {
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [buildStage, setBuildStage] = useState<BuildStage | null>(null);
-   const scrollRef = useRef<HTMLDivElement>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  // Load chat history from database
+  useEffect(() => {
+    const loadHistory = async () => {
+      const { data } = await supabase
+        .from('storefront_ai_conversations')
+        .select('id, role, content, created_at')
+        .eq('profile_id', profileId)
+        .order('created_at', { ascending: true });
+
+      if (data && data.length > 0) {
+        setMessages(data.map(msg => ({
+          id: msg.id,
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: new Date(msg.created_at),
+        })));
+      }
+      setHistoryLoaded(true);
+    };
+
+    loadHistory();
+  }, [profileId]);
 
   // Rotate placeholder examples
   useEffect(() => {
@@ -70,35 +94,44 @@ const PLACEHOLDER_EXAMPLES = [
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
  
-   // Scroll to bottom on new messages
-   useEffect(() => {
-     if (scrollRef.current) {
-       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-     }
-   }, [messages]);
- 
-   const sendMessage = useCallback(async (text: string) => {
-     if (!text.trim() || isLoading) return;
- 
-      setIsLoading(true);
-      onBuildingChange?.(true);
-      setBuildStage('planning');
- 
-     // Add user message
-     const userMessage: ChatMessage = {
-       id: crypto.randomUUID(),
-       role: 'user',
-       content: text,
-       timestamp: new Date(),
-     };
-     setMessages(prev => [...prev, userMessage]);
- 
-     try {
-       const { data: sessionData } = await supabase.auth.getSession();
-       const accessToken = sessionData.session?.access_token;
-       if (!accessToken) throw new Error('Not authenticated');
- 
+  const sendMessage = useCallback(async (text: string) => {
+    if (!text.trim() || isLoading) return;
+
+    setIsLoading(true);
+    onBuildingChange?.(true);
+    setBuildStage('planning');
+
+    // Add user message
+    const userMessageId = crypto.randomUUID();
+    const userMessage: ChatMessage = {
+      id: userMessageId,
+      role: 'user',
+      content: text,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    // Persist user message to database
+    await supabase.from('storefront_ai_conversations').insert({
+      id: userMessageId,
+      profile_id: profileId,
+      role: 'user',
+      content: text,
+    });
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error('Not authenticated');
+
       // Fetch user's products and collections for AI context
       const [productsResp, collectionsResp] = await Promise.all([
         supabase
@@ -115,78 +148,88 @@ const PLACEHOLDER_EXAMPLES = [
       ]);
 
       // Build context for AI - include products and collections
-       const context = {
-         sections: layout.sections,
-         mode: 'ai_builder' as const,
+      const context = {
+        sections: layout.sections,
+        mode: 'ai_builder' as const,
         products: productsResp.data || [],
         collections: collectionsResp.data || [],
-       };
- 
+      };
+
       setBuildStage('applying');
 
-       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/storefront-vibecoder`;
-       const resp = await fetch(url, {
-         method: 'POST',
-         headers: {
-           'Content-Type': 'application/json',
-           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-           Authorization: `Bearer ${accessToken}`,
-         },
-         body: JSON.stringify({
-           message: text,
-           context,
-           profileId,
-           userId: sessionData.session?.user?.id,
-         }),
-       });
- 
-       if (!resp.ok) {
-         const payload = await resp.json().catch(() => ({}));
-         throw new Error(payload?.error || 'AI request failed');
-       }
- 
-       const result = await resp.json();
- 
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/storefront-vibecoder`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          message: text,
+          context,
+          profileId,
+          userId: sessionData.session?.user?.id,
+        }),
+      });
+
+      if (!resp.ok) {
+        const payload = await resp.json().catch(() => ({}));
+        throw new Error(payload?.error || 'AI request failed');
+      }
+
+      const result = await resp.json();
+
       setBuildStage('rendering');
 
-       // Add assistant message
-       const assistantMessage: ChatMessage = {
-         id: crypto.randomUUID(),
-         role: 'assistant',
-         content: result.message || 'Changes applied!',
-         timestamp: new Date(),
-       };
-       setMessages(prev => [...prev, assistantMessage]);
- 
-       // Apply operations to layout
-       if (result.ops && result.ops.length > 0) {
-         const newLayout = applyOpsToLayout(layout, result.ops);
-         onLayoutChange(newLayout);
+      // Add assistant message
+      const assistantMessageId = crypto.randomUUID();
+      const assistantMessage: ChatMessage = {
+        id: assistantMessageId,
+        role: 'assistant',
+        content: result.message || 'Changes applied!',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+
+      // Persist assistant message to database
+      await supabase.from('storefront_ai_conversations').insert({
+        id: assistantMessageId,
+        profile_id: profileId,
+        role: 'assistant',
+        content: result.message || 'Changes applied!',
+        operations: result.ops || null,
+      });
+
+      // Apply operations to layout
+      if (result.ops && result.ops.length > 0) {
+        const newLayout = applyOpsToLayout(layout, result.ops);
+        onLayoutChange(newLayout);
         toast.success(`${result.ops.filter((o: any) => o.op === 'addSection').length} sections created!`);
-       }
- 
+      }
+
       setBuildStage('done');
       onBuildingChange?.(false);
       setTimeout(() => setBuildStage(null), 1500);
 
-     } catch (err) {
-       console.error('AI Builder error:', err);
-       const errorMessage = err instanceof Error ? err.message : 'Something went wrong';
-       toast.error(errorMessage);
-       
-       const errorChatMessage: ChatMessage = {
-         id: crypto.randomUUID(),
-         role: 'assistant',
-         content: `I encountered an error: ${errorMessage}`,
-         timestamp: new Date(),
-       };
-       setMessages(prev => [...prev, errorChatMessage]);
-       setBuildStage(null);
-       onBuildingChange?.(false);
-     } finally {
-       setIsLoading(false);
-     }
-   }, [profileId, layout, onLayoutChange, isLoading]);
+    } catch (err) {
+      console.error('AI Builder error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Something went wrong';
+      toast.error(errorMessage);
+      
+      const errorChatMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: `I encountered an error: ${errorMessage}`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorChatMessage]);
+      setBuildStage(null);
+      onBuildingChange?.(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [profileId, layout, onLayoutChange, isLoading, onBuildingChange]);
  
    const handleSubmit = (e: React.FormEvent) => {
      e.preventDefault();
