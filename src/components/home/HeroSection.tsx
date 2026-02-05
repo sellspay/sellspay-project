@@ -96,10 +96,10 @@ export default function HeroSection() {
   const parallaxFast = scrollY * 0.7;
 
   return (
-    <section ref={sectionRef} className="relative h-[70vh] sm:h-[80vh] md:h-[85vh] lg:min-h-[88vh] flex items-center justify-center overflow-hidden">
-      {/* Full-width cinematic background with parallax */}
+    <section ref={sectionRef} className="relative min-h-[50vh] sm:min-h-[55vh] md:min-h-[60vh] lg:min-h-[88vh] flex items-center justify-center overflow-hidden px-4 sm:px-6 md:px-8 lg:px-0 py-6 sm:py-8 md:py-10 lg:py-0">
+      {/* Compact video container on mobile, full on desktop */}
       <div 
-        className="absolute inset-0 z-0 flex items-center justify-center"
+        className="absolute inset-2 sm:inset-4 md:inset-6 lg:inset-0 z-0 rounded-2xl lg:rounded-none overflow-hidden"
         style={{ transform: `translateY(${parallaxSlow}px)` }}
       >
         {content.hero_media_type === 'video' && content.hero_video_url && !videoFailed ? (
@@ -111,7 +111,7 @@ export default function HeroSection() {
             loop 
             playsInline
             preload="auto"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain lg:object-cover"
             onError={() => {
               console.error('Hero video failed to load:', content.hero_video_url);
               setVideoFailed(true);
@@ -124,7 +124,7 @@ export default function HeroSection() {
           <img 
             src={backgroundMedia} 
             alt="" 
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain lg:object-cover"
           />
         ) : (
           <div className="w-full h-full bg-background" />
@@ -136,7 +136,7 @@ export default function HeroSection() {
 
       {/* LEFT SIDE - Vertical text */}
       <div 
-        className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 z-20 hidden lg:flex flex-col items-center gap-6"
+        className="absolute left-2 sm:left-4 lg:left-8 top-1/2 -translate-y-1/2 z-20 hidden lg:flex flex-col items-center gap-6"
         style={{ transform: `translateY(calc(-50% + ${parallaxMedium * 0.3}px))` }}
       >
         <div className="w-px h-20 bg-white/30" />
@@ -165,7 +165,7 @@ export default function HeroSection() {
 
       {/* RIGHT SIDE - Vertical text */}
       <div 
-        className="absolute right-4 sm:right-8 top-1/3 z-20 hidden lg:flex flex-col items-center gap-4"
+        className="absolute right-2 sm:right-4 lg:right-8 top-1/3 z-20 hidden lg:flex flex-col items-center gap-4"
         style={{ transform: `translateY(${parallaxFast * 0.2}px)` }}
       >
         <div className="border border-white/40 px-3 py-6">
@@ -183,17 +183,17 @@ export default function HeroSection() {
 
       {/* CENTER CONTENT */}
       {/* CENTER CONTENT - Now minimal, main text moved to AI Reveal intro */}
-      <div className="relative z-10 w-full px-6 sm:px-8 lg:px-16">
+      <div className="relative z-10 w-full px-2 sm:px-4 lg:px-16">
         <div className="flex flex-col items-center text-center max-w-7xl mx-auto">
           {/* Pill button - "discover" style */}
           <div 
-            className="mt-10 sm:mt-14"
+            className="mt-4 sm:mt-8 lg:mt-14"
             style={{ transform: `translateY(${parallaxMedium * 0.2}px)` }}
           >
             <Button 
               asChild 
               variant="outline"
-              className="h-14 sm:h-16 px-10 sm:px-14 text-base sm:text-lg font-medium tracking-wider rounded-full bg-transparent border-2 border-white/60 text-white hover:bg-white hover:text-black transition-all duration-300"
+              className="h-10 sm:h-12 lg:h-16 px-6 sm:px-10 lg:px-14 text-sm sm:text-base lg:text-lg font-medium tracking-wider rounded-full bg-transparent border-2 border-white/60 text-white hover:bg-white hover:text-black transition-all duration-300"
             >
               <Link to="/products">
                 discover
@@ -205,7 +205,7 @@ export default function HeroSection() {
 
       {/* BOTTOM LEFT - Decorative elements */}
       <div 
-        className="absolute bottom-4 sm:bottom-8 md:bottom-12 left-4 sm:left-6 md:left-10 z-20 hidden sm:flex items-center gap-4"
+        className="absolute bottom-6 sm:bottom-10 md:bottom-12 left-6 sm:left-8 md:left-10 z-20 hidden lg:flex items-center gap-4"
         style={{ transform: `translateY(${-parallaxFast * 0.1}px)` }}
       >
         <span className="text-white/50 text-xs sm:text-sm font-bold tracking-widest">★★★★★★★</span>
@@ -214,7 +214,7 @@ export default function HeroSection() {
 
       {/* BOTTOM RIGHT - Stats/tagline block */}
       <div 
-        className="absolute bottom-4 sm:bottom-8 md:bottom-12 right-4 sm:right-6 md:right-10 z-20 text-right hidden md:block"
+        className="absolute bottom-6 sm:bottom-10 md:bottom-12 right-6 sm:right-8 md:right-10 z-20 text-right hidden lg:block"
         style={{ transform: `translateY(${-parallaxMedium * 0.15}px)` }}
       >
         <div className="text-white/80 text-sm sm:text-base font-medium leading-relaxed">
@@ -226,7 +226,7 @@ export default function HeroSection() {
 
       {/* Scroll indicator - minimal */}
       <div 
-        className="absolute bottom-16 sm:bottom-20 md:bottom-28 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2"
+        className="absolute bottom-8 sm:bottom-12 lg:bottom-28 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2"
         style={{ opacity: Math.max(0, 1 - scrollY / 200) }}
       >
         <div className="w-px h-8 sm:h-12 bg-white/30 animate-pulse" />
