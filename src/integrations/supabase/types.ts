@@ -146,6 +146,58 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_storefront_layouts: {
+        Row: {
+          created_at: string
+          id: string
+          is_published: boolean
+          layout_json: Json
+          profile_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          layout_json?: Json
+          profile_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          layout_json?: Json
+          profile_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_storefront_layouts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_storefront_layouts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_storefront_layouts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_items: {
         Row: {
           collection_id: string
@@ -1302,6 +1354,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_storefront_mode: string
           avatar_url: string | null
           background_url: string | null
           banner_position_y: number | null
@@ -1343,6 +1396,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          active_storefront_mode?: string
           avatar_url?: string | null
           background_url?: string | null
           banner_position_y?: number | null
@@ -1384,6 +1438,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          active_storefront_mode?: string
           avatar_url?: string | null
           background_url?: string | null
           banner_position_y?: number | null
