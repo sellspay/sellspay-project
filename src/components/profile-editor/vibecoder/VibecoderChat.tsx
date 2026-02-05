@@ -13,6 +13,7 @@ import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp, Undo2 } f
  import { QuickActionChips } from './QuickActionChips';
  import { ProfileSection } from '../types';
  import { toast } from 'sonner';
+ import { supabase } from '@/integrations/supabase/client';
  
  interface VibecoderChatProps {
    profileId: string;
@@ -304,6 +305,22 @@ Make it look like a high-end luxury creator's store.`;
                  isLatest={index === messages.length - 1}
                   isApplying={applyingMessageId === message.id}
                  onRegenerate={message.status === 'pending' && message.role === 'assistant' ? regenerate : undefined}
+                 onUndo={onUndo}
+                 canUndo={canUndo && message.status === 'applied'}
+                 onFeedback={async (messageId, feedback) => {
+                   // Update the ai_runs table with user feedback
+                   try {
+                     await supabase
+                       .from('storefront_ai_conversations')
+                       .update({ 
+                         // Store feedback in the operations column as JSON
+                         operations: { feedback, feedbackAt: new Date().toISOString() }
+                       })
+                       .eq('id', messageId);
+                   } catch (error) {
+                     console.error('Failed to save feedback:', error);
+                   }
+                 }}
                />
              ))}
              {isWorking && (

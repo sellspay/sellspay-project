@@ -100,6 +100,9 @@ export interface ClearAllSectionsOp {
    asset_requests?: AssetRequest[];
    timestamp: Date;
    status?: 'pending' | 'applied' | 'discarded';
+   feedback?: 'liked' | 'disliked' | null;
+   latencyMs?: number;
+   creditsUsed?: number;
  }
  
  // === BRAND PROFILE ===
