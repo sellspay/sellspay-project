@@ -1357,6 +1357,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_project_id: string | null
           active_storefront_mode: string
           avatar_url: string | null
           background_url: string | null
@@ -1399,6 +1400,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          active_project_id?: string | null
           active_storefront_mode?: string
           avatar_url?: string | null
           background_url?: string | null
@@ -1441,6 +1443,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          active_project_id?: string | null
           active_storefront_mode?: string
           avatar_url?: string | null
           background_url?: string | null
@@ -1482,7 +1485,15 @@ export type Database = {
           verified?: boolean | null
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_active_project_id_fkey"
+            columns: ["active_project_id"]
+            isOneToOne: false
+            referencedRelation: "vibecoder_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_files: {
         Row: {
@@ -2850,6 +2861,10 @@ export type Database = {
       }
     }
     Functions: {
+      delete_project_fully: {
+        Args: { p_project_id: string }
+        Returns: undefined
+      }
       disconnect_seller_paypal: {
         Args: { p_user_id: string }
         Returns: undefined

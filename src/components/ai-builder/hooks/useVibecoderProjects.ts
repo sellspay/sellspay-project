@@ -82,15 +82,18 @@ export function useVibecoderProjects() {
     loadMessages();
   }, [activeProjectId]);
 
-  // Create new project
-  const createProject = useCallback(async (name: string = 'Untitled Project') => {
+  // Create new project (can be called explicitly or auto-created on first prompt)
+  const createProject = useCallback(async (name?: string) => {
     if (!user) return null;
+
+    // Generate a timestamp-based name if not provided
+    const projectName = name || `Store ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
     const { data, error } = await supabase
       .from('vibecoder_projects')
       .insert({
         user_id: user.id,
-        name,
+        name: projectName,
       })
       .select()
       .single();
@@ -104,15 +107,29 @@ export function useVibecoderProjects() {
     setProjects(prev => [newProject, ...prev]);
     setActiveProjectId(newProject.id);
     setMessages([]); // Clear messages for new project
+    
+    // Update URL without reloading so they can refresh and stay here
+    const url = new URL(window.location.href);
+    url.searchParams.set('project', newProject.id);
+    window.history.replaceState(null, '', url.toString());
+    
     return newProject;
   }, [user]);
 
-  // Delete project
+  // Auto-create project if needed (called when user sends first message with no active project)
+  const ensureProject = useCallback(async (): Promise<string | null> => {
+    if (activeProjectId) return activeProjectId;
+    
+    const newProject = await createProject();
+    return newProject?.id ?? null;
+  }, [activeProjectId, createProject]);
+
+  // Delete project using the "Total Deletion" RPC
+  // This also clears the live store if this project was active
   const deleteProject = useCallback(async (projectId: string) => {
-    const { error } = await supabase
-      .from('vibecoder_projects')
-      .delete()
-      .eq('id', projectId);
+    const { error } = await supabase.rpc('delete_project_fully', {
+      p_project_id: projectId
+    });
 
     if (error) {
       console.error('Failed to delete project:', error);
@@ -121,10 +138,11 @@ export function useVibecoderProjects() {
 
     setProjects(prev => prev.filter(p => p.id !== projectId));
     
-    // If deleted project was active, select another
+    // If deleted project was active, select another or clear
     if (activeProjectId === projectId) {
       const remaining = projects.filter(p => p.id !== projectId);
       setActiveProjectId(remaining.length > 0 ? remaining[0].id : null);
+      setMessages([]); // Clear messages since project is gone
     }
     return true;
   }, [activeProjectId, projects]);
@@ -225,6 +243,7 @@ export function useVibecoderProjects() {
     loading,
     messagesLoading,
     createProject,
+    ensureProject,
     deleteProject,
     renameProject,
     selectProject,
