@@ -262,10 +262,17 @@ export function VibecoderPreview({ code }: { code: string }) {
 
 ## Rollout Strategy
 
-**Phase 1 (Week 1):** Create streaming edge function + basic Sandpack preview  
+**Phase 1 (Week 1): ✅ COMPLETE**
+- Created streaming edge function `vibecoder-v2`
+- Installed Sandpack runtime
+- Built `VibecoderPreview` and `VibecoderChat` components
+- Added `useStreamingCode` hook
+- Created `project_files` VFS table
+- Added mode toggle in `AIBuilderCanvas`
+
 **Phase 2 (Week 2):** VFS storage + version history  
 **Phase 3 (Week 3):** Mode toggle + migration tools  
-**Phase 4 (Week 4):** Polish, error handling, fallbacks  
+**Phase 4 (Week 4):** Polish, error handling, fallbacks
 
 ---
 

@@ -155,6 +155,7 @@ export type Database = {
           profile_id: string
           updated_at: string
           version: number
+          vibecoder_mode: boolean
         }
         Insert: {
           created_at?: string
@@ -164,6 +165,7 @@ export type Database = {
           profile_id: string
           updated_at?: string
           version?: number
+          vibecoder_mode?: boolean
         }
         Update: {
           created_at?: string
@@ -173,6 +175,7 @@ export type Database = {
           profile_id?: string
           updated_at?: string
           version?: number
+          vibecoder_mode?: boolean
         }
         Relationships: [
           {
@@ -1480,6 +1483,58 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      project_files: {
+        Row: {
+          content: string
+          created_at: string
+          file_path: string
+          id: string
+          profile_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          file_path: string
+          id?: string
+          profile_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          file_path?: string
+          id?: string
+          profile_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_files_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_files_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_files_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       public_identities_cache: {
         Row: {
