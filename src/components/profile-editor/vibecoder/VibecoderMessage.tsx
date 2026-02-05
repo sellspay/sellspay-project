@@ -1,19 +1,21 @@
  import { memo } from 'react';
  import { Button } from '@/components/ui/button';
  import { Badge } from '@/components/ui/badge';
-import { Check, X, RefreshCw, AlertCircle } from 'lucide-react';
+import { Check, X, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
  import { ChatMessage } from './types';
  import { cn } from '@/lib/utils';
  
  interface VibecoderMessageProps {
    message: ChatMessage;
    isLatest: boolean;
+  isApplying?: boolean;
    onRegenerate?: () => void;
  }
  
  export const VibecoderMessage = memo(function VibecoderMessage({
    message,
    isLatest,
+  isApplying = false,
    onRegenerate,
  }: VibecoderMessageProps) {
    const isUser = message.role === 'user';
@@ -93,9 +95,19 @@ import { Check, X, RefreshCw, AlertCircle } from 'lucide-react';
       )}
 
       {/* Show pending with operations - will auto-apply */}
-      {!isUser && hasOperations && isPending && isLatest && (
+      {!isUser && hasOperations && isPending && isLatest && !isApplying && (
         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
           <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+            {message.operations?.length} change{message.operations?.length !== 1 ? 's' : ''} ready
+          </Badge>
+        </div>
+       )}
+
+      {/* Currently applying indicator */}
+      {!isUser && hasOperations && isApplying && (
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+          <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/20 animate-pulse">
+            <Loader2 className="w-3 h-3 animate-spin mr-1" />
             Applying {message.operations?.length} change{message.operations?.length !== 1 ? 's' : ''}...
           </Badge>
         </div>
