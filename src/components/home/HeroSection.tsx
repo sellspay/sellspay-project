@@ -96,10 +96,10 @@ export default function HeroSection() {
   const parallaxFast = scrollY * 0.7;
 
   return (
-    <section ref={sectionRef} className="relative min-h-[88vh] flex items-center justify-center overflow-hidden">
+    <section ref={sectionRef} className="relative min-h-[88vh] flex items-end justify-center overflow-hidden">
       {/* Full-width cinematic background with parallax */}
       <div 
-        className="absolute inset-0 z-0"
+        className="absolute inset-0 z-0 flex items-center justify-center"
         style={{ transform: `translateY(${parallaxSlow}px)` }}
       >
         {content.hero_media_type === 'video' && content.hero_video_url && !videoFailed ? (
@@ -111,7 +111,7 @@ export default function HeroSection() {
             loop 
             playsInline
             preload="auto"
-            className="w-full h-[120%] object-cover object-center"
+            className="min-w-full min-h-full w-auto h-auto object-contain"
             onError={() => {
               console.error('Hero video failed to load:', content.hero_video_url);
               setVideoFailed(true);
@@ -124,10 +124,10 @@ export default function HeroSection() {
           <img 
             src={backgroundMedia} 
             alt="" 
-            className="w-full h-[120%] object-cover object-center"
+            className="min-w-full min-h-full w-auto h-auto object-contain"
           />
         ) : (
-          <div className="w-full h-[120%] bg-background" />
+          <div className="w-full h-full bg-background" />
         )}
         {/* Subtle vignette overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-background/50 via-transparent to-background/20" />
