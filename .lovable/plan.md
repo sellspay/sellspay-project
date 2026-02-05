@@ -1,150 +1,320 @@
 
+# Premium AI Builder: Lovable-Style Blank Canvas Architecture
 
-# AI Vibecoder System Prompt Upgrade
+## Executive Summary
 
-## Overview
-
-You've provided a comprehensive, production-ready system prompt specification for the Storefront Vibecoder. I'll update the edge function to replace the current basic prompt with your full specification, ensuring the AI behaves exactly as defined.
-
----
-
-## Current State vs Your Spec
-
-| Aspect | Current Implementation | Your Spec |
-|--------|----------------------|-----------|
-| System Prompt | ~60 lines, basic | Full 200+ line production spec |
-| Block Registry | Mentioned in passing | Explicit list with schema notes |
-| Failure Handling | Basic fallback | "Never say I can't" - graceful substitution |
-| Profile Shell | Mentioned | Explicit "LOCKED" rules |
-| Free vs Paid | Not mentioned | Clear tier behavior |
-| Asset Generation | Basic | "Invisible presets" - no mention of templates |
-| Design Quality Bar | Not enforced | Explicit premium standards |
+This plan implements a complete separation between the **Free Profile Editor** (unchanged) and a new **Premium AI Builder** - a standalone, blank-canvas storefront creation experience that mimics Lovable's approach: chat, plan, render, iterate.
 
 ---
 
-## Implementation Plan
+## Current State Analysis
 
-### 1. Replace Edge Function System Prompt
+**What exists today:**
+- Single `profile_sections` table storing all sections for a profile
+- `ProfileEditorDialog` with tabs: Sections (manual), AI Builder (Vibecoder), Brand, Store Style
+- AI Builder modifies the same `profile_sections` data as manual editing
+- No layout separation between free and premium modes
+- AI operates as an "assistant" rather than the sole author
 
-**File**: `supabase/functions/storefront-vibecoder/index.ts`
+**Core problem:** The AI is editing an existing structure rather than authoring from zero. This caps the perceived intelligence.
 
-Replace the current `SYSTEM_PROMPT` with your full specification, including:
+---
 
-- **Core Product Model** - Profile Shell (locked) + Editable Canvas
-- **Absolute Rules** - No HTML/CSS/JS, no billing access, always produce output
-- **Block Registry** - All approved section types with schema notes
-- **"Type Anything" Behavior** - Infer intent, translate to blocks, apply patches
-- **Free vs Paid** - No mention of tiers in responses
-- **Asset Generation** - Never say "preset", draft tray workflow
-- **Output Format** - Strict JSON with ops, asset_requests, preview_notes
-- **Design Quality Bar** - Premium, cohesive, intentional
-- **Failure Handling** - Build closest equivalent, explain briefly
-
-### 2. Enhance Tool Schema
-
-Update the function calling schema to better align with your block registry:
+## Architecture: Two Separate Builders
 
 ```text
-Section Types (explicit):
-hero, featured_products, collections_row, bento_grid, image_section, 
-video_section, testimonials, stats_strip, pricing, faq, comparison, 
-cta_strip, icon_features, about_creator, email_capture, gallery, 
-divider, spacer
-```
-
-**Note**: Some of your spec's block names (like `hero`, `bento_grid`, `stats_strip`, `cta_strip`, `comparison`, `pricing`) don't exist in the current type system. I'll map them to existing equivalents:
-
-| Your Spec | Current System Equivalent |
-|-----------|--------------------------|
-| `hero` | `headline` or `image_with_text` with layout: 'hero' |
-| `bento_grid` | `gallery` with custom layout |
-| `stats_strip` | `basic_list` with horizontal layout |
-| `cta_strip` | `image_with_text` with button emphasis |
-| `comparison` | `basic_list` with cards layout |
-| `pricing` / `offers` | `basic_list` or `featured_product` |
-| `about_creator` | `about_me` |
-| `email_capture` | `newsletter` |
-| `icon_features` | `basic_list` with icon style |
-
-### 3. Update Fallback Behavior
-
-Current: Returns a generic "starter hero section" on failure
-
-New: Follow your spec's **Failure Handling** rules:
-- Never say "I can't" or "not possible"
-- Build the closest supported equivalent
-- Explain the substitution briefly
-- Offer optional refinement
-
-### 4. Tune Model Parameters
-
-```text
-Current: temperature: 1.05, top_p: 0.95
-Keep: These are good for creative variation without losing coherence
+┌─────────────────────────────────────────────────────────────────┐
+│                         USER PROFILE                            │
+├─────────────────────────┬───────────────────────────────────────┤
+│   FREE BUILDER          │        PREMIUM AI BUILDER             │
+│   (Current System)      │        (New System)                   │
+├─────────────────────────┼───────────────────────────────────────┤
+│ • Manual section grid   │ • Blank canvas                        │
+│ • Drag-and-drop         │ • Conversational interface            │
+│ • Instagram-style       │ • AI authors everything               │
+│ • profile_sections      │ • ai_storefront_layouts               │
+│                         │ • Premium subscription gate           │
+└─────────────────────────┴───────────────────────────────────────┘
 ```
 
 ---
 
-## Technical Details
+## Database Changes
 
-### Full System Prompt Structure
+### New Table: `ai_storefront_layouts`
+
+Stores the AI-generated layout separately from the free profile.
+
+```sql
+CREATE TABLE public.ai_storefront_layouts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  layout_json JSONB NOT NULL DEFAULT '{"sections": [], "theme": {}, "header": {}}',
+  is_published BOOLEAN NOT NULL DEFAULT false,
+  version INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(profile_id)
+);
+
+-- Enable RLS
+ALTER TABLE public.ai_storefront_layouts ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies
+CREATE POLICY "Users can manage their own AI layouts"
+  ON public.ai_storefront_layouts
+  FOR ALL
+  TO authenticated
+  USING (
+    profile_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+  )
+  WITH CHECK (
+    profile_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid())
+  );
+
+-- Public read for published layouts
+CREATE POLICY "Anyone can view published AI layouts"
+  ON public.ai_storefront_layouts
+  FOR SELECT
+  TO anon, authenticated
+  USING (is_published = true);
+```
+
+### New Column on `profiles`: `active_storefront_mode`
+
+```sql
+ALTER TABLE public.profiles 
+ADD COLUMN active_storefront_mode TEXT NOT NULL DEFAULT 'free' 
+CHECK (active_storefront_mode IN ('free', 'ai'));
+```
+
+This determines which layout is shown publicly on the `/@username` profile page.
+
+---
+
+## Frontend Changes
+
+### 1. New Route: `/ai-builder`
+
+A dedicated fullscreen page for the Premium AI Builder. Not a tab inside the existing dialog.
 
 ```text
-1. ROLE DECLARATION
-   "You are SellsPay's AI Vibecoder..."
+/ai-builder
+├── Premium gate (subscription check)
+├── Blank canvas view
+├── Centered chat interface
+├── Live preview panel
+└── Exit button (back to profile)
+```
 
-2. CORE PRODUCT MODEL
-   - Profile Shell (LOCKED)
-   - Editable Canvas (free creativity)
+### 2. Entry Points
 
-3. ABSOLUTE RULES (7 rules)
-   - Never output raw HTML/CSS/JS
-   - Never inject scripts
-   - Never modify billing/auth
-   - Never break header shell
-   - Never mention presets
-   - Never refuse (build alternative)
-   - Always produce something
+**From Profile Page:**
+- New button: "Create with AI" (prominent, gradient CTA)
+- Only visible to profile owner with premium subscription
+- Opens `/ai-builder` in fullscreen
 
-4. BLOCK REGISTRY
-   - Explicit list with equivalents to existing types
-   - Schema notes for each
+**Toggle in Settings:**
+- "Active Storefront" dropdown: Free | AI Builder
+- Allows switching which layout is public
 
-5. "TYPE ANYTHING" BEHAVIOR
-   - Infer intent → Translate → Apply → Summarize → Keep undoable
+### 3. AI Builder Page Structure
 
-6. ASSET GENERATION RULES
-   - Never say "preset"
-   - Draft tray workflow
-   - Match brand profile
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│  [SellsPay Logo]                              [Exit] [Publish]   │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│                     ┌─────────────────────┐                      │
+│                     │                     │                      │
+│                     │   LIVE PREVIEW      │                      │
+│                     │   (iframe or        │                      │
+│                     │    rendered view)   │                      │
+│                     │                     │                      │
+│                     └─────────────────────┘                      │
+│                                                                  │
+│  ┌───────────────────────────────────────────────────────────┐   │
+│  │ + │ Describe your vision...                    [Plan][Mic]│   │
+│  └───────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│            [Build My Store]  [Premium] [Modern] [Minimal]        │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
 
-7. OUTPUT FORMAT
-   - message, ops, asset_requests, preview_notes
-   - All ops reversible and schema-safe
+### 4. Component Files to Create
 
-8. DESIGN QUALITY BAR
-   - Intentional, cohesive
-   - Respect spacing, hierarchy, contrast
-   - Premium, modern, trustworthy
+| File | Purpose |
+|------|---------|
+| `src/pages/AIBuilder.tsx` | Main fullscreen page |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | Blank canvas with live preview |
+| `src/components/ai-builder/AIBuilderChat.tsx` | Chat interface (extracted/upgraded from VibecoderChat) |
+| `src/components/ai-builder/AIBuilderPreview.tsx` | Real-time preview renderer |
+| `src/components/ai-builder/PremiumGate.tsx` | Subscription check wrapper |
 
-9. FAILURE HANDLING
-   - Build closest equivalent
-   - Explain briefly
-   - Offer refinement
+### 5. Premium Gate Logic
+
+```typescript
+// Check if user has premium subscription
+const isPremium = profile?.subscription_tier && 
+  ['pro', 'enterprise'].includes(profile.subscription_tier);
+
+if (!isPremium) {
+  return <PremiumUpgradePrompt />;
+}
 ```
 
 ---
 
-## Validation
+## AI Pipeline Enhancements
 
-After deploying, the Vibecoder will:
+### Blank Canvas Intelligence
 
-1. **Accept any natural language input** without asking clarifying questions
-2. **Always produce valid patch operations** - never return empty ops
-3. **Use premium language** - never mention "presets" or "templates"
-4. **Handle failures gracefully** - build alternatives instead of refusing
-5. **Maintain locked header** - only content changes to banner/avatar/bio/links
-6. **Generate high-quality designs** - cohesive, premium, intentional
+When the canvas is empty, the AI must:
+1. **Choose structure** - Hero, sections, CTA flow
+2. **Choose hierarchy** - Visual weight distribution
+3. **Choose copy** - Compelling headlines and descriptions
+4. **Choose styling** - Cohesive theme without asking
+
+### Pattern Library
+
+The AI will internally map user prompts to known patterns:
+
+| Prompt Intent | Layout Pattern |
+|---------------|----------------|
+| "fitness creator" | Hero + Feature grid + Testimonials + CTA |
+| "premium brand" | Full-bleed hero + Minimal sections + Dark theme |
+| "product showcase" | Bento grid + Featured products + Social proof |
+| "portfolio" | Gallery + About + Contact |
+
+### Updated Backend Behavior
+
+In `storefront-vibecoder/index.ts`:
+
+1. Add new mode parameter: `mode: 'free_editor' | 'ai_builder'`
+2. When mode is `ai_builder`:
+   - Operate on `ai_storefront_layouts` table instead of `profile_sections`
+   - Default to "complete authoring" behavior
+   - Include layout patterns in planner context
+   - Store/retrieve from the `layout_json` JSONB column
+
+---
+
+## Data Flow
+
+### Creating with AI Builder
+
+```text
+User Prompt: "Build me a premium creator store"
+        ↓
+Intent Extractor → { goal: "full premium storefront", intensity: "complete_overhaul" }
+        ↓
+Planner → { layout_plan: [...], theme_plan: {...}, copy_plan: {...} }
+        ↓
+Ops Generator → JSON layout (not patch ops, full layout)
+        ↓
+Save to ai_storefront_layouts.layout_json
+        ↓
+Render in preview
+```
+
+### Publishing
+
+When user clicks "Publish":
+1. Validate the AI layout is complete
+2. Set `ai_storefront_layouts.is_published = true`
+3. Set `profiles.active_storefront_mode = 'ai'`
+4. Public profile now renders from AI layout
+
+### Switching Back to Free
+
+In Settings:
+1. Set `profiles.active_storefront_mode = 'free'`
+2. Public profile renders from `profile_sections` again
+3. AI layout is preserved for later
+
+---
+
+## UI/UX Specifications
+
+### Empty State (First Visit)
+
+```text
+┌─────────────────────────────────────────────┐
+│                                             │
+│         [SellsPay Logo - Large]             │
+│                                             │
+│      ╔══════════════════════════════╗       │
+│      ║  AI-Powered Store Builder    ║       │
+│      ╚══════════════════════════════╝       │
+│                                             │
+│   Describe your vision and watch it         │
+│   come to life. Create stunning             │
+│   storefronts with a single prompt.         │
+│                                             │
+│        ┌─────────────────────┐              │
+│        │  ✨ Build My Store  │              │
+│        └─────────────────────┘              │
+│                                             │
+│   [Premium] [Modern] [Minimal] [Bold]       │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+### Active Chat State
+
+- Messages appear in a vertical timeline
+- AI responses include "Applying changes..." loader
+- Preview updates in real-time on the right
+- Undo button appears after changes apply
+- Quick action chips below the input
+
+### Chat Input Bar
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ [+] │ Describe your vision...                 [Plan] [Mic] [→]│
+└─────────────────────────────────────────────────────────────┘
+```
+
+- **+**: Attachment menu (History, Knowledge, Connectors, Screenshot, Attach)
+- **Plan**: Toggle plan mode (shows AI's thinking)
+- **Mic**: Voice input (future)
+- **→ / ■**: Send or Stop (square when AI is working)
+
+---
+
+## Technical Implementation Order
+
+### Phase 1: Database & Backend (Day 1)
+1. Create `ai_storefront_layouts` table with RLS
+2. Add `active_storefront_mode` column to profiles
+3. Update `storefront-vibecoder` edge function to support new mode
+4. Create new layout storage/retrieval functions
+
+### Phase 2: Frontend Structure (Day 2)
+1. Create `/ai-builder` route and page component
+2. Implement `PremiumGate` wrapper
+3. Build `AIBuilderCanvas` with split view (chat + preview)
+4. Extract and upgrade chat component for AI Builder
+
+### Phase 3: Preview System (Day 3)
+1. Create `AIBuilderPreview` component
+2. Implement real-time layout rendering from JSON
+3. Add smooth transitions for layout changes
+4. Connect to the new `ai_storefront_layouts` table
+
+### Phase 4: Publishing & Mode Toggle (Day 4)
+1. Implement publish flow for AI layouts
+2. Add "Active Storefront" toggle in Settings
+3. Update public profile page to render correct mode
+4. Handle edge cases (unpublished AI, empty states)
+
+### Phase 5: Polish & Premium UX (Day 5)
+1. Add pattern library to AI context
+2. Implement "Build My Store" full generation flow
+3. Add animations and loading states
+4. Test premium gate and subscription checks
 
 ---
 
@@ -152,17 +322,41 @@ After deploying, the Vibecoder will:
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/storefront-vibecoder/index.ts` | Replace `SYSTEM_PROMPT` with full spec, update tool schema descriptions |
+| `src/App.tsx` | Add `/ai-builder` route |
+| `src/pages/Profile.tsx` | Add "Create with AI" button, conditional rendering |
+| `src/pages/Settings.tsx` | Add "Active Storefront" toggle |
+| `supabase/functions/storefront-vibecoder/index.ts` | Add mode parameter, layout table support |
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/pages/AIBuilder.tsx` | Main AI Builder page |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | Canvas with chat + preview |
+| `src/components/ai-builder/AIBuilderChat.tsx` | Upgraded chat component |
+| `src/components/ai-builder/AIBuilderPreview.tsx` | Live preview renderer |
+| `src/components/ai-builder/PremiumGate.tsx` | Subscription check |
+| `src/components/ai-builder/PatternSelector.tsx` | Quick start patterns (optional) |
 
 ---
 
-## Summary
+## Key Differences from Current System
 
-This upgrade transforms the Vibecoder from a basic co-pilot into the full production system you've specified. The AI will:
+| Aspect | Current (Free) | New (AI Builder) |
+|--------|----------------|------------------|
+| Entry point | ProfileEditorDialog tab | Fullscreen `/ai-builder` page |
+| Data storage | `profile_sections` table | `ai_storefront_layouts` table |
+| Canvas state | Pre-populated with existing sections | Blank - AI authors everything |
+| AI behavior | Patches existing layout | Authors complete layouts |
+| Presets/Templates | Visible in UI | Hidden - AI chooses internally |
+| User mental model | "Editing my profile" | "Building a website" |
 
-- Accept **any** natural language input
-- **Always** produce results (never refuse)
-- Use **premium** design standards
-- **Never** expose internal mechanics (presets, templates)
-- Follow **strict** output format
+---
 
+## Success Criteria
+
+1. **Complete separation**: Free builder unchanged, AI builder is new experience
+2. **Blank canvas**: AI Builder starts empty, not with existing content
+3. **Premium only**: Subscription gate prevents free users from accessing
+4. **Mode toggle**: Users can switch which layout is public
+5. **Lovable feel**: Chat, plan, render, iterate workflow feels intelligent
