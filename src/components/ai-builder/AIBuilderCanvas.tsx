@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Undo2, Loader2, Code2, Blocks, Sparkles } from 'lucide-react';
+import { ArrowLeft, Eye, Undo2, Loader2, Code2, Blocks, Sparkles, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AIBuilderChat } from './AIBuilderChat';
 import { AIBuilderPreview } from './AIBuilderPreview';
@@ -38,6 +38,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [publishing, setPublishing] = useState(false);
   const [history, setHistory] = useState<AILayout[]>([]);
   const [isBuilding, setIsBuilding] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
   const [showOnboarding, setShowOnboarding] = useState(false);
   
@@ -72,7 +73,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Load existing AI layout and vibecoder code
   useEffect(() => {
     const loadLayout = async () => {
-      const [layoutResp, filesResp] = await Promise.all([
+      const [layoutResp, filesResp, profileResp] = await Promise.all([
         supabase
           .from('ai_storefront_layouts')
           .select('*')
@@ -83,6 +84,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           .select('content')
           .eq('profile_id', profileId)
           .eq('file_path', '/App.tsx')
+          .maybeSingle(),
+        supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', profileId)
           .maybeSingle(),
       ]);
 
@@ -101,6 +107,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       if (filesResp.data?.content) {
         // Set the saved code via streaming hook
         // Note: The hook starts with DEFAULT_CODE, so we need to update it
+      }
+
+      // Set username for View Live link
+      if (profileResp.data?.username) {
+        setUsername(profileResp.data.username);
       }
 
       setLoading(false);
@@ -304,6 +315,17 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
             >
               <Undo2 className="w-4 h-4" />
               Undo
+            </Button>
+          )}
+          {isPublished && username && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(`/@${username}`, '_blank')}
+              className="gap-1.5"
+            >
+              <ExternalLink className="w-4 h-4" />
+              View Live
             </Button>
           )}
           <Button

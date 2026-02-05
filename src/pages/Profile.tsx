@@ -34,6 +34,7 @@ import CreateCollectionDialog from '@/components/profile/CreateCollectionDialog'
 import SubscribeDialog from '@/components/profile/SubscribeDialog';
 import { ProfileEditorDialog } from '@/components/profile-editor';
 import { PublicProfileSections } from '@/components/profile/PublicProfileSections';
+import { AIStorefrontRenderer } from '@/components/profile/AIStorefrontRenderer';
 import CreatorApplicationDialog from '@/components/creator-application/CreatorApplicationDialog';
 import { SellerConfirmDialog } from '@/components/profile/SellerConfirmDialog';
 import { UnfollowConfirmDialog } from '@/components/profile/UnfollowConfirmDialog';
@@ -72,6 +73,7 @@ interface Profile {
   show_recent_uploads?: boolean | null;
   global_font?: string | null;
   global_custom_font?: { name: string; url: string } | null;
+  active_storefront_mode?: 'free' | 'ai';
 }
 
 interface Product {
@@ -352,6 +354,8 @@ const ProfilePage: React.FC = () => {
   const SAVED_ITEMS_PER_PAGE = 30; // 6 columns × 5 rows
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [hasAIBuilderAccess, setHasAIBuilderAccess] = useState(false);
+  const [aiStorefrontPublished, setAiStorefrontPublished] = useState(false);
+  const [hasVibecoderCode, setHasVibecoderCode] = useState(false);
 
   // Track profile view for analytics (only for other users' profiles)
   useProfileViewTracking(!isOwnProfile ? profile?.id : undefined);
@@ -837,6 +841,26 @@ const ProfilePage: React.FC = () => {
           .eq('is_active', true);
         setCreatorHasPlans((count || 0) > 0);
       }
+      
+      // Fetch AI storefront data for rendering decision
+      if (data.active_storefront_mode === 'ai') {
+        const [aiLayoutRes, projectFilesRes] = await Promise.all([
+          supabase
+            .from('ai_storefront_layouts')
+            .select('is_published, vibecoder_mode')
+            .eq('profile_id', data.id)
+            .maybeSingle(),
+          supabase
+            .from('project_files')
+            .select('content')
+            .eq('profile_id', data.id)
+            .eq('file_path', '/App.tsx')
+            .maybeSingle(),
+        ]);
+        
+        setAiStorefrontPublished(aiLayoutRes.data?.is_published ?? false);
+        setHasVibecoderCode(!!(projectFilesRes.data?.content && projectFilesRes.data.content.length > 100));
+      }
     }
 
     setLoading(false);
@@ -1064,6 +1088,15 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // Render AI Storefront if mode is 'ai' and storefront is published
+  if (
+    profile.active_storefront_mode === 'ai' &&
+    aiStorefrontPublished &&
+    hasVibecoderCode
+  ) {
+    return <AIStorefrontRenderer profileId={profile.id} />;
   }
 
   return (

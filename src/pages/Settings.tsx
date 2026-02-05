@@ -41,6 +41,7 @@ import BannerPositionEditor from "@/components/settings/BannerPositionEditor";
 import { StripeOnboardingGuide } from "@/components/settings/StripeOnboardingGuide";
 import { ConnectionsTab } from "@/components/settings/ConnectionsTab";
 import { SellerModeIndicator } from "@/components/settings/SellerModeIndicator";
+import { StorefrontModeToggle } from "@/components/settings/StorefrontModeToggle";
 
 // Social platform detection
 const detectSocialPlatform = (url: string): { platform: string; icon: React.ReactNode } | null => {
@@ -174,6 +175,10 @@ export default function Settings() {
   const [lastUsernameChangedAt, setLastUsernameChangedAt] = useState<string | null>(null);
   const [previousUsername, setPreviousUsername] = useState<string | null>(null);
   const [previousUsernameAvailableAt, setPreviousUsernameAvailableAt] = useState<string | null>(null);
+  
+  // Storefront mode toggle
+  const [activeStorefrontMode, setActiveStorefrontMode] = useState<'free' | 'ai'>('free');
+  const [hasAIStorefront, setHasAIStorefront] = useState(false);
 
   // Handle Stripe return URLs
   useEffect(() => {
@@ -229,6 +234,18 @@ export default function Settings() {
         // Seller mode & country for hybrid payments
         setSellerMode((data as Record<string, unknown>).seller_mode as "CONNECT" | "MOR" | null);
         setSellerCountryCode((data as Record<string, unknown>).seller_country_code as string | null);
+        
+        // Storefront mode
+        const storefrontMode = (data as Record<string, unknown>).active_storefront_mode as 'free' | 'ai' || 'free';
+        setActiveStorefrontMode(storefrontMode);
+        
+        // Check if AI storefront exists
+        const { data: aiLayout } = await supabase
+          .from('ai_storefront_layouts')
+          .select('is_published')
+          .eq('profile_id', data.id)
+          .maybeSingle();
+        setHasAIStorefront(!!aiLayout?.is_published);
         
         // Load social links
         if (data.social_links && typeof data.social_links === 'object') {
@@ -1278,6 +1295,17 @@ export default function Settings() {
 
             </CardContent>
           </Card>
+          
+          {/* Storefront Mode Toggle */}
+          {isSeller && profileId && (
+            <StorefrontModeToggle
+              profileId={profileId}
+              username={username}
+              currentMode={activeStorefrontMode}
+              hasAIStorefront={hasAIStorefront}
+              onModeChange={(newMode) => setActiveStorefrontMode(newMode)}
+            />
+          )}
         </TabsContent>
 
         {/* Connections Tab */}
