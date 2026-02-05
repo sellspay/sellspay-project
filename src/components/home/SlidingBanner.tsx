@@ -18,45 +18,67 @@ const logos = [
   { name: 'Veo 3', src: veo3Logo },
 ];
 
-export default function SlidingBanner() {
-  // Two identical groups inside a max-content track → -50% loops perfectly
-  const LogoGroup = () => (
-    <div className="marquee__group flex items-center gap-10 shrink-0 pr-10">
+// Render a single group of logos
+function LogoGroup({ keyPrefix }: { keyPrefix: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '40px',
+        paddingRight: '40px',
+        flex: '0 0 auto',
+      }}
+    >
       {logos.map((logo, index) => (
         <img
-          key={index}
+          key={`${keyPrefix}-${index}`}
           src={logo.src}
           alt={logo.name}
-          className="h-7 sm:h-8 w-auto object-contain grayscale invert opacity-60 shrink-0"
+          style={{
+            height: '28px',
+            width: 'auto',
+            objectFit: 'contain',
+            filter: 'grayscale(1) invert(1)',
+            opacity: 0.6,
+            flex: '0 0 auto',
+          }}
         />
       ))}
     </div>
   );
+}
 
+export default function SlidingBanner() {
   return (
-    <div className="marquee relative w-full py-4 sm:py-5 overflow-hidden border-y border-border/30">
+    <div
+      style={{ overflow: 'hidden', width: '100%' }}
+      className="relative py-4 sm:py-5 border-y border-border/30"
+    >
       {/* Edge fade masks */}
       <div className="absolute left-0 top-0 bottom-0 w-20 sm:w-32 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-20 sm:w-32 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
       
-      {/* Track: width max-content + two groups → -50% = seamless */}
-      <div className="marquee__track flex" style={{ width: 'max-content' }}>
-        <LogoGroup />
-        <LogoGroup />
+      {/* Track: max-content width + two identical groups + -50% translate = seamless */}
+      <div
+        className="sliding-banner-track"
+        style={{
+          display: 'flex',
+          width: 'max-content',
+          willChange: 'transform',
+        }}
+      >
+        <LogoGroup keyPrefix="a" />
+        <LogoGroup keyPrefix="b" />
       </div>
 
       <style>{`
-        .marquee__track {
-          animation: marquee-slide 18s linear infinite;
-          will-change: transform;
+        .sliding-banner-track {
+          animation: sliding-banner-scroll 18s linear infinite;
         }
-        @keyframes marquee-slide {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(-50%);
-          }
+        @keyframes sliding-banner-scroll {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
         }
       `}</style>
     </div>
