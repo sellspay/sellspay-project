@@ -19,8 +19,20 @@ const logos = [
 ];
 
 export default function SlidingBanner() {
-  // Duplicate logos array to ensure seamless loop
-  const duplicatedLogos = [...logos, ...logos];
+  // We render TWO identical rows side-by-side inside a single "track".
+  // Animating translateX(-50%) moves by exactly one row width → seamless loop.
+  const LogoRow = () => (
+    <div className="flex items-center gap-10 sm:gap-12 pr-10 sm:pr-12 shrink-0">
+      {logos.map((logo, index) => (
+        <img
+          key={index}
+          src={logo.src}
+          alt={logo.name}
+          className="h-7 sm:h-8 w-auto object-contain grayscale invert opacity-60"
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div className="relative w-full py-4 sm:py-5 overflow-hidden border-y border-border/30">
@@ -28,20 +40,10 @@ export default function SlidingBanner() {
       <div className="absolute left-0 top-0 bottom-0 w-20 sm:w-32 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-20 sm:w-32 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
       
-      {/* Scrolling track - uses translate to scroll the first set, second set fills gap */}
-      <div className="flex animate-marquee-scroll">
-        {duplicatedLogos.map((logo, index) => (
-          <div
-            key={index}
-            className="flex items-center justify-center px-4 sm:px-6 shrink-0"
-          >
-            <img 
-              src={logo.src} 
-              alt={logo.name}
-              className="h-7 sm:h-8 w-auto object-contain grayscale invert opacity-60"
-            />
-          </div>
-        ))}
+      {/* Scrolling track - two identical rows; animate by -50% for seamless loop */}
+      <div className="flex w-max animate-marquee-scroll">
+        <LogoRow />
+        <LogoRow />
       </div>
 
       <style>{`
@@ -54,7 +56,7 @@ export default function SlidingBanner() {
           }
         }
         .animate-marquee-scroll {
-          animation: marquee-scroll 20s linear infinite;
+          animation: marquee-scroll 18s linear infinite;
         }
       `}</style>
     </div>
