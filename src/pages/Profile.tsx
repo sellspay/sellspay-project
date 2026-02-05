@@ -24,7 +24,8 @@ import {
   Store,
   ChevronDown,
   FileEdit,
-  Monitor
+  Monitor,
+  Wand2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -1117,6 +1118,14 @@ const ProfilePage: React.FC = () => {
               {/* Own profile buttons */}
               {isOwnProfile && (
                 <>
+                      <Button 
+                        variant="default"
+                        onClick={() => navigate('/ai-builder')}
+                        className="gap-2 bg-gradient-to-r from-primary to-accent hover:opacity-90"
+                      >
+                        <Wand2 className="w-4 h-4" />
+                        AI Builder
+                      </Button>
                   <Button 
                     variant="outline"
                     onClick={copyProfileLink}
