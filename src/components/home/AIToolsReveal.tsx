@@ -121,6 +121,7 @@ export function AIToolsReveal() {
       cards.forEach((card, idx) => {
         gsap.set(card, {
           y: idx === 0 ? 0 : cardHeight,
+           opacity: idx === 0 ? 1 : 0,
           scale: 1,
           // newer cards should be on top
           zIndex: idx + 1,
@@ -197,7 +198,9 @@ export function AIToolsReveal() {
           {
             y: 0,
             scale: 1,
+             opacity: 1,
             duration: animationDuration,
+             ease: "power2.out",
           },
           startTime
         );
