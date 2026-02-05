@@ -104,12 +104,16 @@ export function AIToolsReveal() {
     });
 
     // Timeline scrubbed by scroll
+    const animationDuration = 0.6; // How long the actual animation takes
+    const pauseDuration = 0.4; // Dead space / pause between animations
+    const stepDuration = animationDuration + pauseDuration; // Total time per step
+    
     const tl = gsap.timeline({
       defaults: { ease: "none" },
       scrollTrigger: {
         trigger: section,
         start: "top top",
-        end: () => `+=${(panelCount - 1) * window.innerHeight}`,
+        end: () => `+=${(panelCount - 1) * stepDuration * window.innerHeight}`,
         scrub: true,
         pin: section,
         pinSpacing: true,
@@ -124,7 +128,7 @@ export function AIToolsReveal() {
 
     // Animate each step
     for (let i = 0; i < panelCount - 1; i++) {
-      const startTime = i;
+      const startTime = i * stepDuration;
       const nextCardIndex = i + 1;
       
       // Reposition all previously revealed cards into their stacked silhouette positions
@@ -132,7 +136,7 @@ export function AIToolsReveal() {
       tl.to(
         cards.slice(0, nextCardIndex),
         {
-          duration: 1,
+          duration: animationDuration,
           y: (index: number) => getStackY(nextCardIndex, index),
           scale: (index: number) => getStackScale(nextCardIndex, index),
         },
@@ -143,7 +147,7 @@ export function AIToolsReveal() {
       tl.to(cards[nextCardIndex], {
         y: 0,
         scale: 1,
-        duration: 1,
+        duration: animationDuration,
       }, startTime);
       
       // Bring the new card above the stack
@@ -152,13 +156,13 @@ export function AIToolsReveal() {
       // Change background color
       tl.to(section, { 
         backgroundColor: steps[i + 1].bg,
-        duration: 0.3,
+        duration: animationDuration * 0.5,
       }, startTime);
       
       // Change text color
       tl.to(text.querySelector("[data-headline]"), { 
         color: steps[i + 1].text,
-        duration: 0.3,
+        duration: animationDuration * 0.5,
       }, startTime);
 
       // Update headline text at midpoint of transition
@@ -166,11 +170,11 @@ export function AIToolsReveal() {
         tl.call(() => {
           line1.textContent = steps[i + 1].headline[0];
           line2.textContent = steps[i + 1].headline[1];
-        }, [], startTime + 0.15);
+        }, [], startTime + animationDuration * 0.25);
       }
     }
 
-    tl.duration(panelCount - 1);
+    tl.duration((panelCount - 1) * stepDuration);
 
     const onResize = () => ScrollTrigger.refresh();
     window.addEventListener("resize", onResize);
