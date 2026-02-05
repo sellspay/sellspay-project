@@ -45,6 +45,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
+  // Reset key to force component re-mount on project deletion
+  const [resetKey, setResetKey] = useState(0);
+  
   // Mode toggle: blocks (existing) or vibecoder (new generative)
   const [mode, setMode] = useState<BuilderMode>('blocks');
   
@@ -67,6 +70,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     getPreviousCodeSnapshot,
   } = useVibecoderProjects();
   
+  // Chat response state for intent router
+  const [chatResponse, setChatResponse] = useState<string | null>(null);
+  
   // Streaming code state for Vibecoder mode
   const { 
     code, 
@@ -83,6 +89,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       
       // Add assistant message with code snapshot
       await addMessage('assistant', 'Generated your storefront design.', finalCode);
+    },
+    onChatResponse: async (text) => {
+      // AI responded with a chat message instead of code
+      setChatResponse(text);
+      await addMessage('assistant', text);
     },
     onError: (err) => {
       toast.error(err.message);
@@ -297,9 +308,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     const success = await deleteProject(projectId);
     
     if (success) {
-      // If we deleted the active project, reset the code view
+      // If we deleted the active project, force a complete reset
       if (isActiveProject) {
         resetCode();
+        setChatResponse(null);
+        // Increment resetKey to force React to destroy and re-mount components
+        setResetKey(prev => prev + 1);
       }
       toast.success('Project deleted');
     } else {
@@ -461,7 +475,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           {mode === 'blocks' ? (
             <AIBuilderPreview layout={layout} isEmpty={isEmpty} isBuilding={isBuilding} />
           ) : (
-            <VibecoderPreview code={code} isStreaming={isStreaming} />
+            <VibecoderPreview 
+              key={`preview-${activeProjectId}-${resetKey}`}
+              code={code} 
+              isStreaming={isStreaming} 
+            />
           )}
         </div>
 
@@ -481,6 +499,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
             />
           ) : (
             <VibecoderChat
+              key={`chat-${activeProjectId}-${resetKey}`}
               onSendMessage={handleVibecoderMessage}
               isStreaming={isStreaming}
               onCancel={cancelStream}
