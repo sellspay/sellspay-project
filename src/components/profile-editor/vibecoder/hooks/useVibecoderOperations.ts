@@ -1,4 +1,6 @@
- import { useCallback } from 'react';
+import { useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, SectionStyleOptions } from '../../types';
  import { VibecoderOp, ValidationResult, SUPPORTED_SECTION_TYPES } from '../types';
  
@@ -87,7 +89,7 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
    }, [sections]);
  
    // Apply a list of operations
-   const applyOperations = useCallback((ops: VibecoderOp[]) => {
+  const applyOperations = useCallback(async (ops: VibecoderOp[]) => {
      // Validate all ops first
      for (const op of ops) {
        const result = validateOperation(op);
@@ -96,8 +98,12 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
        }
      }
  
-     setSections(prevSections => {
+    // We need to handle database operations for addSection, removeSection, and updateSection
+    const prevSections = sections;
        let newSections = [...prevSections];
+    const sectionsToInsert: any[] = [];
+    const sectionIdsToDelete: string[] = [];
+    const sectionsToUpdate: { id: string; patch: any }[] = [];
  
        for (const op of ops) {
          switch (op.op) {
@@ -108,10 +114,13 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
               // AI-first: do NOT merge in templates/presets. The Vibecoder must provide full content + style.
               const aiContent = (op.section?.content || {}) as SectionContent;
               const aiStyle = (op.section?.style_options || {}) as SectionStyleOptions;
+            
+            const newSectionId = crypto.randomUUID();
+            const profileId = prevSections[0]?.profile_id || '';
  
              const newSection: ProfileSection = {
-               id: crypto.randomUUID(),
-               profile_id: prevSections[0]?.profile_id || '',
+              id: newSectionId,
+              profile_id: profileId,
                section_type: op.section?.section_type as SectionType,
                display_order: 0,
                 content: aiContent,
@@ -134,10 +143,22 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
  
              // Update display orders
              newSections = newSections.map((s, i) => ({ ...s, display_order: i }));
+            
+            // Queue for database insert
+            sectionsToInsert.push({
+              id: newSectionId,
+              profile_id: profileId,
+              section_type: op.section?.section_type,
+              display_order: newSection.display_order,
+              content: aiContent,
+              style_options: aiStyle,
+              is_visible: true,
+            });
              break;
            }
  
            case 'removeSection': {
+            sectionIdsToDelete.push(op.sectionId!);
              newSections = newSections.filter(s => s.id !== op.sectionId);
              newSections = newSections.map((s, i) => ({ ...s, display_order: i }));
              break;
@@ -163,6 +184,7 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
            }
  
            case 'updateSection': {
+            const existingSection = newSections.find(s => s.id === op.sectionId);
              newSections = newSections.map(s => {
                if (s.id !== op.sectionId) return s;
               const contentPatch = (op.patch?.content || {}) as Partial<SectionContent>;
@@ -175,6 +197,20 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
                  updated_at: new Date().toISOString(),
                };
              });
+            
+            // Queue for database update
+            if (existingSection) {
+              const contentPatch = (op.patch?.content || {}) as Partial<SectionContent>;
+              const stylePatch = (op.patch?.style_options || {}) as Partial<SectionStyleOptions>;
+              sectionsToUpdate.push({
+                id: op.sectionId!,
+                patch: {
+                  content: { ...existingSection.content, ...contentPatch },
+                  style_options: { ...existingSection.style_options, ...stylePatch },
+                  is_visible: typeof op.patch.is_visible === 'boolean' ? op.patch.is_visible : existingSection.is_visible,
+                },
+              });
+            }
              break;
            }
  
@@ -196,6 +232,10 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
 
         case 'clearAllSections': {
           // Clear all sections for fresh builds
+          // Queue all existing sections for deletion
+          for (const s of newSections) {
+            sectionIdsToDelete.push(s.id);
+          }
           newSections = [];
           break;
         }
@@ -206,15 +246,56 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
          }
        }
  
-       return newSections;
-     });
+    // Perform database operations
+    try {
+      // Delete sections
+      if (sectionIdsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('profile_sections')
+          .delete()
+          .in('id', sectionIdsToDelete);
+        if (deleteError) {
+          console.error('Failed to delete sections:', deleteError);
+          throw deleteError;
+        }
+      }
+
+      // Insert new sections
+      if (sectionsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('profile_sections')
+          .insert(sectionsToInsert as any);
+        if (insertError) {
+          console.error('Failed to insert sections:', insertError);
+          throw insertError;
+        }
+      }
+
+      // Update existing sections
+      for (const update of sectionsToUpdate) {
+        const { error: updateError } = await supabase
+          .from('profile_sections')
+          .update({
+            content: JSON.parse(JSON.stringify(update.patch.content)),
+            style_options: JSON.parse(JSON.stringify(update.patch.style_options)),
+            is_visible: update.patch.is_visible,
+          })
+          .eq('id', update.id);
+        if (updateError) {
+          console.error('Failed to update section:', updateError);
+          throw updateError;
+        }
+      }
  
-      // Push to history after applying - use a callback to get fresh sections
-      setSections(currentSections => {
-        pushHistory({ sections: currentSections });
-        return currentSections;
-      });
-    }, [setSections, pushHistory, validateOperation, onThemeUpdate, onHeaderUpdate]);
+      // Update local state
+      setSections(newSections);
+      pushHistory({ sections: newSections });
+      
+    } catch (error) {
+      console.error('Database operation failed:', error);
+      throw error;
+    }
+  }, [sections, setSections, pushHistory, validateOperation, onThemeUpdate, onHeaderUpdate]);
  
    // Preview operations without applying
    const previewOperations = useCallback((ops: VibecoderOp[]): ProfileSection[] => {
