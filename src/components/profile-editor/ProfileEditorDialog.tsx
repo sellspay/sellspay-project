@@ -31,7 +31,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { 
   X, Plus, GripVertical, Eye, EyeOff, Trash2,
   Link as LinkIcon, Settings, User, Download, Bookmark, Layers, Play,
-  ChevronRight, Undo2, Redo2, Loader2, Check, AlertCircle, Save, Sparkles
+  ChevronRight, Undo2, Redo2, Loader2, Check, AlertCircle, Upload, Sparkles
 } from 'lucide-react';
 import { ProfileSection, SectionType, SECTION_TEMPLATES, AnimationType } from './types';
 import { AddSectionPanel } from './AddSectionPanel';
@@ -481,7 +481,7 @@ export function ProfileEditorDialog({
         .eq('id', profileId);
 
       setSaveStatus('saved');
-      toast.success('Changes saved');
+      toast.success('Changes published');
       onCollectionsChange?.();
       
       // Reset to idle after 2s
@@ -489,7 +489,7 @@ export function ProfileEditorDialog({
     } catch (error) {
       console.error('Error saving changes:', error);
       setSaveStatus('error');
-      toast.error('Failed to save changes');
+      toast.error('Failed to publish changes');
     }
   }, [sections, editorCollections, showRecentUploads, profileId, onCollectionsChange]);
 
@@ -946,22 +946,22 @@ export function ProfileEditorDialog({
                 {saveStatus === 'saving' && (
                   <>
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    Saving...
+                    Publishing...
                   </>
                 )}
                 {saveStatus === 'saved' && (
                   <span className="text-primary flex items-center gap-1">
                     <Check className="w-3 h-3" />
-                    Saved
+                    Published
                   </span>
                 )}
                 {saveStatus === 'error' && (
                   <span className="text-destructive flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
-                    Save failed
+                    Publish failed
                   </span>
                 )}
-                {saveStatus === 'idle' && 'Ready to save'}
+                {saveStatus === 'idle' && 'Draft'}
               </span>
 
               {/* Undo/Redo buttons */}
@@ -996,7 +996,7 @@ export function ProfileEditorDialog({
                 </Tooltip>
               </div>
 
-              {/* Manual Save button */}
+              {/* Publish button */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button 
@@ -1009,12 +1009,12 @@ export function ProfileEditorDialog({
                     {saveStatus === 'saving' ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Save className="w-4 h-4" />
+                      <Upload className="w-4 h-4" />
                     )}
-                    Save
+                    Publish
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Save changes now (⌘S)</TooltipContent>
+                <TooltipContent>Publish changes (⌘S)</TooltipContent>
               </Tooltip>
 
               {/* Close button */}
