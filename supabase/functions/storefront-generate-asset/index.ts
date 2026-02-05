@@ -45,6 +45,7 @@
          messages: [
            { role: "user", content: fullPrompt },
          ],
+          modalities: ["image", "text"],
        }),
      });
  
@@ -67,9 +68,13 @@
      const data = await response.json();
      
      // Extract image URL from response
-     const imageUrl = data.choices?.[0]?.message?.content;
+      // Nano Banana returns images in the images array
+      const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
      if (!imageUrl) {
-       throw new Error("No image generated");
+        // Fallback: check if there's text content describing an error
+        const textContent = data.choices?.[0]?.message?.content;
+        console.error("Image generation response:", JSON.stringify(data));
+        throw new Error(textContent || "No image generated");
      }
  
      // Save to database

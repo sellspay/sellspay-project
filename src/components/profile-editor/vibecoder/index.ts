@@ -3,8 +3,11 @@
  export { AssetDraftTray } from './AssetDraftTray';
  export { VibecoderMessage } from './VibecoderMessage';
  export { QuickActionChips } from './QuickActionChips';
+ export { CostWarningDialog } from './CostWarningDialog';
+ export { OperationPreview } from './OperationPreview';
  export * from './types';
  export { useVibecoderChat } from './hooks/useVibecoderChat';
  export { useVibecoderOperations } from './hooks/useVibecoderOperations';
  export { useBrandProfile } from './hooks/useBrandProfile';
  export { useGeneratedAssets } from './hooks/useGeneratedAssets';
+ export { useVibecoderCredits } from './hooks/useVibecoderCredits';

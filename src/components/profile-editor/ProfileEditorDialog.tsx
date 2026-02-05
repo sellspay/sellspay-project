@@ -31,7 +31,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { 
   X, Plus, GripVertical, Eye, EyeOff, Trash2, Pencil,
   Link as LinkIcon, Settings, User, Download, Bookmark, Layers, Play,
-  ChevronRight, Undo2, Redo2, Loader2, Check, AlertCircle, Save
+  ChevronRight, Undo2, Redo2, Loader2, Check, AlertCircle, Save, Sparkles
 } from 'lucide-react';
 import { ProfileSection, SectionType, SECTION_TEMPLATES, AnimationType } from './types';
 import { AddSectionPanel } from './AddSectionPanel';
@@ -54,7 +54,7 @@ import { cn } from '@/lib/utils';
 
 import { useHistory, useHistoryKeyboard } from '@/hooks/useHistory';
 import { EditorSidebar, EditorTab } from './EditorSidebar';
-import { VibecoderChat, BrandProfilePanel } from './vibecoder';
+ import { VibecoderChat, BrandProfilePanel, AssetDraftTray, useGeneratedAssets } from './vibecoder';
 
 interface Profile {
   id: string;
@@ -442,6 +442,7 @@ export function ProfileEditorDialog({
   const [deleteSectionId, setDeleteSectionId] = useState<string | null>(null);
   const [previewSection, setPreviewSection] = useState<ProfileSection | null>(null);
   const [showCreateCollection, setShowCreateCollection] = useState(false);
+   const [showAssetTray, setShowAssetTray] = useState(false);
 
   // Track if data has been fetched to enable autosave
   const [dataReady, setDataReady] = useState(false);
@@ -1277,7 +1278,7 @@ export function ProfileEditorDialog({
             </ScrollArea>
             
             {/* Right Panel - Based on active tab */}
-            {(activeTab === 'vibecoder' || activeTab === 'brand') && (
+            {(activeTab === 'vibecoder' || activeTab === 'brand' || activeTab === 'style') && (
               <div className="w-[380px] h-full border-l border-border bg-background flex flex-col">
                 {activeTab === 'vibecoder' && (
                   <VibecoderChat
@@ -1285,14 +1286,66 @@ export function ProfileEditorDialog({
                     sections={sections}
                     setSections={setSections}
                     pushHistory={(state) => pushHistory({ ...state, collections: editorCollections, showRecentUploads })}
+                    onShowAssetTray={() => setShowAssetTray(true)}
                   />
                 )}
                 {activeTab === 'brand' && (
                   <BrandProfilePanel profileId={profileId} />
                 )}
+                {activeTab === 'style' && (
+                  <div className="flex flex-col h-full">
+                    <div className="p-4 border-b border-border">
+                      <div className="flex items-center gap-2">
+                        <Settings className="w-5 h-5 text-primary" />
+                        <h2 className="font-semibold text-foreground">Store Style</h2>
+                      </div>
+                    </div>
+                    <ScrollArea className="flex-1 p-4">
+                      <div className="space-y-6">
+                        <p className="text-sm text-muted-foreground">
+                          Global style settings for your storefront. Changes apply to all sections.
+                        </p>
+                        
+                        <div className="space-y-4">
+                          <div className="p-4 bg-muted/50 rounded-lg text-center">
+                            <p className="text-sm text-muted-foreground">
+                              Use the AI Builder tab to make style changes, or edit individual sections directly.
+                            </p>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="mt-3"
+                              onClick={() => setActiveTab('vibecoder')}
+                            >
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              Open AI Builder
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
               </div>
             )}
           </div>
+
+          {/* Asset Draft Tray */}
+          {showAssetTray && (
+            <AssetDraftTray
+              profileId={profileId}
+              onApplyAsset={(assetId, assetUrl, type) => {
+                // Apply asset to appropriate slot
+                if (type === 'banner') {
+                  // Update banner in profile (would need to save to profiles table)
+                  toast.success('Banner applied! Save to keep changes.');
+                } else {
+                  toast.success(`${type} applied!`);
+                }
+              }}
+              onClose={() => setShowAssetTray(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

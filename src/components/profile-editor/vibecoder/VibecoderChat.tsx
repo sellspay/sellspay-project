@@ -2,13 +2,18 @@
  import { Button } from '@/components/ui/button';
  import { Input } from '@/components/ui/input';
  import { ScrollArea } from '@/components/ui/scroll-area';
- import { Sparkles, Send, Loader2, Trash2 } from 'lucide-react';
+ import { Sparkles, Send, Loader2, Trash2, ImageIcon } from 'lucide-react';
  import { useVibecoderChat } from './hooks/useVibecoderChat';
  import { useVibecoderOperations } from './hooks/useVibecoderOperations';
  import { useBrandProfile } from './hooks/useBrandProfile';
+ import { useGeneratedAssets } from './hooks/useGeneratedAssets';
+ import { useVibecoderCredits } from './hooks/useVibecoderCredits';
  import { VibecoderMessage } from './VibecoderMessage';
  import { QuickActionChips } from './QuickActionChips';
+ import { CostWarningDialog } from './CostWarningDialog';
+ import { OperationPreview } from './OperationPreview';
  import { ProfileSection } from '../types';
+ import { CREDIT_COSTS, AssetRequest } from './types';
  import { toast } from 'sonner';
  
  interface VibecoderChatProps {
@@ -16,6 +21,7 @@
    sections: ProfileSection[];
    setSections: React.Dispatch<React.SetStateAction<ProfileSection[]>>;
    pushHistory: (state: { sections: ProfileSection[] }) => void;
+   onShowAssetTray?: () => void;
  }
  
  export function VibecoderChat({
@@ -23,17 +29,24 @@
    sections,
    setSections,
    pushHistory,
+   onShowAssetTray,
  }: VibecoderChatProps) {
    const [input, setInput] = useState('');
    const scrollRef = useRef<HTMLDivElement>(null);
    const inputRef = useRef<HTMLInputElement>(null);
+   const [showCostWarning, setShowCostWarning] = useState(false);
+   const [pendingAssetRequest, setPendingAssetRequest] = useState<{ type: string; prompt: string; spec?: AssetRequest['spec'] } | null>(null);
+   const [showOperationPreview, setShowOperationPreview] = useState(false);
  
    const { brandProfile } = useBrandProfile(profileId);
+   const { generateAsset, generating } = useGeneratedAssets(profileId);
+   const { credits, checkCredits } = useVibecoderCredits(profileId);
  
    const {
      messages,
      isLoading,
      pendingOps,
+     pendingAssetRequests,
      sendMessage,
      applyPendingOps,
      discardPendingOps,
@@ -46,6 +59,50 @@
      setSections,
      pushHistory,
    });
+
+   // Process asset requests from AI
+   useEffect(() => {
+     if (pendingAssetRequests && pendingAssetRequests.length > 0) {
+       // Show the first asset request as a cost warning
+       const firstRequest = pendingAssetRequests[0];
+       const assetType = firstRequest.kind === 'image' ? (firstRequest.spec?.aspect === '21:9' ? 'banner' : 'thumbnail') : 'thumbnail';
+       setPendingAssetRequest({
+         type: assetType,
+         prompt: firstRequest.spec?.purpose || 'Generate brand-aligned image',
+         spec: firstRequest.spec,
+       });
+       
+       // Calculate cost
+       const costType = assetType === 'banner' ? 'banner_image' : 'thumbnail';
+       const { cost, balance } = checkCredits(costType, firstRequest.count || 1);
+       
+       if (cost > 0) {
+         setShowCostWarning(true);
+       } else {
+         // Free, generate immediately
+         handleGenerateAsset(assetType, firstRequest.spec?.purpose || 'Generate image', firstRequest.spec);
+       }
+     }
+   }, [pendingAssetRequests]);
+
+   const handleGenerateAsset = async (type: string, prompt: string, spec?: AssetRequest['spec']) => {
+     try {
+       await generateAsset(type as any, prompt, spec);
+       toast.success('Asset generated! Check the asset tray.');
+       onShowAssetTray?.();
+     } catch (error) {
+       toast.error('Failed to generate asset');
+       console.error(error);
+     }
+     setPendingAssetRequest(null);
+   };
+
+   const handleConfirmGeneration = () => {
+     if (pendingAssetRequest) {
+       handleGenerateAsset(pendingAssetRequest.type, pendingAssetRequest.prompt, pendingAssetRequest.spec);
+     }
+     setShowCostWarning(false);
+   };
  
    // Scroll to bottom on new messages
    useEffect(() => {
@@ -81,32 +138,60 @@
  
    const handlePreview = () => {
      if (pendingOps) {
-       const previewSections = previewOperations(pendingOps);
-       console.log('Preview sections:', previewSections);
-       toast.info('Preview shown in editor');
+        setShowOperationPreview(true);
      }
+   };
+
+   const handleApplyFromPreview = () => {
+     if (pendingOps) {
+       try {
+         applyOperations(pendingOps);
+         applyPendingOps();
+         toast.success('Changes applied successfully');
+       } catch (error) {
+         toast.error('Failed to apply changes');
+         console.error(error);
+       }
+     }
+     setShowOperationPreview(false);
    };
  
    const isEmpty = messages.length === 0;
  
    return (
-     <div className="flex flex-col h-full bg-background">
+    <>
+      <div className="flex flex-col h-full bg-background">
        {/* Header */}
        <div className="flex items-center justify-between p-4 border-b border-border">
          <div className="flex items-center gap-2">
            <Sparkles className="w-5 h-5 text-primary" />
            <h2 className="font-semibold text-foreground">AI Builder</h2>
+            {generating && (
+              <span className="text-xs text-muted-foreground animate-pulse">Generating...</span>
+            )}
          </div>
-         {messages.length > 0 && (
-           <Button
-             variant="ghost"
-             size="sm"
-             onClick={clearChat}
-             className="text-muted-foreground hover:text-foreground"
-           >
-             <Trash2 className="w-4 h-4" />
-           </Button>
-         )}
+          <div className="flex items-center gap-1">
+            {onShowAssetTray && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onShowAssetTray}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <ImageIcon className="w-4 h-4" />
+              </Button>
+            )}
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearChat}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
        </div>
  
        {/* Chat area */}
@@ -183,6 +268,28 @@
            </Button>
          </div>
        </form>
-     </div>
-   );
- }
+      </div>
+
+       {/* Cost Warning Dialog */}
+       <CostWarningDialog
+        open={showCostWarning}
+        onOpenChange={setShowCostWarning}
+        cost={pendingAssetRequest ? CREDIT_COSTS[pendingAssetRequest.type === 'banner' ? 'banner_image' : 'thumbnail'] : 0}
+        balance={credits}
+        actionDescription={`Generate a ${pendingAssetRequest?.type || 'image'} for your storefront`}
+        onConfirm={handleConfirmGeneration}
+      />
+
+      {/* Operation Preview Dialog */}
+       {pendingOps && (
+        <OperationPreview
+          open={showOperationPreview}
+          onOpenChange={setShowOperationPreview}
+          operations={pendingOps}
+          onApply={handleApplyFromPreview}
+          onCancel={() => setShowOperationPreview(false)}
+        />
+      )}
+    </>
+  );
+}
