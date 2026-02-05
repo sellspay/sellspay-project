@@ -5,6 +5,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 gsap.registerPlugin(ScrollTrigger);
 
 import aiPanel1 from "@/assets/ai-panel-1.png";
+ import aiPanel5 from "@/assets/ai-panel-5.png";
 
 type Step = {
   bg: string;
@@ -52,6 +53,7 @@ const STEPS: Step[] = [
     subtext: "rgba(10,10,10,0.75)",
     // Panel 5
     headline: ["Generate", "images"],
+     image: aiPanel5,
   },
   {
     bg: "#0a0a0a",
