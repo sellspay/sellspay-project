@@ -188,8 +188,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
  
         {/* Main content - split view */}
         <div className="flex-1 flex min-h-0">
-          {/* Preview panel - completely isolated from chat */}
-          <div className="flex-1 border-r border-border/30 bg-muted/20 overflow-hidden relative isolate">
+          {/* Preview panel - completely isolated from chat with strict containment */}
+          <div 
+            className="flex-1 border-r border-border/30 bg-muted/20 overflow-hidden relative"
+            style={{ isolation: 'isolate', contain: 'strict' }}
+          >
             <AIBuilderPreview layout={layout} isEmpty={isEmpty} isBuilding={isBuilding} />
           </div>
 
