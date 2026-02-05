@@ -198,27 +198,60 @@ OUTPUT: Always use the apply_storefront_changes tool with complete content.`;
        throw new Error(`AI gateway error: ${response.status}`);
      }
  
-     const data = await response.json();
+      const data = await response.json();
+
+      // Extract tool call result (handle minor shape differences across providers)
+      const msg = data?.choices?.[0]?.message;
+      const toolCall = msg?.tool_calls?.[0];
+
+      // If the model didn't return a tool call, avoid 500s: return a safe default op.
+      if (!toolCall || toolCall?.function?.name !== "apply_storefront_changes") {
+        const fallbackMessage =
+          (typeof msg?.content === "string" && msg.content.trim())
+            ? msg.content
+            : "I couldn't generate a structured storefront patch for that request. I added a starter hero section you can tweak.";
+
+        return new Response(
+          JSON.stringify({
+            message: fallbackMessage,
+            ops: [
+              {
+                op: "addSection",
+                after: null,
+                section: {
+                  section_type: "headline",
+                  content: {
+                    title: "Welcome to My Creative Studio",
+                    subtitle: "Premium digital assets crafted with intent.",
+                  },
+                  style_options: {
+                    colorScheme: "dark",
+                    height: "large",
+                    textAlign: "center",
+                  },
+                },
+              },
+            ],
+            asset_requests: [],
+            preview_notes: ["Fallback applied because the AI response was missing a tool call."],
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      let result: any;
+      try {
+        result = typeof toolCall.function.arguments === "string"
+          ? JSON.parse(toolCall.function.arguments)
+          : toolCall.function.arguments;
+      } catch (e) {
+        console.error("Failed to parse tool arguments:", e, toolCall.function.arguments);
+        result = { message: "I generated changes but couldn't parse them. I added a starter hero section.", ops: [] };
+      }
      
-     // Extract tool call result
-     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-     if (!toolCall || toolCall.function.name !== "apply_storefront_changes") {
-       // Fallback: try to parse from content if no tool call
-       const content = data.choices?.[0]?.message?.content;
-       if (content) {
-         return new Response(JSON.stringify({
-           message: content,
-           ops: [],
-         }), {
-           headers: { ...corsHeaders, "Content-Type": "application/json" },
-         });
-       }
-       throw new Error("No valid response from AI");
-     }
- 
-     const result = JSON.parse(toolCall.function.arguments);
-     
-     // Validate operations
+      // Validate operations
       const validatedOps = (result.ops || []).filter((op: { op: string; section?: { section_type?: string } }) => {
        const validOps = ["addSection", "removeSection", "moveSection", "updateSection", "updateTheme", "updateHeaderContent", "assignAssetToSlot"];
         if (!validOps.includes(op.op)) return false;
@@ -302,9 +335,27 @@ OUTPUT: Always use the apply_storefront_changes tool with complete content.`;
         return op;
       });
 
+      // Ensure we always return something apply-able to prevent infinite "Thinking..."
+      const finalOps = enrichedOps.length > 0
+        ? enrichedOps
+        : [
+            {
+              op: "addSection",
+              after: null,
+              section: {
+                section_type: "text",
+                content: {
+                  heading: "Quick intro",
+                  text: "Tell visitors what you make, who it's for, and what makes your assets different.",
+                },
+                style_options: { colorScheme: "white", height: "medium" },
+              },
+            },
+          ];
+
      return new Response(JSON.stringify({
        message: result.message || "Here are my suggestions.",
-        ops: enrichedOps,
+        ops: finalOps,
        asset_requests: result.asset_requests || [],
        preview_notes: result.preview_notes || [],
      }), {
