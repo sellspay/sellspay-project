@@ -2480,6 +2480,74 @@ export type Database = {
         }
         Relationships: []
       }
+      vibecoder_messages: {
+        Row: {
+          code_snapshot: string | null
+          content: string | null
+          created_at: string
+          id: string
+          project_id: string
+          rating: number | null
+          role: string
+        }
+        Insert: {
+          code_snapshot?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          project_id: string
+          rating?: number | null
+          role: string
+        }
+        Update: {
+          code_snapshot?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          rating?: number | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vibecoder_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "vibecoder_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vibecoder_projects: {
+        Row: {
+          created_at: string
+          id: string
+          last_edited_at: string
+          name: string | null
+          thumbnail_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_edited_at?: string
+          name?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_edited_at?: string
+          name?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wallet_ledger_entries: {
         Row: {
           amount_cents: number

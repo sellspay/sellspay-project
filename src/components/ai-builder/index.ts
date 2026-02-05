@@ -10,3 +10,6 @@ export { LAYOUT_PATTERNS, getPatternRegistrySummary } from './layoutPatterns';
 export { VibecoderPreview } from './VibecoderPreview';
 export { VibecoderChat } from './VibecoderChat';
 export { useStreamingCode } from './useStreamingCode';
+export { ProjectSidebar } from './ProjectSidebar';
+export { VibecoderMessageBubble } from './VibecoderMessageBubble';
+export { useVibecoderProjects } from './hooks/useVibecoderProjects';
