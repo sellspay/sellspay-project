@@ -31,7 +31,7 @@
      };
      setMessages(prev => [...prev, userMessage]);
  
-     try {
+      try {
        // Build context for AI
        const context = {
          sections: sections.map(s => ({
@@ -57,27 +57,50 @@
          })),
        };
  
-       // Call edge function
-       const { data, error: invokeError } = await supabase.functions.invoke('storefront-vibecoder', {
-         body: {
-           message: text,
-           context,
-           profileId,
-         },
-       });
- 
-       if (invokeError) {
-         // Handle rate limits and credit errors
-         if (invokeError.message?.includes('429')) {
-           throw new Error('Rate limit exceeded. Please wait a moment and try again.');
-         }
-         if (invokeError.message?.includes('402')) {
-           throw new Error('Credits exhausted. Please add more credits to continue.');
-         }
-         throw invokeError;
-       }
- 
-       const response = data as VibecoderResponse;
+        // Call backend function (direct fetch) with a hard timeout so we never spin forever
+        const controller = new AbortController();
+        const timeoutMs = 25_000;
+        const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+        let response: VibecoderResponse;
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const accessToken = sessionData.session?.access_token;
+          if (!accessToken) throw new Error('You need to be logged in to use the AI Builder.');
+
+          const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/storefront-vibecoder`;
+          const resp = await fetch(url, {
+            method: 'POST',
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              message: text,
+              context,
+              profileId,
+            }),
+          });
+
+          let payload: any = null;
+          try {
+            payload = await resp.json();
+          } catch {
+            // ignore
+          }
+
+          if (!resp.ok) {
+            if (resp.status === 429) throw new Error(payload?.error || 'Rate limit exceeded. Please wait and try again.');
+            if (resp.status === 402) throw new Error(payload?.error || 'Credits exhausted. Please add more credits.');
+            throw new Error(payload?.error || `AI request failed (${resp.status}).`);
+          }
+
+          response = payload as VibecoderResponse;
+        } finally {
+          window.clearTimeout(timeoutId);
+        }
  
        // Add assistant message
        const assistantMessage: ChatMessage = {
@@ -111,9 +134,14 @@
          },
        ]);
  
-     } catch (err) {
+      } catch (err) {
        console.error('Error in vibecoder chat:', err);
-       const errorMessage = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+        const errorMessage =
+          err instanceof DOMException && err.name === 'AbortError'
+            ? 'AI request timed out. Please try again.'
+            : err instanceof Error
+              ? err.message
+              : 'Something went wrong. Please try again.';
        setError(errorMessage);
        
        // Add error message to chat
