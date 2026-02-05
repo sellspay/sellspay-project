@@ -1422,7 +1422,7 @@ const ProfilePage: React.FC = () => {
           {activeTab === 'collections' && (
             <>
               {/* Edit Controls for own profile */}
-              {isOwnProfile && profile.is_seller && (
+                  {isOwnProfile && (profile.is_seller || profile.is_creator) && (
                 <div className="flex justify-end items-center mb-6 gap-2">
                   <Button
                     variant="default"
