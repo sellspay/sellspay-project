@@ -7,15 +7,14 @@ interface VibecoderPreviewProps {
   isStreaming?: boolean;
 }
 
-// Fake "hacker" build steps for the loading overlay
+// Storefront-specific build steps for the loading overlay
 const BUILD_STEPS = [
-  "Analyzing prompt intent...",
-  "Scaffolding React component structure...",
-  "Configuring Tailwind CSS arbitrary values...",
-  "Injecting Lucide icons...",
-  "Optimizing responsive layouts...",
-  "Compiling framer-motion animations...",
-  "Finalizing render cycle..."
+  "Analyzing store brand identity...",
+  "Structuring storefront layout...",
+  "Designing product grids...",
+  "Polishing typography & colors...",
+  "Injecting conversion elements...",
+  "Finalizing store preview..."
 ];
 
 // Build Overlay - The "Hacker Terminal" that hides the ugly streaming
