@@ -146,10 +146,10 @@ export function AIToolsReveal() {
         trigger: section,
         start: "top top",
         end: () => `+=${(panelCount - 1) * stepDuration * window.innerHeight}`,
-        scrub: 0.5,
+        scrub: true,
         pin: section,
         pinSpacing: true,
-        pinType: "transform",
+        anticipatePin: 1,
         invalidateOnRefresh: true,
         onUpdate: (self) => updateHeadlineFromProgress(self.progress),
         onRefresh: (self) => {
