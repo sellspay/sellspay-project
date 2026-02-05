@@ -339,7 +339,7 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
     return (
       <section
         ref={sectionRef}
-        className="relative w-full will-change-transform overflow-x-hidden"
+        className="relative w-full will-change-transform"
       >
         {/*
           IMPORTANT:
@@ -366,7 +366,7 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
                </span>
              </h2>
            </div>
-           <div className="lg:absolute lg:right-[3%] xl:right-[4%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:block">
+            <div className="lg:absolute lg:right-[3%] xl:right-[4%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:block overflow-x-hidden">
              <div
                ref={deckRef}
               className="deck relative w-[85vw] sm:w-[75vw] md:w-[65vw] lg:w-[48vw] xl:w-[50vw] max-w-[800px] aspect-[16/10] overflow-visible"
