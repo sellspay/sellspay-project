@@ -1041,17 +1041,27 @@ export function ProfileEditorDialog({
           </div>
 
           {/* Main content area */}
-          <div className="relative z-10 flex-1 h-[calc(100vh-57px)] flex items-start justify-center overflow-hidden">
-            <ScrollArea className="h-full w-full">
+          <div className="relative z-10 flex-1 h-[calc(100vh-57px)] flex overflow-hidden">
+            {/* Left Sidebar - Tab Icons */}
+            <EditorSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+            
+            {/* Center - Live Preview */}
+            <ScrollArea className="flex-1 h-full">
               <div className="max-w-4xl mx-auto px-4 py-8">
                 {/* Profile Card */}
-                <div className="bg-card/90 backdrop-blur-md rounded-2xl border border-border/50 overflow-hidden">
+                <div className="bg-card/90 backdrop-blur-md rounded-2xl border border-border/50 overflow-hidden relative group/header">
                   {/* Banner */}
-                  <div className="relative h-40 bg-gradient-to-b from-primary/20 to-background overflow-hidden">
+                  <div className="relative h-40 bg-gradient-to-b from-primary/20 to-background overflow-hidden group/banner">
                     {profile.banner_url && (
                       <img src={profile.banner_url} alt="Banner" className="w-full h-full object-cover" />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    {/* Locked header tooltip */}
+                    <div className="absolute top-2 right-2 opacity-0 group-hover/banner:opacity-100 transition-opacity">
+                      <div className="bg-background/90 backdrop-blur-sm text-xs px-2 py-1 rounded border border-border">
+                        🔒 Header layout is locked
+                      </div>
+                    </div>
                   </div>
 
                   {/* Profile content */}
@@ -1265,6 +1275,23 @@ export function ProfileEditorDialog({
                 </div>
               </div>
             </ScrollArea>
+            
+            {/* Right Panel - Based on active tab */}
+            {(activeTab === 'vibecoder' || activeTab === 'brand') && (
+              <div className="w-[380px] h-full border-l border-border bg-background flex flex-col">
+                {activeTab === 'vibecoder' && (
+                  <VibecoderChat
+                    profileId={profileId}
+                    sections={sections}
+                    setSections={setSections}
+                    pushHistory={(state) => pushHistory({ ...state, collections: editorCollections, showRecentUploads })}
+                  />
+                )}
+                {activeTab === 'brand' && (
+                  <BrandProfilePanel profileId={profileId} />
+                )}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
