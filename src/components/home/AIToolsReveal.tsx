@@ -52,8 +52,6 @@ const STEPS: Step[] = [
 const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a1a1a"];
 const STEP_DISTANCE_DESKTOP = 500;
 const STEP_DISTANCE_MOBILE = 300;
-const STACK_OFFSET = 12;
-const STACK_SCALE_STEP = 0.02;
 
 export function AIToolsReveal() {
   const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -94,15 +92,12 @@ export function AIToolsReveal() {
       gsap.set(section, { backgroundColor: STEPS[0].bg });
       if (headlineEl) gsap.set(headlineEl, { color: STEPS[0].text });
 
-      // Stack cards: LAST card starts on top (will be pushed down as we scroll)
-      // Cards are rendered in DOM order 0,1,2,3,4,5
-      // Initially: card 0 visible on top, cards 1-5 positioned below (off-screen)
+      // Cards stack ON TOP - higher index cards slide up and COVER lower ones
+      // Card 0 visible first, card 1 slides up to cover it, card 2 covers card 1, etc.
       cards.forEach((card, i) => {
-        // First card (i=0) is visible, others start below
         gsap.set(card, { 
-          zIndex: panelCount - i, 
+          zIndex: i + 1, // Higher index = higher z-index = on top
           yPercent: i === 0 ? 0 : 100,
-          scale: 1
         });
       });
 
@@ -142,37 +137,16 @@ export function AIToolsReveal() {
           const activeIdx = local >= 0.3 ? Math.min(panelCount - 1, base + 1) : base;
           setHeadline(activeIdx);
 
-          // Stack animation: push previous cards up and scale them down
+          // Each card slides up from below and COVERS the previous cards
           cards.forEach((card, i) => {
             if (i === 0) return; // First card stays put
             
             const cardProgress = (clamped - (i - 1) * stepP) / stepP;
             const clampedCardProgress = Math.max(0, Math.min(1, cardProgress));
             
-            // Card slides up from 100% to 0%
+            // Card slides up from 100% (below) to 0% (covering previous)
             const yPercent = 100 - (clampedCardProgress * 100);
             gsap.set(card, { yPercent });
-          });
-
-          // Scale and offset previous cards as new ones stack on top
-          cards.forEach((card, i) => {
-            // How many cards are stacked on top of this one?
-            const cardsAbove = cards.reduce((count, _, j) => {
-              if (j <= i) return count;
-              const cardProgress = (clamped - (j - 1) * stepP) / stepP;
-              return cardProgress > 0.5 ? count + 1 : count;
-            }, 0);
-            
-            if (cardsAbove > 0) {
-              const scale = 1 - (cardsAbove * STACK_SCALE_STEP);
-              const offsetY = -(cardsAbove * STACK_OFFSET);
-              gsap.set(card, { 
-                scale: Math.max(0.85, scale),
-                y: offsetY
-              });
-            } else {
-              gsap.set(card, { scale: 1, y: 0 });
-            }
           });
         },
       });
