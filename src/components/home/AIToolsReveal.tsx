@@ -179,9 +179,18 @@ export function AIToolsReveal() {
         color: steps[i + 1].text,
         duration: animationDuration * 0.5,
       }, startTime);
-    }
 
-    tl.duration((panelCount - 1) * stepDuration);
+      // Add a real pause segment so the timeline time matches stepDuration.
+      // Without this, the timeline compresses time (no tween during the pause),
+      // and any "time -> panel index" mapping becomes incorrect.
+      tl.to(
+        {},
+        {
+          duration: pauseDuration,
+        },
+        startTime + animationDuration
+      );
+    }
 
     // Keep headline perfectly in-sync with scroll position in BOTH directions.
     // Using tl.call() is fragile when scrubbing/reversing.
