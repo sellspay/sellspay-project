@@ -68,6 +68,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     rateMessage,
     getLastCodeSnapshot,
     getPreviousCodeSnapshot,
+    restoreToVersion,
+    refreshMessages,
   } = useVibecoderProjects();
   
   // Chat response state for intent router
@@ -222,13 +224,25 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   }, [getPreviousCodeSnapshot, setCode]);
 
-  // Restore specific code version
-  const handleRestoreCode = useCallback((codeSnapshot: string) => {
-    setCode(codeSnapshot);
-    saveVibecoderCode(codeSnapshot);
-    addMessage('system', 'Restored to a previous version.');
-    toast.success('Restored previous version');
-  }, [setCode, addMessage]);
+  // Restore specific code version (time travel with DB sync)
+  const handleRestoreCode = useCallback(async (messageId: string) => {
+    if (!confirm('Are you sure? This will delete all messages after this point.')) return;
+
+    try {
+      const restoredCode = await restoreToVersion(messageId);
+      
+      if (restoredCode) {
+        setCode(restoredCode);
+        await saveVibecoderCode(restoredCode);
+        toast.success('Restored to previous version');
+      } else {
+        toast.error('No code snapshot found for this version');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to restore';
+      toast.error(message);
+    }
+  }, [restoreToVersion, setCode]);
 
   // Publish the AI layout (with project link for Vibecoder mode)
   const handlePublish = async () => {
@@ -509,7 +523,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
               canUndo={canVibecoderUndo}
               messages={messages}
               onRateMessage={rateMessage}
-              onRestoreCode={handleRestoreCode}
+              onRestoreToVersion={handleRestoreCode}
               projectName={activeProject?.name}
             />
           )}

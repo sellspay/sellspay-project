@@ -16,7 +16,7 @@ interface VibecoderChatProps {
   canUndo: boolean;
   messages: VibecoderMessage[];
   onRateMessage: (messageId: string, rating: -1 | 0 | 1) => void;
-  onRestoreCode: (codeSnapshot: string) => void;
+  onRestoreToVersion: (messageId: string) => void; // Changed: now takes messageId
   projectName?: string;
 }
 
@@ -44,7 +44,7 @@ export function VibecoderChat({
   canUndo,
   messages,
   onRateMessage,
-  onRestoreCode,
+  onRestoreToVersion,
   projectName,
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
@@ -178,7 +178,7 @@ export function VibecoderChat({
             <ChatInterface 
               messages={messages}
               onRateMessage={onRateMessage}
-              onRestoreCode={onRestoreCode}
+              onRestoreToVersion={onRestoreToVersion}
             />
             {isStreaming && (
               <div className="flex gap-4 mb-8">

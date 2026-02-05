@@ -230,6 +230,58 @@ export function useVibecoderProjects() {
     return withCode.length > 1 ? withCode[withCode.length - 2].code_snapshot : null;
   }, [messages]);
 
+  // Restore to a specific message version (time travel)
+  // Deletes all messages after this point and returns the code snapshot
+  const restoreToVersion = useCallback(async (messageId: string): Promise<string | null> => {
+    if (!activeProjectId) return null;
+
+    try {
+      // Call the RPC to delete future messages and get the code snapshot
+      const { data: restoredCode, error } = await supabase.rpc('restore_project_version', {
+        p_project_id: activeProjectId,
+        p_message_id: messageId,
+      });
+
+      if (error) {
+        console.error('Restore RPC error:', error);
+        throw new Error(error.message || 'Failed to restore version');
+      }
+
+      // Re-fetch messages from DB to ensure perfect sync
+      const { data: freshMessages, error: fetchError } = await supabase
+        .from('vibecoder_messages')
+        .select('*')
+        .eq('project_id', activeProjectId)
+        .order('created_at', { ascending: true });
+
+      if (fetchError) {
+        console.error('Failed to re-fetch messages:', fetchError);
+      } else {
+        setMessages(freshMessages as VibecoderMessage[]);
+      }
+
+      return restoredCode;
+    } catch (error) {
+      console.error('Failed to restore version:', error);
+      throw error;
+    }
+  }, [activeProjectId]);
+
+  // Refresh messages from DB (for sync after mutations)
+  const refreshMessages = useCallback(async () => {
+    if (!activeProjectId) return;
+
+    const { data, error } = await supabase
+      .from('vibecoder_messages')
+      .select('*')
+      .eq('project_id', activeProjectId)
+      .order('created_at', { ascending: true });
+
+    if (!error && data) {
+      setMessages(data as VibecoderMessage[]);
+    }
+  }, [activeProjectId]);
+
   // Select project
   const selectProject = useCallback((projectId: string) => {
     setActiveProjectId(projectId);
@@ -251,5 +303,7 @@ export function useVibecoderProjects() {
     rateMessage,
     getLastCodeSnapshot,
     getPreviousCodeSnapshot,
+    restoreToVersion,
+    refreshMessages,
   };
 }

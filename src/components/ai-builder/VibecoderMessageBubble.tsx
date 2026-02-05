@@ -215,14 +215,14 @@ export function VibecoderMessageBubble({
 interface ChatInterfaceProps {
   messages: MessageWithSteps[];
   onRateMessage: (messageId: string, rating: -1 | 0 | 1) => void;
-  onRestoreCode: (codeSnapshot: string) => void;
+  onRestoreToVersion: (messageId: string) => void;
   streamingMessageId?: string | null;
 }
 
 export function ChatInterface({ 
   messages, 
   onRateMessage, 
-  onRestoreCode,
+  onRestoreToVersion,
   streamingMessageId 
 }: ChatInterfaceProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -243,7 +243,7 @@ export function ChatInterface({
           key={msg.id}
           message={msg}
           onRate={(rating) => onRateMessage(msg.id, rating)}
-          onRestoreCode={msg.code_snapshot ? () => onRestoreCode(msg.code_snapshot!) : undefined}
+          onRestoreCode={msg.code_snapshot ? () => onRestoreToVersion(msg.id) : undefined}
           canRestore={index < messages.length - 1 && !!msg.code_snapshot}
           isStreaming={msg.id === streamingMessageId}
         />

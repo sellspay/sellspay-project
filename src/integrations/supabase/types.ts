@@ -2864,6 +2864,10 @@ export type Database = {
         Returns: boolean
       }
       release_held_funds: { Args: never; Returns: number }
+      restore_project_version: {
+        Args: { p_message_id: string; p_project_id: string }
+        Returns: string
+      }
       store_seller_resend_key: {
         Args: { p_api_key: string; p_support_email: string }
         Returns: Json
