@@ -372,7 +372,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const canVibecoderUndo = messages.filter(m => m.code_snapshot).length > 1;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen w-full bg-background flex flex-col overflow-hidden">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="flex items-center gap-4">
@@ -465,7 +465,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       </header>
 
       {/* Main content - split view */}
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Project sidebar (only for Vibecoder mode) */}
         {mode === 'vibecoder' && (
           <ProjectSidebar
@@ -481,9 +481,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           />
         )}
 
-        {/* Preview panel */}
+        {/* Preview panel - min-w-0 allows shrinking, flex-1 fills remaining space */}
         <div 
-          className="flex-1 border-r border-border/30 bg-muted/20 overflow-hidden relative"
+          className="flex-1 min-w-0 border-r border-border/30 bg-muted/20 overflow-hidden relative"
           style={{ isolation: 'isolate', contain: 'strict' }}
         >
           {mode === 'blocks' ? (
@@ -497,8 +497,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           )}
         </div>
 
-        {/* Chat panel */}
-        <div className="w-[420px] shrink-0 flex flex-col bg-background overflow-hidden">
+        {/* Chat panel - shrink-0 prevents growing, fixed width */}
+        <div className="w-[400px] shrink-0 flex flex-col bg-background overflow-hidden">
           {mode === 'blocks' ? (
             <AIBuilderChat
               profileId={profileId}
