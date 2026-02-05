@@ -172,6 +172,7 @@ import { useState, useCallback, useEffect } from 'react';
               message: text,
               context,
               profileId,
+              userId: sessionData.session?.user?.id,
             }),
           });
 
