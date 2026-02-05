@@ -86,6 +86,66 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_runs: {
+        Row: {
+          applied: boolean | null
+          cost_estimate: number | null
+          created_at: string
+          diff_summary: Json | null
+          failure_tags: string[] | null
+          id: string
+          intent_json: Json | null
+          latency_ms: number | null
+          ops_json: Json | null
+          plan_json: Json | null
+          prompt_raw: string
+          repair_attempts: number | null
+          storefront_id: string
+          updated_at: string
+          user_action: Database["public"]["Enums"]["ai_user_action"] | null
+          user_id: string
+          validation_errors: Json | null
+        }
+        Insert: {
+          applied?: boolean | null
+          cost_estimate?: number | null
+          created_at?: string
+          diff_summary?: Json | null
+          failure_tags?: string[] | null
+          id?: string
+          intent_json?: Json | null
+          latency_ms?: number | null
+          ops_json?: Json | null
+          plan_json?: Json | null
+          prompt_raw: string
+          repair_attempts?: number | null
+          storefront_id: string
+          updated_at?: string
+          user_action?: Database["public"]["Enums"]["ai_user_action"] | null
+          user_id: string
+          validation_errors?: Json | null
+        }
+        Update: {
+          applied?: boolean | null
+          cost_estimate?: number | null
+          created_at?: string
+          diff_summary?: Json | null
+          failure_tags?: string[] | null
+          id?: string
+          intent_json?: Json | null
+          latency_ms?: number | null
+          ops_json?: Json | null
+          plan_json?: Json | null
+          prompt_raw?: string
+          repair_attempts?: number | null
+          storefront_id?: string
+          updated_at?: string
+          user_action?: Database["public"]["Enums"]["ai_user_action"] | null
+          user_id?: string
+          validation_errors?: Json | null
+        }
+        Relationships: []
+      }
       collection_items: {
         Row: {
           collection_id: string
@@ -2709,6 +2769,12 @@ export type Database = {
       }
     }
     Enums: {
+      ai_user_action:
+        | "applied"
+        | "edited"
+        | "rejected"
+        | "regenerated"
+        | "undone"
       app_role: "admin" | "moderator" | "user" | "owner"
     }
     CompositeTypes: {
@@ -2837,6 +2903,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_user_action: [
+        "applied",
+        "edited",
+        "rejected",
+        "regenerated",
+        "undone",
+      ],
       app_role: ["admin", "moderator", "user", "owner"],
     },
   },
