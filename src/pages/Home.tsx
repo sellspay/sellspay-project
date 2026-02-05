@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth';
 import HeroSection from '@/components/home/HeroSection';
 import SlidingBanner from '@/components/home/SlidingBanner';
 import { AIToolsReveal } from '@/components/home/AIToolsReveal';
+import { HeroTextIntro } from '@/components/home/HeroTextIntro';
 import { AIStudioPromo } from '@/components/home/AIStudioPromo';
 import { ValueProps } from '@/components/home/ValueProps';
 import { FeaturedCreators } from '@/components/home/FeaturedCreators';
@@ -156,17 +157,8 @@ export default function Home() {
       </Reveal>
 
       {/* AI Tools Reveal */}
-       <Reveal>
-         <section className="pt-10 sm:pt-12 pb-6 sm:pb-8 text-center px-6">
-           <h2
-             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-semibold text-foreground tracking-tight"
-             style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-           >
-             Why creators choose us
-           </h2>
-         </section>
-       </Reveal>
- 
+      <HeroTextIntro />
+
       <AIToolsReveal />
 
       {/* AI Studio Promo Section */}
