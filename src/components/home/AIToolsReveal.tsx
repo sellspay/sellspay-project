@@ -118,12 +118,30 @@
        };
        setHeadline(0);
  
-       const colorTl = gsap.timeline({ paused: true });
+       const colorTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+
+       // Timeline time = step index (0..panelCount-1) for smooth blending
        for (let i = 0; i < panelCount; i++) {
-         const progress = i / (panelCount - 1);
-         colorTl.to(section, { backgroundColor: STEPS[i].bg, duration: 0.05 }, progress);
+         colorTl.to(
+           section,
+           {
+             backgroundColor: STEPS[i].bg,
+             duration: 1,
+             immediateRender: false,
+           },
+           i
+         );
+
          if (headlineEl) {
-           colorTl.to(headlineEl, { color: STEPS[i].text, duration: 0.05 }, progress);
+           colorTl.to(
+             headlineEl,
+             {
+               color: STEPS[i].text,
+               duration: 1,
+               immediateRender: false,
+             },
+             i
+           );
          }
        }
  
@@ -131,14 +149,26 @@
         const stackTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
 
         // zIndex must be deterministic from scroll progress to make reverse scrubbing layer correctly.
-        const applyZ = (activeIdx: number) => {
-          cards.forEach((card, i) => {
-            let z = 0;
-            if (i === activeIdx) z = 1000;
-            else if (i < activeIdx) z = 900 - (activeIdx - i);
-            else z = 100 - i;
-            gsap.set(card, { zIndex: z });
-          });
+       const applyZDuringScrub = (p: number) => {
+         const steps = panelCount - 1;
+         const f = p * steps;
+         const step = Math.floor(f);
+         const t = f - step;
+
+         const current = Math.max(0, Math.min(panelCount - 1, step));
+         const next = Math.max(0, Math.min(panelCount - 1, step + 1));
+
+         // during transition, the incoming card must be on top
+         const topIdx = t > 0.0001 ? next : current;
+
+         cards.forEach((card, i) => {
+           let z = 0;
+           if (i === topIdx) z = 10000;
+           else if (i <= current) z = 9000 - (current - i);
+           else z = 1000 - i;
+
+           gsap.set(card, { zIndex: z });
+         });
         };
 
         const deckTweensAtStep = (activeIdx: number, pos: number) => {
@@ -184,7 +214,7 @@
          scrub: true,
          onUpdate: (self) => {
            stackTl.progress(self.progress);
-           colorTl.progress(self.progress);
+           colorTl.time(self.progress * (panelCount - 1));
  
            // Headline updates only (no transforms) to keep things stable
            const totalTransitions = panelCount - 1;
@@ -195,13 +225,13 @@
            const activeIdx = local >= 0.3 ? Math.min(panelCount - 1, base + 1) : base;
            setHeadline(activeIdx);
 
-            // Deterministic z-index for perfect reverse layering
-            applyZ(activeIdx);
+           // Fractional z-index for perfect forward/reverse layering
+           applyZDuringScrub(self.progress);
          },
        });
 
         // Ensure correct stacking on first paint (before ScrollTrigger emits updates)
-        applyZ(0);
+        applyZDuringScrub(0);
  
        const line1El = headlineLineRefs.current[0];
        const line2El = headlineLineRefs.current[1];
@@ -239,7 +269,7 @@
  
    return (
      <section ref={sectionRef} className="relative w-full will-change-transform">
-       <div className="relative min-h-[100svh] w-full overflow-hidden">
+       <div className="relative min-h-[100svh] w-full overflow-x-hidden overflow-y-visible">
          <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-4 sm:gap-6 lg:gap-0 px-4 sm:px-6 lg:px-0 py-8 lg:py-0">
            <div
              ref={textRef}
