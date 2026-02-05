@@ -92,14 +92,10 @@ export function AIToolsReveal() {
       const cards = cardsRef.current.filter(Boolean) as HTMLDivElement[];
       if (!text || cards.length === 0) return;
 
-      // If anything already exists for this section (StrictMode/HMR), kill it.
-      ScrollTrigger.getAll().forEach((st) => {
-        if (st.trigger === section) st.kill();
-      });
+      // Kill any existing ScrollTrigger for this section (StrictMode/HMR safety)
+      ScrollTrigger.getById("ai-tools-reveal")?.kill();
 
       const panelCount = steps.length;
-      // Use viewport-relative height for responsive card stacking
-      const cardHeight = window.innerHeight * 0.6;
 
       const headlineEl = text.querySelector("[data-headline]") as HTMLElement | null;
 
@@ -111,27 +107,28 @@ export function AIToolsReveal() {
       const stackSpacing = 22;
       const scaleStep = 0.025;
 
-    const getStackY = (activeIndex: number, cardIndex: number) =>
-      -(activeIndex - cardIndex) * stackSpacing;
+      const getStackY = (activeIndex: number, cardIndex: number) =>
+        -(activeIndex - cardIndex) * stackSpacing;
 
-    const getStackScale = (activeIndex: number, cardIndex: number) =>
-      1 - (activeIndex - cardIndex) * scaleStep;
+      const getStackScale = (activeIndex: number, cardIndex: number) =>
+        1 - (activeIndex - cardIndex) * scaleStep;
 
       // Set initial card positions
       cards.forEach((card, idx) => {
         gsap.set(card, {
-          y: idx === 0 ? 0 : cardHeight,
+          y: idx === 0 ? 0 : "100%",
           scale: 1,
-          // newer cards should be on top
           zIndex: idx + 1,
+          opacity: 1,
+          visibility: "visible",
         });
       });
 
-    // Timeline scrubbed by scroll
-      const animationDuration = 0.6; // How long the actual animation takes
-      const pauseDuration = 0.4; // Dead space / pause between animations
-      const stepDuration = animationDuration + pauseDuration; // Total time per step
-    
+      // Timeline scrubbed by scroll
+      const animationDuration = 0.6;
+      const pauseDuration = 0.4;
+      const stepDuration = animationDuration + pauseDuration;
+
       const setHeadline = (idx: number) => {
         const line1 = steps[idx]?.headline?.[0] ?? "";
         const line2 = steps[idx]?.headline?.[1] ?? "";
@@ -140,11 +137,8 @@ export function AIToolsReveal() {
         setHeadlineLines([line1, line2]);
       };
 
-      // Ensure we start at panel 1.
       setHeadline(0);
 
-      // Keep headline logic simple + deterministic: map ScrollTrigger progress
-      // to a step index, then swap ~30% into each transition.
       const updateHeadlineFromProgress = (progress: number) => {
         const totalTransitions = panelCount - 1;
         const stepP = 1 / totalTransitions;
@@ -157,18 +151,23 @@ export function AIToolsReveal() {
         setHeadline(Math.min(panelCount - 1, idx));
       };
 
+      // Calculate scroll distance based on viewport
+      const scrollDistance = (panelCount - 1) * stepDuration * window.innerHeight;
+
       const tl = gsap.timeline({
         defaults: { ease: "none" },
         scrollTrigger: {
           id: "ai-tools-reveal",
           trigger: section,
           start: "top top",
-          end: () => `+=${(panelCount - 1) * stepDuration * window.innerHeight}`,
+          end: `+=${scrollDistance}`,
           scrub: true,
           pin: section,
           pinSpacing: true,
           anticipatePin: 1,
           invalidateOnRefresh: true,
+          fastScrollEnd: true,
+          preventOverlaps: true,
           onUpdate: (self) => updateHeadlineFromProgress(self.progress),
           onRefresh: (self) => updateHeadlineFromProgress(self.progress),
         },
@@ -179,8 +178,6 @@ export function AIToolsReveal() {
         const startTime = i * stepDuration;
         const nextCardIndex = i + 1;
 
-        // Reposition all previously revealed cards into their stacked silhouette positions
-        // Example: when card 2 becomes active, card1 -> -spacing, card0 -> -2*spacing
         tl.to(
           cards.slice(0, nextCardIndex),
           {
@@ -191,7 +188,6 @@ export function AIToolsReveal() {
           startTime
         );
 
-        // Next card slides UP from below to the front
         tl.to(
           cards[nextCardIndex],
           {
@@ -202,10 +198,8 @@ export function AIToolsReveal() {
           startTime
         );
 
-        // Bring the new card above the stack
         tl.set(cards[nextCardIndex], { zIndex: nextCardIndex + 10 }, startTime);
 
-        // Change background color
         tl.to(
           section,
           {
@@ -215,7 +209,6 @@ export function AIToolsReveal() {
           startTime
         );
 
-        // Change text color
         if (headlineEl) {
           tl.to(
             headlineEl,
@@ -227,33 +220,35 @@ export function AIToolsReveal() {
           );
         }
 
-        // Dead-space pause (keeps pacing consistent)
         tl.to(
           {},
-          {
-            duration: pauseDuration,
-          },
+          { duration: pauseDuration },
           startTime + animationDuration
         );
       }
 
-    // Animate headline lines when they change.
-    // Use overwrite to prevent animation build-up when scrubbing quickly.
-    const line1El = headlineLineRefs.current[0];
-    const line2El = headlineLineRefs.current[1];
-    if (line1El && line2El) {
-      gsap.set([line1El, line2El], { willChange: "transform,opacity" });
-    }
+      // Animate headline lines when they change.
+      const line1El = headlineLineRefs.current[0];
+      const line2El = headlineLineRefs.current[1];
+      if (line1El && line2El) {
+        gsap.set([line1El, line2El], { willChange: "transform,opacity" });
+      }
 
-      const onResize = () => ScrollTrigger.refresh();
+      // Refresh on resize and after images load
+      const onResize = () => {
+        ScrollTrigger.refresh();
+      };
       window.addEventListener("resize", onResize);
 
-      // Ensure correct measurements on first paint
-      ScrollTrigger.refresh();
+      // Important: refresh after fonts/images are ready to prevent jolt
+      if (document.readyState === "complete") {
+        ScrollTrigger.refresh();
+      } else {
+        window.addEventListener("load", () => ScrollTrigger.refresh(), { once: true });
+      }
 
       return () => {
         window.removeEventListener("resize", onResize);
-        // IMPORTANT: don't kill *all* triggers on the page; only ours.
         tl.scrollTrigger?.kill();
         tl.kill();
       };
@@ -279,7 +274,7 @@ export function AIToolsReveal() {
   }, [headlineLines[0], headlineLines[1]]);
 
   return (
-    <section ref={sectionRef} className="relative w-full">
+    <section ref={sectionRef} className="relative w-full will-change-transform">
       {/* Full viewport pinned area */}
       <div className="relative h-screen w-full overflow-hidden">
         {/* Responsive container for proper spacing */}
@@ -333,6 +328,8 @@ export function AIToolsReveal() {
                         src={step.image} 
                         alt={step.headline.join(' ')} 
                         className="h-full w-full object-cover"
+                        loading="eager"
+                        decoding="async"
                       />
                     ) : (
                       <div className="h-full w-full flex items-center justify-center">
