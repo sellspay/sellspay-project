@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useSubscription } from "@/hooks/useSubscription";
 import MainLayout from "@/components/layout/MainLayout";
-import { Check, X, Sparkles, Zap, Shield, ChevronDown, ChevronUp, Cpu, Image as ImageIcon, Video, Loader2 } from "lucide-react";
+import { Check, X, Sparkles, Zap, Shield, ChevronDown, ChevronUp, Image as ImageIcon, Video, Loader2, Code2, Palette, Film } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -111,45 +111,104 @@ function FeatureRow({ feature }: { feature: { text: string; included?: boolean; 
   );
 }
 
-function CreditBreakdown() {
+function ToolShowcase() {
   return (
-    <div className="w-full max-w-4xl mx-auto mt-20 p-8 rounded-3xl bg-zinc-900/50 border border-zinc-800 backdrop-blur-sm">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-        <div>
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <Cpu size={20} className="text-violet-500" />
-            Credit Exchange Rate
-          </h3>
-          <p className="text-sm text-zinc-400 mt-1">
-            How your monthly credits translate to real assets.
-          </p>
-        </div>
+    <div className="w-full max-w-7xl mx-auto mt-32 mb-32">
+      
+      {/* SECTION HEADER */}
+      <div className="text-center mb-16">
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+          Powered by <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">Next-Gen Intelligence</span>
+        </h2>
+        <p className="text-zinc-400 max-w-2xl mx-auto">
+          Your subscription unlocks a suite of the world's most powerful AI models, fully integrated into your workflow. No separate subscriptions required.
+        </p>
+      </div>
+
+      {/* TOOLS GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        <div className="flex gap-4 md:gap-12 text-center">
-          <div>
-            <div className="flex items-center justify-center gap-2 text-zinc-300 mb-1">
-              <Sparkles size={16} /> <span className="text-sm font-medium">Vibecoder</span>
-            </div>
-            <p className="text-2xl font-bold text-white">25</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Credits / Gen</p>
+        {/* CARD 1: VIBECODER */}
+        <div className="group relative p-8 rounded-3xl bg-zinc-900/40 border border-zinc-800/50 backdrop-blur-sm hover:bg-zinc-900/60 transition-all overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Code2 size={120} />
           </div>
-          <div className="w-px bg-zinc-800 h-12 hidden md:block" />
-          <div>
-            <div className="flex items-center justify-center gap-2 text-zinc-300 mb-1">
-              <ImageIcon size={16} /> <span className="text-sm font-medium">Image</span>
+          
+          <div className="relative z-10">
+            <div className="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center mb-6 text-violet-400">
+              <Sparkles size={24} />
             </div>
-            <p className="text-2xl font-bold text-white">100</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Credits / Gen</p>
-          </div>
-          <div className="w-px bg-zinc-800 h-12 hidden md:block" />
-          <div>
-            <div className="flex items-center justify-center gap-2 text-zinc-300 mb-1">
-              <Video size={16} /> <span className="text-sm font-medium">Video</span>
+            
+            <h3 className="text-xl font-bold text-white mb-1">Vibecoder Architect</h3>
+            <p className="text-xs font-mono text-violet-400 mb-4">MODEL: GEMINI 2.0 FLASH</p>
+            
+            <p className="text-sm text-zinc-400 leading-relaxed mb-8 min-h-[60px]">
+              The core brain. Generates complex React layouts, handles Tailwind styling, and structures your entire storefront in real-time.
+            </p>
+
+            {/* Credit Pill */}
+            <div className="flex items-center justify-between p-3 bg-zinc-950/50 rounded-lg border border-zinc-800/50">
+               <span className="text-xs text-zinc-500">Cost per generation</span>
+               <span className="text-sm font-bold text-white">25 Credits</span>
             </div>
-            <p className="text-2xl font-bold text-white">500</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Credits / Gen</p>
           </div>
         </div>
+
+        {/* CARD 2: IMAGE STUDIO */}
+        <div className="group relative p-8 rounded-3xl bg-zinc-900/40 border border-zinc-800/50 backdrop-blur-sm hover:bg-zinc-900/60 transition-all overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Palette size={120} />
+          </div>
+          
+          <div className="relative z-10">
+            <div className="w-12 h-12 rounded-xl bg-fuchsia-500/20 flex items-center justify-center mb-6 text-fuchsia-400">
+              <ImageIcon size={24} />
+            </div>
+            
+            <h3 className="text-xl font-bold text-white mb-1">Visual Studio</h3>
+            <p className="text-xs font-mono text-fuchsia-400 mb-4">MODEL: BLACK FOREST FLUX PRO</p>
+            
+            <p className="text-sm text-zinc-400 leading-relaxed mb-8 min-h-[60px]">
+              Create high-fidelity brand assets, product mockups, and hero banners. Replaces the need for Midjourney or stock photos.
+            </p>
+
+             {/* Credit Pill */}
+             <div className="flex items-center justify-between p-3 bg-zinc-950/50 rounded-lg border border-zinc-800/50">
+               <span className="text-xs text-zinc-500">Cost per generation</span>
+               <span className="text-sm font-bold text-white">100 Credits</span>
+            </div>
+          </div>
+        </div>
+
+        {/* CARD 3: CINEMATIC VIDEO */}
+        <div className="group relative p-8 rounded-3xl bg-zinc-900/40 border border-amber-500/20 backdrop-blur-sm hover:bg-zinc-900/60 transition-all overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Film size={120} className="text-amber-500" />
+          </div>
+          
+          <div className="relative z-10">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-6 text-amber-400">
+              <Video size={24} />
+            </div>
+            
+            <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-xl font-bold text-white">Cinematic Video</h3>
+                <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/30">AGENCY</span>
+            </div>
+            <p className="text-xs font-mono text-amber-400 mb-4">MODEL: LUMA RAY 2</p>
+            
+            <p className="text-sm text-zinc-400 leading-relaxed mb-8 min-h-[60px]">
+              Generate 4K motion backgrounds and product reveals. Create an immersive "Apple-style" website feel instantly.
+            </p>
+
+             {/* Credit Pill */}
+             <div className="flex items-center justify-between p-3 bg-zinc-950/50 rounded-lg border border-zinc-800/50">
+               <span className="text-xs text-zinc-500">Cost per generation</span>
+               <span className="text-sm font-bold text-white">500 Credits</span>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
@@ -353,7 +412,7 @@ export default function Pricing() {
         </div>
 
         {/* SPECS & BREAKDOWN */}
-        <CreditBreakdown />
+        <ToolShowcase />
 
         {/* FAQ SECTION */}
         <div className="max-w-3xl mx-auto mt-32">
