@@ -51,6 +51,12 @@ export function HeroTextIntro() {
     return () => clearInterval(interval);
   }, [content.hero_rotating_words.length]);
 
+  // Find the longest word to set a stable width
+  const longestWord = content.hero_rotating_words.reduce(
+    (a, b) => (a.length > b.length ? a : b),
+    ''
+  );
+
   return (
     <Reveal>
       <section className="pt-10 sm:pt-14 md:pt-16 lg:pt-20 pb-6 sm:pb-8 md:pb-10 text-center px-4 sm:px-6">
@@ -63,11 +69,21 @@ export function HeroTextIntro() {
         <h2 className="text-[10vw] sm:text-[9vw] md:text-[8vw] lg:text-[7vw] xl:text-[6vw] font-bold tracking-tighter leading-[0.95] text-foreground uppercase">
           <span className="block">
             <span className="text-[8vw] sm:text-[7vw] md:text-[6vw] lg:text-[5vw] xl:text-[4vw]">#</span>{content.hero_subheadline}{' '}
-            <span
-              key={activeWord}
-              className="inline-block animate-fade-in text-primary"
-            >
-              {content.hero_rotating_words[activeWord]}
+            {/* Fixed-width container to prevent layout shifts */}
+            <span className="inline-block relative text-primary" style={{ minWidth: 'auto' }}>
+              {/* Invisible text to hold width */}
+              <span className="invisible">{longestWord}</span>
+              {/* Stacked words with crossfade - no layout reflow */}
+              {content.hero_rotating_words.map((word, idx) => (
+                <span
+                  key={word}
+                  className="absolute left-0 top-0 w-full transition-opacity duration-500 ease-in-out"
+                  style={{ opacity: idx === activeWord ? 1 : 0 }}
+                  aria-hidden={idx !== activeWord}
+                >
+                  {word}
+                </span>
+              ))}
             </span>
           </span>
         </h2>
