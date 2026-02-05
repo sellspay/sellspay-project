@@ -51,6 +51,42 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Mode toggle: blocks (existing) or vibecoder (new generative)
   const [mode, setMode] = useState<BuilderMode>('blocks');
   
+  // Resizable sidebar state
+  const [sidebarWidth, setSidebarWidth] = useState(400);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // Drag handlers for resizable sidebar
+  const startResizing = useCallback(() => {
+    setIsDragging(true);
+  }, []);
+
+  const stopResizing = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const resize = useCallback(
+    (mouseMoveEvent: MouseEvent) => {
+      if (isDragging) {
+        // Calculate new width from the right edge of screen
+        const newWidth = window.innerWidth - mouseMoveEvent.clientX;
+        // Constraints: Min 300px, Max 800px
+        if (newWidth > 300 && newWidth < 800) {
+          setSidebarWidth(newWidth);
+        }
+      }
+    },
+    [isDragging]
+  );
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resize);
+    window.addEventListener('mouseup', stopResizing);
+    return () => {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResizing);
+    };
+  }, [resize, stopResizing]);
+  
   // Project management
   const {
     projects,
@@ -495,10 +531,23 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
               isStreaming={isStreaming} 
             />
           )}
+          {/* Overlay while dragging (prevents iframe stealing mouse events) */}
+          {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
         </div>
 
-        {/* Chat panel - shrink-0 prevents growing, fixed width */}
-        <div className="w-[400px] shrink-0 flex flex-col bg-background overflow-hidden">
+        {/* Chat panel - shrink-0 prevents growing, dynamic width via drag */}
+        <div 
+          style={{ width: sidebarWidth }} 
+          className="shrink-0 flex flex-col bg-background overflow-hidden relative"
+        >
+          {/* THE DRAG HANDLE */}
+          <div
+            onMouseDown={startResizing}
+            className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-50 transition-colors ${
+              isDragging ? 'bg-violet-500' : 'bg-transparent hover:bg-violet-500/50'
+            }`}
+          />
+          
           {mode === 'blocks' ? (
             <AIBuilderChat
               profileId={profileId}

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { StepList, StepListSkeleton } from './StepList';
 import { generateDefaultSteps, type BuildStep } from './types/chat';
+import { CollapsibleMessage } from './CollapsibleMessage';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 
 // Extended message type with steps
@@ -32,8 +33,8 @@ function UserBubble({ content }: { content: string }) {
       animate={{ opacity: 1, y: 0 }}
       className="flex justify-end mb-6 w-full"
     >
-      <div className="max-w-[85%] bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white px-5 py-3 rounded-2xl rounded-tr-sm shadow-lg shadow-orange-900/10 text-sm font-medium leading-relaxed break-words break-all whitespace-pre-wrap max-h-[300px] overflow-y-auto overflow-x-hidden custom-scrollbar">
-        {content}
+      <div className="max-w-[85%] bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white px-5 py-3 rounded-2xl rounded-tr-sm shadow-lg shadow-orange-900/10 text-sm font-medium leading-relaxed">
+        <CollapsibleMessage content={content} isUser={true} />
       </div>
     </motion.div>
   );
@@ -82,12 +83,8 @@ function AssistantCard({ message, onRate, onRestoreCode, canRestore, isStreaming
         
         {/* 1. THE MESSAGE BUBBLE */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-5 shadow-sm w-full">
-          {/* Main text content */}
-          <div className="prose prose-invert prose-sm max-w-none break-words break-all whitespace-pre-wrap max-h-[500px] overflow-y-auto overflow-x-hidden custom-scrollbar">
-            <p className="text-sm text-zinc-300 leading-relaxed m-0">
-              {displayContent}
-            </p>
-          </div>
+          {/* Main text content - using CollapsibleMessage for "View More" logic */}
+          <CollapsibleMessage content={displayContent} isUser={false} />
 
           {/* 2. STEP-BY-STEP BREAKDOWN */}
           {isStreaming && !steps && <StepListSkeleton />}
