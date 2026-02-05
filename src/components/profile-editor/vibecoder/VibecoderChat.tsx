@@ -3,6 +3,7 @@
  import { Input } from '@/components/ui/input';
  import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp } from 'lucide-react';
+ import { Wand2 } from 'lucide-react';
  import { useVibecoderChat } from './hooks/useVibecoderChat';
  import { useVibecoderOperations } from './hooks/useVibecoderOperations';
  import { useBrandProfile } from './hooks/useBrandProfile';
@@ -36,6 +37,7 @@ import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp } from 'lu
    const scrollRef = useRef<HTMLDivElement>(null);
    const inputRef = useRef<HTMLInputElement>(null);
    const [isApplying, setIsApplying] = useState(false);
+  const [applyingMessageId, setApplyingMessageId] = useState<string | null>(null);
    const appliedOpsRef = useRef<Set<string>>(new Set());
     const processedAssetReqsRef = useRef<Set<string>>(new Set());
  
@@ -69,11 +71,17 @@ import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp } from 'lu
    // AUTO-APPLY: When AI returns operations, apply them automatically
    useEffect(() => {
      if (pendingOps && pendingOps.length > 0 && !isApplying) {
-       const opsKey = JSON.stringify(pendingOps.map(op => op.op));
+      const opsKey = JSON.stringify(pendingOps);
        if (appliedOpsRef.current.has(opsKey)) return;
        
        appliedOpsRef.current.add(opsKey);
        setIsApplying(true);
+      
+      // Track which message we're applying
+      const latestAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
+      if (latestAssistantMessage) {
+        setApplyingMessageId(latestAssistantMessage.id);
+      }
        
        try {
          applyOperations(pendingOps);
@@ -87,9 +95,10 @@ import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp } from 'lu
           appliedOpsRef.current.delete(opsKey);
        } finally {
          setIsApplying(false);
+        setApplyingMessageId(null);
        }
      }
-   }, [pendingOps, applyOperations, applyPendingOps, isApplying]);
+  }, [pendingOps, applyOperations, applyPendingOps, isApplying, messages]);
  
    // AUTO-GENERATE: When AI requests assets, generate them automatically
    useEffect(() => {
@@ -142,6 +151,28 @@ import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp } from 'lu
    const handleQuickAction = (prompt: string) => {
      sendMessage(prompt);
    };
+
+  // Fresh build - create complete storefront from scratch
+  const handleFreshBuild = () => {
+    const freshBuildPrompt = `Build me a complete, premium storefront from scratch. Create a full professional layout with: 
+1. A striking hero headline section with dramatic typography and text shadow
+2. An about me section with glassmorphism styling (showBackground: true, containerBackgroundColor with transparency, borderStyle: solid)
+3. Social proof testimonials section with premium dark styling
+4. A call-to-action image_with_text section
+
+IMPORTANT: Use these style_options on EVERY section:
+- colorScheme: "dark" or "black"
+- showBackground: true
+- containerBackgroundColor: "rgba(255,255,255,0.05)"
+- borderStyle: "solid"
+- borderColor: "rgba(255,255,255,0.1)"
+- animation: "fade-in" or "slide-up"
+
+For headlines use: font: "serif", fontWeight: "bold", textShadow: "soft"
+
+Make it look like a high-end luxury creator's store.`;
+    sendMessage(freshBuildPrompt);
+  };
  
     const isEmpty = messages.length === 0 && !isLoadingHistory;
    const isWorking = isLoading || isApplying || generating;
@@ -227,13 +258,19 @@ import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp } from 'lu
                <p className="text-sm text-muted-foreground">
                  Describe what you want and I'll create it automatically:
                </p>
-               <ul className="text-sm text-muted-foreground text-left space-y-1">
-                 <li>• "Add a hero section with my brand colors"</li>
-                 <li>• "Create a testimonials section"</li>
-                 <li>• "Make my storefront look more premium"</li>
-                 <li>• "Generate a banner for my store"</li>
-               </ul>
              </div>
+            
+            {/* Primary CTA - Build from scratch */}
+            <Button
+              onClick={handleFreshBuild}
+              disabled={isWorking}
+              className="gap-2"
+              size="lg"
+            >
+              <Wand2 className="w-4 h-4" />
+              Build My Store
+            </Button>
+            
              <div className="w-full">
                <p className="text-xs text-muted-foreground mb-3">Quick actions:</p>
                <QuickActionChips onAction={handleQuickAction} disabled={isWorking} />
@@ -246,6 +283,7 @@ import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp } from 'lu
                  key={message.id}
                  message={message}
                  isLatest={index === messages.length - 1}
+                  isApplying={applyingMessageId === message.id}
                  onRegenerate={message.status === 'pending' && message.role === 'assistant' ? regenerate : undefined}
                />
              ))}

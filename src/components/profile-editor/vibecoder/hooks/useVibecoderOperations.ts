@@ -194,6 +194,12 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
              break;
             }
 
+        case 'clearAllSections': {
+          // Clear all sections for fresh builds
+          newSections = [];
+          break;
+        }
+
             default:
               // assignAssetToSlot is handled separately
               break;

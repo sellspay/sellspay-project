@@ -146,7 +146,8 @@ DRAMATIC TRANSFORMATION EXAMPLES:
  - NEVER modify billing, payouts, auth, or account settings.
  - NEVER break the locked header shell.
  - NEVER mention presets, templates, or internal generators.
- - Maximum 4 addSection operations per response.
+- Maximum 6 addSection operations per response (for fresh builds).
+- Use clearAllSections operation FIRST when user asks to "build from scratch" or wants a complete redesign.
  - Always include complete content with real, compelling copy.
  - NEVER leave content fields empty.
 - USE style_options AGGRESSIVELY to achieve dramatic visual effects.
@@ -238,8 +239,8 @@ sliding_banner:
  ]);
  
  const VALID_OPS = new Set([
-   "addSection", "removeSection", "moveSection", "updateSection", 
-   "updateTheme", "updateHeaderContent", "assignAssetToSlot"
+  "addSection", "removeSection", "moveSection", "updateSection", 
+  "updateTheme", "updateHeaderContent", "assignAssetToSlot", "clearAllSections"
  ]);
  
  interface ValidationError {
@@ -282,9 +283,12 @@ sliding_banner:
        addCount++;
        
        if (addCount > 4) {
-         errors.push({ path: `ops[${i}]`, message: "Too many sections added (max 4)", severity: "warning" });
+        // Allow more sections for fresh builds
+        if (addCount > 6) {
+          errors.push({ path: `ops[${i}]`, message: "Too many sections added (max 6)", severity: "warning" });
          failureTags.push("TOO_MANY_SECTIONS");
          continue;
+        }
        }
        
        const section = op.section;
@@ -304,9 +308,13 @@ sliding_banner:
        addedTypes[sectionType] = (addedTypes[sectionType] || 0) + 1;
        
        if (sectionType === "headline" && (existingTypes["headline"] || 0) + addedTypes["headline"] > 1) {
-         errors.push({ path: `ops[${i}]`, message: "Only one headline section allowed", severity: "warning" });
-         failureTags.push("DUPLICATE_HERO");
-         continue;
+        // Skip duplicate check if we're doing a fresh build (clearAllSections was used)
+        const hasClearAll = ops.some((o: any) => o.op === "clearAllSections");
+        if (!hasClearAll) {
+          errors.push({ path: `ops[${i}]`, message: "Only one headline section allowed", severity: "warning" });
+          failureTags.push("DUPLICATE_HERO");
+          continue;
+        }
        }
        
        if (sectionType === "testimonials" && (existingTypes["testimonials"] || 0) + addedTypes["testimonials"] > 1) {
@@ -591,7 +599,7 @@ sliding_banner:
                  items: {
                    type: "object",
                    properties: {
-                     op: { type: "string", enum: ["addSection", "removeSection", "moveSection", "updateSection", "updateTheme", "updateHeaderContent", "assignAssetToSlot"] },
+                    op: { type: "string", enum: ["addSection", "removeSection", "moveSection", "updateSection", "updateTheme", "updateHeaderContent", "assignAssetToSlot", "clearAllSections"] },
                      sectionId: { type: "string" },
                      after: { type: ["string", "null"] },
                      section: {

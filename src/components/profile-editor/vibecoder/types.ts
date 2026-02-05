@@ -53,6 +53,10 @@
    targetId: string;
  }
  
+export interface ClearAllSectionsOp {
+  op: 'clearAllSections';
+}
+
  export type VibecoderOp =
    | AddSectionOp
    | RemoveSectionOp
@@ -60,7 +64,8 @@
    | UpdateSectionOp
    | UpdateThemeOp
    | UpdateHeaderContentOp
-   | AssignAssetToSlotOp;
+  | AssignAssetToSlotOp
+  | ClearAllSectionsOp;
  
  // === ASSET REQUESTS ===
  
