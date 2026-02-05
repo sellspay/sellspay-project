@@ -57,6 +57,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     loading: projectsLoading,
     messagesLoading,
     createProject,
+    ensureProject,
     deleteProject,
     renameProject,
     selectProject,
@@ -218,7 +219,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     toast.success('Restored previous version');
   }, [setCode, addMessage]);
 
-  // Publish the AI layout
+  // Publish the AI layout (with project link for Vibecoder mode)
   const handlePublish = async () => {
     setPublishing(true);
     try {
@@ -231,10 +232,14 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         })
         .eq('profile_id', profileId);
 
-      // Set profile to use AI mode
+      // Set profile to use AI mode AND link the active project
       await supabase
         .from('profiles')
-        .update({ active_storefront_mode: 'ai' })
+        .update({ 
+          active_storefront_mode: 'ai',
+          // Link the project so deletion knows which one is live
+          active_project_id: mode === 'vibecoder' ? activeProjectId : null,
+        })
         .eq('id', profileId);
 
       setIsPublished(true);
@@ -261,17 +266,13 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       }, { onConflict: 'profile_id' });
   };
 
-  // Vibecoder send message handler
+  // Vibecoder send message handler (with auto-create)
   const handleVibecoderMessage = async (prompt: string) => {
-    // Ensure we have a project
-    let projectId = activeProjectId;
+    // Auto-create project if we don't have one yet
+    const projectId = await ensureProject();
     if (!projectId) {
-      const newProject = await createProject('New Storefront');
-      if (!newProject) {
-        toast.error('Failed to create project');
-        return;
-      }
-      projectId = newProject.id;
+      toast.error('Failed to start project');
+      return;
     }
 
     // Add user message to history
@@ -290,10 +291,16 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   };
 
-  // Handle project deletion
+  // Handle project deletion (uses the "Total Deletion" RPC)
   const handleDeleteProject = async (projectId: string) => {
+    const isActiveProject = activeProjectId === projectId;
     const success = await deleteProject(projectId);
+    
     if (success) {
+      // If we deleted the active project, reset the code view
+      if (isActiveProject) {
+        resetCode();
+      }
       toast.success('Project deleted');
     } else {
       toast.error('Failed to delete project');
