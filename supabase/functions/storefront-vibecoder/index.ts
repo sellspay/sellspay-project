@@ -10,22 +10,27 @@
  // PROMPTS FOR MULTI-STEP PIPELINE
  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  
- const INTENT_EXTRACTOR_PROMPT = `You are SellsPay's Intent Extractor.
- 
-You design complete storefronts from a blank canvas using structured layout blocks.
-Users can describe anything. You always produce a working result.
+const INTENT_EXTRACTOR_PROMPT = `You are SellsPay AI Builder.
+
+CRITICAL: You are a BUILDER, not a conversationalist.
+- NEVER ask questions on the first response
+- NEVER say "tell me more" or "describe your style"
+- ALWAYS build a complete storefront immediately
+
+For EVERY prompt, you MUST produce a working result - no exceptions.
+If info is missing, assume tasteful defaults and proceed.
  
  You will receive:
  - User prompt (raw text)
  - Brand profile summary (palette, font, vibe tags)
  - Current layout summary (section types present)
-- Layout pattern registry (available strategies)
+- Products/collections summary (what the user sells)
  
  OUTPUT FORMAT (STRICT JSON):
  {
    "goal": "concise statement of what user wants",
    "vibe": ["array", "of", "style", "keywords"],
-  "strategy": "creator_storefront | product_launch | saas_landing | portfolio | minimal_sales | content_hub | education | agency | community | visual_experimental",
+  "strategy": "creator_storefront | product_launch | portfolio | minimal_sales | visual",
    "must_have": ["specific", "elements", "requested"],
    "avoid": ["things", "to", "avoid"],
    "target_scope": "entire_storefront | specific_section | header_content",
@@ -33,24 +38,22 @@ Users can describe anything. You always produce a working result.
    "brand_constraints": {
      "palette_locked": true/false,
      "font_locked": true/false
-  },
-  "intensity": "subtle | moderate | dramatic | complete_overhaul",
-  "is_fresh_build": true/false
+  }
  }
  
- RULES:
-- YOUR JOB IS TO BUILD, NOT TO ASK.
-- Choose the best strategy from the pattern registry based on user's goal
-- If canvas is empty or user wants "build my store", set is_fresh_build: true
-- Default target_scope to "entire_storefront" for fresh builds
-- Default brand_constraints to UNLOCKED for fresh builds
-- Default intensity to "complete_overhaul" for fresh builds
- - Keep vibe arrays to 3-5 keywords max
-- Never refuse - always produce a usable result`;
+STOREFRONT STRATEGY RULES:
+- If user mentions: storefront, store, shop, selling, products, packs, downloads, assets, templates
+  → Strategy MUST be "creator_storefront"
+  → must_have MUST include "featured_products" or "collection"
+- If canvas is empty, ALWAYS set target_scope to "entire_storefront"
+- Default brand_constraints to UNLOCKED (false/false)
+- Keep vibe arrays to 3-5 keywords max
+- NEVER refuse - ALWAYS produce a usable result`;
  
  const PLANNER_PROMPT = `You are SellsPay's Storefront Planner.
  
-Your job: produce a best-in-class PLAN to achieve the user's intent using ONLY supported sections.
+CRITICAL: You are a BUILDER. Your job is to produce a COMPLETE storefront plan.
+For the first prompt, you MUST plan 5-6 distinct sections that form a professional storefront.
 
 YOU WILL RECEIVE:
  - User intent (structured)
@@ -58,36 +61,36 @@ YOU WILL RECEIVE:
  - BrandProfile (palette, font, vibe tags)
  - Supported section registry (types + allowed fields)
  - Product and collection summaries
-- Layout pattern registry
  
-YOUR JOB IS TO BUILD, NOT TO ASK.
+STOREFRONT MINIMUM (enforce for fresh builds):
+1. HERO section (headline with dramatic headline + CTA)
+2. FEATURED PRODUCTS or COLLECTION section (show what user sells)
+3. BENEFITS/FEATURES section (basic_list with 3-4 items OR image_with_text)
+4. SOCIAL PROOF section (testimonials with 2-3 items)
+5. FAQ OR FINAL CTA section
 
-RULES:
-- The canvas starts empty. You must choose an appropriate layout strategy.
-- Use only supported section blocks.
+If the user has products, include them. If not, use compelling placeholders.
+
+ABSOLUTE RULES:
+- First response = COMPLETE DRAFT (no "foundation" or "let me know more")
+- Use only supported section types
 - No custom code, HTML, CSS, or JavaScript.
 - All output must be reversible.
-- Prioritize clarity, hierarchy, and conversion.
 - Never mention presets, templates, or system limits.
-- If a request cannot be built exactly, build the closest supported version.
  
- HARD CONSTRAINTS:
- - The profile header shell is locked structurally. Do not plan structural edits to the header.
+CONSTRAINTS:
 - Limit total sections to 5-8 for fresh builds
-- Use a single visual tone
-- Prefer bold, simple layouts over complex ones
-- Design for conversion and storytelling
  - At most 1 hero/headline section.
  - At most 1 testimonials section.
  - At most 1 FAQ section.
  - At most 1 gallery/bento section.
  
  SUPPORTED SECTION TYPES:
-headline, text, image, image_with_text, gallery, video, collection, about_me, sliding_banner, divider, testimonials, faq, newsletter, slideshow, basic_list, featured_product, logo_list, contact_us, footer
+headline, text, image_with_text, gallery, collection, about_me, sliding_banner, testimonials, faq, basic_list, featured_product
  
  OUTPUT FORMAT (STRICT JSON ONLY):
  {
-  "strategy": "creator_storefront | product_launch | saas_landing | portfolio | etc",
+  "strategy": "creator_storefront | product_launch | portfolio | minimal_sales",
    "layout_plan": [
      { "action": "add|remove|move|refine|ensure", "type": "<section_type>", "targetId": "<optional>", "notes": "<short>" }
    ],
@@ -95,10 +98,10 @@ headline, text, image, image_with_text, gallery, video, collection, about_me, sl
     { "type": "...", "purpose": "..." }
   ],
    "theme_plan": { 
-    "mode": "dark | light",
-     "accent": "#hex", 
-    "spacing": "balanced | roomy",
-     "radius": <number>, 
+    "mode": "dark",
+    "accent": "#8B5CF6", 
+    "spacing": "balanced",
+    "radius": 16
    },
    "copy_plan": { 
      "headline": "max 60 chars", 
@@ -106,58 +109,45 @@ headline, text, image, image_with_text, gallery, video, collection, about_me, sl
      "cta": "max 20 chars", 
      "voice": "confident|playful|minimal|bold|professional" 
    },
-   "asset_plan": [
-    { "kind": "image", "slot": "hero.background", "style": "...", "aspect": "..." }
-   ],
    "quality_checks": ["no clutter", "consistent spacing", "header shell untouched"]
- }
- 
- QUALITY RULES:
- - Hero first, CTA visible early.
- - Keep spacing consistent; use a single radius and shadow style.
- - Limit bento grids to 3-6 items.
- - Limit FAQs to 4-6 items.
-- Assume the user wants a polished first version.
-- Maintain accessibility contrast.`;
+}`;
  
  const OPS_GENERATOR_PROMPT = `You are SellsPay's Ops Generator.
  
- Your job is to turn a PLAN into valid patch operations for a storefront.
+CRITICAL: Your job is to BUILD a COMPLETE storefront. No questions. No "foundation". REAL content.
  
  You will receive:
  - A detailed PLAN (layout_plan, theme_plan, copy_plan, asset_plan)
  - Current layout JSON (all existing sections)
+- Products/collections the user sells
  - Section schemas (allowed fields per type)
  
- Your job: Convert the plan into valid patch operations.
+ENFORCE STOREFRONT MINIMUM:
+For fresh builds, you MUST create at least 5 sections:
+1. headline (hero with compelling copy + CTA)
+2. featured_product OR collection (show products)
+3. basic_list OR image_with_text (benefits/features)
+4. testimonials (social proof with 2-3 items)
+5. faq OR headline (final CTA)
+
+If user has products, use real product names. If not, use compelling placeholders.
  
  ABSOLUTE RULES:
+- ALWAYS use clearAllSections first for fresh builds
+- ALWAYS include 5-6 sections minimum
+- ALWAYS include real, compelling copy (no placeholders like "Your text here")
  - NEVER output raw HTML, CSS, or JavaScript.
  - NEVER inject scripts, iframes, trackers, or event handlers.
- - NEVER modify billing, payouts, auth, or account settings.
- - NEVER break the locked header shell.
  - NEVER mention presets, templates, or internal generators.
-- Maximum 6 addSection operations per response (for fresh builds).
-- Use clearAllSections operation FIRST when user asks to "build from scratch" or wants a complete redesign.
- - Always include complete content with real, compelling copy.
  - NEVER leave content fields empty.
-- USE style_options AGGRESSIVELY to achieve dramatic visual effects.
 
-STYLE OPTIONS YOU MUST USE FOR DRAMATIC CHANGES:
-For "premium", "glossy", "luxe", "modern" requests, ALWAYS modify style_options with:
+STYLE OPTIONS FOR PREMIUM LOOK:
 - showBackground: true (enables container background)
 - containerBackgroundColor: "rgba(0,0,0,0.3)" or similar for glassmorphism
 - borderStyle: "solid" (adds visible border)
 - borderColor: "#hex" (use brand accent or gold/silver for luxe)
 - animation: "fade-in" | "slide-up" | "scale-up" | "blur-in"
 - colorScheme: "dark" or "black" for premium looks
-- backgroundOverlay: 20-60 for dramatic image sections
-
-For text/headline sections, ALSO include in content:
-- font: "serif" | "display" for premium looks
-- textShadow: "soft" | "glow" for glossy effects
-- fontWeight: "bold" | "extrabold"
-- letterSpacing: "wide" | "wider"
  
  SECTION TYPES & SCHEMAS:
  
@@ -189,18 +179,18 @@ For text/headline sections, ALSO include in content:
   content: { title?: string, items: Array of { id: string, text: string, description?: string }, style: "bullet"|"numbered"|"icon", layout?: "simple"|"cards-3col"|"cards-2col" }
   style_options: { colorScheme, sectionHeight, showBackground, containerBackgroundColor, borderStyle, borderColor, animation }
  
- gallery:
-  content: { images: Array of { url: string, altText?: string }, columns: 2|3|4, layout?: "grid"|"masonry" }
-  style_options: { colorScheme, sectionHeight, showBackground, containerBackgroundColor, borderStyle, borderColor, animation }
+featured_product:
+  content: { productId?: string, title: string, description: string, price?: string, buttonText: string }
+  style_options: { colorScheme, showBackground, containerBackgroundColor, animation }
 
-sliding_banner:
-  content: { text: string, speed: "slow"|"medium"|"fast", backgroundColor?: string, textColor?: string, font?: string, fontWeight?: string }
-  style_options: { colorScheme, sectionHeight }
+collection:
+  content: { title?: string, collectionId?: string, products?: Array of { id, title, price, imageUrl } }
+  style_options: { colorScheme, showBackground, containerBackgroundColor, animation }
  
  OUTPUT FORMAT (STRICT):
  Return ONLY the apply_storefront_changes tool call with:
- - message: Brief explanation (max 100 chars)
- - ops: Array of patch operations (max 4 addSection ops)
+- message: Brief explanation of what you built (max 100 chars)
+- ops: Array of patch operations (5-6 sections for fresh builds)
  - asset_requests: Array of asset generation requests
  - preview_notes: Optional UX hints`;
  
@@ -222,12 +212,55 @@ sliding_banner:
  // VALIDATION & HEURISTICS
  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  
- const VALID_SECTION_TYPES = new Set([
-   "headline", "text", "image", "image_with_text", "gallery", "video", 
-   "collection", "about_me", "sliding_banner", "divider", "testimonials", 
-   "faq", "newsletter", "slideshow", "basic_list", "featured_product", 
-   "logo_list", "contact_us", "footer", "card_slideshow", "banner_slideshow"
- ]);
+const VALID_SECTION_TYPES = new Set([
+  "headline", "text", "image", "image_with_text", "gallery", "video", 
+  "collection", "about_me", "sliding_banner", "divider", "testimonials", 
+  "faq", "newsletter", "slideshow", "basic_list", "featured_product", 
+  "logo_list", "contact_us", "footer", "card_slideshow", "banner_slideshow"
+]);
+
+// Keywords that indicate user wants a storefront (not just a landing page)
+const STOREFRONT_KEYWORDS = [
+  'store', 'storefront', 'shop', 'selling', 'products', 'packs', 
+  'downloads', 'assets', 'templates', 'creator', 'portfolio'
+];
+
+function isStorefrontRequest(prompt: string): boolean {
+  const lower = prompt.toLowerCase();
+  return STOREFRONT_KEYWORDS.some(kw => lower.includes(kw)) || lower.includes('build my');
+}
+
+// Validate storefront has minimum required sections
+function validateStorefrontMinimum(ops: any[]): { valid: boolean; missing: string[] } {
+  const hasClear = ops.some(op => op.op === 'clearAllSections');
+  if (!hasClear) return { valid: true, missing: [] }; // Not a fresh build
+  
+  const addedTypes = new Set(
+    ops.filter(op => op.op === 'addSection').map(op => op.section?.section_type)
+  );
+  
+  const missing: string[] = [];
+  
+  // Must have hero
+  if (!addedTypes.has('headline')) missing.push('headline');
+  
+  // Must have products/collection (at least one)
+  if (!addedTypes.has('featured_product') && !addedTypes.has('collection')) {
+    // Check for basic_list as fallback
+    if (!addedTypes.has('basic_list')) missing.push('products_section');
+  }
+  
+  // Must have social proof
+  if (!addedTypes.has('testimonials') && !addedTypes.has('about_me')) {
+    missing.push('social_proof');
+  }
+  
+  // Check minimum section count (at least 4 for fresh build)
+  const sectionCount = ops.filter(op => op.op === 'addSection').length;
+  if (sectionCount < 4) missing.push(`need_${4 - sectionCount}_more_sections`);
+  
+  return { valid: missing.length === 0, missing };
+}
  
  const VALID_OPS = new Set([
   "addSection", "removeSection", "moveSection", "updateSection", 
@@ -471,15 +504,23 @@ sliding_banner:
    apiKey: string, 
    userPrompt: string, 
    brandProfile: any, 
-   layoutSummary: string
+  layoutSummary: string,
+  productsSummary: string
  ): Promise<any> {
-   const userMessage = `User prompt: "${userPrompt}"
+  const isStorefront = isStorefrontRequest(userPrompt);
+  
+  const userMessage = `User prompt: "${userPrompt}"
  
  Brand profile: ${JSON.stringify(brandProfile || {})}
  
  Current layout: ${layoutSummary}
  
- Extract the user's intent as structured JSON.`;
+Products the user sells:
+${productsSummary}
+
+${isStorefront ? 'NOTE: This is a STOREFRONT request. Strategy MUST be "creator_storefront" and must_have MUST include "featured_products" or "collection".' : ''}
+
+Extract the user's intent as structured JSON. Remember: BUILD IMMEDIATELY, no questions.`;
  
    const data = await callAI(apiKey, {
      model: "google/gemini-2.5-flash-lite",
@@ -494,15 +535,25 @@ sliding_banner:
    if (!intent) {
      return {
        goal: userPrompt,
-       vibe: ["premium", "clean"],
-       must_have: [],
+      vibe: ["premium", "dark", "modern"],
+      strategy: isStorefront ? "creator_storefront" : "portfolio",
+      must_have: isStorefront ? ["featured_products", "testimonials"] : [],
        avoid: [],
        target_scope: "entire_storefront",
        assets_needed: [],
-       brand_constraints: { palette_locked: true, font_locked: true }
+      brand_constraints: { palette_locked: false, font_locked: false }
      };
    }
    
+  // Force storefront strategy if detected
+  if (isStorefront && intent.strategy !== 'creator_storefront') {
+    intent.strategy = 'creator_storefront';
+    if (!intent.must_have) intent.must_have = [];
+    if (!intent.must_have.includes('featured_products') && !intent.must_have.includes('collection')) {
+      intent.must_have.push('featured_products');
+    }
+  }
+  
    return intent;
  }
  
@@ -511,10 +562,11 @@ sliding_banner:
    intent: any,
    sections: any[],
    brandProfile: any,
-   products: any[]
+  products: any[],
+  productsSummary: string
  ): Promise<any> {
    const layoutSummary = sections.map(s => `- ${s.section_type}: ${s.id}`).join("\n") || "No sections yet";
-   const productSummary = products?.slice(0, 5).map(p => p.name).join(", ") || "No products";
+  const isFreshBuild = sections.length === 0 || intent.target_scope === 'entire_storefront';
    
    const userMessage = `User Intent:
  ${JSON.stringify(intent, null, 2)}
@@ -525,28 +577,52 @@ sliding_banner:
  Brand Profile:
  ${JSON.stringify(brandProfile || {}, null, 2)}
  
- Products (sample):
- ${productSummary}
+Products/Collections the user sells:
+${productsSummary}
  
- Create a detailed plan to achieve this intent.`;
+${isFreshBuild ? `
+THIS IS A FRESH BUILD. You MUST plan at least 5 sections:
+1. headline (dramatic hero with CTA)
+2. featured_product or collection (show products)
+3. basic_list or image_with_text (benefits/why choose)
+4. testimonials (social proof)
+5. faq or final CTA headline
+
+DO NOT plan fewer than 5 sections. Build a COMPLETE storefront.
+` : ''}
+
+Create a detailed plan. Remember: BUILD, don't ask questions.`;
  
    const data = await callAI(apiKey, {
      model: "google/gemini-3-flash-preview",
      systemPrompt: PLANNER_PROMPT,
      userMessage,
-     temperature: 0.35,
+    temperature: 0.25,
      maxTokens: 1200,
    });
    
    const plan = extractJSONFromResponse(data);
    
    if (!plan) {
+    // Return a complete default plan, not just a hero
      return {
-       layout_plan: [{ action: "add", type: "headline", notes: "Hero section based on user prompt" }],
-       theme_plan: { tone: "dark", spacing: "balanced" },
-       copy_plan: { headline: intent.goal || "Welcome", voice: "confident" },
-       asset_plan: [],
-       quality_checks: ["no clutter", "header shell untouched"]
+      strategy: intent.strategy || "creator_storefront",
+      layout_plan: [
+        { action: "clear", type: "all", notes: "Fresh start" },
+        { action: "add", type: "headline", notes: "Dramatic hero with CTA" },
+        { action: "add", type: "basic_list", notes: "Key benefits/features" },
+        { action: "add", type: "testimonials", notes: "Social proof" },
+        { action: "add", type: "about_me", notes: "Creator story" },
+        { action: "add", type: "faq", notes: "Common questions" }
+      ],
+      theme_plan: { mode: "dark", accent: "#8B5CF6", spacing: "balanced", radius: 16 },
+      copy_plan: { 
+        headline: intent.goal?.slice(0, 60) || "Premium Creator Store", 
+        subhead: "Discover exclusive content and resources",
+        cta: "Browse Products",
+        voice: "confident" 
+      },
+      quality_checks: ["no clutter", "consistent spacing", "premium look"]
      };
    }
    
@@ -557,23 +633,38 @@ sliding_banner:
    apiKey: string,
    plan: any,
    sections: any[],
-   userPrompt: string
+  userPrompt: string,
+  productsSummary: string
  ): Promise<any> {
+  const isFreshBuild = sections.length === 0 || plan.layout_plan?.some((p: any) => p.action === 'clear');
+  
    const userMessage = `Plan to execute:
  ${JSON.stringify(plan, null, 2)}
  
  Current sections:
  ${JSON.stringify(sections, null, 2)}
  
+Products/Collections:
+${productsSummary}
+
  Original user request: "${userPrompt}"
  
- Generate the patch operations to implement this plan.`;
+${isFreshBuild ? `
+THIS IS A FRESH BUILD. You MUST:
+1. Start with clearAllSections
+2. Add at least 5 sections
+3. Include compelling, real copy (no "Your text here" placeholders)
+4. Include dark/premium styling with glassmorphism
+5. Make it look like a $10K professional site
+` : ''}
+
+Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
  
    const data = await callAI(apiKey, {
      model: "google/gemini-3-flash-preview",
      systemPrompt: OPS_GENERATOR_PROMPT,
      userMessage,
-     temperature: 0.15,
+    temperature: 0.2,
      maxTokens: 2000,
      tools: [
        {
@@ -729,6 +820,20 @@ sliding_banner:
      const sections = context?.sections || [];
      const brandProfile = context?.brandProfile || {};
      const products = context?.products || [];
+    const collections = context?.collections || [];
+
+    // Build products summary for AI context
+    const productsSummary = products.length > 0
+      ? products.slice(0, 8).map((p: any) => 
+          `- "${p.name}" (${p.price_cents ? `$${(p.price_cents / 100).toFixed(0)}` : 'Free'}) [${p.tags?.slice(0, 3).join(', ') || 'no tags'}]`
+        ).join('\n')
+      : 'No products yet - use compelling placeholders';
+    
+    const collectionsSummary = collections.length > 0
+      ? collections.slice(0, 4).map((c: any) => `- "${c.name}" collection`).join('\n')
+      : '';
+    
+    const fullProductContext = `Products:\n${productsSummary}${collectionsSummary ? `\n\nCollections:\n${collectionsSummary}` : ''}`;
  
      const layoutSummary = sections.length > 0
        ? sections.map((s: any) => s.section_type).join(", ")
@@ -739,17 +844,18 @@ sliding_banner:
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      let intent: any;
      try {
-       intent = await extractIntent(LOVABLE_API_KEY, message, brandProfile, layoutSummary);
+      intent = await extractIntent(LOVABLE_API_KEY, message, brandProfile, layoutSummary, fullProductContext);
      } catch (e) {
        console.error("Intent extraction failed:", e);
        intent = {
          goal: message,
-         vibe: ["premium"],
-         must_have: [],
+        vibe: ["premium", "dark", "modern"],
+        strategy: "creator_storefront",
+        must_have: ["featured_products", "testimonials"],
          avoid: [],
          target_scope: "entire_storefront",
          assets_needed: [],
-         brand_constraints: { palette_locked: true, font_locked: true }
+        brand_constraints: { palette_locked: false, font_locked: false }
        };
      }
  
@@ -758,15 +864,22 @@ sliding_banner:
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      let plan: any;
      try {
-       plan = await createPlan(LOVABLE_API_KEY, intent, sections, brandProfile, products);
+      plan = await createPlan(LOVABLE_API_KEY, intent, sections, brandProfile, products, fullProductContext);
      } catch (e) {
        console.error("Planning failed:", e);
        plan = {
-         layout_plan: [{ action: "add", type: "headline", notes: "Fallback hero" }],
-         theme_plan: { tone: "dark", spacing: "balanced" },
-         copy_plan: { headline: intent.goal || "Welcome", voice: "confident" },
-         asset_plan: [],
-         quality_checks: []
+        strategy: "creator_storefront",
+        layout_plan: [
+          { action: "clear", type: "all", notes: "Fresh start" },
+          { action: "add", type: "headline", notes: "Hero" },
+          { action: "add", type: "basic_list", notes: "Benefits" },
+          { action: "add", type: "testimonials", notes: "Social proof" },
+          { action: "add", type: "about_me", notes: "About" },
+          { action: "add", type: "faq", notes: "FAQ" }
+        ],
+        theme_plan: { mode: "dark", accent: "#8B5CF6", spacing: "balanced", radius: 16 },
+        copy_plan: { headline: intent.goal || "Premium Creator Store", voice: "confident" },
+        quality_checks: ["complete storefront"]
        };
      }
  
@@ -775,7 +888,7 @@ sliding_banner:
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      let opsResult: any;
      try {
-       opsResult = await generateOps(LOVABLE_API_KEY, plan, sections, message);
+      opsResult = await generateOps(LOVABLE_API_KEY, plan, sections, message, fullProductContext);
      } catch (e: any) {
        if (e.message === "RATE_LIMITED") {
          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
@@ -790,19 +903,67 @@ sliding_banner:
          });
        }
        console.error("Ops generation failed:", e);
+      // Return a COMPLETE fallback, not just a headline
        opsResult = {
-         message: "I've added a headline section to get you started.",
+        message: "I've built your premium storefront. Here's what I created:",
          ops: [{
+          op: "clearAllSections"
+        }, {
            op: "addSection",
            after: null,
            section: {
              section_type: "headline",
-             content: { title: intent.goal || "Welcome", subtitle: "Your storefront awaits" },
-             style_options: { colorScheme: "dark", height: "large", textAlign: "center" }
+            content: { text: intent.goal || "Welcome to My Store", size: "large", font: "display", textShadow: "glow" },
+            style_options: { colorScheme: "dark", sectionHeight: "large", showBackground: true, containerBackgroundColor: "rgba(0,0,0,0.3)", animation: "fade-in" }
+          }
+        }, {
+          op: "addSection",
+          section: {
+            section_type: "basic_list",
+            content: { 
+              title: "Why Choose Me", 
+              items: [
+                { id: "1", text: "Premium Quality", description: "Every product is crafted with care" },
+                { id: "2", text: "Instant Access", description: "Download immediately after purchase" },
+                { id: "3", text: "Regular Updates", description: "New content added frequently" }
+              ],
+              style: "icon",
+              layout: "cards-3col"
+            },
+            style_options: { colorScheme: "dark", showBackground: true, containerBackgroundColor: "rgba(139,92,246,0.1)", animation: "slide-up" }
+          }
+        }, {
+          op: "addSection",
+          section: {
+            section_type: "testimonials",
+            content: { 
+              title: "What Creators Say",
+              testimonials: [
+                { id: "1", name: "Alex", quote: "Absolutely incredible quality. Worth every penny.", role: "Content Creator", rating: 5 },
+                { id: "2", name: "Jordan", quote: "These resources saved me hours of work.", role: "Video Editor", rating: 5 }
+              ],
+              layout: "grid"
+            },
+            style_options: { colorScheme: "dark", showBackground: true, containerBackgroundColor: "rgba(0,0,0,0.2)", animation: "fade-in" }
+          }
+        }, {
+          op: "addSection",
+          section: {
+            section_type: "faq",
+            content: { 
+              title: "Questions?",
+              items: [
+                { id: "1", question: "How do I access my purchase?", answer: "You'll receive instant download access after payment." },
+                { id: "2", question: "Can I get a refund?", answer: "Yes, within 14 days if you're not satisfied." },
+                { id: "3", question: "Do you offer support?", answer: "Absolutely! Reach out anytime." }
+              ],
+              layout: "accordion"
+            },
+            style_options: { colorScheme: "dark", showBackground: true, containerBackgroundColor: "rgba(0,0,0,0.15)", animation: "slide-up" }
            }
          }],
          asset_requests: [],
-         preview_notes: ["Fallback applied due to generation error"]
+        preview_notes: ["Complete fallback storefront applied"]
        };
      }
  
@@ -812,6 +973,18 @@ sliding_banner:
      let validationResult = validateAndSanitizeOps(opsResult?.ops || [], sections);
      let repairAttempts = 0;
  
+    // Check storefront minimum for fresh builds
+    const storefrontCheck = validateStorefrontMinimum(opsResult?.ops || []);
+    if (!storefrontCheck.valid && storefrontCheck.missing.length > 0) {
+      console.log("Storefront minimum not met, missing:", storefrontCheck.missing);
+      // Add missing sections via repair
+      validationResult.errors.push({
+        path: "storefront_minimum",
+        message: `Missing required sections: ${storefrontCheck.missing.join(', ')}`,
+        severity: "warning" as const
+      });
+    }
+
      if (!validationResult.valid && repairAttempts < 1) {
        try {
          const repairedResult = await repairOps(LOVABLE_API_KEY, opsResult, validationResult.errors);
@@ -826,22 +999,64 @@ sliding_banner:
      }
  
      if (!validationResult.valid || validationResult.sanitizedOps.length === 0) {
+      // Return a COMPLETE fallback storefront, not just a foundation
        return new Response(
          JSON.stringify({
-           message: "I've set up a foundation for your storefront. Tell me more about your style!",
-           ops: [
-             {
-               op: "addSection",
-               after: null,
-               section: {
-                 section_type: "headline",
-                 content: { title: intent?.goal || "Welcome", subtitle: "Describe your vibe and I'll build it." },
-                 style_options: { colorScheme: "dark", height: "large", textAlign: "center" }
-               }
-             }
-           ],
+          message: "I've built your premium storefront with a complete layout.",
+          ops: [{ op: "clearAllSections" }, {
+            op: "addSection",
+            section: {
+              section_type: "headline",
+              content: { text: intent?.goal || "Premium Creator Store", size: "large", textShadow: "glow" },
+              style_options: { colorScheme: "dark", sectionHeight: "large", showBackground: true, containerBackgroundColor: "rgba(0,0,0,0.3)", animation: "fade-in" }
+            }
+          }, {
+            op: "addSection",
+            section: {
+              section_type: "basic_list",
+              content: { 
+                title: "What You Get", 
+                items: [
+                  { id: "1", text: "Premium Quality", description: "Crafted with attention to detail" },
+                  { id: "2", text: "Instant Access", description: "Download immediately" },
+                  { id: "3", text: "Support", description: "Help when you need it" }
+                ],
+                style: "icon",
+                layout: "cards-3col"
+              },
+              style_options: { colorScheme: "dark", showBackground: true, animation: "slide-up" }
+            }
+          }, {
+            op: "addSection",
+            section: {
+              section_type: "testimonials",
+              content: { 
+                title: "Loved by Creators",
+                testimonials: [
+                  { id: "1", name: "Alex", quote: "Incredible quality!", role: "Creator", rating: 5 },
+                  { id: "2", name: "Sam", quote: "Saved me so much time.", role: "Editor", rating: 5 }
+                ],
+                layout: "grid"
+              },
+              style_options: { colorScheme: "dark", showBackground: true, animation: "fade-in" }
+            }
+          }, {
+            op: "addSection",
+            section: {
+              section_type: "faq",
+              content: { 
+                title: "FAQ",
+                items: [
+                  { id: "1", question: "How do I get access?", answer: "Instant download after purchase." },
+                  { id: "2", question: "Refund policy?", answer: "14-day money-back guarantee." }
+                ],
+                layout: "accordion"
+              },
+              style_options: { colorScheme: "dark", animation: "slide-up" }
+            }
+          }],
            asset_requests: [],
-           preview_notes: ["Safe fallback applied due to validation errors"]
+          preview_notes: ["Complete storefront fallback applied"]
          }),
          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
        );
