@@ -547,117 +547,6 @@ export type Database = {
           },
         ]
       }
-      credit_packages: {
-        Row: {
-          created_at: string | null
-          credits: number
-          display_order: number | null
-          id: string
-          is_active: boolean | null
-          is_popular: boolean | null
-          name: string
-          price_cents: number
-          stripe_price_id: string | null
-          stripe_product_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          credits: number
-          display_order?: number | null
-          id?: string
-          is_active?: boolean | null
-          is_popular?: boolean | null
-          name: string
-          price_cents: number
-          stripe_price_id?: string | null
-          stripe_product_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          credits?: number
-          display_order?: number | null
-          id?: string
-          is_active?: boolean | null
-          is_popular?: boolean | null
-          name?: string
-          price_cents?: number
-          stripe_price_id?: string | null
-          stripe_product_id?: string | null
-        }
-        Relationships: []
-      }
-      credit_topups: {
-        Row: {
-          created_at: string | null
-          credits: number
-          display_order: number | null
-          id: string
-          is_active: boolean | null
-          name: string
-          price_cents: number
-          stripe_price_id: string | null
-          stripe_product_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          credits: number
-          display_order?: number | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          price_cents: number
-          stripe_price_id?: string | null
-          stripe_product_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          credits?: number
-          display_order?: number | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          price_cents?: number
-          stripe_price_id?: string | null
-          stripe_product_id?: string | null
-        }
-        Relationships: []
-      }
-      credit_transactions: {
-        Row: {
-          amount: number
-          created_at: string | null
-          description: string | null
-          id: string
-          package_id: string | null
-          stripe_session_id: string | null
-          tool_id: string | null
-          type: string
-          user_id: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          package_id?: string | null
-          stripe_session_id?: string | null
-          tool_id?: string | null
-          type: string
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          package_id?: string | null
-          stripe_session_id?: string | null
-          tool_id?: string | null
-          type?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       editor_applications: {
         Row: {
           about_me: string
@@ -1063,42 +952,6 @@ export type Database = {
           },
         ]
       }
-      pro_tool_subscriptions: {
-        Row: {
-          created_at: string
-          current_period_end: string | null
-          current_period_start: string | null
-          id: string
-          status: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          current_period_end?: string | null
-          current_period_start?: string | null
-          id?: string
-          status?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          current_period_end?: string | null
-          current_period_start?: string | null
-          id?: string
-          status?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       product_downloads: {
         Row: {
           created_at: string
@@ -1365,7 +1218,6 @@ export type Database = {
           banner_url: string | null
           bio: string | null
           created_at: string | null
-          credit_balance: number | null
           editor_about: string | null
           editor_city: string | null
           editor_country: string | null
@@ -1408,7 +1260,6 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
-          credit_balance?: number | null
           editor_about?: string | null
           editor_city?: string | null
           editor_country?: string | null
@@ -1451,7 +1302,6 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
-          credit_balance?: number | null
           editor_about?: string | null
           editor_city?: string | null
           editor_country?: string | null
@@ -1884,52 +1734,6 @@ export type Database = {
           },
         ]
       }
-      storefront_ai_usage: {
-        Row: {
-          action_type: string
-          created_at: string
-          credits_used: number
-          id: string
-          profile_id: string
-        }
-        Insert: {
-          action_type: string
-          created_at?: string
-          credits_used?: number
-          id?: string
-          profile_id: string
-        }
-        Update: {
-          action_type?: string
-          created_at?: string
-          credits_used?: number
-          id?: string
-          profile_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "storefront_ai_usage_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "storefront_ai_usage_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "storefront_ai_usage_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "safe_public_identities"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       storefront_brand_profiles: {
         Row: {
           color_palette: Json | null
@@ -2345,27 +2149,6 @@ export type Database = {
           image_url?: string | null
           is_pinned?: boolean | null
           updated_at?: string
-        }
-        Relationships: []
-      }
-      tool_usage: {
-        Row: {
-          id: string
-          tool_id: string
-          used_at: string
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          tool_id: string
-          used_at?: string
-          user_id: string
-        }
-        Update: {
-          id?: string
-          tool_id?: string
-          used_at?: string
-          user_id?: string
         }
         Relationships: []
       }
@@ -2902,7 +2685,6 @@ export type Database = {
           verified_sellers: number
         }[]
       }
-      get_monthly_tool_usage: { Args: { p_user_id: string }; Returns: number }
       get_seller_config: {
         Args: { p_user_id: string }
         Returns: {
@@ -2932,7 +2714,6 @@ export type Database = {
           total_withdrawn_cents: number
         }[]
       }
-      has_pro_subscription: { Args: { p_user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
