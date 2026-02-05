@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.storefront-generate-asset]
 verify_jwt = false
+
+[functions.vibecoder-v2]
+verify_jwt = false
