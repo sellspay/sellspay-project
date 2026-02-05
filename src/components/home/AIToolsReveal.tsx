@@ -43,13 +43,13 @@
      image: aiPanel5,
    },
    {
-     bg: "#0a0a0a",
+    bg: "#0a0a0a",  // Matches first step for seamless loop
      text: "#ffffff",
      headline: ["All in", "one"],
    },
  ];
  
- const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a1a1a"];
+const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a1a1a"];
  const STEP_DISTANCE_DESKTOP = 500;
  const STEP_DISTANCE_MOBILE = 300;
  const STACK_Y = 14;
