@@ -156,6 +156,17 @@ export default function Home() {
       </Reveal>
 
       {/* AI Tools Reveal */}
+       <Reveal>
+         <section className="py-24 sm:py-32 lg:py-40 text-center px-6">
+           <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground mb-4">
+             The Platform
+           </p>
+           <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-semibold text-foreground tracking-tight">
+             Why creators choose us
+           </h2>
+         </section>
+       </Reveal>
+ 
       <AIToolsReveal />
 
       {/* AI Studio Promo Section */}
