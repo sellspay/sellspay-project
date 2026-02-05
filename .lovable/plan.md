@@ -1,174 +1,349 @@
 
+## AI Builder Hardening: Reject Empty Ops & Force Complete Builds
 
-## Overview
-
-This plan addresses three major requirements:
-1. **Strip AI features from the free Profile Editor** - Remove AI Builder, Brand, and Settings tabs, keeping only the manual sections editor
-2. **Fix the AI Builder canvas text leak** - Stop the massive text from appearing on the canvas
-3. **Migrate chat features to the new AI Builder** - Port the Like/Dislike, Undo toolbar, + dropdown menu, and other features from `VibecoderChat` to `AIBuilderChat`
+This plan implements strict validation, quality gates, and repair loops to prevent useless empty responses from the AI. The system will no longer accept `{}` patches or empty asset requests.
 
 ---
 
-## Part 1: Remove AI Features from Free Profile Editor
+## Step 1: Add Strict Schema Validation in Edge Function
 
-### File: `src/components/profile-editor/EditorSidebar.tsx`
+### File: `supabase/functions/storefront-vibecoder/index.ts`
 
-**Current state**: Shows 4 tabs (Sections, AI Builder, Brand, Store Style)
-
-**Change**: Show only the "Sections" tab for manual editing
+**Add new validation functions after line ~280:**
 
 ```text
-Before:
-┌─────────────────┐
-│  📦 Sections    │
-│  ✨ AI Builder  │ ← Remove
-│  🎨 Brand       │ ← Remove  
-│  ⚙️ Store Style │ ← Remove
-└─────────────────┘
-
-After:
-┌─────────────────┐
-│  📦 Sections    │
-└─────────────────┘
+NEW CODE TO ADD:
+┌─────────────────────────────────────────────────────────────┐
+│ validateThemePatch(patch)                                    │
+│   - Reject if patch is {} or null                           │
+│   - Require at least 1 valid key from:                      │
+│     mode, accent, radius, spacing, font, background,        │
+│     cardStyle, shadow                                       │
+│   - Validate value types                                    │
+│                                                              │
+│ validateAssetRequests(requests)                              │
+│   - Reject empty array with [{}]                            │
+│   - Each request MUST have: kind, slot/purpose, style       │
+│   - kind must be: image | icon_set | video_loop             │
+│                                                              │
+│ validateOpsNotEmpty(ops)                                     │
+│   - Reject if ops.length === 0                              │
+│   - Reject if only op is updateTheme with empty patch       │
+│   - For fresh builds: require clearAllSections + 5+ blocks  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-- Remove `vibecoder`, `brand`, and `style` from the tabs array
-- The sidebar will only show the Sections icon
+### Validation Logic:
 
-### File: `src/components/profile-editor/ProfileEditorDialog.tsx`
+**ThemePatch validation:**
+- `mode` must be "dark" | "light"
+- `accent` must be valid hex color (#RRGGBB)
+- `radius` must be number 0-24
+- `spacing` must be "compact" | "balanced" | "roomy"
+- `font` must be "inter" | "geist" | "system" | "serif"
 
-**Changes**:
-- Remove imports: `VibecoderChat`, `BrandProfilePanel`, `AssetDraftTray`, `useGeneratedAssets`
-- Remove state: `showAssetTray`, and vibecoder-related state
-- Remove the tab content rendering for `vibecoder`, `brand`, and `style` tabs
-- Keep only the sections list UI
-
----
-
-## Part 2: Fix Canvas Text Leak in AI Builder
-
-### File: `src/components/ai-builder/AIBuilderPreview.tsx`
-
-**Problem**: The canvas displays the user's typed message as massive text because something is leaking content across components.
-
-**Root cause analysis**: The `EmptyCanvasState` or the renderer may be picking up content from somewhere unexpected.
-
-**Fix**:
-- Ensure `EmptyCanvasState` only shows a minimal decorative placeholder with NO text that could be confused with user input
-- Add defensive `overflow-hidden` and `contain` CSS properties to fully isolate the preview
-
-### File: `src/components/ai-builder/AIBuilderCanvas.tsx`
-
-- Add additional CSS isolation (`contain: strict`) to the preview panel
-- Ensure no shared state can cause text bleed
+**Asset request validation:**
+- `kind` required: "image" | "icon_set" | "video_loop"
+- `spec.purpose` required (non-empty string)
+- `spec.style` required (non-empty string)
 
 ---
 
-## Part 3: Migrate Features from VibecoderChat to AIBuilderChat
+## Step 2: Add Quality Gate for Storefronts
 
-### Features to migrate:
+### File: `supabase/functions/storefront-vibecoder/index.ts`
 
-| Feature | Source | Target |
-|---------|--------|--------|
-| + Dropdown Menu | `VibecoderChat.tsx` | `AIBuilderChat.tsx` |
-| Like/Dislike buttons | `VibecoderMessage.tsx` | New message component |
-| Undo per-message | `VibecoderMessage.tsx` | Enhance existing |
-| Copy button | `VibecoderMessage.tsx` | Add to messages |
-| Latency/Credits metadata | `VibecoderMessage.tsx` | Add to messages |
-| "Load older messages" | `VibecoderChat.tsx` | Already exists, enhance |
-| Plan button | Already exists | Keep |
-| Mic button | Already exists | Keep |
+**Add quality gate function:**
 
-### New file: `src/components/ai-builder/AIBuilderMessage.tsx`
+When user prompt contains storefront keywords AND canvas is empty, the final output MUST include:
 
-Create a proper message component with:
-- User/Assistant styling
-- Like/Dislike feedback buttons
-- Undo button for applied changes
-- Copy button
-- More menu with latency/credits metadata
-- Operation badges showing what changed
+| Block Type | Requirement |
+|------------|-------------|
+| `hero` OR `headline` | At least 1 |
+| `featured_products` OR `collection` OR `basic_list` | At least 1 |
+| `testimonials` OR `stats` | At least 1 |
+| `faq` OR `cta_strip` | At least 1 |
+| **Total blocks** | Minimum 5 |
 
-### File: `src/components/ai-builder/AIBuilderChat.tsx`
+If the quality gate fails → trigger repair loop.
 
-**Enhance the + button dropdown**:
+---
+
+## Step 3: Add `replaceAllBlocks` Op Support
+
+### Files to update:
+- `supabase/functions/storefront-vibecoder/index.ts` - Add to VALID_OPS
+- `src/components/profile-editor/vibecoder/types.ts` - Add type
+- `src/components/profile-editor/vibecoder/hooks/useVibecoderOperations.ts` - Handle op
+
+**New operation schema:**
+```typescript
+interface ReplaceAllBlocksOp {
+  op: 'replaceAllBlocks';
+  blocks: Array<{
+    id: string;
+    type: string;
+    props: Record<string, unknown>;
+  }>;
+}
+```
+
+This replaces `clearAllSections` + multiple `addSection` with a single atomic operation.
+
+---
+
+## Step 4: Strict Repair Loop
+
+### File: `supabase/functions/storefront-vibecoder/index.ts`
+
+**Enhance the repair logic (around line 988-999):**
+
+Current: Only repairs if schema validation fails.
+
+New behavior:
+1. Check for empty ops → FAIL immediately
+2. Check for empty theme patch → FAIL immediately
+3. Check for empty asset requests `[{}]` → Strip or FAIL
+4. Check quality gate → FAIL if not met
+5. On any FAIL → repair loop with explicit error message
+6. After 1 retry → fallback to hardcoded premium default
+
+**Repair prompt enhancement:**
 ```text
-┌────────────────────┐
-│ 📜 History         │
-│ 📚 Knowledge       │
-│ 🔗 Connectors      │
-├────────────────────┤
-│ 📷 Take screenshot │
-│ 📎 Attach          │
-└────────────────────┘
+ADD TO REPAIR_PROMPT:
+"You returned empty ops / empty theme patch. This is INVALID.
+You MUST return non-empty ops that produce visible changes.
+For build requests, you MUST create blocks using clearAllSections + addSection.
+Empty {} patches or {} asset requests are forbidden."
 ```
-
-**Enhance message rendering**:
-- Replace inline message divs with `AIBuilderMessage` component
-- Add feedback state management
-- Add copy functionality
-
-**Add types for chat messages**:
-- Create proper interface matching `VibecoderMessage` capabilities
-- Track operations, status, feedback, latency, credits
 
 ---
 
-## Technical Details
+## Step 5: Update Tool Contract Prompt
 
-### Type definitions to add (`AIBuilderChat.tsx` or new types file):
+### File: `supabase/functions/storefront-vibecoder/index.ts`
+
+**Add to `OPS_GENERATOR_PROMPT` (line ~115):**
+
+```text
+ADD TO SYSTEM PROMPT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VALIDATION RULES (HARD FAIL):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Empty {} patches are INVALID
+- Empty {} asset requests are INVALID  
+- ops.length === 0 is INVALID
+- updateTheme with empty patch {} is INVALID
+
+For "build" requests, you MUST:
+1. Use clearAllSections first
+2. Add 5-6 complete sections
+3. Include real, compelling copy
+
+If you cannot comply, return a complete rebuild.
+Never ask questions before producing a first build.
+```
+
+---
+
+## Step 6: Block Type Mapping (Legacy Compatibility)
+
+### File: `supabase/functions/storefront-vibecoder/index.ts`
+
+**Add block type aliasing:**
+
+The AI might output new block types (`hero`, `bento_grid`) but the Free Builder uses legacy types (`headline`, `basic_list`). Add mapping:
 
 ```typescript
-interface AIBuilderChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-  operations?: any[];
-  status?: 'pending' | 'applied' | 'discarded';
-  feedback?: 'liked' | 'disliked' | null;
-  latencyMs?: number;
-  creditsUsed?: number;
-}
+const BLOCK_TYPE_ALIASES: Record<string, string> = {
+  'hero': 'headline',
+  'bento_grid': 'basic_list',
+  'cta_strip': 'headline',
+  'stats': 'basic_list',
+  'about': 'about_me',
+  'featured_products': 'featured_product',
+};
 ```
 
-### Database feedback persistence:
-- Update `storefront_ai_conversations` table with feedback column (already has operations column that can store feedback JSON)
-
-### CSS isolation for preview:
-```css
-.preview-container {
-  isolation: isolate;
-  contain: strict;
-  overflow: hidden;
-}
-```
+Apply this mapping in the validation/sanitization step.
 
 ---
-
-## Files to Create
-
-1. `src/components/ai-builder/AIBuilderMessage.tsx` - Message component with feedback toolbar
 
 ## Files to Modify
 
-1. `src/components/profile-editor/EditorSidebar.tsx` - Remove AI/Brand/Style tabs
-2. `src/components/profile-editor/ProfileEditorDialog.tsx` - Remove AI features and imports
-3. `src/components/ai-builder/AIBuilderChat.tsx` - Add + dropdown, use new message component
-4. `src/components/ai-builder/AIBuilderPreview.tsx` - Fix text leak with isolation
-5. `src/components/ai-builder/AIBuilderCanvas.tsx` - Add CSS containment
+| File | Changes |
+|------|---------|
+| `supabase/functions/storefront-vibecoder/index.ts` | Add validation functions, quality gate, repair enhancement, prompt updates |
+| `src/components/profile-editor/vibecoder/types.ts` | Add `ReplaceAllBlocksOp` type |
+| `src/components/profile-editor/vibecoder/hooks/useVibecoderOperations.ts` | Handle `replaceAllBlocks` operation |
 
 ---
 
-## Summary
+## Technical Implementation Details
 
-| Task | Complexity |
-|------|------------|
-| Remove AI from free editor | Low |
-| Fix canvas text leak | Low |
-| Create AIBuilderMessage component | Medium |
-| Migrate + dropdown menu | Low |
-| Add feedback persistence | Low |
+### New Validation Functions:
 
-**Total estimated changes**: ~5 files modified, ~1 file created
+```typescript
+// Validate theme patch is not empty
+function validateThemePatch(patch: any): { valid: boolean; error?: string } {
+  if (!patch || typeof patch !== 'object') {
+    return { valid: false, error: 'Theme patch is null/undefined' };
+  }
+  
+  const validKeys = ['mode', 'accent', 'radius', 'spacing', 'font', 'background', 'cardStyle', 'shadow'];
+  const presentKeys = Object.keys(patch).filter(k => validKeys.includes(k) && patch[k] !== undefined);
+  
+  if (presentKeys.length === 0) {
+    return { valid: false, error: 'Theme patch is empty - must change at least one property' };
+  }
+  
+  // Validate specific values
+  if (patch.mode && !['dark', 'light'].includes(patch.mode)) {
+    return { valid: false, error: `Invalid mode: ${patch.mode}` };
+  }
+  if (patch.accent && !/^#[0-9A-Fa-f]{6}$/.test(patch.accent)) {
+    return { valid: false, error: `Invalid accent color: ${patch.accent}` };
+  }
+  if (patch.radius !== undefined && (typeof patch.radius !== 'number' || patch.radius < 0 || patch.radius > 24)) {
+    return { valid: false, error: `Invalid radius: ${patch.radius}` };
+  }
+  
+  return { valid: true };
+}
 
+// Validate asset requests are not empty
+function validateAssetRequests(requests: any[]): { valid: boolean; sanitized: any[]; error?: string } {
+  if (!Array.isArray(requests)) {
+    return { valid: true, sanitized: [] };
+  }
+  
+  // Filter out empty objects
+  const filtered = requests.filter(r => 
+    r && typeof r === 'object' && Object.keys(r).length > 0
+  );
+  
+  // Validate each remaining request
+  for (const req of filtered) {
+    if (!req.kind || !['image', 'icon_set', 'video_loop'].includes(req.kind)) {
+      return { valid: false, sanitized: [], error: `Invalid asset kind: ${req.kind}` };
+    }
+    if (!req.spec?.purpose || !req.spec?.style) {
+      return { valid: false, sanitized: [], error: 'Asset request missing purpose or style' };
+    }
+  }
+  
+  return { valid: true, sanitized: filtered };
+}
+
+// Check if ops are meaningful (not just empty operations)
+function validateOpsNotEmpty(ops: any[]): { valid: boolean; error?: string } {
+  if (!Array.isArray(ops) || ops.length === 0) {
+    return { valid: false, error: 'No operations provided' };
+  }
+  
+  // Check for "all empty" scenario
+  const meaningfulOps = ops.filter(op => {
+    if (op.op === 'updateTheme') {
+      const patch = op.patch || op.value;
+      return patch && Object.keys(patch).length > 0;
+    }
+    if (op.op === 'addSection' || op.op === 'clearAllSections' || op.op === 'replaceAllBlocks') {
+      return true;
+    }
+    return true;
+  });
+  
+  if (meaningfulOps.length === 0) {
+    return { valid: false, error: 'All operations are empty/no-op' };
+  }
+  
+  return { valid: true };
+}
+```
+
+### Quality Gate Function:
+
+```typescript
+function checkStorefrontQualityGate(ops: any[]): { passed: boolean; missing: string[] } {
+  const hasClear = ops.some(op => op.op === 'clearAllSections' || op.op === 'replaceAllBlocks');
+  if (!hasClear) return { passed: true, missing: [] }; // Not a fresh build
+  
+  const addedTypes = new Set<string>();
+  ops.forEach(op => {
+    if (op.op === 'addSection' && op.section?.section_type) {
+      addedTypes.add(op.section.section_type);
+    }
+    if (op.op === 'replaceAllBlocks' && Array.isArray(op.blocks)) {
+      op.blocks.forEach((b: any) => addedTypes.add(b.type));
+    }
+  });
+  
+  const missing: string[] = [];
+  
+  // Must have hero
+  if (!addedTypes.has('headline') && !addedTypes.has('hero')) {
+    missing.push('hero/headline');
+  }
+  
+  // Must have products section
+  if (!addedTypes.has('featured_product') && !addedTypes.has('collection') && !addedTypes.has('basic_list')) {
+    missing.push('products/features section');
+  }
+  
+  // Must have social proof
+  if (!addedTypes.has('testimonials') && !addedTypes.has('stats') && !addedTypes.has('about_me')) {
+    missing.push('social proof (testimonials/stats)');
+  }
+  
+  // Must have conversion element
+  if (!addedTypes.has('faq') && !addedTypes.has('cta_strip')) {
+    missing.push('faq or cta');
+  }
+  
+  // Must have minimum 5 sections
+  if (addedTypes.size < 5) {
+    missing.push(`need ${5 - addedTypes.size} more sections (have ${addedTypes.size})`);
+  }
+  
+  return { passed: missing.length === 0, missing };
+}
+```
+
+---
+
+## Expected Outcome
+
+After implementation:
+
+**Before (accepted as "success"):**
+```json
+{
+  "ops": [{"op": "updateTheme", "patch": {}}],
+  "asset_requests": [{}]
+}
+```
+
+**After (REJECTED, triggers repair):**
+- Empty theme patch → FAIL
+- Empty asset request → Stripped
+- No blocks added → FAIL
+- Repair loop called with explicit errors
+- If repair fails → hardcoded premium fallback returned
+
+**Correct output structure:**
+```json
+{
+  "ops": [
+    { "op": "clearAllSections" },
+    { "op": "addSection", "section": { "section_type": "headline", "content": {...}, "style_options": {...} }},
+    { "op": "addSection", "section": { "section_type": "basic_list", ... }},
+    { "op": "addSection", "section": { "section_type": "testimonials", ... }},
+    { "op": "addSection", "section": { "section_type": "about_me", ... }},
+    { "op": "addSection", "section": { "section_type": "faq", ... }},
+    { "op": "updateTheme", "patch": { "mode": "dark", "accent": "#8B5CF6", "radius": 16 }}
+  ],
+  "asset_requests": [
+    { "kind": "image", "spec": { "purpose": "hero background", "style": "luxury dark gradient" }}
+  ]
+}
+```
