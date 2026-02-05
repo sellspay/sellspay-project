@@ -7,6 +7,7 @@
  import { supabase } from '@/integrations/supabase/client';
  import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { getPatternRegistrySummary } from './layoutPatterns';
+import { getBlockRegistrySummary } from './blocks';
  
  interface AIBuilderChatProps {
    profileId: string;
@@ -88,6 +89,7 @@ const PLACEHOLDER_EXAMPLES = [
          sections: layout.sections,
          mode: 'ai_builder' as const,
         patternRegistry: getPatternRegistrySummary(),
+       blockRegistry: getBlockRegistrySummary(),
        };
  
        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/storefront-vibecoder`;
