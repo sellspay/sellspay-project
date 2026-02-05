@@ -53,6 +53,8 @@ import {
 import { cn } from '@/lib/utils';
 
 import { useHistory, useHistoryKeyboard } from '@/hooks/useHistory';
+import { EditorSidebar, EditorTab } from './EditorSidebar';
+import { VibecoderChat, BrandProfilePanel } from './vibecoder';
 
 interface Profile {
   id: string;
@@ -433,6 +435,7 @@ export function ProfileEditorDialog({
   
   // UI state - completely ephemeral, reset on close
   const [showAddPanel, setShowAddPanel] = useState(false);
+  const [activeTab, setActiveTab] = useState<EditorTab>('sections');
   const [editingSection, setEditingSection] = useState<ProfileSection | null>(null);
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
   const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);

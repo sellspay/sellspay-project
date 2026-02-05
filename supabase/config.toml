@@ -80,3 +80,9 @@ verify_jwt = false
 
 [functions.get-wallet-balance]
 verify_jwt = false
+
+[functions.storefront-vibecoder]
+verify_jwt = false
+
+[functions.storefront-generate-asset]
+verify_jwt = false

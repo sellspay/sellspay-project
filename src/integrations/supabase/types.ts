@@ -1651,6 +1651,214 @@ export type Database = {
         }
         Relationships: []
       }
+      storefront_ai_conversations: {
+        Row: {
+          asset_requests: Json | null
+          content: string
+          created_at: string
+          id: string
+          operations: Json | null
+          profile_id: string
+          role: string
+        }
+        Insert: {
+          asset_requests?: Json | null
+          content: string
+          created_at?: string
+          id?: string
+          operations?: Json | null
+          profile_id: string
+          role: string
+        }
+        Update: {
+          asset_requests?: Json | null
+          content?: string
+          created_at?: string
+          id?: string
+          operations?: Json | null
+          profile_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storefront_ai_conversations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storefront_ai_conversations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storefront_ai_conversations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storefront_ai_usage: {
+        Row: {
+          action_type: string
+          created_at: string
+          credits_used: number
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          credits_used?: number
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          credits_used?: number
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storefront_ai_usage_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storefront_ai_usage_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storefront_ai_usage_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storefront_brand_profiles: {
+        Row: {
+          color_palette: Json | null
+          created_at: string
+          font_preference: string | null
+          id: string
+          profile_id: string
+          reference_images: Json | null
+          updated_at: string
+          vibe_tags: string[] | null
+        }
+        Insert: {
+          color_palette?: Json | null
+          created_at?: string
+          font_preference?: string | null
+          id?: string
+          profile_id: string
+          reference_images?: Json | null
+          updated_at?: string
+          vibe_tags?: string[] | null
+        }
+        Update: {
+          color_palette?: Json | null
+          created_at?: string
+          font_preference?: string | null
+          id?: string
+          profile_id?: string
+          reference_images?: Json | null
+          updated_at?: string
+          vibe_tags?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storefront_brand_profiles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storefront_brand_profiles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storefront_brand_profiles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storefront_generated_assets: {
+        Row: {
+          asset_type: string
+          asset_url: string
+          created_at: string
+          id: string
+          profile_id: string
+          prompt: string | null
+          spec: Json | null
+          status: string
+        }
+        Insert: {
+          asset_type: string
+          asset_url: string
+          created_at?: string
+          id?: string
+          profile_id: string
+          prompt?: string | null
+          spec?: Json | null
+          status?: string
+        }
+        Update: {
+          asset_type?: string
+          asset_url?: string
+          created_at?: string
+          id?: string
+          profile_id?: string
+          prompt?: string | null
+          spec?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storefront_generated_assets_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storefront_generated_assets_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storefront_generated_assets_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stripe_events: {
         Row: {
           event_type: string
