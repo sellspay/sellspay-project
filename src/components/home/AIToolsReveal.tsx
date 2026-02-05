@@ -128,14 +128,17 @@
        }
  
         // Build deterministic “deck stack” timeline.
-        // NOTE: We only use a .call() for zIndex changes (no transform writes mid-scrub).
         const stackTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
 
-        const setActiveZ = (activeIdx: number) => {
-          // keep base order for everyone
-          cards.forEach((c, i) => gsap.set(c, { zIndex: i + 1 }));
-          // active card must be above all
-          gsap.set(cards[activeIdx], { zIndex: panelCount + 10 });
+        // zIndex must be deterministic from scroll progress to make reverse scrubbing layer correctly.
+        const applyZ = (activeIdx: number) => {
+          cards.forEach((card, i) => {
+            let z = 0;
+            if (i === activeIdx) z = 1000;
+            else if (i < activeIdx) z = 900 - (activeIdx - i);
+            else z = 100 - i;
+            gsap.set(card, { zIndex: z });
+          });
         };
 
         const deckTweensAtStep = (activeIdx: number, pos: number) => {
@@ -160,14 +163,12 @@
           }
         };
 
-        // Step 0 state
-        setActiveZ(0);
+        // Step 0 state (transforms only)
         deckTweensAtStep(0, 0);
 
-        // Build steps 1..N-1
+        // Build steps 1..N-1 (transforms only)
         for (let step = 1; step < panelCount; step++) {
           const pos = step - 1;
-          stackTl.call(() => setActiveZ(step), [], pos);
           deckTweensAtStep(step, pos);
         }
  
@@ -193,8 +194,14 @@
            const local = (clamped - base * stepP) / stepP;
            const activeIdx = local >= 0.3 ? Math.min(panelCount - 1, base + 1) : base;
            setHeadline(activeIdx);
+
+            // Deterministic z-index for perfect reverse layering
+            applyZ(activeIdx);
          },
        });
+
+        // Ensure correct stacking on first paint (before ScrollTrigger emits updates)
+        applyZ(0);
  
        const line1El = headlineLineRefs.current[0];
        const line2El = headlineLineRefs.current[1];
