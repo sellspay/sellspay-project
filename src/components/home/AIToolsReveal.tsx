@@ -122,6 +122,39 @@ export function AIToolsReveal() {
         }
       }
 
+      // Deterministic card stack timeline (avoids per-frame gsap.set loops  no glitching)
+      const stackTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+
+      const stackStateForStep = (activeIdx: number) => {
+        // Active card (top) is activeIdx
+        // Cards 0..activeIdx are revealed; cards above are still below
+        cards.forEach((card, i) => {
+          if (i > activeIdx) return;
+          const fromTop = activeIdx - i; // 0 = top
+          const y = fromTop * STACK_Y;
+          const scale = fromTop === 0
+            ? TOP_CARD_SCALE
+            : Math.max(0.86, 1 - ((fromTop - 1) * STACK_SCALE));
+          gsap.set(card, { y, scale });
+        });
+      };
+
+      // Step 0: first card visible
+      stackTl.call(() => stackStateForStep(0), [], 0);
+
+      // Steps 1..N: slide in card i, then set stack positions
+      for (let i = 1; i < panelCount; i++) {
+        const pos = i - 1;
+        stackTl.to(
+          cards[i],
+          { yPercent: 0, duration: 1 },
+          pos
+        );
+        // After card i is revealed, update stack offsets/scales
+        stackTl.call(() => stackStateForStep(i), [], pos + 0.01);
+      }
+
+      // Drive both the stack + background/text colors from one ScrollTrigger
       ScrollTrigger.create({
         trigger: section,
         start: "top top",
@@ -130,8 +163,12 @@ export function AIToolsReveal() {
         pinSpacing: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
+        scrub: true,
         onUpdate: (self) => {
+          stackTl.progress(self.progress);
           colorTl.progress(self.progress);
+
+          // Headline updates only (no transforms) to keep things stable
           const totalTransitions = panelCount - 1;
           const stepP = 1 / totalTransitions;
           const clamped = Math.max(0, Math.min(1, self.progress));
@@ -139,39 +176,6 @@ export function AIToolsReveal() {
           const local = (clamped - base * stepP) / stepP;
           const activeIdx = local >= 0.3 ? Math.min(panelCount - 1, base + 1) : base;
           setHeadline(activeIdx);
-
-          // Each card slides up from below and COVERS the previous cards
-          cards.forEach((card, i) => {
-            if (i === 0) return; // First card stays put
-            
-            const cardProgress = (clamped - (i - 1) * stepP) / stepP;
-            const clampedCardProgress = Math.max(0, Math.min(1, cardProgress));
-            
-            // Card slides up from 100% (below) to 0% (covering previous)
-            const yPercent = 100 - (clampedCardProgress * 100);
-            gsap.set(card, { yPercent });
-          });
-
-          // Make the already-revealed cards look like a physical stack
-          // (top card slightly smaller so the larger card beneath peeks around it)
-          cards.forEach((card, i) => {
-            if (i > activeIdx) {
-              // Not revealed yet
-              gsap.set(card, { y: 0, scale: 1 });
-              return;
-            }
-
-            const fromTop = activeIdx - i; // 0 = top, 1 = one behind, ...
-            const y = fromTop * STACK_Y;
-            const scale = fromTop === 0
-              ? TOP_CARD_SCALE
-              : Math.max(0.86, 1 - ((fromTop - 1) * STACK_SCALE));
-
-            gsap.set(card, {
-              y,
-              scale,
-            });
-          });
         },
       });
 
