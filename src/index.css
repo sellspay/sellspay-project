@@ -176,7 +176,11 @@
   scrollbar-color: hsl(var(--primary) / 0.4) hsl(var(--background));
 }
 
-/* Prevent unnecessary scroll on short content */
+/* Single-scrollbar strategy:
+   - html owns the vertical scrollbar
+   - body never becomes an independent scroll container
+   This prevents the “double scrollbar” effect on some browsers.
+*/
 html {
   overflow-x: hidden;
   overflow-y: scroll;
@@ -186,6 +190,12 @@ html, body {
   width: 100%;
   margin-right: 0 !important;
   padding-right: 0 !important;
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: visible !important; /* override any forced body scrolling (incl. inline head styles) */
 }
 
 html[data-scroll-locked],
@@ -200,15 +210,10 @@ html[style*="padding-right"] {
   padding-right: 0 !important;
 }
 
-body {
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
 body[data-scroll-locked] {
   padding-right: 0 !important;
   margin-right: 0 !important;
-  overflow-y: scroll !important;
+  overflow-y: visible !important;
 }
 
 body[style*="padding-right"] {
