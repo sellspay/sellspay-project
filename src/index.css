@@ -88,6 +88,21 @@
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 
+/* AI Tools Reveal: never show a nested (left) scrollbar.
+   If a descendant becomes a scroll container due to pinning/overflow rules,
+   hide its scrollbar track while keeping the main page scrollbar (right) intact.
+*/
+.ai-tools-reveal,
+.ai-tools-reveal * {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+
+.ai-tools-reveal *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 /* Hero section animations */
 @keyframes fade-in {
   0% {
