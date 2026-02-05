@@ -1,349 +1,297 @@
 
-## AI Builder Hardening: Reject Empty Ops & Force Complete Builds
 
-This plan implements strict validation, quality gates, and repair loops to prevent useless empty responses from the AI. The system will no longer accept `{}` patches or empty asset requests.
+# Vibecoder → Generative Runtime: Full Architecture Pivot
+
+This is a **major architectural pivot** from a "Structured Page Builder" to a "Generative Runtime Environment" like Lovable/v0. The fundamental shift is:
+
+**Current:** AI generates JSON ops → mapped to 10 pre-coded React components → rendered  
+**Proposed:** AI generates raw React/TSX code → streamed to browser → executed in Sandpack sandbox
 
 ---
 
-## Step 1: Add Strict Schema Validation in Edge Function
+## Current System Analysis
 
-### File: `supabase/functions/storefront-vibecoder/index.ts`
+| Component | Current Implementation |
+|-----------|----------------------|
+| **Rendering** | `AiRenderer` with 10 hardcoded blocks (HeroBlock, BentoGridBlock, etc.) |
+| **AI Output** | JSON ops: `addSection`, `updateTheme`, `clearAllSections` |
+| **Storage** | `ai_storefront_layouts.layout_json` (array of sections) |
+| **Edge Function** | `storefront-vibecoder/index.ts` - non-streaming, returns full JSON |
+| **Preview** | React components mapped via switch statement |
 
-**Add new validation functions after line ~280:**
+**Core Limitation:** The AI can ONLY produce what exists in the component library. No custom layouts, no unique designs, no new component types.
+
+---
+
+## Proposed Architecture
 
 ```text
-NEW CODE TO ADD:
-┌─────────────────────────────────────────────────────────────┐
-│ validateThemePatch(patch)                                    │
-│   - Reject if patch is {} or null                           │
-│   - Require at least 1 valid key from:                      │
-│     mode, accent, radius, spacing, font, background,        │
-│     cardStyle, shadow                                       │
-│   - Validate value types                                    │
-│                                                              │
-│ validateAssetRequests(requests)                              │
-│   - Reject empty array with [{}]                            │
-│   - Each request MUST have: kind, slot/purpose, style       │
-│   - kind must be: image | icon_set | video_loop             │
-│                                                              │
-│ validateOpsNotEmpty(ops)                                     │
-│   - Reject if ops.length === 0                              │
-│   - Reject if only op is updateTheme with empty patch       │
-│   - For fresh builds: require clearAllSections + 5+ blocks  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Validation Logic:
-
-**ThemePatch validation:**
-- `mode` must be "dark" | "light"
-- `accent` must be valid hex color (#RRGGBB)
-- `radius` must be number 0-24
-- `spacing` must be "compact" | "balanced" | "roomy"
-- `font` must be "inter" | "geist" | "system" | "serif"
-
-**Asset request validation:**
-- `kind` required: "image" | "icon_set" | "video_loop"
-- `spec.purpose` required (non-empty string)
-- `spec.style` required (non-empty string)
-
----
-
-## Step 2: Add Quality Gate for Storefronts
-
-### File: `supabase/functions/storefront-vibecoder/index.ts`
-
-**Add quality gate function:**
-
-When user prompt contains storefront keywords AND canvas is empty, the final output MUST include:
-
-| Block Type | Requirement |
-|------------|-------------|
-| `hero` OR `headline` | At least 1 |
-| `featured_products` OR `collection` OR `basic_list` | At least 1 |
-| `testimonials` OR `stats` | At least 1 |
-| `faq` OR `cta_strip` | At least 1 |
-| **Total blocks** | Minimum 5 |
-
-If the quality gate fails → trigger repair loop.
-
----
-
-## Step 3: Add `replaceAllBlocks` Op Support
-
-### Files to update:
-- `supabase/functions/storefront-vibecoder/index.ts` - Add to VALID_OPS
-- `src/components/profile-editor/vibecoder/types.ts` - Add type
-- `src/components/profile-editor/vibecoder/hooks/useVibecoderOperations.ts` - Handle op
-
-**New operation schema:**
-```typescript
-interface ReplaceAllBlocksOp {
-  op: 'replaceAllBlocks';
-  blocks: Array<{
-    id: string;
-    type: string;
-    props: Record<string, unknown>;
-  }>;
-}
-```
-
-This replaces `clearAllSections` + multiple `addSection` with a single atomic operation.
-
----
-
-## Step 4: Strict Repair Loop
-
-### File: `supabase/functions/storefront-vibecoder/index.ts`
-
-**Enhance the repair logic (around line 988-999):**
-
-Current: Only repairs if schema validation fails.
-
-New behavior:
-1. Check for empty ops → FAIL immediately
-2. Check for empty theme patch → FAIL immediately
-3. Check for empty asset requests `[{}]` → Strip or FAIL
-4. Check quality gate → FAIL if not met
-5. On any FAIL → repair loop with explicit error message
-6. After 1 retry → fallback to hardcoded premium default
-
-**Repair prompt enhancement:**
-```text
-ADD TO REPAIR_PROMPT:
-"You returned empty ops / empty theme patch. This is INVALID.
-You MUST return non-empty ops that produce visible changes.
-For build requests, you MUST create blocks using clearAllSections + addSection.
-Empty {} patches or {} asset requests are forbidden."
+┌──────────────────────────────────────────────────────────────────┐
+│                         NEW ARCHITECTURE                          │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│   User Prompt                                                      │
+│        ↓                                                          │
+│   Edge Function (storefront-vibecoder-v2)                          │
+│   • Streams raw TSX code (not JSON)                               │
+│   • Uses ReadableStream + SSE                                      │
+│        ↓                                                          │
+│   Frontend Parser                                                  │
+│   • Accumulates streaming code                                     │
+│   • Cleans markdown fences                                        │
+│        ↓                                                          │
+│   Sandpack Runtime                                                 │
+│   • Executes code in isolated iframe                              │
+│   • Handles Tailwind via CDN                                      │
+│   • Auto-resolves npm imports (lucide, framer-motion)              │
+│        ↓                                                          │
+│   Live Preview                                                     │
+│                                                                    │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Step 5: Update Tool Contract Prompt
+## Step-by-Step Implementation
 
-### File: `supabase/functions/storefront-vibecoder/index.ts`
+### Phase 1: New Edge Function (Streaming TSX Generator)
 
-**Add to `OPS_GENERATOR_PROMPT` (line ~115):**
+**New File:** `supabase/functions/vibecoder-v2/index.ts`
 
-```text
-ADD TO SYSTEM PROMPT:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-VALIDATION RULES (HARD FAIL):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Empty {} patches are INVALID
-- Empty {} asset requests are INVALID  
-- ops.length === 0 is INVALID
-- updateTheme with empty patch {} is INVALID
+This function will:
+1. Accept user prompt + context (existing code, products, brand)
+2. Call Lovable AI Gateway with streaming enabled
+3. Stream raw TSX code back to the client (not JSON)
+4. Use a system prompt that outputs React components, not JSON ops
 
-For "build" requests, you MUST:
-1. Use clearAllSections first
-2. Add 5-6 complete sections
-3. Include real, compelling copy
-
-If you cannot comply, return a complete rebuild.
-Never ask questions before producing a first build.
+**System Prompt Strategy:**
 ```
+You are an expert Frontend React Engineer.
+You are generating a full, runnable React component using Tailwind CSS.
+
+RULES:
+1. Output ONLY the code. No markdown backticks, no explanations.
+2. Use 'export default function App()'.
+3. Use lucide-react for icons.
+4. Use standard Tailwind classes.
+5. Do not import external libraries besides lucide-react and framer-motion.
+```
+
+**Streaming Implementation:**
+- Return a `ReadableStream` that forwards Lovable AI tokens as they arrive
+- Use `text/event-stream` content type
+- Parse the Lovable AI SSE format and forward clean text tokens
 
 ---
 
-## Step 6: Block Type Mapping (Legacy Compatibility)
+### Phase 2: Install Sandpack Runtime
 
-### File: `supabase/functions/storefront-vibecoder/index.ts`
+**Dependency:** `@codesandbox/sandpack-react`
 
-**Add block type aliasing:**
-
-The AI might output new block types (`hero`, `bento_grid`) but the Free Builder uses legacy types (`headline`, `basic_list`). Add mapping:
-
-```typescript
-const BLOCK_TYPE_ALIASES: Record<string, string> = {
-  'hero': 'headline',
-  'bento_grid': 'basic_list',
-  'cta_strip': 'headline',
-  'stats': 'basic_list',
-  'about': 'about_me',
-  'featured_products': 'featured_product',
-};
-```
-
-Apply this mapping in the validation/sanitization step.
+This package:
+- Provides an in-browser code execution sandbox
+- Handles npm imports via CDN (esm.sh, skypack)
+- Isolates generated code in an iframe
+- Includes built-in code editor (optional)
 
 ---
 
-## Files to Modify
+### Phase 3: New VFS Storage Schema
 
-| File | Changes |
-|------|---------|
-| `supabase/functions/storefront-vibecoder/index.ts` | Add validation functions, quality gate, repair enhancement, prompt updates |
-| `src/components/profile-editor/vibecoder/types.ts` | Add `ReplaceAllBlocksOp` type |
-| `src/components/profile-editor/vibecoder/hooks/useVibecoderOperations.ts` | Handle `replaceAllBlocks` operation |
+**New Table:** `project_files`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid | Primary Key |
+| `profile_id` | uuid | FK to profiles |
+| `file_path` | text | e.g., `/App.tsx`, `/components/Hero.tsx` |
+| `content` | text | Raw TSX code |
+| `version` | int | For version history |
+| `created_at` | timestamp | |
+| `updated_at` | timestamp | |
+
+This enables:
+- Multi-file projects
+- Version history / undo
+- Component reuse across pages
+
+---
+
+### Phase 4: Frontend Components
+
+**New Component:** `src/components/ai-builder/VibecoderPreview.tsx`
+
+This component will:
+1. Accept streaming code via fetch with `response.body.getReader()`
+2. Accumulate tokens and clean markdown fences
+3. Pass code to Sandpack for live execution
+4. Show code writing animation (tokens appearing)
+
+**Integration:**
+- Replace `<AIBuilderPreview>` with new `<VibecoderPreview>` component
+- Keep existing `<AIBuilderChat>` UI with modifications for streaming state
+
+---
+
+### Phase 5: Mode Toggle (Hybrid Approach)
+
+To preserve existing functionality while adding new capabilities:
+
+| Mode | Description | Storage |
+|------|-------------|---------|
+| **Block Mode** (existing) | JSON ops → pre-coded components | `layout_json` |
+| **Vibecoder Mode** (new) | Streamed TSX → Sandpack | `project_files` |
+
+Users can toggle between modes. Block mode is faster/cheaper, Vibecoder mode is unlimited creative freedom.
+
+---
+
+## Files to Create/Modify
+
+| Action | File | Purpose |
+|--------|------|---------|
+| **Create** | `supabase/functions/vibecoder-v2/index.ts` | Streaming TSX generator |
+| **Create** | `src/components/ai-builder/VibecoderPreview.tsx` | Sandpack-based renderer |
+| **Create** | `src/components/ai-builder/useStreamingCode.ts` | Hook for streaming code |
+| **Modify** | `src/components/ai-builder/AIBuilderCanvas.tsx` | Add mode toggle, integrate new preview |
+| **Modify** | `src/components/ai-builder/AIBuilderChat.tsx` | Handle streaming responses |
+| **Modify** | `package.json` | Add `@codesandbox/sandpack-react` |
+
+**Database Migration:**
+- Create `project_files` table for VFS storage
 
 ---
 
 ## Technical Implementation Details
 
-### New Validation Functions:
+### Edge Function Streaming Pattern
 
 ```typescript
-// Validate theme patch is not empty
-function validateThemePatch(patch: any): { valid: boolean; error?: string } {
-  if (!patch || typeof patch !== 'object') {
-    return { valid: false, error: 'Theme patch is null/undefined' };
-  }
-  
-  const validKeys = ['mode', 'accent', 'radius', 'spacing', 'font', 'background', 'cardStyle', 'shadow'];
-  const presentKeys = Object.keys(patch).filter(k => validKeys.includes(k) && patch[k] !== undefined);
-  
-  if (presentKeys.length === 0) {
-    return { valid: false, error: 'Theme patch is empty - must change at least one property' };
-  }
-  
-  // Validate specific values
-  if (patch.mode && !['dark', 'light'].includes(patch.mode)) {
-    return { valid: false, error: `Invalid mode: ${patch.mode}` };
-  }
-  if (patch.accent && !/^#[0-9A-Fa-f]{6}$/.test(patch.accent)) {
-    return { valid: false, error: `Invalid accent color: ${patch.accent}` };
-  }
-  if (patch.radius !== undefined && (typeof patch.radius !== 'number' || patch.radius < 0 || patch.radius > 24)) {
-    return { valid: false, error: `Invalid radius: ${patch.radius}` };
-  }
-  
-  return { valid: true };
-}
+// In vibecoder-v2/index.ts
+const response = await fetch(LOVABLE_AI_URL, {
+  method: "POST",
+  headers: { Authorization: `Bearer ${LOVABLE_API_KEY}` },
+  body: JSON.stringify({
+    model: "google/gemini-3-flash-preview",
+    messages: [...],
+    stream: true,
+  }),
+});
 
-// Validate asset requests are not empty
-function validateAssetRequests(requests: any[]): { valid: boolean; sanitized: any[]; error?: string } {
-  if (!Array.isArray(requests)) {
-    return { valid: true, sanitized: [] };
-  }
-  
-  // Filter out empty objects
-  const filtered = requests.filter(r => 
-    r && typeof r === 'object' && Object.keys(r).length > 0
-  );
-  
-  // Validate each remaining request
-  for (const req of filtered) {
-    if (!req.kind || !['image', 'icon_set', 'video_loop'].includes(req.kind)) {
-      return { valid: false, sanitized: [], error: `Invalid asset kind: ${req.kind}` };
+const stream = new ReadableStream({
+  async start(controller) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      // Parse SSE and forward clean text
+      const chunk = decoder.decode(value);
+      // Extract delta.content from SSE format
+      controller.enqueue(new TextEncoder().encode(extractedText));
     }
-    if (!req.spec?.purpose || !req.spec?.style) {
-      return { valid: false, sanitized: [], error: 'Asset request missing purpose or style' };
-    }
-  }
-  
-  return { valid: true, sanitized: filtered };
-}
+    controller.close();
+  },
+});
 
-// Check if ops are meaningful (not just empty operations)
-function validateOpsNotEmpty(ops: any[]): { valid: boolean; error?: string } {
-  if (!Array.isArray(ops) || ops.length === 0) {
-    return { valid: false, error: 'No operations provided' };
-  }
-  
-  // Check for "all empty" scenario
-  const meaningfulOps = ops.filter(op => {
-    if (op.op === 'updateTheme') {
-      const patch = op.patch || op.value;
-      return patch && Object.keys(patch).length > 0;
-    }
-    if (op.op === 'addSection' || op.op === 'clearAllSections' || op.op === 'replaceAllBlocks') {
-      return true;
-    }
-    return true;
+return new Response(stream, {
+  headers: { "Content-Type": "text/event-stream" }
+});
+```
+
+### Frontend Streaming Consumer
+
+```typescript
+// useStreamingCode.ts
+async function streamCode(prompt: string, onChunk: (text: string) => void) {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/vibecoder-v2`, {
+    method: "POST",
+    body: JSON.stringify({ prompt }),
   });
   
-  if (meaningfulOps.length === 0) {
-    return { valid: false, error: 'All operations are empty/no-op' };
-  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let accumulated = "";
   
-  return { valid: true };
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    accumulated += decoder.decode(value);
+    const cleanCode = accumulated
+      .replace(/^```tsx?\n?/, "")
+      .replace(/```$/, "");
+    
+    onChunk(cleanCode);
+  }
 }
 ```
 
-### Quality Gate Function:
+### Sandpack Integration
 
 ```typescript
-function checkStorefrontQualityGate(ops: any[]): { passed: boolean; missing: string[] } {
-  const hasClear = ops.some(op => op.op === 'clearAllSections' || op.op === 'replaceAllBlocks');
-  if (!hasClear) return { passed: true, missing: [] }; // Not a fresh build
-  
-  const addedTypes = new Set<string>();
-  ops.forEach(op => {
-    if (op.op === 'addSection' && op.section?.section_type) {
-      addedTypes.add(op.section.section_type);
-    }
-    if (op.op === 'replaceAllBlocks' && Array.isArray(op.blocks)) {
-      op.blocks.forEach((b: any) => addedTypes.add(b.type));
-    }
-  });
-  
-  const missing: string[] = [];
-  
-  // Must have hero
-  if (!addedTypes.has('headline') && !addedTypes.has('hero')) {
-    missing.push('hero/headline');
-  }
-  
-  // Must have products section
-  if (!addedTypes.has('featured_product') && !addedTypes.has('collection') && !addedTypes.has('basic_list')) {
-    missing.push('products/features section');
-  }
-  
-  // Must have social proof
-  if (!addedTypes.has('testimonials') && !addedTypes.has('stats') && !addedTypes.has('about_me')) {
-    missing.push('social proof (testimonials/stats)');
-  }
-  
-  // Must have conversion element
-  if (!addedTypes.has('faq') && !addedTypes.has('cta_strip')) {
-    missing.push('faq or cta');
-  }
-  
-  // Must have minimum 5 sections
-  if (addedTypes.size < 5) {
-    missing.push(`need ${5 - addedTypes.size} more sections (have ${addedTypes.size})`);
-  }
-  
-  return { passed: missing.length === 0, missing };
+// VibecoderPreview.tsx
+import { Sandpack } from "@codesandbox/sandpack-react";
+
+export function VibecoderPreview({ code }: { code: string }) {
+  return (
+    <Sandpack
+      template="react-ts"
+      theme="dark"
+      files={{
+        "/App.tsx": code,
+      }}
+      options={{
+        externalResources: ["https://cdn.tailwindcss.com"],
+        showNavigator: false,
+      }}
+      customSetup={{
+        dependencies: {
+          "lucide-react": "latest",
+          "framer-motion": "latest",
+        },
+      }}
+    />
+  );
 }
 ```
 
 ---
 
-## Expected Outcome
+## Rollout Strategy
 
-After implementation:
+**Phase 1 (Week 1):** Create streaming edge function + basic Sandpack preview  
+**Phase 2 (Week 2):** VFS storage + version history  
+**Phase 3 (Week 3):** Mode toggle + migration tools  
+**Phase 4 (Week 4):** Polish, error handling, fallbacks  
 
-**Before (accepted as "success"):**
-```json
-{
-  "ops": [{"op": "updateTheme", "patch": {}}],
-  "asset_requests": [{}]
-}
-```
+---
 
-**After (REJECTED, triggers repair):**
-- Empty theme patch → FAIL
-- Empty asset request → Stripped
-- No blocks added → FAIL
-- Repair loop called with explicit errors
-- If repair fails → hardcoded premium fallback returned
+## Trade-offs
 
-**Correct output structure:**
-```json
-{
-  "ops": [
-    { "op": "clearAllSections" },
-    { "op": "addSection", "section": { "section_type": "headline", "content": {...}, "style_options": {...} }},
-    { "op": "addSection", "section": { "section_type": "basic_list", ... }},
-    { "op": "addSection", "section": { "section_type": "testimonials", ... }},
-    { "op": "addSection", "section": { "section_type": "about_me", ... }},
-    { "op": "addSection", "section": { "section_type": "faq", ... }},
-    { "op": "updateTheme", "patch": { "mode": "dark", "accent": "#8B5CF6", "radius": 16 }}
-  ],
-  "asset_requests": [
-    { "kind": "image", "spec": { "purpose": "hero background", "style": "luxury dark gradient" }}
-  ]
-}
-```
+| Aspect | Current (Block Mode) | New (Vibecoder Mode) |
+|--------|---------------------|---------------------|
+| **Creative Freedom** | Limited to 10 blocks | Unlimited |
+| **Speed** | Fast (JSON mapping) | Slower (LLM generates full code) |
+| **Cost** | Lower (shorter prompts) | Higher (more tokens) |
+| **Reliability** | Very stable | Requires error handling |
+| **Maintenance** | Update component library | Update prompts |
+
+**Recommendation:** Keep both modes. Block Mode for quick iterations, Vibecoder Mode for custom designs.
+
+---
+
+## Security Considerations
+
+Sandpack runs code in an isolated iframe origin, so:
+- No access to parent page DOM
+- No access to cookies/localStorage
+- Cannot make arbitrary network requests
+
+Additional safeguards:
+- Validate generated code for dangerous patterns (eval, document.cookie)
+- Rate limit API calls
+- Monitor for abuse patterns
+
