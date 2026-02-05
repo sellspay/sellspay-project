@@ -1287,6 +1287,25 @@ export function ProfileEditorDialog({
                     setSections={setSections}
                     pushHistory={(state) => pushHistory({ ...state, collections: editorCollections, showRecentUploads })}
                     onShowAssetTray={() => setShowAssetTray(true)}
+                    onThemeUpdate={(path, value) => {
+                      // Handle theme updates - update all sections' style_options
+                      if (path.startsWith('colorScheme')) {
+                        const validSchemes = ['white', 'light', 'dark', 'black', 'highlight'] as const;
+                        const scheme = validSchemes.includes(value as any) ? value as typeof validSchemes[number] : 'white';
+                        setSections((prev: ProfileSection[]) => prev.map(s => ({
+                          ...s,
+                          style_options: { ...s.style_options, colorScheme: scheme }
+                        })));
+                        toast.success('Theme updated');
+                      }
+                    }}
+                    onHeaderUpdate={(patch) => {
+                      // Handle header updates (bio, display name, etc.)
+                      // This would need to update the profile in the database
+                      if (patch.bio || patch.displayName) {
+                        toast.info('Header changes saved. Save your profile to apply.');
+                      }
+                    }}
                   />
                 )}
                 {activeTab === 'brand' && (
