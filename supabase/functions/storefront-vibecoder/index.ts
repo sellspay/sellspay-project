@@ -5,7 +5,7 @@
    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
  };
  
- const SYSTEM_PROMPT = `You are SellsPay's Storefront Vibecoder: a chat-based co-pilot that edits a creator's storefront safely.
+  const SYSTEM_PROMPT = `You are SellsPay's Storefront Vibecoder: a chat-based co-pilot that edits a creator's storefront safely.
  
 GOAL:
 Help users improve their storefront design, layout, copy, and assets. When the user describes what they want, ALWAYS generate the operations to make it happen. Be proactive - don't ask for clarification unless absolutely necessary.
@@ -54,7 +54,9 @@ content: { "title": "FAQ", "items": [{"question": "What formats?", "answer": "In
 For "about_me" section:
 content: { "title": "About Me", "description": "I'm a passionate creator specializing in...", "imageUrl": "" }
 
-OUTPUT: Always use the apply_storefront_changes tool with complete content.`;
+ IMPORTANT: The examples above are ONLY structural guidance. Do NOT reuse their wording. Always generate fresh, specific, prompt-aligned copy.
+
+ OUTPUT: Always use the apply_storefront_changes tool with complete content.`;
  
  serve(async (req) => {
    if (req.method === "OPTIONS") {
@@ -89,6 +91,9 @@ OUTPUT: Always use the apply_storefront_changes tool with complete content.`;
        },
        body: JSON.stringify({
          model: "google/gemini-3-flash-preview",
+          // Higher creativity so results don't feel like templates.
+          temperature: 1.05,
+          top_p: 0.95,
          messages: [
            { role: "system", content: SYSTEM_PROMPT },
            { role: "user", content: contextMessage },
@@ -211,6 +216,11 @@ OUTPUT: Always use the apply_storefront_changes tool with complete content.`;
             ? msg.content
             : "I couldn't generate a structured storefront patch for that request. I added a starter hero section you can tweak.";
 
+        // AI-first fallback: still apply something, but tie it directly to the user's prompt.
+        const safeTitle = typeof message === "string" && message.trim()
+          ? `Built from your prompt: ${message.trim().slice(0, 72)}${message.trim().length > 72 ? "…" : ""}`
+          : "A new hero section";
+
         return new Response(
           JSON.stringify({
             message: fallbackMessage,
@@ -221,8 +231,8 @@ OUTPUT: Always use the apply_storefront_changes tool with complete content.`;
                 section: {
                   section_type: "headline",
                   content: {
-                    title: "Welcome to My Creative Studio",
-                    subtitle: "Premium digital assets crafted with intent.",
+                    title: safeTitle,
+                    subtitle: "Tell me the vibe (premium, playful, cinematic) and I’ll generate the full layout + copy.",
                   },
                   style_options: {
                     colorScheme: "dark",
@@ -260,98 +270,25 @@ OUTPUT: Always use the apply_storefront_changes tool with complete content.`;
         return true;
      });
  
-      // Fill in default content for sections that have empty content
-      const DEFAULT_CONTENT: Record<string, { content: Record<string, unknown>; style_options: Record<string, string> }> = {
-        headline: {
-          content: { title: "Welcome to My Creative Studio", subtitle: "Premium digital assets crafted with passion" },
-          style_options: { colorScheme: "dark", height: "large", textAlign: "center" }
-        },
-        text: {
-          content: { heading: "About My Work", text: "I create high-quality digital assets for creators, editors, and designers who demand excellence." },
-          style_options: { colorScheme: "white", height: "medium" }
-        },
-        testimonials: {
-          content: { 
-            title: "What Creators Say", 
-            testimonials: [
-              { quote: "Absolutely incredible quality!", author: "Alex M.", role: "Video Editor" },
-              { quote: "These assets saved me hours of work.", author: "Jordan K.", role: "Content Creator" },
-              { quote: "Best investment for my creative projects.", author: "Sam T.", role: "Designer" }
-            ]
-          },
-          style_options: { colorScheme: "light", height: "medium" }
-        },
-        faq: {
-          content: {
-            title: "Frequently Asked Questions",
-            items: [
-              { question: "What file formats are included?", answer: "All products include industry-standard formats compatible with major editing software." },
-              { question: "Can I use these commercially?", answer: "Yes! All purchases include a commercial license for your projects." },
-              { question: "How do I download my purchase?", answer: "After purchase, you'll receive immediate access to download from your library." }
-            ]
-          },
-          style_options: { colorScheme: "white", height: "medium" }
-        },
-        about_me: {
-          content: { title: "About Me", description: "I'm a passionate creator specializing in high-quality digital assets. With years of experience, I craft tools that help bring your creative vision to life.", imageUrl: "" },
-          style_options: { colorScheme: "light", height: "medium" }
-        },
-        gallery: {
-          content: { title: "My Work", images: [] },
-          style_options: { colorScheme: "white", height: "large" }
-        },
-        divider: {
-          content: {},
-          style_options: { colorScheme: "white", height: "small" }
-        },
-        newsletter: {
-          content: { title: "Stay Updated", description: "Subscribe to get notified about new releases and exclusive offers." },
-          style_options: { colorScheme: "highlight", height: "medium", textAlign: "center" }
-        },
-        contact_us: {
-          content: { title: "Get in Touch", description: "Have questions? Reach out and I'll get back to you soon." },
-          style_options: { colorScheme: "light", height: "medium" }
-        }
-      };
-
-      // Enrich ops with default content if empty
-      const enrichedOps = validatedOps.map((op: { op: string; section?: { section_type?: string; content?: Record<string, unknown>; style_options?: Record<string, string> } }) => {
-        if (op.op === "addSection" && op.section) {
-          const sectionType = op.section.section_type || "";
-          const defaults = DEFAULT_CONTENT[sectionType];
-          if (defaults) {
-            const hasEmptyContent = !op.section.content || Object.keys(op.section.content).length === 0;
-            const hasEmptyStyle = !op.section.style_options || Object.keys(op.section.style_options).length === 0;
-            return {
-              ...op,
-              section: {
-                ...op.section,
-                content: hasEmptyContent ? defaults.content : op.section.content,
-                style_options: hasEmptyStyle ? defaults.style_options : op.section.style_options,
-              }
-            };
-          }
-        }
-        return op;
-      });
-
-      // Ensure we always return something apply-able to prevent infinite "Thinking..."
-      const finalOps = enrichedOps.length > 0
-        ? enrichedOps
-        : [
-            {
-              op: "addSection",
-              after: null,
-              section: {
-                section_type: "text",
-                content: {
-                  heading: "Quick intro",
-                  text: "Tell visitors what you make, who it's for, and what makes your assets different.",
-                },
-                style_options: { colorScheme: "white", height: "medium" },
-              },
-            },
-          ];
+       // AI-first: do NOT inject template/preset content. If AI returns nothing usable, return a minimal prompt-tied section.
+       const finalOps = validatedOps.length > 0
+         ? validatedOps
+         : [
+             {
+               op: "addSection",
+               after: null,
+               section: {
+                 section_type: "text",
+                 content: {
+                   heading: "Describe your storefront",
+                   text: typeof message === "string" && message.trim()
+                     ? `Your prompt: “${message.trim()}”. Now I’ll generate sections that match it—try adding style cues like “premium”, “brutalist”, or “cinematic”.`
+                     : "Tell me the vibe and what you sell, and I’ll generate a full layout.",
+                 },
+                 style_options: { colorScheme: "white", height: "medium" },
+               },
+             },
+           ];
 
      return new Response(JSON.stringify({
        message: result.message || "Here are my suggestions.",

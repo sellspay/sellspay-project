@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
-import { Plus, GripVertical, Pencil } from 'lucide-react';
+import { Plus, GripVertical } from 'lucide-react';
 import { ProfileSection, SectionStyleOptions, AnimationType } from './types';
 import { SectionPreviewContent } from './previews/SectionPreviewContent';
 import { getAnimationStyles, getAnimatedStyles } from './AnimationPicker';
@@ -205,21 +205,7 @@ const SortableSectionItem = memo(forwardRef<{ triggerAnimation: () => void }, {
           <GripVertical className="h-4 w-4 text-foreground" />
         </div>
         
-        {/* Edit button - centered on hover */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="shadow-lg"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect();
-            }}
-          >
-            <Pencil className="h-3.5 w-3.5 mr-1.5" />
-            Edit
-          </Button>
-        </div>
+        {/* AI-first: no manual “Edit” CTA in preview. Click to select is enough. */}
         
         {/* Section content */}
         <div 
@@ -315,12 +301,7 @@ export const LiveProfilePreview = memo(({
     >
       {/* Fixed Header Section (Read-only) */}
       <div className="relative">
-        {/* Non-editable overlay indicator */}
-        <div className="absolute inset-0 pointer-events-none z-10">
-          <div className="absolute top-2 right-2 bg-foreground/60 text-background text-xs px-2 py-1 rounded">
-            Edit in Settings
-          </div>
-        </div>
+        {/* Header is still managed elsewhere; keep preview clean for AI-first editing */}
         
         {/* Banner */}
         <div className="relative h-48 bg-gradient-to-b from-muted to-muted-foreground/20 overflow-hidden">

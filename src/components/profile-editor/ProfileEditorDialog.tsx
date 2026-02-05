@@ -29,7 +29,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { 
-  X, Plus, GripVertical, Eye, EyeOff, Trash2, Pencil,
+  X, Plus, GripVertical, Eye, EyeOff, Trash2,
   Link as LinkIcon, Settings, User, Download, Bookmark, Layers, Play,
   ChevronRight, Undo2, Redo2, Loader2, Check, AlertCircle, Save, Sparkles
 } from 'lucide-react';
@@ -233,14 +233,7 @@ const SortableCollectionCard = memo(({
             >
               <GripVertical className="w-4 h-4 text-muted-foreground" />
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onEdit}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            >
-              <Pencil className="w-4 h-4" />
-            </Button>
+            {/* AI-first: remove manual Edit entry point */}
             <Button
               variant="ghost"
               size="icon"
@@ -292,9 +285,7 @@ const SortableCollectionCard = memo(({
           <div className="border-2 border-dashed border-muted-foreground/20 rounded-lg p-8 text-center">
             <Layers className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">No products in this collection</p>
-            <Button variant="ghost" size="sm" onClick={onEdit} className="mt-2 text-primary">
-              Add Products
-            </Button>
+            {/* AI-first: collections are managed by AI, so no manual “Add Products” CTA here */}
           </div>
         )}
 
@@ -384,15 +375,7 @@ const SortableSectionCard = memo(({
           <GripVertical className="w-5 h-5 text-white" />
         </div>
 
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="bg-white/10 hover:bg-white/20 text-white border-0"
-        >
-          <Pencil className="w-4 h-4 mr-1" />
-          Edit
-        </Button>
+        {/* AI-first: remove manual Edit entry point */}
 
         <Button
           variant="secondary"
