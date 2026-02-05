@@ -254,21 +254,6 @@ export function AIToolsReveal() {
                   </div>
                 </div>
               ))}
-
-              {/* Prompt box overlay */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-3 sm:bottom-4 lg:bottom-6 flex justify-center z-50">
-                <div className="pointer-events-auto flex items-center gap-2 sm:gap-3 rounded-xl sm:rounded-2xl border border-white/15 bg-black/70 px-3 sm:px-5 py-2.5 sm:py-3.5 backdrop-blur-xl">
-                  <div className="grid h-7 w-7 sm:h-9 sm:w-9 place-items-center rounded-lg sm:rounded-xl bg-white/10 text-sm sm:text-base">
-                    🔊
-                  </div>
-                  <div className="min-w-[160px] sm:min-w-[220px] lg:min-w-[260px] text-xs sm:text-sm text-white/80">
-                    Describe what you want to create…
-                  </div>
-                  <div className="grid h-7 w-7 sm:h-9 sm:w-9 place-items-center rounded-lg sm:rounded-xl bg-white/10 text-sm sm:text-base">
-                    ⬆️
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
