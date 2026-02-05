@@ -214,7 +214,7 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
          scrub: true,
          onUpdate: (self) => {
            stackTl.progress(self.progress);
-           colorTl.time(self.progress * (panelCount - 1));
+          colorTl.time(self.progress * panelCount);
  
            // Headline updates only (no transforms) to keep things stable
            const totalTransitions = panelCount - 1;
