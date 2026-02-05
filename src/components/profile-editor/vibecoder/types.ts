@@ -57,15 +57,25 @@ export interface ClearAllSectionsOp {
   op: 'clearAllSections';
 }
 
- export type VibecoderOp =
-   | AddSectionOp
-   | RemoveSectionOp
-   | MoveSectionOp
-   | UpdateSectionOp
-   | UpdateThemeOp
-   | UpdateHeaderContentOp
+export interface ReplaceAllBlocksOp {
+  op: 'replaceAllBlocks';
+  blocks: Array<{
+    id: string;
+    type: string;
+    props: Record<string, unknown>;
+  }>;
+}
+
+export type VibecoderOp =
+  | AddSectionOp
+  | RemoveSectionOp
+  | MoveSectionOp
+  | UpdateSectionOp
+  | UpdateThemeOp
+  | UpdateHeaderContentOp
   | AssignAssetToSlotOp
-  | ClearAllSectionsOp;
+  | ClearAllSectionsOp
+  | ReplaceAllBlocksOp;
  
  // === ASSET REQUESTS ===
  
