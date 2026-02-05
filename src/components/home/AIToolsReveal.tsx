@@ -95,17 +95,19 @@
        gsap.set(section, { backgroundColor: STEPS[0].bg });
        if (headlineEl) gsap.set(headlineEl, { color: STEPS[0].text });
  
-       // Initial deck state: all cards visible, stacked from card0 (center) down
-       // higher index stays higher zIndex so the new active card naturally sits on top
-       cards.forEach((card, i) => {
-         gsap.set(card, {
-           zIndex: i + 1,
-           yPercent: 0,
-           y: i * STACK_Y,
-           scale: Math.max(0.86, TOP_CARD_SCALE - i * STACK_SCALE),
-           willChange: "transform",
-         });
-       });
+        // Initial deck state: unrevealed cards live below and slide up as you scroll.
+        // Keep base stacking order, but force the active card above the rest per step.
+        cards.forEach((card, i) => {
+          gsap.set(card, {
+            zIndex: i + 1,
+            yPercent: i === 0 ? 0 : 110,
+            y: 0,
+            scale: i === 0 ? TOP_CARD_SCALE : 1,
+            willChange: "transform",
+          });
+        });
+        // Ensure card 0 is on top at start
+        gsap.set(cards[0], { zIndex: panelCount + 10 });
  
        const setHeadline = (idx: number) => {
          const line1 = STEPS[idx]?.headline?.[0] ?? "";
@@ -125,26 +127,49 @@
          }
        }
  
-       // Deck state function: for any active index, compute where every card sits
-       const applyDeckState = (activeIdx: number) => ({
-         y: (i: number) => (i - activeIdx) * STACK_Y,
-         scale: (i: number) => {
-           const d = Math.abs(i - activeIdx);
-           if (d === 0) return TOP_CARD_SCALE;
-           return Math.max(0.86, TOP_CARD_SCALE - d * STACK_SCALE);
-         },
-       });
- 
-       // Build deterministic deck timeline (pure tweening, no .call() or gsap.set mid-scrub)
-       const stackTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
- 
-       // State at step 0
-       stackTl.to(cards, { ...applyDeckState(0), duration: 1 }, 0);
- 
-       // Each next step transitions the whole deck
-       for (let step = 1; step < panelCount; step++) {
-         stackTl.to(cards, { ...applyDeckState(step), duration: 1 }, step);
-       }
+        // Build deterministic “deck stack” timeline.
+        // NOTE: We only use a .call() for zIndex changes (no transform writes mid-scrub).
+        const stackTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+
+        const setActiveZ = (activeIdx: number) => {
+          // keep base order for everyone
+          cards.forEach((c, i) => gsap.set(c, { zIndex: i + 1 }));
+          // active card must be above all
+          gsap.set(cards[activeIdx], { zIndex: panelCount + 10 });
+        };
+
+        const deckTweensAtStep = (activeIdx: number, pos: number) => {
+          // 1) Cards ABOVE the active (already revealed, behind it)
+          for (let i = 0; i < activeIdx; i++) {
+            const fromTop = activeIdx - i; // 1,2,3...
+            const y = -fromTop * STACK_Y;
+            const scale = Math.max(0.86, TOP_CARD_SCALE - fromTop * STACK_SCALE);
+            stackTl.to(cards[i], { yPercent: 0, y, scale, duration: 1 }, pos);
+          }
+
+          // 2) Active card comes to center
+          stackTl.to(
+            cards[activeIdx],
+            { yPercent: 0, y: 0, scale: TOP_CARD_SCALE, duration: 1 },
+            pos
+          );
+
+          // 3) Cards BELOW active stay waiting below
+          for (let i = activeIdx + 1; i < panelCount; i++) {
+            stackTl.to(cards[i], { yPercent: 110, y: 0, scale: 1, duration: 1 }, pos);
+          }
+        };
+
+        // Step 0 state
+        setActiveZ(0);
+        deckTweensAtStep(0, 0);
+
+        // Build steps 1..N-1
+        for (let step = 1; step < panelCount; step++) {
+          const pos = step - 1;
+          stackTl.call(() => setActiveZ(step), [], pos);
+          deckTweensAtStep(step, pos);
+        }
  
        // Drive both the stack + background/text colors from one ScrollTrigger
        ScrollTrigger.create({
