@@ -7,49 +7,54 @@
  
  const SYSTEM_PROMPT = `You are SellsPay's Storefront Vibecoder: a chat-based co-pilot that edits a creator's storefront safely.
  
- GOAL
+GOAL:
 Help users improve their storefront design, layout, copy, and assets. When the user describes what they want, ALWAYS generate the operations to make it happen. Be proactive - don't ask for clarification unless absolutely necessary.
  
- HARD CONSTRAINTS (NON-NEGOTIABLE)
- 1) The Profile Shell is LOCKED structurally:
+HARD CONSTRAINTS:
+1) Profile Shell is LOCKED structurally:
     - Banner area + avatar + profile header layout must never be removed, reordered, or structurally changed.
     - You may propose content changes to banner image, avatar image, display name, bio, and social links ONLY via allowed header ops.
  2) You must edit the storefront using patch operations only.
-    - Never output raw HTML/CSS/JS as the main result.
-    - Never output full layout replacements.
- 3) Safety:
-    - Never inject scripts, iframes, event handlers, tracking pixels, or arbitrary code.
-    - Never modify billing, payout, auth, admin roles, or account/security settings.
-    - Never access private user data beyond what is provided in context.
- 4) Only use section types supported by the product's section registry.
- 5) Every response must be apply-able as a PATCH: return JSON with ops[] matching the tool schema.
+3) Only use section types from the SUPPORTED list below.
  
- WORKING STYLE
+WORKING STYLE:
 - NEVER ask clarifying questions - make the best possible assumption and proceed immediately.
 - ALWAYS generate at least one operation for any request - be proactive.
 - If the user's request is vague, interpret it generously and create something impressive.
 - Prefer bold, visually impactful changes over minimal tweaks.
-- When adding sections, include compelling default content that the user can customize later.
+- ALWAYS include real, compelling content in sections - NEVER leave content empty.
 - For "make it premium/better" requests: add multiple sections, improve spacing, use better color schemes.
  
  SUPPORTED SECTION TYPES:
- text, image, image_with_text, gallery, video, collection, about_me, headline, sliding_banner, divider, testimonials, faq, newsletter, slideshow, basic_list, featured_product, logo_list, contact_us, footer, card_slideshow, banner_slideshow
+headline, text, image, image_with_text, gallery, video, collection, about_me, sliding_banner, divider, testimonials, faq, newsletter, slideshow, basic_list, featured_product, logo_list, contact_us, footer, card_slideshow, banner_slideshow
  
- COLOR SCHEMES: white, light, dark, black, highlight
- SECTION HEIGHTS: small, medium, large
- BACKGROUND WIDTHS: contained, full
+STYLE OPTIONS:
+- colorScheme: "white" | "light" | "dark" | "black" | "highlight"
+- height: "small" | "medium" | "large"
+- backgroundWidth: "contained" | "full"
+- textAlign: "left" | "center" | "right"
  
-EXAMPLES OF PROACTIVE BEHAVIOR:
-- "Add a hero" → Add a headline section with impactful text, dark colorScheme, large height
-- "Make it premium" → Add headline, update colorScheme to dark on existing sections, add testimonials
-- "I want to showcase my work" → Add gallery section with placeholder images
-- "Add testimonials" → Add testimonials section with 3 example testimonials
+CRITICAL - CONTENT EXAMPLES (always include content like this):
 
- OUTPUT FORMAT (STRICT)
-Return only valid JSON via tool call to "apply_storefront_changes". ALWAYS include at least one operation.
+For "headline" section:
+content: { "title": "Welcome to My Creative Studio", "subtitle": "Premium digital assets crafted with passion" }
+style_options: { "colorScheme": "dark", "height": "large", "textAlign": "center" }
  
- QUALITY BAR
- Edits should look cohesive, aligned, spaced well, readable, and consistent with the brand. Avoid clutter.`;
+For "text" section:
+content: { "text": "I create high-quality assets for creators...", "heading": "About My Work" }
+style_options: { "colorScheme": "white", "height": "medium" }
+
+For "testimonials" section:
+content: { "title": "What Creators Say", "testimonials": [{"quote": "Amazing quality!", "author": "Alex M.", "role": "Editor"}, {"quote": "Best investment!", "author": "Sam K.", "role": "Creator"}] }
+style_options: { "colorScheme": "light", "height": "medium" }
+
+For "faq" section:
+content: { "title": "FAQ", "items": [{"question": "What formats?", "answer": "Industry-standard formats."}, {"question": "Commercial use?", "answer": "Yes, full license included."}] }
+
+For "about_me" section:
+content: { "title": "About Me", "description": "I'm a passionate creator specializing in...", "imageUrl": "" }
+
+OUTPUT: Always use the apply_storefront_changes tool with complete content.`;
  
  serve(async (req) => {
    if (req.method === "OPTIONS") {
@@ -93,7 +98,7 @@ Return only valid JSON via tool call to "apply_storefront_changes". ALWAYS inclu
              type: "function",
              function: {
                name: "apply_storefront_changes",
-               description: "Apply patch operations to the storefront layout",
+                description: "Apply patch operations to the storefront layout. IMPORTANT: Always include complete content and style_options for new sections.",
                parameters: {
                  type: "object",
                  properties: {
@@ -103,7 +108,7 @@ Return only valid JSON via tool call to "apply_storefront_changes". ALWAYS inclu
                    },
                    ops: {
                      type: "array",
-                     description: "Array of patch operations to apply",
+                      description: "Array of patch operations to apply. For addSection, MUST include section.content with real text/data and section.style_options.",
                      items: {
                        type: "object",
                        properties: {
@@ -115,11 +120,19 @@ Return only valid JSON via tool call to "apply_storefront_changes". ALWAYS inclu
                          after: { type: ["string", "null"] },
                          section: {
                            type: "object",
+                            description: "Section data. content MUST contain real text like title, subtitle, description etc. Never leave content empty.",
                            properties: {
-                             section_type: { type: "string" },
-                             content: { type: "object" },
-                             style_options: { type: "object" },
+                              section_type: { type: "string", description: "One of: headline, text, testimonials, faq, about_me, gallery, etc." },
+                              content: { 
+                                type: "object", 
+                                description: "REQUIRED content. For headline: {title, subtitle}. For text: {heading, text}. For testimonials: {title, testimonials[]}. Never empty." 
+                              },
+                              style_options: { 
+                                type: "object",
+                                description: "Style options: colorScheme (white/light/dark/black/highlight), height (small/medium/large), textAlign (left/center/right)"
+                              },
                            },
+                            required: ["section_type", "content", "style_options"],
                          },
                          patch: { type: "object" },
                          path: { type: "string" },
@@ -206,14 +219,92 @@ Return only valid JSON via tool call to "apply_storefront_changes". ALWAYS inclu
      const result = JSON.parse(toolCall.function.arguments);
      
      // Validate operations
-     const validatedOps = (result.ops || []).filter((op: { op: string }) => {
+      const validatedOps = (result.ops || []).filter((op: { op: string; section?: { section_type?: string } }) => {
        const validOps = ["addSection", "removeSection", "moveSection", "updateSection", "updateTheme", "updateHeaderContent", "assignAssetToSlot"];
-       return validOps.includes(op.op);
+        if (!validOps.includes(op.op)) return false;
+        // For addSection, require section_type
+        if (op.op === "addSection" && !op.section?.section_type) return false;
+        return true;
      });
  
+      // Fill in default content for sections that have empty content
+      const DEFAULT_CONTENT: Record<string, { content: Record<string, unknown>; style_options: Record<string, string> }> = {
+        headline: {
+          content: { title: "Welcome to My Creative Studio", subtitle: "Premium digital assets crafted with passion" },
+          style_options: { colorScheme: "dark", height: "large", textAlign: "center" }
+        },
+        text: {
+          content: { heading: "About My Work", text: "I create high-quality digital assets for creators, editors, and designers who demand excellence." },
+          style_options: { colorScheme: "white", height: "medium" }
+        },
+        testimonials: {
+          content: { 
+            title: "What Creators Say", 
+            testimonials: [
+              { quote: "Absolutely incredible quality!", author: "Alex M.", role: "Video Editor" },
+              { quote: "These assets saved me hours of work.", author: "Jordan K.", role: "Content Creator" },
+              { quote: "Best investment for my creative projects.", author: "Sam T.", role: "Designer" }
+            ]
+          },
+          style_options: { colorScheme: "light", height: "medium" }
+        },
+        faq: {
+          content: {
+            title: "Frequently Asked Questions",
+            items: [
+              { question: "What file formats are included?", answer: "All products include industry-standard formats compatible with major editing software." },
+              { question: "Can I use these commercially?", answer: "Yes! All purchases include a commercial license for your projects." },
+              { question: "How do I download my purchase?", answer: "After purchase, you'll receive immediate access to download from your library." }
+            ]
+          },
+          style_options: { colorScheme: "white", height: "medium" }
+        },
+        about_me: {
+          content: { title: "About Me", description: "I'm a passionate creator specializing in high-quality digital assets. With years of experience, I craft tools that help bring your creative vision to life.", imageUrl: "" },
+          style_options: { colorScheme: "light", height: "medium" }
+        },
+        gallery: {
+          content: { title: "My Work", images: [] },
+          style_options: { colorScheme: "white", height: "large" }
+        },
+        divider: {
+          content: {},
+          style_options: { colorScheme: "white", height: "small" }
+        },
+        newsletter: {
+          content: { title: "Stay Updated", description: "Subscribe to get notified about new releases and exclusive offers." },
+          style_options: { colorScheme: "highlight", height: "medium", textAlign: "center" }
+        },
+        contact_us: {
+          content: { title: "Get in Touch", description: "Have questions? Reach out and I'll get back to you soon." },
+          style_options: { colorScheme: "light", height: "medium" }
+        }
+      };
+
+      // Enrich ops with default content if empty
+      const enrichedOps = validatedOps.map((op: { op: string; section?: { section_type?: string; content?: Record<string, unknown>; style_options?: Record<string, string> } }) => {
+        if (op.op === "addSection" && op.section) {
+          const sectionType = op.section.section_type || "";
+          const defaults = DEFAULT_CONTENT[sectionType];
+          if (defaults) {
+            const hasEmptyContent = !op.section.content || Object.keys(op.section.content).length === 0;
+            const hasEmptyStyle = !op.section.style_options || Object.keys(op.section.style_options).length === 0;
+            return {
+              ...op,
+              section: {
+                ...op.section,
+                content: hasEmptyContent ? defaults.content : op.section.content,
+                style_options: hasEmptyStyle ? defaults.style_options : op.section.style_options,
+              }
+            };
+          }
+        }
+        return op;
+      });
+
      return new Response(JSON.stringify({
        message: result.message || "Here are my suggestions.",
-       ops: validatedOps,
+        ops: enrichedOps,
        asset_requests: result.asset_requests || [],
        preview_notes: result.preview_notes || [],
      }), {

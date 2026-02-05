@@ -76,7 +76,10 @@
          toast.success('Changes applied!', { icon: <Check className="w-4 h-4" /> });
        } catch (error) {
          console.error('Failed to apply operations:', error);
-         toast.error('Failed to apply some changes');
+          const errorMessage = error instanceof Error ? error.message : 'Failed to apply changes';
+          toast.error(errorMessage);
+          // Remove from applied set so user can retry
+          appliedOpsRef.current.delete(opsKey);
        } finally {
          setIsApplying(false);
        }
