@@ -19,44 +19,44 @@ const logos = [
 ];
 
 export default function SlidingBanner() {
-  // We render TWO identical rows side-by-side inside a single "track".
-  // Animating translateX(-50%) moves by exactly one row width → seamless loop.
-  const LogoRow = () => (
-    <div className="flex items-center gap-10 sm:gap-12 pr-10 sm:pr-12 shrink-0">
+  // Two identical groups inside a max-content track → -50% loops perfectly
+  const LogoGroup = () => (
+    <div className="marquee__group flex items-center gap-10 shrink-0 pr-10">
       {logos.map((logo, index) => (
         <img
           key={index}
           src={logo.src}
           alt={logo.name}
-          className="h-7 sm:h-8 w-auto object-contain grayscale invert opacity-60"
+          className="h-7 sm:h-8 w-auto object-contain grayscale invert opacity-60 shrink-0"
         />
       ))}
     </div>
   );
 
   return (
-    <div className="relative w-full py-4 sm:py-5 overflow-hidden border-y border-border/30">
+    <div className="marquee relative w-full py-4 sm:py-5 overflow-hidden border-y border-border/30">
       {/* Edge fade masks */}
       <div className="absolute left-0 top-0 bottom-0 w-20 sm:w-32 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-20 sm:w-32 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
       
-      {/* Scrolling track - two identical rows; animate by -50% for seamless loop */}
-      <div className="flex w-max animate-marquee-scroll">
-        <LogoRow />
-        <LogoRow />
+      {/* Track: width max-content + two groups → -50% = seamless */}
+      <div className="marquee__track flex" style={{ width: 'max-content' }}>
+        <LogoGroup />
+        <LogoGroup />
       </div>
 
       <style>{`
-        @keyframes marquee-scroll {
+        .marquee__track {
+          animation: marquee-slide 18s linear infinite;
+          will-change: transform;
+        }
+        @keyframes marquee-slide {
           0% {
             transform: translateX(0);
           }
           100% {
             transform: translateX(-50%);
           }
-        }
-        .animate-marquee-scroll {
-          animation: marquee-scroll 18s linear infinite;
         }
       `}</style>
     </div>
