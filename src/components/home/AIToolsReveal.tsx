@@ -1,20 +1,28 @@
  import React, { useLayoutEffect, useRef, useState } from "react";
+import { useEffect } from "react";
  import gsap from "gsap";
  import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { supabase } from "@/integrations/supabase/client";
  
  gsap.registerPlugin(ScrollTrigger);
  
  import aiPanel1 from "@/assets/ai-panel-1.png";
  import aiPanel5 from "@/assets/ai-panel-5.png";
  
+interface PanelMedia {
+  url: string | null;
+  type: 'image' | 'video';
+}
+
  type Step = {
    bg: string;
    text: string;
    headline: string[];
    image?: string;
+  media?: PanelMedia;
  };
  
- const STEPS: Step[] = [
+const DEFAULT_STEPS: Step[] = [
    {
      bg: "#0a0a0a",
      text: "#ffffff",
@@ -63,14 +71,75 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
    const headlineLineRefs = useRef<(HTMLSpanElement | null)[]>([]);
    const activeHeadlineIndexRef = useRef<number>(-1);
    const [isMobile, setIsMobile] = useState(false);
+  const [steps, setSteps] = useState<Step[]>(DEFAULT_STEPS);
+  const [panelMediaLoaded, setPanelMediaLoaded] = useState(false);
  
    const [headlineLines, setHeadlineLines] = useState<[string, string]>([
-     STEPS[0].headline[0],
-     STEPS[0].headline[1],
+    DEFAULT_STEPS[0].headline[0],
+    DEFAULT_STEPS[0].headline[1],
    ]);
  
-   const panelCount = STEPS.length;
+  const panelCount = steps.length;
    const stepDistance = isMobile ? STEP_DISTANCE_MOBILE : STEP_DISTANCE_DESKTOP;
+
+  // Fetch panel media from database
+  useEffect(() => {
+    const fetchPanelMedia = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_content')
+          .select(`
+            reveal_panel_1_media_url,
+            reveal_panel_1_media_type,
+            reveal_panel_2_media_url,
+            reveal_panel_2_media_type,
+            reveal_panel_3_media_url,
+            reveal_panel_3_media_type,
+            reveal_panel_4_media_url,
+            reveal_panel_4_media_type,
+            reveal_panel_5_media_url,
+            reveal_panel_5_media_type,
+            reveal_panel_6_media_url,
+            reveal_panel_6_media_type
+          `)
+          .eq('id', 'main')
+          .maybeSingle();
+
+        if (error || !data) {
+          console.error('Failed to fetch panel media:', error);
+          setPanelMediaLoaded(true);
+          return;
+        }
+
+        // Merge database media with default steps
+        const updatedSteps = DEFAULT_STEPS.map((step, idx) => {
+          const panelNum = idx + 1;
+          const urlKey = `reveal_panel_${panelNum}_media_url` as keyof typeof data;
+          const typeKey = `reveal_panel_${panelNum}_media_type` as keyof typeof data;
+          const mediaUrl = data[urlKey] as string | null;
+          const mediaType = (data[typeKey] as 'image' | 'video') || 'image';
+
+          if (mediaUrl) {
+            return {
+              ...step,
+              media: { url: mediaUrl, type: mediaType },
+              // Clear default image if custom media is set
+              image: undefined,
+            };
+          }
+          return step;
+        });
+
+        setSteps(updatedSteps);
+        setPanelMediaLoaded(true);
+      } catch (err) {
+        console.error('Error fetching panel media:', err);
+        setPanelMediaLoaded(true);
+      }
+    };
+
+    fetchPanelMedia();
+  }, []);
  
    useLayoutEffect(() => {
      const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -82,7 +151,7 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
    useLayoutEffect(() => {
      const section = sectionRef.current;
      const deck = deckRef.current;
-     if (!section || !deck) return;
+    if (!section || !deck || !panelMediaLoaded) return;
  
      const ctx = gsap.context(() => {
        const text = textRef.current;
@@ -92,8 +161,8 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
        const headlineEl = text.querySelector("[data-headline]") as HTMLElement | null;
        const totalScrollDistance = (panelCount - 1) * stepDistance;
  
-       gsap.set(section, { backgroundColor: STEPS[0].bg });
-       if (headlineEl) gsap.set(headlineEl, { color: STEPS[0].text });
+        gsap.set(section, { backgroundColor: steps[0].bg });
+        if (headlineEl) gsap.set(headlineEl, { color: steps[0].text });
  
         // Initial deck state: unrevealed cards live below and slide up as you scroll.
         // Keep base stacking order, but force the active card above the rest per step.
@@ -110,8 +179,8 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
         gsap.set(cards[0], { zIndex: panelCount + 10 });
  
        const setHeadline = (idx: number) => {
-         const line1 = STEPS[idx]?.headline?.[0] ?? "";
-         const line2 = STEPS[idx]?.headline?.[1] ?? "";
+          const line1 = steps[idx]?.headline?.[0] ?? "";
+          const line2 = steps[idx]?.headline?.[1] ?? "";
          if (activeHeadlineIndexRef.current === idx) return;
          activeHeadlineIndexRef.current = idx;
          setHeadlineLines([line1, line2]);
@@ -125,7 +194,7 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
          colorTl.to(
            section,
            {
-             backgroundColor: STEPS[i].bg,
+              backgroundColor: steps[i].bg,
              duration: 1,
              immediateRender: false,
            },
@@ -136,7 +205,7 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
            colorTl.to(
              headlineEl,
              {
-               color: STEPS[i].text,
+                color: steps[i].text,
                duration: 1,
                immediateRender: false,
              },
@@ -253,7 +322,7 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
      }, sectionRef);
  
      return () => ctx.revert();
-   }, [panelCount, stepDistance]);
+  }, [panelCount, stepDistance, steps, panelMediaLoaded]);
  
    useLayoutEffect(() => {
      const line1 = headlineLineRefs.current[0];
@@ -293,7 +362,7 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
                ref={deckRef}
               className="deck relative w-[85vw] sm:w-[75vw] md:w-[65vw] lg:w-[48vw] xl:w-[50vw] max-w-[800px] aspect-[16/10] overflow-visible"
              >
-               {STEPS.map((step, idx) => (
+               {steps.map((step, idx) => (
                  <div
                    key={idx}
                    className="card absolute inset-0 will-change-transform"
@@ -306,7 +375,26 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
                      className="h-full w-full rounded-[16px] sm:rounded-[20px] md:rounded-[24px] lg:rounded-[28px] border border-white/10 overflow-hidden shadow-2xl"
                      style={{ backgroundColor: CARD_COLORS[idx] }}
                    >
-                     {step.image ? (
+                  {step.media?.url ? (
+                    step.media.type === 'video' ? (
+                      <video
+                        src={step.media.url}
+                        className="h-full w-full object-cover"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                      />
+                    ) : (
+                      <img
+                        src={step.media.url}
+                        alt={step.headline.join(" ")}
+                        className="h-full w-full object-cover"
+                        loading="eager"
+                        decoding="async"
+                      />
+                    )
+                  ) : step.image ? (
                        <img
                          src={step.image}
                          alt={step.headline.join(" ")}

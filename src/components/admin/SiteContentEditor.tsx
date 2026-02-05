@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Save, Image, Video, Type, Sparkles, X, Plus, Upload, Trash2, Music, Mic, Palette, Film } from 'lucide-react';
 import type { Json } from '@/integrations/supabase/types';
+import { RevealPanelsEditor } from './RevealPanelsEditor';
 
 interface ThumbnailItem {
   url: string;
@@ -390,12 +391,18 @@ export function SiteContentEditor() {
       </div>
 
       <Tabs defaultValue="hero" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="hero">Hero Section</TabsTrigger>
+          <TabsTrigger value="reveal-panels">Reveal Panels</TabsTrigger>
           <TabsTrigger value="tools">AI Tools Section</TabsTrigger>
         </TabsList>
 
         <TabsContent value="hero" className="space-y-6 mt-6">
+
+        <TabsContent value="reveal-panels" className="space-y-6 mt-6">
+          <RevealPanelsEditor />
+        </TabsContent>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Hero Media Upload & Preview */}
             <Card>
