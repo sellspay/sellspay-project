@@ -7,14 +7,14 @@ interface VibecoderPreviewProps {
   isStreaming?: boolean;
 }
 
-// Storefront-specific build steps for the loading overlay
+// Seller profile-specific build steps for the loading overlay
 const BUILD_STEPS = [
-  "Analyzing store brand identity...",
-  "Structuring storefront layout...",
-  "Designing product grids...",
-  "Polishing typography & colors...",
-  "Injecting conversion elements...",
-  "Finalizing store preview..."
+  "Analyzing seller brand vibe...",
+  "Scaffolding storefront layout...",
+  "Configuring product displays...",
+  "Setting up bundle logic...",
+  "Designing contact/support view...",
+  "Polishing interaction animations..."
 ];
 
 // Build Overlay - The "Hacker Terminal" that hides the ugly streaming
