@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -14,69 +14,79 @@ type Step = {
   image?: string;
 };
 
+// Keep these outside the component so React re-renders don't recreate arrays
+// and accidentally desync animation logic.
+const STEPS: Step[] = [
+  {
+    bg: "#0a0a0a",
+    text: "#ffffff",
+    subtext: "rgba(255,255,255,0.70)",
+    // Panel 1
+    headline: ["Building Made", "Simple"],
+    image: aiPanel1,
+  },
+  {
+    bg: "#ffffff",
+    text: "#111111",
+    subtext: "rgba(0,0,0,0.70)",
+    // Panel 2
+    headline: ["Sell", "products"],
+  },
+  {
+    bg: "#0a0a0a",
+    text: "#ffffff",
+    subtext: "rgba(255,255,255,0.70)",
+    // Panel 3
+    headline: ["Audio Made", "Simple"],
+  },
+  {
+    bg: "#e76e50",
+    text: "#0a0a0a",
+    subtext: "rgba(10,10,10,0.75)",
+    // Panel 4
+    headline: ["Generate", "Videos"],
+  },
+  {
+    bg: "#50A9E7",
+    text: "#0a0a0a",
+    subtext: "rgba(10,10,10,0.75)",
+    // Panel 5
+    headline: ["Generate", "images"],
+  },
+  {
+    bg: "#0a0a0a",
+    text: "#ffffff",
+    subtext: "rgba(255,255,255,0.70)",
+    // Panel 6
+    headline: ["All in", "one"],
+  },
+];
+
+const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a1a1a"];
+
 export function AIToolsReveal() {
   const sectionRef = useRef<HTMLDivElement | null>(null);
   const textRef = useRef<HTMLDivElement | null>(null);
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
   const headlineLineRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const activeHeadlineIndexRef = useRef<number>(-1);
-  const steps: Step[] = [
-    { 
-      bg: "#0a0a0a", 
-      text: "#ffffff", 
-      subtext: "rgba(255,255,255,0.70)",
-      // Panel 1
-      headline: ["Building Made", "Simple"],
-      image: aiPanel1,
-    },
-    { 
-      bg: "#ffffff", 
-      text: "#111111", 
-      subtext: "rgba(0,0,0,0.70)",
-      // Panel 2
-      headline: ["Sell", "products"],
-    },
-    { 
-      bg: "#0a0a0a", 
-      text: "#ffffff", 
-      subtext: "rgba(255,255,255,0.70)",
-      // Panel 3
-      headline: ["Audio Made", "Simple"],
-    },
-    { 
-      bg: "#e76e50", 
-      text: "#0a0a0a", 
-      subtext: "rgba(10,10,10,0.75)",
-      // Panel 4
-      headline: ["Generate", "Videos"],
-    },
-    { 
-      bg: "#50A9E7", 
-      text: "#0a0a0a", 
-      subtext: "rgba(10,10,10,0.75)",
-      // Panel 5
-      headline: ["Generate", "images"],
-    },
-    { 
-      bg: "#0a0a0a", 
-      text: "#ffffff", 
-      subtext: "rgba(255,255,255,0.70)",
-      // Panel 6
-      headline: ["All in", "one"],
-    },
-  ];
 
-  // Card colors for visual variety
-  const cardColors = [
-    '#1a1a1a',
-    '#f5f5f5',
-    '#1a1a1a',
-    '#e76e50',
-    '#50A9E7',
-    '#1a1a1a',
-  ];
+  // React-driven headline avoids DOM textContent race conditions while scrubbing.
+  const [headlineLines, setHeadlineLines] = useState<[string, string]>([
+    STEPS[0].headline[0],
+    STEPS[0].headline[1],
+  ]);
+
+  // React 18 StrictMode runs effects twice in dev; guard so we don't register
+  // duplicate ScrollTriggers (which causes “glitching”/stuck updates).
+  const didInitRef = useRef(false);
+
+  const steps = useMemo(() => STEPS, []);
 
   useLayoutEffect(() => {
+    if (didInitRef.current) return;
+    didInitRef.current = true;
+
     const section = sectionRef.current;
     const text = textRef.current;
     const cards = cardsRef.current.filter(Boolean) as HTMLDivElement[];
@@ -86,9 +96,11 @@ export function AIToolsReveal() {
     // Use viewport-relative height for responsive card stacking
     const cardHeight = window.innerHeight * 0.6;
 
+    const headlineEl = text.querySelector("[data-headline]") as HTMLElement | null;
+
     // Set initial styles
     gsap.set(section, { backgroundColor: steps[0].bg });
-    gsap.set(text.querySelector("[data-headline]"), { color: steps[0].text });
+    if (headlineEl) gsap.set(headlineEl, { color: steps[0].text });
 
     // Stack silhouette values (small offsets so you see the edges behind)
     const stackSpacing = 22;
@@ -115,6 +127,30 @@ export function AIToolsReveal() {
     const pauseDuration = 0.4; // Dead space / pause between animations
     const stepDuration = animationDuration + pauseDuration; // Total time per step
     
+    const setHeadline = (idx: number) => {
+      const line1 = steps[idx]?.headline?.[0] ?? "";
+      const line2 = steps[idx]?.headline?.[1] ?? "";
+      if (activeHeadlineIndexRef.current === idx) return;
+      activeHeadlineIndexRef.current = idx;
+      setHeadlineLines([line1, line2]);
+    };
+
+    // Ensure we start at panel 1.
+    setHeadline(0);
+
+    const updateHeadlineFromProgress = (progress: number) => {
+      const totalTransitions = panelCount - 1;
+      const stepP = 1 / totalTransitions;
+      const clamped = Math.max(0, Math.min(1, progress));
+
+      const base = Math.max(0, Math.min(totalTransitions - 1, Math.floor(clamped / stepP)));
+      const local = (clamped - base * stepP) / stepP;
+
+      // Switch only when the next card is mostly in place.
+      const idx = local >= 0.8 ? base + 1 : base;
+      setHeadline(Math.min(panelCount - 1, idx));
+    };
+
     const tl = gsap.timeline({
       defaults: { ease: "none" },
       scrollTrigger: {
@@ -126,20 +162,10 @@ export function AIToolsReveal() {
         pinSpacing: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
+        onUpdate: (self) => updateHeadlineFromProgress(self.progress),
+        onRefresh: (self) => updateHeadlineFromProgress(self.progress),
       },
     });
-
-    // Get headline text elements
-    const line1 = headlineLineRefs.current[0];
-    const line2 = headlineLineRefs.current[1];
-
-    const setHeadline = (idx: number) => {
-      if (!line1 || !line2) return;
-      if (activeHeadlineIndexRef.current === idx) return;
-      activeHeadlineIndexRef.current = idx;
-      line1.textContent = steps[idx].headline[0];
-      line2.textContent = steps[idx].headline[1];
-    };
 
     // Animate each step
     for (let i = 0; i < panelCount - 1; i++) {
@@ -175,10 +201,16 @@ export function AIToolsReveal() {
       }, startTime);
       
       // Change text color
-      tl.to(text.querySelector("[data-headline]"), { 
-        color: steps[i + 1].text,
-        duration: animationDuration * 0.5,
-      }, startTime);
+      if (headlineEl) {
+        tl.to(
+          headlineEl,
+          {
+            color: steps[i + 1].text,
+            duration: animationDuration * 0.5,
+          },
+          startTime
+        );
+      }
 
       // Add a real pause segment so the timeline time matches stepDuration.
       // Without this, the timeline compresses time (no tween during the pause),
@@ -192,30 +224,12 @@ export function AIToolsReveal() {
       );
     }
 
-    // Keep headline perfectly in-sync with scroll position in BOTH directions.
-    // Using tl.call() is fragile when scrubbing/reversing.
-    const updateHeadlineFromTime = () => {
-      const t = tl.time();
-      const clampedT = Math.max(0, Math.min(t, (panelCount - 1) * stepDuration));
-      const base = Math.max(0, Math.min(panelCount - 2, Math.floor(clampedT / stepDuration)));
-      const local = clampedT - base * stepDuration;
-
-      // During the slide-up animation, keep the previous headline until the new card is mostly in place.
-      const threshold = animationDuration * 0.8;
-      const idx = local >= threshold ? base + 1 : base;
-      setHeadline(Math.min(panelCount - 1, idx));
-    };
-
-    // Initial sync
-    updateHeadlineFromTime();
-
-    const st = tl.scrollTrigger;
-    if (st) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (st.vars as any).onUpdate = updateHeadlineFromTime;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (st.vars as any).onRefresh = updateHeadlineFromTime;
-      st.refresh();
+    // Animate headline lines when they change.
+    // Use overwrite to prevent animation build-up when scrubbing quickly.
+    const line1El = headlineLineRefs.current[0];
+    const line2El = headlineLineRefs.current[1];
+    if (line1El && line2El) {
+      gsap.set([line1El, line2El], { willChange: "transform,opacity" });
     }
 
     const onResize = () => ScrollTrigger.refresh();
@@ -223,10 +237,25 @@ export function AIToolsReveal() {
 
     return () => {
       window.removeEventListener("resize", onResize);
-      ScrollTrigger.getAll().forEach(st => st.kill());
+      // IMPORTANT: don't kill *all* triggers on the page; only ours.
+      tl.scrollTrigger?.kill();
       tl.kill();
     };
   }, []);
+
+  // Drive the “reveal” of the two headline lines when their text changes.
+  useLayoutEffect(() => {
+    const line1 = headlineLineRefs.current[0];
+    const line2 = headlineLineRefs.current[1];
+    if (!line1 || !line2) return;
+
+    gsap.killTweensOf([line1, line2]);
+    gsap.fromTo(
+      [line1, line2],
+      { y: 10, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.25, ease: "power2.out", overwrite: "auto", stagger: 0.03 }
+    );
+  }, [headlineLines[0], headlineLines[1]]);
 
   return (
     <section ref={sectionRef} className="relative w-full">
@@ -249,13 +278,13 @@ export function AIToolsReveal() {
                 ref={(el) => { headlineLineRefs.current[0] = el; }}
                 className="block"
               >
-                Building Made
+                {headlineLines[0]}
               </span>
               <span 
                 ref={(el) => { headlineLineRefs.current[1] = el; }}
                 className="block"
               >
-                Simple
+                {headlineLines[1]}
               </span>
             </h2>
           </div>
@@ -274,7 +303,7 @@ export function AIToolsReveal() {
                   <div 
                     className="relative h-full w-full rounded-[20px] sm:rounded-[28px] lg:rounded-[32px] border border-white/10 overflow-hidden"
                     style={{
-                      backgroundColor: cardColors[idx],
+                      backgroundColor: CARD_COLORS[idx],
                       boxShadow: '0 -20px 60px -15px rgba(0,0,0,0.6)',
                     }}
                   >
@@ -290,7 +319,7 @@ export function AIToolsReveal() {
                         <span 
                           className="text-xl sm:text-2xl lg:text-3xl font-medium"
                           style={{ 
-                            color: cardColors[idx] === '#1a1a1a' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)' 
+                            color: CARD_COLORS[idx] === '#1a1a1a' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)' 
                           }}
                         >
                           Panel {idx + 1}
