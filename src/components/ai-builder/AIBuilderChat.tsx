@@ -251,195 +251,195 @@ export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUn
  
    const isEmpty = messages.length === 0;
  
-   return (
-     <div className="flex flex-col h-full">
-       {/* Header */}
-       <div className="flex items-center justify-between px-6 py-4 border-b border-border/30">
-         <div className="flex items-center gap-2">
-           <img src={sellspayLogo} alt="" className="w-6 h-6 object-contain" />
-           <span className="font-medium">AI Assistant</span>
-         </div>
-         {canUndo && (
-           <Button variant="ghost" size="sm" onClick={onUndo} className="gap-1.5 text-muted-foreground">
-             <Undo2 className="w-4 h-4" />
-             Undo
-           </Button>
-         )}
-       </div>
- 
-       {/* Chat area */}
-       <ScrollArea className="flex-1 px-6 py-4" ref={scrollRef}>
-         {isEmpty ? (
-           <div className="flex flex-col items-center justify-center h-full text-center space-y-8 py-12">
-             {/* Logo */}
-             <div className="relative">
-               <div className="absolute inset-0 blur-3xl bg-primary/20 rounded-full scale-[2]" />
-               <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-background via-muted/50 to-background border border-border/40 flex items-center justify-center shadow-xl">
-                 <img src={sellspayLogo} alt="" className="w-12 h-12 object-contain" />
-               </div>
-             </div>
- 
-             <div className="space-y-3 max-w-sm">
-                <h3 className="text-xl font-semibold">What do you want to build?</h3>
-               <p className="text-sm text-muted-foreground leading-relaxed">
-                  Describe your idea. The AI will design the entire storefront for you.
-               </p>
-             </div>
- 
-             {/* Build My Store CTA */}
-             <Button
-               onClick={handleFreshBuild}
-               disabled={isLoading}
-               className="gap-2 h-12 px-8 text-base font-medium shadow-lg shadow-primary/25"
-               size="lg"
-             >
-               <Wand2 className="w-4 h-4" />
-               Build My Store
-             </Button>
- 
-             {/* Quick actions */}
-             <div className="w-full pt-4">
-               <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-3 font-medium">Quick Actions</p>
-               <div className="flex flex-wrap justify-center gap-2">
-                 {QUICK_ACTIONS.map((action) => (
-                   <Button
-                     key={action.label}
-                     variant="outline"
-                     size="sm"
-                     onClick={() => sendMessage(action.prompt)}
-                     disabled={isLoading}
-                     className="text-xs h-8 px-4 bg-muted/50 hover:bg-muted border-border/50"
-                   >
-                     {action.label}
-                   </Button>
-                 ))}
-               </div>
-             </div>
-           </div>
-         ) : (
-           <div className="space-y-4">
-             {messages.map((msg) => (
-               <div
-                 key={msg.id}
-                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-               >
-                 <div
-                   className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm ${
-                     msg.role === 'user'
-                       ? 'bg-primary text-primary-foreground'
-                       : 'bg-muted/60 text-foreground'
-                   }`}
-                 >
-                   {msg.content}
-                 </div>
-               </div>
-             ))}
-             {isLoading && (
-              <div className="flex flex-col gap-2 p-4 bg-primary/5 rounded-xl border border-primary/10">
-                <div className="flex items-center gap-3 text-primary">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm font-medium">
-                    {buildStage ? STAGE_MESSAGES[buildStage] : 'Creating your vision...'}
-                  </span>
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Header - fixed at top */}
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-border/30">
+          <div className="flex items-center gap-2">
+            <img src={sellspayLogo} alt="" className="w-6 h-6 object-contain" />
+            <span className="font-medium">AI Assistant</span>
+          </div>
+          {canUndo && (
+            <Button variant="ghost" size="sm" onClick={onUndo} className="gap-1.5 text-muted-foreground">
+              <Undo2 className="w-4 h-4" />
+              Undo
+            </Button>
+          )}
+        </div>
+  
+        {/* Chat area - scrollable middle section */}
+        <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4" ref={scrollRef}>
+          {isEmpty ? (
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-8 py-12">
+              {/* Logo */}
+              <div className="relative">
+                <div className="absolute inset-0 blur-3xl bg-primary/20 rounded-full scale-[2]" />
+                <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-background via-muted/50 to-background border border-border/40 flex items-center justify-center shadow-xl">
+                  <img src={sellspayLogo} alt="" className="w-12 h-12 object-contain" />
                 </div>
-                {/* Progress dots */}
-                <div className="flex gap-1.5 ml-7">
-                  {(['planning', 'applying', 'rendering'] as BuildStage[]).map((stage, i) => (
-                    <div
-                      key={stage}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        buildStage === stage
-                          ? 'bg-primary scale-110'
-                          : buildStage && ['planning', 'applying', 'rendering'].indexOf(buildStage) > i
-                          ? 'bg-primary/60'
-                          : 'bg-muted-foreground/20'
-                      }`}
-                    />
+              </div>
+  
+              <div className="space-y-3 max-w-sm">
+                 <h3 className="text-xl font-semibold">What do you want to build?</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                   Describe your idea. The AI will design the entire storefront for you.
+                </p>
+              </div>
+  
+              {/* Build My Store CTA */}
+              <Button
+                onClick={handleFreshBuild}
+                disabled={isLoading}
+                className="gap-2 h-12 px-8 text-base font-medium shadow-lg shadow-primary/25"
+                size="lg"
+              >
+                <Wand2 className="w-4 h-4" />
+                Build My Store
+              </Button>
+  
+              {/* Quick actions */}
+              <div className="w-full pt-4">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-3 font-medium">Quick Actions</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {QUICK_ACTIONS.map((action) => (
+                    <Button
+                      key={action.label}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => sendMessage(action.prompt)}
+                      disabled={isLoading}
+                      className="text-xs h-8 px-4 bg-muted/50 hover:bg-muted border-border/50"
+                    >
+                      {action.label}
+                    </Button>
                   ))}
                 </div>
-               </div>
-             )}
-           </div>
-         )}
-       </ScrollArea>
- 
-       {/* Quick actions when chat has messages */}
-       {!isEmpty && !isLoading && (
-         <div className="px-6 py-3 border-t border-border/20">
-           <div className="flex flex-wrap gap-2">
-             {QUICK_ACTIONS.map((action) => (
-               <Button
-                 key={action.label}
-                 variant="outline"
-                 size="sm"
-                 onClick={() => sendMessage(action.prompt)}
-                 disabled={isLoading}
-                 className="text-xs h-7 px-3 bg-muted/30"
-               >
-                 {action.label}
-               </Button>
-             ))}
-           </div>
-         </div>
-       )}
- 
-       {/* Input */}
-       <form onSubmit={handleSubmit} className="p-4 border-t border-border/30">
-         <div className="flex gap-2 items-center">
-           <Button
-             type="button"
-             variant="ghost"
-             size="icon"
-             className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground"
-           >
-             <Plus className="w-5 h-5" />
-           </Button>
- 
-           <Input
-             value={input}
-             onChange={(e) => setInput(e.target.value)}
-              placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
-             disabled={isLoading}
-              className="flex-1 h-10 bg-muted/30 border-border/40 transition-all"
-           />
- 
-           <Button
-             type="button"
-             variant="ghost"
-             size="sm"
-             onClick={() => toast.info('Plan mode coming soon')}
-             className="h-10 px-3 text-muted-foreground gap-1.5 shrink-0"
-           >
-             <FileText className="w-4 h-4" />
-             <span className="text-xs">Plan</span>
-           </Button>
- 
-           <Button
-             type="button"
-             variant="ghost"
-             size="icon"
-             onClick={() => toast.info('Voice input coming soon')}
-             className="h-10 w-10 shrink-0 text-muted-foreground"
-           >
-             <Mic className="w-4 h-4" />
-           </Button>
- 
-           <Button
-             type="submit"
-             disabled={!input.trim() || isLoading}
-             size="icon"
-             className="h-10 w-10 shrink-0"
-           >
-             {isLoading ? (
-               <Square className="w-4 h-4 fill-current" />
-             ) : (
-               <Send className="w-4 h-4" />
-             )}
-           </Button>
-         </div>
-       </form>
-     </div>
-   );
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted/60 text-foreground'
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+               <div className="flex flex-col gap-2 p-4 bg-primary/5 rounded-xl border border-primary/10">
+                 <div className="flex items-center gap-3 text-primary">
+                   <Loader2 className="w-4 h-4 animate-spin" />
+                   <span className="text-sm font-medium">
+                     {buildStage ? STAGE_MESSAGES[buildStage] : 'Creating your vision...'}
+                   </span>
+                 </div>
+                 {/* Progress dots */}
+                 <div className="flex gap-1.5 ml-7">
+                   {(['planning', 'applying', 'rendering'] as BuildStage[]).map((stage, i) => (
+                     <div
+                       key={stage}
+                       className={`w-2 h-2 rounded-full transition-all ${
+                         buildStage === stage
+                           ? 'bg-primary scale-110'
+                           : buildStage && ['planning', 'applying', 'rendering'].indexOf(buildStage) > i
+                           ? 'bg-primary/60'
+                           : 'bg-muted-foreground/20'
+                       }`}
+                     />
+                   ))}
+                 </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+  
+        {/* Quick actions when chat has messages - fixed */}
+        {!isEmpty && !isLoading && (
+          <div className="flex-shrink-0 px-6 py-3 border-t border-border/20">
+            <div className="flex flex-wrap gap-2">
+              {QUICK_ACTIONS.map((action) => (
+                <Button
+                  key={action.label}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendMessage(action.prompt)}
+                  disabled={isLoading}
+                  className="text-xs h-7 px-3 bg-muted/30"
+                >
+                  {action.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+  
+        {/* Input - fixed at bottom */}
+        <form onSubmit={handleSubmit} className="flex-shrink-0 p-4 border-t border-border/30 bg-background">
+          <div className="flex gap-2 items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground"
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+  
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+               placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
+              disabled={isLoading}
+               className="flex-1 h-10 bg-muted/30 border-border/40 transition-all"
+            />
+  
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => toast.info('Plan mode coming soon')}
+              className="h-10 px-3 text-muted-foreground gap-1.5 shrink-0"
+            >
+              <FileText className="w-4 h-4" />
+              <span className="text-xs">Plan</span>
+            </Button>
+  
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => toast.info('Voice input coming soon')}
+              className="h-10 w-10 shrink-0 text-muted-foreground"
+            >
+              <Mic className="w-4 h-4" />
+            </Button>
+  
+            <Button
+              type="submit"
+              disabled={!input.trim() || isLoading}
+              size="icon"
+              className="h-10 w-10 shrink-0"
+            >
+              {isLoading ? (
+                <Square className="w-4 h-4 fill-current" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
+    );
  }
  
  // Apply AI operations to layout

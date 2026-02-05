@@ -88,9 +88,8 @@ function EmptyCanvasState() {
         </div>
         
         <div className="space-y-2">
-          <h3 className="text-lg font-medium text-muted-foreground">Your Canvas Awaits</h3>
           <p className="text-sm text-muted-foreground/60">
-            Start with "Build My Store" or describe your vision in the chat.
+            Describe your vision in the chat to get started.
           </p>
         </div>
       </div>
