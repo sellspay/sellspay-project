@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Loader2, Square, RefreshCw, Code2, Sparkles, Undo2 } from 'lucide-react';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
-import { VibecoderMessageBubble } from './VibecoderMessageBubble';
+import { ChatInterface } from './VibecoderMessageBubble';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 
 interface VibecoderChatProps {
@@ -174,27 +174,28 @@ export function VibecoderChat({
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            {messages.map((msg, index) => (
-              <VibecoderMessageBubble
-                key={msg.id}
-                message={msg}
-                onRate={(rating) => onRateMessage(msg.id, rating)}
-                onRestoreCode={msg.code_snapshot ? () => onRestoreCode(msg.code_snapshot!) : undefined}
-                canRestore={index < messages.length - 1 && !!msg.code_snapshot}
-              />
-            ))}
+          <>
+            <ChatInterface 
+              messages={messages}
+              onRateMessage={onRateMessage}
+              onRestoreCode={onRestoreCode}
+            />
             {isStreaming && (
-              <div className="flex justify-start">
-                <div className="bg-muted/50 border border-border/50 rounded-2xl px-4 py-2.5">
-                  <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex gap-4 mb-8">
+                <div className="flex-shrink-0 mt-1">
+                  <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center shadow-sm">
+                    <Sparkles size={14} className="text-violet-400 animate-pulse" />
+                  </div>
+                </div>
+                <div className="bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-4 shadow-sm">
+                  <div className="flex items-center gap-2 text-zinc-400">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span className="text-sm">Generating code...</span>
                   </div>
                 </div>
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
 

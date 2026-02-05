@@ -1,8 +1,166 @@
-import { ThumbsUp, ThumbsDown, Undo2, Code2 } from 'lucide-react';
+import { useRef, useEffect } from 'react';
+import { 
+  Sparkles, Check, ThumbsUp, ThumbsDown, 
+  Copy, MoreHorizontal, Terminal, Code2, Cpu, Undo2 
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 
+// --- HELPER: INFER ACTION TYPE ---
+function getMessageMeta(content: string, hasCode: boolean) {
+  if (!hasCode) return { type: 'chat', label: 'Response', icon: Sparkles };
+  if (content.toLowerCase().includes('create') || content.length < 50) {
+    return { type: 'create', label: 'Create Page', icon: Cpu };
+  }
+  return { type: 'update', label: 'Update Code', icon: Code2 };
+}
+
+// --- USER BUBBLE (The "Salmon" Look) ---
+function UserBubble({ content }: { content: string }) {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex justify-end mb-6"
+    >
+      <div className="max-w-[85%] bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white px-5 py-3 rounded-2xl rounded-tr-sm shadow-lg shadow-orange-900/10 text-sm font-medium leading-relaxed">
+        {content}
+      </div>
+    </motion.div>
+  );
+}
+
+// --- AI CARD (The "Lovable" Look) ---
+interface AssistantCardProps {
+  message: VibecoderMessage;
+  onRate?: (rating: -1 | 0 | 1) => void;
+  onRestoreCode?: () => void;
+  canRestore?: boolean;
+}
+
+function AssistantCard({ message, onRate, onRestoreCode, canRestore }: AssistantCardProps) {
+  const hasCode = !!message.code_snapshot;
+  const { label, icon: Icon } = getMessageMeta(message.content, hasCode);
+
+  // Friendly message if it's just a raw "Generated..." text
+  const displayContent = message.content === "Generated your storefront design." 
+    ? "I've drafted a premium layout based on your request. Check the preview!" 
+    : message.content;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.content);
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="flex gap-4 mb-8 group"
+    >
+      {/* AI AVATAR */}
+      <div className="flex-shrink-0 mt-1">
+        <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center shadow-sm">
+          <Sparkles size={14} className="text-violet-400" />
+        </div>
+      </div>
+
+      {/* CARD BODY */}
+      <div className="flex-1 max-w-[90%] space-y-2">
+        
+        {/* 1. THE MESSAGE BUBBLE */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-4 shadow-sm">
+          <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
+            {displayContent}
+          </p>
+
+          {/* 2. THE "ACTION" PILL (Only if code changed) */}
+          {hasCode && (
+            <div className="mt-4 flex items-center gap-2 flex-wrap">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-950 border border-zinc-800">
+                <Icon size={12} className="text-zinc-500" />
+                <span className="text-[11px] font-mono text-zinc-400">{label}</span>
+              </div>
+              
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+                <Check size={10} className="text-green-500" />
+                <span className="text-[10px] font-bold text-green-500 tracking-wide uppercase">Applied</span>
+              </div>
+
+              {/* Restore button for older messages */}
+              {canRestore && onRestoreCode && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs gap-1 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                  onClick={onRestoreCode}
+                  title="Restore this version"
+                >
+                  <Undo2 className="h-3 w-3" />
+                  Restore
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 3. THE TOOLBAR (Hidden until hover) */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-1">
+          {onRate && (
+            <>
+              <button 
+                className={cn(
+                  "p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors",
+                  message.rating === 1 && "text-violet-400 bg-violet-500/10"
+                )}
+                onClick={() => onRate(message.rating === 1 ? 0 : 1)}
+                title="Helpful"
+              >
+                <ThumbsUp size={14} />
+              </button>
+              <button 
+                className={cn(
+                  "p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors",
+                  message.rating === -1 && "text-red-400 bg-red-500/10"
+                )}
+                onClick={() => onRate(message.rating === -1 ? 0 : -1)}
+                title="Not Helpful"
+              >
+                <ThumbsDown size={14} />
+              </button>
+            </>
+          )}
+          <div className="w-px h-3 bg-zinc-800 mx-1" />
+          <button 
+            className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors" 
+            onClick={handleCopy}
+            title="Copy Text"
+          >
+            <Copy size={14} />
+          </button>
+          <button className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors">
+            <MoreHorizontal size={14} />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// --- EMPTY STATE ---
+function EmptyState() {
+  return (
+    <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-50">
+      <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center mb-4 border border-zinc-800">
+        <Terminal size={20} className="text-zinc-500" />
+      </div>
+      <p className="text-sm text-zinc-500">History is empty. Start building.</p>
+    </div>
+  );
+}
+
+// --- MAIN EXPORTS ---
 interface VibecoderMessageBubbleProps {
   message: VibecoderMessage;
   onRate?: (rating: -1 | 0 | 1) => void;
@@ -16,87 +174,51 @@ export function VibecoderMessageBubble({
   onRestoreCode,
   canRestore = false,
 }: VibecoderMessageBubbleProps) {
-  const isUser = message.role === 'user';
-  const isAssistant = message.role === 'assistant';
-  const hasCodeSnapshot = !!message.code_snapshot;
+  if (message.role === 'user') {
+    return <UserBubble content={message.content} />;
+  }
+  
+  return (
+    <AssistantCard 
+      message={message} 
+      onRate={onRate} 
+      onRestoreCode={onRestoreCode}
+      canRestore={canRestore}
+    />
+  );
+}
+
+// Export ChatInterface for direct use
+interface ChatInterfaceProps {
+  messages: VibecoderMessage[];
+  onRateMessage: (messageId: string, rating: -1 | 0 | 1) => void;
+  onRestoreCode: (codeSnapshot: string) => void;
+}
+
+export function ChatInterface({ messages, onRateMessage, onRestoreCode }: ChatInterfaceProps) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  if (messages.length === 0) {
+    return <EmptyState />;
+  }
 
   return (
-    <div
-      className={cn(
-        'flex',
-        isUser ? 'justify-end' : 'justify-start'
-      )}
-    >
-      <div
-        className={cn(
-          'max-w-[85%] px-4 py-2.5 rounded-2xl relative group',
-          isUser
-            ? 'bg-primary/20 border border-primary/30 text-foreground'
-            : 'bg-muted/50 border border-border/50 text-muted-foreground'
-        )}
-      >
-        {/* Message content */}
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-
-        {/* Code snapshot indicator */}
-        {hasCodeSnapshot && isAssistant && (
-          <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/30">
-            <Code2 className="h-3 w-3 text-primary" />
-            <span className="text-[10px] text-muted-foreground">
-              Code snapshot saved
-            </span>
-          </div>
-        )}
-
-        {/* Actions for assistant messages */}
-        {isAssistant && (
-          <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            {/* Feedback buttons */}
-            {onRate && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    'h-6 w-6',
-                    message.rating === 1 && 'text-primary bg-primary/10'
-                  )}
-                  onClick={() => onRate(message.rating === 1 ? 0 : 1)}
-                  title="Good response"
-                >
-                  <ThumbsUp className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    'h-6 w-6',
-                    message.rating === -1 && 'text-destructive bg-destructive/10'
-                  )}
-                  onClick={() => onRate(message.rating === -1 ? 0 : -1)}
-                  title="Bad response"
-                >
-                  <ThumbsDown className="h-3 w-3" />
-                </Button>
-              </>
-            )}
-
-            {/* Restore code button */}
-            {canRestore && hasCodeSnapshot && onRestoreCode && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 text-xs gap-1 ml-1"
-                onClick={onRestoreCode}
-                title="Restore this version"
-              >
-                <Undo2 className="h-3 w-3" />
-                Restore
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
+    <div className="flex-1 overflow-y-auto px-4 py-6 custom-scrollbar">
+      {messages.map((msg, index) => (
+        <VibecoderMessageBubble
+          key={msg.id}
+          message={msg}
+          onRate={(rating) => onRateMessage(msg.id, rating)}
+          onRestoreCode={msg.code_snapshot ? () => onRestoreCode(msg.code_snapshot!) : undefined}
+          canRestore={index < messages.length - 1 && !!msg.code_snapshot}
+        />
+      ))}
+      <div ref={bottomRef} className="h-4" />
     </div>
   );
 }
