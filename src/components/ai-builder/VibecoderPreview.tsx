@@ -1,65 +1,105 @@
 import { useMemo, memo, useState, useEffect } from 'react';
 import { Sandpack, SandpackTheme } from '@codesandbox/sandpack-react';
-import { Loader2, Terminal, CheckCircle2 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 
 interface VibecoderPreviewProps {
   code: string;
   isStreaming?: boolean;
 }
 
-// Seller profile-specific build steps for the loading overlay
-const BUILD_STEPS = [
-  "Analyzing seller brand vibe...",
-  "Scaffolding storefront layout...",
-  "Configuring product displays...",
-  "Setting up bundle logic...",
-  "Designing contact/support view...",
-  "Polishing interaction animations..."
+// Premium loading steps with icons
+const LOADING_STEPS = [
+  { id: 1, label: "Analyzing your vision...", icon: "🧠" },
+  { id: 2, label: "Designing premium layout...", icon: "🎨" },
+  { id: 3, label: "Scaffolding React components...", icon: "⚛️" },
+  { id: 4, label: "Configuring product displays...", icon: "🛍️" },
+  { id: 5, label: "Injecting Tailwind styles...", icon: "💅" },
+  { id: 6, label: "Polishing interactions...", icon: "✨" },
 ];
 
-// Build Overlay - The "Hacker Terminal" that hides the ugly streaming
-function BuildOverlay({ currentStep }: { currentStep: number }) {
+// Premium "Lovable-style" Loading Overlay with card shuffle animation
+function LoadingOverlay({ currentStep }: { currentStep: number }) {
+  const step = LOADING_STEPS[currentStep % LOADING_STEPS.length];
+  const progress = ((currentStep % LOADING_STEPS.length) + 1) / LOADING_STEPS.length * 100;
+
   return (
-    <div className="absolute inset-0 z-20 bg-zinc-950/95 backdrop-blur-md flex items-center justify-center">
-      <div className="w-full max-w-md p-8">
-        {/* Spinner with glow effect */}
-        <div className="flex justify-center mb-8">
-          <div className="relative">
-            <div className="absolute inset-0 bg-violet-500/20 blur-xl rounded-full" />
-            <div className="relative p-4 bg-zinc-900 border border-zinc-800 rounded-2xl">
-              <Terminal className="w-8 h-8 text-violet-400 animate-pulse" />
-            </div>
-          </div>
+    <div className="absolute inset-0 z-20 bg-zinc-950/90 backdrop-blur-xl flex flex-col items-center justify-center">
+      {/* Ambient glow effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
+      </div>
+
+      {/* Logo with pulsing glow */}
+      <motion.div 
+        className="relative mb-12"
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
+        {/* Glow ring */}
+        <div className="absolute -inset-4 bg-gradient-to-r from-violet-500/20 via-blue-500/20 to-violet-500/20 rounded-3xl blur-xl animate-pulse" />
+        
+        {/* Logo container */}
+        <div className="relative p-6 bg-zinc-900/80 border border-zinc-800/50 rounded-2xl backdrop-blur-sm">
+          <img 
+            src={sellspayLogo} 
+            alt="SellsPay" 
+            className="w-16 h-16 object-contain"
+          />
         </div>
 
-        {/* Steps List */}
-        <div className="space-y-3 font-mono text-sm">
-          {BUILD_STEPS.map((step, idx) => {
-            const isCompleted = idx < currentStep;
-            const isCurrent = idx === currentStep;
-            
-            return (
-              <div 
-                key={step}
-                className={`flex items-center gap-3 transition-all duration-300 ${
-                  isCompleted ? 'text-emerald-400' : 
-                  isCurrent ? 'text-violet-400' : 
-                  'text-zinc-600'
-                }`}
-              >
-                {isCompleted ? (
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                ) : isCurrent ? (
-                  <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
-                ) : (
-                  <div className="w-4 h-4 shrink-0 rounded-full border border-zinc-700" />
-                )}
-                <span className={isCurrent ? 'animate-pulse' : ''}>{step}</span>
-              </div>
-            );
-          })}
-        </div>
+        {/* Orbiting sparkle */}
+        <motion.div
+          className="absolute -right-2 -top-2"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+        >
+          <Sparkles className="w-5 h-5 text-violet-400" />
+        </motion.div>
+      </motion.div>
+
+      {/* The Card Shuffle Animation */}
+      <div className="relative h-24 w-80">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step.id}
+            initial={{ y: 40, opacity: 0, scale: 0.95, rotateX: -15 }}
+            animate={{ y: 0, opacity: 1, scale: 1, rotateX: 0 }}
+            exit={{ y: -40, opacity: 0, scale: 0.95, rotateX: 15 }}
+            transition={{ 
+              duration: 0.5, 
+              ease: [0.32, 0.72, 0, 1],
+            }}
+            className="absolute inset-0"
+          >
+            {/* Glassmorphism card */}
+            <div className="h-full w-full rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl shadow-violet-500/10 flex items-center justify-center gap-4 px-6">
+              <span className="text-3xl">{step.icon}</span>
+              <span className="text-zinc-200 font-medium tracking-tight">
+                {step.label}
+              </span>
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
+
+      {/* Progress bar */}
+      <div className="mt-10 w-64 h-1 bg-zinc-800/50 rounded-full overflow-hidden">
+        <motion.div 
+          className="h-full bg-gradient-to-r from-violet-500 to-blue-500 rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        />
+      </div>
+
+      {/* Subtle branding */}
+      <p className="mt-6 text-xs text-zinc-600 font-medium tracking-wide">
+        Powered by Vibecoder AI
+      </p>
     </div>
   );
 }
@@ -154,22 +194,22 @@ root.render(<App />);`,
 export function VibecoderPreview({ code, isStreaming }: VibecoderPreviewProps) {
   const [loadingStep, setLoadingStep] = useState(0);
 
-  // Cycle through the fake build steps while streaming
+  // Cycle through the premium build steps while streaming
   useEffect(() => {
     if (!isStreaming) {
       setLoadingStep(0);
       return;
     }
     const interval = setInterval(() => {
-      setLoadingStep(prev => (prev < BUILD_STEPS.length - 1 ? prev + 1 : prev));
-    }, 1200); // Change step every 1.2s
+      setLoadingStep(prev => prev + 1);
+    }, 2000); // Change step every 2 seconds for smoother animation
     return () => clearInterval(interval);
   }, [isStreaming]);
 
   return (
     <div className="h-full w-full relative bg-zinc-950">
-      {/* The Hacker Terminal Overlay - Only visible when streaming */}
-      {isStreaming && <BuildOverlay currentStep={loadingStep} />}
+      {/* Premium Loading Overlay - Only visible when streaming */}
+      {isStreaming && <LoadingOverlay currentStep={loadingStep} />}
 
       {/* Sandpack preview - Always rendered, but hidden behind overlay during build */}
       <div className="h-full w-full">
