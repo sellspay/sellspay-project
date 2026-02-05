@@ -63,6 +63,7 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
  const STACK_Y = 14;
  const STACK_SCALE = 0.02;
  const TOP_CARD_SCALE = 0.97;
+const HOLD_RATIO = 0.4; // 40% of each step is a "pause" before next panel
  
  export function AIToolsReveal() {
    const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -189,16 +190,19 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
  
        const colorTl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
 
-       // Timeline time = step index (0..panelCount-1) for smooth blending
+       // Timeline structure: each step takes 1 unit of time
+       // First 60% is the transition, last 40% is hold
        for (let i = 0; i < panelCount; i++) {
+         const stepStart = i;
+         const animDuration = 1 - HOLD_RATIO; // 0.6
          colorTl.to(
            section,
            {
               backgroundColor: steps[i].bg,
-             duration: 1,
+             duration: animDuration,
              immediateRender: false,
            },
-           i
+           stepStart
          );
 
          if (headlineEl) {
@@ -206,10 +210,10 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
              headlineEl,
              {
                 color: steps[i].text,
-               duration: 1,
+               duration: animDuration,
                immediateRender: false,
              },
-             i
+             stepStart
            );
          }
        }
@@ -219,13 +223,17 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
 
         // zIndex must be deterministic from scroll progress to make reverse scrubbing layer correctly.
        const applyZDuringScrub = (p: number) => {
-         const steps = panelCount - 1;
-         const f = p * steps;
-         const step = Math.floor(f);
-         const t = f - step;
+         const totalSteps = panelCount - 1;
+         const f = p * totalSteps;
+         const rawStep = Math.floor(f);
+         const stepProgress = f - rawStep;
+         
+         // Account for hold period: transition happens in first 60% of each step
+         const animPortion = 1 - HOLD_RATIO;
+         const t = stepProgress <= animPortion ? stepProgress / animPortion : 1;
 
-         const current = Math.max(0, Math.min(panelCount - 1, step));
-         const next = Math.max(0, Math.min(panelCount - 1, step + 1));
+         const current = Math.max(0, Math.min(panelCount - 1, rawStep));
+         const next = Math.max(0, Math.min(panelCount - 1, rawStep + 1));
 
          // during transition, the incoming card must be on top
          const topIdx = t > 0.0001 ? next : current;
@@ -240,35 +248,37 @@ const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a
          });
         };
 
-        const deckTweensAtStep = (activeIdx: number, pos: number) => {
+        const deckTweensAtStep = (activeIdx: number, pos: number, duration: number) => {
           // 1) Cards ABOVE the active (already revealed, behind it)
           for (let i = 0; i < activeIdx; i++) {
             const fromTop = activeIdx - i; // 1,2,3...
             const y = -fromTop * STACK_Y;
             const scale = Math.max(0.86, TOP_CARD_SCALE - fromTop * STACK_SCALE);
-            stackTl.to(cards[i], { yPercent: 0, y, scale, duration: 1 }, pos);
+            stackTl.to(cards[i], { yPercent: 0, y, scale, duration }, pos);
           }
 
           // 2) Active card comes to center
           stackTl.to(
             cards[activeIdx],
-            { yPercent: 0, y: 0, scale: TOP_CARD_SCALE, duration: 1 },
+            { yPercent: 0, y: 0, scale: TOP_CARD_SCALE, duration },
             pos
           );
 
           // 3) Cards BELOW active stay waiting below
           for (let i = activeIdx + 1; i < panelCount; i++) {
-            stackTl.to(cards[i], { yPercent: 110, y: 0, scale: 1, duration: 1 }, pos);
+            stackTl.to(cards[i], { yPercent: 110, y: 0, scale: 1, duration }, pos);
           }
         };
 
+        const animDuration = 1 - HOLD_RATIO; // 0.6
+
         // Step 0 state (transforms only)
-        deckTweensAtStep(0, 0);
+        deckTweensAtStep(0, 0, animDuration);
 
         // Build steps 1..N-1 (transforms only)
         for (let step = 1; step < panelCount; step++) {
-          const pos = step - 1;
-          deckTweensAtStep(step, pos);
+          const pos = (step - 1) + (1 - HOLD_RATIO); // Start after previous hold
+          deckTweensAtStep(step, pos, animDuration);
         }
  
        // Drive both the stack + background/text colors from one ScrollTrigger
