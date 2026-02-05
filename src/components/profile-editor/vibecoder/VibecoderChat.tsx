@@ -37,6 +37,7 @@
    const inputRef = useRef<HTMLInputElement>(null);
    const [isApplying, setIsApplying] = useState(false);
    const appliedOpsRef = useRef<Set<string>>(new Set());
+    const processedAssetReqsRef = useRef<Set<string>>(new Set());
  
    const { brandProfile } = useBrandProfile(profileId);
    const { generateAsset, generating } = useGeneratedAssets(profileId);
@@ -51,6 +52,7 @@
      applyPendingOps,
      regenerate,
      clearChat,
+      clearPendingAssetRequests,
    } = useVibecoderChat({ profileId, sections, brandProfile });
  
    const { applyOperations } = useVibecoderOperations({
@@ -89,24 +91,35 @@
    // AUTO-GENERATE: When AI requests assets, generate them automatically
    useEffect(() => {
      if (pendingAssetRequests && pendingAssetRequests.length > 0 && !generating) {
+        const reqKey = JSON.stringify(pendingAssetRequests);
+        if (processedAssetReqsRef.current.has(reqKey)) return;
+        processedAssetReqsRef.current.add(reqKey);
+
        const processAssets = async () => {
-         for (const request of pendingAssetRequests) {
-           const assetType = request.kind === 'image' 
-             ? (request.spec?.aspect === '21:9' ? 'banner' : 'thumbnail') 
-             : 'thumbnail';
-           
-           try {
-             await generateAsset(assetType as 'banner' | 'thumbnail' | 'background' | 'promo', request.spec?.purpose || 'Generate image', request.spec);
-             toast.success(`Generated ${assetType}!`);
-           } catch (error) {
-             console.error('Failed to generate asset:', error);
-           }
-         }
-         onShowAssetTray?.();
+          try {
+            for (const request of pendingAssetRequests) {
+              const assetType = request.kind === 'image'
+                ? (request.spec?.aspect === '21:9' ? 'banner' : 'thumbnail')
+                : 'thumbnail';
+
+              await generateAsset(
+                assetType as 'banner' | 'thumbnail' | 'background' | 'promo',
+                request.spec?.purpose || 'Generate image',
+                request.spec
+              );
+              toast.success(`Generated ${assetType}!`);
+            }
+            onShowAssetTray?.();
+          } catch (error) {
+            console.error('Failed to generate asset:', error);
+          } finally {
+            // Critical: clear requests so we don't loop forever on re-render/reopen.
+            clearPendingAssetRequests();
+          }
        };
        processAssets();
      }
-   }, [pendingAssetRequests, generateAsset, generating, onShowAssetTray]);
+    }, [pendingAssetRequests, generateAsset, generating, onShowAssetTray, clearPendingAssetRequests]);
  
    // Scroll to bottom on new messages
    useEffect(() => {
@@ -162,6 +175,7 @@
                onClick={() => {
                  clearChat();
                  appliedOpsRef.current.clear();
+                  processedAssetReqsRef.current.clear();
                }}
                className="text-muted-foreground hover:text-foreground"
              >

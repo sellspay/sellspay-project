@@ -168,6 +168,10 @@
      setPendingOps(null);
      return ops;
    }, [pendingOps]);
+
+    const clearPendingAssetRequests = useCallback(() => {
+      setPendingAssetRequests(null);
+    }, []);
  
    const discardPendingOps = useCallback(() => {
      setMessages(prev => prev.map((m, i) => 
@@ -215,5 +219,6 @@
      discardPendingOps,
      regenerate,
      clearChat,
+      clearPendingAssetRequests,
    };
  }
