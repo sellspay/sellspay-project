@@ -323,8 +323,8 @@ export default function Header() {
 
             {/* Credit Wallet - Premium 3D style */}
             {user && (
-              <button
-                onClick={() => setTopUpDialogOpen(true)}
+              <Link
+                to="/pricing"
                 className={cn(
                   "hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl",
                   "bg-gradient-to-b from-primary/20 to-primary/10",
@@ -345,7 +345,7 @@ export default function Header() {
                     </span>
                   </>
                 )}
-              </button>
+              </Link>
             )}
 
             {/* Editor Chat Icon */}
@@ -404,8 +404,8 @@ export default function Header() {
                   
                   {/* Mobile wallet display */}
                   <div className="sm:hidden px-2 pb-2">
-                    <button
-                      onClick={() => setTopUpDialogOpen(true)}
+                    <Link
+                      to="/pricing"
                       className={cn(
                         "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg",
                         "bg-primary/15 hover:bg-primary/25",
@@ -418,11 +418,11 @@ export default function Header() {
                         <>
                           <Wallet className="h-4 w-4 text-primary" />
                           <span className="text-sm font-semibold text-foreground">
-                            {creditBalance} Credits
+                            {credits} Credits
                           </span>
                         </>
                       )}
-                    </button>
+                    </Link>
                   </div>
                   
                   <DropdownMenuSeparator className="bg-border my-1" />

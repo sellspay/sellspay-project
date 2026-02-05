@@ -70,7 +70,7 @@ export default function SFXGenerator() {
     }
 
     // Check if user can use this pro tool - show dialog instead of toast
-    if (!canUseTool("sfx-generator")) {
+    if (!canUseFeature("sfx-generator")) {
       setShowOutOfCredits(true);
       return;
     }
@@ -90,7 +90,7 @@ export default function SFXGenerator() {
       if (data.error) throw new Error(data.error);
 
       // SUCCESS - now deduct the credit
-      const deductResult = await deductCredit("sfx-generator");
+      const deductResult = await deductCredits("sfx_gen");
       if (!deductResult.success) {
         console.warn("Credit deduction failed after successful generation:", deductResult.error);
         // Still show the result since generation succeeded
@@ -406,7 +406,7 @@ export default function SFXGenerator() {
       </div>
 
       {/* Out of Credits Dialog */}
-      <OutOfCreditsDialog 
+      <UpgradeModal 
         open={showOutOfCredits} 
         onOpenChange={setShowOutOfCredits} 
       />

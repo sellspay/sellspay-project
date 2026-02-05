@@ -70,13 +70,13 @@ const categoryLabels: Record<string, string> = {
 
 export function ThreadReplyDialog({ thread, open, onOpenChange }: ThreadReplyDialogProps) {
   const { user, isOwner } = useAuth();
-  const { subscription } = useCredits();
+  const { plan } = useSubscription();
   const queryClient = useQueryClient();
   const [replyContent, setReplyContent] = useState('');
   const [selectedGif, setSelectedGif] = useState<string | null>(null);
 
   // Check if user can embed links (owner always can, or has any subscription)
-  const canEmbedLinks = isOwner || !!subscription;
+  const canEmbedLinks = isOwner || plan !== 'browser';
 
   // Fetch user profile
   const { data: profile } = useQuery({

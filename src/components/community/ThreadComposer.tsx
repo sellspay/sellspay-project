@@ -59,7 +59,7 @@ export function ThreadComposer() {
   });
 
   // Check if user can post threads (owner, verified creators, or has any subscription)
-  const hasSubscription = !!subscription;
+  const hasSubscription = plan !== 'browser';
   const isVerifiedCreator = !!profile?.is_creator;
   const canPostThreads = isOwner || isVerifiedCreator || hasSubscription;
 
