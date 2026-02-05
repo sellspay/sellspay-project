@@ -14,3 +14,4 @@
  export { VideoSectionBlock } from './VideoSectionBlock';
  export { AboutBlock } from './AboutBlock';
  export { StatsBlock } from './StatsBlock';
+export { FeaturedProductsBlock } from './FeaturedProductsBlock';
