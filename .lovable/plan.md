@@ -1,304 +1,216 @@
 
+# Dual-Boot Storefront Architecture: Complete Implementation Plan
 
-# Vibecoder → Generative Runtime: Full Architecture Pivot
-
-This is a **major architectural pivot** from a "Structured Page Builder" to a "Generative Runtime Environment" like Lovable/v0. The fundamental shift is:
-
-**Current:** AI generates JSON ops → mapped to 10 pre-coded React components → rendered  
-**Proposed:** AI generates raw React/TSX code → streamed to browser → executed in Sandpack sandbox
+This plan implements a "Dual-Boot" system where users can safely switch between their **Free Profile Builder** (classic Instagram-style layout) and the **Premium AI Vibecoder** (generative React code) without ever losing either version.
 
 ---
 
-## Current System Analysis
+## Current Architecture Analysis
 
-| Component | Current Implementation |
-|-----------|----------------------|
-| **Rendering** | `AiRenderer` with 10 hardcoded blocks (HeroBlock, BentoGridBlock, etc.) |
-| **AI Output** | JSON ops: `addSection`, `updateTheme`, `clearAllSections` |
-| **Storage** | `ai_storefront_layouts.layout_json` (array of sections) |
-| **Edge Function** | `storefront-vibecoder/index.ts` - non-streaming, returns full JSON |
-| **Preview** | React components mapped via switch statement |
+### What Already Exists
 
-**Core Limitation:** The AI can ONLY produce what exists in the component library. No custom layouts, no unique designs, no new component types.
+| Component | Current State |
+|-----------|--------------|
+| **`profiles.active_storefront_mode`** | Exists! Values: `'free'` (default), `'ai'` |
+| **`ai_storefront_layouts`** | Stores AI layout JSON + `vibecoder_mode` boolean + `is_published` |
+| **`project_files`** | Stores raw Vibecoder TSX code (`/App.tsx`) |
+| **`profile_sections`** | Stores Free Builder sections (preserved separately) |
+| **Profile Page (`Profile.tsx`)** | Renders the "Free" layout only - needs AI storefront rendering |
 
----
+### What's Missing
 
-## Proposed Architecture
-
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│                         NEW ARCHITECTURE                          │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│   User Prompt                                                      │
-│        ↓                                                          │
-│   Edge Function (storefront-vibecoder-v2)                          │
-│   • Streams raw TSX code (not JSON)                               │
-│   • Uses ReadableStream + SSE                                      │
-│        ↓                                                          │
-│   Frontend Parser                                                  │
-│   • Accumulates streaming code                                     │
-│   • Cleans markdown fences                                        │
-│        ↓                                                          │
-│   Sandpack Runtime                                                 │
-│   • Executes code in isolated iframe                              │
-│   • Handles Tailwind via CDN                                      │
-│   • Auto-resolves npm imports (lucide, framer-motion)              │
-│        ↓                                                          │
-│   Live Preview                                                     │
-│                                                                    │
-└──────────────────────────────────────────────────────────────────┘
-```
+1. **Public Storefront Router**: The `Profile.tsx` page doesn't check `active_storefront_mode` to render AI layouts
+2. **Mode Toggle in Settings**: No UI for users to switch between modes after publishing
+3. **AI Storefront Public Renderer**: No Sandpack-based renderer for public profile views
+4. **Mode Indicator on Profile**: Users can't see which mode is currently active
 
 ---
 
-## Step-by-Step Implementation
+## Implementation Plan
 
-### Phase 1: New Edge Function (Streaming TSX Generator)
+### Phase 1: Public AI Storefront Renderer
 
-**New File:** `supabase/functions/vibecoder-v2/index.ts`
+Create a new component that renders the Vibecoder code publicly (using Sandpack in read-only mode).
 
-This function will:
-1. Accept user prompt + context (existing code, products, brand)
-2. Call Lovable AI Gateway with streaming enabled
-3. Stream raw TSX code back to the client (not JSON)
-4. Use a system prompt that outputs React components, not JSON ops
-
-**System Prompt Strategy:**
-```
-You are an expert Frontend React Engineer.
-You are generating a full, runnable React component using Tailwind CSS.
-
-RULES:
-1. Output ONLY the code. No markdown backticks, no explanations.
-2. Use 'export default function App()'.
-3. Use lucide-react for icons.
-4. Use standard Tailwind classes.
-5. Do not import external libraries besides lucide-react and framer-motion.
-```
-
-**Streaming Implementation:**
-- Return a `ReadableStream` that forwards Lovable AI tokens as they arrive
-- Use `text/event-stream` content type
-- Parse the Lovable AI SSE format and forward clean text tokens
-
----
-
-### Phase 2: Install Sandpack Runtime
-
-**Dependency:** `@codesandbox/sandpack-react`
-
-This package:
-- Provides an in-browser code execution sandbox
-- Handles npm imports via CDN (esm.sh, skypack)
-- Isolates generated code in an iframe
-- Includes built-in code editor (optional)
-
----
-
-### Phase 3: New VFS Storage Schema
-
-**New Table:** `project_files`
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | uuid | Primary Key |
-| `profile_id` | uuid | FK to profiles |
-| `file_path` | text | e.g., `/App.tsx`, `/components/Hero.tsx` |
-| `content` | text | Raw TSX code |
-| `version` | int | For version history |
-| `created_at` | timestamp | |
-| `updated_at` | timestamp | |
-
-This enables:
-- Multi-file projects
-- Version history / undo
-- Component reuse across pages
-
----
-
-### Phase 4: Frontend Components
-
-**New Component:** `src/components/ai-builder/VibecoderPreview.tsx`
+**New File: `src/components/profile/AIStorefrontRenderer.tsx`**
 
 This component will:
-1. Accept streaming code via fetch with `response.body.getReader()`
-2. Accumulate tokens and clean markdown fences
-3. Pass code to Sandpack for live execution
-4. Show code writing animation (tokens appearing)
+- Accept a `profileId` prop
+- Fetch the published Vibecoder code from `project_files`
+- Render it in an isolated Sandpack iframe (read-only, no editor)
+- Handle loading states and errors gracefully
+- Use the same Tailwind CDN + dependencies as the builder
 
-**Integration:**
-- Replace `<AIBuilderPreview>` with new `<VibecoderPreview>` component
-- Keep existing `<AIBuilderChat>` UI with modifications for streaming state
-
----
-
-### Phase 5: Mode Toggle (Hybrid Approach)
-
-To preserve existing functionality while adding new capabilities:
-
-| Mode | Description | Storage |
-|------|-------------|---------|
-| **Block Mode** (existing) | JSON ops → pre-coded components | `layout_json` |
-| **Vibecoder Mode** (new) | Streamed TSX → Sandpack | `project_files` |
-
-Users can toggle between modes. Block mode is faster/cheaper, Vibecoder mode is unlimited creative freedom.
-
----
-
-## Files to Create/Modify
-
-| Action | File | Purpose |
-|--------|------|---------|
-| **Create** | `supabase/functions/vibecoder-v2/index.ts` | Streaming TSX generator |
-| **Create** | `src/components/ai-builder/VibecoderPreview.tsx` | Sandpack-based renderer |
-| **Create** | `src/components/ai-builder/useStreamingCode.ts` | Hook for streaming code |
-| **Modify** | `src/components/ai-builder/AIBuilderCanvas.tsx` | Add mode toggle, integrate new preview |
-| **Modify** | `src/components/ai-builder/AIBuilderChat.tsx` | Handle streaming responses |
-| **Modify** | `package.json` | Add `@codesandbox/sandpack-react` |
-
-**Database Migration:**
-- Create `project_files` table for VFS storage
-
----
-
-## Technical Implementation Details
-
-### Edge Function Streaming Pattern
-
-```typescript
-// In vibecoder-v2/index.ts
-const response = await fetch(LOVABLE_AI_URL, {
-  method: "POST",
-  headers: { Authorization: `Bearer ${LOVABLE_API_KEY}` },
-  body: JSON.stringify({
-    model: "google/gemini-3-flash-preview",
-    messages: [...],
-    stream: true,
-  }),
-});
-
-const stream = new ReadableStream({
-  async start(controller) {
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      // Parse SSE and forward clean text
-      const chunk = decoder.decode(value);
-      // Extract delta.content from SSE format
-      controller.enqueue(new TextEncoder().encode(extractedText));
-    }
-    controller.close();
-  },
-});
-
-return new Response(stream, {
-  headers: { "Content-Type": "text/event-stream" }
-});
+```text
+┌────────────────────────────────────────────────────────────┐
+│                   AIStorefrontRenderer                      │
+├────────────────────────────────────────────────────────────┤
+│  1. Fetch profile's `project_files` entry for `/App.tsx`   │
+│  2. Check `ai_storefront_layouts.is_published` = true      │
+│  3. Render in Sandpack (preview-only, no editor)           │
+│  4. Fullscreen iframe with pointer-events enabled          │
+└────────────────────────────────────────────────────────────┘
 ```
 
-### Frontend Streaming Consumer
+### Phase 2: Profile Page Router Logic
 
-```typescript
-// useStreamingCode.ts
-async function streamCode(prompt: string, onChunk: (text: string) => void) {
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/vibecoder-v2`, {
-    method: "POST",
-    body: JSON.stringify({ prompt }),
-  });
-  
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let accumulated = "";
-  
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    
-    accumulated += decoder.decode(value);
-    const cleanCode = accumulated
-      .replace(/^```tsx?\n?/, "")
-      .replace(/```$/, "");
-    
-    onChunk(cleanCode);
-  }
-}
+Modify `Profile.tsx` to check `active_storefront_mode` and render the appropriate layout:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                    Profile.tsx Router                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│   if (profile.active_storefront_mode === 'ai') {            │
+│     // Check for published Vibecoder code                    │
+│     if (vibecoderCode && aiLayout.is_published) {           │
+│       return <AIStorefrontRenderer profileId={profile.id} />│
+│     }                                                        │
+│   }                                                          │
+│                                                              │
+│   // Default: Render classic Free Builder layout             │
+│   return <PublicProfileSections ... />                       │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Sandpack Integration
+**Key Logic:**
+1. Fetch `profile.active_storefront_mode` from the profile query
+2. If `'ai'`, fetch the `ai_storefront_layouts` and `project_files` for this profile
+3. If Vibecoder code exists AND is published, render `AIStorefrontRenderer`
+4. Otherwise, fall back to the existing `PublicProfileSections` component
 
-```typescript
-// VibecoderPreview.tsx
-import { Sandpack } from "@codesandbox/sandpack-react";
+### Phase 3: Mode Toggle in Settings
 
-export function VibecoderPreview({ code }: { code: string }) {
-  return (
-    <Sandpack
-      template="react-ts"
-      theme="dark"
-      files={{
-        "/App.tsx": code,
-      }}
-      options={{
-        externalResources: ["https://cdn.tailwindcss.com"],
-        showNavigator: false,
-      }}
-      customSetup={{
-        dependencies: {
-          "lucide-react": "latest",
-          "framer-motion": "latest",
-        },
-      }}
-    />
-  );
-}
+Add a UI control in the user's profile settings to switch between modes without losing data.
+
+**New Component: `src/components/settings/StorefrontModeToggle.tsx`**
+
+Features:
+- Two buttons: "Classic Profile" and "Vibecoder (AI)"
+- Visual indicator of which is currently active
+- Confirmation dialog when switching modes
+- Clear messaging: "Switching modes will NOT delete your designs. Both are saved safely."
+- Updates `profiles.active_storefront_mode` on toggle
+
+### Phase 4: Mode Indicator on Profile Header
+
+Add a visual badge to the profile page (for profile owners) showing which mode is currently live.
+
+**Updates to `Profile.tsx`:**
+- Show a badge next to the profile name: "🎨 AI Store" or "📦 Classic"
+- Only visible to the profile owner
+- Clicking opens a dropdown to quickly switch modes
+
+### Phase 5: AI Builder Canvas Updates
+
+Enhance the `AIBuilderCanvas.tsx` to:
+1. Save Vibecoder code to `project_files` on every successful generation (already done)
+2. Update `ai_storefront_layouts.is_published` when publishing
+3. Show "View Live" button that opens the public profile in a new tab
+4. Add "Revert to Classic" quick action in the header
+
+---
+
+## Technical Details
+
+### Database Updates Required
+
+**None needed!** The existing schema already supports this:
+- `profiles.active_storefront_mode`: `'free'` | `'ai'`
+- `ai_storefront_layouts.vibecoder_mode`: `boolean` (differentiates Blocks vs Vibecoder within AI mode)
+- `ai_storefront_layouts.is_published`: `boolean` (draft vs live)
+- `project_files`: Stores the raw TSX code
+
+### Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/components/profile/AIStorefrontRenderer.tsx` | Public Sandpack renderer |
+| `src/components/settings/StorefrontModeToggle.tsx` | Mode switcher in settings |
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/pages/Profile.tsx` | Add routing logic for AI storefront mode |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | Add "View Live" button, mode indicator |
+| `src/pages/Settings.tsx` | Add StorefrontModeToggle component |
+
+### Security Considerations
+
+1. **Sandpack Isolation**: Generated code runs in an isolated iframe origin (csb.app)
+2. **No Access to Parent**: Cannot access cookies, localStorage, or DOM of the main app
+3. **Read-Only Execution**: Public view is preview-only, no code editing
+4. **RLS Protection**: `project_files` and `ai_storefront_layouts` already have RLS policies
+
+### Data Flow Diagram
+
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│                         DATA STORAGE                                  │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│   profiles.active_storefront_mode  ───┐                              │
+│        ('free' | 'ai')                 │                              │
+│                                        ▼                              │
+│   ┌────────────────────┐      ┌────────────────────┐                 │
+│   │  profile_sections  │      │ ai_storefront_layouts │              │
+│   │  (Free Builder)    │      │   + project_files     │              │
+│   │                    │      │   (AI/Vibecoder)      │              │
+│   └────────────────────┘      └────────────────────┘                 │
+│              │                           │                            │
+│              ▼                           ▼                            │
+│   ┌────────────────────┐      ┌────────────────────┐                 │
+│   │ PublicProfileSections │   │ AIStorefrontRenderer │               │
+│   │  (React components) │      │    (Sandpack)       │               │
+│   └────────────────────┘      └────────────────────┘                 │
+│                                                                       │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Rollout Strategy
+## Implementation Order
 
-**Phase 1 (Week 1): ✅ COMPLETE**
-- Created streaming edge function `vibecoder-v2`
-- Installed Sandpack runtime
-- Built `VibecoderPreview` and `VibecoderChat` components
-- Added `useStreamingCode` hook
-- Created `project_files` VFS table
-- Added mode toggle in `AIBuilderCanvas`
-
-**Phase 2 (Week 2):** VFS storage + version history  
-**Phase 3 (Week 3):** Mode toggle + migration tools  
-**Phase 4 (Week 4):** Polish, error handling, fallbacks
+1. **Create `AIStorefrontRenderer.tsx`** - The public Sandpack viewer
+2. **Update `Profile.tsx`** - Add routing logic based on `active_storefront_mode`
+3. **Create `StorefrontModeToggle.tsx`** - Settings page toggle
+4. **Update `Settings.tsx`** - Add the toggle component
+5. **Update `AIBuilderCanvas.tsx`** - Add View Live button and mode indicator
+6. **Polish and test** - Ensure smooth transitions and no data loss
 
 ---
 
-## Trade-offs
+## User Experience Flow
 
-| Aspect | Current (Block Mode) | New (Vibecoder Mode) |
-|--------|---------------------|---------------------|
-| **Creative Freedom** | Limited to 10 blocks | Unlimited |
-| **Speed** | Fast (JSON mapping) | Slower (LLM generates full code) |
-| **Cost** | Lower (shorter prompts) | Higher (more tokens) |
-| **Reliability** | Very stable | Requires error handling |
-| **Maintenance** | Update component library | Update prompts |
+### Publishing AI Storefront
+1. User creates design in Vibecoder
+2. Clicks "Publish" → `active_storefront_mode` set to `'ai'`
+3. Profile now shows AI-generated storefront publicly
 
-**Recommendation:** Keep both modes. Block Mode for quick iterations, Vibecoder Mode for custom designs.
+### Reverting to Classic
+1. User goes to Settings → Storefront section
+2. Clicks "Classic Profile" button
+3. Confirmation: "Your AI storefront will be saved. Switch to classic?"
+4. `active_storefront_mode` set to `'free'`
+5. Profile now shows classic layout (AI design safely preserved)
+
+### Switching Back to AI
+1. User goes to Settings → Storefront section
+2. Clicks "Vibecoder (AI)" button
+3. Immediate switch - no confirmation needed (data preserved)
+4. Profile now shows AI storefront again
 
 ---
 
-## Security Considerations
+## Safety Guarantees
 
-Sandpack runs code in an isolated iframe origin, so:
-- No access to parent page DOM
-- No access to cookies/localStorage
-- Cannot make arbitrary network requests
-
-Additional safeguards:
-- Validate generated code for dangerous patterns (eval, document.cookie)
-- Rate limit API calls
-- Monitor for abuse patterns
-
+| Scenario | What Happens |
+|----------|-------------|
+| User switches from AI to Classic | AI code preserved in `project_files` |
+| User switches from Classic to AI | Profile sections preserved in `profile_sections` |
+| User edits AI storefront | Only `project_files` is updated |
+| User edits Classic profile | Only `profile_sections` is updated |
+| User deletes AI storefront | Option to reset to DEFAULT_CODE, Classic untouched |
+| User deletes Classic sections | AI storefront untouched |
