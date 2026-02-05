@@ -1270,6 +1270,8 @@ export function ProfileEditorDialog({
                     setSections={setSections}
                     pushHistory={(state) => pushHistory({ ...state, collections: editorCollections, showRecentUploads })}
                     onShowAssetTray={() => setShowAssetTray(true)}
+                    onUndo={undo}
+                    canUndo={canUndo}
                     onThemeUpdate={(path, value) => {
                       // Handle theme updates - update all sections' style_options
                       if (path.startsWith('colorScheme')) {

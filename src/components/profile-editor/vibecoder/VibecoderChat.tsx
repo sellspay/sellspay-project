@@ -2,7 +2,7 @@
  import { Button } from '@/components/ui/button';
  import { Input } from '@/components/ui/input';
  import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp } from 'lucide-react';
+import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp, Undo2 } from 'lucide-react';
  import { Wand2 } from 'lucide-react';
  import { useVibecoderChat } from './hooks/useVibecoderChat';
  import { useVibecoderOperations } from './hooks/useVibecoderOperations';
@@ -22,6 +22,8 @@ import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp } from 'lu
    onShowAssetTray?: () => void;
    onThemeUpdate?: (path: string, value: unknown) => void;
    onHeaderUpdate?: (patch: Record<string, unknown>) => void;
+  onUndo?: () => void;
+  canUndo?: boolean;
  }
  
  export function VibecoderChat({
@@ -32,6 +34,8 @@ import { Sparkles, Send, Loader2, Trash2, ImageIcon, Check, ChevronUp } from 'lu
    onShowAssetTray,
    onThemeUpdate,
    onHeaderUpdate,
+  onUndo,
+  canUndo,
  }: VibecoderChatProps) {
    const [input, setInput] = useState('');
    const scrollRef = useRef<HTMLDivElement>(null);
@@ -192,6 +196,21 @@ Make it look like a high-end luxury creator's store.`;
            )}
          </div>
          <div className="flex items-center gap-1">
+          {canUndo && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onUndo?.();
+                toast.success('Reverted changes');
+              }}
+              className="text-muted-foreground hover:text-foreground gap-1"
+              title="Undo last AI change"
+            >
+              <Undo2 className="w-4 h-4" />
+              <span className="text-xs">Undo</span>
+            </Button>
+          )}
            {onShowAssetTray && (
              <Button
                variant="ghost"
