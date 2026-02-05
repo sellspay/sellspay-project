@@ -6,7 +6,14 @@ import {
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { StepList, StepListSkeleton } from './StepList';
+import { generateDefaultSteps, type BuildStep } from './types/chat';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
+
+// Extended message type with steps
+export interface MessageWithSteps extends VibecoderMessage {
+  steps?: BuildStep[];
+}
 
 // --- HELPER: INFER ACTION TYPE ---
 function getMessageMeta(content: string, hasCode: boolean) {
@@ -34,13 +41,14 @@ function UserBubble({ content }: { content: string }) {
 
 // --- AI CARD (The "Lovable" Look) ---
 interface AssistantCardProps {
-  message: VibecoderMessage;
+  message: MessageWithSteps;
   onRate?: (rating: -1 | 0 | 1) => void;
   onRestoreCode?: () => void;
   canRestore?: boolean;
+  isStreaming?: boolean;
 }
 
-function AssistantCard({ message, onRate, onRestoreCode, canRestore }: AssistantCardProps) {
+function AssistantCard({ message, onRate, onRestoreCode, canRestore, isStreaming }: AssistantCardProps) {
   const hasCode = !!message.code_snapshot;
   const { label, icon: Icon } = getMessageMeta(message.content, hasCode);
 
@@ -48,6 +56,9 @@ function AssistantCard({ message, onRate, onRestoreCode, canRestore }: Assistant
   const displayContent = message.content === "Generated your storefront design." 
     ? "I've drafted a premium layout based on your request. Check the preview!" 
     : message.content;
+
+  // Generate steps if not provided (for backwards compatibility)
+  const steps = message.steps || (hasCode ? generateDefaultSteps(hasCode, message.content) : undefined);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
@@ -61,8 +72,8 @@ function AssistantCard({ message, onRate, onRestoreCode, canRestore }: Assistant
     >
       {/* AI AVATAR */}
       <div className="flex-shrink-0 mt-1">
-        <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center shadow-sm">
-          <Sparkles size={14} className="text-violet-400" />
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
+          <Sparkles size={14} className="text-white" />
         </div>
       </div>
 
@@ -70,13 +81,22 @@ function AssistantCard({ message, onRate, onRestoreCode, canRestore }: Assistant
       <div className="flex-1 max-w-[90%] space-y-2">
         
         {/* 1. THE MESSAGE BUBBLE */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-4 shadow-sm">
-          <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
-            {displayContent}
-          </p>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-5 shadow-sm">
+          {/* Main text content */}
+          <div className="prose prose-invert prose-sm max-w-none">
+            <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap m-0">
+              {displayContent}
+            </p>
+          </div>
 
-          {/* 2. THE "ACTION" PILL (Only if code changed) */}
-          {hasCode && (
+          {/* 2. STEP-BY-STEP BREAKDOWN */}
+          {isStreaming && !steps && <StepListSkeleton />}
+          {steps && steps.length > 0 && (
+            <StepList steps={steps} isStreaming={isStreaming} />
+          )}
+
+          {/* 3. THE "ACTION" PILL (Only if code changed) */}
+          {hasCode && !isStreaming && (
             <div className="mt-4 flex items-center gap-2 flex-wrap">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-950 border border-zinc-800">
                 <Icon size={12} className="text-zinc-500" />
@@ -105,7 +125,7 @@ function AssistantCard({ message, onRate, onRestoreCode, canRestore }: Assistant
           )}
         </div>
 
-        {/* 3. THE TOOLBAR (Hidden until hover) */}
+        {/* 4. THE TOOLBAR (Hidden until hover) */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-1">
           {onRate && (
             <>
@@ -162,10 +182,11 @@ function EmptyState() {
 
 // --- MAIN EXPORTS ---
 interface VibecoderMessageBubbleProps {
-  message: VibecoderMessage;
+  message: MessageWithSteps;
   onRate?: (rating: -1 | 0 | 1) => void;
   onRestoreCode?: () => void;
   canRestore?: boolean;
+  isStreaming?: boolean;
 }
 
 export function VibecoderMessageBubble({
@@ -173,6 +194,7 @@ export function VibecoderMessageBubble({
   onRate,
   onRestoreCode,
   canRestore = false,
+  isStreaming = false,
 }: VibecoderMessageBubbleProps) {
   if (message.role === 'user') {
     return <UserBubble content={message.content} />;
@@ -184,18 +206,25 @@ export function VibecoderMessageBubble({
       onRate={onRate} 
       onRestoreCode={onRestoreCode}
       canRestore={canRestore}
+      isStreaming={isStreaming}
     />
   );
 }
 
 // Export ChatInterface for direct use
 interface ChatInterfaceProps {
-  messages: VibecoderMessage[];
+  messages: MessageWithSteps[];
   onRateMessage: (messageId: string, rating: -1 | 0 | 1) => void;
   onRestoreCode: (codeSnapshot: string) => void;
+  streamingMessageId?: string | null;
 }
 
-export function ChatInterface({ messages, onRateMessage, onRestoreCode }: ChatInterfaceProps) {
+export function ChatInterface({ 
+  messages, 
+  onRateMessage, 
+  onRestoreCode,
+  streamingMessageId 
+}: ChatInterfaceProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom
@@ -216,9 +245,13 @@ export function ChatInterface({ messages, onRateMessage, onRestoreCode }: ChatIn
           onRate={(rating) => onRateMessage(msg.id, rating)}
           onRestoreCode={msg.code_snapshot ? () => onRestoreCode(msg.code_snapshot!) : undefined}
           canRestore={index < messages.length - 1 && !!msg.code_snapshot}
+          isStreaming={msg.id === streamingMessageId}
         />
       ))}
       <div ref={bottomRef} className="h-4" />
     </div>
   );
 }
+
+// Re-export types for external use
+export { type BuildStep } from './types/chat';
