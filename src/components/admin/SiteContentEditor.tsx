@@ -133,7 +133,8 @@ export function SiteContentEditor() {
     return true;
   };
 
-  const MAX_FILE_SIZE_MB = 50; // 50MB limit for site assets
+  const MAX_FILE_SIZE_MB = 50; // 50MB limit for general site assets
+  const MAX_HERO_FILE_SIZE_MB = 200; // 200MB limit for hero media
   const UPLOAD_TIMEOUT_MS = 60000; // 60 second timeout
   const VERIFY_TIMEOUT_MS = 15000; // 15s - verify asset is reachable after upload
 
@@ -149,11 +150,11 @@ export function SiteContentEditor() {
     }
   };
 
-  const uploadFile = async (file: File, folder: string): Promise<string | null> => {
+  const uploadFile = async (file: File, folder: string, maxSizeMB: number = MAX_FILE_SIZE_MB): Promise<string | null> => {
     // File size validation
     const fileSizeMB = file.size / (1024 * 1024);
-    if (fileSizeMB > MAX_FILE_SIZE_MB) {
-      toast.error(`File too large (${fileSizeMB.toFixed(1)}MB). Max size is ${MAX_FILE_SIZE_MB}MB.`);
+    if (fileSizeMB > maxSizeMB) {
+      toast.error(`File too large (${fileSizeMB.toFixed(1)}MB). Max size is ${maxSizeMB}MB.`);
       return null;
     }
 
@@ -202,17 +203,24 @@ export function SiteContentEditor() {
     const file = e.target.files?.[0];
     if (!file || !content) return;
 
+    // Hero media has a higher file size limit
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > MAX_HERO_FILE_SIZE_MB) {
+      toast.error(`File too large (${fileSizeMB.toFixed(1)}MB). Max size for hero media is ${MAX_HERO_FILE_SIZE_MB}MB.`);
+      if (heroFileRef.current) heroFileRef.current.value = '';
+      return;
+    }
+
     const isVideo = file.type.startsWith('video/');
     const folder = isVideo ? 'hero-videos' : 'hero-images';
     
     // Show file info in loading state
-    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-    toast.info(`Uploading ${file.name} (${fileSizeMB}MB)...`);
+    toast.info(`Uploading ${file.name} (${fileSizeMB.toFixed(1)}MB)...`);
     
     setUploading('hero');
     
     try {
-      const url = await uploadFile(file, folder);
+      const url = await uploadFile(file, folder, MAX_HERO_FILE_SIZE_MB);
       
       if (url) {
         if (isVideo) {
