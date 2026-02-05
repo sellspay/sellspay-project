@@ -12,37 +12,53 @@
  import { VideoSectionBlock } from './VideoSectionBlock';
  import { AboutBlock } from './AboutBlock';
  import { StatsBlock } from './StatsBlock';
+import { FeaturedProductsBlock } from './FeaturedProductsBlock';
  
- // Block component map
- const BLOCKS: Record<string, React.FC<{ id: string; props: any }>> = {
+// Valid block types - used for validation
+export const VALID_BLOCK_TYPES = new Set([
+  'hero',
+  'bento_grid',
+  'testimonials',
+  'faq',
+  'cta_strip',
+  'gallery',
+  'video_section',
+  'about',
+  'stats',
+  'featured_products',
+  'collection_grid',
+  // Legacy section type aliases
+  'headline',
+  'basic_list',
+  'image_with_text',
+  'text',
+  'about_me',
+  'featured_product',
+  'collection',
+]);
+
+// Block component map - maps type to component (using any for flexibility with legacy formats)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const BLOCKS: Record<string, React.FC<{ id: string; props: any }>> = {
    hero: HeroBlock,
+  headline: HeroBlock,
    bento_grid: BentoGridBlock,
+  basic_list: BentoGridBlock,
    testimonials: TestimonialsBlock,
    faq: FAQBlock,
    cta_strip: CTAStripBlock,
    gallery: GalleryBlock,
    video_section: VideoSectionBlock,
    about: AboutBlock,
+  about_me: AboutBlock,
+  text: AboutBlock,
+  image_with_text: AboutBlock,
    stats: StatsBlock,
+  featured_products: FeaturedProductsBlock,
+  featured_product: FeaturedProductsBlock,
+  collection_grid: FeaturedProductsBlock,
+  collection: FeaturedProductsBlock,
  };
- 
- // Fallback block for unknown types
- function FallbackBlock({ id, props }: { id: string; props: { type?: string } }) {
-   return (
-     <section
-       style={{
-         backgroundColor: 'var(--ai-muted)',
-         padding: 'var(--ai-section-spacing) 2rem',
-       }}
-     >
-       <div className="max-w-3xl mx-auto text-center">
-         <p style={{ color: 'var(--ai-muted-foreground)' }} className="text-sm">
-           Unknown block type: {props.type || id}
-         </p>
-       </div>
-     </section>
-   );
- }
  
  interface AiRendererProps {
    layout: AILayout;
@@ -65,7 +81,16 @@
          }}
        >
          {blocks.map((block) => {
-           const BlockComponent = BLOCKS[block.type] || FallbackBlock;
+          const BlockComponent = BLOCKS[block.type];
+          
+          // Skip unknown block types silently (log in dev only)
+          if (!BlockComponent) {
+            if (import.meta.env.DEV) {
+              console.warn('[AiRenderer] Unknown block type:', block.type, block);
+            }
+            return null;
+          }
+          
            return (
              <BlockComponent
                key={block.id}
@@ -101,6 +126,10 @@
      image_with_text: 'about',
      text: 'about',
      faq: 'faq',
+    basic_list: 'bento_grid',
+    featured_product: 'featured_products',
+    collection: 'featured_products',
+    gallery: 'gallery',
    };
    return mapping[sectionType] || sectionType;
  }

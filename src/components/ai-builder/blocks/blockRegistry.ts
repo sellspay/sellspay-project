@@ -21,6 +21,32 @@
      },
    },
    {
+    type: 'featured_products',
+    name: 'Featured Products',
+    description: 'Product grid or carousel showing featured items from the store',
+    category: 'content',
+    maxPerPage: 2,
+    defaultProps: {
+      title: 'Featured Products',
+      subtitle: '',
+      layout: 'grid',
+      columns: 3,
+      productIds: [],
+    },
+  },
+  {
+    type: 'collection_grid',
+    name: 'Collection Grid',
+    description: 'Display products from a specific collection',
+    category: 'content',
+    maxPerPage: 2,
+    defaultProps: {
+      title: '',
+      collectionId: '',
+      columns: 3,
+    },
+  },
+  {
      type: 'bento_grid',
      name: 'Bento Grid',
      description: 'Grid of feature/benefit cards with icons, titles, and descriptions',
