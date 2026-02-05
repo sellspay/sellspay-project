@@ -182,33 +182,9 @@ export default function HeroSection() {
       </div>
 
       {/* CENTER CONTENT */}
+      {/* CENTER CONTENT - Now minimal, main text moved to AI Reveal intro */}
       <div className="relative z-10 w-full px-6 sm:px-8 lg:px-16">
         <div className="flex flex-col items-center text-center max-w-7xl mx-auto">
-          
-          {/* Small subheadline above main */}
-          <span 
-            className="text-lg sm:text-xl md:text-2xl font-light tracking-wide mb-4 text-white/80"
-            style={{ transform: `translateY(${parallaxMedium * 0.1}px)` }}
-          >
-            {content.hero_headline}
-          </span>
-
-          {/* MASSIVE Main headline */}
-          <h1 
-            className="text-[12vw] sm:text-[10vw] md:text-[9vw] lg:text-[8vw] font-bold tracking-tighter leading-[0.9] text-white uppercase"
-            style={{ transform: `translateY(${parallaxMedium * 0.15}px)` }}
-          >
-            <span className="block">
-              #{content.hero_subheadline}{' '}
-              <span 
-                key={activeWord} 
-                className="inline-block animate-fade-in text-white"
-              >
-                {content.hero_rotating_words[activeWord]}
-              </span>
-            </span>
-          </h1>
-
           {/* Pill button - "discover" style */}
           <div 
             className="mt-10 sm:mt-14"
