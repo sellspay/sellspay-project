@@ -77,34 +77,37 @@ export function AIToolsReveal() {
     STEPS[0].headline[1],
   ]);
 
-  // React 18 StrictMode runs effects twice in dev; guard so we don't register
-  // duplicate ScrollTriggers (which causes “glitching”/stuck updates).
-  const didInitRef = useRef(false);
-
   const steps = useMemo(() => STEPS, []);
 
   useLayoutEffect(() => {
-    if (didInitRef.current) return;
-    didInitRef.current = true;
-
     const section = sectionRef.current;
-    const text = textRef.current;
-    const cards = cardsRef.current.filter(Boolean) as HTMLDivElement[];
-    if (!section || !text || cards.length === 0) return;
+    if (!section) return;
 
-    const panelCount = steps.length;
-    // Use viewport-relative height for responsive card stacking
-    const cardHeight = window.innerHeight * 0.6;
+    // Scope all GSAP selectors/tweens to this section so cleanup is bulletproof
+    // (works with StrictMode, route changes, HMR, etc.).
+    const ctx = gsap.context(() => {
+      const text = textRef.current;
+      const cards = cardsRef.current.filter(Boolean) as HTMLDivElement[];
+      if (!text || cards.length === 0) return;
 
-    const headlineEl = text.querySelector("[data-headline]") as HTMLElement | null;
+      // If anything already exists for this section (StrictMode/HMR), kill it.
+      ScrollTrigger.getAll().forEach((st) => {
+        if (st.trigger === section) st.kill();
+      });
 
-    // Set initial styles
-    gsap.set(section, { backgroundColor: steps[0].bg });
-    if (headlineEl) gsap.set(headlineEl, { color: steps[0].text });
+      const panelCount = steps.length;
+      // Use viewport-relative height for responsive card stacking
+      const cardHeight = window.innerHeight * 0.6;
 
-    // Stack silhouette values (small offsets so you see the edges behind)
-    const stackSpacing = 22;
-    const scaleStep = 0.025;
+      const headlineEl = text.querySelector("[data-headline]") as HTMLElement | null;
+
+      // Set initial styles
+      gsap.set(section, { backgroundColor: steps[0].bg });
+      if (headlineEl) gsap.set(headlineEl, { color: steps[0].text });
+
+      // Stack silhouette values (small offsets so you see the edges behind)
+      const stackSpacing = 22;
+      const scaleStep = 0.025;
 
     const getStackY = (activeIndex: number, cardIndex: number) =>
       -(activeIndex - cardIndex) * stackSpacing;
@@ -112,129 +115,125 @@ export function AIToolsReveal() {
     const getStackScale = (activeIndex: number, cardIndex: number) =>
       1 - (activeIndex - cardIndex) * scaleStep;
 
-    // Set initial card positions
-    cards.forEach((card, idx) => {
-      gsap.set(card, {
-        y: idx === 0 ? 0 : cardHeight,
-        scale: 1,
-        // newer cards should be on top
-        zIndex: idx + 1,
+      // Set initial card positions
+      cards.forEach((card, idx) => {
+        gsap.set(card, {
+          y: idx === 0 ? 0 : cardHeight,
+          scale: 1,
+          // newer cards should be on top
+          zIndex: idx + 1,
+        });
       });
-    });
 
     // Timeline scrubbed by scroll
-    const animationDuration = 0.6; // How long the actual animation takes
-    const pauseDuration = 0.4; // Dead space / pause between animations
-    const stepDuration = animationDuration + pauseDuration; // Total time per step
+      const animationDuration = 0.6; // How long the actual animation takes
+      const pauseDuration = 0.4; // Dead space / pause between animations
+      const stepDuration = animationDuration + pauseDuration; // Total time per step
     
-    const setHeadline = (idx: number) => {
-      const line1 = steps[idx]?.headline?.[0] ?? "";
-      const line2 = steps[idx]?.headline?.[1] ?? "";
-      if (activeHeadlineIndexRef.current === idx) return;
-      activeHeadlineIndexRef.current = idx;
-      setHeadlineLines([line1, line2]);
-    };
+      const setHeadline = (idx: number) => {
+        const line1 = steps[idx]?.headline?.[0] ?? "";
+        const line2 = steps[idx]?.headline?.[1] ?? "";
+        if (activeHeadlineIndexRef.current === idx) return;
+        activeHeadlineIndexRef.current = idx;
+        setHeadlineLines([line1, line2]);
+      };
 
-    // Ensure we start at panel 1.
-    setHeadline(0);
+      // Ensure we start at panel 1.
+      setHeadline(0);
 
-    // Hide headline until we actually render the first “reveal”.
-    // This prevents seeing text before the pinned sequence begins.
-    const line1ElInit = headlineLineRefs.current[0];
-    const line2ElInit = headlineLineRefs.current[1];
-    if (line1ElInit && line2ElInit) {
-      gsap.set([line1ElInit, line2ElInit], { opacity: 0, y: 10 });
-    }
+      // Keep headline logic simple + deterministic: map ScrollTrigger progress
+      // to a step index, then swap ~30% into each transition.
+      const updateHeadlineFromProgress = (progress: number) => {
+        const totalTransitions = panelCount - 1;
+        const stepP = 1 / totalTransitions;
+        const clamped = Math.max(0, Math.min(1, progress));
 
-    // Use *timeline time* (not raw ScrollTrigger progress) so the headline switch
-    // happens during the animation part of each step, not during the pause.
-    const updateHeadlineFromProgress = (progress: number, timeline: gsap.core.Timeline) => {
-      const clamped = Math.max(0, Math.min(1, progress));
-      const totalTime = timeline.duration();
-      const t = clamped * totalTime;
+        const base = Math.max(0, Math.min(totalTransitions - 1, Math.floor(clamped / stepP)));
+        const local = (clamped - base * stepP) / stepP;
 
-      const stepIndex = Math.max(0, Math.min(panelCount - 1, Math.floor(t / stepDuration)));
-      const withinStep = t - stepIndex * stepDuration;
-      const animT = Math.min(1, withinStep / animationDuration); // 0..1 (pause clamps to 1)
+        const idx = local >= 0.3 ? base + 1 : base;
+        setHeadline(Math.min(panelCount - 1, idx));
+      };
 
-      // Swap once the next panel is visibly moving in (not after it's already done).
-      // 0.35 = ~35% through the animation portion.
-      const idx = animT >= 0.35 ? stepIndex + 1 : stepIndex;
-      setHeadline(Math.min(panelCount - 1, idx));
-    };
-
-    const tl = gsap.timeline({
-      defaults: { ease: "none" },
-      scrollTrigger: {
-        trigger: section,
-        start: "top top",
-        end: () => `+=${(panelCount - 1) * stepDuration * window.innerHeight}`,
-        scrub: true,
-        pin: section,
-        pinSpacing: true,
-        anticipatePin: 1,
-        invalidateOnRefresh: true,
-        onUpdate: (self) => updateHeadlineFromProgress(self.progress, tl),
-        onRefresh: (self) => updateHeadlineFromProgress(self.progress, tl),
-      },
-    });
-
-    // Animate each step
-    for (let i = 0; i < panelCount - 1; i++) {
-      const startTime = i * stepDuration;
-      const nextCardIndex = i + 1;
-      
-      // Reposition all previously revealed cards into their stacked silhouette positions
-      // Example: when card 2 becomes active, card1 -> -spacing, card0 -> -2*spacing
-      tl.to(
-        cards.slice(0, nextCardIndex),
-        {
-          duration: animationDuration,
-          y: (index: number) => getStackY(nextCardIndex, index),
-          scale: (index: number) => getStackScale(nextCardIndex, index),
+      const tl = gsap.timeline({
+        defaults: { ease: "none" },
+        scrollTrigger: {
+          id: "ai-tools-reveal",
+          trigger: section,
+          start: "top top",
+          end: () => `+=${(panelCount - 1) * stepDuration * window.innerHeight}`,
+          scrub: true,
+          pin: section,
+          pinSpacing: true,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => updateHeadlineFromProgress(self.progress),
+          onRefresh: (self) => updateHeadlineFromProgress(self.progress),
         },
-        startTime
-      );
-      
-      // Next card slides UP from below to the front
-      tl.to(cards[nextCardIndex], {
-        y: 0,
-        scale: 1,
-        duration: animationDuration,
-      }, startTime);
-      
-      // Bring the new card above the stack
-      tl.set(cards[nextCardIndex], { zIndex: nextCardIndex + 10 }, startTime);
-      
-      // Change background color
-      tl.to(section, { 
-        backgroundColor: steps[i + 1].bg,
-        duration: animationDuration * 0.5,
-      }, startTime);
-      
-      // Change text color
-      if (headlineEl) {
+      });
+
+      // Animate each step
+      for (let i = 0; i < panelCount - 1; i++) {
+        const startTime = i * stepDuration;
+        const nextCardIndex = i + 1;
+
+        // Reposition all previously revealed cards into their stacked silhouette positions
+        // Example: when card 2 becomes active, card1 -> -spacing, card0 -> -2*spacing
         tl.to(
-          headlineEl,
+          cards.slice(0, nextCardIndex),
           {
-            color: steps[i + 1].text,
+            duration: animationDuration,
+            y: (index: number) => getStackY(nextCardIndex, index),
+            scale: (index: number) => getStackScale(nextCardIndex, index),
+          },
+          startTime
+        );
+
+        // Next card slides UP from below to the front
+        tl.to(
+          cards[nextCardIndex],
+          {
+            y: 0,
+            scale: 1,
+            duration: animationDuration,
+          },
+          startTime
+        );
+
+        // Bring the new card above the stack
+        tl.set(cards[nextCardIndex], { zIndex: nextCardIndex + 10 }, startTime);
+
+        // Change background color
+        tl.to(
+          section,
+          {
+            backgroundColor: steps[i + 1].bg,
             duration: animationDuration * 0.5,
           },
           startTime
         );
-      }
 
-      // Add a real pause segment so the timeline time matches stepDuration.
-      // Without this, the timeline compresses time (no tween during the pause),
-      // and any "time -> panel index" mapping becomes incorrect.
-      tl.to(
-        {},
-        {
-          duration: pauseDuration,
-        },
-        startTime + animationDuration
-      );
-    }
+        // Change text color
+        if (headlineEl) {
+          tl.to(
+            headlineEl,
+            {
+              color: steps[i + 1].text,
+              duration: animationDuration * 0.5,
+            },
+            startTime
+          );
+        }
+
+        // Dead-space pause (keeps pacing consistent)
+        tl.to(
+          {},
+          {
+            duration: pauseDuration,
+          },
+          startTime + animationDuration
+        );
+      }
 
     // Animate headline lines when they change.
     // Use overwrite to prevent animation build-up when scrubbing quickly.
@@ -244,16 +243,24 @@ export function AIToolsReveal() {
       gsap.set([line1El, line2El], { willChange: "transform,opacity" });
     }
 
-    const onResize = () => ScrollTrigger.refresh();
-    window.addEventListener("resize", onResize);
+      const onResize = () => ScrollTrigger.refresh();
+      window.addEventListener("resize", onResize);
+
+      // Ensure correct measurements on first paint
+      ScrollTrigger.refresh();
+
+      return () => {
+        window.removeEventListener("resize", onResize);
+        // IMPORTANT: don't kill *all* triggers on the page; only ours.
+        tl.scrollTrigger?.kill();
+        tl.kill();
+      };
+    }, sectionRef);
 
     return () => {
-      window.removeEventListener("resize", onResize);
-      // IMPORTANT: don't kill *all* triggers on the page; only ours.
-      tl.scrollTrigger?.kill();
-      tl.kill();
+      ctx.revert();
     };
-  }, []);
+  }, [steps]);
 
   // Drive the “reveal” of the two headline lines when their text changes.
   useLayoutEffect(() => {
