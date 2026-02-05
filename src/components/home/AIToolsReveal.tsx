@@ -52,6 +52,8 @@ const STEPS: Step[] = [
 const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a1a1a"];
 const STEP_DISTANCE_DESKTOP = 500;
 const STEP_DISTANCE_MOBILE = 300;
+const STACK_OFFSET = 12;
+const STACK_SCALE_STEP = 0.02;
 
 export function AIToolsReveal() {
   const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -92,9 +94,16 @@ export function AIToolsReveal() {
       gsap.set(section, { backgroundColor: STEPS[0].bg });
       if (headlineEl) gsap.set(headlineEl, { color: STEPS[0].text });
 
-      // Stack cards: first card on top (highest z-index)
+      // Stack cards: LAST card starts on top (will be pushed down as we scroll)
+      // Cards are rendered in DOM order 0,1,2,3,4,5
+      // Initially: card 0 visible on top, cards 1-5 positioned below (off-screen)
       cards.forEach((card, i) => {
-        gsap.set(card, { zIndex: cards.length - i, yPercent: 0 });
+        // First card (i=0) is visible, others start below
+        gsap.set(card, { 
+          zIndex: panelCount - i, 
+          yPercent: i === 0 ? 0 : 100,
+          scale: 1
+        });
       });
 
       const setHeadline = (idx: number) => {
@@ -132,22 +141,40 @@ export function AIToolsReveal() {
           const local = (clamped - base * stepP) / stepP;
           const activeIdx = local >= 0.3 ? Math.min(panelCount - 1, base + 1) : base;
           setHeadline(activeIdx);
-        },
-      });
 
-      // Each card slides up to reveal the next (except last)
-      cards.slice(0, -1).forEach((card, i) => {
-        gsap.to(card, {
-          yPercent: -110,
-          ease: "none",
-          scrollTrigger: {
-            trigger: section,
-            start: () => `top+=${i * stepDistance} top`,
-            end: () => `top+=${(i + 1) * stepDistance} top`,
-            scrub: true,
-            invalidateOnRefresh: true,
-          },
-        });
+          // Stack animation: push previous cards up and scale them down
+          cards.forEach((card, i) => {
+            if (i === 0) return; // First card stays put
+            
+            const cardProgress = (clamped - (i - 1) * stepP) / stepP;
+            const clampedCardProgress = Math.max(0, Math.min(1, cardProgress));
+            
+            // Card slides up from 100% to 0%
+            const yPercent = 100 - (clampedCardProgress * 100);
+            gsap.set(card, { yPercent });
+          });
+
+          // Scale and offset previous cards as new ones stack on top
+          cards.forEach((card, i) => {
+            // How many cards are stacked on top of this one?
+            const cardsAbove = cards.reduce((count, _, j) => {
+              if (j <= i) return count;
+              const cardProgress = (clamped - (j - 1) * stepP) / stepP;
+              return cardProgress > 0.5 ? count + 1 : count;
+            }, 0);
+            
+            if (cardsAbove > 0) {
+              const scale = 1 - (cardsAbove * STACK_SCALE_STEP);
+              const offsetY = -(cardsAbove * STACK_OFFSET);
+              gsap.set(card, { 
+                scale: Math.max(0.85, scale),
+                y: offsetY
+              });
+            } else {
+              gsap.set(card, { scale: 1, y: 0 });
+            }
+          });
+        },
       });
 
       const line1El = headlineLineRefs.current[0];
@@ -214,10 +241,13 @@ export function AIToolsReveal() {
                 <div
                   key={idx}
                   className="card absolute inset-0 will-change-transform"
-                  style={{ transform: "translate3d(0,0,0)" }}
+                style={{ 
+                  transform: "translate3d(0,0,0)",
+                  transformOrigin: "center top"
+                }}
                 >
                   <div
-                    className="h-full w-full rounded-[16px] sm:rounded-[20px] md:rounded-[24px] lg:rounded-[28px] border border-white/10 overflow-hidden shadow-xl lg:shadow-2xl"
+                  className="h-full w-full rounded-[16px] sm:rounded-[20px] md:rounded-[24px] lg:rounded-[28px] border border-white/10 overflow-hidden shadow-2xl"
                     style={{ backgroundColor: CARD_COLORS[idx] }}
                   >
                     {step.image ? (
