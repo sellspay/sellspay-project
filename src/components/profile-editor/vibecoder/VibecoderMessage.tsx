@@ -1,7 +1,7 @@
  import { memo } from 'react';
  import { Button } from '@/components/ui/button';
  import { Badge } from '@/components/ui/badge';
- import { Check, X, RefreshCw, Eye } from 'lucide-react';
+import { Check, X, RefreshCw, Eye, AlertCircle } from 'lucide-react';
  import { ChatMessage } from './types';
  import { cn } from '@/lib/utils';
  
@@ -77,8 +77,29 @@
          </Badge>
        )}
  
-       {/* Action buttons for pending operations */}
-       {!isUser && hasOperations && isPending && isLatest && (
+      {/* Show message when AI responded but with no operations */}
+      {!isUser && !hasOperations && isPending && isLatest && (
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <AlertCircle className="w-3 h-3" />
+            <span>No layout changes to apply</span>
+          </div>
+          {onRegenerate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRegenerate}
+              className="h-7 text-xs text-muted-foreground ml-auto"
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Try Again
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Action buttons for pending operations */}
+      {!isUser && hasOperations && isPending && isLatest && (
          <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-border/50">
            {onPreview && (
              <Button

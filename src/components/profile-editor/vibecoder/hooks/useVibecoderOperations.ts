@@ -6,12 +6,16 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
    sections: ProfileSection[];
    setSections: React.Dispatch<React.SetStateAction<ProfileSection[]>>;
    pushHistory: (state: { sections: ProfileSection[] }) => void;
+   onThemeUpdate?: (path: string, value: unknown) => void;
+   onHeaderUpdate?: (patch: Record<string, unknown>) => void;
  }
  
  export function useVibecoderOperations({
    sections,
    setSections,
    pushHistory,
+   onThemeUpdate,
+   onHeaderUpdate,
  }: UseVibecoderOperationsProps) {
    
    // Validate a single operation
@@ -170,18 +174,37 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
              break;
            }
  
-           // Theme and header updates are handled by parent component
-           default:
+            case 'updateTheme': {
+              // Call the theme update handler if provided
+              if (onThemeUpdate) {
+                onThemeUpdate(op.path, op.value);
+              }
+              break;
+            }
+
+            case 'updateHeaderContent': {
+              // Call the header update handler if provided
+              if (onHeaderUpdate) {
+                onHeaderUpdate(op.patch);
+              }
              break;
+            }
+
+            default:
+              // assignAssetToSlot is handled separately
+              break;
          }
        }
  
        return newSections;
      });
  
-     // Push to history after applying
-     pushHistory({ sections: sections });
-   }, [sections, setSections, pushHistory, validateOperation]);
+      // Push to history after applying - use a callback to get fresh sections
+      setSections(currentSections => {
+        pushHistory({ sections: currentSections });
+        return currentSections;
+      });
+    }, [setSections, pushHistory, validateOperation, onThemeUpdate, onHeaderUpdate]);
  
    // Preview operations without applying
    const previewOperations = useCallback((ops: VibecoderOp[]): ProfileSection[] => {

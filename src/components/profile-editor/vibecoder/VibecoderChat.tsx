@@ -22,6 +22,8 @@
    setSections: React.Dispatch<React.SetStateAction<ProfileSection[]>>;
    pushHistory: (state: { sections: ProfileSection[] }) => void;
    onShowAssetTray?: () => void;
+  onThemeUpdate?: (path: string, value: unknown) => void;
+  onHeaderUpdate?: (patch: Record<string, unknown>) => void;
  }
  
  export function VibecoderChat({
@@ -30,6 +32,8 @@
    setSections,
    pushHistory,
    onShowAssetTray,
+  onThemeUpdate,
+  onHeaderUpdate,
  }: VibecoderChatProps) {
    const [input, setInput] = useState('');
    const scrollRef = useRef<HTMLDivElement>(null);
@@ -58,6 +62,8 @@
      sections,
      setSections,
      pushHistory,
+    onThemeUpdate,
+    onHeaderUpdate,
    });
 
    // Process asset requests from AI
@@ -227,7 +233,7 @@
                  isLatest={index === messages.length - 1}
                  onApply={message.status === 'pending' && pendingOps ? handleApply : undefined}
                  onDiscard={message.status === 'pending' && pendingOps ? discardPendingOps : undefined}
-                 onRegenerate={message.status === 'pending' ? regenerate : undefined}
+                onRegenerate={message.status === 'pending' && message.role === 'assistant' ? regenerate : undefined}
                  onPreview={message.status === 'pending' && pendingOps ? handlePreview : undefined}
                />
              ))}
