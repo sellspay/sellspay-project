@@ -150,7 +150,7 @@ import { useState, useCallback, useEffect } from 'react';
  
         // Call backend function (direct fetch) with a hard timeout so we never spin forever
         const controller = new AbortController();
-        const timeoutMs = 25_000;
+        const timeoutMs = 60_000; // 60 seconds to allow complex AI generations
         const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
         let response: VibecoderResponse;
