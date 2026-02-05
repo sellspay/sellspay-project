@@ -19,42 +19,49 @@ export function AIToolsReveal() {
   const textRef = useRef<HTMLDivElement | null>(null);
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
   const headlineLineRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const activeHeadlineIndexRef = useRef<number>(-1);
   const steps: Step[] = [
     { 
       bg: "#0a0a0a", 
       text: "#ffffff", 
       subtext: "rgba(255,255,255,0.70)",
-      headline: ["Building", "made simple"],
+      // Panel 1
+      headline: ["Building Made", "Simple"],
       image: aiPanel1,
     },
     { 
       bg: "#ffffff", 
       text: "#111111", 
       subtext: "rgba(0,0,0,0.70)",
-      headline: ["Generate SFX", "with prompts"],
-    },
-    { 
-      bg: "#0a0a0a", 
-      text: "#ffffff", 
-      subtext: "rgba(255,255,255,0.70)",
-      headline: ["Create", "images"],
-    },
-    { 
-      bg: "#e76e50", 
-      text: "#0a0a0a", 
-      subtext: "rgba(10,10,10,0.75)",
-      headline: ["Create", "Images"],
-    },
-    { 
-      bg: "#50A9E7", 
-      text: "#0a0a0a", 
-      subtext: "rgba(10,10,10,0.75)",
+      // Panel 2
       headline: ["Sell", "products"],
     },
     { 
       bg: "#0a0a0a", 
       text: "#ffffff", 
       subtext: "rgba(255,255,255,0.70)",
+      // Panel 3
+      headline: ["Audio Made", "Simple"],
+    },
+    { 
+      bg: "#e76e50", 
+      text: "#0a0a0a", 
+      subtext: "rgba(10,10,10,0.75)",
+      // Panel 4
+      headline: ["Generate", "Videos"],
+    },
+    { 
+      bg: "#50A9E7", 
+      text: "#0a0a0a", 
+      subtext: "rgba(10,10,10,0.75)",
+      // Panel 5
+      headline: ["Generate", "images"],
+    },
+    { 
+      bg: "#0a0a0a", 
+      text: "#ffffff", 
+      subtext: "rgba(255,255,255,0.70)",
+      // Panel 6
       headline: ["All in", "one"],
     },
   ];
@@ -126,6 +133,14 @@ export function AIToolsReveal() {
     const line1 = headlineLineRefs.current[0];
     const line2 = headlineLineRefs.current[1];
 
+    const setHeadline = (idx: number) => {
+      if (!line1 || !line2) return;
+      if (activeHeadlineIndexRef.current === idx) return;
+      activeHeadlineIndexRef.current = idx;
+      line1.textContent = steps[idx].headline[0];
+      line2.textContent = steps[idx].headline[1];
+    };
+
     // Animate each step
     for (let i = 0; i < panelCount - 1; i++) {
       const startTime = i * stepDuration;
@@ -164,17 +179,35 @@ export function AIToolsReveal() {
         color: steps[i + 1].text,
         duration: animationDuration * 0.5,
       }, startTime);
-
-      // Update headline text at midpoint of transition
-      if (line1 && line2) {
-        tl.call(() => {
-          line1.textContent = steps[i + 1].headline[0];
-          line2.textContent = steps[i + 1].headline[1];
-        }, [], startTime + animationDuration * 0.85);
-      }
     }
 
     tl.duration((panelCount - 1) * stepDuration);
+
+    // Keep headline perfectly in-sync with scroll position in BOTH directions.
+    // Using tl.call() is fragile when scrubbing/reversing.
+    const updateHeadlineFromTime = () => {
+      const t = tl.time();
+      const clampedT = Math.max(0, Math.min(t, (panelCount - 1) * stepDuration));
+      const base = Math.max(0, Math.min(panelCount - 2, Math.floor(clampedT / stepDuration)));
+      const local = clampedT - base * stepDuration;
+
+      // During the slide-up animation, keep the previous headline until the new card is mostly in place.
+      const threshold = animationDuration * 0.8;
+      const idx = local >= threshold ? base + 1 : base;
+      setHeadline(Math.min(panelCount - 1, idx));
+    };
+
+    // Initial sync
+    updateHeadlineFromTime();
+
+    const st = tl.scrollTrigger;
+    if (st) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (st.vars as any).onUpdate = updateHeadlineFromTime;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (st.vars as any).onRefresh = updateHeadlineFromTime;
+      st.refresh();
+    }
 
     const onResize = () => ScrollTrigger.refresh();
     window.addEventListener("resize", onResize);
@@ -207,13 +240,13 @@ export function AIToolsReveal() {
                 ref={(el) => { headlineLineRefs.current[0] = el; }}
                 className="block"
               >
-                Building
+                Building Made
               </span>
               <span 
                 ref={(el) => { headlineLineRefs.current[1] = el; }}
                 className="block"
               >
-                made simple
+                Simple
               </span>
             </h2>
           </div>
