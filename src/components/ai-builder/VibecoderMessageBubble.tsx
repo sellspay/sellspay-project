@@ -30,9 +30,9 @@ function UserBubble({ content }: { content: string }) {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex justify-end mb-6"
+      className="flex justify-end mb-6 w-full"
     >
-      <div className="max-w-[85%] bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white px-5 py-3 rounded-2xl rounded-tr-sm shadow-lg shadow-orange-900/10 text-sm font-medium leading-relaxed">
+      <div className="max-w-[85%] bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white px-5 py-3 rounded-2xl rounded-tr-sm shadow-lg shadow-orange-900/10 text-sm font-medium leading-relaxed break-words break-all whitespace-pre-wrap max-h-[300px] overflow-y-auto overflow-x-hidden custom-scrollbar">
         {content}
       </div>
     </motion.div>
@@ -68,23 +68,23 @@ function AssistantCard({ message, onRate, onRestoreCode, canRestore, isStreaming
     <motion.div 
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
-      className="flex gap-4 mb-8 group"
+      className="flex gap-4 mb-8 group w-full max-w-full"
     >
       {/* AI AVATAR */}
-      <div className="flex-shrink-0 mt-1">
+      <div className="shrink-0 mt-1">
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
           <Sparkles size={14} className="text-white" />
         </div>
       </div>
 
-      {/* CARD BODY */}
-      <div className="flex-1 max-w-[90%] space-y-2">
+      {/* CARD BODY - min-w-0 prevents flex child from growing beyond container */}
+      <div className="flex-1 min-w-0 max-w-full space-y-2">
         
         {/* 1. THE MESSAGE BUBBLE */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-5 shadow-sm">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-5 shadow-sm w-full">
           {/* Main text content */}
-          <div className="prose prose-invert prose-sm max-w-none">
-            <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap m-0">
+          <div className="prose prose-invert prose-sm max-w-none break-words break-all whitespace-pre-wrap max-h-[500px] overflow-y-auto overflow-x-hidden custom-scrollbar">
+            <p className="text-sm text-zinc-300 leading-relaxed m-0">
               {displayContent}
             </p>
           </div>
