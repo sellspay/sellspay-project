@@ -22,8 +22,19 @@ import { getBlockRegistrySummary } from './blocks';
    role: 'user' | 'assistant';
    content: string;
    timestamp: Date;
+  stage?: 'planning' | 'applying' | 'rendering' | 'done';
  }
  
+// Progress stages for the build process
+type BuildStage = 'planning' | 'applying' | 'rendering' | 'done';
+
+const STAGE_MESSAGES: Record<BuildStage, string> = {
+  planning: 'Planning layout…',
+  applying: 'Applying patch…',
+  rendering: 'Rendering sections…',
+  done: 'Done!',
+};
+
 // Rotating placeholder examples for the input
 const PLACEHOLDER_EXAMPLES = [
   "A dark anime storefront for selling editing packs",
@@ -47,6 +58,7 @@ const PLACEHOLDER_EXAMPLES = [
    const [input, setInput] = useState('');
    const [messages, setMessages] = useState<ChatMessage[]>([]);
    const [isLoading, setIsLoading] = useState(false);
+  const [buildStage, setBuildStage] = useState<BuildStage | null>(null);
    const scrollRef = useRef<HTMLDivElement>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
@@ -69,6 +81,7 @@ const PLACEHOLDER_EXAMPLES = [
      if (!text.trim() || isLoading) return;
  
      setIsLoading(true);
+    setBuildStage('planning');
  
      // Add user message
      const userMessage: ChatMessage = {
@@ -84,14 +97,31 @@ const PLACEHOLDER_EXAMPLES = [
        const accessToken = sessionData.session?.access_token;
        if (!accessToken) throw new Error('Not authenticated');
  
-       // Build context for AI - include mode for ai_builder
+      // Fetch user's products and collections for AI context
+      const [productsResp, collectionsResp] = await Promise.all([
+        supabase
+          .from('products')
+          .select('id, name, price_cents, tags, status')
+          .eq('creator_id', profileId)
+          .eq('status', 'published')
+          .limit(10),
+        supabase
+          .from('collections')
+          .select('id, name')
+          .eq('creator_id', profileId)
+          .limit(5),
+      ]);
+
+      // Build context for AI - include products and collections
        const context = {
          sections: layout.sections,
          mode: 'ai_builder' as const,
-        patternRegistry: getPatternRegistrySummary(),
-       blockRegistry: getBlockRegistrySummary(),
+        products: productsResp.data || [],
+        collections: collectionsResp.data || [],
        };
  
+      setBuildStage('applying');
+
        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/storefront-vibecoder`;
        const resp = await fetch(url, {
          method: 'POST',
@@ -115,6 +145,8 @@ const PLACEHOLDER_EXAMPLES = [
  
        const result = await resp.json();
  
+      setBuildStage('rendering');
+
        // Add assistant message
        const assistantMessage: ChatMessage = {
          id: crypto.randomUUID(),
@@ -128,9 +160,12 @@ const PLACEHOLDER_EXAMPLES = [
        if (result.ops && result.ops.length > 0) {
          const newLayout = applyOpsToLayout(layout, result.ops);
          onLayoutChange(newLayout);
-         toast.success('Changes applied!');
+        toast.success(`${result.ops.filter((o: any) => o.op === 'addSection').length} sections created!`);
        }
  
+      setBuildStage('done');
+      setTimeout(() => setBuildStage(null), 1500);
+
      } catch (err) {
        console.error('AI Builder error:', err);
        const errorMessage = err instanceof Error ? err.message : 'Something went wrong';
@@ -143,6 +178,7 @@ const PLACEHOLDER_EXAMPLES = [
          timestamp: new Date(),
        };
        setMessages(prev => [...prev, errorChatMessage]);
+      setBuildStage(null);
      } finally {
        setIsLoading(false);
      }
@@ -252,9 +288,28 @@ const PLACEHOLDER_EXAMPLES = [
                </div>
              ))}
              {isLoading && (
-               <div className="flex items-center gap-3 text-primary p-4 bg-primary/5 rounded-xl">
-                 <Loader2 className="w-4 h-4 animate-spin" />
-                 <span className="text-sm">Creating your vision...</span>
+              <div className="flex flex-col gap-2 p-4 bg-primary/5 rounded-xl border border-primary/10">
+                <div className="flex items-center gap-3 text-primary">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm font-medium">
+                    {buildStage ? STAGE_MESSAGES[buildStage] : 'Creating your vision...'}
+                  </span>
+                </div>
+                {/* Progress dots */}
+                <div className="flex gap-1.5 ml-7">
+                  {(['planning', 'applying', 'rendering'] as BuildStage[]).map((stage, i) => (
+                    <div
+                      key={stage}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        buildStage === stage
+                          ? 'bg-primary scale-110'
+                          : buildStage && ['planning', 'applying', 'rendering'].indexOf(buildStage) > i
+                          ? 'bg-primary/60'
+                          : 'bg-muted-foreground/20'
+                      }`}
+                    />
+                  ))}
+                </div>
                </div>
              )}
            </div>
