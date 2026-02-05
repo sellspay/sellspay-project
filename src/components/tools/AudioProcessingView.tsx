@@ -44,7 +44,7 @@ export function AudioProcessingView({
   const [showOutOfCredits, setShowOutOfCredits] = useState(false);
   const isProcessingRef = useRef(false); // Guard against double-clicks/drops
 
-  const { deductCredits, canUseFeature } = useSubscription();
+  const { deductCredits, canUseFeature, credits } = useSubscription();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -64,7 +64,7 @@ export function AudioProcessingView({
     }
 
     // Check if user can use this pro tool - show dialog instead of toast
-    if (!canUseTool(toolId)) {
+    if (!canUseFeature(toolId)) {
       setShowOutOfCredits(true);
       return;
     }
@@ -75,7 +75,7 @@ export function AudioProcessingView({
     // Process FIRST - only deduct credit on SUCCESS
     // Credit deduction is now handled after successful processing in processAudioWithFile
     processAudioWithFile(audioFile);
-  }, [canUseTool, toolId]);
+  }, [canUseFeature, toolId]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -165,7 +165,7 @@ export function AudioProcessingView({
       }
 
       // SUCCESS - now deduct the credit
-      const deductResult = await deductCredit(toolId);
+      const deductResult = await deductCredits(toolId as any);
       if (!deductResult.success) {
         console.warn("Credit deduction failed after successful processing:", deductResult.error);
         // Still show the result since processing succeeded
@@ -414,7 +414,7 @@ export function AudioProcessingView({
       />
 
       {/* Out of Credits Dialog */}
-      <OutOfCreditsDialog 
+      <UpgradeModal 
         open={showOutOfCredits} 
         onOpenChange={setShowOutOfCredits} 
       />

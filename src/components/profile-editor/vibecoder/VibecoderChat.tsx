@@ -54,9 +54,9 @@
    const appliedOpsRef = useRef<Set<string>>(new Set());
     const processedAssetReqsRef = useRef<Set<string>>(new Set());
  
-   const { brandProfile } = useBrandProfile(profileId);
-   const { generateAsset, generating } = useGeneratedAssets(profileId);
-   const { credits } = useVibecoderCredits(profileId);
+  const { brandProfile } = useBrandProfile(profileId);
+  const { generateAsset, generating } = useGeneratedAssets(profileId);
+  const { credits } = useSubscription();
  
    const {
      messages,

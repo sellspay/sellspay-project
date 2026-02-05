@@ -29,8 +29,8 @@ export default function NanoBanana() {
 
     try {
       // Deduct credit first
-      const deducted = await deductCredit("nano_banana");
-      if (!deducted) {
+      const deductResult = await deductCredits("vibecoder_gen");
+      if (!deductResult.success) {
         toast.error("Failed to deduct credit");
         return;
       }
