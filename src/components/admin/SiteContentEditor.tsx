@@ -398,11 +398,6 @@ export function SiteContentEditor() {
         </TabsList>
 
         <TabsContent value="hero" className="space-y-6 mt-6">
-
-        <TabsContent value="reveal-panels" className="space-y-6 mt-6">
-          <RevealPanelsEditor />
-        </TabsContent>
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Hero Media Upload & Preview */}
             <Card>
@@ -683,6 +678,10 @@ export function SiteContentEditor() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="reveal-panels" className="space-y-6 mt-6">
+          <RevealPanelsEditor />
         </TabsContent>
 
         <TabsContent value="tools" className="space-y-6 mt-6">
