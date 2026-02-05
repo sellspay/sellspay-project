@@ -316,7 +316,6 @@ export function AIToolsReveal() {
                     className="relative h-full w-full rounded-[20px] sm:rounded-[28px] lg:rounded-[32px] border border-white/10 overflow-hidden"
                     style={{
                       backgroundColor: CARD_COLORS[idx],
-                      boxShadow: '0 -20px 60px -15px rgba(0,0,0,0.6)',
                     }}
                   >
                     {/* Card content - image or placeholder */}
