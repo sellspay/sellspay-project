@@ -5,6 +5,7 @@
  import { supabase } from '@/integrations/supabase/client';
  import { AIBuilderChat } from './AIBuilderChat';
  import { AIBuilderPreview } from './AIBuilderPreview';
+import { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
  import { toast } from 'sonner';
  import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
  
@@ -25,6 +26,15 @@
    const [loading, setLoading] = useState(true);
    const [publishing, setPublishing] = useState(false);
    const [history, setHistory] = useState<AILayout[]>([]);
+  const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Show onboarding on first visit
+  useEffect(() => {
+    if (!loading && needsOnboarding) {
+      setShowOnboarding(true);
+    }
+  }, [loading, needsOnboarding]);
  
    // Load existing AI layout
    useEffect(() => {
@@ -106,6 +116,20 @@
      );
    }
  
+  // Show onboarding modal for first-time users
+  if (showOnboarding) {
+    return (
+      <AIBuilderOnboarding
+        profileId={profileId}
+        onConfirm={() => {
+          completeOnboarding();
+          setShowOnboarding(false);
+        }}
+        onCancel={() => navigate(-1)}
+      />
+    );
+  }
+
    const isEmpty = layout.sections.length === 0;
  
    return (
