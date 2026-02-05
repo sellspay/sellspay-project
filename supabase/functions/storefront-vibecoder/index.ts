@@ -112,16 +112,16 @@ headline, text, image_with_text, gallery, collection, about_me, sliding_banner, 
    "quality_checks": ["no clutter", "consistent spacing", "header shell untouched"]
 }`;
  
- const OPS_GENERATOR_PROMPT = `You are SellsPay's Ops Generator.
- 
+const OPS_GENERATOR_PROMPT = `You are SellsPay's Ops Generator.
+
 CRITICAL: Your job is to BUILD a COMPLETE storefront. No questions. No "foundation". REAL content.
- 
- You will receive:
+
+You will receive:
  - A detailed PLAN (layout_plan, theme_plan, copy_plan, asset_plan)
  - Current layout JSON (all existing sections)
 - Products/collections the user sells
  - Section schemas (allowed fields per type)
- 
+
 ENFORCE STOREFRONT MINIMUM:
 For fresh builds, you MUST create at least 5 sections:
 1. headline (hero with compelling copy + CTA)
@@ -131,8 +131,26 @@ For fresh builds, you MUST create at least 5 sections:
 5. faq OR headline (final CTA)
 
 If user has products, use real product names. If not, use compelling placeholders.
- 
- ABSOLUTE RULES:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VALIDATION RULES (HARD FAIL):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Empty {} patches are INVALID
+- Empty {} asset requests are INVALID  
+- ops.length === 0 is INVALID
+- updateTheme with empty patch {} is INVALID
+
+For "build" requests, you MUST:
+1. Use clearAllSections first
+2. Add 5-6 complete sections with REAL CONTENT
+3. Include real, compelling copy (no placeholders like "Your text here")
+4. Include a non-empty updateTheme with at least: mode, accent, radius
+
+If you cannot comply, return a complete rebuild.
+Never ask questions before producing a first build.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ABSOLUTE RULES:
 - ALWAYS use clearAllSections first for fresh builds
 - ALWAYS include 5-6 sections minimum
 - ALWAYS include real, compelling copy (no placeholders like "Your text here")
@@ -148,37 +166,37 @@ STYLE OPTIONS FOR PREMIUM LOOK:
 - borderColor: "#hex" (use brand accent or gold/silver for luxe)
 - animation: "fade-in" | "slide-up" | "scale-up" | "blur-in"
 - colorScheme: "dark" or "black" for premium looks
- 
+
  SECTION TYPES & SCHEMAS:
- 
+
  headline:
   content: { text: string, size: "small"|"medium"|"large", font?: string, fontWeight?: string, textColor?: string, letterSpacing?: string, textShadow?: string }
   style_options: { colorScheme, sectionHeight, showBackground, containerBackgroundColor, borderStyle, borderColor, animation }
- 
+
  text:
   content: { title?: string, body: string, alignment?: "left"|"center"|"right", font?: string, fontWeight?: string, textColor?: string }
   style_options: { colorScheme, sectionHeight, showBackground, containerBackgroundColor, borderStyle, borderColor, animation }
- 
+
  image_with_text:
   content: { title: string, body: string, imageUrl?: string, buttonText?: string, buttonUrl?: string, imagePosition: "left"|"right", layout?: "hero"|"side-by-side"|"overlay", buttonColor?: string, buttonTextColor?: string }
   style_options: { colorScheme, sectionHeight, showBackground, containerBackgroundColor, borderStyle, borderColor, animation, backgroundOverlay }
- 
+
  about_me:
    content: { title: string, description: string (max 250 chars), imageUrl?: string }
   style_options: { colorScheme, sectionHeight, showBackground, containerBackgroundColor, borderStyle, borderColor, animation }
- 
+
  testimonials:
   content: { title?: string, testimonials: Array of { id: string, name: string, quote: string, role?: string, rating?: 1-5 }, layout: "grid"|"slider"|"stacked" }
   style_options: { colorScheme, sectionHeight, showBackground, containerBackgroundColor, borderStyle, borderColor, animation }
- 
+
  faq:
   content: { title?: string, items: Array of { id: string, question: string, answer: string }, layout?: "accordion"|"grid" }
   style_options: { colorScheme, sectionHeight, showBackground, containerBackgroundColor, borderStyle, borderColor, animation }
- 
+
  basic_list:
   content: { title?: string, items: Array of { id: string, text: string, description?: string }, style: "bullet"|"numbered"|"icon", layout?: "simple"|"cards-3col"|"cards-2col" }
   style_options: { colorScheme, sectionHeight, showBackground, containerBackgroundColor, borderStyle, borderColor, animation }
- 
+
 featured_product:
   content: { productId?: string, title: string, description: string, price?: string, buttonText: string }
   style_options: { colorScheme, showBackground, containerBackgroundColor, animation }
@@ -186,27 +204,35 @@ featured_product:
 collection:
   content: { title?: string, collectionId?: string, products?: Array of { id, title, price, imageUrl } }
   style_options: { colorScheme, showBackground, containerBackgroundColor, animation }
- 
+
  OUTPUT FORMAT (STRICT):
  Return ONLY the apply_storefront_changes tool call with:
 - message: Brief explanation of what you built (max 100 chars)
-- ops: Array of patch operations (5-6 sections for fresh builds)
- - asset_requests: Array of asset generation requests
+- ops: Array of patch operations (5-6 sections for fresh builds) - MUST NOT BE EMPTY
+ - asset_requests: Array of asset generation requests (each with kind, spec.purpose, spec.style) - NO EMPTY OBJECTS
  - preview_notes: Optional UX hints`;
- 
- const REPAIR_PROMPT = `Your patch operations failed validation.
- 
- Validation errors:
- {ERRORS}
- 
- Rules:
+
+const REPAIR_PROMPT = `Your patch operations failed validation.
+
+Validation errors:
+{ERRORS}
+
+CRITICAL FIX REQUIREMENTS:
+- Empty {} patches are FORBIDDEN - you MUST include real values
+- Empty {} asset requests are FORBIDDEN - remove them or provide full spec
+- ops array CANNOT be empty - you MUST produce visible changes
+- updateTheme MUST have at least one property (mode, accent, radius, spacing, font)
+- For fresh builds: include clearAllSections + at least 5 addSection ops
+
+Rules:
  - Return corrected JSON with message + ops + asset_requests only.
  - Do not change the user's intent.
  - Do not introduce unsupported section types.
  - Keep the header shell locked.
  - Make the smallest changes necessary to become valid.
  - Ensure all content fields have actual content, not empty strings.
- - Respect character limits in schemas.`;
+ - Respect character limits in schemas.
+ - If you returned empty ops before, you MUST now return a complete storefront build.`;
  
  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  // VALIDATION & HEURISTICS
@@ -262,23 +288,211 @@ function validateStorefrontMinimum(ops: any[]): { valid: boolean; missing: strin
   return { valid: missing.length === 0, missing };
 }
  
- const VALID_OPS = new Set([
+const VALID_OPS = new Set([
   "addSection", "removeSection", "moveSection", "updateSection", 
-  "updateTheme", "updateHeaderContent", "assignAssetToSlot", "clearAllSections"
- ]);
- 
- interface ValidationError {
-   path: string;
-   message: string;
-   severity: "error" | "warning";
- }
- 
- interface ValidatedResult {
-   valid: boolean;
-   errors: ValidationError[];
-   failureTags: string[];
-   sanitizedOps: any[];
- }
+  "updateTheme", "updateHeaderContent", "assignAssetToSlot", "clearAllSections",
+  "replaceAllBlocks"
+]);
+
+// Block type aliases: AI might output new types but we map to legacy types
+const BLOCK_TYPE_ALIASES: Record<string, string> = {
+  'hero': 'headline',
+  'bento_grid': 'basic_list',
+  'cta_strip': 'headline',
+  'stats': 'basic_list',
+  'about': 'about_me',
+  'featured_products': 'featured_product',
+};
+
+interface ValidationError {
+  path: string;
+  message: string;
+  severity: "error" | "warning";
+}
+
+interface ValidatedResult {
+  valid: boolean;
+  errors: ValidationError[];
+  failureTags: string[];
+  sanitizedOps: any[];
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STRICT VALIDATORS (REJECT EMPTY OPS)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function validateThemePatch(patch: any): { valid: boolean; error?: string } {
+  if (!patch || typeof patch !== 'object') {
+    return { valid: false, error: 'Theme patch is null/undefined' };
+  }
+  
+  const validKeys = ['mode', 'accent', 'radius', 'spacing', 'font', 'background', 'cardStyle', 'shadow'];
+  const presentKeys = Object.keys(patch).filter(k => validKeys.includes(k) && patch[k] !== undefined);
+  
+  if (presentKeys.length === 0) {
+    return { valid: false, error: 'Theme patch is empty - must change at least one property' };
+  }
+  
+  // Validate specific values
+  if (patch.mode && !['dark', 'light'].includes(patch.mode)) {
+    return { valid: false, error: `Invalid mode: ${patch.mode}` };
+  }
+  if (patch.accent && typeof patch.accent === 'string') {
+    // Allow hex colors (with or without #) and HSL values
+    const isValidHex = /^#?[0-9A-Fa-f]{6}$/.test(patch.accent);
+    const isValidHSL = /^\d+\s+\d+%?\s+\d+%?$/.test(patch.accent);
+    if (!isValidHex && !isValidHSL) {
+      return { valid: false, error: `Invalid accent color: ${patch.accent}` };
+    }
+  }
+  if (patch.radius !== undefined && (typeof patch.radius !== 'number' || patch.radius < 0 || patch.radius > 24)) {
+    return { valid: false, error: `Invalid radius: ${patch.radius}` };
+  }
+  if (patch.spacing && !['compact', 'balanced', 'roomy'].includes(patch.spacing)) {
+    return { valid: false, error: `Invalid spacing: ${patch.spacing}` };
+  }
+  if (patch.font && !['inter', 'geist', 'system', 'serif'].includes(patch.font)) {
+    return { valid: false, error: `Invalid font: ${patch.font}` };
+  }
+  
+  return { valid: true };
+}
+
+function validateAssetRequests(requests: any[]): { valid: boolean; sanitized: any[]; error?: string } {
+  if (!Array.isArray(requests)) {
+    return { valid: true, sanitized: [] };
+  }
+  
+  // Filter out empty objects
+  const filtered = requests.filter(r => 
+    r && typeof r === 'object' && Object.keys(r).length > 0
+  );
+  
+  // Validate each remaining request
+  for (const req of filtered) {
+    if (!req.kind || !['image', 'icon_set', 'video_loop'].includes(req.kind)) {
+      return { valid: false, sanitized: [], error: `Invalid asset kind: ${req.kind}` };
+    }
+    if (!req.spec?.purpose || typeof req.spec.purpose !== 'string' || req.spec.purpose.trim() === '') {
+      return { valid: false, sanitized: [], error: 'Asset request missing purpose' };
+    }
+    if (!req.spec?.style || typeof req.spec.style !== 'string' || req.spec.style.trim() === '') {
+      return { valid: false, sanitized: [], error: 'Asset request missing style' };
+    }
+  }
+  
+  return { valid: true, sanitized: filtered };
+}
+
+function validateOpsNotEmpty(ops: any[]): { valid: boolean; error?: string } {
+  if (!Array.isArray(ops) || ops.length === 0) {
+    return { valid: false, error: 'No operations provided - ops array is empty' };
+  }
+  
+  // Check for "all empty" scenario
+  const meaningfulOps = ops.filter(op => {
+    if (op.op === 'updateTheme') {
+      const patch = op.patch || op.value;
+      return patch && typeof patch === 'object' && Object.keys(patch).length > 0;
+    }
+    if (op.op === 'addSection' || op.op === 'clearAllSections' || op.op === 'replaceAllBlocks') {
+      return true;
+    }
+    if (op.op === 'updateSection' || op.op === 'removeSection' || op.op === 'moveSection') {
+      return true;
+    }
+    return true;
+  });
+  
+  if (meaningfulOps.length === 0) {
+    return { valid: false, error: 'All operations are empty/no-op - must produce visible changes' };
+  }
+  
+  return { valid: true };
+}
+
+function checkStorefrontQualityGate(ops: any[]): { passed: boolean; missing: string[] } {
+  const hasClear = ops.some(op => op.op === 'clearAllSections' || op.op === 'replaceAllBlocks');
+  if (!hasClear) return { passed: true, missing: [] }; // Not a fresh build
+  
+  const addedTypes = new Set<string>();
+  ops.forEach(op => {
+    if (op.op === 'addSection' && op.section?.section_type) {
+      // Apply block type aliases
+      const rawType = op.section.section_type;
+      const mappedType = BLOCK_TYPE_ALIASES[rawType] || rawType;
+      addedTypes.add(mappedType);
+    }
+    if (op.op === 'replaceAllBlocks' && Array.isArray(op.blocks)) {
+      op.blocks.forEach((b: any) => {
+        const rawType = b.type;
+        const mappedType = BLOCK_TYPE_ALIASES[rawType] || rawType;
+        addedTypes.add(mappedType);
+      });
+    }
+  });
+  
+  const missing: string[] = [];
+  
+  // Must have hero
+  if (!addedTypes.has('headline') && !addedTypes.has('hero')) {
+    missing.push('hero/headline');
+  }
+  
+  // Must have products section
+  if (!addedTypes.has('featured_product') && !addedTypes.has('collection') && !addedTypes.has('basic_list')) {
+    missing.push('products/features section');
+  }
+  
+  // Must have social proof
+  if (!addedTypes.has('testimonials') && !addedTypes.has('stats') && !addedTypes.has('about_me')) {
+    missing.push('social proof (testimonials/stats/about)');
+  }
+  
+  // Must have conversion element
+  if (!addedTypes.has('faq') && !addedTypes.has('cta_strip')) {
+    // Don't require if we already have 5+ sections
+    if (addedTypes.size < 5) {
+      missing.push('faq or cta');
+    }
+  }
+  
+  // Must have minimum 5 sections for fresh builds
+  if (addedTypes.size < 5) {
+    missing.push(`need ${5 - addedTypes.size} more sections (have ${addedTypes.size})`);
+  }
+  
+  return { passed: missing.length === 0, missing };
+}
+
+// Apply block type aliases to ops
+function applyBlockTypeAliases(ops: any[]): any[] {
+  return ops.map(op => {
+    if (op.op === 'addSection' && op.section?.section_type) {
+      const rawType = op.section.section_type;
+      const mappedType = BLOCK_TYPE_ALIASES[rawType] || rawType;
+      if (mappedType !== rawType) {
+        return {
+          ...op,
+          section: {
+            ...op.section,
+            section_type: mappedType
+          }
+        };
+      }
+    }
+    if (op.op === 'replaceAllBlocks' && Array.isArray(op.blocks)) {
+      return {
+        ...op,
+        blocks: op.blocks.map((b: any) => ({
+          ...b,
+          type: BLOCK_TYPE_ALIASES[b.type] || b.type
+        }))
+      };
+    }
+    return op;
+  });
+}
  
  function validateAndSanitizeOps(ops: any[], existingSections: any[]): ValidatedResult {
    const errors: ValidationError[] = [];
@@ -967,17 +1181,79 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
        };
      }
  
-     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     // STEP D: Validate & Sanitize
-     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     let validationResult = validateAndSanitizeOps(opsResult?.ops || [], sections);
-     let repairAttempts = 0;
- 
-    // Check storefront minimum for fresh builds
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // STEP D: Validate & Sanitize (STRICT REJECTION OF EMPTY OPS)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    
+    // Apply block type aliases first
+    const aliasedOps = applyBlockTypeAliases(opsResult?.ops || []);
+    opsResult.ops = aliasedOps;
+    
+    // STRICT CHECK 1: Reject empty ops array
+    const opsEmptyCheck = validateOpsNotEmpty(opsResult?.ops || []);
+    if (!opsEmptyCheck.valid) {
+      console.error("STRICT REJECTION: Empty ops -", opsEmptyCheck.error);
+      // Trigger repair with explicit error
+      const repairErrors: ValidationError[] = [
+        { path: "ops", message: opsEmptyCheck.error || "Ops array is empty", severity: "error" as const }
+      ];
+      try {
+        const repairedResult = await repairOps(LOVABLE_API_KEY, opsResult, repairErrors);
+        if (repairedResult?.ops?.length > 0) {
+          opsResult = repairedResult;
+        }
+      } catch (e) {
+        console.error("Repair after empty ops failed:", e);
+      }
+    }
+    
+    // STRICT CHECK 2: Validate theme patches are not empty
+    for (const op of opsResult?.ops || []) {
+      if (op.op === 'updateTheme') {
+        const themeCheck = validateThemePatch(op.patch);
+        if (!themeCheck.valid) {
+          console.error("STRICT REJECTION: Empty theme patch -", themeCheck.error);
+          // Remove the invalid updateTheme op rather than fail
+          opsResult.ops = opsResult.ops.filter((o: any) => o !== op);
+        }
+      }
+    }
+    
+    // STRICT CHECK 3: Sanitize asset requests (remove empty ones)
+    const assetCheck = validateAssetRequests(opsResult?.asset_requests || []);
+    if (!assetCheck.valid) {
+      console.warn("Asset requests invalid:", assetCheck.error);
+    }
+    opsResult.asset_requests = assetCheck.sanitized;
+    
+    // STRICT CHECK 4: Quality gate for fresh builds
+    const qualityGate = checkStorefrontQualityGate(opsResult?.ops || []);
+    if (!qualityGate.passed) {
+      console.warn("Quality gate failed, missing:", qualityGate.missing);
+      // Trigger repair to add missing sections
+      const repairErrors: ValidationError[] = qualityGate.missing.map(m => ({
+        path: "quality_gate",
+        message: `Missing: ${m}`,
+        severity: "error" as const
+      }));
+      try {
+        const repairedResult = await repairOps(LOVABLE_API_KEY, opsResult, repairErrors);
+        if (repairedResult?.ops?.length > 0) {
+          opsResult = repairedResult;
+        }
+      } catch (e) {
+        console.error("Repair after quality gate failed:", e);
+      }
+    }
+    
+    // Standard validation and sanitization
+    let validationResult = validateAndSanitizeOps(opsResult?.ops || [], sections);
+    let repairAttempts = 0;
+
+    // Legacy storefront minimum check (keep for backwards compatibility)
     const storefrontCheck = validateStorefrontMinimum(opsResult?.ops || []);
     if (!storefrontCheck.valid && storefrontCheck.missing.length > 0) {
       console.log("Storefront minimum not met, missing:", storefrontCheck.missing);
-      // Add missing sections via repair
       validationResult.errors.push({
         path: "storefront_minimum",
         message: `Missing required sections: ${storefrontCheck.missing.join(', ')}`,
@@ -985,18 +1261,18 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
       });
     }
 
-     if (!validationResult.valid && repairAttempts < 1) {
-       try {
-         const repairedResult = await repairOps(LOVABLE_API_KEY, opsResult, validationResult.errors);
-         if (repairedResult) {
-           opsResult = repairedResult;
-           validationResult = validateAndSanitizeOps(repairedResult.ops || [], sections);
-           repairAttempts++;
-         }
-       } catch (e) {
-         console.error("Repair failed:", e);
-       }
-     }
+    if (!validationResult.valid && repairAttempts < 1) {
+      try {
+        const repairedResult = await repairOps(LOVABLE_API_KEY, opsResult, validationResult.errors);
+        if (repairedResult) {
+          opsResult = repairedResult;
+          validationResult = validateAndSanitizeOps(repairedResult.ops || [], sections);
+          repairAttempts++;
+        }
+      } catch (e) {
+        console.error("Repair failed:", e);
+      }
+    }
  
      if (!validationResult.valid || validationResult.sanitizedOps.length === 0) {
       // Return a COMPLETE fallback storefront, not just a foundation

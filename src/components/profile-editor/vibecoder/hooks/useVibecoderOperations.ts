@@ -240,10 +240,59 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
           break;
         }
 
-            default:
-              // assignAssetToSlot is handled separately
-              break;
-         }
+        case 'replaceAllBlocks': {
+          // Atomic operation: clear all sections and add new ones in one go
+          // Queue all existing sections for deletion
+          for (const s of newSections) {
+            sectionIdsToDelete.push(s.id);
+          }
+          newSections = [];
+          
+          const profileId = prevSections[0]?.profile_id || '';
+          
+          // Add all new blocks
+          if (Array.isArray((op as any).blocks)) {
+            for (let i = 0; i < (op as any).blocks.length; i++) {
+              const block = (op as any).blocks[i];
+              const newSectionId = block.id || crypto.randomUUID();
+              
+              // Map props to content/style_options format
+              const content = block.props?.content || block.props || {};
+              const styleOptions = block.props?.style_options || {};
+              
+              const newSection: ProfileSection = {
+                id: newSectionId,
+                profile_id: profileId,
+                section_type: block.type as SectionType,
+                display_order: i,
+                content: content as SectionContent,
+                style_options: styleOptions as SectionStyleOptions,
+                is_visible: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              };
+              
+              newSections.push(newSection);
+              
+              // Queue for database insert
+              sectionsToInsert.push({
+                id: newSectionId,
+                profile_id: profileId,
+                section_type: block.type,
+                display_order: i,
+                content: content,
+                style_options: styleOptions,
+                is_visible: true,
+              });
+            }
+          }
+          break;
+        }
+
+        default:
+          // assignAssetToSlot is handled separately
+          break;
+        }
        }
  
     // Perform database operations
