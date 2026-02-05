@@ -40,6 +40,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Refunds from "./pages/Refunds";
 import NotFound from "./pages/NotFound";
+import AIBuilder from "./pages/AIBuilder";
 
 const queryClient = new QueryClient();
 
@@ -99,6 +100,7 @@ const App = () => (
             <Route path="/terms" element={<MainLayout><Terms /></MainLayout>} />
             <Route path="/privacy" element={<MainLayout><Privacy /></MainLayout>} />
             <Route path="/refunds" element={<MainLayout><Refunds /></MainLayout>} />
+            <Route path="/ai-builder" element={<AIBuilder />} />
             {/* Instagram-style profile route: /@username */}
             <Route path="/:atUsername" element={<AtUsernameRoute />} />
             
