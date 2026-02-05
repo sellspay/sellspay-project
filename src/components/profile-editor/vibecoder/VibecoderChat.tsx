@@ -96,20 +96,24 @@
         setApplyingMessageId(latestAssistantMessage.id);
       }
        
-       try {
-         applyOperations(pendingOps);
+        const doApply = async () => {
+          try {
+            await applyOperations(pendingOps);
          applyPendingOps();
          toast.success('Changes applied!', { icon: <Check className="w-4 h-4" /> });
-       } catch (error) {
+          } catch (error) {
          console.error('Failed to apply operations:', error);
           const errorMessage = error instanceof Error ? error.message : 'Failed to apply changes';
           toast.error(errorMessage);
           // Remove from applied set so user can retry
           appliedOpsRef.current.delete(opsKey);
-       } finally {
+          } finally {
          setIsApplying(false);
         setApplyingMessageId(null);
        }
+        };
+        
+        doApply();
      }
   }, [pendingOps, applyOperations, applyPendingOps, isApplying, messages]);
  

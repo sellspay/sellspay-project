@@ -1,3 +1,4 @@
+ import { forwardRef } from 'react';
  import { Button } from '@/components/ui/button';
  import { QUICK_ACTIONS } from './types';
  
@@ -6,9 +7,10 @@
    disabled?: boolean;
  }
  
- export function QuickActionChips({ onAction, disabled }: QuickActionChipsProps) {
+export const QuickActionChips = forwardRef<HTMLDivElement, QuickActionChipsProps>(
+  function QuickActionChips({ onAction, disabled }, ref) {
    return (
-     <div className="flex flex-wrap gap-2">
+    <div ref={ref} className="flex flex-wrap gap-2">
        {QUICK_ACTIONS.map((action) => (
          <Button
            key={action.id}
@@ -23,4 +25,5 @@
        ))}
      </div>
    );
- }
+  }
+);
