@@ -12,7 +12,7 @@ import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { GifPicker } from '@/components/comments/GifPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
-import { useCredits } from '@/hooks/useCredits';
+import { useSubscription } from '@/hooks/useSubscription';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 

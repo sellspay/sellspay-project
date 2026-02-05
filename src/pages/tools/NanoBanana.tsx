@@ -4,14 +4,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Download, Sparkles, Wand2, ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useCredits } from "@/hooks/useCredits";
+import { useSubscription } from "@/hooks/useSubscription";
 import nanoBananaImage from "@/assets/logos/nano-banana.png";
 
 export default function NanoBanana() {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const { deductCredit, creditBalance } = useCredits();
+  const { deductCredits, credits: creditBalance } = useSubscription();
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {

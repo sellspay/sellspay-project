@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ToolShowcase } from "@/components/tools/ToolShowcase";
 import { ToolActiveView } from "@/components/tools/ToolActiveView";
-import { useCredits } from "@/hooks/useCredits";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export default function Tools() {
   const [searchParams] = useSearchParams();
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const { creditBalance, isLoading } = useCredits();
+  const { credits: creditBalance, loading: isLoading } = useSubscription();
 
   // Handle URL params for direct tool access
   useEffect(() => {

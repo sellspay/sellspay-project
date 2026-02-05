@@ -8,7 +8,7 @@
  import { useVibecoderOperations } from './hooks/useVibecoderOperations';
  import { useBrandProfile } from './hooks/useBrandProfile';
  import { useGeneratedAssets } from './hooks/useGeneratedAssets';
- import { useVibecoderCredits } from './hooks/useVibecoderCredits';
+ import { useSubscription } from '@/hooks/useSubscription';
  import { VibecoderMessage } from './VibecoderMessage';
  import { QuickActionChips } from './QuickActionChips';
  import { ProfileSection } from '../types';

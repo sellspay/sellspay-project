@@ -16,7 +16,7 @@ import {
 import { GifPicker } from '@/components/comments/GifPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
-import { useCredits } from '@/hooks/useCredits';
+import { useSubscription } from '@/hooks/useSubscription';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
@@ -33,7 +33,7 @@ const MAX_LENGTH = 1000;
 
 export function ThreadComposer() {
   const { user, isOwner } = useAuth();
-  const { subscription } = useCredits();
+  const { plan } = useSubscription();
   const queryClient = useQueryClient();
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('discussion');
