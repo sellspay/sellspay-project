@@ -207,13 +207,13 @@ export function AIToolsReveal() {
                 ref={(el) => { headlineLineRefs.current[0] = el; }}
                 className="block"
               >
-                Generate anything
+                Building
               </span>
               <span 
                 ref={(el) => { headlineLineRefs.current[1] = el; }}
                 className="block"
               >
-                from Simple prompts
+                made simple
               </span>
             </h2>
           </div>
