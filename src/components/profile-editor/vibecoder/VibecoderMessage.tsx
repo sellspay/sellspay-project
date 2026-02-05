@@ -1,26 +1,20 @@
  import { memo } from 'react';
  import { Button } from '@/components/ui/button';
  import { Badge } from '@/components/ui/badge';
-import { Check, X, RefreshCw, Eye, AlertCircle } from 'lucide-react';
+import { Check, X, RefreshCw, AlertCircle } from 'lucide-react';
  import { ChatMessage } from './types';
  import { cn } from '@/lib/utils';
  
  interface VibecoderMessageProps {
    message: ChatMessage;
    isLatest: boolean;
-   onApply?: () => void;
-   onDiscard?: () => void;
    onRegenerate?: () => void;
-   onPreview?: () => void;
  }
  
  export const VibecoderMessage = memo(function VibecoderMessage({
    message,
    isLatest,
-   onApply,
-   onDiscard,
    onRegenerate,
-   onPreview,
  }: VibecoderMessageProps) {
    const isUser = message.role === 'user';
    const hasOperations = message.operations && message.operations.length > 0;
@@ -65,9 +59,9 @@ import { Check, X, RefreshCw, Eye, AlertCircle } from 'lucide-react';
  
        {/* Status badge */}
        {isApplied && (
-         <Badge variant="default" className="w-fit text-[10px] bg-primary/20 text-primary border-primary/30">
+        <Badge variant="default" className="w-fit text-[10px] bg-green-500/20 text-green-600 border-green-500/30">
            <Check className="w-3 h-3 mr-1" />
-           Applied
+          Applied automatically
          </Badge>
        )}
        {isDiscarded && (
@@ -82,7 +76,7 @@ import { Check, X, RefreshCw, Eye, AlertCircle } from 'lucide-react';
         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <AlertCircle className="w-3 h-3" />
-            <span>No layout changes to apply</span>
+            <span>No changes generated</span>
           </div>
           {onRegenerate && (
             <Button
@@ -98,54 +92,13 @@ import { Check, X, RefreshCw, Eye, AlertCircle } from 'lucide-react';
         </div>
       )}
 
-      {/* Action buttons for pending operations */}
+      {/* Show pending with operations - will auto-apply */}
       {!isUser && hasOperations && isPending && isLatest && (
-         <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-border/50">
-           {onPreview && (
-             <Button
-               variant="outline"
-               size="sm"
-               onClick={onPreview}
-               className="h-7 text-xs"
-             >
-               <Eye className="w-3 h-3 mr-1" />
-               Preview
-             </Button>
-           )}
-           {onApply && (
-             <Button
-               variant="default"
-               size="sm"
-               onClick={onApply}
-               className="h-7 text-xs"
-             >
-               <Check className="w-3 h-3 mr-1" />
-               Apply
-             </Button>
-           )}
-           {onDiscard && (
-             <Button
-               variant="ghost"
-               size="sm"
-               onClick={onDiscard}
-               className="h-7 text-xs text-muted-foreground"
-             >
-               <X className="w-3 h-3 mr-1" />
-               Discard
-             </Button>
-           )}
-           {onRegenerate && (
-             <Button
-               variant="ghost"
-               size="sm"
-               onClick={onRegenerate}
-               className="h-7 text-xs text-muted-foreground"
-             >
-               <RefreshCw className="w-3 h-3 mr-1" />
-               Regenerate
-             </Button>
-           )}
-         </div>
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+          <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+            Applying {message.operations?.length} change{message.operations?.length !== 1 ? 's' : ''}...
+          </Badge>
+        </div>
        )}
      </div>
    );
