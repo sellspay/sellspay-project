@@ -104,14 +104,18 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
            case 'addSection': {
              const template = SECTION_TEMPLATES.find(t => t.type === op.section?.section_type);
              if (!template) break;
+
+              // AI-first: do NOT merge in templates/presets. The Vibecoder must provide full content + style.
+              const aiContent = (op.section?.content || {}) as SectionContent;
+              const aiStyle = (op.section?.style_options || {}) as SectionStyleOptions;
  
              const newSection: ProfileSection = {
                id: crypto.randomUUID(),
                profile_id: prevSections[0]?.profile_id || '',
                section_type: op.section?.section_type as SectionType,
                display_order: 0,
-              content: { ...template.defaultContent, ...(op.section?.content || {}) } as SectionContent,
-              style_options: { ...(template.presets[0]?.styleOptions || {}), ...(op.section?.style_options || {}) } as SectionStyleOptions,
+                content: aiContent,
+                style_options: aiStyle,
                is_visible: true,
                created_at: new Date().toISOString(),
                updated_at: new Date().toISOString(),
@@ -215,14 +219,18 @@ import { ProfileSection, SECTION_TEMPLATES, SectionType, SectionContent, Section
          case 'addSection': {
            const template = SECTION_TEMPLATES.find(t => t.type === op.section?.section_type);
            if (!template) continue;
+
+            // AI-first preview: don't merge in manual presets.
+            const aiContent = (op.section?.content || {}) as SectionContent;
+            const aiStyle = (op.section?.style_options || {}) as SectionStyleOptions;
  
            const newSection: ProfileSection = {
              id: `preview-${crypto.randomUUID()}`,
              profile_id: sections[0]?.profile_id || '',
              section_type: op.section?.section_type as SectionType,
              display_order: 0,
-            content: { ...template.defaultContent, ...(op.section?.content || {}) } as SectionContent,
-            style_options: { ...(template.presets[0]?.styleOptions || {}), ...(op.section?.style_options || {}) } as SectionStyleOptions,
+              content: aiContent,
+              style_options: aiStyle,
              is_visible: true,
              created_at: new Date().toISOString(),
              updated_at: new Date().toISOString(),

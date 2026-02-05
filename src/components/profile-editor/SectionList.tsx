@@ -5,7 +5,6 @@ import {
   GripVertical,
   Eye,
   EyeOff,
-  Pencil,
   Trash2,
   Type,
   Image,
@@ -128,7 +127,10 @@ function SortableItem({
         }
         ${!section.is_visible ? 'opacity-60' : ''}
       `}
-      onClick={onEdit}
+      // AI-first: prevent opening the manual edit dialog from the list.
+      onClick={(e) => {
+        e.preventDefault();
+      }}
     >
       {/* Drag Handle */}
       <button
