@@ -9,13 +9,14 @@
 import { getPatternRegistrySummary } from './layoutPatterns';
 import { getBlockRegistrySummary } from './blocks';
  
- interface AIBuilderChatProps {
-   profileId: string;
-   layout: { sections: any[]; theme: Record<string, any>; header: Record<string, any> };
-   onLayoutChange: (layout: { sections: any[]; theme: Record<string, any>; header: Record<string, any> }) => void;
-   onUndo?: () => void;
-   canUndo?: boolean;
- }
+interface AIBuilderChatProps {
+  profileId: string;
+  layout: { sections: any[]; theme: Record<string, any>; header: Record<string, any> };
+  onLayoutChange: (layout: { sections: any[]; theme: Record<string, any>; header: Record<string, any> }) => void;
+  onUndo?: () => void;
+  canUndo?: boolean;
+  onBuildingChange?: (building: boolean) => void;
+}
  
  interface ChatMessage {
    id: string;
@@ -54,7 +55,7 @@ const PLACEHOLDER_EXAMPLES = [
    { label: 'Bold', prompt: 'Make it bold and eye-catching with vibrant colors' },
  ];
  
- export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUndo }: AIBuilderChatProps) {
+ export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUndo, onBuildingChange }: AIBuilderChatProps) {
    const [input, setInput] = useState('');
    const [messages, setMessages] = useState<ChatMessage[]>([]);
    const [isLoading, setIsLoading] = useState(false);
@@ -80,8 +81,9 @@ const PLACEHOLDER_EXAMPLES = [
    const sendMessage = useCallback(async (text: string) => {
      if (!text.trim() || isLoading) return;
  
-     setIsLoading(true);
-    setBuildStage('planning');
+      setIsLoading(true);
+      onBuildingChange?.(true);
+      setBuildStage('planning');
  
      // Add user message
      const userMessage: ChatMessage = {
@@ -164,6 +166,7 @@ const PLACEHOLDER_EXAMPLES = [
        }
  
       setBuildStage('done');
+      onBuildingChange?.(false);
       setTimeout(() => setBuildStage(null), 1500);
 
      } catch (err) {
@@ -178,7 +181,8 @@ const PLACEHOLDER_EXAMPLES = [
          timestamp: new Date(),
        };
        setMessages(prev => [...prev, errorChatMessage]);
-      setBuildStage(null);
+       setBuildStage(null);
+       onBuildingChange?.(false);
      } finally {
        setIsLoading(false);
      }

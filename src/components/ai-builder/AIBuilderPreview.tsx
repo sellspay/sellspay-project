@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { AiRenderer, convertLegacySectionsToBlocks } from './blocks';
 import type { AILayout, AITheme } from './blocks';
+import { Loader2 } from 'lucide-react';
  
 interface AIBuilderPreviewProps {
   layout: {
@@ -9,9 +10,10 @@ interface AIBuilderPreviewProps {
     header: Record<string, any>;
   };
   isEmpty: boolean;
+  isBuilding?: boolean;
 }
  
-export function AIBuilderPreview({ layout, isEmpty }: AIBuilderPreviewProps) {
+export function AIBuilderPreview({ layout, isEmpty, isBuilding }: AIBuilderPreviewProps) {
   // Convert legacy format to new AILayout format
   const aiLayout: AILayout = useMemo(() => {
     // If theme already has proper structure, use it; otherwise default
@@ -32,15 +34,38 @@ export function AIBuilderPreview({ layout, isEmpty }: AIBuilderPreviewProps) {
   // Check if there are actual blocks to render
   const hasBlocks = aiLayout.blocks.length > 0;
  
+  // Show building state when AI is working (before blocks exist)
+  if (isBuilding && !hasBlocks) {
+    return <BuildingState />;
+  }
+
   // Only show empty state when truly empty (no sections AND isEmpty flag)
-  // Once blocks exist, always show the renderer
   if (isEmpty && !hasBlocks) {
     return <EmptyCanvasState />;
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto isolate">
       <AiRenderer layout={aiLayout} />
+    </div>
+  );
+}
+
+function BuildingState() {
+  return (
+    <div className="h-full flex items-center justify-center bg-background">
+      <div className="text-center space-y-6">
+        <div className="relative">
+          <div className="absolute inset-0 blur-3xl bg-primary/20 rounded-full scale-150" />
+          <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-lg font-medium text-foreground">Building your storefront...</h3>
+          <p className="text-sm text-muted-foreground">This usually takes a few seconds</p>
+        </div>
+      </div>
     </div>
   );
 }
