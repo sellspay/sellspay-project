@@ -1,6 +1,6 @@
- import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
  import { useNavigate } from 'react-router-dom';
- import { useAuth } from '@/lib/auth';
+import { useAuth, checkUserRole } from '@/lib/auth';
  import { supabase } from '@/integrations/supabase/client';
  import { PremiumGate } from '@/components/ai-builder/PremiumGate';
  import { AIBuilderCanvas } from '@/components/ai-builder/AIBuilderCanvas';
@@ -11,6 +11,7 @@
    const navigate = useNavigate();
    const [profile, setProfile] = useState<any>(null);
    const [loading, setLoading] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
  
    useEffect(() => {
      if (authLoading) return;
@@ -28,6 +29,17 @@
          .maybeSingle();
        
        setProfile(data);
+
+      // Check if user has premium subscription OR is admin/owner
+      const isPremiumTier = data?.subscription_tier && 
+        ['pro', 'enterprise', 'creator_pro'].includes(data.subscription_tier);
+      
+      const [isAdmin, isOwner] = await Promise.all([
+        checkUserRole('admin'),
+        checkUserRole('owner'),
+      ]);
+      
+      setHasAccess(isPremiumTier || isAdmin || isOwner);
        setLoading(false);
      };
  
@@ -46,11 +58,7 @@
      return null;
    }
  
-   // Check premium status
-   const isPremium = profile?.subscription_tier && 
-     ['pro', 'enterprise', 'creator_pro'].includes(profile.subscription_tier);
- 
-   if (!isPremium) {
+  if (!hasAccess) {
      return <PremiumGate />;
    }
  
