@@ -4,8 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 interface UseStreamingCodeOptions {
   onChunk?: (accumulated: string) => void;
   onComplete?: (finalCode: string) => void;
+  onChatResponse?: (text: string) => void;
   onError?: (error: Error) => void;
 }
+
+type StreamMode = 'detecting' | 'chat' | 'code';
 
 interface StreamingState {
   isStreaming: boolean;
@@ -85,6 +88,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let accumulated = '';
+      let mode: StreamMode = 'detecting';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -93,18 +97,51 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         const chunk = decoder.decode(value, { stream: true });
         accumulated += chunk;
 
-        // Clean up markdown code fences if the LLM includes them
-        let cleanCode = accumulated
-          .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
-          .replace(/\n?```\s*$/i, '')
-          .trim();
+        // Intent Router: Detect response type in first ~100 chars
+        if (mode === 'detecting' && accumulated.length > 20) {
+          if (accumulated.includes('/// TYPE: CHAT ///')) {
+            mode = 'chat';
+            accumulated = accumulated.replace('/// TYPE: CHAT ///', '').trim();
+            // Stop streaming animation for chat responses
+            setState(prev => ({ ...prev, isStreaming: false }));
+          } else if (accumulated.includes('/// TYPE: CODE ///')) {
+            mode = 'code';
+            accumulated = accumulated.replace('/// TYPE: CODE ///', '').trim();
+          } else if (accumulated.length > 100) {
+            // Fallback: assume code if no flag found after 100 chars
+            mode = 'code';
+          }
+        }
 
-        // Update state with cleaned code
-        setState(prev => ({ ...prev, code: cleanCode }));
-        options.onChunk?.(cleanCode);
+        // Route based on detected mode
+        if (mode === 'chat') {
+          // Just accumulate chat text, don't update code
+          continue;
+        }
+
+        if (mode === 'code') {
+          // Clean up markdown code fences if the LLM includes them
+          let cleanCode = accumulated
+            .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
+            .replace(/\n?```\s*$/i, '')
+            .trim();
+
+          // Update state with cleaned code
+          setState(prev => ({ ...prev, code: cleanCode }));
+          options.onChunk?.(cleanCode);
+        }
       }
 
-      // Final cleanup
+      // Final processing based on mode
+      if (mode === 'chat') {
+        // Return chat response
+        const chatText = accumulated.trim();
+        setState(prev => ({ ...prev, isStreaming: false }));
+        options.onChatResponse?.(chatText);
+        return chatText;
+      }
+
+      // Final cleanup for code mode
       const finalCode = accumulated
         .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
         .replace(/\n?```\s*$/i, '')
