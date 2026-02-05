@@ -96,7 +96,7 @@ export default function HeroSection() {
   const parallaxFast = scrollY * 0.7;
 
   return (
-    <section ref={sectionRef} className="relative min-h-[88vh] flex items-end justify-center overflow-hidden">
+    <section ref={sectionRef} className="relative min-h-[88vh] flex items-center justify-center overflow-hidden">
       {/* Full-width cinematic background with parallax */}
       <div 
         className="absolute inset-0 z-0 flex items-center justify-center"
