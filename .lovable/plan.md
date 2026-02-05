@@ -1,587 +1,168 @@
 
-# AI Storefront Vibecoder Implementation Plan
+
+# AI Vibecoder System Prompt Upgrade
 
 ## Overview
 
-This plan implements a chat-based AI co-pilot called "AI Builder" for the creator storefront editor. The system allows creators to describe changes in natural language, receive validated patch operations, preview changes before applying, and generate branded assets—all while respecting a structurally locked profile header.
+You've provided a comprehensive, production-ready system prompt specification for the Storefront Vibecoder. I'll update the edge function to replace the current basic prompt with your full specification, ensuring the AI behaves exactly as defined.
 
 ---
 
-## Architecture Summary
+## Current State vs Your Spec
+
+| Aspect | Current Implementation | Your Spec |
+|--------|----------------------|-----------|
+| System Prompt | ~60 lines, basic | Full 200+ line production spec |
+| Block Registry | Mentioned in passing | Explicit list with schema notes |
+| Failure Handling | Basic fallback | "Never say I can't" - graceful substitution |
+| Profile Shell | Mentioned | Explicit "LOCKED" rules |
+| Free vs Paid | Not mentioned | Clear tier behavior |
+| Asset Generation | Basic | "Invisible presets" - no mention of templates |
+| Design Quality Bar | Not enforced | Explicit premium standards |
+
+---
+
+## Implementation Plan
+
+### 1. Replace Edge Function System Prompt
+
+**File**: `supabase/functions/storefront-vibecoder/index.ts`
+
+Replace the current `SYSTEM_PROMPT` with your full specification, including:
+
+- **Core Product Model** - Profile Shell (locked) + Editable Canvas
+- **Absolute Rules** - No HTML/CSS/JS, no billing access, always produce output
+- **Block Registry** - All approved section types with schema notes
+- **"Type Anything" Behavior** - Infer intent, translate to blocks, apply patches
+- **Free vs Paid** - No mention of tiers in responses
+- **Asset Generation** - Never say "preset", draft tray workflow
+- **Output Format** - Strict JSON with ops, asset_requests, preview_notes
+- **Design Quality Bar** - Premium, cohesive, intentional
+- **Failure Handling** - Build closest equivalent, explain briefly
+
+### 2. Enhance Tool Schema
+
+Update the function calling schema to better align with your block registry:
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          PROFILE EDITOR DIALOG                              │
-├───────────────┬─────────────────────────────────┬───────────────────────────┤
-│               │                                 │                           │
-│  LOCKED SHELL │     EDITABLE CANVAS             │   AI BUILDER SIDEBAR      │
-│  (Header)     │     (Sections)                  │                           │
-│               │                                 │   ┌───────────────────┐   │
-│  - Banner     │   ┌─────────────────────────┐   │   │ Chat Messages     │   │
-│  - Avatar     │   │ Section 1               │   │   │                   │   │
-│  - Name       │   └─────────────────────────┘   │   │ User: Make it...  │   │
-│  - Bio        │   ┌─────────────────────────┐   │   │ AI: I'll update...│   │
-│  - Links      │   │ Section 2               │   │   │ [Apply] [Redo]    │   │
-│               │   └─────────────────────────┘   │   └───────────────────┘   │
-│  "Edit in     │   ┌─────────────────────────┐   │   ┌───────────────────┐   │
-│   Settings"   │   │ Section N               │   │   │ Quick Actions     │   │
-│               │   └─────────────────────────┘   │   │ [Premium] [Hero]  │   │
-│               │                                 │   └───────────────────┘   │
-│               │                                 │   ┌───────────────────┐   │
-│               │                                 │   │ Input: Describe...│   │
-│               │                                 │   └───────────────────┘   │
-└───────────────┴─────────────────────────────────┴───────────────────────────┘
-                                    │
-                    ┌───────────────┴───────────────┐
-                    │      ASSET DRAFT TRAY         │
-                    │ [Banner 1] [Banner 2] [+Gen]  │
-                    └───────────────────────────────┘
+Section Types (explicit):
+hero, featured_products, collections_row, bento_grid, image_section, 
+video_section, testimonials, stats_strip, pricing, faq, comparison, 
+cta_strip, icon_features, about_creator, email_capture, gallery, 
+divider, spacer
+```
+
+**Note**: Some of your spec's block names (like `hero`, `bento_grid`, `stats_strip`, `cta_strip`, `comparison`, `pricing`) don't exist in the current type system. I'll map them to existing equivalents:
+
+| Your Spec | Current System Equivalent |
+|-----------|--------------------------|
+| `hero` | `headline` or `image_with_text` with layout: 'hero' |
+| `bento_grid` | `gallery` with custom layout |
+| `stats_strip` | `basic_list` with horizontal layout |
+| `cta_strip` | `image_with_text` with button emphasis |
+| `comparison` | `basic_list` with cards layout |
+| `pricing` / `offers` | `basic_list` or `featured_product` |
+| `about_creator` | `about_me` |
+| `email_capture` | `newsletter` |
+| `icon_features` | `basic_list` with icon style |
+
+### 3. Update Fallback Behavior
+
+Current: Returns a generic "starter hero section" on failure
+
+New: Follow your spec's **Failure Handling** rules:
+- Never say "I can't" or "not possible"
+- Build the closest supported equivalent
+- Explain the substitution briefly
+- Offer optional refinement
+
+### 4. Tune Model Parameters
+
+```text
+Current: temperature: 1.05, top_p: 0.95
+Keep: These are good for creative variation without losing coherence
 ```
 
 ---
 
-## Phase 1: Database Schema
+## Technical Details
 
-### New Tables
+### Full System Prompt Structure
 
-**1. `storefront_brand_profiles`** — Stores the creator's brand identity for AI context
+```text
+1. ROLE DECLARATION
+   "You are SellsPay's AI Vibecoder..."
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| profile_id | UUID | FK to profiles |
-| color_palette | JSONB | Array of hex colors |
-| vibe_tags | TEXT[] | e.g., ['minimal', 'dark', 'premium'] |
-| font_preference | TEXT | Primary font choice |
-| reference_images | JSONB | Array of image URLs |
-| created_at | TIMESTAMPTZ | Auto-generated |
-| updated_at | TIMESTAMPTZ | Auto-updated |
+2. CORE PRODUCT MODEL
+   - Profile Shell (LOCKED)
+   - Editable Canvas (free creativity)
 
-**2. `storefront_generated_assets`** — Draft tray for AI-generated images
+3. ABSOLUTE RULES (7 rules)
+   - Never output raw HTML/CSS/JS
+   - Never inject scripts
+   - Never modify billing/auth
+   - Never break header shell
+   - Never mention presets
+   - Never refuse (build alternative)
+   - Always produce something
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| profile_id | UUID | FK to profiles |
-| asset_url | TEXT | Base64 or storage URL |
-| asset_type | TEXT | 'banner', 'thumbnail', 'background', 'promo' |
-| prompt | TEXT | Generation prompt |
-| spec | JSONB | Full asset request spec |
-| status | TEXT | 'draft', 'applied', 'discarded' |
-| created_at | TIMESTAMPTZ | Auto-generated |
+4. BLOCK REGISTRY
+   - Explicit list with equivalents to existing types
+   - Schema notes for each
 
-**3. `storefront_ai_conversations`** — Chat history for context
+5. "TYPE ANYTHING" BEHAVIOR
+   - Infer intent → Translate → Apply → Summarize → Keep undoable
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| profile_id | UUID | FK to profiles |
-| role | TEXT | 'user' or 'assistant' |
-| content | TEXT | Message text |
-| operations | JSONB | Patch ops (for assistant messages) |
-| asset_requests | JSONB | Asset generation requests |
-| created_at | TIMESTAMPTZ | Auto-generated |
+6. ASSET GENERATION RULES
+   - Never say "preset"
+   - Draft tray workflow
+   - Match brand profile
 
-**4. `storefront_ai_usage`** — Credit tracking for AI operations
+7. OUTPUT FORMAT
+   - message, ops, asset_requests, preview_notes
+   - All ops reversible and schema-safe
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| profile_id | UUID | FK to profiles |
-| action_type | TEXT | 'text_layout', 'image_gen', 'video_gen' |
-| credits_used | INTEGER | Credits consumed |
-| created_at | TIMESTAMPTZ | Auto-generated |
+8. DESIGN QUALITY BAR
+   - Intentional, cohesive
+   - Respect spacing, hierarchy, contrast
+   - Premium, modern, trustworthy
 
-### RLS Policies
-
-- Users can only read/write their own brand profiles, assets, conversations, and usage
-- All tables have `profile_id = auth.uid()` policies
-
----
-
-## Phase 2: Type Definitions
-
-### New Types in `src/components/profile-editor/vibecoder/types.ts`
-
-```typescript
-// === PATCH OPERATIONS ===
-
-export type VibecoderOp =
-  | AddSectionOp
-  | RemoveSectionOp
-  | MoveSectionOp
-  | UpdateSectionOp
-  | UpdateThemeOp
-  | UpdateHeaderContentOp
-  | AssignAssetToSlotOp;
-
-export interface AddSectionOp {
-  op: 'addSection';
-  after: string | null; // section ID or null for top
-  section: Partial<ProfileSection>;
-}
-
-export interface RemoveSectionOp {
-  op: 'removeSection';
-  sectionId: string;
-}
-
-export interface MoveSectionOp {
-  op: 'moveSection';
-  sectionId: string;
-  after: string | null;
-}
-
-export interface UpdateSectionOp {
-  op: 'updateSection';
-  sectionId: string;
-  patch: Record<string, unknown>;
-}
-
-export interface UpdateThemeOp {
-  op: 'updateTheme';
-  path: string;
-  value: unknown;
-}
-
-export interface UpdateHeaderContentOp {
-  op: 'updateHeaderContent';
-  patch: {
-    bannerAssetId?: string | null;
-    avatarAssetId?: string | null;
-    displayName?: string;
-    bio?: string;
-    links?: { label: string; url: string }[];
-  };
-}
-
-export interface AssignAssetToSlotOp {
-  op: 'assignAssetToSlot';
-  slot: 'header.banner' | 'header.avatar' | 'section.image' | 'section.bg' | 'product.thumbnail';
-  assetId: string;
-  targetId: string;
-}
-
-// === ASSET REQUESTS ===
-
-export interface AssetRequest {
-  kind: 'image' | 'icon_set' | 'video_loop';
-  count: number; // 1-8
-  spec: {
-    purpose: string;
-    style: string;
-    palette?: string[];
-    aspect?: string;
-    negative?: string;
-  };
-}
-
-// === AI RESPONSE ===
-
-export interface VibecoderResponse {
-  message: string;
-  ops: VibecoderOp[];
-  asset_requests?: AssetRequest[];
-  preview_notes?: string[];
-}
-
-// === BRAND PROFILE ===
-
-export interface BrandProfile {
-  id: string;
-  colorPalette: string[];
-  vibeTags: string[];
-  fontPreference: string;
-  referenceImages: string[];
-}
-
-// === GENERATED ASSET ===
-
-export interface GeneratedAsset {
-  id: string;
-  url: string;
-  type: 'banner' | 'thumbnail' | 'background' | 'promo';
-  prompt: string;
-  status: 'draft' | 'applied' | 'discarded';
-}
+9. FAILURE HANDLING
+   - Build closest equivalent
+   - Explain briefly
+   - Offer refinement
 ```
 
 ---
 
-## Phase 3: Edge Functions
+## Validation
 
-### 3.1 `storefront-vibecoder` — Main AI Chat Function
+After deploying, the Vibecoder will:
 
-**Path:** `supabase/functions/storefront-vibecoder/index.ts`
-
-**System Prompt (embedded in function):**
-
-```
-You are SellsPay's Storefront Vibecoder: a chat-based co-pilot that edits a creator's storefront safely.
-
-GOAL
-Help users improve their storefront design, layout, copy, and assets while preserving platform constraints and keeping edits reversible and previewable.
-
-HARD CONSTRAINTS (NON-NEGOTIABLE)
-1) The Profile Shell is LOCKED structurally:
-   - Banner area + avatar + profile header layout must never be removed, reordered, or structurally changed.
-   - You may propose content changes to banner image, avatar image, display name, bio, and social links ONLY via allowed header ops.
-2) You must edit the storefront using patch operations only.
-   - Never output raw HTML/CSS/JS as the main result.
-   - Never output full layout replacements.
-3) Safety:
-   - Never inject scripts, iframes, event handlers, tracking pixels, or arbitrary code.
-   - Never modify billing, payout, auth, admin roles, or account/security settings.
-   - Never access private user data beyond what is provided in context.
-4) Only use section types supported by the product's section registry.
-5) Every response must be apply-able as a PATCH: return JSON with `ops[]` matching the tool schema.
-
-WORKING STYLE
-- Ask at most ONE clarifying question only when required to avoid making wrong changes.
-- Otherwise: make the best possible assumption and proceed.
-- Provide 2–3 options if the user asks for a vibe/aesthetic.
-- Prefer minimal, premium changes that preserve template integrity.
-- Always keep changes reversible and summarize them.
-
-INPUT CONTEXT YOU RECEIVE
-- StorefrontLayout JSON
-- SupportedSections registry (types + allowed fields)
-- Product & collection metadata (names, tags, thumbnails, prices)
-- BrandProfile (palette, fonts, vibe tags, references)
-- User selection (optional): which section the user is focused on
-
-OUTPUT FORMAT (STRICT)
-Return only valid JSON via tool call to "apply_storefront_changes".
-
-QUALITY BAR
-Edits should look cohesive, aligned, spaced well, readable, and consistent with the brand. Avoid clutter.
-```
-
-**Implementation Details:**
-- Uses Lovable AI Gateway (`google/gemini-3-flash-preview`)
-- Tool calling for structured output
-- Validates operations before returning
-- Handles rate limits (429) and credit errors (402)
-
-### 3.2 `storefront-generate-asset` — Asset Generation
-
-**Path:** `supabase/functions/storefront-generate-asset/index.ts`
-
-- Uses `google/gemini-2.5-flash-image` for generation
-- Stores result in `storefront_generated_assets` with status='draft'
-- Applies brand profile colors/style to prompts
+1. **Accept any natural language input** without asking clarifying questions
+2. **Always produce valid patch operations** - never return empty ops
+3. **Use premium language** - never mention "presets" or "templates"
+4. **Handle failures gracefully** - build alternatives instead of refusing
+5. **Maintain locked header** - only content changes to banner/avatar/bio/links
+6. **Generate high-quality designs** - cohesive, premium, intentional
 
 ---
 
-## Phase 4: Patch Validation Layer
-
-### Server-Side Validation Rules
-
-**File:** Embedded in edge function + client-side hook
-
-**A) Structural Rules**
-- Reject any op that targets header structure (only `updateHeaderContent` or `assignAssetToSlot` for header allowed)
-- Reject unknown section types (must exist in `SECTION_TEMPLATES`)
-- Reject section patches with unknown fields (strict allowlist per type)
-
-**B) Content Safety Rules**
-- Strip/deny: `<script>`, `javascript:`, `data:text/html`, inline event handlers
-- Sanitize URLs (http/https only, max 2000 chars)
-- Max lengths: displayName ≤ 40, bio ≤ 160, headlines ≤ 80, paragraphs ≤ 800
-- Asset IDs must exist and be owned by user
-
-**C) UX Stability Rules**
-- Enforce max 25 sections
-- `moveSection` cannot create duplicates or invalid ordering
-
-**D) Reversibility**
-- Every op is invertible:
-  - `addSection` → `removeSection` with same ID
-  - `updateSection` → store previous values in history
-- Apply ops in transaction; rollback if any op fails
-
----
-
-## Phase 5: UI Components
-
-### 5.1 Updated Editor Sidebar Tabs
-
-**File:** `src/components/profile-editor/EditorSidebar.tsx`
-
-Add new tabs:
-```typescript
-const tabs = [
-  { id: 'sections', label: 'Sections', icon: Layers },
-  { id: 'vibecoder', label: 'AI Builder', icon: Sparkles }, // NEW
-  { id: 'brand', label: 'Brand', icon: Palette },           // NEW
-  { id: 'style', label: 'Store Style', icon: Settings },
-];
-```
-
-### 5.2 Vibecoder Chat Panel
-
-**File:** `src/components/profile-editor/vibecoder/VibecoderChat.tsx`
-
-**UI Elements:**
-- Title: "AI Builder"
-- Chat message history (scrollable)
-- Quick action chips:
-  - "Make it look premium"
-  - "Rewrite my bio"
-  - "Add a hero section"
-  - "Add a bento grid"
-  - "Improve spacing"
-  - "Generate a banner"
-  - "Generate matching thumbnails"
-- Input placeholder: "Describe what you want to change… e.g. 'Make this storefront more premium and add a featured section.'"
-- Send button
-
-**AI Response Template:**
-```
-Proposed changes
-• Updated theme accent + typography scale
-• Added "Featured Products" section under Hero
-• Rewrote headline + CTA copy
-
-[Preview changes] [Apply] [Undo] [Regenerate]
-```
-
-### 5.3 Asset Draft Tray
-
-**File:** `src/components/profile-editor/vibecoder/AssetDraftTray.tsx`
-
-**UI:**
-- Horizontal scrollable tray at bottom of editor
-- Title: "Generated Assets (Drafts)"
-- Subtitle: "Select an asset to apply. Nothing changes until you apply."
-- Per-asset buttons:
-  - "Use as banner"
-  - "Use in selected section"
-  - "Regenerate like this"
-  - "Discard"
-- "+ Generate" button
-
-### 5.4 Brand Profile Panel
-
-**File:** `src/components/profile-editor/vibecoder/BrandProfilePanel.tsx`
-
-**UI:**
-- Color palette picker (add/remove colors)
-- Vibe tags (chips, add custom)
-- Font preference dropdown
-- Reference images upload
-
-### 5.5 Operation Preview Dialog
-
-**File:** `src/components/profile-editor/vibecoder/OperationPreview.tsx`
-
-- Shows diff of what will change
-- Highlights affected sections in preview
-- "Apply" / "Cancel" buttons
-
----
-
-## Phase 6: React Hooks
-
-### 6.1 `useVibecoderChat`
-
-**File:** `src/components/profile-editor/vibecoder/hooks/useVibecoderChat.ts`
-
-```typescript
-interface UseVibecoderChatReturn {
-  messages: ChatMessage[];
-  isLoading: boolean;
-  sendMessage: (text: string) => Promise<void>;
-  pendingOps: VibecoderOp[] | null;
-  applyPendingOps: () => void;
-  discardPendingOps: () => void;
-  regenerate: () => void;
-}
-```
-
-### 6.2 `useVibecoderOperations`
-
-**File:** `src/components/profile-editor/vibecoder/hooks/useVibecoderOperations.ts`
-
-```typescript
-interface UseVibecoderOperationsReturn {
-  validateOperation: (op: VibecoderOp) => ValidationResult;
-  applyOperations: (ops: VibecoderOp[]) => void;
-  previewOperations: (ops: VibecoderOp[]) => ProfileSection[];
-  getInverseOps: (ops: VibecoderOp[]) => VibecoderOp[];
-}
-```
-
-### 6.3 `useBrandProfile`
-
-**File:** `src/components/profile-editor/vibecoder/hooks/useBrandProfile.ts`
-
-- CRUD for `storefront_brand_profiles`
-- Auto-create on first access
-
-### 6.4 `useGeneratedAssets`
-
-**File:** `src/components/profile-editor/vibecoder/hooks/useGeneratedAssets.ts`
-
-- List drafts for current profile
-- Apply asset to slot
-- Discard asset
-- Trigger new generation
-
-### 6.5 `useVibecoderCredits`
-
-**File:** `src/components/profile-editor/vibecoder/hooks/useVibecoderCredits.ts`
-
-- Check available credits
-- Deduct credits on action
-- Show cost before generating assets
-
----
-
-## Phase 7: Credit System
-
-### Pricing Structure
-
-| Action Type | Credit Cost | Notes |
-|-------------|-------------|-------|
-| Text & Layout | 0 (included) | Copy rewrite, section add/move, theme tweaks |
-| Banner Image | 3 credits | Wide, high-res |
-| Thumbnail/Icon | 1 credit | Small image |
-| Icon Set (6) | 4 credits | Batch generation |
-| Video Loop | 10-25 credits | Based on duration |
-
-### Pre-Generation Warning
-
-Before any asset generation:
-```
-"This will cost X credits"
-[Generate] [Cancel]
-```
-
-### Integration
-
-Uses existing `useCredits` hook and `credit_transactions` table.
-
----
-
-## Phase 8: Integration into ProfileEditorDialog
-
-### State Additions
-
-```typescript
-// New state
-const [activeTab, setActiveTab] = useState<'sections' | 'vibecoder' | 'brand' | 'style'>('sections');
-const [generatedAssets, setGeneratedAssets] = useState<GeneratedAsset[]>([]);
-const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
-const [pendingOps, setPendingOps] = useState<VibecoderOp[] | null>(null);
-const [selectedSectionForAI, setSelectedSectionForAI] = useState<string | null>(null);
-```
-
-### Layout Changes
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ Header: Save | Undo | Redo | Close                              │
-├───────────┬───────────────────────────────────┬─────────────────┤
-│ Tab Icons │ Live Preview                      │ Right Panel     │
-│ Sections  │ (Locked Header + Editable Canvas) │ (Based on Tab)  │
-│ AI Builder│                                   │                 │
-│ Brand     │                                   │                 │
-│ Style     │                                   │                 │
-├───────────┴───────────────────────────────────┴─────────────────┤
-│ Asset Draft Tray (when assets exist)                            │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Phase 9: Safety Microcopy
-
-### Header Lock Tooltip
-
-When hovering over the header in the preview:
-```
-Profile Header (Locked)
-"You can change banner, avatar, name, bio, and links — layout stays fixed."
-```
-
-### Error Messages
-
-```
-"That change isn't supported yet. I can do X instead."
-"I can't edit payouts or account settings. I can help redesign your storefront."
-```
-
-### Empty State
-
-When AI Builder tab is first opened:
-```
-✨ AI Builder
-
-I can help you:
-• Redesign your storefront layout
-• Rewrite copy to sound more premium
-• Generate matching banners and thumbnails
-• Add new sections like hero, FAQ, testimonials
-
-[Make it look premium] [Add a hero section] [Generate a banner]
-
-Type a request below to get started...
-```
-
----
-
-## File Structure
-
-```
-src/components/profile-editor/
-├── vibecoder/
-│   ├── VibecoderChat.tsx          # Main chat panel
-│   ├── VibecoderMessage.tsx       # Individual message component
-│   ├── AssetDraftTray.tsx         # Generated assets tray
-│   ├── BrandProfilePanel.tsx      # Brand configuration
-│   ├── OperationPreview.tsx       # Preview pending changes
-│   ├── QuickActionChips.tsx       # Preset prompts
-│   ├── CostWarningDialog.tsx      # Credit cost confirmation
-│   ├── types.ts                   # Vibecoder types
-│   └── hooks/
-│       ├── useVibecoderChat.ts
-│       ├── useVibecoderOperations.ts
-│       ├── useBrandProfile.ts
-│       ├── useGeneratedAssets.ts
-│       └── useVibecoderCredits.ts
-└── [existing files unchanged]
-
-supabase/functions/
-├── storefront-vibecoder/
-│   └── index.ts                   # Main AI chat function
-└── storefront-generate-asset/
-    └── index.ts                   # Asset generation function
-```
-
----
-
-## Implementation Order
-
-1. **Database**: Create tables with RLS policies
-2. **Types**: Add TypeScript definitions
-3. **Edge Functions**: Implement vibecoder + asset generation
-4. **Hooks**: Build state management hooks
-5. **UI Components**: VibecoderChat, BrandProfilePanel, AssetDraftTray
-6. **Integration**: Wire into ProfileEditorDialog
-7. **Testing**: End-to-end flow validation
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `supabase/functions/storefront-vibecoder/index.ts` | Replace `SYSTEM_PROMPT` with full spec, update tool schema descriptions |
 
 ---
 
 ## Summary
 
-This implementation adds a Lovable-style AI Vibecoder to the existing profile editor that:
+This upgrade transforms the Vibecoder from a basic co-pilot into the full production system you've specified. The AI will:
 
-- **Respects the locked header shell** — AI can suggest content changes but never restructure
-- **Uses patch operations only** — Safe, validated, reversible changes
-- **Integrates asset generation** — Branded banners/thumbnails with draft tray workflow
-- **Maintains brand consistency** — Brand profile provides AI context
-- **Leverages existing infrastructure** — Uses existing history/undo, credits, and section types
-- **Provides premium UX** — Clear microcopy, preview before apply, quick actions
+- Accept **any** natural language input
+- **Always** produce results (never refuse)
+- Use **premium** design standards
+- **Never** expose internal mechanics (presets, templates)
+- Follow **strict** output format
 
-The result feels like talking to a designer who understands the brand, edits in real-time, and never breaks the layout.
