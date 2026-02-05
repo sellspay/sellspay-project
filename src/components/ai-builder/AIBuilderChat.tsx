@@ -1,14 +1,19 @@
- import { useState, useRef, useEffect, useCallback } from 'react';
- import { Button } from '@/components/ui/button';
- import { Input } from '@/components/ui/input';
- import { ScrollArea } from '@/components/ui/scroll-area';
- import { Send, Loader2, Plus, Mic, Square, FileText, Wand2, Undo2 } from 'lucide-react';
- import { toast } from 'sonner';
- import { supabase } from '@/integrations/supabase/client';
- import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
-import { getPatternRegistrySummary } from './layoutPatterns';
-import { getBlockRegistrySummary } from './blocks';
- 
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Send, Loader2, Plus, Mic, Square, FileText, Wand2, Undo2, History, BookOpen, Link2, Camera, Paperclip } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
+import { AIBuilderMessage, AIBuilderChatMessage } from './AIBuilderMessage';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
 interface AIBuilderChatProps {
   profileId: string;
   layout: { sections: any[]; theme: Record<string, any>; header: Record<string, any> };
@@ -17,15 +22,7 @@ interface AIBuilderChatProps {
   canUndo?: boolean;
   onBuildingChange?: (building: boolean) => void;
 }
- 
- interface ChatMessage {
-   id: string;
-   role: 'user' | 'assistant';
-   content: string;
-   timestamp: Date;
-  stage?: 'planning' | 'applying' | 'rendering' | 'done';
- }
- 
+
 // Progress stages for the build process
 type BuildStage = 'planning' | 'applying' | 'rendering' | 'done';
 
@@ -48,19 +45,20 @@ const PLACEHOLDER_EXAMPLES = [
   "A bold hip-hop inspired store for beats and samples",
 ];
 
- const QUICK_ACTIONS = [
-   { label: 'Premium', prompt: 'Make it look premium and luxurious with glassmorphism effects' },
-   { label: 'Modern', prompt: 'Create a clean modern design with bold typography' },
-   { label: 'Minimal', prompt: 'Design a minimal, elegant storefront with lots of whitespace' },
-   { label: 'Bold', prompt: 'Make it bold and eye-catching with vibrant colors' },
- ];
- 
+const QUICK_ACTIONS = [
+  { label: 'Premium', prompt: 'Make it look premium and luxurious with glassmorphism effects' },
+  { label: 'Modern', prompt: 'Create a clean modern design with bold typography' },
+  { label: 'Minimal', prompt: 'Design a minimal, elegant storefront with lots of whitespace' },
+  { label: 'Bold', prompt: 'Make it bold and eye-catching with vibrant colors' },
+];
+
 export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUndo, onBuildingChange }: AIBuilderChatProps) {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<AIBuilderChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [buildStage, setBuildStage] = useState<BuildStage | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [applyingMessageId, setApplyingMessageId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
@@ -69,7 +67,7 @@ export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUn
     const loadHistory = async () => {
       const { data } = await supabase
         .from('storefront_ai_conversations')
-        .select('id, role, content, created_at')
+        .select('id, role, content, created_at, operations')
         .eq('profile_id', profileId)
         .order('created_at', { ascending: true });
 
@@ -79,6 +77,8 @@ export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUn
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
           timestamp: new Date(msg.created_at),
+          operations: msg.operations as any[] | undefined,
+          status: msg.operations ? 'applied' : undefined,
         })));
       }
       setHistoryLoaded(true);
@@ -101,17 +101,36 @@ export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUn
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
- 
+
+  const handleFeedback = async (messageId: string, feedback: 'liked' | 'disliked') => {
+    try {
+      await supabase
+        .from('storefront_ai_conversations')
+        .update({ 
+          operations: { feedback, feedbackAt: new Date().toISOString() }
+        })
+        .eq('id', messageId);
+      
+      // Update local state
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, feedback } : m
+      ));
+    } catch (error) {
+      console.error('Failed to save feedback:', error);
+    }
+  };
+
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return;
 
+    const startTime = Date.now();
     setIsLoading(true);
     onBuildingChange?.(true);
     setBuildStage('planning');
 
     // Add user message
     const userMessageId = crypto.randomUUID();
-    const userMessage: ChatMessage = {
+    const userMessage: AIBuilderChatMessage = {
       id: userMessageId,
       role: 'user',
       content: text,
@@ -179,18 +198,23 @@ export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUn
       }
 
       const result = await resp.json();
+      const latencyMs = Date.now() - startTime;
 
       setBuildStage('rendering');
 
       // Add assistant message
       const assistantMessageId = crypto.randomUUID();
-      const assistantMessage: ChatMessage = {
+      const assistantMessage: AIBuilderChatMessage = {
         id: assistantMessageId,
         role: 'assistant',
         content: result.message || 'Changes applied!',
         timestamp: new Date(),
+        operations: result.ops || [],
+        status: result.ops?.length > 0 ? 'applied' : undefined,
+        latencyMs,
       };
       setMessages(prev => [...prev, assistantMessage]);
+      setApplyingMessageId(assistantMessageId);
 
       // Persist assistant message to database
       await supabase.from('storefront_ai_conversations').insert({
@@ -210,6 +234,7 @@ export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUn
 
       setBuildStage('done');
       onBuildingChange?.(false);
+      setApplyingMessageId(null);
       setTimeout(() => setBuildStage(null), 1500);
 
     } catch (err) {
@@ -217,7 +242,7 @@ export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUn
       const errorMessage = err instanceof Error ? err.message : 'Something went wrong';
       toast.error(errorMessage);
       
-      const errorChatMessage: ChatMessage = {
+      const errorChatMessage: AIBuilderChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
         content: `I encountered an error: ${errorMessage}`,
@@ -226,276 +251,321 @@ export function AIBuilderChat({ profileId, layout, onLayoutChange, onUndo, canUn
       setMessages(prev => [...prev, errorChatMessage]);
       setBuildStage(null);
       onBuildingChange?.(false);
+      setApplyingMessageId(null);
     } finally {
       setIsLoading(false);
     }
   }, [profileId, layout, onLayoutChange, isLoading, onBuildingChange]);
- 
-   const handleSubmit = (e: React.FormEvent) => {
-     e.preventDefault();
-     if (input.trim()) {
-       sendMessage(input.trim());
-       setInput('');
-     }
-   };
- 
-   const handleFreshBuild = () => {
-     sendMessage(`Build me a complete, premium storefront from scratch. Create a full professional layout with:
- 1. A striking hero headline section with dramatic typography
- 2. An about me section with glassmorphism styling
- 3. Social proof testimonials section
- 4. A call-to-action section
- 
- Make it look like a high-end luxury creator's store with dark theme and premium effects.`);
-   };
- 
-   const isEmpty = messages.length === 0;
- 
-    return (
-      <div className="flex flex-col h-full overflow-hidden">
-        {/* Header - fixed at top */}
-        <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-border/30">
-          <div className="flex items-center gap-2">
-            <img src={sellspayLogo} alt="" className="w-6 h-6 object-contain" />
-            <span className="font-medium">AI Assistant</span>
-          </div>
-          {canUndo && (
-            <Button variant="ghost" size="sm" onClick={onUndo} className="gap-1.5 text-muted-foreground">
-              <Undo2 className="w-4 h-4" />
-              Undo
-            </Button>
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (input.trim()) {
+      sendMessage(input.trim());
+      setInput('');
+    }
+  };
+
+  const handleFreshBuild = () => {
+    sendMessage(`Build me a complete, premium storefront from scratch. Create a full professional layout with:
+1. A striking hero headline section with dramatic typography
+2. An about me section with glassmorphism styling
+3. Social proof testimonials section
+4. A call-to-action section
+
+Make it look like a high-end luxury creator's store with dark theme and premium effects.`);
+  };
+
+  const isEmpty = messages.length === 0;
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header - fixed at top */}
+      <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-border/30">
+        <div className="flex items-center gap-2">
+          <img src={sellspayLogo} alt="" className="w-6 h-6 object-contain" />
+          <span className="font-medium">AI Assistant</span>
+          {isLoading && (
+            <span className="text-xs text-primary animate-pulse flex items-center gap-1.5 ml-2 px-2 py-0.5 bg-primary/10 rounded-full border border-primary/20">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              {buildStage ? STAGE_MESSAGES[buildStage] : 'Creating...'}
+            </span>
           )}
         </div>
-  
-        {/* Chat area - scrollable middle section */}
-        <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4" ref={scrollRef}>
-          {isEmpty ? (
-            <div className="flex flex-col items-center justify-center h-full text-center space-y-8 py-12">
-              {/* Logo */}
-              <div className="relative">
-                <div className="absolute inset-0 blur-3xl bg-primary/20 rounded-full scale-[2]" />
-                <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-background via-muted/50 to-background border border-border/40 flex items-center justify-center shadow-xl">
-                  <img src={sellspayLogo} alt="" className="w-12 h-12 object-contain" />
+        {canUndo && (
+          <Button variant="ghost" size="sm" onClick={onUndo} className="gap-1.5 text-muted-foreground">
+            <Undo2 className="w-4 h-4" />
+            Undo
+          </Button>
+        )}
+      </div>
+
+      {/* Chat area - scrollable middle section */}
+      <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4" ref={scrollRef}>
+        {isEmpty ? (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-8 py-12">
+            {/* Logo */}
+            <div className="relative">
+              <div className="absolute inset-0 blur-3xl bg-primary/20 rounded-full scale-[2]" />
+              <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-background via-muted/50 to-background border border-border/40 flex items-center justify-center shadow-xl">
+                <img src={sellspayLogo} alt="" className="w-12 h-12 object-contain" />
+              </div>
+            </div>
+
+            <div className="space-y-3 max-w-sm">
+              <h3 className="text-xl font-semibold">What do you want to build?</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Describe your idea. The AI will design the entire storefront for you.
+              </p>
+            </div>
+
+            {/* Build My Store CTA */}
+            <Button
+              onClick={handleFreshBuild}
+              disabled={isLoading}
+              className="gap-2 h-12 px-8 text-base font-medium shadow-lg shadow-primary/25"
+              size="lg"
+            >
+              <Wand2 className="w-4 h-4" />
+              Build My Store
+            </Button>
+
+            {/* Quick actions */}
+            <div className="w-full pt-4">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-3 font-medium">Quick Actions</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {QUICK_ACTIONS.map((action) => (
+                  <Button
+                    key={action.label}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => sendMessage(action.prompt)}
+                    disabled={isLoading}
+                    className="text-xs h-8 px-4 bg-muted/50 hover:bg-muted border-border/50"
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {messages.map((msg, index) => (
+              <AIBuilderMessage
+                key={msg.id}
+                message={msg}
+                isLatest={index === messages.length - 1}
+                isApplying={applyingMessageId === msg.id}
+                onUndo={onUndo}
+                canUndo={canUndo && msg.status === 'applied'}
+                onFeedback={handleFeedback}
+              />
+            ))}
+            {isLoading && (
+              <div className="flex flex-col gap-2 p-4 bg-primary/5 rounded-xl border border-primary/10">
+                <div className="flex items-center gap-3 text-primary">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm font-medium">
+                    {buildStage ? STAGE_MESSAGES[buildStage] : 'Creating your vision...'}
+                  </span>
                 </div>
-              </div>
-  
-              <div className="space-y-3 max-w-sm">
-                 <h3 className="text-xl font-semibold">What do you want to build?</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                   Describe your idea. The AI will design the entire storefront for you.
-                </p>
-              </div>
-  
-              {/* Build My Store CTA */}
-              <Button
-                onClick={handleFreshBuild}
-                disabled={isLoading}
-                className="gap-2 h-12 px-8 text-base font-medium shadow-lg shadow-primary/25"
-                size="lg"
-              >
-                <Wand2 className="w-4 h-4" />
-                Build My Store
-              </Button>
-  
-              {/* Quick actions */}
-              <div className="w-full pt-4">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-3 font-medium">Quick Actions</p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {QUICK_ACTIONS.map((action) => (
-                    <Button
-                      key={action.label}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => sendMessage(action.prompt)}
-                      disabled={isLoading}
-                      className="text-xs h-8 px-4 bg-muted/50 hover:bg-muted border-border/50"
-                    >
-                      {action.label}
-                    </Button>
+                {/* Progress dots */}
+                <div className="flex gap-1.5 ml-7">
+                  {(['planning', 'applying', 'rendering'] as BuildStage[]).map((stage, i) => (
+                    <div
+                      key={stage}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        buildStage === stage
+                          ? 'bg-primary scale-110'
+                          : buildStage && ['planning', 'applying', 'rendering'].indexOf(buildStage) > i
+                          ? 'bg-primary/60'
+                          : 'bg-muted-foreground/20'
+                      }`}
+                    />
                   ))}
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm ${
-                      msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted/60 text-foreground'
-                    }`}
-                  >
-                    {msg.content}
-                  </div>
-                </div>
-              ))}
-              {isLoading && (
-               <div className="flex flex-col gap-2 p-4 bg-primary/5 rounded-xl border border-primary/10">
-                 <div className="flex items-center gap-3 text-primary">
-                   <Loader2 className="w-4 h-4 animate-spin" />
-                   <span className="text-sm font-medium">
-                     {buildStage ? STAGE_MESSAGES[buildStage] : 'Creating your vision...'}
-                   </span>
-                 </div>
-                 {/* Progress dots */}
-                 <div className="flex gap-1.5 ml-7">
-                   {(['planning', 'applying', 'rendering'] as BuildStage[]).map((stage, i) => (
-                     <div
-                       key={stage}
-                       className={`w-2 h-2 rounded-full transition-all ${
-                         buildStage === stage
-                           ? 'bg-primary scale-110'
-                           : buildStage && ['planning', 'applying', 'rendering'].indexOf(buildStage) > i
-                           ? 'bg-primary/60'
-                           : 'bg-muted-foreground/20'
-                       }`}
-                     />
-                   ))}
-                 </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-  
-        {/* Quick actions when chat has messages - fixed */}
-        {!isEmpty && !isLoading && (
-          <div className="flex-shrink-0 px-6 py-3 border-t border-border/20">
-            <div className="flex flex-wrap gap-2">
-              {QUICK_ACTIONS.map((action) => (
-                <Button
-                  key={action.label}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => sendMessage(action.prompt)}
-                  disabled={isLoading}
-                  className="text-xs h-7 px-3 bg-muted/30"
-                >
-                  {action.label}
-                </Button>
-              ))}
-            </div>
+            )}
           </div>
         )}
-  
-        {/* Input - fixed at bottom */}
-        <form onSubmit={handleSubmit} className="flex-shrink-0 p-4 border-t border-border/30 bg-background">
-          <div className="flex gap-2 items-center">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground"
-            >
-              <Plus className="w-5 h-5" />
-            </Button>
-  
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-               placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
-              disabled={isLoading}
-               className="flex-1 h-10 bg-muted/30 border-border/40 transition-all"
-            />
-  
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => toast.info('Plan mode coming soon')}
-              className="h-10 px-3 text-muted-foreground gap-1.5 shrink-0"
-            >
-              <FileText className="w-4 h-4" />
-              <span className="text-xs">Plan</span>
-            </Button>
-  
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => toast.info('Voice input coming soon')}
-              className="h-10 w-10 shrink-0 text-muted-foreground"
-            >
-              <Mic className="w-4 h-4" />
-            </Button>
-  
-            <Button
-              type="submit"
-              disabled={!input.trim() || isLoading}
-              size="icon"
-              className="h-10 w-10 shrink-0"
-            >
-              {isLoading ? (
-                <Square className="w-4 h-4 fill-current" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-        </form>
       </div>
-    );
- }
- 
- // Apply AI operations to layout
- function applyOpsToLayout(
-   layout: { sections: any[]; theme: Record<string, any>; header: Record<string, any> },
-   ops: any[]
- ): { sections: any[]; theme: Record<string, any>; header: Record<string, any> } {
-   let newSections = [...layout.sections];
-   let newTheme = { ...layout.theme };
-   let newHeader = { ...layout.header };
- 
-   for (const op of ops) {
-     switch (op.op) {
-       case 'clearAllSections':
-         newSections = [];
-         break;
- 
-       case 'addSection':
-         if (op.section) {
-           const newSection = {
-             id: crypto.randomUUID(),
-             ...op.section,
-             display_order: newSections.length,
-             is_visible: true,
-           };
-           newSections.push(newSection);
-         }
-         break;
- 
-       case 'removeSection':
-         if (op.sectionId) {
-           newSections = newSections.filter(s => s.id !== op.sectionId);
-         }
-         break;
- 
-       case 'updateSection':
-         if (op.sectionId && op.patch) {
-           newSections = newSections.map(s =>
-             s.id === op.sectionId ? { ...s, ...op.patch } : s
-           );
-         }
-         break;
- 
-       case 'updateTheme':
-         if (op.patch) {
-           newTheme = { ...newTheme, ...op.patch };
-         }
-         break;
- 
-       case 'updateHeaderContent':
-         if (op.patch) {
-           newHeader = { ...newHeader, ...op.patch };
-         }
-         break;
-     }
-   }
- 
-   return { sections: newSections, theme: newTheme, header: newHeader };
- }
+
+      {/* Quick actions when chat has messages - fixed */}
+      {!isEmpty && !isLoading && (
+        <div className="flex-shrink-0 px-6 py-3 border-t border-border/20">
+          <div className="flex flex-wrap gap-2">
+            {QUICK_ACTIONS.map((action) => (
+              <Button
+                key={action.label}
+                variant="outline"
+                size="sm"
+                onClick={() => sendMessage(action.prompt)}
+                disabled={isLoading}
+                className="text-xs h-7 px-3 bg-muted/30"
+              >
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Input - fixed at bottom */}
+      <form onSubmit={handleSubmit} className="flex-shrink-0 p-4 border-t border-border/30 bg-background">
+        <div className="flex gap-2 items-center">
+          {/* Plus menu with options */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground"
+              >
+                <Plus className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-60">
+              <DropdownMenuItem
+                onClick={() => toast.info('History loaded in chat')}
+                className="gap-3 py-3"
+              >
+                <History className="w-4 h-4" />
+                History
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => toast.info('Knowledge base coming soon')}
+                className="gap-3 py-3"
+              >
+                <BookOpen className="w-4 h-4" />
+                Knowledge
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => toast.info('Connectors coming soon')}
+                className="gap-3 py-3"
+              >
+                <Link2 className="w-4 h-4" />
+                Connectors
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => toast.info('Screenshot coming soon')}
+                className="gap-3 py-3"
+              >
+                <Camera className="w-4 h-4" />
+                Take a screenshot
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => toast.info('Attachments coming soon')}
+                className="gap-3 py-3"
+              >
+                <Paperclip className="w-4 h-4" />
+                Attach
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
+            disabled={isLoading}
+            className="flex-1 h-10 bg-muted/30 border-border/40 transition-all"
+          />
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => toast.info('Plan mode coming soon')}
+            className="h-10 px-3 text-muted-foreground gap-1.5 shrink-0"
+          >
+            <FileText className="w-4 h-4" />
+            <span className="text-xs">Plan</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => toast.info('Voice input coming soon')}
+            className="h-10 w-10 shrink-0 text-muted-foreground"
+          >
+            <Mic className="w-4 h-4" />
+          </Button>
+
+          <Button
+            type="submit"
+            disabled={!input.trim() || isLoading}
+            size="icon"
+            className="h-10 w-10 shrink-0"
+          >
+            {isLoading ? (
+              <Square className="w-4 h-4 fill-current" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// Apply AI operations to layout
+function applyOpsToLayout(
+  layout: { sections: any[]; theme: Record<string, any>; header: Record<string, any> },
+  ops: any[]
+): { sections: any[]; theme: Record<string, any>; header: Record<string, any> } {
+  let newSections = [...layout.sections];
+  let newTheme = { ...layout.theme };
+  let newHeader = { ...layout.header };
+
+  for (const op of ops) {
+    switch (op.op) {
+      case 'clearAllSections':
+        newSections = [];
+        break;
+
+      case 'addSection':
+        if (op.section) {
+          const newSection = {
+            id: crypto.randomUUID(),
+            ...op.section,
+            display_order: newSections.length,
+            is_visible: true,
+          };
+          newSections.push(newSection);
+        }
+        break;
+
+      case 'removeSection':
+        if (op.sectionId) {
+          newSections = newSections.filter(s => s.id !== op.sectionId);
+        }
+        break;
+
+      case 'updateSection':
+        if (op.sectionId && op.patch) {
+          newSections = newSections.map(s =>
+            s.id === op.sectionId ? { ...s, ...op.patch } : s
+          );
+        }
+        break;
+
+      case 'updateTheme':
+        if (op.patch) {
+          newTheme = { ...newTheme, ...op.patch };
+        }
+        break;
+
+      case 'updateHeader':
+        if (op.patch) {
+          newHeader = { ...newHeader, ...op.patch };
+        }
+        break;
+    }
+  }
+
+  return { sections: newSections, theme: newTheme, header: newHeader };
+}

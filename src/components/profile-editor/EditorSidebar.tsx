@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
-import { Layers, Settings, Sparkles, Palette } from 'lucide-react';
+import { Layers } from 'lucide-react';
 
-export type EditorTab = 'sections' | 'vibecoder' | 'brand' | 'style';
+export type EditorTab = 'sections';
 
 interface EditorSidebarProps {
   activeTab: EditorTab;
@@ -11,9 +11,6 @@ interface EditorSidebarProps {
 export function EditorSidebar({ activeTab, onTabChange }: EditorSidebarProps) {
   const tabs = [
     { id: 'sections' as const, label: 'Sections', icon: Layers },
-    { id: 'vibecoder' as const, label: 'AI Builder', icon: Sparkles },
-    { id: 'brand' as const, label: 'Brand', icon: Palette },
-    { id: 'style' as const, label: 'Store Style', icon: Settings },
   ];
 
   return (
