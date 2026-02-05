@@ -1,8 +1,8 @@
- import { useState, useRef, useEffect } from 'react';
+ import { useState, useRef, useEffect, useCallback } from 'react';
  import { Button } from '@/components/ui/button';
  import { Input } from '@/components/ui/input';
  import { ScrollArea } from '@/components/ui/scroll-area';
- import { Send, Loader2, Check, ChevronUp, Undo2, Plus, History, BookOpen, Link2, Camera, Paperclip } from 'lucide-react';
+ import { Send, Loader2, Check, ChevronUp, Undo2, Plus, History, BookOpen, Link2, Camera, Paperclip, Mic, Square, FileText } from 'lucide-react';
  import { Wand2 } from 'lucide-react';
  import { useVibecoderChat } from './hooks/useVibecoderChat';
  import { useVibecoderOperations } from './hooks/useVibecoderOperations';
@@ -195,14 +195,14 @@ Make it look like a high-end luxury creator's store.`;
    const isWorking = isLoading || isApplying || generating;
  
    return (
-     <div className="flex flex-col h-full bg-background">
+     <div className="flex flex-col h-full bg-background min-h-[600px]">
        {/* Header */}
-       <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 bg-gradient-to-r from-background to-muted/30">
+       <div className="flex items-center justify-between px-6 py-5 border-b border-border/30 bg-gradient-to-r from-background via-background to-muted/20">
          <div className="flex items-center gap-2">
-           <img src={sellspayLogo} alt="SellsPay" className="w-6 h-6 object-contain" />
-           <h2 className="font-semibold text-foreground tracking-tight">AI Builder</h2>
+           <img src={sellspayLogo} alt="SellsPay" className="w-7 h-7 object-contain" />
+           <h2 className="font-semibold text-foreground tracking-tight text-lg">AI Builder</h2>
            {isWorking && (
-             <span className="text-xs text-primary animate-pulse flex items-center gap-1 ml-2 px-2 py-0.5 bg-primary/10 rounded-full">
+             <span className="text-xs text-primary animate-pulse flex items-center gap-1.5 ml-3 px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
                <Loader2 className="w-3 h-3 animate-spin" />
                {isLoading ? 'Thinking...' : isApplying ? 'Applying...' : 'Generating...'}
              </span>
@@ -217,7 +217,7 @@ Make it look like a high-end luxury creator's store.`;
                 onUndo?.();
                 toast.success('Reverted changes');
               }}
-               className="text-muted-foreground hover:text-foreground gap-1.5 h-8"
+               className="text-muted-foreground hover:text-foreground gap-1.5 h-9 px-3"
               title="Undo last AI change"
             >
               <Undo2 className="w-4 h-4" />
@@ -228,16 +228,16 @@ Make it look like a high-end luxury creator's store.`;
        </div>
  
        {/* Chat area */}
-       <ScrollArea className="flex-1 px-4 py-5" ref={scrollRef}>
+       <ScrollArea className="flex-1 px-6 py-6" ref={scrollRef}>
           {/* Load more history button */}
           {hasMoreHistory && (
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-6">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={loadMoreHistory}
                 disabled={isLoadingHistory}
-                className="text-muted-foreground hover:text-foreground text-xs"
+                className="text-muted-foreground hover:text-foreground text-xs h-8"
               >
                 {isLoadingHistory ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-1" />
@@ -257,17 +257,17 @@ Make it look like a high-end luxury creator's store.`;
           )}
 
          {isEmpty ? (
-           <div className="flex flex-col items-center justify-center h-full text-center space-y-8 py-12">
+           <div className="flex flex-col items-center justify-center h-full text-center space-y-10 py-16">
              {/* Premium logo display */}
              <div className="relative">
-               <div className="absolute inset-0 blur-2xl bg-primary/20 rounded-full scale-150" />
-               <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-background via-muted/50 to-background border border-border/50 flex items-center justify-center shadow-2xl">
-                 <img src={sellspayLogo} alt="SellsPay" className="w-12 h-12 object-contain" />
+               <div className="absolute inset-0 blur-3xl bg-primary/20 rounded-full scale-[2]" />
+               <div className="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-background via-muted/50 to-background border border-border/40 flex items-center justify-center shadow-2xl">
+                 <img src={sellspayLogo} alt="SellsPay" className="w-14 h-14 object-contain" />
                </div>
              </div>
-             <div className="space-y-3 max-w-sm">
-               <h3 className="text-xl font-semibold text-foreground tracking-tight">AI-Powered Store Builder</h3>
-               <p className="text-sm text-muted-foreground leading-relaxed">
+             <div className="space-y-4 max-w-md">
+               <h3 className="text-2xl font-semibold text-foreground tracking-tight">AI-Powered Store Builder</h3>
+               <p className="text-base text-muted-foreground leading-relaxed">
                  Describe your vision and watch it come to life. Create stunning storefronts with a single prompt.
                </p>
              </div>
@@ -276,20 +276,20 @@ Make it look like a high-end luxury creator's store.`;
             <Button
               onClick={handleFreshBuild}
               disabled={isWorking}
-               className="gap-2.5 h-12 px-8 text-base font-medium bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+               className="gap-2.5 h-14 px-10 text-base font-medium bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 rounded-2xl"
               size="lg"
             >
               <Wand2 className="w-4 h-4" />
               Build My Store
             </Button>
             
-              <div className="w-full pt-4">
-               <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 mb-3 font-medium">Quick Actions</p>
+             <div className="w-full pt-6">
+               <p className="text-[11px] uppercase tracking-widest text-muted-foreground/60 mb-4 font-medium">Quick Actions</p>
                <QuickActionChips onAction={handleQuickAction} disabled={isWorking} />
              </div>
            </div>
          ) : (
-           <div className="space-y-3">
+           <div className="space-y-4">
              {messages.map((message, index) => (
                <VibecoderMessage
                  key={message.id}
@@ -316,9 +316,9 @@ Make it look like a high-end luxury creator's store.`;
                />
              ))}
              {isWorking && (
-               <div className="flex items-center gap-3 text-primary p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl mr-4 border border-primary/20">
-                 <Loader2 className="w-4 h-4 animate-spin" />
-                 <span className="text-sm">
+               <div className="flex items-center gap-4 text-primary p-5 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 rounded-2xl mr-4 border border-primary/20">
+                 <Loader2 className="w-5 h-5 animate-spin" />
+                 <span className="text-sm font-medium">
                    {isLoading ? 'Understanding your request...' : isApplying ? 'Applying changes to your storefront...' : 'Generating assets...'}
                  </span>
                </div>
@@ -329,13 +329,13 @@ Make it look like a high-end luxury creator's store.`;
  
        {/* Quick actions when chat has messages */}
        {!isEmpty && !isWorking && (
-         <div className="px-4 py-3 border-t border-border/30 bg-muted/20">
+         <div className="px-6 py-4 border-t border-border/20 bg-muted/10">
            <QuickActionChips onAction={handleQuickAction} disabled={isWorking} />
          </div>
        )}
  
        {/* Input */}
-       <form onSubmit={handleSubmit} className="p-4 border-t border-border/50 bg-gradient-to-t from-muted/20 to-transparent">
+       <form onSubmit={handleSubmit} className="p-5 border-t border-border/30 bg-gradient-to-t from-muted/30 to-transparent">
          <div className="flex gap-2 items-center">
            {/* Plus menu with options */}
            <DropdownMenu>
@@ -344,32 +344,32 @@ Make it look like a high-end luxury creator's store.`;
                  type="button"
                  variant="ghost"
                  size="icon"
-                 className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl"
+                 className="h-11 w-11 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl"
                >
                  <Plus className="w-5 h-5" />
                </Button>
              </DropdownMenuTrigger>
-             <DropdownMenuContent align="start" className="w-56">
+             <DropdownMenuContent align="start" className="w-60">
                <DropdownMenuItem
                  onClick={() => {
                    if (hasMoreHistory) loadMoreHistory();
                    else toast.info('All history loaded');
                  }}
-                 className="gap-3 py-2.5"
+                 className="gap-3 py-3"
                >
                  <History className="w-4 h-4" />
                  History
                </DropdownMenuItem>
                <DropdownMenuItem
                  onClick={() => toast.info('Knowledge base coming soon')}
-                 className="gap-3 py-2.5"
+                 className="gap-3 py-3"
                >
                  <BookOpen className="w-4 h-4" />
                  Knowledge
                </DropdownMenuItem>
                <DropdownMenuItem
                  onClick={() => toast.info('Connectors coming soon')}
-                 className="gap-3 py-2.5"
+                 className="gap-3 py-3"
                >
                  <Link2 className="w-4 h-4" />
                  Connectors
@@ -377,14 +377,14 @@ Make it look like a high-end luxury creator's store.`;
                <DropdownMenuSeparator />
                <DropdownMenuItem
                  onClick={() => toast.info('Screenshot coming soon')}
-                 className="gap-3 py-2.5"
+                 className="gap-3 py-3"
                >
                  <Camera className="w-4 h-4" />
                  Take a screenshot
                </DropdownMenuItem>
                <DropdownMenuItem
                  onClick={() => onShowAssetTray?.()}
-                 className="gap-3 py-2.5"
+                 className="gap-3 py-3"
                >
                  <Paperclip className="w-4 h-4" />
                  Attach
@@ -398,16 +398,41 @@ Make it look like a high-end luxury creator's store.`;
              onChange={(e) => setInput(e.target.value)}
              placeholder="Describe your vision..."
              disabled={isWorking}
-             className="flex-1 h-10 bg-background/50 border-border/50 focus:border-primary/50 rounded-xl"
+             className="flex-1 h-11 bg-background/80 border-border/40 focus:border-primary/50 rounded-xl text-sm placeholder:text-muted-foreground/50"
            />
+           
+           {/* Plan button */}
+           <Button
+             type="button"
+             variant="ghost"
+             size="sm"
+             onClick={() => toast.info('Plan mode coming soon')}
+             className="h-11 px-3 text-muted-foreground hover:text-foreground gap-1.5 shrink-0"
+           >
+             <FileText className="w-4 h-4" />
+             <span className="text-xs font-medium">Plan</span>
+           </Button>
+ 
+           {/* Microphone button */}
+           <Button
+             type="button"
+             variant="ghost"
+             size="icon"
+             onClick={() => toast.info('Voice input coming soon')}
+             className="h-11 w-11 shrink-0 text-muted-foreground hover:text-foreground rounded-xl"
+           >
+             <Mic className="w-4 h-4" />
+           </Button>
+ 
+           {/* Send / Stop button */}
            <Button 
              type="submit" 
              disabled={!input.trim() || isWorking} 
              size="icon"
-             className="h-10 w-10 shrink-0 rounded-xl bg-primary hover:bg-primary/90 shadow-md shadow-primary/20"
+             className="h-11 w-11 shrink-0 rounded-xl bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 transition-all"
            >
              {isWorking ? (
-               <Loader2 className="w-4 h-4 animate-spin" />
+               <Square className="w-4 h-4 fill-current" />
              ) : (
                <Send className="w-4 h-4" />
              )}
