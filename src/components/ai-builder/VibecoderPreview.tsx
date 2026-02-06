@@ -17,6 +17,7 @@ interface VibecoderPreviewProps {
   isStreaming?: boolean;
   onError?: (error: string) => void;
   viewMode?: ViewMode;
+  onReady?: () => void; // Called when Sandpack finishes initial bundle
 }
 
 // Nuclear CSS fix - forces all Sandpack internal wrappers to fill height
@@ -190,14 +191,33 @@ function ErrorDetector({ onError }: { onError?: (error: string) => void }) {
   return null;
 }
 
+// Ready detector - fires onReady when Sandpack finishes bundling
+function ReadyDetector({ onReady }: { onReady?: () => void }) {
+  const { sandpack } = useSandpack();
+  const hasCalledReady = useRef(false);
+  
+  useEffect(() => {
+    // Sandpack status: 'initial' | 'idle' | 'running'
+    // 'idle' means bundling is complete
+    if (sandpack.status === 'idle' && !hasCalledReady.current) {
+      hasCalledReady.current = true;
+      onReady?.();
+    }
+  }, [sandpack.status, onReady]);
+  
+  return null;
+}
+
 // Memoized Sandpack component to prevent unnecessary re-renders during streaming
 const SandpackRenderer = memo(function SandpackRenderer({ 
   code, 
   onError,
+  onReady,
   viewMode = 'preview',
 }: { 
   code: string; 
   onError?: (error: string) => void;
+  onReady?: () => void;
   viewMode?: ViewMode;
 }) {
   // Wrap the code in proper structure, including the standard library
@@ -248,6 +268,7 @@ root.render(<App />);`,
         }}
       >
         <ErrorDetector onError={onError} />
+        <ReadyDetector onReady={onReady} />
         <div className="h-full w-full flex-1 flex flex-col" style={{ height: '100%' }}>
           {viewMode === 'preview' || viewMode === 'image' || viewMode === 'video' ? (
             <SandpackPreviewComponent 
@@ -271,7 +292,7 @@ root.render(<App />);`,
   );
 });
 
-export function VibecoderPreview({ code, isStreaming, onError, viewMode = 'preview' }: VibecoderPreviewProps) {
+export function VibecoderPreview({ code, isStreaming, onError, onReady, viewMode = 'preview' }: VibecoderPreviewProps) {
   const [loadingStep, setLoadingStep] = useState(0);
 
   // Cycle through the premium build steps while streaming
@@ -296,7 +317,7 @@ export function VibecoderPreview({ code, isStreaming, onError, viewMode = 'previ
 
       {/* Sandpack preview/code - Always rendered, but hidden behind overlay during build */}
       <div className="h-full w-full flex-1 min-h-0">
-        <SandpackRenderer code={code} onError={onError} viewMode={viewMode} />
+        <SandpackRenderer code={code} onError={onError} onReady={onReady} viewMode={viewMode} />
       </div>
     </div>
   );

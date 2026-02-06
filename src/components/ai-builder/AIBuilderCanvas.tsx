@@ -44,6 +44,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // STRICT LOADING: Verify project exists before rendering preview
   const [isVerifyingProject, setIsVerifyingProject] = useState(false);
   
+  // Canvas ready state - waits for Sandpack to finish initial bundle
+  const [isCanvasReady, setIsCanvasReady] = useState(false);
   // View mode state (Preview vs Code vs Image vs Video)
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
@@ -287,6 +289,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
   // SCORCHED EARTH: Verify project exists on switch & force reset if zombie detected
   useEffect(() => {
+    // Reset canvas ready state when project changes to re-trigger Sandpack ready detection
+    setIsCanvasReady(false);
+
     async function verifyAndLoadProject() {
       // No project selected - force a true blank slate (prevents zombie UI from sticking around)
       if (!activeProjectId) {
@@ -676,12 +681,15 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   }, [viewMode, currentVideoAsset, currentImageAsset]);
 
 
-  // Show premium loading screen until EVERYTHING is ready:
+  // Show premium loading screen until data is ready:
   // - Initial profile/layout data loaded
   // - Projects list loaded
   // - Active project verified
   // - Messages/chat history loaded
-  if (loading || projectsLoading || isVerifyingProject || messagesLoading) {
+  // Note: Canvas (Sandpack) readiness is handled via overlay in the main render
+  const isDataLoading = loading || projectsLoading || isVerifyingProject || messagesLoading;
+  
+  if (isDataLoading) {
     return <PremiumLoadingScreen />;
   }
 
@@ -805,7 +813,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               />
             ) : (
               /* Live Preview: Sandpack iframe - always rendered with DEFAULT_CODE when no project */
-              <div className={`flex-1 min-h-0 ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}>
+              <div className={`flex-1 min-h-0 relative ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}>
                 <div
                   className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'}`}
                 >
@@ -818,12 +826,23 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       code={code}
                       isStreaming={isStreaming}
                       viewMode={viewMode}
+                      onReady={() => setIsCanvasReady(true)}
                       onError={(error) => {
                         console.warn('[VibecoderPreview] Sandpack error detected:', error);
                       }}
                     />
                   </PreviewErrorBoundary>
                 </div>
+                
+                {/* Canvas loading overlay - shows until Sandpack is ready */}
+                {!isCanvasReady && (
+                  <div className="absolute inset-0 z-30 bg-background flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading canvas...</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
