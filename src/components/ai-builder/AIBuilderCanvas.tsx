@@ -55,6 +55,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Hard refresh state for fixing white screen of death
   const [refreshKey, setRefreshKey] = useState(0);
   
+  // Page navigation state for storefront preview
+  const [previewPath, setPreviewPath] = useState("/");
+  
   // Handle model change with auto-tab switching
   const handleModelChange = useCallback((model: AIModel) => {
     setActiveModel(model);
@@ -534,6 +537,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         isPublishing={publishing}
         isEmpty={isEmpty}
         username={username}
+        currentPath={previewPath}
+        onNavigate={setPreviewPath}
         avatarUrl={userAvatarUrl}
         userCredits={userCredits}
         subscriptionTier={subscriptionTier}

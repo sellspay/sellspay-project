@@ -21,6 +21,9 @@ interface VibecoderHeaderProps {
   isPublishing: boolean;
   isEmpty: boolean;
   username?: string | null;
+  // Page navigation props
+  currentPath?: string;
+  onNavigate?: (path: string) => void;
   // Profile menu props
   avatarUrl?: string | null;
   userCredits?: number;
@@ -71,6 +74,8 @@ export function VibecoderHeader({
   isPublishing,
   isEmpty,
   username,
+  currentPath = "/",
+  onNavigate,
   avatarUrl,
   userCredits = 0,
   subscriptionTier,
@@ -173,7 +178,11 @@ export function VibecoderHeader({
       <div className="flex items-center gap-3">
         {/* Page Navigator */}
         <div className="hidden lg:block">
-          <PageNavigator onRefresh={onRefresh} />
+          <PageNavigator 
+            activePage={currentPath} 
+            onNavigate={onNavigate} 
+            onRefresh={onRefresh} 
+          />
         </div>
 
         {/* View Live Button */}
