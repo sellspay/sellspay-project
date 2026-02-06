@@ -118,10 +118,11 @@ export function useVibecoderProjects() {
   }, [user]);
 
   // Auto-create project if needed (called when user sends first message with no active project)
-  const ensureProject = useCallback(async (): Promise<string | null> => {
+  // Accepts an optional name derived from the first prompt for smart project naming
+  const ensureProject = useCallback(async (promptBasedName?: string): Promise<string | null> => {
     if (activeProjectId) return activeProjectId;
     
-    const newProject = await createProject();
+    const newProject = await createProject(promptBasedName);
     return newProject?.id ?? null;
   }, [activeProjectId, createProject]);
 
