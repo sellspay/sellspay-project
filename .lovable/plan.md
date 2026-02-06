@@ -1,199 +1,172 @@
 
-
-# Profile Menu & Dynamic Paywall Button Implementation
+# Three-Step UI Enhancement Plan
 
 ## Overview
 
-This plan implements two key UX enhancements for the AI Builder:
+This plan implements three key improvements to the AI Builder:
 
-1. **Profile Menu** - A polished avatar dropdown in the header next to Publish, showing credit balance, profile links, and settings
-2. **Dynamic Paywall Button** - Transform the send button into an "Upgrade/Top Up" CTA when users can't afford the selected model
+1. **PageNavigator Component** - Replace the static URL bar with a functional page selector dropdown
+2. **TextArea Max Height Fix** - Enforce a strict 6-line limit (~160px) with proper scroll behavior  
+3. **Real-Time Speech Transcription** - Add `interimResults` to show text while speaking (instead of waiting for silence)
 
 ---
 
-## Part 1: ProfileMenu Component (NEW)
+## Step 1: PageNavigator Component
 
-### File: `src/components/ai-builder/ProfileMenu.tsx`
+### New File: `src/components/ai-builder/PageNavigator.tsx`
 
-Create a new dropdown component with:
+Create a dropdown component that replaces the static `/ai-builder` URL pill:
 
-**Trigger Element:**
-- 36x36 rounded avatar (image or initials fallback)
-- Ring effect on hover/focus
-- Active state with violet ring
-
-**Dropdown Content (Portal-based for z-index safety):**
-```text
-┌─────────────────────────────────────┐
-│  [Avatar] Username                  │
-│           Pro Member (tier badge)   │
-├─────────────────────────────────────┤
-│  ┌─────────────────────────────────┐│
-│  │ ✨  Balance                     ││
-│  │     2,450 Credits    [Top Up]  ││
-│  └─────────────────────────────────┘│
-├─────────────────────────────────────┤
-│  👤 My Profile          →          │
-│  ⚙️ Settings            →          │
-│  💳 Billing             →          │
-├─────────────────────────────────────┤
-│  🚪 Sign Out                        │
-└─────────────────────────────────────┘
-```
+**Features:**
+- Green "Live" indicator dot
+- Shows current page path (e.g., "Home", "/products")
+- Dropdown with all site pages (Home, Products, Login, Contact)
+- "Create New Page" quick action at bottom
+- Click-outside to close behavior
 
 **Props:**
 ```typescript
-interface ProfileMenuProps {
-  avatarUrl?: string | null;
-  username?: string | null;
-  userCredits: number;
-  onSignOut: () => void;
+interface PageNavigatorProps {
+  activePage?: string;
+  onPageChange?: (pageId: string) => void;
 }
 ```
 
-**Technical Details:**
-- Use React Portal to escape parent z-index/overflow constraints
-- Click-outside handler to close menu
-- Navigate using `useNavigate()` for profile/settings/billing links
+**Mock Pages (for UI demo):**
+```text
+┌──────────────────────────────────────┐
+│  ● Home                        ▼     │  ← Trigger
+└──────────────────────────────────────┘
+           │
+           ▼
+┌──────────────────────────────────────┐
+│  Site Pages                          │
+├──────────────────────────────────────┤
+│  🏠 Home                         ✓   │
+│  🛍️ Products                         │
+│  👤 Login                            │
+│  ✉️ Contact                          │
+├──────────────────────────────────────┤
+│  + Create New Page                   │
+└──────────────────────────────────────┘
+```
 
----
+### Modify: `src/components/ai-builder/VibecoderHeader.tsx`
 
-## Part 2: Header Integration
+**Changes to LEFT section:**
+- Remove the project selector button (lines 98-107)
+- Remove the separator line (line 96)
+- Keep only the "Exit" button
 
-### File: `src/components/ai-builder/VibecoderHeader.tsx`
+**Changes to RIGHT section:**
+- Replace the static Address Bar (lines 194-204) with `<PageNavigator />`
+- Keep the Refresh button functionality within PageNavigator
 
-**Changes:**
-1. Add new prop: `avatarUrl?: string | null`
-2. Add new prop: `userCredits: number`
-3. Add new prop: `onSignOut: () => void`
-4. Import `ProfileMenu` component
-5. Add vertical divider after Publish button
-6. Place `<ProfileMenu />` at the end of RIGHT section
+**Before:**
+```text
+[ ← Exit ] | [ 🟣 Anime Store ▼ ] [Live]     [Preview|Code|Image|Video]     [●/ai-builder ↻] [Publish] | [👤]
+```
 
-**Updated RIGHT section:**
-```tsx
-{/* RIGHT: Actions */}
-<div className="flex items-center gap-3">
-  {/* Address Bar */}
-  ...
-  
-  {/* View Live Button */}
-  ...
-
-  {/* Publish Button */}
-  <Button ...>Publish</Button>
-
-  {/* VISUAL DIVIDER */}
-  <div className="w-px h-6 bg-zinc-800" />
-
-  {/* PROFILE MENU */}
-  <ProfileMenu 
-    avatarUrl={avatarUrl}
-    username={username}
-    userCredits={userCredits}
-    onSignOut={onSignOut}
-  />
-</div>
+**After:**
+```text
+[ ← Exit ]                                   [Preview|Code|Image|Video]     [● Home ▼ ↻] [Publish] | [👤]
 ```
 
 ---
 
-## Part 3: AIBuilderCanvas State Integration
+## Step 2: TextArea Max Height Fix
 
-### File: `src/components/ai-builder/AIBuilderCanvas.tsx`
+### Modify: `src/components/ai-builder/ChatInputBar.tsx`
 
-**Changes:**
-1. Import `useUserCredits` hook (already imported in VibecoderChat)
-2. Fetch user profile data for avatar URL
-3. Pass credits and avatar to `VibecoderHeader`
-4. Add sign-out handler
+**Current Issue:** 
+The textarea auto-resize logic caps at 200px but doesn't enforce scrollbar behavior precisely.
 
-**New State:**
+**Solution:**
+Update the `useEffect` resize handler (lines 317-323) to:
+
+1. Set `maxHeight` constant to `160px` (~6 lines)
+2. Dynamically toggle `overflowY` between `hidden` and `auto` based on content
+3. Ensure `minHeight` stays at 36-44px for single-line appearance
+
+**Updated Logic:**
 ```typescript
-const { credits: userCredits } = useUserCredits();
-const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
-
-// In loadData effect, also fetch avatar
-const profileResp = await supabase
-  .from('profiles')
-  .select('username, avatar_url')
-  .eq('id', profileId)
-  .maybeSingle();
-
-if (profileResp.data?.avatar_url) {
-  setUserAvatarUrl(profileResp.data.avatar_url);
-}
+useEffect(() => {
+  const textarea = textareaRef.current;
+  if (textarea) {
+    // Reset to measure true scrollHeight
+    textarea.style.height = 'auto';
+    
+    const MAX_HEIGHT = 160; // ~6 lines
+    const newHeight = Math.min(textarea.scrollHeight, MAX_HEIGHT);
+    textarea.style.height = `${newHeight}px`;
+    
+    // Enable scroll only when hitting the limit
+    textarea.style.overflowY = textarea.scrollHeight > MAX_HEIGHT ? 'auto' : 'hidden';
+  }
+}, [value]);
 ```
 
-**Sign-out Handler:**
-```typescript
-const handleSignOut = async () => {
-  await supabase.auth.signOut();
-  navigate('/login');
-};
-```
+**CSS Changes to textarea (line 625-630):**
+- Change `max-h-[200px]` to `max-h-[160px]`
+- Add `scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent`
 
 ---
 
-## Part 4: Dynamic Paywall Button
+## Step 3: Real-Time Speech Transcription
 
-### File: `src/components/ai-builder/ChatInputBar.tsx`
+### Modify: `src/components/ai-builder/ChatInputBar.tsx`
 
-**Changes to Send Button Logic:**
+**Current Issue:**
+The speech recognition already has `interimResults: true` (line 272), but the `onresult` handler only appends `finalTranscript` (lines 289-291). It ignores `interimTranscript`, causing the delay.
 
-1. Add new prop: `onOpenBilling?: () => void`
-2. Modify `handleSubmit` to intercept when `!canAfford`
-3. Transform button appearance when user can't afford selected model
+**Solution:**
+Track interim text separately and show it live in the input while speaking:
 
-**New Button Behavior:**
+1. Add `promptBeforeSpeech` ref to remember text before mic started
+2. Track both `finalTranscript` and `interimTranscript` in `onresult`
+3. Update the input value with: `baseText + finalTranscript + interimTranscript`
 
-| State | Appearance | Action |
-|-------|------------|--------|
-| Empty input | Gray arrow (disabled) | None |
-| Has input + can afford | Colored arrow (violet/amber/pink) | Submit |
-| Has input + cannot afford | Orange "Top Up" with Lock icon | Opens billing modal |
-| Generating | Red square (stop) | Cancel |
-
-**Updated Button Code:**
-```tsx
-{!canAfford(selectedModel) && (value.trim() || attachments.length > 0) ? (
-  // PAYWALL GATE - Transform to upgrade CTA
-  <button
-    onClick={() => onOpenBilling?.()}
-    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 
-               text-white shadow-lg shadow-orange-900/30 flex items-center gap-2 
-               font-bold text-xs animate-pulse"
-  >
-    <Lock size={14} />
-    <span>Top Up</span>
-  </button>
-) : (
-  // Normal send/stop button
-  <button ... current logic ... />
-)}
-```
-
-**Visual Warning:**
-- Add red border glow to input container when `!canAfford`
-- Show small warning text below input: "Insufficient credits for {model} ({cost}c)"
-
----
-
-## Part 5: Billing Flow Connection
-
-### File: `src/components/ai-builder/VibecoderChat.tsx`
-
-**Changes:**
-1. Add state: `const [showBillingModal, setShowBillingModal] = useState(false)`
-2. Pass `onOpenBilling` prop to ChatInputBar
-3. Import/use existing `UpgradeModal` component (if exists) or navigate to `/pricing`
-
-**Alternative:** Navigate directly to `/pricing` page:
+**Updated `onresult` Handler:**
 ```typescript
-const handleOpenBilling = () => {
-  window.open('/pricing', '_blank');
-};
+// Add ref before toggleSpeechRecognition
+const promptBeforeSpeechRef = useRef("");
+
+const toggleSpeechRecognition = useCallback(() => {
+  // ... existing SpeechRecognition checks ...
+
+  // Save current text before starting
+  promptBeforeSpeechRef.current = value;
+
+  recognition.onresult = (event: SpeechRecognitionEvent) => {
+    let finalTranscript = '';
+    let interimTranscript = '';
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript;
+      } else {
+        interimTranscript += transcript;
+      }
+    }
+
+    // UPDATE IMMEDIATELY with both final AND interim text
+    const spacing = promptBeforeSpeechRef.current ? ' ' : '';
+    onChange(promptBeforeSpeechRef.current + spacing + finalTranscript + interimTranscript);
+    
+    // Update base text when final transcript is confirmed
+    if (finalTranscript) {
+      promptBeforeSpeechRef.current += spacing + finalTranscript;
+    }
+  };
+
+  // ... rest of recognition setup ...
+}, [isListening, value, onChange]);
 ```
+
+**Visual Feedback Enhancements:**
+- Placeholder changes to "Listening..." with pulse animation when active
+- Input text styled with subtle violet tint during transcription
 
 ---
 
@@ -201,46 +174,27 @@ const handleOpenBilling = () => {
 
 | File | Action | Changes |
 |------|--------|---------|
-| `src/components/ai-builder/ProfileMenu.tsx` | CREATE | New dropdown component with avatar, credits, and navigation |
-| `src/components/ai-builder/VibecoderHeader.tsx` | MODIFY | Add ProfileMenu after Publish button with divider |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | MODIFY | Pass avatar and credits to header, add sign-out handler |
-| `src/components/ai-builder/ChatInputBar.tsx` | MODIFY | Add paywall logic to send button, warning states |
-| `src/components/ai-builder/VibecoderChat.tsx` | MODIFY | Add onOpenBilling handler and pass to ChatInputBar |
-| `src/components/ai-builder/index.ts` | MODIFY | Export ProfileMenu |
+| `src/components/ai-builder/PageNavigator.tsx` | CREATE | New page selector dropdown component |
+| `src/components/ai-builder/VibecoderHeader.tsx` | MODIFY | Remove project selector from left, add PageNavigator to right |
+| `src/components/ai-builder/ChatInputBar.tsx` | MODIFY | Fix 6-line max height, add real-time speech transcription |
+| `src/components/ai-builder/index.ts` | MODIFY | Export PageNavigator |
 
 ---
 
-## User Flow Examples
+## Expected Results
 
-### Profile Menu Flow:
-1. User clicks avatar in top-right corner
-2. Dropdown appears with glassmorphism styling
-3. Shows "Balance: 2,450 Credits" with Top Up button
-4. Links to Profile, Settings, Billing
-5. Sign Out at bottom
+### Step 1 - PageNavigator:
+- Clean left side with just "Exit" button
+- Functional page dropdown on the right showing "Home" with green dot
+- Clicking reveals page list with checkmark on active page
+- Refresh button integrated into the navigator
 
-### Paywall Gate Flow:
-1. User has 5 credits, selects "Flux 1.1 Pro" (costs 10c)
-2. Input border glows red
-3. Send button transforms: Gray Arrow → Orange "🔒 Top Up"
-4. Small red text appears: "Insufficient credits for Flux 1.1 Pro (10c)"
-5. Clicking "Top Up" opens pricing page in new tab (or billing modal)
+### Step 2 - TextArea Fix:
+- Textarea grows smoothly for lines 1-6
+- At line 7+, scrollbar appears and height locks at 160px
+- No layout jumping or jittering
 
----
-
-## Technical Considerations
-
-### Portal Usage (ProfileMenu)
-- Menu rendered via `createPortal(menu, document.body)` to escape header overflow
-- Position calculated using `getBoundingClientRect()` 
-- Click-outside listener to close
-
-### Credits Display
-- Show balance formatted with `toLocaleString()` (e.g., "2,450")
-- Red color when credits < 100
-- "Low Balance" badge when credits < selected model cost
-
-### Avatar Fallback
-- If no `avatar_url`, show initials (first 2 chars of username)
-- Gradient background for initials
-
+### Step 3 - Real-Time Speech:
+- Words appear INSTANTLY as you speak (no waiting for pauses)
+- If you typed "Create a button and " then click mic and say "make it blue", result is "Create a button and make it blue"
+- Mic icon pulses red with waveform animation while active
