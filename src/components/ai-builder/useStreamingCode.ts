@@ -93,22 +93,65 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let accumulated = '';
+
+      // Keep the raw stream intact (summary + logs + markers + code)
+      let rawStream = '';
       let mode: StreamMode = 'detecting';
-      
+
       // Real-time transparency: track logs as they stream in
       const seenLogs = new Set<string>();
       const accumulatedLogs: string[] = [];
+
+      // Marker that separates explanation/logs from the actual TSX payload
+      const BEGIN_CODE_MARKER = '/// BEGIN_CODE ///';
+
+      const extractCodeFromRaw = (raw: string): string => {
+        // Prefer explicit begin marker; fallback to type marker
+        const beginIdx = raw.indexOf(BEGIN_CODE_MARKER);
+        const typeIdx = raw.indexOf('/// TYPE: CODE ///');
+
+        let codePart = '';
+        if (beginIdx >= 0) {
+          codePart = raw.substring(beginIdx + BEGIN_CODE_MARKER.length);
+        } else if (typeIdx >= 0) {
+          // If backend hasn't adopted BEGIN_CODE yet, best-effort fallback:
+          // take everything after TYPE marker (may include explanation, but we clean fences/logs)
+          codePart = raw.substring(typeIdx + '/// TYPE: CODE ///'.length);
+        } else {
+          codePart = raw;
+        }
+
+        return codePart
+          .replace(LOG_PATTERN, '')
+          .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
+          .replace(/\n?```\s*$/i, '')
+          .trim();
+      };
+
+      const extractSummaryFromRaw = (raw: string): string => {
+        const typeIdx = raw.indexOf('/// TYPE: CODE ///');
+        if (typeIdx < 0) return '';
+
+        const beginIdx = raw.indexOf(BEGIN_CODE_MARKER);
+        if (beginIdx < 0) return '';
+
+        // Everything between TYPE marker and BEGIN_CODE is the markdown explanation
+        const afterType = raw.substring(typeIdx + '/// TYPE: CODE ///'.length, beginIdx);
+        return afterType
+          .replace(LOG_PATTERN, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
+      };
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        accumulated += chunk;
+        rawStream += chunk;
 
         // Extract [LOG: ...] tags for real-time transparency
-        const logMatches = accumulated.matchAll(LOG_PATTERN);
+        const logMatches = rawStream.matchAll(LOG_PATTERN);
         for (const match of logMatches) {
           const logText = match[1].trim();
           if (!seenLogs.has(logText)) {
@@ -118,22 +161,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           }
         }
 
-        // Intent Router: Detect response type in first ~100 chars
-        if (mode === 'detecting' && accumulated.length > 20) {
-          if (accumulated.includes('/// TYPE: CHAT ///')) {
+        // Intent Router: detect response type as soon as the type flag appears
+        if (mode === 'detecting') {
+          if (rawStream.includes('/// TYPE: CHAT ///')) {
             mode = 'chat';
-            accumulated = accumulated.replace('/// TYPE: CHAT ///', '').trim();
             // Stop streaming animation for chat responses
             setState(prev => ({ ...prev, isStreaming: false }));
-          } else if (accumulated.includes('/// TYPE: CODE ///')) {
+          } else if (rawStream.includes('/// TYPE: CODE ///')) {
             mode = 'code';
-            // Clean the type flag and all LOG tags from the code portion
-            accumulated = accumulated
-              .replace('/// TYPE: CODE ///', '')
-              .replace(LOG_PATTERN, '')
-              .trim();
-          } else if (accumulated.length > 100) {
-            // Fallback: assume code if no flag found after 100 chars
+          } else if (rawStream.length > 120) {
+            // Fallback: assume code if no flag appears early
             mode = 'code';
           }
         }
@@ -145,14 +182,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         }
 
         if (mode === 'code') {
-          // Clean up markdown code fences and LOG tags if the LLM includes them
-          let cleanCode = accumulated
-            .replace(LOG_PATTERN, '') // Remove any LOG tags
-            .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
-            .replace(/\n?```\s*$/i, '')
-            .trim();
-
-          // Update state with cleaned code
+          // Update state with cleaned code portion only
+          const cleanCode = extractCodeFromRaw(rawStream);
           setState(prev => ({ ...prev, code: cleanCode }));
           options.onChunk?.(cleanCode);
         }
@@ -161,50 +192,25 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       // Final processing based on mode
       if (mode === 'chat') {
         // Return chat response
-        const chatText = accumulated.trim();
+        const chatText = rawStream.replace('/// TYPE: CHAT ///', '').trim();
         setState(prev => ({ ...prev, isStreaming: false }));
         options.onChatResponse?.(chatText);
         return chatText;
       }
 
-      // Extract the AI's natural language summary from the stream
-      // Expected format: 
-      //   Summary text here...
-      //   ✅ **Section**: details...
-      //   [LOG: Action 1...]
-      //   [LOG: Action 2...]
-      //   /// TYPE: CODE ///
-      //   export default function App() { ... }
-      //
-      // We extract everything BEFORE "/// TYPE: CODE ///" and strip LOG tags
-      const extractAISummary = (rawStream: string): string => {
-        // Find the TYPE: CODE marker
-        const codeMarkerIndex = rawStream.indexOf('/// TYPE: CODE ///');
-        if (codeMarkerIndex <= 0) return '';
-        
-        // Get everything before the type marker
-        let summaryPart = rawStream.substring(0, codeMarkerIndex).trim();
-        
-        // Remove LOG tags from the summary
-        summaryPart = summaryPart.replace(LOG_PATTERN, '').trim();
-        
-        // Clean up excessive whitespace
-        summaryPart = summaryPart.replace(/\n{3,}/g, '\n\n').trim();
-        
-        return summaryPart;
-      };
-
-      const aiSummary = extractAISummary(accumulated);
+      // Extract the AI's natural language summary (markdown explanation)
+      // Expected backend format:
+      // /// TYPE: CODE ///
+      // <markdown summary>
+      // [LOG: ...]
+      // /// BEGIN_CODE ///
+      // <tsx code>
+      const aiSummary = extractSummaryFromRaw(rawStream);
       if (aiSummary) {
         options.onSummary?.(aiSummary);
       }
 
-      // Final cleanup for code mode - strip LOG tags and markdown fences
-      const finalCode = accumulated
-        .replace(LOG_PATTERN, '') // Remove any remaining LOG tags
-        .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
-        .replace(/\n?```\s*$/i, '')
-        .trim();
+      const finalCode = extractCodeFromRaw(rawStream);
 
       // 🛑 RACE CONDITION GUARD: Check if user switched projects during generation
       if (options.shouldAbort?.()) {
