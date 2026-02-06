@@ -976,17 +976,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     );
   }
 
-  // Transitioning between projects - show lightweight loader (not full premium screen)
-  if (isProjectTransitioning) {
-    return (
-      <div className="h-screen w-full bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading project...</p>
-        </div>
-      </div>
-    );
-  }
+  // NOTE: isProjectTransitioning is now handled INSIDE the content area below,
+  // NOT here. This ensures the sidebar stays visible during project switches.
 
   // Show onboarding modal for first-time users
   if (showOnboarding) {
@@ -1150,6 +1141,15 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         />
 
         {/* Split View Content - Chat + Preview always visible */}
+        {/* 🛑 GATEKEEPER MOVED HERE: Show loader INSIDE content area, not full screen */}
+        {isProjectTransitioning ? (
+          <div className="flex-1 flex items-center justify-center bg-muted/30">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-muted-foreground">Loading project...</p>
+            </div>
+          </div>
+        ) : (
         <div className="flex-1 flex min-h-0 overflow-hidden">
           {/* LEFT PANEL: Preview/Studio (seamless) */}
           <div
@@ -1262,6 +1262,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Placement Prompt Modal */}
