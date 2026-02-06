@@ -291,12 +291,22 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     setState(prev => ({ ...prev, code }));
   }, []);
 
+  // Force-reset streaming state (safety valve for stuck states)
+  const forceResetStreaming = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setState(prev => ({ ...prev, isStreaming: false, error: null }));
+  }, []);
+
   return {
     ...state,
     streamCode,
     cancelStream,
     resetCode,
     setCode,
+    forceResetStreaming,
     DEFAULT_CODE,
   };
 }

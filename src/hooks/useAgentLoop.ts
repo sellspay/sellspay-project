@@ -233,7 +233,11 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
     console.log("🧹 [AgentLoop] Unmounting Project. Wiping hook memory.");
     abortRef.current = true;
     streamStartedRef.current = false;
-    setState(createFreshState());
+    // Force isRunning to false to prevent UI getting stuck
+    setState({
+      ...createFreshState(),
+      isRunning: false,
+    });
   }, []);
 
   /**
