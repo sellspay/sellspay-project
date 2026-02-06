@@ -364,6 +364,7 @@ serve(async (req: Request) => {
         let attempts = 0;
         const maxAttempts = 3;
         let finalCode = '';
+        let finalSummary = '';
         let healingContext: { 
           errorType: string; 
           errorMessage: string; 
@@ -411,25 +412,26 @@ serve(async (req: Request) => {
           
           // Extract code from streaming response
           const builderContent = await extractStreamedCode(builderResponse);
-          
+
           // Extract summary FIRST before stripping markers
           const summary = extractSummaryFromResponse(builderContent);
           const generatedCode = extractCodeFromResponse(builderContent);
-          
+
           if (!generatedCode || generatedCode.length < 50) {
-            sendEvent(controller, { 
-              type: 'error', 
-              data: { message: "Builder generated empty or invalid code" } 
+            sendEvent(controller, {
+              type: 'error',
+              data: { message: "Builder generated empty or invalid code" },
             }, streamState);
             closeStream();
             return;
           }
-          
-          // Store summary for final delivery
-          let builderSummary = summary || "Applied changes to your storefront.";
-          
+
+          // Store summary for final delivery (persist across heal attempts)
+          const builderSummary = (summary || "Applied changes to your storefront.").trim();
+          if (builderSummary) finalSummary = builderSummary;
+
           sendEvent(controller, { type: 'log', data: `Generated ${generatedCode.split('\n').length} lines of code` }, streamState);
-          
+
           // ───────────────────────────────────────────────────────────
           // SHADOW RENDER STAGE (New in v2.1)
           // ───────────────────────────────────────────────────────────
@@ -437,23 +439,23 @@ serve(async (req: Request) => {
           // Sandpack handles runtime validation on the client
           // ───────────────────────────────────────────────────────────
           const shadowResult = shadowRender(generatedCode); // sync, always passes
-          
+
           if (!shadowResult.success) {
-            sendEvent(controller, { 
-              type: 'log', 
-              data: `⚠️ Transpile error: ${shadowResult.error?.substring(0, 100)}` 
+            sendEvent(controller, {
+              type: 'log',
+              data: `⚠️ Transpile error: ${shadowResult.error?.substring(0, 100)}`,
             }, streamState);
-            
+
             if (attempts >= maxAttempts) {
               // Max retries reached, deliver anyway with warning
-              sendEvent(controller, { 
-                type: 'log', 
-                data: "Max retries reached - delivering code with known transpile issues" 
+              sendEvent(controller, {
+                type: 'log',
+                data: "Max retries reached - delivering code with known transpile issues",
               }, streamState);
               finalCode = generatedCode;
               break;
             }
-            
+
             // Prepare healing context for next attempt
             healingContext = {
               errorType: 'TRANSPILE_ERROR',
@@ -461,62 +463,62 @@ serve(async (req: Request) => {
               failedCode: generatedCode,
               fixSuggestion: 'Fix the syntax error in the TSX code. Check for missing imports, unclosed tags, or invalid JSX.',
             };
-            
+
             sendEvent(controller, { type: 'log', data: "Triggering self-correction..." }, streamState);
             continue; // Retry with healing context
           }
-          
+
           sendEvent(controller, { type: 'log', data: "✓ Transpilation passed" }, streamState);
-          
+
           // ───────────────────────────────────────────────────────────
           // LINTER STAGE
           // ───────────────────────────────────────────────────────────
-          sendEvent(controller, { 
-            type: 'status', 
+          sendEvent(controller, {
+            type: 'status',
             step: 'linter',
-            data: { message: "Validating code..." } 
+            data: { message: "Validating code..." },
           }, streamState);
-          
+
           sendEvent(controller, { type: 'log', data: "Running validation checks..." }, streamState);
-          
+
           const linterResponse = await callAgent('vibecoder-linter', {
             code: generatedCode,
             architectPlan,
           });
-          
-          if (!linterResponse.ok) {
-            // Linter failed - but don't block, just warn
-            sendEvent(controller, { type: 'log', data: "⚠️ Linter unavailable, proceeding with code" }, streamState);
-            finalCode = generatedCode;
-            break;
-          }
-          
+
+           if (!linterResponse.ok) {
+             // Linter failed - but don't block, just warn
+             sendEvent(controller, { type: 'log', data: "⚠️ Linter unavailable, proceeding with code" }, streamState);
+             finalCode = generatedCode;
+             break;
+           }
+
           const lintResult = await linterResponse.json();
-          
+
           if (lintResult.verdict === 'PASS') {
             sendEvent(controller, { type: 'log', data: "✓ All validation checks passed" }, streamState);
             finalCode = generatedCode;
             break;
           }
-          
+
           // ───────────────────────────────────────────────────────────
           // SELF-HEALING: Lint failed, prepare for retry
           // ───────────────────────────────────────────────────────────
-          sendEvent(controller, { 
-            type: 'log', 
-            data: `⚠️ ${lintResult.errorType}: ${lintResult.explanation}` 
+          sendEvent(controller, {
+            type: 'log',
+            data: `⚠️ ${lintResult.errorType}: ${lintResult.explanation}`,
           }, streamState);
-          
+
           if (attempts >= maxAttempts) {
             // Max retries reached, return code anyway with warning
-            sendEvent(controller, { 
-              type: 'log', 
-              data: "Max retries reached - delivering code with known issues" 
+            sendEvent(controller, {
+              type: 'log',
+              data: "Max retries reached - delivering code with known issues",
             }, streamState);
             finalCode = generatedCode;
             break;
           }
-          
+
           // Prepare healing context for next attempt - include FULL failed code + fix suggestion
           healingContext = {
             errorType: lintResult.errorType,
@@ -524,29 +526,39 @@ serve(async (req: Request) => {
             failedCode: generatedCode, // Send FULL code, not truncated
             fixSuggestion: lintResult.fixSuggestion,
           };
-          
+
           sendEvent(controller, { type: 'log', data: "Triggering self-correction..." }, streamState);
         }
 
         // ═══════════════════════════════════════════════════════════════
         // STAGE 5: DELIVER VALIDATED CODE
         // ═══════════════════════════════════════════════════════════════
-        sendEvent(controller, { 
-          type: 'code', 
-          data: { 
+        // If we ever somehow exit without a finalCode, treat it as an error (never "success" with nothing).
+        if (!finalCode || finalCode.length < 50) {
+          sendEvent(controller, {
+            type: 'error',
+            data: { message: 'Orchestrator produced no deliverable code (empty finalCode).' },
+          }, streamState);
+          closeStream();
+          return;
+        }
+
+        sendEvent(controller, {
+          type: 'code',
+          data: {
             code: finalCode,
-            summary: "Storefront generated successfully.",
-          } 
+            summary: finalSummary || 'Storefront generated successfully.',
+          },
         }, streamState);
-        
-        sendEvent(controller, { 
-          type: 'complete', 
-          data: { 
+
+        sendEvent(controller, {
+          type: 'complete',
+          data: {
             success: true,
             attempts,
             creditsUsed: actualCredits,
             complexityScore,
-          } 
+          },
         }, streamState);
         
         closeStream();
