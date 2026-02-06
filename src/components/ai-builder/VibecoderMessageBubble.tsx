@@ -68,59 +68,67 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
               <span>Thinking...</span>
             </div>
           ) : (
-            <div className="prose prose-sm prose-invert max-w-none 
-              prose-headings:text-zinc-100 prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
-              prose-p:text-zinc-300 prose-p:my-2
-              prose-strong:text-zinc-100 prose-strong:font-semibold
-              prose-ul:my-2 prose-ul:space-y-1
-              prose-li:text-zinc-300 prose-li:my-0.5
-              prose-li:marker:text-violet-500
-              prose-code:text-violet-400 prose-code:bg-zinc-800/50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono
-              prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800 prose-pre:rounded-lg
-              prose-a:text-violet-400 prose-a:no-underline hover:prose-a:underline
-              [&_ul]:list-disc [&_ul]:pl-4
-              [&_ol]:list-decimal [&_ol]:pl-4
-            ">
+            <div className="prose prose-sm prose-invert max-w-none">
               <ReactMarkdown
                 components={{
-                  // Custom checkbox rendering for ✅ style items
-                  li: ({ children, ...props }) => {
-                    const text = String(children);
-                    // Check if starts with emoji checkmarks
-                    if (text.startsWith('✅') || text.startsWith('☑') || text.startsWith('✓')) {
-                      return (
-                        <li className="flex items-start gap-2 list-none ml-0" {...props}>
-                          <span className="text-green-500 shrink-0">✓</span>
-                          <span>{text.replace(/^[✅☑✓]\s*/, '')}</span>
-                        </li>
-                      );
-                    }
-                    if (text.startsWith('⚠') || text.startsWith('⚠️')) {
-                      return (
-                        <li className="flex items-start gap-2 list-none ml-0 text-amber-400" {...props}>
-                          <span className="shrink-0">⚠</span>
-                          <span>{text.replace(/^[⚠️⚠]\s*/, '')}</span>
-                        </li>
-                      );
-                    }
-                    return <li {...props}>{children}</li>;
-                  },
-                  // Bold headers get special treatment
-                  strong: ({ children }) => (
-                    <strong className="text-zinc-100 font-semibold">{children}</strong>
+                  // Paragraphs: Nice breathing room
+                  p: ({ children, ...props }) => (
+                    <p className="mb-4 last:mb-0 leading-relaxed text-zinc-300" {...props}>
+                      {children}
+                    </p>
                   ),
-                  // Inline code for file names
+                  // Links: Violet accent
+                  a: ({ children, ...props }) => (
+                    <a className="text-violet-400 hover:text-violet-300 hover:underline transition-colors" {...props}>
+                      {children}
+                    </a>
+                  ),
+                  // Inline code: Subtle background for technical terms
                   code: ({ children, className }) => {
                     const isBlock = className?.includes('language-');
                     if (isBlock) {
                       return <code className={className}>{children}</code>;
                     }
                     return (
-                      <code className="text-violet-400 bg-zinc-800/60 px-1.5 py-0.5 rounded text-xs font-mono">
+                      <code className="bg-zinc-800/80 px-1.5 py-0.5 rounded text-xs font-mono text-violet-300 border border-zinc-700/50">
                         {children}
                       </code>
                     );
                   },
+                  // ORDERED LISTS: Clean numbered formatting with proper spacing
+                  ol: ({ children, ...props }) => (
+                    <ol className="list-decimal pl-5 space-y-4 mb-4 marker:text-zinc-400 marker:font-semibold" {...props}>
+                      {children}
+                    </ol>
+                  ),
+                  // UNORDERED LISTS: Standard bullets
+                  ul: ({ children, ...props }) => (
+                    <ul className="list-disc pl-5 space-y-2 mb-4 marker:text-zinc-500" {...props}>
+                      {children}
+                    </ul>
+                  ),
+                  // LIST ITEMS: Proper alignment and text color
+                  li: ({ children, ...props }) => (
+                    <li className="pl-1 text-zinc-300 leading-relaxed" {...props}>
+                      {children}
+                    </li>
+                  ),
+                  // BOLD: Make headers pop with white color
+                  strong: ({ children, ...props }) => (
+                    <strong className="font-semibold text-white" {...props}>
+                      {children}
+                    </strong>
+                  ),
+                  // Headers
+                  h1: ({ children, ...props }) => (
+                    <h1 className="text-lg font-bold text-zinc-100 mt-4 mb-2" {...props}>{children}</h1>
+                  ),
+                  h2: ({ children, ...props }) => (
+                    <h2 className="text-base font-semibold text-zinc-100 mt-3 mb-2" {...props}>{children}</h2>
+                  ),
+                  h3: ({ children, ...props }) => (
+                    <h3 className="text-sm font-semibold text-zinc-200 mt-2 mb-1" {...props}>{children}</h3>
+                  ),
                 }}
               >
                 {message.content || ''}
