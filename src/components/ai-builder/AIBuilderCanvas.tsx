@@ -53,6 +53,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // STRICT LOADING: Verify project exists before rendering preview
   const [isVerifyingProject, setIsVerifyingProject] = useState(false);
 
+  // CONTENT GATE: Which project has its code/chat fully mounted into the workspace.
+  // This prevents a 1-frame "flash" where the URL/activeProjectId changes but the old
+  // code/messages are still in React state.
+  const [contentProjectId, setContentProjectId] = useState<string | null>(null);
   // Prevent Sandpack's brief bundling/error flash after streaming completes
   const [isAwaitingPreviewReady, setIsAwaitingPreviewReady] = useState(false);
 
@@ -392,6 +396,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         return;
       }
       
+      // CONTENT GATE: Immediately mark workspace as "unmounted" for this route.
+      // This makes the gatekeeper block rendering on the very first render after a project switch.
+      setContentProjectId(null);
+
       // 1. IMMEDIATE UNMOUNT: Wipe React State FIRST (before any async operations)
       unmountAgentProject();
       
@@ -421,6 +429,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
       // 3. NO PROJECT: Show Hero screen with blank slate
       if (!activeProjectId) {
+        // Mark content as unmounted
+        setContentProjectId(null);
+
         // Reset code + force Sandpack remount
         resetCode();
         setResetKey(prev => prev + 1);
@@ -497,6 +508,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         // This catches edge cases where the previous generation didn't clean up
         setLiveSteps([]);
         setChatResponse(null);
+
+        // CONTENT GATE: Now it's safe to render this project.
+        setContentProjectId(activeProjectId);
       }
 
       setIsVerifyingProject(false);
@@ -954,14 +968,15 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
   // 🛑 THE GATEKEEPER 🛑
   // Prevent "flash of old content" when switching projects.
-  // If the URL says "Project B" but the agent is still locked to "Project A",
-  // or if we're actively verifying the project exists in DB, block rendering.
-  // This shows a blank screen instead of the old project bleeding through.
+  // Core rule: NEVER render the workspace with files/messages that belong to a different project.
+  // We gate on `contentProjectId` (the project whose content is actually mounted) instead of
+  // only async flags, so we also cover the 1-frame gap right after the URL/activeProjectId flips.
   const isProjectTransitioning = Boolean(
     activeProjectId && (
-      isVerifyingProject || 
+      contentProjectId !== activeProjectId ||
+      isVerifyingProject ||
       (lockedProjectId && lockedProjectId !== activeProjectId) ||
-      (messagesLoading && hasBooted) // Messages still loading after initial boot
+      (messagesLoading && hasBooted)
     )
   );
 
