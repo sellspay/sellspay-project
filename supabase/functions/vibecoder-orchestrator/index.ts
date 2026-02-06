@@ -92,9 +92,34 @@ async function shadowRender(code: string): Promise<{ success: boolean; error?: s
   }
 }
 
-function sendEvent(controller: ReadableStreamDefaultController, event: StreamEvent) {
+function tryEnqueue(controller: ReadableStreamDefaultController, chunk: Uint8Array): boolean {
+  try {
+    controller.enqueue(chunk);
+    return true;
+  } catch (err) {
+    // Most commonly: "The stream controller cannot close or enqueue" after client disconnect
+    console.log('[Orchestrator] Stream enqueue failed (client likely disconnected):', err instanceof Error ? err.message : String(err));
+    return false;
+  }
+}
+
+function sendEvent(
+  controller: ReadableStreamDefaultController,
+  event: StreamEvent,
+  state?: { closed: boolean }
+) {
+  if (state?.closed) return;
   const encoder = new TextEncoder();
-  controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+  const ok = tryEnqueue(controller, encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+  if (!ok && state) state.closed = true;
+}
+
+function sendHeartbeat(controller: ReadableStreamDefaultController, state?: { closed: boolean }) {
+  if (state?.closed) return;
+  // SSE comment line: keeps proxies from timing out idle connections
+  const encoder = new TextEncoder();
+  const ok = tryEnqueue(controller, encoder.encode(`: ping\n\n`));
+  if (!ok && state) state.closed = true;
 }
 
 async function callAgent(
@@ -189,6 +214,31 @@ serve(async (req: Request) => {
   // Create streaming response
   const stream = new ReadableStream({
     async start(controller) {
+      // Track stream state to avoid enqueue/close after disconnect
+      const streamState = { closed: false };
+
+      let heartbeat: number | undefined;
+
+      const closeStream = () => {
+        if (streamState.closed) return;
+        streamState.closed = true;
+        if (heartbeat) clearInterval(heartbeat);
+        try {
+          controller.close();
+        } catch {
+          // ignore
+        }
+      };
+
+      // If the client disconnects, stop work and stop sending events
+      const onAbort = () => {
+        closeStream();
+      };
+      req.signal?.addEventListener('abort', onAbort, { once: true });
+
+      // Heartbeat to prevent idle timeouts while agents work
+      heartbeat = setInterval(() => sendHeartbeat(controller, streamState), 15000);
+
       try {
         const { 
           prompt, 
@@ -203,8 +253,8 @@ serve(async (req: Request) => {
           sendEvent(controller, { 
             type: 'error', 
             data: { message: "Missing required fields" } 
-          });
-          controller.close();
+          }, streamState);
+          closeStream();
           return;
         }
 
@@ -251,8 +301,8 @@ serve(async (req: Request) => {
           sendEvent(controller, { 
             type: 'error', 
             data: { message: `Insufficient credits. Need ~${estimatedCredits}, have ${credits}.` } 
-          });
-          controller.close();
+          }, streamState);
+          closeStream();
           return;
         }
 
@@ -279,8 +329,8 @@ serve(async (req: Request) => {
           
           if (!architectResponse.ok) {
             const error = await architectResponse.json();
-            sendEvent(controller, { type: 'error', data: error });
-            controller.close();
+            sendEvent(controller, { type: 'error', data: error }, streamState);
+            closeStream();
             return;
           }
           
@@ -304,8 +354,8 @@ serve(async (req: Request) => {
           sendEvent(controller, { 
             type: 'error', 
             data: { message: `Insufficient credits. This request costs ${actualCredits} credits, you have ${credits}.` } 
-          });
-          controller.close();
+          }, streamState);
+          closeStream();
           return;
         }
         
@@ -322,8 +372,8 @@ serve(async (req: Request) => {
             sendEvent(controller, { 
               type: 'error', 
               data: { message: "Failed to process credits" } 
-            });
-            controller.close();
+            }, streamState);
+            closeStream();
             return;
           }
         }
@@ -376,8 +426,8 @@ serve(async (req: Request) => {
           
           if (!builderResponse.ok) {
             const error = await builderResponse.json();
-            sendEvent(controller, { type: 'error', data: error });
-            controller.close();
+            sendEvent(controller, { type: 'error', data: error }, streamState);
+            closeStream();
             return;
           }
           
@@ -389,8 +439,8 @@ serve(async (req: Request) => {
             sendEvent(controller, { 
               type: 'error', 
               data: { message: "Builder generated empty or invalid code" } 
-            });
-            controller.close();
+            }, streamState);
+            closeStream();
             return;
           }
           
@@ -506,7 +556,7 @@ serve(async (req: Request) => {
             code: finalCode,
             summary: extractSummaryFromResponse(finalCode) || "Storefront generated successfully.",
           } 
-        });
+        }, streamState);
         
         sendEvent(controller, { 
           type: 'complete', 
@@ -516,17 +566,19 @@ serve(async (req: Request) => {
             creditsUsed: actualCredits,
             complexityScore,
           } 
-        });
+        }, streamState);
         
-        controller.close();
+        closeStream();
         
       } catch (error) {
         console.error("Orchestrator error:", error);
         sendEvent(controller, { 
           type: 'error', 
           data: { message: error instanceof Error ? error.message : "Unknown error" } 
-        });
-        controller.close();
+        }, streamState);
+        closeStream();
+      } finally {
+        req.signal?.removeEventListener('abort', onAbort);
       }
     },
   });
