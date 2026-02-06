@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { 
-  User, Settings, CreditCard, LogOut, Sparkles, ChevronRight 
+  User, Settings, CreditCard, LogOut, ChevronRight 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -93,10 +93,6 @@ export function ProfileMenu({
     navigate(path);
   };
 
-  const handleTopUp = () => {
-    setIsOpen(false);
-    window.open('/pricing', '_blank');
-  };
 
   const handleSignOut = () => {
     setIsOpen(false);
@@ -181,31 +177,6 @@ export function ProfileMenu({
               </div>
             </div>
 
-            {/* Credit Balance Card */}
-            <div className="mt-4 p-3 bg-zinc-900 border border-zinc-800 rounded-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                    <Sparkles size={12} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Balance</p>
-                    <p className={cn(
-                      "text-sm font-bold",
-                      userCredits < 100 ? "text-red-400" : "text-white"
-                    )}>
-                      {userCredits.toLocaleString()} Credits
-                    </p>
-                  </div>
-                </div>
-                <button 
-                  onClick={handleTopUp}
-                  className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg transition-colors"
-                >
-                  Top Up
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Navigation Links */}

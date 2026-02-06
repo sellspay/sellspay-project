@@ -637,15 +637,6 @@ export function ChatInputBar({
             <ChevronDown size={10} className={cn("transition-transform", showModelMenu && "rotate-180")} />
           </button>
 
-          {/* Credits Display */}
-          <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-            <Coins size={11} className="text-amber-400" />
-            <span className={cn(
-              userCredits < 100 && "text-red-400"
-            )}>
-              {userCredits.toLocaleString()}
-            </span>
-          </div>
         </div>
 
         <div className="flex items-end gap-2 p-2">
