@@ -244,9 +244,9 @@ export function ChatInputBar({
               <ChevronDown size={10} className={cn("transition-transform", showModelMenu && "rotate-180")} />
             </button>
 
-            {/* MODEL DROPDOWN MATRIX */}
+            {/* MODEL DROPDOWN MATRIX - Pops UP */}
             {showModelMenu && (
-              <div className="absolute top-8 left-0 w-64 bg-zinc-900/98 backdrop-blur-xl border border-zinc-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-50 animate-in fade-in-0 zoom-in-95 duration-150">
+              <div className="absolute bottom-full mb-2 left-0 w-64 bg-zinc-900/98 backdrop-blur-xl border border-zinc-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-50 animate-in fade-in-0 zoom-in-95 duration-150 origin-bottom-left">
                 <div className="p-2 max-h-[400px] overflow-y-auto">
                   {/* Coding Models */}
                   <div className="px-2 py-1.5 mb-1">
@@ -328,9 +328,9 @@ export function ChatInputBar({
               <Plus size={18} className={cn("transition-transform", showMenu && "rotate-45")} />
             </button>
 
-            {/* Popup menu */}
+            {/* Popup menu - Pops UP */}
             {showMenu && (
-              <div className="absolute bottom-full left-0 mb-2 z-50 w-56 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-xl shadow-2xl shadow-black/50 p-1.5 animate-in fade-in-0 zoom-in-95 duration-150">
+              <div className="absolute bottom-full left-0 mb-2 z-50 w-56 bg-zinc-900/98 backdrop-blur-xl border border-zinc-700/50 rounded-xl shadow-2xl shadow-black/50 p-1.5 animate-in fade-in-0 zoom-in-95 duration-150 origin-bottom-left">
                 <div className="px-2 py-1.5 mb-1">
                   <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium">
                     Attachments
