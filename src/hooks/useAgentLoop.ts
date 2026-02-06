@@ -6,17 +6,20 @@ interface AgentState {
   logs: string[];
   isRunning: boolean;
   error?: string;
+  lockedProjectId: string | null; // Track which project owns this generation
 }
 
 interface UseAgentLoopOptions {
   onStreamCode: (prompt: string, existingCode?: string) => void;
   onComplete?: () => void;
+  getActiveProjectId?: () => string | null; // For race condition checking
 }
 
 const INITIAL_STATE: AgentState = {
   step: 'idle',
   logs: [],
   isRunning: false,
+  lockedProjectId: null,
 };
 
 /**
@@ -26,7 +29,7 @@ const INITIAL_STATE: AgentState = {
  * This wraps the existing streamCode function with agent-like behavior,
  * providing real-time logs and step transitions for a premium UX.
  */
-export function useAgentLoop({ onStreamCode, onComplete }: UseAgentLoopOptions) {
+export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: UseAgentLoopOptions) {
   const [state, setState] = useState<AgentState>(INITIAL_STATE);
   const abortRef = useRef(false);
   const streamStartedRef = useRef(false);
@@ -44,15 +47,20 @@ export function useAgentLoop({ onStreamCode, onComplete }: UseAgentLoopOptions) 
 
   /**
    * Starts the agent loop with the given prompt
+   * Now accepts projectId to lock the generation to a specific project
    */
-  const startAgent = useCallback(async (prompt: string, existingCode?: string) => {
+  const startAgent = useCallback(async (prompt: string, existingCode?: string, projectId?: string) => {
     abortRef.current = false;
     streamStartedRef.current = false;
+    
+    // 🔒 LOCK: Capture which project this generation belongs to
+    const lockedId = projectId || getActiveProjectId?.() || null;
     
     setState({ 
       step: 'planning', 
       logs: ['> Initializing agent...'], 
-      isRunning: true 
+      isRunning: true,
+      lockedProjectId: lockedId,
     });
 
     try {
@@ -133,6 +141,14 @@ export function useAgentLoop({ onStreamCode, onComplete }: UseAgentLoopOptions) 
   const onStreamingComplete = useCallback(async () => {
     if (abortRef.current) return;
     
+    // 🛑 RACE CONDITION CHECK: Verify project hasn't changed
+    const currentProjectId = getActiveProjectId?.();
+    if (state.lockedProjectId && currentProjectId !== state.lockedProjectId) {
+      console.warn(`🛑 Agent completion blocked: was for ${state.lockedProjectId} but now viewing ${currentProjectId}`);
+      setState(INITIAL_STATE);
+      return;
+    }
+    
     // STEP 4: INSTALLING
     setStep('installing');
     addLog('Checking dependencies...');
@@ -154,9 +170,9 @@ export function useAgentLoop({ onStreamCode, onComplete }: UseAgentLoopOptions) 
     setStep('done');
     addLog('> Build successful.');
     
-    setState(prev => ({ ...prev, isRunning: false }));
+    setState(prev => ({ ...prev, isRunning: false, lockedProjectId: null }));
     onComplete?.();
-  }, [setStep, addLog, onComplete]);
+  }, [setStep, addLog, onComplete, getActiveProjectId, state.lockedProjectId]);
 
   /**
    * Called externally when an error occurs during streaming
@@ -214,6 +230,7 @@ export function useAgentLoop({ onStreamCode, onComplete }: UseAgentLoopOptions) 
     agentStep: state.step,
     agentLogs: state.logs,
     isAgentRunning: state.isRunning,
+    lockedProjectId: state.lockedProjectId,
   };
 }
 

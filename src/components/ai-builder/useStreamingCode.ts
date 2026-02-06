@@ -10,6 +10,7 @@ interface UseStreamingCodeOptions {
   onChatResponse?: (text: string) => void;
   onLogUpdate?: (logs: string[]) => void; // Real-time transparency logs
   onError?: (error: Error) => void;
+  shouldAbort?: () => boolean; // Race condition guard: check if generation should be discarded
 }
 
 type StreamMode = 'detecting' | 'chat' | 'code';
@@ -171,6 +172,13 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
         .replace(/\n?```\s*$/i, '')
         .trim();
+
+      // 🛑 RACE CONDITION GUARD: Check if user switched projects during generation
+      if (options.shouldAbort?.()) {
+        console.warn('🛑 Aborted: Project changed during generation - discarding result');
+        setState(prev => ({ ...prev, isStreaming: false }));
+        return state.code; // Return existing code, don't fire onComplete
+      }
 
       setState(prev => ({ ...prev, isStreaming: false, code: finalCode }));
       options.onComplete?.(finalCode);

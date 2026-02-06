@@ -200,17 +200,21 @@ export function useVibecoderProjects() {
   }, []);
 
   // Add message (auto-saves to DB)
+  // RACE CONDITION GUARD: Optional forProjectId allows explicit targeting
+  // to prevent writes to wrong project if user switched mid-generation
   const addMessage = useCallback(async (
     role: 'user' | 'assistant' | 'system',
     content: string | null,
-    codeSnapshot?: string | null
+    codeSnapshot?: string | null,
+    forProjectId?: string // Explicit project ID for race condition safety
   ) => {
-    if (!activeProjectId) return null;
+    const targetProjectId = forProjectId || activeProjectId;
+    if (!targetProjectId) return null;
 
     const { data, error } = await supabase
       .from('vibecoder_messages')
       .insert({
-        project_id: activeProjectId,
+        project_id: targetProjectId,
         role,
         content,
         code_snapshot: codeSnapshot ?? null,
@@ -224,7 +228,13 @@ export function useVibecoderProjects() {
     }
 
     const newMessage = data as VibecoderMessage;
-    setMessages(prev => [...prev, newMessage]);
+    
+    // Only update local state if target matches currently active project
+    // (prevents UI desync when writing to a background project)
+    if (targetProjectId === activeProjectId) {
+      setMessages(prev => [...prev, newMessage]);
+    }
+    
     return newMessage;
   }, [activeProjectId]);
 
