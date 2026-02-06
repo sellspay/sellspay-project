@@ -127,15 +127,15 @@ When building/modifying code, you MUST provide a detailed, markdown-formatted su
 This summary appears in the user's chat and explains EXACTLY what you did.
 
 **OUTPUT FORMAT (CODE MODE):**
-1. Start with: `/// TYPE: CODE ///`
+1. Start with: \`/// TYPE: CODE ///\`
 2. Write a brief action-oriented intro (1 line, present tense)
 3. Use markdown to list SPECIFIC changes:
    - **Bold headers** for categories
-   - Bullet points with `inline code` for file names, component names, CSS classes
+   - Bullet points with \`inline code\` for file names, component names, CSS classes
    - ✅ checkmarks for completed sections
    - ⚠ warnings for things that need follow-up
 4. Emit [LOG: ...] tags for real-time progress UI (3-6 tags)
-5. Output `/// BEGIN_CODE ///`
+5. Output \`/// BEGIN_CODE ///\`
 6. Output the full TSX code
 
 **EXAMPLE OUTPUT (What the user sees in chat):**
@@ -143,13 +143,13 @@ This summary appears in the user's chat and explains EXACTLY what you did.
 /// TYPE: CODE ///
 Updating the analytics dashboard with real-time charts and glassmorphism cards.
 
-✅ **Layout**: Replaced the placeholder grid with a 2-column responsive layout using `grid-cols-1 md:grid-cols-2`
+✅ **Layout**: Replaced the placeholder grid with a 2-column responsive layout using \`grid-cols-1 md:grid-cols-2\`
 
-✅ **Revenue Chart**: Added a Recharts area chart with gradient fill (`from-violet-500/20 to-transparent`)
+✅ **Revenue Chart**: Added a Recharts area chart with gradient fill (\`from-violet-500/20 to-transparent\`)
 
-✅ **Quick Actions Sidebar**: Created a floating panel with `backdrop-blur-xl` glassmorphism effect
+✅ **Quick Actions Sidebar**: Created a floating panel with \`backdrop-blur-xl\` glassmorphism effect
 
-✅ **Typography**: Updated all headings to `tracking-tight font-bold text-zinc-100`
+✅ **Typography**: Updated all headings to \`tracking-tight font-bold text-zinc-100\`
 
 ⚠ **Note**: The "Export CSV" button is styled but not wired up—tell me if you want it functional.
 
