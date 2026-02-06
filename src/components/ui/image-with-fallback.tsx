@@ -9,6 +9,13 @@ interface ImageWithFallbackProps {
   fallbackClassName?: string;
 }
 
+// Check if URL is a video file
+const isVideoUrl = (url: string): boolean => {
+  const videoExtensions = ['.mp4', '.webm', '.mov', '.ogg'];
+  const lowerUrl = url.toLowerCase();
+  return videoExtensions.some(ext => lowerUrl.includes(ext));
+};
+
 export function ImageWithFallback({ 
   src, 
   alt, 
@@ -35,6 +42,21 @@ export function ImageWithFallback({
           <ImageOff className="w-6 h-6 text-muted-foreground/40" />
         </div>
       </div>
+    );
+  }
+
+  // Handle video banners
+  if (isVideoUrl(src)) {
+    return (
+      <video
+        src={src}
+        className={className}
+        onError={() => setError(true)}
+        autoPlay
+        loop
+        muted
+        playsInline
+      />
     );
   }
 
