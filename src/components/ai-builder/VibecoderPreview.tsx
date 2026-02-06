@@ -1,5 +1,11 @@
 import { useMemo, memo, useState, useEffect, useRef } from 'react';
-import { Sandpack, SandpackTheme, useSandpack, SandpackProvider, SandpackPreview as SandpackPreviewComponent } from '@codesandbox/sandpack-react';
+import { 
+  SandpackTheme, 
+  useSandpack, 
+  SandpackProvider, 
+  SandpackPreview as SandpackPreviewComponent,
+  SandpackCodeEditor,
+} from '@codesandbox/sandpack-react';
 import { Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
@@ -9,6 +15,7 @@ interface VibecoderPreviewProps {
   code: string;
   isStreaming?: boolean;
   onError?: (error: string) => void;
+  viewMode?: 'preview' | 'code';
 }
 
 // Premium loading steps with icons
@@ -162,10 +169,12 @@ function ErrorDetector({ onError }: { onError?: (error: string) => void }) {
 // Memoized Sandpack component to prevent unnecessary re-renders during streaming
 const SandpackRenderer = memo(function SandpackRenderer({ 
   code, 
-  onError 
+  onError,
+  viewMode = 'preview',
 }: { 
   code: string; 
   onError?: (error: string) => void;
+  viewMode?: 'preview' | 'code';
 }) {
   // Wrap the code in proper structure, including the standard library
   const files = useMemo(() => ({
@@ -216,46 +225,29 @@ root.render(<App />);`,
       >
         <ErrorDetector onError={onError} />
         <div className="h-full w-full flex-1 flex flex-col" style={{ height: '100%' }}>
-          <Sandpack
-            template="react-ts"
-            theme={customTheme}
-            files={files}
-            options={{
-              externalResources: [
-                'https://cdn.tailwindcss.com',
-              ],
-              showNavigator: false,
-              showLineNumbers: true,
-              showTabs: false,
-              editorHeight: '100%',
-              classes: {
-                'sp-wrapper': '!h-full !min-h-full !rounded-none !border-0 !flex !flex-col',
-                'sp-layout': '!h-full !min-h-full !flex-1 !rounded-none !border-0 !bg-transparent !flex !flex-col',
-                'sp-stack': '!h-full !min-h-full !flex-1',
-                'sp-editor': '!h-full',
-                'sp-preview': '!h-full !min-h-full !flex-1 !bg-zinc-950',
-                'sp-preview-container': '!h-full !min-h-full !flex-1',
-                'sp-preview-iframe': '!h-full !min-h-full',
-              },
-              // Only show preview, hide editor
-              editorWidthPercentage: 0,
-            }}
-            customSetup={{
-              dependencies: {
-                'lucide-react': 'latest',
-                'framer-motion': '^11.0.0',
-                'clsx': 'latest',
-                'tailwind-merge': 'latest',
-              },
-            }}
-          />
+          {viewMode === 'preview' ? (
+            <SandpackPreviewComponent 
+              showOpenInCodeSandbox={false}
+              showRefreshButton={true}
+              style={{ height: '100%', flex: 1 }}
+            />
+          ) : (
+            <SandpackCodeEditor 
+              showTabs={true}
+              showLineNumbers={true}
+              showInlineErrors={true}
+              wrapContent={true}
+              readOnly={true}
+              style={{ height: '100%', flex: 1 }}
+            />
+          )}
         </div>
       </SandpackProvider>
     </div>
   );
 });
 
-export function VibecoderPreview({ code, isStreaming, onError }: VibecoderPreviewProps) {
+export function VibecoderPreview({ code, isStreaming, onError, viewMode = 'preview' }: VibecoderPreviewProps) {
   const [loadingStep, setLoadingStep] = useState(0);
 
   // Cycle through the premium build steps while streaming
@@ -271,13 +263,13 @@ export function VibecoderPreview({ code, isStreaming, onError }: VibecoderPrevie
   }, [isStreaming]);
 
   return (
-    <div className="h-full w-full relative bg-zinc-950">
+    <div className="h-full w-full relative bg-zinc-950 flex flex-col">
       {/* Premium Loading Overlay - Only visible when streaming */}
       {isStreaming && <LoadingOverlay currentStep={loadingStep} />}
 
-      {/* Sandpack preview - Always rendered, but hidden behind overlay during build */}
-      <div className="h-full w-full">
-        <SandpackRenderer code={code} onError={onError} />
+      {/* Sandpack preview/code - Always rendered, but hidden behind overlay during build */}
+      <div className="h-full w-full flex-1">
+        <SandpackRenderer code={code} onError={onError} viewMode={viewMode} />
       </div>
     </div>
   );
