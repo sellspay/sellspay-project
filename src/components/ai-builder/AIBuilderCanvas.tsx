@@ -309,8 +309,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       setRefreshKey(prev => prev + 1);
       
       // Add assistant message with code snapshot
-      if (generationLockRef.current) {
-        await addMessage('assistant', summary, generatedCode, generationLockRef.current);
+      // Use agent's lockedProjectId as the source of truth (generationLockRef can be wiped by project switching / refresh flows)
+      const targetProjectId = lockedProjectId || generationLockRef.current;
+      if (targetProjectId) {
+        await addMessage('assistant', summary, generatedCode, targetProjectId);
+      } else {
+        console.warn('[VibeCoder 2.1] No targetProjectId available to persist code snapshot');
       }
       generationLockRef.current = null;
     },
