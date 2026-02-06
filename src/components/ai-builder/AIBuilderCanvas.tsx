@@ -1,18 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Loader2, ExternalLink } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
 import { VibecoderPreview } from './VibecoderPreview';
 import { VibecoderChat } from './VibecoderChat';
 import { ProjectSidebar } from './ProjectSidebar';
 import { PreviewErrorBoundary } from './PreviewErrorBoundary';
-import { CanvasToolbar } from './CanvasToolbar';
+import { VibecoderHeader } from './VibecoderHeader';
 import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects } from './hooks/useVibecoderProjects';
 import { toast } from 'sonner';
-import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 
 interface AIBuilderCanvasProps {
   profileId: string;
@@ -361,57 +359,21 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const canUndo = messages.filter(m => m.code_snapshot).length > 1;
 
   return (
-    <div className="h-screen w-full bg-background flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-border/30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigate('/profile')}
-            className="gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Exit
-          </Button>
-          <div className="flex items-center gap-2">
-            <img src={sellspayLogo} alt="SellsPay" className="w-6 h-6 object-contain" />
-            <span className="font-semibold">AI Builder</span>
-            {isPublished && (
-              <span className="text-xs px-2 py-0.5 bg-primary/20 text-primary rounded-full border border-primary/30">
-                Live
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {isPublished && username && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`/@${username}`, '_blank')}
-              className="gap-1.5"
-            >
-              <ExternalLink className="w-4 h-4" />
-              View Live
-            </Button>
-          )}
-          <Button
-            size="sm"
-            onClick={handlePublish}
-            disabled={isEmpty || publishing}
-            className="gap-2"
-          >
-            {publishing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Eye className="w-4 h-4" />
-            )}
-            {isPublished ? 'Update' : 'Publish'}
-          </Button>
-        </div>
-      </header>
+    <div className="h-screen w-full bg-zinc-950 flex flex-col overflow-hidden">
+      {/* Unified Header with Controls */}
+      <VibecoderHeader
+        projectName={activeProject?.name}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        deviceMode={deviceMode}
+        setDeviceMode={setDeviceMode}
+        onRefresh={handleRefresh}
+        onPublish={handlePublish}
+        isPublished={isPublished}
+        isPublishing={publishing}
+        isEmpty={isEmpty}
+        username={username}
+      />
 
       {/* Main content - split view */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
@@ -428,22 +390,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
 
-        {/* Preview panel */}
+        {/* Preview panel - PURE CANVAS (no toolbar) */}
         <div 
-          className="flex-1 min-w-0 border-r border-border/30 bg-muted/20 overflow-hidden relative flex flex-col"
+          className="flex-1 min-w-0 border-r border-zinc-800 bg-black overflow-hidden relative flex flex-col"
           style={{ isolation: 'isolate', contain: 'strict' }}
         >
-          {/* Canvas Toolbar */}
-          <CanvasToolbar
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            projectName={activeProject?.name}
-            deviceMode={deviceMode}
-            setDeviceMode={setDeviceMode}
-            onRefresh={handleRefresh}
-          />
-          
-          {/* Preview/Code Content */}
+          {/* Preview/Code Content - Full height now */}
           <div className={`flex-1 min-h-0 ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-zinc-900' : ''}`}>
             <div 
               className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-700 shadow-2xl' : 'w-full'}`}
@@ -458,7 +410,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
                   isStreaming={isStreaming}
                   viewMode={viewMode}
                   onError={(error) => {
-                    // Log the error but don't auto-trigger fix (let user click button)
                     console.warn('[VibecoderPreview] Sandpack error detected:', error);
                   }}
                 />
@@ -466,7 +417,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
             </div>
           </div>
           
-          {/* Overlay while dragging (prevents iframe stealing mouse events) */}
+          {/* Overlay while dragging */}
           {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
         </div>
 
