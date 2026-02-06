@@ -32,11 +32,15 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
       recognition.lang = 'en-US';
 
       recognition.onresult = (event: any) => {
-        // Get the final transcript from the last result
-        const lastResult = event.results[event.results.length - 1];
-        if (lastResult.isFinal) {
-          const transcript = lastResult[0].transcript;
-          setPrompt(prev => prev ? `${prev} ${transcript}` : transcript);
+        // Only process NEW results using resultIndex to avoid duplicates
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          }
+        }
+        if (finalTranscript.trim()) {
+          setPrompt(prev => prev ? `${prev} ${finalTranscript.trim()}` : finalTranscript.trim());
         }
       };
 
