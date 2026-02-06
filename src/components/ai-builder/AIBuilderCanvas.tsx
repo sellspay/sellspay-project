@@ -842,10 +842,10 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         />
 
         {/* Split View Content - Chat + Preview always visible */}
-        <div className="flex-1 flex min-h-0 overflow-hidden">
-          {/* LEFT PANEL: Always show Sandpack preview (default code when no project) */}
+        <div className="flex-1 flex min-h-0 overflow-hidden p-2">
+          {/* LEFT PANEL: Preview/Studio */}
           <div
-            className="flex-1 min-w-0 bg-background overflow-hidden relative flex flex-col"
+            className="flex-1 min-w-0 bg-background overflow-hidden relative flex flex-col rounded-2xl border border-border/40"
             style={{ isolation: 'isolate', contain: 'strict' }}
           >
             {(viewMode === 'image' || viewMode === 'video') ? (
@@ -861,7 +861,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               />
             ) : (
               /* Live Preview: Sandpack iframe - always rendered with DEFAULT_CODE when no project */
-              <div className={`flex-1 min-h-0 relative ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}>
+              <div className={`flex-1 min-h-0 relative ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}
+              >
                 <div
                   className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'}`}
                 >
@@ -935,10 +936,15 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
           </div>
 
-          {/* RIGHT PANEL: Chat - ALWAYS VISIBLE */}
+          {/* SUBTLE SEPARATOR */}
+          <div className="relative w-px shrink-0">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-border/60 to-transparent" />
+          </div>
+
+          {/* RIGHT PANEL: Chat */}
           <div
             style={{ width: sidebarWidth }}
-            className="shrink-0 flex flex-col bg-muted/50 overflow-hidden relative"
+            className="shrink-0 flex flex-col bg-card overflow-hidden relative rounded-2xl border border-border/40"
           >
             {/* Refined drag handle - subtle until interaction */}
             <div
@@ -950,27 +956,29 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               }`}
             />
 
-            <VibecoderChat
-              key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
-              onSendMessage={handleSendMessage}
-              onGenerateAsset={handleGenerateAsset}
-              isStreaming={isStreaming || isAgentRunning}
-              onCancel={() => {
-                cancelStream();
-                cancelAgent();
-              }}
-              messages={messages}
-              onRateMessage={rateMessage}
-              onRestoreToVersion={handleRestoreCode}
-              projectName={activeProject?.name ?? 'New Project'}
-              liveSteps={liveSteps}
-              agentStep={agentStep}
-              agentLogs={agentLogs}
-              isAgentMode={isAgentRunning}
-              activeModel={activeModel}
-              onOpenBilling={() => window.open('/pricing', '_blank')}
-              onModelChange={handleModelChange}
-            />
+            <div className="flex-1 min-h-0 overflow-hidden" style={{ isolation: 'isolate' }}>
+              <VibecoderChat
+                key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
+                onSendMessage={handleSendMessage}
+                onGenerateAsset={handleGenerateAsset}
+                isStreaming={isStreaming || isAgentRunning}
+                onCancel={() => {
+                  cancelStream();
+                  cancelAgent();
+                }}
+                messages={messages}
+                onRateMessage={rateMessage}
+                onRestoreToVersion={handleRestoreCode}
+                projectName={activeProject?.name ?? 'New Project'}
+                liveSteps={liveSteps}
+                agentStep={agentStep}
+                agentLogs={agentLogs}
+                isAgentMode={isAgentRunning}
+                activeModel={activeModel}
+                onOpenBilling={() => window.open('/pricing', '_blank')}
+                onModelChange={handleModelChange}
+              />
+            </div>
           </div>
         </div>
       </div>
