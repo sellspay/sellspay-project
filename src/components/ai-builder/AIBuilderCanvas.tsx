@@ -23,6 +23,7 @@ import { FixErrorToast } from './FixErrorToast';
 import { checkPolicyViolation } from '@/utils/policyGuard';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { useUserCredits } from '@/hooks/useUserCredits';
+import { useAuth } from '@/lib/auth';
 
 interface AIBuilderCanvasProps {
   profileId: string;
@@ -31,6 +32,9 @@ interface AIBuilderCanvasProps {
 export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAdmin, isOwner } = useAuth();
+  const isPrivileged = isAdmin || isOwner; // Owner/admin bypass all credit checks
+  
   const [isPublished, setIsPublished] = useState(false);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
@@ -729,13 +733,16 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Implements the "Chat-to-Create" flow: first message creates project automatically
   const handleSendMessage = async (prompt: string) => {
     // 💰 PREFLIGHT CHECK: Block immediately if user has insufficient credits
-    // Quick edit = 1c, Full build = 3c (minimum tier before Architect estimates true cost)
-    const isLikelyQuickEdit = code !== DEFAULT_CODE && prompt.length < 100;
-    const estimatedCredits = isLikelyQuickEdit ? 1 : 3;
-    
-    if (userCredits < estimatedCredits) {
-      setShowUpgradeModal(true);
-      return; // ⛔ Block generation - no API call wasted
+    // ⚡ OWNER/ADMIN BYPASS: Privileged users skip all credit checks
+    if (!isPrivileged) {
+      // Quick edit = 1c, Full build = 3c (minimum tier before Architect estimates true cost)
+      const isLikelyQuickEdit = code !== DEFAULT_CODE && prompt.length < 100;
+      const estimatedCredits = isLikelyQuickEdit ? 1 : 3;
+      
+      if (userCredits < estimatedCredits) {
+        setShowUpgradeModal(true);
+        return; // ⛔ Block generation - no API call wasted
+      }
     }
     
     // 🛡️ POLICY GUARD: Check for forbidden requests BEFORE any processing
@@ -1128,9 +1135,9 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     });
   };
 
-  // === DOORWAY: If no active project, show the magical prompt-first screen ===
-  // - Fresh users: full-screen doorway (no sidebar)
-  // - Existing users clicking "New project": doorway inside the editor frame
+  // === DOORWAY: If no active project ===
+  // - Fresh users (no projects): full-screen doorway
+  // - Existing users: AUTO-SELECT first project (no LovableHero splash)
   if (!activeProjectId) {
     if (projects.length === 0) {
       return (
@@ -1142,58 +1149,14 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
       );
     }
 
+    // Auto-select the most recent project instead of showing the Hero screen
+    // This effect triggers navigation via selectProject, which updates the URL
+    selectProject(projects[0].id);
+    
+    // Show loading state briefly while navigation happens
     return (
-      <div className="h-screen w-full bg-background flex overflow-hidden p-2">
-        <ProjectSidebar
-          projects={projects}
-          activeProjectId={activeProjectId}
-          loading={projectsLoading}
-          onSelectProject={selectProject}
-          onCreateProject={handleCreateProject}
-          onDeleteProject={handleDeleteProject}
-          onRenameProject={handleRenameProject}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        />
-
-        <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border overflow-hidden bg-background">
-          <VibecoderHeader
-            projectName={undefined}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            deviceMode={deviceMode}
-            setDeviceMode={setDeviceMode}
-            onRefresh={handleRefresh}
-            onPublish={handlePublish}
-            isPublished={isPublished}
-            isPublishing={publishing}
-            isEmpty={true}
-            username={username}
-            currentPath={previewPath}
-            onNavigate={setPreviewPath}
-            pages={detectedPages}
-            onRegenerate={(tweak) => {
-              handleSendMessage(`Refine the current design: ${tweak}`);
-            }}
-            isGenerating={isStreaming}
-            avatarUrl={userAvatarUrl}
-            userCredits={userCredits}
-            subscriptionTier={subscriptionTier}
-            onSignOut={handleSignOut}
-          />
-
-          <div className="flex-1 min-h-0">
-            <LovableHero
-              onStart={heroOnStart}
-              userName={username ?? 'Creator'}
-              variant="embedded"
-              onBack={() => {
-                // Return to the most recently edited project (first in list)
-                if (projects[0]) selectProject(projects[0].id);
-              }}
-            />
-          </div>
-        </div>
+      <div className="h-screen w-full bg-zinc-950 flex items-center justify-center">
+        <div className="animate-pulse text-zinc-500">Loading project...</div>
       </div>
     );
   }
