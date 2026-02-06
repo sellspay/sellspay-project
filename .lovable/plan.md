@@ -1,177 +1,265 @@
 
-# Dynamic Page Navigator & ChatInputBar UI Polish
+# Agentic AI Builder Upgrade: From Chatbot to Agent
 
 ## Overview
 
-This plan addresses two issues:
+This is a major architectural upgrade to transform Vibecoder from a simple "Chatbot" (Input → Output) to a true "Agent" (Input → Plan → Execute → Verify → Self-Correct).
 
-1. **Page Navigator Sync** - The dropdown shows hardcoded pages (Home, Products, Contact) while the AI may generate different pages (Home, Products, Bundles, Support). We need to make it dynamic.
+**Current State:**
+- Single-shot streaming: user sends prompt, AI streams code
+- Basic `[LOG:]` tags for real-time transparency
+- `LiveBuildingCard` shows simple checklist during streaming
 
-2. **ChatInputBar Scrollbar Polish** - Hide the ugly gray scrollbar while keeping scroll functionality, and ensure the textarea has proper padding.
-
----
-
-## Part 1: Dynamic Page Navigator
-
-### Problem Analysis
-
-The current `PageNavigator.tsx` has a hardcoded `SITE_PAGES` array:
-```typescript
-const SITE_PAGES = [
-  { id: "home", path: "/", label: "Home", icon: Layout },
-  { id: "products", path: "/products", label: "Products", icon: ShoppingBag },
-  { id: "contact", path: "/contact", label: "Contact", icon: Mail },
-];
-```
-
-When the AI generates a site with different routes, this dropdown doesn't update.
-
-### Solution: Accept Pages as a Prop
-
-#### Step 1: Update PageNavigator to Accept Dynamic Pages
-
-**File:** `src/components/ai-builder/PageNavigator.tsx`
-
-- Remove the hardcoded `SITE_PAGES` constant
-- Accept a `pages` prop with the shape `{ id: string; path: string; label: string }[]`
-- Export the `SitePage` interface for reuse
-- Update rendering to use the passed `pages` prop
-- Change header text from "Site Pages" to "Detected Pages"
-
-#### Step 2: Create Route Parser Utility
-
-**File:** `src/utils/routeParser.ts` (NEW)
-
-Create a utility function that parses generated code to extract route definitions:
-
-```typescript
-export interface SitePage {
-  id: string;
-  path: string;
-  label: string;
-}
-
-export function parseRoutesFromCode(code: string): SitePage[] {
-  const pages: SitePage[] = [{ id: 'home', path: '/', label: 'Home' }];
-  
-  // Regex to find Route path definitions
-  const routeRegex = /<Route[^>]*path=["']([^"']+)["'][^>]*>/g;
-  let match;
-  
-  const foundPaths = new Set<string>(['/']);
-  
-  while ((match = routeRegex.exec(code)) !== null) {
-    const path = match[1];
-    // Skip already found, dynamic routes (:id), and root
-    if (!path || path === '/' || foundPaths.has(path) || path.includes(':')) continue;
-    
-    foundPaths.add(path);
-    
-    // Convert "/about-us" -> "About Us"
-    const label = path
-      .replace('/', '')
-      .split('-')
-      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
-    
-    pages.push({ id: path, path, label });
-  }
-  
-  return pages;
-}
-```
-
-#### Step 3: Wire Up in AIBuilderCanvas
-
-**File:** `src/components/ai-builder/AIBuilderCanvas.tsx`
-
-Add state and effect to parse routes from generated code:
-
-```typescript
-// Add state for detected pages
-const [detectedPages, setDetectedPages] = useState<SitePage[]>([
-  { id: 'home', path: '/', label: 'Home' }
-]);
-
-// Parse routes whenever code changes
-useEffect(() => {
-  if (code) {
-    const pages = parseRoutesFromCode(code);
-    setDetectedPages(pages);
-  }
-}, [code]);
-```
-
-#### Step 4: Update VibecoderHeader Props
-
-**File:** `src/components/ai-builder/VibecoderHeader.tsx`
-
-- Add `pages: SitePage[]` prop to interface
-- Pass `pages` to the `PageNavigator` component
+**Target State:**
+- Multi-step agent loop: Planning → Reading → Writing → Installing → Verifying → Done/Error
+- Premium terminal-style progress UI with timestamps and live logs
+- Self-healing capability: detects Sandpack errors and auto-fixes
+- Visual "thinking" that justifies the premium credit cost
 
 ---
 
-## Part 2: ChatInputBar Scrollbar Polish
+## Part 1: Create the Agent Progress UI
 
-### Problem Analysis
+### New Component: `AgentProgress.tsx`
 
-The textarea shows an ugly gray scrollbar when content exceeds 6 lines. While scrolling should remain functional, the visual scrollbar is distracting.
+A premium, terminal-style thinking indicator that replaces the simple loading spinner with detailed status logs.
 
-### Solution: CSS Hide Scrollbar + Improved Padding
+**File:** `src/components/ai-builder/AgentProgress.tsx`
 
-**File:** `src/components/ai-builder/ChatInputBar.tsx`
+**Features:**
+- Header bar with current step status and animated indicators (3 pulsing dots)
+- Real-time log stream with timestamps (`[10:00:01] Reading App.tsx...`)
+- Progress bar that fills as steps complete
+- Step-specific icons (BrainCircuit for planning, FileCode for writing, etc.)
+- Blinking cursor at end of log stream
+- Color-coded status (violet for running, green for done, red for error)
 
-#### Change 1: Add Scrollbar-Hiding CSS
-
-Inject a `<style>` tag or use Tailwind utilities to hide scrollbars cross-browser:
-
-```typescript
-const hideScrollbarStyle = `
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-`;
+**Step Types:**
+```text
+planning   → "Architecting Solution..." (15%)
+reading    → "Analyzing Context..." (30%)
+writing    → "Generating Code..." (60%)
+installing → "Updating Dependencies..." (80%)
+verifying  → "Running Tests..." (95%)
+done       → "Complete" (100%)
+error      → "Process Failed"
 ```
 
-#### Change 2: Apply Class to Textarea
+**Visual Design:**
+- Dark terminal aesthetic (`bg-zinc-950/80`, `font-mono`)
+- Header with status label + animated glow ring
+- Scrollable log area with max height
+- Gradient progress bar (violet → blue)
+- Timestamps in muted color, commands in white
 
-Update the textarea className to include `no-scrollbar`:
+---
 
+## Part 2: Create the Agent Logic Hook
+
+### New Hook: `useAgentLoop.ts`
+
+A state machine that orchestrates the multi-step agent workflow.
+
+**File:** `src/hooks/useAgentLoop.ts`
+
+**State Interface:**
 ```typescript
-className={cn(
-  "flex-1 bg-transparent text-sm text-zinc-100 resize-none outline-none py-2 px-1",
-  "min-h-[36px] max-h-[160px]",
-  "no-scrollbar", // <-- Add this instead of scrollbar-thin classes
-  "disabled:opacity-50 disabled:cursor-not-allowed",
-  // ...rest
-)}
+type AgentStep = 'idle' | 'planning' | 'reading' | 'writing' | 'installing' | 'verifying' | 'done' | 'error';
+
+interface AgentState {
+  step: AgentStep;
+  logs: string[];
+  isRunning: boolean;
+  error?: string;
+}
 ```
 
-#### Change 3: Improved Padding Right
+**Core Logic:**
+1. **Planning Phase**: Parse the prompt, identify required components
+2. **Reading Phase**: Analyze current code context (passed from canvas)
+3. **Writing Phase**: Stream code generation (delegates to existing `useStreamingCode`)
+4. **Installing Phase**: Check for new dependencies in generated code
+5. **Verifying Phase**: Monitor Sandpack for errors
+6. **Done/Error**: Complete or trigger self-correction loop
 
-Ensure text doesn't feel cramped near the edge by adding `pr-2` (8px padding right) to the textarea.
+**Key Methods:**
+- `startAgent(prompt, currentCode)` - Begins the agent loop
+- `addLog(message)` - Appends to the log stream
+- `setStep(step)` - Transitions the state machine
+- `triggerSelfCorrection(error)` - Initiates fix loop on error
+
+**Integration with Existing Code:**
+- Wraps the existing `useStreamingCode` hook
+- Enhances the `[LOG:]` tag extraction with structured step transitions
+- Adds timing metadata for premium feel
+
+---
+
+## Part 3: Integration into VibecoderChat
+
+### Modify: `VibecoderChat.tsx`
+
+Replace the simple `LiveBuildingCard` with the new `AgentProgress` component when streaming.
+
+**Changes:**
+1. Import `AgentProgress` component
+2. Pass `agentStep` and `agentLogs` as new props
+3. Conditionally render `AgentProgress` instead of `LiveBuildingCard` when agent is running
+4. Keep `LiveBuildingCard` as fallback for simple streaming (non-agent mode)
+
+**Updated Props Interface:**
+```typescript
+interface VibecoderChatProps {
+  // ... existing props
+  agentStep?: AgentStep;      // Current agent phase
+  agentLogs?: string[];       // Agent log stream
+  isAgentMode?: boolean;      // Toggle for premium agent UI
+}
+```
+
+---
+
+## Part 4: Canvas Integration
+
+### Modify: `AIBuilderCanvas.tsx`
+
+Wire up the agent hook and pass state down to chat.
+
+**Changes:**
+1. Import `useAgentLoop` hook
+2. Initialize agent state alongside existing streaming code hook
+3. Update `handleSendMessage` to use agent loop instead of direct `streamCode`
+4. Pass agent state props to `VibecoderChat`
+5. Connect Sandpack error callback to agent's self-correction
+
+**New Flow:**
+```text
+User submits prompt
+      ↓
+handleSendMessage calls startAgent(prompt, currentCode)
+      ↓
+Agent transitions: idle → planning → reading → writing
+      ↓
+useStreamingCode handles actual code generation
+      ↓
+Agent continues: writing → installing → verifying → done
+      ↓
+If Sandpack error detected → agent → fixing → re-writes → verifying
+```
+
+---
+
+## Part 5: Self-Healing Enhancement
+
+### Modify: `PreviewErrorBoundary.tsx`
+
+Enhance the error boundary to work with the agent loop.
+
+**Current Behavior:** Shows error UI with "Auto Fix" button
+
+**Enhanced Behavior:**
+- Automatically trigger agent self-correction when error detected
+- Pass error details to agent for intelligent repair
+- Show agent progress UI while fixing
+
+**Integration:**
+```typescript
+const handleAutoFix = (errorMsg: string) => {
+  // Agent receives error context and attempts fix
+  startAgent(`[CRITICAL_ERROR_REPORT]\nError: ${errorMsg}\nFix the code.`, currentCode);
+};
+```
 
 ---
 
 ## File Changes Summary
 
-| File | Action | Changes |
-|------|--------|---------|
-| `src/components/ai-builder/PageNavigator.tsx` | MODIFY | Accept `pages` prop instead of hardcoded list, export `SitePage` type |
-| `src/utils/routeParser.ts` | CREATE | New utility to parse routes from generated TSX code |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | MODIFY | Add `detectedPages` state, parse routes on code change, pass to header |
-| `src/components/ai-builder/VibecoderHeader.tsx` | MODIFY | Accept and forward `pages` prop to PageNavigator |
-| `src/components/ai-builder/ChatInputBar.tsx` | MODIFY | Add `no-scrollbar` CSS, apply to textarea, improve padding |
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/ai-builder/AgentProgress.tsx` | **CREATE** | Premium terminal-style progress UI |
+| `src/hooks/useAgentLoop.ts` | **CREATE** | Agent state machine and orchestration logic |
+| `src/components/ai-builder/VibecoderChat.tsx` | **MODIFY** | Integrate AgentProgress, add agent props |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | **MODIFY** | Wire up useAgentLoop, connect to error boundary |
+| `src/components/ai-builder/types/chat.ts` | **MODIFY** | Export AgentStep type |
+
+---
+
+## Technical Details
+
+### AgentProgress Component Structure
+
+```text
+┌─────────────────────────────────────────────────────┐
+│  🧠 Architecting Solution...        ● ● ●           │  ← Header with status
+├─────────────────────────────────────────────────────┤
+│  [10:00:01] > Received prompt: "Create a..."        │
+│  [10:00:02] Analyzing request complexity...         │
+│  [10:00:03] Identified components: Header, Hero     │
+│  [10:00:04] Reading src/App.tsx...                  │
+│  [10:00:05] > Generating code for Hero.tsx...       │  ← Scrollable log area
+│  _                                                  │  ← Blinking cursor
+├─────────────────────────────────────────────────────┤
+│  ████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │  ← Progress bar (60%)
+└─────────────────────────────────────────────────────┘
+```
+
+### State Machine Flow
+
+```text
+                ┌─────────┐
+                │  idle   │
+                └────┬────┘
+                     │ startAgent()
+                     ▼
+              ┌──────────────┐
+              │   planning   │ (15%)
+              └──────┬───────┘
+                     │
+                     ▼
+              ┌──────────────┐
+              │   reading    │ (30%)
+              └──────┬───────┘
+                     │
+                     ▼
+              ┌──────────────┐
+              │   writing    │ (60%) ← streamCode() executes here
+              └──────┬───────┘
+                     │
+                     ▼
+              ┌──────────────┐
+              │  installing  │ (80%)
+              └──────┬───────┘
+                     │
+                     ▼
+              ┌──────────────┐
+              │  verifying   │ (95%)
+              └──────┬───────┘
+            ┌────────┴────────┐
+            │                 │
+    ┌───────▼───────┐  ┌──────▼──────┐
+    │     done      │  │    error    │
+    │  (Complete)   │  │  (Failed)   │
+    └───────────────┘  └──────┬──────┘
+                              │
+                              ▼
+                       ┌─────────────┐
+                       │   fixing    │ ← Self-correction loop
+                       └──────┬──────┘
+                              │
+                              ▼
+                       (back to writing)
+```
 
 ---
 
 ## Expected Results
 
-### Page Navigator
-- Dropdown now shows pages detected from the AI-generated code
-- "Bundles", "Support", or any custom route the AI generates will appear automatically
-- Login/Auth pages are filtered out by the parser (routes with `:` are skipped)
+1. **Premium "Thinking" Experience**: Users see exactly what the AI is doing at each step, justifying the credit cost
 
-### Chat Input Box
-- Scrollbar is invisible but scrolling still works
-- Text has proper padding and doesn't feel cramped
-- Clean, premium look matching the rest of the UI
+2. **Transparency**: Real-time logs show file reading, component generation, and verification
+
+3. **Self-Healing**: Sandpack errors trigger automatic fix loops without user intervention
+
+4. **Future-Ready**: Architecture supports adding more agent capabilities (Vision, WebContainers, etc.)
+
+5. **Progressive Enhancement**: Existing streaming code hook remains functional; agent layer wraps it
