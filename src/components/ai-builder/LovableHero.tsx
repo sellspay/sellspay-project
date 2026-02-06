@@ -32,8 +32,8 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
     // Calculate new height, capped at ~400px (approx 16-20 lines)
     const newHeight = Math.min(textarea.scrollHeight, 400);
     
-    // Set height (min 56px for comfortable single line)
-    textarea.style.height = `${Math.max(56, newHeight)}px`;
+    // Set height (min 80px to accommodate buttons + one line)
+    textarea.style.height = `${Math.max(80, newHeight)}px`;
     
     // Show scrollbar only if we hit the limit
     textarea.style.overflowY = textarea.scrollHeight > 400 ? "auto" : "hidden";
@@ -181,19 +181,10 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
         >
           <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-rose-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           
-          <div className="relative bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-3 flex shadow-2xl transition-all focus-within:border-orange-500/30 focus-within:bg-zinc-900/90">
+          {/* MAIN INPUT CONTAINER */}
+          <div className="relative bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl transition-all focus-within:border-orange-500/30 focus-within:bg-zinc-900/90 overflow-hidden">
             
-            {/* Add Button (Bottom Left) */}
-            <div className="flex flex-col justify-end pb-1.5 pl-1 shrink-0">
-              <button 
-                type="button" 
-                className="p-2 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all"
-              >
-                <Plus size={20} />
-              </button>
-            </div>
-
-            {/* Auto-Expanding Textarea */}
+            {/* TEXTAREA - pb-16 reserves bottom space for buttons */}
             <textarea
               ref={textareaRef}
               value={prompt}
@@ -206,51 +197,68 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
               }}
               placeholder="Ask VibeCoder to create a landing page for..."
               rows={1}
-              className="w-full bg-transparent border-none text-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-0 font-medium resize-none py-3 px-3 min-h-[56px] max-h-[400px] scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent leading-relaxed"
+              className="w-full bg-transparent border-none text-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-0 font-medium resize-none px-5 pt-5 pb-16 min-h-[80px] max-h-[400px] scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent leading-relaxed"
               autoFocus
             />
 
-            {/* Action Icons (Bottom Right) */}
-            <div className="flex flex-col justify-end pb-1.5 pr-1 shrink-0">
-              <div className="flex items-center gap-2 bg-zinc-900/50 rounded-xl p-1 backdrop-blur-md">
-              {/* Microphone / Voice Button */}
+            {/* BUTTON LAYER (Absolute Positioned) */}
+            
+            {/* Left: Plus Button */}
+            <div className="absolute bottom-3 left-3 z-10">
               <button 
                 type="button" 
-                onClick={toggleListening}
-                className={`p-2 transition-all rounded-lg ${
-                  isListening 
-                    ? 'text-red-400 bg-red-500/20 animate-pulse' 
-                    : 'text-zinc-500 hover:text-white hover:bg-white/5'
-                }`}
-                title={isListening ? "Tap to stop" : "Voice input"}
+                className="p-2.5 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all"
               >
-                <Mic size={20} />
+                <Plus size={20} />
               </button>
-              
-              {/* Plan Toggle */}
-              <button 
-                type="button"
-                onClick={() => setIsPlanMode(!isPlanMode)}
-                className={`px-2 py-1.5 text-[11px] font-light tracking-wide transition-colors rounded-lg ${
-                  isPlanMode 
-                    ? 'text-orange-400 bg-orange-500/10' 
-                    : 'text-zinc-500 hover:text-orange-400'
-                }`}
-                title="Toggle plan mode"
-              >
-                Plan
-              </button>
-              
-              {/* Submit Button */}
-              <button 
-                type="submit"
-                disabled={!prompt.trim() || subLoading}
-                className="p-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-xl hover:from-orange-400 hover:to-rose-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/20"
-              >
-                <ArrowRight size={20} />
-              </button>
+            </div>
+
+            {/* Right: Actions */}
+            <div className="absolute bottom-3 right-3 z-10 flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-zinc-900/50 rounded-xl p-1 backdrop-blur-md border border-white/5">
+                {/* Microphone / Voice Button */}
+                <button 
+                  type="button" 
+                  onClick={toggleListening}
+                  className={`p-2 transition-all rounded-lg ${
+                    isListening 
+                      ? 'text-red-400 bg-red-500/20 animate-pulse' 
+                      : 'text-zinc-500 hover:text-white hover:bg-white/5'
+                  }`}
+                  title={isListening ? "Tap to stop" : "Voice input"}
+                >
+                  <Mic size={20} />
+                </button>
+                
+                <div className="w-px h-4 bg-white/10 mx-0.5" />
+                
+                {/* Plan Toggle */}
+                <button 
+                  type="button"
+                  onClick={() => setIsPlanMode(!isPlanMode)}
+                  className={`px-2 py-1.5 text-[11px] font-light tracking-wide transition-colors rounded-lg ${
+                    isPlanMode 
+                      ? 'text-orange-400 bg-orange-500/10' 
+                      : 'text-zinc-500 hover:text-orange-400'
+                  }`}
+                  title="Toggle plan mode"
+                >
+                  Plan
+                </button>
+                
+                <div className="w-px h-4 bg-white/10 mx-0.5" />
+                
+                {/* Submit Button */}
+                <button 
+                  type="submit"
+                  disabled={!prompt.trim() || subLoading}
+                  className="p-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-lg hover:from-orange-400 hover:to-rose-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/20"
+                >
+                  <ArrowRight size={20} />
+                </button>
               </div>
             </div>
+
           </div>
           
           {/* Helper text for Enter vs Shift+Enter */}
