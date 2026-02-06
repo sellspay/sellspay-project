@@ -1,263 +1,195 @@
 
-# Fix AI Builder "Blinking" Issue - Credit Preflight & Error UI
+# VibeCoder Emergency Repair Implementation Plan
 
-## Problem Diagnosis
+## Problem Statement
+The VibeCoder AI Builder is experiencing cascading failures where:
+1. **Structural Code Hallucination**: The AI generates code with hooks placed inside arrays (e.g., `const MOVIES = [ ... const { buyProduct } = useSellsPayCheckout();`) or missing `export default function App()` wrappers
+2. **Build Crashes**: Sandpack compiler hits "Unexpected token" errors, causing white screens
+3. **Chat History Not Displaying**: React tree crashes before rendering history components
+4. **"Success with No Code"**: AI claims success but delivers broken/empty code
 
-The AI "blinks" (shows thinking briefly then vanishes) because:
+## Solution Architecture
 
-1. **Root Cause**: User has **0 credits** - the backend correctly returns an error via SSE:
-   ```
-   {"type":"error","data":{"message":"Insufficient credits. Need ~8, have 0."}}
-   ```
-
-2. **Frontend Gap**: The error is processed but not prominently surfaced. The `useAgentLoop` sets `step: 'error'` but the UI doesn't render a persistent error card with upgrade options.
-
-3. **No Preflight Check**: Generation starts without verifying credits first, wasting a roundtrip and confusing users.
-
----
-
-## Solution Overview
-
-Implement a **dual-layer credit enforcement** system:
+The fix implements a **three-layer defense** to prevent, detect, and heal structural code failures:
 
 ```text
-User clicks Send
-      │
-      ▼
-┌─────────────────────────┐
-│ PREFLIGHT CHECK         │
-│ credits >= estimatedCost│
-└─────────────────────────┘
-      │
-      ├── NO ──► Show UpgradeModal immediately
-      │
-      ▼ YES
-┌─────────────────────────┐
-│ START GENERATION        │
-│ Call vibecoder-orchestr │
-└─────────────────────────┘
-      │
-      ├── SSE error (402/insufficient) ──► Show InsufficientCreditsCard in chat
-      │
-      ▼ SUCCESS
-      Normal flow continues
+┌──────────────────────────────────────────────────────────────────┐
+│  LAYER 1: ENHANCED BUILDER PROMPT (vibecoder-builder)           │
+│  → Prevent broken code generation with strict structural rules   │
+└───────────────────────────────┬──────────────────────────────────┘
+                                ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  LAYER 2: STRUCTURAL CODE GUARD (vibecoder-orchestrator)        │
+│  → Validate code structure BEFORE delivery to frontend          │
+└───────────────────────────────┬──────────────────────────────────┘
+                                ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  LAYER 3: AUTO-HEAL ON SANDPACK ERROR (AIBuilderCanvas)         │
+│  → Automatically trigger healing when Sandpack crashes          │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Implementation Plan
+## Implementation Details
 
-### 1. Add Preflight Credit Check in handleSendMessage
+### Phase 1: Enhanced Builder Prompt (vibecoder-builder/index.ts)
 
-**File**: `src/components/ai-builder/AIBuilderCanvas.tsx`
+Replace the existing `BUILDER_SYSTEM_PROMPT` with your comprehensive SellsPay-specific prompt that includes:
 
-Before calling `startAgent()`, check if user has enough credits:
+**STRUCTURAL INTEGRITY SECTION (NON-NEGOTIABLE)**:
+- **COMPONENT WRAPPER**: Always start with `export default function App() {`
+- **HOOK PLACEMENT**: All hooks MUST be inside the `App()` function body at the top level
+- **DATA DECLARATION**: Data constants MUST be defined OUTSIDE the `App` component and completely closed with `];`
 
+**MARKETPLACE RULES (SELLSPAY SPECIFIC)**:
+- Digital-only marketplace context
+- Centralized checkout via `useSellsPayCheckout()` hook
+- Preview capability for digital goods
+
+**CASCADE FAILURE PREVENTION EXAMPLES**:
 ```typescript
-// In handleSendMessage, before ensureProject()
+// ❌ NEVER DO THIS:
+const DATA = [
+  { id: 1, action: () => { const { buy } = useSellsPayCheckout(); } }
+];
 
-// PREFLIGHT: Estimate minimum credits needed
-const estimatedCredits = isQuickEdit ? 1 : 3; // Minimum tier
+// ✅ ALWAYS DO THIS:
+const PRODUCTS = [{ id: 'prod_1', name: 'Pro LUT Pack' }];
 
-if (userCredits < estimatedCredits) {
-  setShowUpgradeModal(true);
-  return; // Block generation
+export default function App() {
+  const { buyProduct } = useSellsPayCheckout();
+  // ... rest of component
 }
 ```
 
-**Changes**:
-- Add `showUpgradeModal` state
-- Add `UpgradeModal` component import and render
-- Pass `insufficientCredits={true}` prop to modal
-
 ---
 
-### 2. Create InsufficientCreditsCard Component
+### Phase 2: Structural Code Guard (vibecoder-orchestrator/index.ts)
 
-**New File**: `src/components/ai-builder/InsufficientCreditsCard.tsx`
-
-A persistent error card shown in the chat when backend rejects due to credits:
+Add a `validateCodeStructure()` function that runs BEFORE delivering code to the frontend:
 
 ```typescript
-interface InsufficientCreditsCardProps {
-  creditsNeeded: number;
-  creditsAvailable: number;
-  onUpgrade: () => void;
+function validateCodeStructure(code: string): { valid: boolean; error?: string } {
+  // Check 1: Must have the component wrapper
+  if (!code.includes('export default function App')) {
+    return { valid: false, error: 'Missing export default function App wrapper' };
+  }
+  
+  // Check 2: Hooks cannot appear before the component declaration
+  const appIndex = code.indexOf('export default function App');
+  const hookPatterns = ['useEffect(', 'useState(', 'useCallback(', 'useMemo(', 'useSellsPayCheckout('];
+  
+  for (const hook of hookPatterns) {
+    const hookIndex = code.indexOf(hook);
+    if (hookIndex >= 0 && hookIndex < appIndex) {
+      return { valid: false, error: `Hook "${hook}" called outside component boundary` };
+    }
+  }
+  
+  // Check 3: Basic bracket balance (catches obvious collapses)
+  const openBraces = (code.match(/{/g) || []).length;
+  const closeBraces = (code.match(/}/g) || []).length;
+  if (Math.abs(openBraces - closeBraces) > 3) {
+    return { valid: false, error: 'Severely unbalanced braces - likely syntax error' };
+  }
+  
+  return { valid: true };
 }
 ```
 
-**Visual Design**:
-- Amber/orange gradient border (warning theme)
-- Coins icon with animation
-- Clear message: "Not enough credits"
-- "Upgrade Plan" button → opens UpgradeModal
-- "Add Credits" button → navigates to /pricing
+If validation fails, the orchestrator will:
+1. Log the structural error
+2. Automatically retry with healing context (within the existing 3-attempt limit)
+3. Only deliver code after validation passes
 
 ---
 
-### 3. Surface Credit Errors in VibecoderChat
+### Phase 3: Auto-Heal on Sandpack Error (AIBuilderCanvas.tsx)
 
-**File**: `src/components/ai-builder/VibecoderChat.tsx`
-
-When `agentStep === 'error'` and the error contains "Insufficient credits":
+Modify `handlePreviewError` to automatically trigger healing for structural errors:
 
 ```typescript
-// After ChatInterface, before LiveThought
-{agentStep === 'error' && isCreditsError(agentError) && (
-  <InsufficientCreditsCard 
-    creditsNeeded={extractCreditsNeeded(agentError)}
-    creditsAvailable={userCredits}
-    onUpgrade={() => onOpenBilling?.()}
-  />
-)}
+const handlePreviewError = useCallback((errorMsg: string) => {
+  // Prevent duplicate healing for the same error
+  if (lastPreviewErrorRef.current === errorMsg) return;
+  lastPreviewErrorRef.current = errorMsg;
+  
+  setPreviewError(errorMsg);
+  setShowFixToast(true);
+  
+  // Trigger self-correction state in agent for UI feedback
+  triggerSelfCorrection(errorMsg);
+  
+  // VibeCoder 2.2: AUTO-HEAL on structural errors
+  const isStructuralError = 
+    errorMsg.includes('Unexpected token') ||
+    errorMsg.includes('SyntaxError') ||
+    errorMsg.includes('is not defined') ||
+    errorMsg.includes('Cannot use import') ||
+    errorMsg.includes('export');
+  
+  // Auto-heal structural errors immediately (no user click needed)
+  if (isStructuralError && !isAgentRunning) {
+    console.log('[VibeCoder 2.2] Auto-triggering heal for structural error');
+    const codeToHeal = lastGeneratedCode || code;
+    healCode(errorMsg, codeToHeal);
+    setShowFixToast(false); // Hide toast since we're auto-healing
+  }
+}, [healCode, lastGeneratedCode, code, isAgentRunning, triggerSelfCorrection]);
 ```
 
 ---
 
-### 4. Extract Error Details from SSE in useAgentLoop
+## Files to Modify
 
-**File**: `src/hooks/useAgentLoop.ts`
-
-When handling `type: 'error'` events, store structured error info:
-
-```typescript
-interface AgentState {
-  // ... existing
-  errorType?: 'credits' | 'auth' | 'api' | 'unknown';
-  errorDetails?: {
-    creditsNeeded?: number;
-    creditsAvailable?: number;
-    message: string;
-  };
-}
-
-// In handleOrchestratorEvent case 'error':
-const message = errorData?.message || 'Unknown error';
-const isCreditsError = message.toLowerCase().includes('insufficient credits');
-
-setState(prev => ({
-  ...prev,
-  step: 'error',
-  error: message,
-  errorType: isCreditsError ? 'credits' : 'unknown',
-  errorDetails: isCreditsError ? parseCreditsError(message) : undefined,
-  isRunning: false,
-}));
-```
+| File | Changes |
+|------|---------|
+| `supabase/functions/vibecoder-builder/index.ts` | Replace system prompt with comprehensive SellsPay-specific version including STRUCTURAL INTEGRITY rules |
+| `supabase/functions/vibecoder-orchestrator/index.ts` | Add `validateCodeStructure()` function before code delivery |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | Implement auto-heal on structural Sandpack errors |
 
 ---
 
-### 5. Wire UpgradeModal into AIBuilderCanvas
+## Technical Implementation Sequence
 
-**File**: `src/components/ai-builder/AIBuilderCanvas.tsx`
+1. **Update vibecoder-builder** with new STRUCTURAL INTEGRITY prompt section
+   - Inject the SellsPay marketplace context
+   - Add explicit hook placement rules with examples
+   - Add cascade failure prevention examples
 
-Add modal state and callbacks:
+2. **Update vibecoder-orchestrator** with structural validation
+   - Add `validateCodeStructure()` before the code delivery event
+   - If validation fails and attempts remain, prepare healing context and retry
+   - Only send `code` event after validation passes
 
-```typescript
-const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+3. **Update AIBuilderCanvas** with auto-heal
+   - Detect structural errors in `handlePreviewError`
+   - Auto-trigger `healCode()` for syntax/structural errors
+   - Keep manual "Fix" button for non-structural runtime errors
 
-// In JSX, after other modals
-<UpgradeModal 
-  open={showUpgradeModal} 
-  onOpenChange={setShowUpgradeModal}
-  insufficientCredits={true}
-/>
-```
-
-Pass `onOpenBilling` callback to `VibecoderChat`:
-
-```typescript
-<VibecoderChat
-  // ... existing props
-  onOpenBilling={() => setShowUpgradeModal(true)}
-/>
-```
+4. **Deploy edge functions**
+   - Deploy `vibecoder-builder` first (prevents bad code generation)
+   - Deploy `vibecoder-orchestrator` second (catches remaining issues)
 
 ---
 
-### 6. Update ChatInputBar Credit Display
+## Expected Outcomes
 
-**File**: `src/components/ai-builder/ChatInputBar.tsx`
+After implementation:
 
-Already shows credits and has `showCreditsDialog` state. Enhance to:
-
-1. Show warning color when credits < 3 (minimum for any build)
-2. Disable submit with tooltip when credits are insufficient
-
-```typescript
-// In the credits display section
-<span className={cn(
-  "text-xs font-medium",
-  userCredits < 3 ? "text-amber-500" : "text-muted-foreground"
-)}>
-  {userCredits}c
-</span>
-```
+1. **Structurally broken code is rejected** before reaching the frontend
+2. **Auto-healing triggers** immediately when Sandpack crashes with structural errors
+3. **AI produces valid code** more consistently with improved prompting
+4. **Chat history displays correctly** because the React tree no longer crashes
+5. **No more "success with no code"** because validation gates the delivery
 
 ---
 
-## Files to Create/Modify
+## Testing Verification
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/components/ai-builder/InsufficientCreditsCard.tsx` | CREATE | Error card for credit failures |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | MODIFY | Add preflight check + modal state |
-| `src/components/ai-builder/VibecoderChat.tsx` | MODIFY | Render error card for credit issues |
-| `src/hooks/useAgentLoop.ts` | MODIFY | Extract structured error info |
-| `src/components/ai-builder/ChatInputBar.tsx` | MODIFY | Warning styling for low credits |
-
----
-
-## Technical Notes
-
-### Error Message Parsing
-
-The backend returns: `"Insufficient credits. Need ~8, have 0."`
-
-Regex to extract values:
-```typescript
-function parseCreditsError(message: string) {
-  const match = message.match(/Need ~(\d+), have (\d+)/);
-  return match ? {
-    creditsNeeded: parseInt(match[1]),
-    creditsAvailable: parseInt(match[2]),
-    message,
-  } : { message };
-}
-```
-
-### Credit Estimate for Preflight
-
-| Scenario | Estimated Credits |
-|----------|-------------------|
-| Quick edit (short prompt, has existing code) | 1 |
-| Any other prompt | 3 (minimum tier) |
-
-The actual cost may be higher after Architect analyzes complexity, but preflight catches the obvious "0 credits" case immediately.
-
----
-
-## User Experience Flow
-
-**Before Fix**:
-1. User types prompt → clicks Send
-2. "Thinking" bubble appears for 0.5s
-3. Bubble disappears silently
-4. User confused, repeats, same result
-
-**After Fix**:
-1. User types prompt → clicks Send
-2. **Preflight catches 0 credits** → UpgradeModal opens immediately
-3. OR if preflight passes but backend still rejects:
-   - InsufficientCreditsCard appears in chat
-   - Shows exactly how many credits needed vs available
-   - Upgrade button prominently displayed
-
----
-
-## Success Criteria
-
-- Zero-credit users see immediate feedback (no "blinking")
-- Clear messaging about credit requirements
-- Direct path to upgrade from error state
-- No unnecessary API calls when credits are obviously insufficient
+After deployment, test with the same prompt that caused the original crash:
+- The AI should generate properly structured code
+- If a structural error somehow occurs, it should auto-heal
+- Chat history should persist and display correctly
+- The preview should render without white screens
