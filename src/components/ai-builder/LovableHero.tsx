@@ -214,7 +214,7 @@ export function LovableHero({
               }}
               placeholder="Ask VibeCoder to create a landing page for..."
               rows={1}
-              className="w-full bg-transparent border-none text-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-0 font-medium resize-none px-5 pt-5 pb-16 min-h-[80px] max-h-[400px] scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent leading-relaxed"
+              className="w-full bg-transparent border-none text-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-0 font-medium resize-none px-5 pt-5 pb-[80px] min-h-[120px] max-h-[400px] scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent leading-relaxed"
               autoFocus
             />
 

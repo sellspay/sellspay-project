@@ -202,14 +202,13 @@ export function VibecoderHeader({
           />
         </div>
 
-        {/* Tweak Design Button */}
+        {/* Tweak Design Button - Never shows loading state */}
         {!isEmpty && onRegenerate && (
           <button 
             onClick={() => setIsRegenerateOpen(true)}
-            disabled={isGenerating}
-            className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 border border-zinc-700 rounded-lg text-xs font-bold text-zinc-300 transition-all"
+            className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg text-xs font-bold text-zinc-300 transition-all"
           >
-            <RefreshCw size={12} className={isGenerating ? "animate-spin" : ""} />
+            <RefreshCw size={12} />
             <span>Tweak</span>
           </button>
         )}
