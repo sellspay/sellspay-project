@@ -22,6 +22,9 @@ interface VibecoderChatProps {
   onRestoreToVersion: (messageId: string) => void;
   projectName?: string;
   liveSteps?: string[]; // Real-time transparency logs
+  // Controlled model state
+  activeModel?: AIModel;
+  onModelChange?: (model: AIModel) => void;
 }
 
 // Live Building Card - shows steps as they stream in
@@ -115,6 +118,8 @@ export function VibecoderChat({
   onRestoreToVersion,
   projectName,
   liveSteps = [],
+  activeModel,
+  onModelChange,
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -299,6 +304,8 @@ export function VibecoderChat({
         onCancel={onCancel}
         placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
         userCredits={userCredits}
+        activeModel={activeModel}
+        onModelChange={onModelChange}
       />
     </div>
   );

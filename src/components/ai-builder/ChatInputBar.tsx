@@ -93,6 +93,9 @@ interface ChatInputBarProps {
   onGenerateAsset?: () => void;
   onOpenHistory?: () => void;
   onOpenSettings?: () => void;
+  // Controlled model state (lifted from parent)
+  activeModel?: AIModel;
+  onModelChange?: (model: AIModel) => void;
 }
 
 // Portal component to render children directly on document.body
@@ -223,12 +226,16 @@ export function ChatInputBar({
   userCredits = 0,
   onGenerateAsset,
   onOpenHistory,
-  onOpenSettings
+  onOpenSettings,
+  activeModel,
+  onModelChange
 }: ChatInputBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [isPlanMode, setIsPlanMode] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<AIModel>(AI_MODELS.code[0]);
+  // Use controlled model if provided, otherwise use local state
+  const [internalModel, setInternalModel] = useState<AIModel>(AI_MODELS.code[0]);
+  const selectedModel = activeModel ?? internalModel;
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isListening, setIsListening] = useState(false);
   
@@ -351,7 +358,12 @@ export function ChatInputBar({
   };
 
   const handleModelSelect = (model: AIModel) => {
-    setSelectedModel(model);
+    // Notify parent if controlled, otherwise update internal state
+    if (onModelChange) {
+      onModelChange(model);
+    } else {
+      setInternalModel(model);
+    }
     setShowModelMenu(false);
   };
 
