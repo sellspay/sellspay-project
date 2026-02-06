@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { clearProjectCache, clearAllVibecoderCache } from './utils/projectCache';
 import { LovableHero } from './LovableHero';
 import { PremiumLoadingScreen } from './PremiumLoadingScreen';
+import { FixErrorToast } from './FixErrorToast';
 
 interface AIBuilderCanvasProps {
   profileId: string;
@@ -159,7 +160,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   
   // Live steps state for real-time transparency (legacy fallback)
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
-  
+
+  // Preview error state (Sandpack compile/runtime)
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [showFixToast, setShowFixToast] = useState(false);
+  const lastPreviewErrorRef = useRef<string | null>(null);
   // Streaming code state
   const { 
     code, 
@@ -677,7 +682,24 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     triggerSelfCorrection(errorMsg);
     // Send the error report to the AI for automatic repair
     handleSendMessage(errorMsg);
-  }, [triggerSelfCorrection]);
+  }, [triggerSelfCorrection, handleSendMessage]);
+
+  // When Sandpack reports an error, mirror it into chat + show one-click fix toast
+  const handlePreviewError = useCallback(async (errorMsg: string) => {
+    setPreviewError(errorMsg);
+    setShowFixToast(true);
+    triggerSelfCorrection(errorMsg);
+
+    if (lastPreviewErrorRef.current !== errorMsg) {
+      lastPreviewErrorRef.current = errorMsg;
+      await addMessage(
+        'assistant',
+        `**Build error detected**\n\n\`${errorMsg}\`\n\nClick **Fix error** below to auto-repair.`,
+        undefined,
+        activeProjectId || undefined
+      );
+    }
+  }, [addMessage, activeProjectId, triggerSelfCorrection]);
 
   // ===== CREATIVE STUDIO: Asset Generation Handlers =====
   
@@ -1001,7 +1023,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               /* Live Preview: Sandpack iframe - always rendered with DEFAULT_CODE when no project */
               <div className={`flex-1 min-h-0 relative ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}>
                 <div
-                  className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'}`}
+                  className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'} relative`}
                 >
                   <PreviewErrorBoundary
                     onAutoFix={handleAutoFix}
@@ -1015,10 +1037,29 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       code={code}
                       isStreaming={isStreaming}
                       showLoadingOverlay={isStreaming || isAwaitingPreviewReady}
-                      onReady={() => setIsAwaitingPreviewReady(false)}
+                      onReady={() => {
+                        setIsAwaitingPreviewReady(false);
+                        // If the bundle becomes healthy again, clear the toast.
+                        setPreviewError(null);
+                        setShowFixToast(false);
+                        lastPreviewErrorRef.current = null;
+                      }}
+                      onError={handlePreviewError}
                       viewMode={viewMode}
                     />
                   </PreviewErrorBoundary>
+
+                  {showFixToast && previewError && (
+                    <FixErrorToast
+                      error={previewError}
+                      onDismiss={() => setShowFixToast(false)}
+                      onFix={() => {
+                        const report = `CRITICAL_ERROR_REPORT: The preview has the following build error: "${previewError}". Analyze the latest code you generated, identify the cause (syntax error, missing import, undefined variable, etc.), and fix it immediately. Do NOT ask questions.`;
+                        handleAutoFix(report);
+                        setShowFixToast(false);
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             )}
