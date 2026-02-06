@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Plus, ArrowLeft, AudioLines, ListTodo } from "lucide-react";
+import { ArrowRight, Plus, ArrowLeft, AudioLines } from "lucide-react";
 import heroBg from "@/assets/hero-aurora-bg.jpg";
 
 interface LovableHeroProps {
@@ -10,18 +10,13 @@ interface LovableHeroProps {
 
 export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps) {
   const [prompt, setPrompt] = useState("");
+  const [isPlanMode, setIsPlanMode] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (prompt.trim()) {
-      onStart(prompt, false);
-    }
-  };
-
-  const handlePlanSubmit = () => {
-    if (prompt.trim()) {
-      onStart(prompt, true);
+      onStart(prompt, isPlanMode);
     }
   };
 
@@ -98,15 +93,18 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
                 <AudioLines size={20} />
               </button>
               
-              {/* Plan Button */}
+              {/* Plan Toggle */}
               <button 
                 type="button"
-                onClick={handlePlanSubmit}
-                disabled={!prompt.trim()}
-                className="p-2 text-zinc-500 hover:text-orange-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Generate a plan first"
+                onClick={() => setIsPlanMode(!isPlanMode)}
+                className={`px-2 py-1.5 text-[11px] font-light tracking-wide transition-colors rounded-lg ${
+                  isPlanMode 
+                    ? 'text-orange-400 bg-orange-500/10' 
+                    : 'text-zinc-500 hover:text-orange-400'
+                }`}
+                title="Toggle plan mode"
               >
-                <ListTodo size={20} />
+                Plan
               </button>
               
               {/* Submit Button */}
