@@ -49,6 +49,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   
   // Canvas ready state - waits for Sandpack to finish initial bundle
   const [isCanvasReady, setIsCanvasReady] = useState(false);
+  const [sandpackError, setSandpackError] = useState<string | null>(null);
+
   // View mode state (Preview vs Code vs Image vs Video)
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
@@ -296,7 +298,24 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // "Loading canvas..." if Sandpack already fired `onReady` before messages arrive.
   useEffect(() => {
     setIsCanvasReady(false);
+    setSandpackError(null);
   }, [activeProjectId, resetKey, refreshKey, viewMode]);
+
+  // Failsafe: never block the UI forever on "Loading canvas..."
+  // If bundling is slow or the ready event is missed, we still let the preview render
+  // so Sandpack can show its own error/compile output.
+  useEffect(() => {
+    if (viewMode === 'image' || viewMode === 'video') return;
+    if (isCanvasReady || sandpackError) return;
+
+    const timeout = window.setTimeout(() => {
+      console.warn('[AIBuilderCanvas] Canvas ready timeout — unblocking preview overlay');
+      setIsCanvasReady(true);
+      toast.info('Canvas is taking longer than expected. Try Hard Refresh (↻) if needed.');
+    }, 20000);
+
+    return () => window.clearTimeout(timeout);
+  }, [activeProjectId, resetKey, refreshKey, viewMode, isCanvasReady, sandpackError]);
 
   // SCORCHED EARTH: Verify project exists on switch & force reset if zombie detected
   useEffect(() => {
@@ -858,17 +877,54 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       onReady={() => setIsCanvasReady(true)}
                       onError={(error) => {
                         console.warn('[VibecoderPreview] Sandpack error detected:', error);
+                        setSandpackError(error);
+                        setIsCanvasReady(true); // unblock overlay so the user can see the error UI
                       }}
                     />
                   </PreviewErrorBoundary>
                 </div>
                 
                 {/* Canvas loading overlay - shows until Sandpack is ready */}
-                {!isCanvasReady && (
+                {!isCanvasReady && !sandpackError && (
                   <div className="absolute inset-0 z-30 bg-background flex items-center justify-center">
                     <div className="flex flex-col items-center gap-4">
                       <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                       <span className="text-sm text-muted-foreground">Loading canvas...</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* If Sandpack errors, show a recovery panel (and keep preview behind it) */}
+                {sandpackError && (
+                  <div className="absolute inset-0 z-30 bg-background flex items-center justify-center p-6">
+                    <div className="w-full max-w-xl rounded-2xl border border-border bg-card p-6 shadow-lg">
+                      <h3 className="text-base font-semibold text-foreground">Preview failed to load</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Sandboxed preview reported an error while bundling.
+                      </p>
+                      <pre className="mt-4 max-h-48 overflow-auto rounded-lg bg-muted p-3 text-xs text-foreground whitespace-pre-wrap break-words">
+                        {sandpackError}
+                      </pre>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={handleRefresh}
+                          className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+                        >
+                          Hard Refresh (↻)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSandpackError(null);
+                            setIsCanvasReady(false);
+                            setRefreshKey((p) => p + 1);
+                          }}
+                          className="inline-flex items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground"
+                        >
+                          Retry
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
