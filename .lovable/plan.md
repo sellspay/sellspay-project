@@ -1,280 +1,198 @@
 
-# SellsPay VibeCoder 2.0+ & Platform Pulse - God-Tier Upgrade Blueprint
+# Fix AI Builder "Blinking" Issue - Credit Preflight & Error UI
 
-## Executive Summary
+## Problem Diagnosis
 
-This plan consolidates the Multi-Agent Engine enhancements, Self-Healing improvements, Premium Changelog UI, and Discord Automation into a cohesive implementation roadmap.
+The AI "blinks" (shows thinking briefly then vanishes) because:
+
+1. **Root Cause**: User has **0 credits** - the backend correctly returns an error via SSE:
+   ```
+   {"type":"error","data":{"message":"Insufficient credits. Need ~8, have 0."}}
+   ```
+
+2. **Frontend Gap**: The error is processed but not prominently surfaced. The `useAgentLoop` sets `step: 'error'` but the UI doesn't render a persistent error card with upgrade options.
+
+3. **No Preflight Check**: Generation starts without verifying credits first, wasting a roundtrip and confusing users.
 
 ---
 
-## Current State Analysis
+## Solution Overview
 
-### What's Already Implemented (VibeCoder 2.1)
+Implement a **dual-layer credit enforcement** system:
 
-| Component | Status | Implementation |
-|-----------|--------|----------------|
-| **3-Agent Pipeline** | ✅ Complete | Architect (Gemini 3 Pro) → Builder (Gemini 3 Flash) → Linter (Gemini 2.5 Flash Lite) |
-| **Shadow Render** | ✅ Complete | esbuild WASM transpilation check in `vibecoder-orchestrator` |
-| **Self-Healing Loop** | ✅ Complete | Max 3 retries with full `failedCode` + `fixSuggestion` context |
-| **Dedicated Heal Endpoint** | ✅ Complete | `vibecoder-heal` for runtime error surgery |
-| **Frontend Error Wiring** | ✅ Complete | `FixErrorToast` → `healCode()` in `useAgentLoop.ts` |
-| **Tiered Credits** | ✅ Complete | Complexity-based pricing (1/3/8/15 credits) |
-| **Design Tokens** | ✅ Complete | 6 style profiles with Tailwind recipes in `vibecoder-builder` |
-| **SDK Components** | ✅ Complete | 7 components in `vibecoder-stdlib.ts` (ProductCard, HeroSection, etc.) |
-| **Style Profiles** | ✅ Complete | 6 profiles in `vibecoder-style-profiles.ts` |
-
-### Missing or Needs Enhancement
-
-| Gap | Current State | Blueprint Requirement |
-|-----|--------------|----------------------|
-| **Changelog UI** | Basic `platform_updates` table exists | Premium Timeline with version tags, media, Discord sync |
-| **SemVer System** | No versioning | Major.Minor.Patch with automatic tagging |
-| **Discord Webhook** | Not implemented | Auto-post on changelog publish |
-| **SDK Folder** | Components in stdlib (strings) | Real `src/components/sellspay/` folder for discoverability |
-| **Architect uniqueDesignFeature** | Not in current schema | Add to prevent design repetition |
-| **Healing Stats Logging** | Not tracked | Log successful heals for "AI is squashing bugs" display |
+```text
+User clicks Send
+      │
+      ▼
+┌─────────────────────────┐
+│ PREFLIGHT CHECK         │
+│ credits >= estimatedCost│
+└─────────────────────────┘
+      │
+      ├── NO ──► Show UpgradeModal immediately
+      │
+      ▼ YES
+┌─────────────────────────┐
+│ START GENERATION        │
+│ Call vibecoder-orchestr │
+└─────────────────────────┘
+      │
+      ├── SSE error (402/insufficient) ──► Show InsufficientCreditsCard in chat
+      │
+      ▼ SUCCESS
+      Normal flow continues
+```
 
 ---
 
 ## Implementation Plan
 
-### PART 1: Enhanced Multi-Agent Orchestration
+### 1. Add Preflight Credit Check in handleSendMessage
 
-#### 1A. Add `uniqueDesignFeature` to Architect Output
+**File**: `src/components/ai-builder/AIBuilderCanvas.tsx`
 
-The Architect should output a mandatory "signature element" per build to prevent repetition.
+Before calling `startAgent()`, check if user has enough credits:
 
-**File**: `supabase/functions/vibecoder-architect/index.ts`
+```typescript
+// In handleSendMessage, before ensureProject()
+
+// PREFLIGHT: Estimate minimum credits needed
+const estimatedCredits = isQuickEdit ? 1 : 3; // Minimum tier
+
+if (userCredits < estimatedCredits) {
+  setShowUpgradeModal(true);
+  return; // Block generation
+}
+```
 
 **Changes**:
-- Update JSON schema to include `uniqueDesignFeature`:
-```json
-"uniqueDesignFeature": {
-  "element": "Animated gradient border on hero",
-  "implementation": "bg-gradient-to-r from-cyan-500 via-transparent to-pink-500 animate-gradient"
-}
-```
-- Add to system prompt: "Every design MUST include one unique visual signature that distinguishes it from other stores"
-
-#### 1B. Builder Model Alignment
-
-The blueprint mentions Claude 3.5 Sonnet as an option, but current implementation uses Gemini 3 Flash.
-
-**Decision Required**: Stay with Gemini 3 Flash (current, fast) or add Claude as a fallback for complex builds?
-
-**Recommendation**: Keep Gemini 3 Flash as default - it's integrated with Lovable AI gateway. Adding Claude would require API key management.
-
-#### 1C. Linter Ghost Render Enhancement
-
-The Shadow Render in the orchestrator uses esbuild which catches syntax errors. For true React runtime validation (hooks in loops, etc.), we'd need JSDOM + React - too heavy for edge functions.
-
-**Current Limitation**: esbuild catches ~80% of crashes. True runtime errors still go through frontend `handlePreviewError` → `healCode()`.
-
-**Recommendation**: Keep current architecture - the frontend healing path handles what esbuild misses.
+- Add `showUpgradeModal` state
+- Add `UpgradeModal` component import and render
+- Pass `insufficientCredits={true}` prop to modal
 
 ---
 
-### PART 2: SellsPay Pulse (Changelog & Version UI)
+### 2. Create InsufficientCreditsCard Component
 
-#### 2A. Database Schema Enhancement
+**New File**: `src/components/ai-builder/InsufficientCreditsCard.tsx`
 
-Add versioning fields to `platform_updates` table:
+A persistent error card shown in the chat when backend rejects due to credits:
 
-```sql
-ALTER TABLE platform_updates
-ADD COLUMN version_number text,
-ADD COLUMN version_type text CHECK (version_type IN ('major', 'minor', 'patch')),
-ADD COLUMN media_url text,
-ADD COLUMN media_type text CHECK (media_type IN ('image', 'gif', 'video')),
-ADD COLUMN discord_sent boolean DEFAULT false,
-ADD COLUMN feature_tags text[];
+```typescript
+interface InsufficientCreditsCardProps {
+  creditsNeeded: number;
+  creditsAvailable: number;
+  onUpgrade: () => void;
+}
 ```
-
-#### 2B. Changelog Page Component
-
-**New File**: `src/pages/Changelog.tsx`
 
 **Visual Design**:
-- Vertical spine timeline with year/month groupings
-- Sticky version tags that pin on scroll
-- Pill tags: `[Added]` (green), `[Improved]` (blue), `[Fixed]` (amber), `[Marketplace]` (purple)
-- Media cards with image/GIF preview
-- Mobile-responsive layout
+- Amber/orange gradient border (warning theme)
+- Coins icon with animation
+- Clear message: "Not enough credits"
+- "Upgrade Plan" button → opens UpgradeModal
+- "Add Credits" button → navigates to /pricing
 
-```text
-┌────────────────────────────────────────────────────────────────┐
-│  SELLSPAY CHANGELOG                                            │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  February 2026                                                 │
-│  ════════════                                                  │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ v2.1.0                                           [Added] │  │
-│  │                                                          │  │
-│  │ Multi-Agent Self-Healing Pipeline                        │  │
-│  │ VibeCoder now fixes its own bugs with a 3-agent loop.   │  │
-│  │                                                          │  │
-│  │ ┌────────────────────────────────────────────────────┐  │  │
-│  │ │  [Screenshot/GIF of self-healing in action]       │  │  │
-│  │ └────────────────────────────────────────────────────┘  │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                │
-│  January 2026                                                  │
-│  ═══════════                                                   │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │ v2.0.0                                           [Major] │  │
-│  │                                                          │  │
-│  │ VibeCoder 2.0 Launch                                     │  │
-│  │ Complete rewrite with Architect → Builder → Linter.      │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
+---
 
-#### 2C. Changelog Slide-Over Panel (In-App)
+### 3. Surface Credit Errors in VibecoderChat
 
-**New File**: `src/components/ai-builder/ChangelogPanel.tsx`
+**File**: `src/components/ai-builder/VibecoderChat.tsx`
 
-- Accessible from VibeCoder header ("What's New" button)
-- Sheet/drawer component that slides in from right
-- Shows last 5 updates with quick dismiss
-
-#### 2D. Versioning Logic (SemVer)
-
-**New File**: `src/lib/versioning.ts`
+When `agentStep === 'error'` and the error contains "Insufficient credits":
 
 ```typescript
-interface Version {
-  major: number;
-  minor: number;
-  patch: number;
+// After ChatInterface, before LiveThought
+{agentStep === 'error' && isCreditsError(agentError) && (
+  <InsufficientCreditsCard 
+    creditsNeeded={extractCreditsNeeded(agentError)}
+    creditsAvailable={userCredits}
+    onUpgrade={() => onOpenBilling?.()}
+  />
+)}
+```
+
+---
+
+### 4. Extract Error Details from SSE in useAgentLoop
+
+**File**: `src/hooks/useAgentLoop.ts`
+
+When handling `type: 'error'` events, store structured error info:
+
+```typescript
+interface AgentState {
+  // ... existing
+  errorType?: 'credits' | 'auth' | 'api' | 'unknown';
+  errorDetails?: {
+    creditsNeeded?: number;
+    creditsAvailable?: number;
+    message: string;
+  };
 }
 
-function incrementVersion(current: Version, type: 'major' | 'minor' | 'patch'): Version;
-function formatVersion(v: Version): string; // "2.1.0"
-function getLatestVersion(): Promise<Version>; // From DB
+// In handleOrchestratorEvent case 'error':
+const message = errorData?.message || 'Unknown error';
+const isCreditsError = message.toLowerCase().includes('insufficient credits');
+
+setState(prev => ({
+  ...prev,
+  step: 'error',
+  error: message,
+  errorType: isCreditsError ? 'credits' : 'unknown',
+  errorDetails: isCreditsError ? parseCreditsError(message) : undefined,
+  isRunning: false,
+}));
 ```
 
 ---
 
-### PART 3: Discord Webhook Automation
+### 5. Wire UpgradeModal into AIBuilderCanvas
 
-#### 3A. New Edge Function
+**File**: `src/components/ai-builder/AIBuilderCanvas.tsx`
 
-**New File**: `supabase/functions/notify-changelog/index.ts`
+Add modal state and callbacks:
 
-**Trigger**: Called after inserting into `platform_updates` with `version_number` set.
-
-**Payload Structure**:
 ```typescript
-const discordPayload = {
-  embeds: [{
-    title: `🚀 SellsPay Evolution: v${versionNumber}`,
-    description: updateSummary,
-    color: 0xEE0000, // SellsPay Brand Red
-    fields: [
-      { name: "✨ Highlight", value: topFeature, inline: true },
-      { name: "📋 Category", value: category, inline: true }
-    ],
-    image: { url: mediaUrl },
-    footer: { text: "Powered by VibeCoder 2.0 Agent Pipeline" },
-    timestamp: new Date().toISOString()
-  }]
-};
+const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+// In JSX, after other modals
+<UpgradeModal 
+  open={showUpgradeModal} 
+  onOpenChange={setShowUpgradeModal}
+  insufficientCredits={true}
+/>
 ```
 
-#### 3B. Secret Configuration
+Pass `onOpenBilling` callback to `VibecoderChat`:
 
-**Required Secret**: `DISCORD_CHANGELOG_WEBHOOK_URL`
-
-This needs to be added via the Lovable secrets manager before the function will work.
-
-#### 3C. Database Trigger Option
-
-For automatic Discord posts, create a Postgres trigger:
-
-```sql
-CREATE OR REPLACE FUNCTION notify_discord_on_changelog()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Only fire when version_number is set and discord_sent is false
-  IF NEW.version_number IS NOT NULL AND NOT COALESCE(NEW.discord_sent, false) THEN
-    PERFORM net.http_post(
-      url := current_setting('app.discord_webhook_url'),
-      body := json_build_object(...)::text
-    );
-    NEW.discord_sent := true;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+```typescript
+<VibecoderChat
+  // ... existing props
+  onOpenBilling={() => setShowUpgradeModal(true)}
+/>
 ```
-
-**Alternative**: Manual trigger via admin dashboard button (simpler, more control).
 
 ---
 
-### PART 4: Elite Style Engine Improvements
+### 6. Update ChatInputBar Credit Display
 
-#### 4A. Physical SDK Components Folder
+**File**: `src/components/ai-builder/ChatInputBar.tsx`
 
-Currently, SDK components exist as strings in `vibecoder-stdlib.ts`. For better discoverability and import clarity, create actual files:
+Already shows credits and has `showCreditsDialog` state. Enhance to:
 
-**New Files**:
-- `src/components/sellspay/index.ts` (barrel export)
-- `src/components/sellspay/ProductCard.tsx`
-- `src/components/sellspay/CheckoutButton.tsx`
-- `src/components/sellspay/HeroSection.tsx`
-- `src/components/sellspay/FeaturedProducts.tsx`
-- `src/components/sellspay/CreatorBio.tsx`
-- `src/components/sellspay/StickyNav.tsx`
-- `src/components/sellspay/TestimonialCard.tsx`
-- `src/components/sellspay/StatsBar.tsx`
+1. Show warning color when credits < 3 (minimum for any build)
+2. Disable submit with tooltip when credits are insufficient
 
-These mirror the stdlib versions but exist in the actual codebase for:
-1. Type checking in the editor
-2. AI discoverability when searching the codebase
-3. Potential reuse in non-Sandpack contexts
-
-#### 4B. Healing Stats Logger
-
-Track successful self-corrections for a future "VibeCoder Stats" dashboard.
-
-**New Table**: `vibecoder_heal_logs`
-
-```sql
-CREATE TABLE vibecoder_heal_logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id uuid REFERENCES vibecoder_projects(id),
-  user_id uuid REFERENCES auth.users(id),
-  error_type text NOT NULL,
-  error_message text,
-  healing_source text CHECK (healing_source IN ('orchestrator', 'frontend')),
-  success boolean DEFAULT false,
-  attempts integer DEFAULT 1,
-  created_at timestamptz DEFAULT now()
-);
+```typescript
+// In the credits display section
+<span className={cn(
+  "text-xs font-medium",
+  userCredits < 3 ? "text-amber-500" : "text-muted-foreground"
+)}>
+  {userCredits}c
+</span>
 ```
-
-**Usage**: Insert from `vibecoder-heal` and `vibecoder-orchestrator` on successful fixes.
-
-**Display**: Future "AI is squashing bugs" real-time counter on changelog/landing page.
-
----
-
-## Implementation Order
-
-| Priority | Task | Effort | Impact |
-|----------|------|--------|--------|
-| 1 | Database migration: Changelog version fields | Low | Medium |
-| 2 | Changelog page UI (`/changelog`) | Medium | High |
-| 3 | Changelog slide-over in AI Builder | Low | Medium |
-| 4 | Discord webhook edge function | Low | High |
-| 5 | Physical SDK folder (parallel to stdlib) | Medium | Low |
-| 6 | Architect `uniqueDesignFeature` | Low | Medium |
-| 7 | Healing stats logger | Low | Low |
 
 ---
 
@@ -282,55 +200,64 @@ CREATE TABLE vibecoder_heal_logs (
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `supabase/migrations/XXXX_changelog_versioning.sql` | CREATE | Add version fields to platform_updates |
-| `src/pages/Changelog.tsx` | CREATE | Premium changelog page |
-| `src/components/ai-builder/ChangelogPanel.tsx` | CREATE | In-app changelog drawer |
-| `src/components/changelog/ChangelogTimeline.tsx` | CREATE | Reusable timeline component |
-| `src/components/changelog/ChangelogEntry.tsx` | CREATE | Single update card |
-| `src/lib/versioning.ts` | CREATE | SemVer helpers |
-| `supabase/functions/notify-changelog/index.ts` | CREATE | Discord webhook |
-| `src/components/sellspay/*.tsx` | CREATE | Physical SDK components |
-| `supabase/functions/vibecoder-architect/index.ts` | MODIFY | Add uniqueDesignFeature |
-| `supabase/functions/vibecoder-heal/index.ts` | MODIFY | Log healing stats |
+| `src/components/ai-builder/InsufficientCreditsCard.tsx` | CREATE | Error card for credit failures |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | MODIFY | Add preflight check + modal state |
+| `src/components/ai-builder/VibecoderChat.tsx` | MODIFY | Render error card for credit issues |
+| `src/hooks/useAgentLoop.ts` | MODIFY | Extract structured error info |
+| `src/components/ai-builder/ChatInputBar.tsx` | MODIFY | Warning styling for low credits |
 
 ---
 
 ## Technical Notes
 
-### Discord Webhook Security
+### Error Message Parsing
 
-The webhook URL is a secret that shouldn't be exposed to the frontend. The edge function approach ensures the URL stays server-side.
+The backend returns: `"Insufficient credits. Need ~8, have 0."`
 
-### Changelog RLS Policy
-
-```sql
--- Public read for all published updates
-CREATE POLICY "Public can read published updates"
-ON platform_updates FOR SELECT
-TO public
-USING (true);
-
--- Only admins can insert/update
-CREATE POLICY "Admins can manage updates"
-ON platform_updates FOR ALL
-TO authenticated
-USING (auth.uid() IN (SELECT user_id FROM admin_users));
+Regex to extract values:
+```typescript
+function parseCreditsError(message: string) {
+  const match = message.match(/Need ~(\d+), have (\d+)/);
+  return match ? {
+    creditsNeeded: parseInt(match[1]),
+    creditsAvailable: parseInt(match[2]),
+    message,
+  } : { message };
+}
 ```
 
-### Healing Stats Privacy
+### Credit Estimate for Preflight
 
-The `vibecoder_heal_logs` table should have RLS that only allows:
-- Users to see their own project's heal stats
-- Admins to see aggregate anonymous stats
+| Scenario | Estimated Credits |
+|----------|-------------------|
+| Quick edit (short prompt, has existing code) | 1 |
+| Any other prompt | 3 (minimum tier) |
+
+The actual cost may be higher after Architect analyzes complexity, but preflight catches the obvious "0 credits" case immediately.
 
 ---
 
-## Success Metrics
+## User Experience Flow
 
-| Metric | Current | Target |
-|--------|---------|--------|
-| First-attempt success rate | ~70% | 85%+ |
-| Average healing attempts | 1.5 | 1.2 |
-| Discord engagement (post views) | N/A | 100+ per update |
-| Changelog page visits | N/A | Track |
-| Unique design features | Repetitive | Distinct per build |
+**Before Fix**:
+1. User types prompt → clicks Send
+2. "Thinking" bubble appears for 0.5s
+3. Bubble disappears silently
+4. User confused, repeats, same result
+
+**After Fix**:
+1. User types prompt → clicks Send
+2. **Preflight catches 0 credits** → UpgradeModal opens immediately
+3. OR if preflight passes but backend still rejects:
+   - InsufficientCreditsCard appears in chat
+   - Shows exactly how many credits needed vs available
+   - Upgrade button prominently displayed
+
+---
+
+## Success Criteria
+
+- Zero-credit users see immediate feedback (no "blinking")
+- Clear messaging about credit requirements
+- Direct path to upgrade from error state
+- No unnecessary API calls when credits are obviously insufficient
