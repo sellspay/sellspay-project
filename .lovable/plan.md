@@ -1,147 +1,138 @@
 
+# Implementation Plan: Canvas Toolbar with Preview/Code View Toggle
 
-# Implementation Plan: Self-Healing AI & Dynamic Personality
-
-This plan implements three major improvements to make the Vibecoder AI "smart" and resilient:
-
-1. **Auto-Fix Error Boundary** - Capture Sandpack errors and send them to the AI for self-healing
-2. **Dynamic Personality Prompt** - Make the AI mirror user intent instead of robotic templates
-3. **Enhanced Standard Library** - Add path alias mappings to prevent module crashes
+This plan adds a professional canvas toolbar that allows users to switch between **Preview** (visual site) and **Code** (raw TSX) views, plus device simulation toggles and undo/redo controls.
 
 ---
 
-## Part 1: Auto-Fix Error Boundary
+## Overview
 
-### Problem
-When the Sandpack preview crashes (e.g., "Module not found"), users see a scary red error screen with no way to recover. The AI doesn't know something broke.
+Currently, the AI Builder only shows the Preview pane. Users cannot see the raw code the AI generates. We'll add:
 
-### Solution
-Create a `PreviewErrorBoundary` component that:
-1. Catches runtime errors from the Sandpack preview
-2. Displays a premium "Build Failed" UI with the exact error message
-3. Provides an "Auto-Fix with AI" button that sends the error to the AI for automatic repair
-
-### New File: `src/components/ai-builder/PreviewErrorBoundary.tsx`
-
-```text
-+----------------------------------------------------+
-|  🔺  Build Failed                                  |
-|                                                    |
-|  ┌──────────────────────────────────────────────┐  |
-|  │ Module not found: @/hooks/useSellsPayCheckout │  |
-|  └──────────────────────────────────────────────┘  |
-|                                                    |
-|      [ ✨ Auto-Fix with AI ]                       |
-|                                                    |
-|  The AI will analyze the error and rewrite code.  |
-+----------------------------------------------------+
-```
-
-**Key Features:**
-- Class-based React ErrorBoundary to catch component errors
-- `onAutoFix` callback prop that sends the error message to the parent
-- Premium dark red styling with subtle pulse animation
-- Error message displayed in a monospace code block
-
-### File Updates: `src/components/ai-builder/AIBuilderCanvas.tsx`
-
-1. Import the new `PreviewErrorBoundary` component
-2. Create a `handleAutoFix` callback that:
-   - Prefixes the error with `CRITICAL_ERROR_REPORT: The preview crashed...`
-   - Calls `handleVibecoderMessage()` to trigger AI regeneration
-3. Wrap `<VibecoderPreview>` in `<PreviewErrorBoundary onAutoFix={handleAutoFix}>`
-
-### File Updates: `src/components/ai-builder/VibecoderPreview.tsx`
-
-Since Sandpack handles its own errors internally, we need to listen to Sandpack's error state. We'll add a callback prop:
-- `onError?: (error: string) => void`
-
-When Sandpack reports an error, we'll call this callback which can then trigger the auto-fix flow.
+1. **View Mode State** - Track whether user wants Preview or Code view
+2. **Canvas Toolbar Component** - A professional dark pill toolbar with view switcher
+3. **Conditional Rendering** - Show either `SandpackPreview` or `SandpackCodeEditor` based on mode
 
 ---
 
-## Part 2: Dynamic Personality (System Prompt Updates)
-
-### Problem
-The AI gives robotic responses like "I have drafted a premium layout" instead of engaging with the user's specific request.
-
-### Solution
-Update the system prompt in `supabase/functions/vibecoder-v2/index.ts` to add:
-
-1. **Personality Protocol** - Force the AI to mirror user intent in its opening line
-2. **Emergency Debug Protocol** - Handle error reports with technical precision
-3. **Image Asset Protocol** - Force external URLs to prevent 404s
-
-### New System Prompt Sections
+## Architecture
 
 ```text
-PERSONALITY & REFLECTION (Dynamic Responses):
-You must NOT use generic templates like "I have generated..." or "Here is the layout...".
-Instead, **MIRROR** the user's specific request in your opening line.
-
-Examples:
-- User: "Make it anime styled."
-  You: "Injecting anime aesthetics. Adding vibrant character art and neon accents."
-
-- User: "Add a dark hero section."
-  You: "Building a cinematic dark hero. Full-bleed gradient with bold typography."
-
-- User: "Change the button to blue."
-  You: "Done. Primary buttons are now Electric Blue."
-
-EMERGENCY & DEBUG PROTOCOL:
-If the user sends a "CRITICAL_ERROR_REPORT" or mentions "crash", "red screen", or "broke":
-1. **DROP THE PERSONA:** Stop being enthusiastic. Become the Lead Engineer.
-2. **ACKNOWLEDGE:** "I detected a crash. Diagnosing..."
-3. **ANALYZE:** Parse the error message:
-   - "Module not found": Remove the broken import or fix the path.
-   - "undefined": Add optional chaining (?.) or null checks.
-   - "render error": Fix JSX syntax or missing keys.
-4. **OUTPUT:** Fix the code immediately. No chat-only response.
-
-IMAGE ASSET PROTOCOL:
-1. **NO LOCAL PATHS:** Never use src="./img.png" or src="/assets/...". These do not exist in Sandpack.
-2. **USE EXTERNAL URLs:** Always use high-quality placeholder URLs:
-   - Unsplash: "https://images.unsplash.com/photo-..."
-   - Picsum: "https://picsum.photos/800/600"
-3. **Category Examples:**
-   - Anime/Gaming: picsum.photos with grayscale or Unsplash abstract
-   - Fashion: Unsplash fashion collection
-   - Tech: Unsplash technology collection
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ Header (Exit, Logo, Publish)                                                    │
+├──────┬──────────────────────────────────────────────────────────────────┬───────┤
+│      │  ┌────────────────── Canvas Toolbar ──────────────────┐          │       │
+│      │  │ [S] Project Name ▾ │ ← → │ [Preview] [Code] │ 📱 💻 │         │       │
+│ Proj │  └─────────────────────────────────────────────────────┘          │       │
+│ Side │                                                                   │ Chat  │
+│ bar  │                    Preview OR Code Editor                         │ Panel │
+│      │                    (based on viewMode)                            │       │
+│      │                                                                   │       │
+└──────┴───────────────────────────────────────────────────────────────────┴───────┘
 ```
 
 ---
 
-## Part 3: Enhanced Standard Library
+## Part 1: Create the CanvasToolbar Component
 
-### Problem
-The AI sometimes imports from `@/hooks/useSellsPayCheckout` but the path in Sandpack is `/hooks/useSellsPayCheckout.ts`. The `@/` alias doesn't work in the Sandpack virtual filesystem.
+### New File: `src/components/ai-builder/CanvasToolbar.tsx`
 
-### Solution
-Update `src/lib/vibecoder-stdlib.ts` to:
-1. Add multiple path aliases for the checkout hook
-2. Add a default export for compatibility
-3. Include common utility files the AI might expect
+A sleek dark toolbar with:
+- **Left Section**: Project name pill with logo icon + Undo/Redo buttons
+- **Center Section**: The "Lovable-style" view switcher pill (Preview | Code) + device toggles
+- **Right Section**: Simulated browser address bar with route display
 
-### Updated Standard Library
+**Key UI Elements:**
+- Dark zinc-900 background with subtle border
+- Blue accent (`bg-blue-600`) for active Preview button
+- Muted zinc-800 for active Code button
+- Disabled state for undo/redo when not available
 
+**Props:**
 ```typescript
-export const VIBECODER_STDLIB: Record<string, string> = {
-  // Primary checkout hook
-  '/hooks/useSellsPayCheckout.ts': `...mocked hook...`,
-  
-  // Path aliases (catching AI import variations)
-  '/hooks/useMarketplace.ts': `export * from './useSellsPayCheckout';`,
-  '/useSellsPayCheckout.ts': `export * from './hooks/useSellsPayCheckout';`,
-  
-  // Utility file
-  '/lib/utils.ts': `...cn function...`,
-};
+interface CanvasToolbarProps {
+  viewMode: 'preview' | 'code';
+  setViewMode: (mode: 'preview' | 'code') => void;
+  projectName?: string;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  deviceMode?: 'desktop' | 'mobile';
+  setDeviceMode?: (mode: 'desktop' | 'mobile') => void;
+}
 ```
 
-### File Updates: `src/components/ai-builder/VibecoderPreview.tsx`
+---
 
-Ensure the stdlib files are injected at proper paths. The current implementation already does this correctly, but we'll verify the hidden flag is set properly so these files don't clutter the Sandpack file tree.
+## Part 2: Update VibecoderPreview to Support Dual Modes
+
+### File: `src/components/ai-builder/VibecoderPreview.tsx`
+
+**Changes:**
+1. Add a new prop: `viewMode: 'preview' | 'code'` (default: `'preview'`)
+2. Import `SandpackCodeEditor` from `@codesandbox/sandpack-react`
+3. Inside `SandpackRenderer`, conditionally render:
+   - `viewMode === 'preview'` → Show `SandpackPreview` (current behavior)
+   - `viewMode === 'code'` → Show `SandpackCodeEditor` with syntax highlighting
+
+**SandpackCodeEditor Configuration:**
+```typescript
+<SandpackCodeEditor 
+  showTabs={true}
+  showLineNumbers={true}
+  showInlineErrors={true}
+  wrapContent={true}
+  readOnly={true}  // Users view AI code, not edit directly
+  className="h-full w-full flex-1"
+  style={{ height: '100%' }}
+/>
+```
+
+---
+
+## Part 3: Integrate into AIBuilderCanvas
+
+### File: `src/components/ai-builder/AIBuilderCanvas.tsx`
+
+**Changes:**
+
+1. **Add State:**
+   ```typescript
+   const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
+   const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
+   ```
+
+2. **Import CanvasToolbar:**
+   ```typescript
+   import { CanvasToolbar } from './CanvasToolbar';
+   ```
+
+3. **Update Preview Panel Layout:**
+   - Add the `<CanvasToolbar>` at the top of the preview panel
+   - Pass `viewMode` and `setViewMode` props
+   - Pass `canUndo` and `onUndo` from existing handlers
+   - Pass `projectName` from `activeProject?.name`
+
+4. **Pass viewMode to VibecoderPreview:**
+   ```typescript
+   <VibecoderPreview 
+     code={code} 
+     isStreaming={isStreaming}
+     viewMode={viewMode}  // NEW PROP
+     onError={...}
+   />
+   ```
+
+---
+
+## Part 4: Device Mode Simulation (Bonus)
+
+When `deviceMode === 'mobile'`:
+- Wrap the preview in a container with `max-w-[375px]` and centered positioning
+- Add a subtle phone frame border
+
+This is optional and can be a future enhancement - the core implementation will focus on the Preview/Code toggle.
 
 ---
 
@@ -149,44 +140,28 @@ Ensure the stdlib files are injected at proper paths. The current implementation
 
 | File | Changes |
 |------|---------|
-| `src/components/ai-builder/PreviewErrorBoundary.tsx` | **New file** - Error boundary with Auto-Fix button |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | Add `handleAutoFix` callback, wrap preview in error boundary |
-| `src/components/ai-builder/VibecoderPreview.tsx` | Add error detection from Sandpack state |
-| `supabase/functions/vibecoder-v2/index.ts` | Add Personality, Emergency, and Image protocols to prompt |
-| `src/lib/vibecoder-stdlib.ts` | Add path aliases and default export |
+| `src/components/ai-builder/CanvasToolbar.tsx` | **New file** - The toolbar component |
+| `src/components/ai-builder/VibecoderPreview.tsx` | Add `viewMode` prop, conditionally render Preview or CodeEditor |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | Add state for viewMode/deviceMode, integrate toolbar |
+| `src/components/ai-builder/index.ts` | Export new CanvasToolbar component |
 
 ---
 
-## Expected User Experience
+## Expected Result
 
-### Crash Recovery Flow
-1. **Error occurs**: Sandpack fails to compile (e.g., missing module)
-2. **Beautiful error UI**: Red overlay with exact error message
-3. **One-click fix**: User clicks "Auto-Fix with AI"
-4. **AI diagnoses**: "I detected a crash: Module not found. Fixing the import path..."
-5. **Code regenerates**: Preview comes back online automatically
+**Default View (Preview):**
+- User sees the live rendered storefront
+- "Preview" button is highlighted blue in the toolbar
+- Code button is muted/grey
 
-### Dynamic Personality Flow
-- User: "Make it anime themed"
-- Old AI: "I have drafted a premium layout with anime aesthetics."
-- New AI: "Injecting anime aesthetics. Bold character art and neon speed-lines incoming."
+**Code View:**
+- User clicks "Code" button
+- The preview is replaced with a full-height code editor
+- Syntax highlighting shows the AI-generated TSX
+- Code is read-only (users can't edit directly)
 
-### Image Safety Flow
-- AI no longer generates `src="/images/product.png"` (would 404)
-- AI generates `src="https://images.unsplash.com/..."` (always works)
-
----
-
-## Implementation Notes
-
-1. **Sandpack Error Detection**: Sandpack provides error state through its internal hooks. We may need to use `useSandpack()` hook to access `sandpack.error` state and trigger the callback.
-
-2. **Error Boundary Scope**: The error boundary catches React rendering errors but may not catch Sandpack compilation errors. We'll need to handle both:
-   - React ErrorBoundary for runtime crashes
-   - Sandpack's built-in error state for compilation errors
-
-3. **Auto-Fix Message Format**: The error message sent to the AI should include:
-   - The literal error text
-   - The current code (if available)
-   - Clear instruction to fix, not discuss
-
+**Toolbar Features:**
+- Undo/Redo buttons for version control
+- Project name displayed with logo
+- Device toggle icons (desktop/mobile) for responsive preview
+- Simulated address bar showing `/ai-builder`
