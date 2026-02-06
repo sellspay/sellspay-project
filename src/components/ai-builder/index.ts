@@ -12,3 +12,7 @@ export { useStreamingCode } from './useStreamingCode';
 export { ProjectSidebar } from './ProjectSidebar';
 export { VibecoderMessageBubble } from './VibecoderMessageBubble';
 export { useVibecoderProjects } from './hooks/useVibecoderProjects';
+
+// Chat UI components
+export { ChatInputBar } from './ChatInputBar';
+export { PlanApprovalCard } from './PlanApprovalCard';

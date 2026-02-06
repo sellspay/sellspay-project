@@ -2,14 +2,14 @@ import React, { useState, useRef, useEffect } from "react";
 import { 
   Plus, Send, Image as ImageIcon, 
   History, Settings, X, Square,
-  Sparkles
+  Sparkles, ChevronDown, Bot, Zap, BrainCircuit, FileText, ArrowUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatInputBarProps {
   value: string;
   onChange: (value: string) => void;
-  onSubmit: (e?: React.FormEvent) => void;
+  onSubmit: (e?: React.FormEvent, isPlanMode?: boolean, model?: string) => void;
   isGenerating: boolean;
   onCancel: () => void;
   placeholder?: string;
@@ -40,6 +40,40 @@ function MenuItem({
   );
 }
 
+function ModelOption({ 
+  name, 
+  desc, 
+  icon: Icon, 
+  active, 
+  onClick 
+}: { 
+  name: string; 
+  desc: string; 
+  icon: React.ElementType; 
+  active: boolean; 
+  onClick: () => void;
+}) {
+  return (
+    <button 
+      onClick={onClick} 
+      className={cn(
+        "w-full flex items-start gap-3 px-3 py-2 rounded-lg text-left transition-colors",
+        active ? "bg-zinc-800" : "hover:bg-zinc-800"
+      )}
+    >
+      <div className={cn("mt-0.5", active ? "text-violet-400" : "text-zinc-500")}>
+        <Icon size={16} />
+      </div>
+      <div>
+        <div className={cn("text-xs font-medium", active ? "text-white" : "text-zinc-300")}>
+          {name}
+        </div>
+        <div className="text-[10px] text-zinc-500">{desc}</div>
+      </div>
+    </button>
+  );
+}
+
 export function ChatInputBar({ 
   value, 
   onChange, 
@@ -49,6 +83,9 @@ export function ChatInputBar({
   placeholder = "Describe your vision..." 
 }: ChatInputBarProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const [showModelMenu, setShowModelMenu] = useState(false);
+  const [isPlanMode, setIsPlanMode] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("Vibecoder Pro");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea
@@ -64,7 +101,7 @@ export function ChatInputBar({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (value.trim() && !isGenerating) {
-        onSubmit();
+        onSubmit(undefined, isPlanMode, selectedModel);
       }
     }
   };
@@ -72,22 +109,74 @@ export function ChatInputBar({
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (value.trim() && !isGenerating) {
-      onSubmit();
+      onSubmit(undefined, isPlanMode, selectedModel);
     }
   };
 
   return (
     <div className="flex-shrink-0 p-4 bg-background relative">
-      {/* Click outside to close menu */}
-      {showMenu && (
+      {/* Click outside to close menus */}
+      {(showMenu || showModelMenu) && (
         <div 
           className="fixed inset-0 z-40 bg-transparent" 
-          onClick={() => setShowMenu(false)} 
+          onClick={() => {
+            setShowMenu(false);
+            setShowModelMenu(false);
+          }} 
         />
       )}
 
       {/* The floating input container */}
-      <div className="relative bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-2xl shadow-black/20">
+      <div className={cn(
+        "relative bg-zinc-900/80 backdrop-blur-xl border rounded-2xl shadow-2xl shadow-black/20 transition-all duration-300",
+        isPlanMode 
+          ? "border-blue-500/30 ring-1 ring-blue-500/20" 
+          : "border-zinc-800 focus-within:ring-1 focus-within:ring-violet-500/50 focus-within:border-violet-500/50"
+      )}>
+        
+        {/* TOP BAR: MODEL SELECTOR */}
+        <div className="flex items-center px-3 pt-2.5 pb-0">
+          <div className="relative">
+            <button 
+              onClick={() => setShowModelMenu(!showModelMenu)}
+              className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded-md hover:bg-zinc-700/50"
+            >
+              <Bot size={12} className={isPlanMode ? "text-blue-400" : "text-violet-400"} />
+              <span>{selectedModel}</span>
+              <ChevronDown size={10} className={cn("transition-transform", showModelMenu && "rotate-180")} />
+            </button>
+
+            {/* MODEL DROPDOWN */}
+            {showModelMenu && (
+              <div className="absolute top-8 left-0 w-52 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-50 animate-in fade-in-0 zoom-in-95 duration-150">
+                <div className="p-1.5">
+                  <ModelOption 
+                    name="Vibecoder Pro" 
+                    desc="Best for complex layouts" 
+                    icon={Sparkles} 
+                    active={selectedModel === "Vibecoder Pro"}
+                    onClick={() => { setSelectedModel("Vibecoder Pro"); setShowModelMenu(false); }}
+                  />
+                  <ModelOption 
+                    name="Vibecoder Flash" 
+                    desc="Fast, for small edits" 
+                    icon={Zap} 
+                    active={selectedModel === "Vibecoder Flash"}
+                    onClick={() => { setSelectedModel("Vibecoder Flash"); setShowModelMenu(false); }}
+                  />
+                  <ModelOption 
+                    name="Reasoning o1" 
+                    desc="Deep thought architecture" 
+                    icon={BrainCircuit} 
+                    active={selectedModel === "Reasoning o1"}
+                    onClick={() => { setSelectedModel("Reasoning o1"); setShowModelMenu(false); }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="flex items-end gap-2 p-2">
           
           {/* Plus menu button */}
@@ -130,7 +219,7 @@ export function ChatInputBar({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={isPlanMode ? "Describe the features to plan..." : placeholder}
             disabled={isGenerating}
             rows={1}
             className={cn(
@@ -141,40 +230,54 @@ export function ChatInputBar({
             )}
           />
 
-          {/* Visual indicator */}
-          <div className="pb-2 hidden sm:flex items-center gap-1.5 text-[10px] font-medium text-zinc-500 uppercase tracking-wider select-none">
-            <span className="text-zinc-600">Plan</span>
-            <div className="w-px h-3 bg-zinc-700" />
-            <span className="text-violet-400">Visual</span>
-          </div>
+          <div className="flex items-center gap-2 pb-0.5">
+            
+            {/* THE PLAN TOGGLE BUTTON */}
+            <button
+              type="button"
+              onClick={() => setIsPlanMode(!isPlanMode)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all select-none",
+                isPlanMode 
+                  ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" 
+                  : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/30"
+              )}
+              title="Plan Mode: Creates a blueprint before coding"
+            >
+              <FileText size={13} />
+              <span>Plan</span>
+            </button>
 
-          {/* Send/Stop button */}
-          <button
-            type="button"
-            onClick={isGenerating ? onCancel : handleSubmit}
-            disabled={!value.trim() && !isGenerating}
-            className={cn(
-              "p-2 rounded-xl shrink-0 transition-all",
-              isGenerating
-                ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                : value.trim()
-                  ? "bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-900/20"
-                  : "bg-zinc-700/50 text-zinc-500 cursor-not-allowed"
-            )}
-          >
-            {isGenerating ? (
-              <Square size={16} className="fill-current" />
-            ) : (
-              <Send size={16} />
-            )}
-          </button>
+            {/* Send/Stop button */}
+            <button
+              type="button"
+              onClick={isGenerating ? onCancel : handleSubmit}
+              disabled={!value.trim() && !isGenerating}
+              className={cn(
+                "p-2 rounded-xl shrink-0 transition-all",
+                isGenerating
+                  ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                  : value.trim()
+                    ? isPlanMode
+                      ? "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20"
+                      : "bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-900/20"
+                    : "bg-zinc-700/50 text-zinc-500 cursor-not-allowed"
+              )}
+            >
+              {isGenerating ? (
+                <Square size={16} className="fill-current" />
+              ) : (
+                <ArrowUp size={16} strokeWidth={2.5} />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Footer disclaimer */}
       <div className="text-center mt-3">
         <p className="text-[10px] text-zinc-600">
-          Vibecoder can make mistakes. Check generated code.
+          Vibecoder can make mistakes. Review generated code.
         </p>
       </div>
     </div>

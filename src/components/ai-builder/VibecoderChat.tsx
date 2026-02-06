@@ -131,9 +131,11 @@ export function VibecoderChat({
     }
   }, [messages, isStreaming]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent, isPlanMode?: boolean, model?: string) => {
+    e?.preventDefault();
     if (!input.trim() || isStreaming) return;
+    // TODO: Use isPlanMode and model for plan-based generation
+    console.log('Submit with Plan Mode:', isPlanMode, 'Model:', model);
     onSendMessage(input.trim());
     setInput('');
   };
