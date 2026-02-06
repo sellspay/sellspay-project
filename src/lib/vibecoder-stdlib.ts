@@ -8,9 +8,22 @@
  */
 export const VIBECODER_STDLIB: Record<string, string> = {
   // ============================================
+  // CONFIG: Teach the browser that "@/" means "src/"
+  // ============================================
+  '/tsconfig.json': JSON.stringify({
+    compilerOptions: {
+      target: "ESNext",
+      module: "ESNext",
+      jsx: "react-jsx",
+      baseUrl: ".",
+      paths: { "@/*": ["./src/*"] }
+    }
+  }),
+
+  // ============================================
   // PRIMARY: The SellsPay Checkout Hook (mocked for preview)
   // ============================================
-  '/hooks/useSellsPayCheckout.ts': `import { useState } from 'react';
+  '/src/hooks/useSellsPayCheckout.ts': `import { useState } from 'react';
 
 /**
  * SellsPay Unified Checkout Hook
@@ -30,7 +43,9 @@ export function useSellsPayCheckout() {
     }, 1000);
   };
 
-  return { buyProduct, isProcessing };
+  const triggerCheckout = buyProduct; // Alias for backwards compatibility
+
+  return { buyProduct, triggerCheckout, isProcessing };
 }
 
 // Default export for compatibility
@@ -41,44 +56,58 @@ export const useMarketplace = useSellsPayCheckout;
 `,
 
   // ============================================
+  // SPELLING VARIATIONS: AI sometimes uses "Sales" instead of "Sells"
+  // ============================================
+  '/src/hooks/useSalesPayCheckout.ts': `import { useState } from 'react';
+
+export function useSalesPayCheckout() {
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const triggerCheckout = (productId?: string) => {
+    setIsProcessing(true);
+    console.log('[SalesPay Preview] Checkout triggered for:', productId);
+    setTimeout(() => {
+      setIsProcessing(false);
+      alert('SalesPay Checkout: This is a demo transaction.');
+    }, 1000);
+  };
+
+  const buyProduct = triggerCheckout;
+
+  return { triggerCheckout, buyProduct, isProcessing };
+}
+
+export default useSalesPayCheckout;
+`,
+
+  // ============================================
   // PATH ALIASES: Catch common import variations
   // ============================================
   
-  // Alias: /hooks/useMarketplace.ts -> re-exports from useSellsPayCheckout
-  '/hooks/useMarketplace.ts': `export * from './useSellsPayCheckout';
-export { useSellsPayCheckout as default } from './useSellsPayCheckout';
+  // Root-level aliases (without src/)
+  '/hooks/useSellsPayCheckout.ts': `export * from '../src/hooks/useSellsPayCheckout';
+export { useSellsPayCheckout as default } from '../src/hooks/useSellsPayCheckout';
 `,
 
-  // Alias: Root level import (if AI forgets /hooks/)
-  '/useSellsPayCheckout.ts': `export * from './hooks/useSellsPayCheckout';
-export { useSellsPayCheckout as default } from './hooks/useSellsPayCheckout';
+  '/hooks/useSalesPayCheckout.ts': `export * from '../src/hooks/useSalesPayCheckout';
+export { useSalesPayCheckout as default } from '../src/hooks/useSalesPayCheckout';
 `,
 
-  // Alias: Root level useMarketplace
-  '/useMarketplace.ts': `export * from './hooks/useSellsPayCheckout';
-export { useSellsPayCheckout as useMarketplace, useSellsPayCheckout as default } from './hooks/useSellsPayCheckout';
+  '/hooks/useMarketplace.ts': `export * from '../src/hooks/useSellsPayCheckout';
+export { useSellsPayCheckout as useMarketplace, useSellsPayCheckout as default } from '../src/hooks/useSellsPayCheckout';
 `,
 
-  // ============================================
-  // SPELLING VARIATIONS: AI sometimes uses "Sales" instead of "Sells"
-  // ============================================
-  
-  // Catch "useSalesPayCheckout" (one L) spelling
-  '/hooks/useSalesPayCheckout.ts': `export * from './useSellsPayCheckout';
-export { useSellsPayCheckout as useSalesPayCheckout, useSellsPayCheckout as default } from './useSellsPayCheckout';
+  // Root level imports (if AI forgets /hooks/)
+  '/useSellsPayCheckout.ts': `export * from './src/hooks/useSellsPayCheckout';
+export { useSellsPayCheckout as default } from './src/hooks/useSellsPayCheckout';
 `,
 
-  '/useSalesPayCheckout.ts': `export * from './hooks/useSellsPayCheckout';
-export { useSellsPayCheckout as useSalesPayCheckout, useSellsPayCheckout as default } from './hooks/useSellsPayCheckout';
+  '/useSalesPayCheckout.ts': `export * from './src/hooks/useSalesPayCheckout';
+export { useSalesPayCheckout as default } from './src/hooks/useSalesPayCheckout';
 `,
 
-  // Catch src/ prefix variations
-  '/src/hooks/useSellsPayCheckout.ts': `export * from '../hooks/useSellsPayCheckout';
-export { useSellsPayCheckout as default } from '../hooks/useSellsPayCheckout';
-`,
-
-  '/src/hooks/useSalesPayCheckout.ts': `export * from '../hooks/useSellsPayCheckout';
-export { useSellsPayCheckout as useSalesPayCheckout, useSellsPayCheckout as default } from '../hooks/useSellsPayCheckout';
+  '/useMarketplace.ts': `export * from './src/hooks/useSellsPayCheckout';
+export { useSellsPayCheckout as useMarketplace, useSellsPayCheckout as default } from './src/hooks/useSellsPayCheckout';
 `,
 
   // ============================================
@@ -86,6 +115,14 @@ export { useSellsPayCheckout as useSalesPayCheckout, useSellsPayCheckout as defa
   // ============================================
   
   // cn() utility for conditional classNames
+  '/src/lib/utils.ts': `import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+`,
+
   '/lib/utils.ts': `import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
