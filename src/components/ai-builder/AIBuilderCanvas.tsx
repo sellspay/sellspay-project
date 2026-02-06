@@ -842,12 +842,15 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         />
 
         {/* Split View Content - Chat + Preview always visible */}
-        <div className="flex-1 flex min-h-0 overflow-hidden p-2">
-          {/* LEFT PANEL: Preview/Studio */}
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          {/* LEFT PANEL: Preview/Studio (seamless) */}
           <div
-            className="flex-1 min-w-0 bg-background overflow-hidden relative flex flex-col rounded-2xl border border-border/40"
+            className="flex-1 min-w-0 overflow-hidden relative flex flex-col"
             style={{ isolation: 'isolate', contain: 'strict' }}
           >
+            {/* Soft edge shadow to separate preview from chat without boxing */}
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 z-20 bg-gradient-to-l from-background/70 to-transparent" />
+
             {(viewMode === 'image' || viewMode === 'video') ? (
               /* Creative Studio: Image/Video generation */
               <GenerationCanvas
@@ -861,8 +864,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               />
             ) : (
               /* Live Preview: Sandpack iframe - always rendered with DEFAULT_CODE when no project */
-              <div className={`flex-1 min-h-0 relative ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}
-              >
+              <div className={`flex-1 min-h-0 relative ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}>
                 <div
                   className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'}`}
                 >
@@ -884,7 +886,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                     />
                   </PreviewErrorBoundary>
                 </div>
-                
+
                 {/* Canvas loading overlay - shows until Sandpack is ready */}
                 {!isCanvasReady && !sandpackError && (
                   <div className="absolute inset-0 z-30 bg-background flex items-center justify-center">
@@ -936,15 +938,13 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
           </div>
 
-          {/* SUBTLE SEPARATOR */}
-          <div className="relative w-px shrink-0">
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-border/60 to-transparent" />
-          </div>
+          {/* SUBTLE SEPARATOR LINE */}
+          <div className="w-px shrink-0 bg-border/40" />
 
-          {/* RIGHT PANEL: Chat */}
+          {/* RIGHT PANEL: Chat (seamless) */}
           <div
             style={{ width: sidebarWidth }}
-            className="shrink-0 flex flex-col bg-card overflow-hidden relative rounded-2xl border border-border/40"
+            className="shrink-0 flex flex-col bg-muted/50 overflow-hidden relative"
           >
             {/* Refined drag handle - subtle until interaction */}
             <div
