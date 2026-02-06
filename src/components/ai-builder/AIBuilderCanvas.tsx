@@ -952,6 +952,19 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     }
   }, [hasBooted, minLoadingComplete, isDataLoading]);
 
+  // 🛑 THE GATEKEEPER 🛑
+  // Prevent "flash of old content" when switching projects.
+  // If the URL says "Project B" but the agent is still locked to "Project A",
+  // or if we're actively verifying the project exists in DB, block rendering.
+  // This shows a blank screen instead of the old project bleeding through.
+  const isProjectTransitioning = Boolean(
+    activeProjectId && (
+      isVerifyingProject || 
+      (lockedProjectId && lockedProjectId !== activeProjectId) ||
+      (messagesLoading && hasBooted) // Messages still loading after initial boot
+    )
+  );
+
   if (shouldShowLoading) {
     return (
       <PremiumLoadingScreen
@@ -960,6 +973,18 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           // hasBooted is set by the effect once data is also ready
         }}
       />
+    );
+  }
+
+  // Transitioning between projects - show lightweight loader (not full premium screen)
+  if (isProjectTransitioning) {
+    return (
+      <div className="h-screen w-full bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading project...</p>
+        </div>
+      </div>
     );
   }
 
