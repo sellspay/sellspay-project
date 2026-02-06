@@ -579,6 +579,19 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     hasRestoredCodeRef.current = null;
   }, [activeProjectId]);
 
+  // 🛡️ SAFETY TIMEOUT: If Sandpack's onReady never fires (error, race condition, etc.),
+  // force-release the handshake after 5 seconds to prevent infinite loading
+  useEffect(() => {
+    if (!isWaitingForPreviewMount) return;
+    
+    const safetyTimer = setTimeout(() => {
+      console.warn('⚠️ Preview handshake timed out after 5s - forcing release');
+      setIsWaitingForPreviewMount(false);
+    }, 5000);
+    
+    return () => clearTimeout(safetyTimer);
+  }, [isWaitingForPreviewMount]);
+
   // NOTE: Draft code is NOT persisted to the public/live slot.
   // Publishing explicitly writes the current code to a dedicated published file.
   const savePublishedVibecoderCode = async (codeContent: string) => {
