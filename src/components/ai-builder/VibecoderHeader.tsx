@@ -1,14 +1,15 @@
+import { useState } from "react";
 import { 
   ArrowLeft, Eye, Code2, 
   Monitor, Smartphone, ExternalLink, Loader2,
-  Image as ImageIcon, Film
+  Image as ImageIcon, Film, RefreshCw
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type { ViewMode } from "./types/generation";
 import { ProfileMenu } from "./ProfileMenu";
 import { PageNavigator } from "./PageNavigator";
-
+import { RegenerateModal } from "./RegenerateModal";
 interface VibecoderHeaderProps {
   projectName?: string;
   viewMode: ViewMode;
@@ -24,6 +25,9 @@ interface VibecoderHeaderProps {
   // Page navigation props
   currentPath?: string;
   onNavigate?: (path: string) => void;
+  // Regenerate props
+  onRegenerate?: (tweak: string) => void;
+  isGenerating?: boolean;
   // Profile menu props
   avatarUrl?: string | null;
   userCredits?: number;
@@ -76,13 +80,20 @@ export function VibecoderHeader({
   username,
   currentPath = "/",
   onNavigate,
+  onRegenerate,
+  isGenerating = false,
   avatarUrl,
   userCredits = 0,
   subscriptionTier,
   onSignOut,
 }: VibecoderHeaderProps) {
   const navigate = useNavigate();
+  const [isRegenerateOpen, setIsRegenerateOpen] = useState(false);
 
+  const handleRegenerate = (tweak: string) => {
+    setIsRegenerateOpen(false);
+    onRegenerate?.(tweak);
+  };
   return (
     <header className="h-14 w-full bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
       
@@ -185,6 +196,18 @@ export function VibecoderHeader({
           />
         </div>
 
+        {/* Tweak Design Button */}
+        {!isEmpty && onRegenerate && (
+          <button 
+            onClick={() => setIsRegenerateOpen(true)}
+            disabled={isGenerating}
+            className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 border border-zinc-700 rounded-lg text-xs font-bold text-zinc-300 transition-all"
+          >
+            <RefreshCw size={12} className={isGenerating ? "animate-spin" : ""} />
+            <span>Tweak</span>
+          </button>
+        )}
+
         {/* View Live Button */}
         {isPublished && username && (
           <Button
@@ -227,6 +250,14 @@ export function VibecoderHeader({
           />
         )}
       </div>
+
+      {/* Regenerate Modal */}
+      <RegenerateModal 
+        isOpen={isRegenerateOpen}
+        onClose={() => setIsRegenerateOpen(false)}
+        onConfirm={handleRegenerate}
+        isGenerating={isGenerating}
+      />
     </header>
   );
 }
