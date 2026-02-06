@@ -19,16 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { cn } from '@/lib/utils';
 import type { VibecoderProject } from './hooks/useVibecoderProjects';
 
@@ -55,22 +46,19 @@ export function ProjectSidebar({
   collapsed = false,
   onToggleCollapse,
 }: ProjectSidebarProps) {
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<VibecoderProject | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
 
-  const handleDeleteClick = (projectId: string) => {
-    setProjectToDelete(projectId);
-    setDeleteDialogOpen(true);
+  const handleDeleteClick = (project: VibecoderProject) => {
+    setProjectToDelete(project);
   };
 
   const confirmDelete = () => {
     if (projectToDelete) {
-      onDeleteProject(projectToDelete);
+      onDeleteProject(projectToDelete.id);
+      setProjectToDelete(null);
     }
-    setDeleteDialogOpen(false);
-    setProjectToDelete(null);
   };
 
   const startEditing = (project: VibecoderProject) => {
@@ -240,7 +228,7 @@ export function ProjectSidebar({
                       Rename
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => handleDeleteClick(project.id)}
+                      onClick={() => handleDeleteClick(project)}
                       className="text-destructive focus:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5 mr-2" />
@@ -254,23 +242,13 @@ export function ProjectSidebar({
         </div>
       </div>
 
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete project?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this project and all its history. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Nuclear Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={!!projectToDelete}
+        onClose={() => setProjectToDelete(null)}
+        onConfirm={confirmDelete}
+        projectName={projectToDelete?.name || ""}
+      />
     </>
   );
 }
