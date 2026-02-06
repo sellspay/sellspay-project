@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Loader2, Code2, Blocks, Sparkles, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Eye, Loader2, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { AIBuilderChat } from './AIBuilderChat';
-import { AIBuilderPreview } from './AIBuilderPreview';
 import { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
 import { VibecoderPreview } from './VibecoderPreview';
 import { VibecoderChat } from './VibecoderChat';
@@ -14,33 +12,16 @@ import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects } from './hooks/useVibecoderProjects';
 import { toast } from 'sonner';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 interface AIBuilderCanvasProps {
   profileId: string;
 }
 
-interface AILayout {
-  sections: any[];
-  theme: Record<string, any>;
-  header: Record<string, any>;
-}
-
-type BuilderMode = 'blocks' | 'vibecoder';
-
 export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const navigate = useNavigate();
-  const [layout, setLayout] = useState<AILayout>({ sections: [], theme: {}, header: {} });
   const [isPublished, setIsPublished] = useState(false);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
-  const [history, setHistory] = useState<AILayout[]>([]);
-  const [isBuilding, setIsBuilding] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -48,9 +29,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   
   // Reset key to force component re-mount on project deletion
   const [resetKey, setResetKey] = useState(0);
-  
-  // Mode toggle: blocks (existing) or vibecoder (new generative)
-  const [mode, setMode] = useState<BuilderMode>('blocks');
   
   // Resizable sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(400);
@@ -95,7 +73,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     activeProject,
     messages,
     loading: projectsLoading,
-    messagesLoading,
     createProject,
     ensureProject,
     deleteProject,
@@ -106,7 +83,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     getLastCodeSnapshot,
     getPreviousCodeSnapshot,
     restoreToVersion,
-    refreshMessages,
   } = useVibecoderProjects();
   
   // Chat response state for intent router
@@ -115,7 +91,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Live steps state for real-time transparency
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
   
-  // Streaming code state for Vibecoder mode
+  // Streaming code state
   const { 
     code, 
     isStreaming, 
@@ -156,9 +132,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   }, [loading, needsOnboarding]);
 
-  // Load existing AI layout and vibecoder code
+  // Load existing vibecoder code
   useEffect(() => {
-    const loadLayout = async () => {
+    const loadData = async () => {
       const [layoutResp, filesResp, profileResp] = await Promise.all([
         supabase
           .from('ai_storefront_layouts')
@@ -179,14 +155,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       ]);
 
       if (layoutResp.data) {
-        const parsed = layoutResp.data.layout_json as unknown as AILayout;
-        setLayout(parsed);
         setIsPublished(layoutResp.data.is_published);
-        
-        // Check if vibecoder mode was active
-        if (layoutResp.data.vibecoder_mode) {
-          setMode('vibecoder');
-        }
       }
 
       // Load saved vibecoder code if exists
@@ -202,7 +171,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       setLoading(false);
     };
 
-    loadLayout();
+    loadData();
   }, [profileId, setCode]);
 
   // Load code from last message when switching projects
@@ -233,36 +202,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   };
 
-  // Save layout changes (for blocks mode)
-  const saveLayout = useCallback(async (newLayout: AILayout) => {
-    setLayout(newLayout);
-    
-    await supabase
-      .from('ai_storefront_layouts')
-      .upsert({
-        profile_id: profileId,
-        layout_json: newLayout as any,
-        vibecoder_mode: mode === 'vibecoder',
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'profile_id' });
-  }, [profileId, mode]);
-
-  // Push to history for undo
-  const pushHistory = useCallback((state: AILayout) => {
-    setHistory(prev => [...prev.slice(-19), state]);
-  }, []);
-
-  // Undo last change (blocks mode)
-  const handleBlocksUndo = useCallback(() => {
-    if (history.length === 0) return;
-    const previous = history[history.length - 1];
-    setHistory(prev => prev.slice(0, -1));
-    saveLayout(previous);
-    toast.success('Reverted changes');
-  }, [history, saveLayout]);
-
-  // Undo for Vibecoder (restore previous code snapshot)
-  const handleVibecoderUndo = useCallback(() => {
+  // Undo (restore previous code snapshot)
+  const handleUndo = useCallback(() => {
     const previousSnapshot = getPreviousCodeSnapshot();
     if (previousSnapshot) {
       setCode(previousSnapshot);
@@ -291,26 +232,26 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   }, [restoreToVersion, setCode]);
 
-  // Publish the AI layout (with project link for Vibecoder mode)
+  // Publish the AI layout
   const handlePublish = async () => {
     setPublishing(true);
     try {
       // Update layout to published
       await supabase
         .from('ai_storefront_layouts')
-        .update({ 
+        .upsert({
+          profile_id: profileId,
           is_published: true,
-          vibecoder_mode: mode === 'vibecoder',
-        })
-        .eq('profile_id', profileId);
+          vibecoder_mode: true,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'profile_id' });
 
       // Set profile to use AI mode AND link the active project
       await supabase
         .from('profiles')
         .update({ 
           active_storefront_mode: 'ai',
-          // Link the project so deletion knows which one is live
-          active_project_id: mode === 'vibecoder' ? activeProjectId : null,
+          active_project_id: activeProjectId,
         })
         .eq('id', profileId);
 
@@ -323,23 +264,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   };
 
-  // Toggle mode handler
-  const handleModeChange = async (newMode: BuilderMode) => {
-    setMode(newMode);
-    
-    // Update database with mode preference
-    await supabase
-      .from('ai_storefront_layouts')
-      .upsert({
-        profile_id: profileId,
-        vibecoder_mode: newMode === 'vibecoder',
-        layout_json: layout as any,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'profile_id' });
-  };
-
-  // Vibecoder send message handler (with auto-create)
-  const handleVibecoderMessage = async (prompt: string) => {
+  // Send message handler (with auto-create)
+  const handleSendMessage = async (prompt: string) => {
     // Auto-create project if we don't have one yet
     const projectId = await ensureProject();
     if (!projectId) {
@@ -393,8 +319,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Handle auto-fix from error boundary (self-healing AI)
   const handleAutoFix = useCallback((errorMsg: string) => {
     // Send the error report to the AI for automatic repair
-    handleVibecoderMessage(errorMsg);
-  }, [handleVibecoderMessage]);
+    handleSendMessage(errorMsg);
+  }, []);
 
   if (loading || projectsLoading) {
     return (
@@ -418,11 +344,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     );
   }
 
-  const isEmpty = mode === 'blocks' 
-    ? layout.sections.length === 0 
-    : code === DEFAULT_CODE;
-
-  const canVibecoderUndo = messages.filter(m => m.code_snapshot).length > 1;
+  const isEmpty = code === DEFAULT_CODE;
+  const canUndo = messages.filter(m => m.code_snapshot).length > 1;
 
   return (
     <div className="h-screen w-full bg-background flex flex-col overflow-hidden">
@@ -448,46 +371,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
             )}
           </div>
         </div>
-
-        {/* Mode Toggle */}
-        <TooltipProvider>
-          <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-lg border border-border/30">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={mode === 'blocks' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => handleModeChange('blocks')}
-                  className="gap-1.5 h-8"
-                >
-                  <Blocks className="w-4 h-4" />
-                  Blocks
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Structured block builder (fast, reliable)</p>
-              </TooltipContent>
-            </Tooltip>
-            
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={mode === 'vibecoder' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  onClick={() => handleModeChange('vibecoder')}
-                  className="gap-1.5 h-8"
-                >
-                  <Code2 className="w-4 h-4" />
-                  Vibecoder
-                  <Sparkles className="w-3 h-3 text-violet-400" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Generative code (unlimited creativity)</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </TooltipProvider>
 
         <div className="flex items-center gap-2">
           {isPublished && username && (
@@ -519,49 +402,43 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
       {/* Main content - split view */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Project sidebar (only for Vibecoder mode) */}
-        {mode === 'vibecoder' && (
-          <ProjectSidebar
-            projects={projects}
-            activeProjectId={activeProjectId}
-            loading={projectsLoading}
-            onSelectProject={selectProject}
-            onCreateProject={handleCreateProject}
-            onDeleteProject={handleDeleteProject}
-            onRenameProject={handleRenameProject}
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          />
-        )}
+        {/* Project sidebar */}
+        <ProjectSidebar
+          projects={projects}
+          activeProjectId={activeProjectId}
+          loading={projectsLoading}
+          onSelectProject={selectProject}
+          onCreateProject={handleCreateProject}
+          onDeleteProject={handleDeleteProject}
+          onRenameProject={handleRenameProject}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
 
-        {/* Preview panel - min-w-0 allows shrinking, flex-1 fills remaining space */}
+        {/* Preview panel */}
         <div 
           className="flex-1 min-w-0 border-r border-border/30 bg-muted/20 overflow-hidden relative"
           style={{ isolation: 'isolate', contain: 'strict' }}
         >
-          {mode === 'blocks' ? (
-            <AIBuilderPreview layout={layout} isEmpty={isEmpty} isBuilding={isBuilding} />
-          ) : (
-            <PreviewErrorBoundary 
-              onAutoFix={handleAutoFix} 
-              onReset={resetCode}
-            >
-              <VibecoderPreview 
-                key={`preview-${activeProjectId}-${resetKey}`}
-                code={code} 
-                isStreaming={isStreaming}
-                onError={(error) => {
-                  // Log the error but don't auto-trigger fix (let user click button)
-                  console.warn('[VibecoderPreview] Sandpack error detected:', error);
-                }}
-              />
-            </PreviewErrorBoundary>
-          )}
+          <PreviewErrorBoundary 
+            onAutoFix={handleAutoFix} 
+            onReset={resetCode}
+          >
+            <VibecoderPreview 
+              key={`preview-${activeProjectId}-${resetKey}`}
+              code={code} 
+              isStreaming={isStreaming}
+              onError={(error) => {
+                // Log the error but don't auto-trigger fix (let user click button)
+                console.warn('[VibecoderPreview] Sandpack error detected:', error);
+              }}
+            />
+          </PreviewErrorBoundary>
           {/* Overlay while dragging (prevents iframe stealing mouse events) */}
           {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
         </div>
 
-        {/* Chat panel - shrink-0 prevents growing, dynamic width via drag */}
+        {/* Chat panel */}
         <div 
           style={{ width: sidebarWidth }} 
           className="shrink-0 flex flex-col bg-background overflow-hidden relative"
@@ -574,35 +451,21 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
             }`}
           />
           
-          {mode === 'blocks' ? (
-            <AIBuilderChat
-              profileId={profileId}
-              layout={layout}
-              onLayoutChange={(newLayout) => {
-                pushHistory(layout);
-                saveLayout(newLayout);
-              }}
-              onUndo={handleBlocksUndo}
-              canUndo={history.length > 0}
-              onBuildingChange={setIsBuilding}
-            />
-          ) : (
-            <VibecoderChat
-              key={`chat-${activeProjectId}-${resetKey}`}
-              onSendMessage={handleVibecoderMessage}
-              isStreaming={isStreaming}
-              onCancel={cancelStream}
-              onReset={resetCode}
-              onUndo={handleVibecoderUndo}
-              hasCode={code !== DEFAULT_CODE}
-              canUndo={canVibecoderUndo}
-              messages={messages}
-              onRateMessage={rateMessage}
-              onRestoreToVersion={handleRestoreCode}
-              projectName={activeProject?.name}
-              liveSteps={liveSteps}
-            />
-          )}
+          <VibecoderChat
+            key={`chat-${activeProjectId}-${resetKey}`}
+            onSendMessage={handleSendMessage}
+            isStreaming={isStreaming}
+            onCancel={cancelStream}
+            onReset={resetCode}
+            onUndo={handleUndo}
+            hasCode={code !== DEFAULT_CODE}
+            canUndo={canUndo}
+            messages={messages}
+            onRateMessage={rateMessage}
+            onRestoreToVersion={handleRestoreCode}
+            projectName={activeProject?.name}
+            liveSteps={liveSteps}
+          />
         </div>
       </div>
     </div>
