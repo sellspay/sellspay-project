@@ -13,6 +13,10 @@ export { ProjectSidebar } from './ProjectSidebar';
 export { VibecoderMessageBubble } from './VibecoderMessageBubble';
 export { useVibecoderProjects } from './hooks/useVibecoderProjects';
 
+// Agent UI exports
+export { AgentProgress } from './AgentProgress';
+export type { AgentStep } from './AgentProgress';
+
 // Creative Studio exports
 export { GenerationCanvas } from './GenerationCanvas';
 export { PlacementPromptModal } from './PlacementPromptModal';

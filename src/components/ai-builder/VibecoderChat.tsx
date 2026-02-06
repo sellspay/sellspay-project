@@ -7,6 +7,7 @@ import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import { motion } from 'framer-motion';
 import { ChatInputBar, type AIModel } from './ChatInputBar';
 import { useUserCredits } from '@/hooks/useUserCredits';
+import { AgentProgress, type AgentStep } from './AgentProgress';
 
 interface VibecoderChatProps {
   onSendMessage: (message: string) => void;
@@ -17,7 +18,11 @@ interface VibecoderChatProps {
   onRateMessage: (messageId: string, rating: -1 | 0 | 1) => void;
   onRestoreToVersion: (messageId: string) => void;
   projectName?: string;
-  liveSteps?: string[]; // Real-time transparency logs
+  liveSteps?: string[]; // Real-time transparency logs (legacy fallback)
+  // Agent mode props (new premium experience)
+  agentStep?: AgentStep;
+  agentLogs?: string[];
+  isAgentMode?: boolean;
   // Controlled model state
   activeModel?: AIModel;
   onModelChange?: (model: AIModel) => void;
@@ -112,6 +117,9 @@ export function VibecoderChat({
   onRestoreToVersion,
   projectName,
   liveSteps = [],
+  agentStep,
+  agentLogs = [],
+  isAgentMode = false,
   activeModel,
   onModelChange,
   onOpenBilling,
@@ -253,14 +261,20 @@ export function VibecoderChat({
             </div>
           </div>
         ) : (
-          <>
+        <>
             <ChatInterface 
               messages={messages}
               onRateMessage={onRateMessage}
               onRestoreToVersion={onRestoreToVersion}
             />
-            {/* Show Live Building Card during streaming */}
-            {isStreaming && <LiveBuildingCard steps={liveSteps} />}
+            {/* Show Agent Progress UI (premium) or fallback to LiveBuildingCard */}
+            {isStreaming && (
+              isAgentMode && agentStep && agentStep !== 'idle' ? (
+                <AgentProgress currentStep={agentStep} logs={agentLogs} />
+              ) : (
+                <LiveBuildingCard steps={liveSteps} />
+              )
+            )}
           </>
         )}
       </div>

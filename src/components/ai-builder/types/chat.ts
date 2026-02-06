@@ -2,6 +2,9 @@
 // AI BUILDER CHAT TYPES
 // =====================================================
 
+// Agent step types for the multi-step workflow
+export type { AgentStep } from '../AgentProgress';
+
 export interface BuildStep {
   id: string;
   type: 'plan' | 'create_file' | 'update_code' | 'install_package' | 'analyze' | 'finish';
