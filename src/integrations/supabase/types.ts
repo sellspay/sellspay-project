@@ -1218,6 +1218,7 @@ export type Database = {
           banner_url: string | null
           bio: string | null
           created_at: string | null
+          creator_tags: string[] | null
           editor_about: string | null
           editor_city: string | null
           editor_country: string | null
@@ -1263,6 +1264,7 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
+          creator_tags?: string[] | null
           editor_about?: string | null
           editor_city?: string | null
           editor_country?: string | null
@@ -1308,6 +1310,7 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
+          creator_tags?: string[] | null
           editor_about?: string | null
           editor_city?: string | null
           editor_country?: string | null
@@ -2634,29 +2637,15 @@ export type Database = {
       public_profiles: {
         Row: {
           avatar_url: string | null
-          background_url: string | null
-          banner_position_y: number | null
           banner_url: string | null
           bio: string | null
           created_at: string | null
-          editor_about: string | null
-          editor_city: string | null
-          editor_country: string | null
-          editor_hourly_rate_cents: number | null
-          editor_languages: string[] | null
-          editor_services: string[] | null
-          editor_social_links: Json | null
+          creator_tags: string[] | null
           full_name: string | null
-          global_custom_font: Json | null
-          global_font: string | null
           id: string | null
           is_creator: boolean | null
-          is_editor: boolean | null
           is_owner: boolean | null
-          is_seller: boolean | null
-          show_recent_uploads: boolean | null
           social_links: Json | null
-          updated_at: string | null
           user_id: string | null
           username: string | null
           verified: boolean | null
@@ -2664,29 +2653,15 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
-          background_url?: string | null
-          banner_position_y?: number | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
-          editor_about?: string | null
-          editor_city?: string | null
-          editor_country?: string | null
-          editor_hourly_rate_cents?: number | null
-          editor_languages?: string[] | null
-          editor_services?: string[] | null
-          editor_social_links?: Json | null
+          creator_tags?: string[] | null
           full_name?: string | null
-          global_custom_font?: Json | null
-          global_font?: string | null
           id?: string | null
           is_creator?: boolean | null
-          is_editor?: boolean | null
           is_owner?: never
-          is_seller?: boolean | null
-          show_recent_uploads?: boolean | null
           social_links?: Json | null
-          updated_at?: string | null
           user_id?: string | null
           username?: string | null
           verified?: boolean | null
@@ -2694,29 +2669,15 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
-          background_url?: string | null
-          banner_position_y?: number | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
-          editor_about?: string | null
-          editor_city?: string | null
-          editor_country?: string | null
-          editor_hourly_rate_cents?: number | null
-          editor_languages?: string[] | null
-          editor_services?: string[] | null
-          editor_social_links?: Json | null
+          creator_tags?: string[] | null
           full_name?: string | null
-          global_custom_font?: Json | null
-          global_font?: string | null
           id?: string | null
           is_creator?: boolean | null
-          is_editor?: boolean | null
           is_owner?: never
-          is_seller?: boolean | null
-          show_recent_uploads?: boolean | null
           social_links?: Json | null
-          updated_at?: string | null
           user_id?: string | null
           username?: string | null
           verified?: boolean | null
