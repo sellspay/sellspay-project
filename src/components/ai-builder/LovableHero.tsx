@@ -1,6 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Plus, ArrowLeft, AudioLines } from "lucide-react";
+import { ArrowRight, Plus, ArrowLeft, AudioLines, Loader2, Zap, CreditCard } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useSubscription } from "@/hooks/useSubscription";
 import heroBg from "@/assets/hero-aurora-bg.jpg";
 
 interface LovableHeroProps {
@@ -11,13 +14,88 @@ interface LovableHeroProps {
 export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps) {
   const [prompt, setPrompt] = useState("");
   const [isPlanMode, setIsPlanMode] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [showGateModal, setShowGateModal] = useState(false);
+  const [gateType, setGateType] = useState<'subscription' | 'credits'>('subscription');
+  
+  const recognitionRef = useRef<any>(null);
   const navigate = useNavigate();
+  const { isPremium, credits, hasCredits, goToPricing, loading: subLoading } = useSubscription();
+
+  // Initialize speech recognition
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0].transcript)
+          .join('');
+        setPrompt(prev => prev + transcript);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      console.warn('Speech recognition not supported');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      setPrompt(''); // Clear for fresh dictation
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (prompt.trim()) {
-      onStart(prompt, isPlanMode);
+    if (!prompt.trim()) return;
+    
+    // Gate check: must have premium subscription AND credits
+    if (!isPremium) {
+      setGateType('subscription');
+      setShowGateModal(true);
+      return;
     }
+    
+    if (!hasCredits(25)) { // Vibecoder costs 25 credits
+      setGateType('credits');
+      setShowGateModal(true);
+      return;
+    }
+
+    onStart(prompt, isPlanMode);
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    // Just paste into the input - don't auto-start
+    setPrompt(suggestion);
   };
 
   return (
@@ -87,10 +165,15 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
               {/* Soundwave / Voice Button */}
               <button 
                 type="button" 
-                className="p-2 text-zinc-500 hover:text-white transition-colors"
-                title="Voice input"
+                onClick={toggleListening}
+                className={`p-2 transition-colors rounded-lg ${
+                  isListening 
+                    ? 'text-red-400 bg-red-500/10 animate-pulse' 
+                    : 'text-zinc-500 hover:text-white'
+                }`}
+                title={isListening ? "Stop listening" : "Voice input"}
               >
-                <AudioLines size={20} />
+                {isListening ? <Loader2 size={20} className="animate-spin" /> : <AudioLines size={20} />}
               </button>
               
               {/* Plan Toggle */}
@@ -110,7 +193,7 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
               {/* Submit Button */}
               <button 
                 type="submit"
-                disabled={!prompt.trim()}
+                disabled={!prompt.trim() || subLoading}
                 className="p-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-xl hover:from-orange-400 hover:to-rose-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/20"
               >
                 <ArrowRight size={20} />
@@ -119,13 +202,57 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
           </div>
         </form>
 
-        {/* Suggestion Chips */}
+        {/* Suggestion Chips - now just paste text */}
         <div className="flex flex-wrap justify-center gap-3 mt-8 animate-in fade-in duration-1000 delay-300">
-          <SuggestionChip label="SaaS Dashboard" onClick={() => onStart("Create a dark mode SaaS dashboard")} />
-          <SuggestionChip label="Portfolio Site" onClick={() => onStart("Build a minimalist portfolio for a designer")} />
-          <SuggestionChip label="E-Commerce" onClick={() => onStart("Design a luxury watch store landing page")} />
+          <SuggestionChip label="SaaS Dashboard" onClick={() => handleSuggestionClick("Create a dark mode SaaS dashboard")} />
+          <SuggestionChip label="Portfolio Site" onClick={() => handleSuggestionClick("Build a minimalist portfolio for a designer")} />
+          <SuggestionChip label="E-Commerce" onClick={() => handleSuggestionClick("Design a luxury watch store landing page")} />
         </div>
       </div>
+
+      {/* Subscription/Credits Gate Modal */}
+      <Dialog open={showGateModal} onOpenChange={setShowGateModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-md">
+          <DialogHeader>
+            <div className="mx-auto w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center mb-4">
+              {gateType === 'subscription' ? (
+                <Zap className="w-6 h-6 text-orange-400" />
+              ) : (
+                <CreditCard className="w-6 h-6 text-orange-400" />
+              )}
+            </div>
+            <DialogTitle className="text-center text-xl">
+              {gateType === 'subscription' 
+                ? "Upgrade to Unlock VibeCoder" 
+                : "Insufficient Credits"}
+            </DialogTitle>
+            <DialogDescription className="text-center text-zinc-400">
+              {gateType === 'subscription' 
+                ? "VibeCoder is a premium feature. Upgrade to Creator or Agency to start building AI-powered storefronts."
+                : `You need at least 25 credits to generate a storefront. You currently have ${credits} credits.`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-3 mt-4">
+            <Button 
+              onClick={() => {
+                setShowGateModal(false);
+                goToPricing();
+              }}
+              className="w-full bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-400 hover:to-rose-400 text-white"
+            >
+              {gateType === 'subscription' ? "View Plans" : "Top Up Credits"}
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowGateModal(false)}
+              className="w-full text-zinc-400 hover:text-white hover:bg-zinc-800"
+            >
+              Maybe Later
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -140,3 +267,4 @@ function SuggestionChip({ label, onClick }: { label: string; onClick: () => void
     </button>
   );
 }
+
