@@ -252,7 +252,10 @@ export function ChatInputBar({
   const modelButtonRef = useRef<HTMLButtonElement>(null);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Speech-to-Text Handler
+  // Ref to remember text before speech started (for appending)
+  const promptBeforeSpeechRef = useRef("");
+
+  // Speech-to-Text Handler with REAL-TIME interim results
   const toggleSpeechRecognition = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
@@ -267,9 +270,12 @@ export function ChatInputBar({
       return;
     }
 
+    // Save current text BEFORE we start listening (so we append to it)
+    promptBeforeSpeechRef.current = value;
+
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.interimResults = true; // CRITICAL: Show text AS you speak
     recognition.lang = 'en-US';
 
     recognition.onstart = () => {
@@ -278,16 +284,25 @@ export function ChatInputBar({
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let finalTranscript = '';
+      let interimTranscript = '';
 
+      // Loop through results - Speech API returns fragments
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
           finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
         }
       }
 
+      // UPDATE UI INSTANTLY with both final AND interim text
+      const spacing = promptBeforeSpeechRef.current ? ' ' : '';
+      onChange(promptBeforeSpeechRef.current + spacing + finalTranscript + interimTranscript);
+
+      // Update base text when final transcript is confirmed
       if (finalTranscript) {
-        onChange(value + (value ? ' ' : '') + finalTranscript);
+        promptBeforeSpeechRef.current += spacing + finalTranscript;
       }
     };
 
@@ -313,12 +328,19 @@ export function ChatInputBar({
     };
   }, []);
 
-  // Auto-resize textarea
+  // Auto-resize textarea with strict 6-line (160px) limit
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      const newHeight = Math.min(textareaRef.current.scrollHeight, 200);
-      textareaRef.current.style.height = `${newHeight}px`;
+    const textarea = textareaRef.current;
+    if (textarea) {
+      // Reset height to auto to measure true scrollHeight
+      textarea.style.height = 'auto';
+      
+      const MAX_HEIGHT = 160; // ~6 lines
+      const newHeight = Math.min(textarea.scrollHeight, MAX_HEIGHT);
+      textarea.style.height = `${newHeight}px`;
+      
+      // Enable scroll ONLY when hitting the limit
+      textarea.style.overflowY = textarea.scrollHeight > MAX_HEIGHT ? 'auto' : 'hidden';
     }
   }, [value]);
 
@@ -612,21 +634,26 @@ export function ChatInputBar({
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              selectedModel.category === 'image' 
-                ? "Describe the image to generate..."
-                : selectedModel.category === 'video'
-                  ? "Describe the video to generate..."
-                  : isPlanMode 
-                    ? "Describe the features to plan..." 
-                    : placeholder
+              isListening
+                ? "Listening..."
+                : selectedModel.category === 'image' 
+                  ? "Describe the image to generate..."
+                  : selectedModel.category === 'video'
+                    ? "Describe the video to generate..."
+                    : isPlanMode 
+                      ? "Describe the features to plan..." 
+                      : placeholder
             }
             disabled={isGenerating}
             rows={1}
             className={cn(
-              "flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-500",
-              "resize-none outline-none py-2 px-1",
-              "min-h-[36px] max-h-[200px]",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
+              "flex-1 bg-transparent text-sm text-zinc-100 resize-none outline-none py-2 px-1",
+              "min-h-[36px] max-h-[160px]",
+              "scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent",
+              "disabled:opacity-50 disabled:cursor-not-allowed",
+              isListening 
+                ? "placeholder:text-violet-400 placeholder:animate-pulse" 
+                : "placeholder-zinc-500"
             )}
           />
 
