@@ -111,6 +111,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Chat response state for intent router
   const [chatResponse, setChatResponse] = useState<string | null>(null);
   
+  // Live steps state for real-time transparency
+  const [liveSteps, setLiveSteps] = useState<string[]>([]);
+  
   // Streaming code state for Vibecoder mode
   const { 
     code, 
@@ -121,8 +124,13 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     setCode,
     DEFAULT_CODE 
   } = useStreamingCode({
+    onLogUpdate: (logs) => {
+      // Update live steps in real-time as they stream in
+      setLiveSteps(logs);
+    },
     onComplete: async (finalCode) => {
-      // Save to project_files on completion
+      // Clear live steps and save to project_files on completion
+      setLiveSteps([]);
       await saveVibecoderCode(finalCode);
       
       // Add assistant message with code snapshot
@@ -130,10 +138,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     },
     onChatResponse: async (text) => {
       // AI responded with a chat message instead of code
+      setLiveSteps([]);
       setChatResponse(text);
       await addMessage('assistant', text);
     },
     onError: (err) => {
+      setLiveSteps([]);
       toast.error(err.message);
     }
   });
@@ -574,6 +584,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
               onRateMessage={rateMessage}
               onRestoreToVersion={handleRestoreCode}
               projectName={activeProject?.name}
+              liveSteps={liveSteps}
             />
           )}
         </div>

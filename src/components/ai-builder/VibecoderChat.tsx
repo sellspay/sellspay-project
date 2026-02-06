@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Loader2, Square, RefreshCw, Code2, Sparkles, Undo2 } from 'lucide-react';
+import { Send, Loader2, Square, RefreshCw, Code2, Sparkles, Undo2, CheckCircle2 } from 'lucide-react';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { ChatInterface } from './VibecoderMessageBubble';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
+import { motion } from 'framer-motion';
 
 interface VibecoderChatProps {
   onSendMessage: (message: string) => void;
@@ -16,8 +17,72 @@ interface VibecoderChatProps {
   canUndo: boolean;
   messages: VibecoderMessage[];
   onRateMessage: (messageId: string, rating: -1 | 0 | 1) => void;
-  onRestoreToVersion: (messageId: string) => void; // Changed: now takes messageId
+  onRestoreToVersion: (messageId: string) => void;
   projectName?: string;
+  liveSteps?: string[]; // Real-time transparency logs
+}
+
+// Live Building Card - shows steps as they stream in
+function LiveBuildingCard({ steps }: { steps: string[] }) {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex gap-4 mb-8"
+    >
+      {/* Pulsing Avatar */}
+      <div className="flex-shrink-0 mt-1">
+        <div className="w-8 h-8 rounded-full bg-violet-500/20 border border-violet-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.5)]">
+          <Loader2 size={14} className="text-violet-400 animate-spin" />
+        </div>
+      </div>
+      
+      {/* Building Card */}
+      <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-5 shadow-sm">
+        <p className="text-zinc-300 text-sm mb-4 leading-relaxed">
+          Building your request...
+        </p>
+        
+        {/* Live Steps List */}
+        {steps.length > 0 && (
+          <div className="space-y-3">
+            {steps.map((step, idx) => {
+              // Last step is "running", previous steps are "done"
+              const isRunning = idx === steps.length - 1;
+              
+              return (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center gap-3 text-xs font-mono"
+                >
+                  {isRunning ? (
+                    <div className="w-4 h-4 flex items-center justify-center">
+                      <Loader2 size={12} className="text-violet-400 animate-spin" />
+                    </div>
+                  ) : (
+                    <CheckCircle2 size={14} className="text-green-500" />
+                  )}
+                  <span className={isRunning ? "text-violet-300 animate-pulse" : "text-zinc-500"}>
+                    {step}
+                  </span>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+        
+        {/* Fallback if no steps yet */}
+        {steps.length === 0 && (
+          <div className="flex items-center gap-2 text-zinc-400">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Initializing...</span>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
 }
 
 const QUICK_PROMPTS = [
@@ -46,6 +111,7 @@ export function VibecoderChat({
   onRateMessage,
   onRestoreToVersion,
   projectName,
+  liveSteps = [],
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -180,21 +246,8 @@ export function VibecoderChat({
               onRateMessage={onRateMessage}
               onRestoreToVersion={onRestoreToVersion}
             />
-            {isStreaming && (
-              <div className="flex gap-4 mb-8">
-                <div className="flex-shrink-0 mt-1">
-                  <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center shadow-sm">
-                    <Sparkles size={14} className="text-violet-400 animate-pulse" />
-                  </div>
-                </div>
-                <div className="bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-4 shadow-sm">
-                  <div className="flex items-center gap-2 text-zinc-400">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Generating code...</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Show Live Building Card during streaming */}
+            {isStreaming && <LiveBuildingCard steps={liveSteps} />}
           </>
         )}
       </div>
