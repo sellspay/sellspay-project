@@ -333,12 +333,24 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // REMOVED: Onboarding useEffect - no longer needed
 
   // AUTO-START: Pick up initial prompt from navigation state (passed from Hero)
+  // IMPORTANT: Wait until the project is fully mounted (content gate open) before starting.
+  // Otherwise the "mountProject" handshake can wipe the agent state mid-flight.
   useEffect(() => {
     const initialPrompt = (location.state as { initialPrompt?: string })?.initialPrompt;
 
-    // Check if we just arrived with a prompt to auto-start
+    const projectReady =
+      !!activeProjectId &&
+      contentProjectId === activeProjectId &&
+      !projectsLoading &&
+      !messagesLoading &&
+      !isVerifyingProject;
+
     // Guard: Only fire once per project - prevents double-trigger on re-renders
-    if (activeProjectId && initialPrompt && startedInitialForProjectRef.current !== activeProjectId && !projectsLoading) {
+    if (
+      projectReady &&
+      initialPrompt &&
+      startedInitialForProjectRef.current !== activeProjectId
+    ) {
       console.log('🚀 Picking up initial prompt from navigation:', initialPrompt);
 
       // Mark this project as having started its initial prompt
@@ -347,9 +359,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       // 🔒 LOCK: Set generation lock to this project
       generationLockRef.current = activeProjectId;
 
-      // No loading overlay - preview will hard refresh when code is ready
       // ⚡ OPTIMISTIC UI: Show user's prompt immediately (don't wait for DB)
-      // This fixes "ghost state" where the AI starts working but the chat looks empty
       addMessage('user', initialPrompt, undefined, activeProjectId);
 
       // Trigger the agent immediately (with project ID lock)
@@ -358,7 +368,16 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       // Clear the state so it doesn't re-fire on refresh
       window.history.replaceState({}, document.title);
     }
-  }, [activeProjectId, location.state, projectsLoading, startAgent, addMessage]);
+  }, [
+    activeProjectId,
+    contentProjectId,
+    location.state,
+    projectsLoading,
+    messagesLoading,
+    isVerifyingProject,
+    startAgent,
+    addMessage,
+  ]);
 
   // Load basic data needed for the AI Builder shell (header, credits, publish state)
   // IMPORTANT: We intentionally do NOT load '/App.tsx' from the global project_files slot here.
