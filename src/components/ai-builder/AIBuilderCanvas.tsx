@@ -306,13 +306,17 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       // Any new generation should cover Sandpack until bundling finishes
       setIsAwaitingPreviewReady(true);
 
+      // ⚡ OPTIMISTIC UI: Show user's prompt immediately (don't wait for DB)
+      // This fixes "ghost state" where the AI starts working but the chat looks empty
+      addMessage('user', initialPrompt, undefined, activeProjectId);
+
       // Trigger the agent immediately (with project ID lock)
       startAgent(initialPrompt, undefined, activeProjectId);
 
       // Clear the state so it doesn't re-fire on refresh
       window.history.replaceState({}, document.title);
     }
-  }, [activeProjectId, location.state, projectsLoading, startAgent]);
+  }, [activeProjectId, location.state, projectsLoading, startAgent, addMessage]);
 
   // Load basic data needed for the AI Builder shell (header, credits, publish state)
   // IMPORTANT: We intentionally do NOT load '/App.tsx' from the global project_files slot here.
