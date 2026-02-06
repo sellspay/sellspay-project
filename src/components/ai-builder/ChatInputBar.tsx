@@ -673,24 +673,24 @@ export function ChatInputBar({
               <WaveformIcon isActive={isListening} />
             </button>
             
-            {/* Stop / Send button */}
+            {/* Stop / Send button - Circular with orange gradient */}
             <button 
               type="button"
               onClick={isGenerating ? onCancel : handleSubmit}
               disabled={(!value.trim() && attachments.length === 0) && !isGenerating}
               className={cn(
-                "p-1.5 rounded-lg transition-all",
+                "w-8 h-8 flex items-center justify-center rounded-full transition-all",
                 isGenerating
                   ? "bg-zinc-700 text-white"
                   : (value.trim() || attachments.length > 0)
-                    ? "bg-zinc-600 text-white hover:bg-zinc-500"
-                    : "text-zinc-600 cursor-not-allowed"
+                    ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:scale-105"
+                    : "bg-zinc-700 text-zinc-500 cursor-not-allowed"
               )}
             >
               {isGenerating ? (
-                <Square size={16} className="fill-current" />
+                <Square size={14} className="fill-current" />
               ) : (
-                <Send size={16} />
+                <Send size={14} />
               )}
             </button>
           </div>
