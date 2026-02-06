@@ -1,12 +1,22 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { AgentStep } from '@/components/ai-builder/AgentProgress';
+import { parseCreditsError, isCreditsError } from '@/components/ai-builder/InsufficientCreditsCard';
+
+// Structured error details for better UI handling
+interface ErrorDetails {
+  creditsNeeded?: number;
+  creditsAvailable?: number;
+  message: string;
+}
 
 interface AgentState {
   step: AgentStep;
   logs: string[];
   isRunning: boolean;
   error?: string;
+  errorType?: 'credits' | 'auth' | 'api' | 'unknown';
+  errorDetails?: ErrorDetails;
   lockedProjectId: string | null;
   architectPlan?: Record<string, unknown>;
   lastGeneratedCode?: string; // Track last code for healing
@@ -249,10 +259,14 @@ export function useAgentLoop({
       case 'error': {
         const errorData = event.data as { message?: string };
         const errorMsg = errorData?.message || 'Unknown error';
+        const isCreditError = isCreditsError(errorMsg);
+        
         setState(prev => ({
           ...prev,
           step: 'error',
           error: errorMsg,
+          errorType: isCreditError ? 'credits' : 'unknown',
+          errorDetails: isCreditError ? parseCreditsError(errorMsg) : { message: errorMsg },
           isRunning: false,
         }));
         addLog(`! Error: ${errorMsg}`);
@@ -535,5 +549,9 @@ export function useAgentLoop({
     lockedProjectId: state.lockedProjectId,
     architectPlan: state.architectPlan,
     lastGeneratedCode: state.lastGeneratedCode, // VibeCoder 2.1: Track for healing
+    // Credit error handling
+    agentError: state.error,
+    agentErrorType: state.errorType,
+    agentErrorDetails: state.errorDetails,
   };
 }
