@@ -13,7 +13,7 @@ export { ProjectSidebar } from './ProjectSidebar';
 export { VibecoderMessageBubble } from './VibecoderMessageBubble';
 export { useVibecoderProjects } from './hooks/useVibecoderProjects';
 
-// Agent UI exports
+// Agent UI exports (VibeCoder 2.0)
 export { AgentProgress } from './AgentProgress';
 export type { AgentStep } from './AgentProgress';
 
@@ -27,3 +27,21 @@ export { ChatInputBar } from './ChatInputBar';
 export { PlanApprovalCard } from './PlanApprovalCard';
 export { ProfileMenu } from './ProfileMenu';
 export { PageNavigator } from './PageNavigator';
+
+// Style Profiles (VibeCoder 2.0)
+export { 
+  STYLE_PROFILES, 
+  getStyleProfile, 
+  getDefaultStyleProfile,
+  injectStyleProfile,
+  type StyleProfile 
+} from '@/lib/vibecoder-style-profiles';
+
+// Context Pruning Utilities (VibeCoder 2.0)
+export {
+  analyzePromptIntent,
+  extractRelevantContext,
+  createCodeSummary,
+  formatProductsForContext,
+  type ProductSummary,
+} from '@/lib/vibecoder-context-pruning';
