@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +14,7 @@ import { GenerationCanvas } from './GenerationCanvas';
 import { PlacementPromptModal } from './PlacementPromptModal';
 import { AI_MODELS, type AIModel } from './ChatInputBar';
 import type { GeneratedAsset, ViewMode } from './types/generation';
+import { parseRoutesFromCode, type SitePage } from '@/utils/routeParser';
 import { toast } from 'sonner';
 
 interface AIBuilderCanvasProps {
@@ -163,6 +164,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       toast.error(err.message);
     }
   });
+
+  // Dynamically detected pages from generated code
+  const detectedPages = useMemo<SitePage[]>(() => {
+    return parseRoutesFromCode(code);
+  }, [code]);
 
   // Show onboarding on first visit
   useEffect(() => {
@@ -539,6 +545,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         username={username}
         currentPath={previewPath}
         onNavigate={setPreviewPath}
+        pages={detectedPages}
         onRegenerate={(tweak) => {
           // Send tweak as a new message to refine the current design
           handleSendMessage(`Refine the current design: ${tweak}`);

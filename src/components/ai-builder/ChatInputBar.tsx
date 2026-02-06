@@ -684,9 +684,9 @@ export function ChatInputBar({
             disabled={isGenerating}
             rows={1}
             className={cn(
-              "flex-1 bg-transparent text-sm text-zinc-100 resize-none outline-none py-2 px-1",
+              "flex-1 bg-transparent text-sm text-zinc-100 resize-none outline-none py-2 pr-2",
               "min-h-[36px] max-h-[160px]",
-              "scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent",
+              "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               isListening 
                 ? "placeholder:text-violet-400 placeholder:animate-pulse" 
