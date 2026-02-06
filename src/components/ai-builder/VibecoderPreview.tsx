@@ -186,30 +186,43 @@ function ErrorDetector({
 }) {
   const { sandpack } = useSandpack();
   const lastErrorRef = useRef<string | null>(null);
+  const onErrorRef = useRef(onError);
+  
+  // Keep ref in sync to avoid stale closures without causing re-renders
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   // Safely extract error message - never mutate the original error object
   // Some browsers lock error objects as read-only
-  let currentError: string | null = null;
-  try {
-    currentError = sandpack.error?.message ?? null;
-  } catch (e) {
-    // If error object is locked/frozen, create a safe fallback
-    console.error("Failed to read Sandpack error:", e);
-    currentError = sandpack.error ? "Build error occurred" : null;
-  }
-
+  // CRITICAL: Do this inside the effect to avoid issues with frozen objects
   useEffect(() => {
+    let currentError: string | null = null;
+    
+    try {
+      // Defensive: Check if error exists and has message property
+      if (sandpack.error && typeof sandpack.error === 'object') {
+        // Read message into a new variable immediately
+        const msg = sandpack.error.message;
+        currentError = typeof msg === 'string' ? msg : null;
+      }
+    } catch (e) {
+      // If error object is locked/frozen/throws, create a safe fallback
+      console.warn('[ErrorDetector] Failed to read Sandpack error:', e);
+      currentError = sandpack.error ? 'Build error occurred' : null;
+    }
+
     if (currentError && currentError !== lastErrorRef.current) {
       lastErrorRef.current = currentError;
-      // Create a NEW string for reporting - never modify the original error
-      const safeErrorMessage = String(currentError);
-      onError?.(safeErrorMessage);
+      // Create a completely NEW string for reporting - never pass the original
+      const safeErrorMessage = '' + currentError;
+      onErrorRef.current?.(safeErrorMessage);
     }
 
     if (!currentError && lastErrorRef.current) {
       lastErrorRef.current = null;
     }
-  }, [currentError, onError]);
+  }, [sandpack.error]); // Only depend on the error object, NOT onError
 
   // DO NOT render any overlay here - parent handles display via FixErrorToast only
   return null;
