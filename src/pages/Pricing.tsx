@@ -1,29 +1,32 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useSubscription } from "@/hooks/useSubscription";
 import MainLayout from "@/components/layout/MainLayout";
-import { Check, X, Sparkles, Zap, Shield, ChevronDown, ChevronUp, Image as ImageIcon, Video, Loader2, Code2, Palette, Film } from "lucide-react";
+import { Check, X, Sparkles, Crown, Info, Loader2, Monitor, Image as ImageIcon, Video } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// --- PLANS DATA ---
+// --- PLANS DATA (Updated with correct credit economy) ---
 const PLANS = [
   {
     id: "browser" as const,
-    name: "Browser",
+    name: "Starter",
     price: 0,
-    description: "Browse the marketplace and buy products.",
+    description: "Perfect for building your first store and selling products.",
     badge: null,
     badgeColor: "",
+    accentGradient: "from-zinc-500 to-zinc-700",
     features: [
-      { text: "Browse all products", included: true },
-      { text: "Purchase from creators", included: true },
-      { text: "Vibecoder AI Builder", included: false },
+      { text: "Create & Customize Storefront", included: true },
+      { text: "Sell Digital Products & Subs", included: true },
+      { text: "Buy from Marketplace", included: true },
+      { text: "Community Access", included: true },
+      { text: "AI Website Builder", included: false },
       { text: "AI Image Generation", included: false },
       { text: "AI Video Generation", included: false },
-      { text: "Transaction Fees", value: "10%" },
+      { text: "10% Transaction Fee", isNeutral: true },
     ],
     credits: 0,
   },
@@ -31,16 +34,18 @@ const PLANS = [
     id: "creator" as const,
     name: "Creator",
     price: 69,
-    description: "For serious digital product sellers.",
+    description: "For serious sellers who need AI content creation tools.",
     badge: "Most Popular",
     badgeColor: "bg-gradient-to-r from-violet-500 to-fuchsia-500",
+    accentGradient: "from-violet-500 to-fuchsia-500",
     features: [
-      { text: "Vibecoder AI Builder", included: true, detail: "Unlimited Projects" },
-      { text: "AI Image Generation", included: true, detail: "Flux Pro Model" },
-      { text: "AI Video Generation", included: false },
-      { text: "Transaction Fees", value: "5%", highlight: true },
-      { text: "Grey Verified Badge", included: true },
+      { text: "Everything in Starter", included: true },
+      { text: "VibeCoder AI Builder (Claude 3.5)", included: true, highlight: true },
+      { text: "Flux 1.1 Pro & Recraft V3 Images", included: true, highlight: true },
+      { text: "Kling & Luma AI Video", included: true, highlight: true },
       { text: "Priority Support", included: true },
+      { text: "Grey Verified Badge", included: true },
+      { text: "5% Transaction Fee", isNeutral: true },
     ],
     credits: 2500,
   },
@@ -48,16 +53,17 @@ const PLANS = [
     id: "agency" as const,
     name: "Agency",
     price: 199,
-    description: "For power users & asset studios.",
+    description: "For power users, asset studios, and high-volume sellers.",
     badge: "Elite Status",
     badgeColor: "bg-gradient-to-r from-amber-400 to-orange-500",
+    accentGradient: "from-amber-400 to-orange-500",
     features: [
-      { text: "Vibecoder AI Builder", included: true, detail: "Priority GPU Access" },
-      { text: "AI Image Generation", included: true, detail: "Flux Pro (Fast)" },
-      { text: "AI Video Generation", included: true, detail: "Luma Ray 2 (4K)" },
-      { text: "Transaction Fees", value: "0%", highlight: true },
-      { text: "Gold Verified Badge", included: true },
-      { text: "Dedicated Manager", included: true },
+      { text: "Everything in Creator", included: true },
+      { text: "Highest Rate Limits", included: true },
+      { text: "Dedicated Account Manager", included: true },
+      { text: "Early Access to New Models", included: true },
+      { text: "Gold Verified Badge", included: true, highlightColor: "text-amber-400" },
+      { text: "0% Transaction Fees", highlightColor: "text-green-400" },
     ],
     credits: 12000,
   },
@@ -67,11 +73,11 @@ const PLANS = [
 const FAQS = [
   {
     q: "What AI models do you use?",
-    a: "We use the absolute bleeding edge. Vibecoder is powered by Google Gemini 2.0 Flash for code. Image generation uses Black Forest Labs' Flux Pro. Video generation uses Luma Dream Machine (Ray 2). We handle all the API costs."
+    a: "We use the absolute bleeding edge. Vibecoder is powered by Claude 3.5 Sonnet for code. Image generation uses Flux 1.1 Pro and Recraft V3. Video generation uses Kling AI and Luma Ray 2. We handle all the API costs."
   },
   {
     q: "How far do 12,000 credits go?",
-    a: "A lot. That's enough for roughly 24 Cinematic 4K Videos, OR 120 High-Fidelity Images, OR 480 Code Iterations. Most agencies can run their entire storefront design business on one subscription."
+    a: "A lot. That's enough for roughly 600 AI videos, OR 6,000 high-fidelity images, OR 4,000 code iterations. Most agencies can run their entire storefront design business on one subscription."
   },
   {
     q: "Can I cancel anytime?",
@@ -85,127 +91,91 @@ const FAQS = [
 
 // --- COMPONENTS ---
 
-function FeatureRow({ feature }: { feature: { text: string; included?: boolean; value?: string; highlight?: boolean; detail?: string } }) {
+interface FeatureItemProps {
+  feature: {
+    text: string;
+    included?: boolean;
+    isNeutral?: boolean;
+    highlight?: boolean;
+    highlightColor?: string;
+  };
+}
+
+function FeatureRow({ feature }: FeatureItemProps) {
+  const isNegative = feature.included === false;
+  const isNeutral = feature.isNeutral;
+  
   return (
-    <div className="flex items-start gap-3 py-2 border-b border-zinc-800/50 last:border-0">
-      {feature.included === false ? (
-        <X size={18} className="text-zinc-600 shrink-0 mt-0.5" />
-      ) : feature.included === true ? (
-        <Check size={18} className="text-green-400 shrink-0 mt-0.5" />
+    <div className={`flex items-start gap-3 text-sm ${isNegative ? "opacity-50" : ""}`}>
+      {isNegative ? (
+        <X size={16} className="text-zinc-500 mt-0.5 shrink-0" />
+      ) : isNeutral ? (
+        <Info size={16} className="text-zinc-500 mt-0.5 shrink-0" />
       ) : (
-        <span className={cn("text-sm font-bold", feature.highlight ? "text-green-400" : "text-zinc-200")}>
-          {feature.value}
-        </span>
+        <Check size={16} className={`${feature.highlightColor || (feature.highlight ? "text-violet-400" : "text-green-400")} mt-0.5 shrink-0`} />
       )}
-      <div className="flex flex-col">
-        <span className={cn("text-sm", feature.included === false ? "text-zinc-500" : "text-zinc-200")}>
-          {feature.text}
-        </span>
-        {feature.detail && (
-          <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wide">
-            {feature.detail}
-          </span>
-        )}
-      </div>
+      <span className={feature.highlight ? "text-white font-medium" : isNegative ? "text-zinc-500" : "text-zinc-300"}>
+        {feature.text}
+      </span>
     </div>
   );
 }
 
 function ToolShowcase() {
   return (
-    <div className="w-full max-w-7xl mx-auto mt-32 mb-32">
-      
-      {/* SECTION HEADER */}
-      <div className="text-center mb-16">
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-          Powered by <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">Next-Gen Intelligence</span>
-        </h2>
-        <p className="text-zinc-400 max-w-2xl mx-auto">
-          Your subscription unlocks a suite of the world's most powerful AI models, fully integrated into your workflow. No separate subscriptions required.
-        </p>
+    <div className="max-w-5xl mx-auto mb-20">
+      <div className="text-center mb-10">
+        <h2 className="text-2xl font-bold text-white mb-2">Powering Next-Gen Intelligence</h2>
+        <p className="text-zinc-400 text-sm">One subscription. Full access to the world's best AI models.</p>
       </div>
 
-      {/* TOOLS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* CARD 1: VIBECODER */}
-        <div className="group relative p-8 rounded-3xl bg-zinc-900/40 border border-zinc-800/50 backdrop-blur-sm hover:bg-zinc-900/60 transition-all overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Code2 size={120} />
+        {/* CARD 1: CODE */}
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col items-center text-center">
+          <div className="w-12 h-12 bg-violet-500/10 rounded-full flex items-center justify-center text-violet-400 mb-4">
+            <Monitor size={24} />
           </div>
-          
-          <div className="relative z-10">
-            <div className="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center mb-6 text-violet-400">
-              <Sparkles size={24} />
-            </div>
-            
-            <h3 className="text-xl font-bold text-white mb-1">Vibecoder Architect</h3>
-            <p className="text-xs font-mono text-violet-400 mb-4">MODEL: GEMINI 2.0 FLASH</p>
-            
-            <p className="text-sm text-zinc-400 leading-relaxed mb-8 min-h-[60px]">
-              The core brain. Generates complex React layouts, handles Tailwind styling, and structures your entire storefront in real-time.
-            </p>
-
-            {/* Credit Pill */}
-            <div className="flex items-center justify-between p-3 bg-zinc-950/50 rounded-lg border border-zinc-800/50">
-               <span className="text-xs text-zinc-500">Cost per generation</span>
-               <span className="text-sm font-bold text-white">25 Credits</span>
-            </div>
+          <h3 className="font-bold text-white mb-1">VibeCoder Architect</h3>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-4">Claude 3.5 Sonnet • GPT-4o</p>
+          <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
+             Generates complex React layouts, Tailwind styling, and full-stack logic. Smart enough to fix its own bugs.
+          </p>
+          <div className="mt-auto pt-4 border-t border-zinc-800 w-full flex justify-between items-center">
+             <span className="text-xs text-zinc-500">Cost per msg</span>
+             <span className="text-sm font-bold text-white">3 Credits</span>
           </div>
         </div>
 
-        {/* CARD 2: IMAGE STUDIO */}
-        <div className="group relative p-8 rounded-3xl bg-zinc-900/40 border border-zinc-800/50 backdrop-blur-sm hover:bg-zinc-900/60 transition-all overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Palette size={120} />
+        {/* CARD 2: IMAGE */}
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col items-center text-center">
+          <div className="w-12 h-12 bg-pink-500/10 rounded-full flex items-center justify-center text-pink-400 mb-4">
+            <ImageIcon size={24} />
           </div>
-          
-          <div className="relative z-10">
-            <div className="w-12 h-12 rounded-xl bg-fuchsia-500/20 flex items-center justify-center mb-6 text-fuchsia-400">
-              <ImageIcon size={24} />
-            </div>
-            
-            <h3 className="text-xl font-bold text-white mb-1">Visual Studio</h3>
-            <p className="text-xs font-mono text-fuchsia-400 mb-4">MODEL: BLACK FOREST FLUX PRO</p>
-            
-            <p className="text-sm text-zinc-400 leading-relaxed mb-8 min-h-[60px]">
-              Create high-fidelity brand assets, product mockups, and hero banners. Replaces the need for Midjourney or stock photos.
-            </p>
-
-             {/* Credit Pill */}
-             <div className="flex items-center justify-between p-3 bg-zinc-950/50 rounded-lg border border-zinc-800/50">
-               <span className="text-xs text-zinc-500">Cost per generation</span>
-               <span className="text-sm font-bold text-white">100 Credits</span>
-            </div>
+          <h3 className="font-bold text-white mb-1">Visual Studio</h3>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-4">Flux 1.1 Pro • Recraft V3</p>
+          <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
+             Create photorealistic product mockups, vector logos, and hero banners. Replaces Midjourney.
+          </p>
+          <div className="mt-auto pt-4 border-t border-zinc-800 w-full flex justify-between items-center">
+             <span className="text-xs text-zinc-500">Cost per image</span>
+             <span className="text-sm font-bold text-white">2 Credits</span>
           </div>
         </div>
 
-        {/* CARD 3: CINEMATIC VIDEO */}
-        <div className="group relative p-8 rounded-3xl bg-zinc-900/40 border border-amber-500/20 backdrop-blur-sm hover:bg-zinc-900/60 transition-all overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Film size={120} className="text-amber-500" />
+        {/* CARD 3: VIDEO */}
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col items-center text-center">
+          <div className="w-12 h-12 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-400 mb-4">
+            <Video size={24} />
           </div>
-          
-          <div className="relative z-10">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-6 text-amber-400">
-              <Video size={24} />
-            </div>
-            
-            <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-xl font-bold text-white">Cinematic Video</h3>
-                <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/30">AGENCY</span>
-            </div>
-            <p className="text-xs font-mono text-amber-400 mb-4">MODEL: LUMA RAY 2</p>
-            
-            <p className="text-sm text-zinc-400 leading-relaxed mb-8 min-h-[60px]">
-              Generate 4K motion backgrounds and product reveals. Create an immersive "Apple-style" website feel instantly.
-            </p>
-
-             {/* Credit Pill */}
-             <div className="flex items-center justify-between p-3 bg-zinc-950/50 rounded-lg border border-zinc-800/50">
-               <span className="text-xs text-zinc-500">Cost per generation</span>
-               <span className="text-sm font-bold text-white">500 Credits</span>
-            </div>
+          <h3 className="font-bold text-white mb-1">Cinematic Video</h3>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-4">Kling AI • Luma Ray 2</p>
+          <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
+             Generate high-fidelity motion backgrounds and product commercials. 4K resolution supported.
+          </p>
+          <div className="mt-auto pt-4 border-t border-zinc-800 w-full flex justify-between items-center">
+             <span className="text-xs text-zinc-500">Cost per video</span>
+             <span className="text-sm font-bold text-white">20 Credits</span>
           </div>
         </div>
 
@@ -251,9 +221,10 @@ export default function Pricing() {
     
     if (planData.id === 'browser') {
       return {
-        text: isCurrent ? "Current Plan" : "Free Forever",
-        style: "bg-zinc-800 text-zinc-400 cursor-default",
-        disabled: true,
+        text: isCurrent ? "Current Plan" : "Start Building Free",
+        style: "bg-zinc-800 hover:bg-zinc-700 text-white",
+        disabled: isCurrent,
+        isLink: true,
       };
     }
     
@@ -268,14 +239,14 @@ export default function Pricing() {
     if (planData.id === 'agency') {
       return {
         text: isPurchasing ? "Processing..." : "Go Elite",
-        style: "bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-black font-bold shadow-lg shadow-amber-500/25",
+        style: "bg-gradient-to-r from-amber-500 to-orange-600 hover:opacity-90 text-white shadow-lg shadow-orange-900/20",
         disabled: isPurchasing,
       };
     }
     
     return {
-      text: isPurchasing ? "Processing..." : "Subscribe",
-      style: "bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-lg shadow-violet-500/25",
+      text: isPurchasing ? "Processing..." : "Subscribe Now",
+      style: "bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-900/20",
       disabled: isPurchasing,
     };
   };
@@ -292,28 +263,26 @@ export default function Pricing() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-zinc-950 text-white py-20 px-4 font-sans selection:bg-violet-500/30">
+      <div className="min-h-screen bg-zinc-950 text-white pb-20 pt-24 px-4">
         
-        {/* HEADER */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent">
-            Unlock Your Creative Potential
+        {/* HERO */}
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-6">
+            Unlock Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">Creative Potential</span>
           </h1>
           <p className="text-zinc-400 text-lg">
-            Choose the plan that fits your scale. Cancel anytime.
+            Start building for free. Upgrade to unlock the full power of the VibeCoder AI suite.
           </p>
         </div>
 
         {/* PRICING CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto relative z-10">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 mb-24">
           
-          {/* Glow Effects behind cards */}
-          <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-[128px] -z-10" />
-          <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-[128px] -z-10" />
-
           {PLANS.map((planData) => {
             const buttonConfig = getButtonConfig(planData);
             const isCurrent = isCurrentPlan(planData.id);
+            const isCreator = planData.id === 'creator';
+            const isAgency = planData.id === 'agency';
             
             return (
               <motion.div 
@@ -321,124 +290,136 @@ export default function Pricing() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                whileHover={{ y: -8 }}
                 className={cn(
-                  "relative flex flex-col p-8 rounded-3xl border backdrop-blur-xl transition-all duration-300",
-                  planData.id === 'agency' 
-                    ? "bg-zinc-900/60 border-amber-500/30 shadow-2xl shadow-amber-900/10" 
-                    : planData.id === 'creator'
-                    ? "bg-zinc-900/60 border-violet-500/30 shadow-2xl shadow-violet-900/10"
-                    : "bg-zinc-900/40 border-zinc-800",
-                  isCurrent && "ring-2 ring-green-500/50"
+                  "relative flex flex-col p-8 rounded-3xl border transition-all overflow-hidden",
+                  isCreator 
+                    ? "bg-zinc-900 border-violet-500/30 shadow-2xl shadow-violet-900/10 scale-105 z-10" 
+                    : isAgency
+                    ? "bg-zinc-900/50 border-zinc-800 hover:border-amber-500/30"
+                    : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
                 )}
               >
+                {/* TOP ACCENT BAR */}
+                <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-r ${planData.accentGradient}`} />
+                
                 {/* BADGE */}
                 {planData.badge && !isCurrent && (
-                  <div className={cn(
-                    "absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-lg",
-                    planData.badgeColor
-                  )}>
+                  <div className="absolute top-4 right-4 px-3 py-1 bg-violet-500/20 text-violet-300 text-[10px] font-bold uppercase tracking-wider rounded-full border border-violet-500/30">
                     {planData.badge}
-                  </div>
-                )}
-                
-                {/* Current Plan Badge */}
-                {isCurrent && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-lg bg-gradient-to-r from-green-500 to-emerald-500">
-                    Your Plan
                   </div>
                 )}
 
                 {/* HEADER */}
-                <div className="mb-8 pt-2">
-                  <h3 className="text-xl font-bold text-white mb-2">{planData.name}</h3>
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                    {planData.name}
+                    {isAgency && <Crown size={16} className="text-amber-400 fill-amber-400" />}
+                  </h3>
                   <p className="text-sm text-zinc-400 h-10">{planData.description}</p>
                 </div>
 
                 {/* PRICE */}
-                <div className="mb-8 flex items-end gap-1">
-                  <span className="text-4xl font-bold text-white">${planData.price}</span>
-                  <span className="text-zinc-500 mb-1">/ mo</span>
-                </div>
-
-                {/* CREDITS */}
-                <div className="mb-8 p-4 bg-zinc-950/50 rounded-xl border border-zinc-800/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-mono text-zinc-400">MONTHLY CREDITS</span>
-                    <span className={cn(
-                      "text-xs font-bold",
-                      planData.id === 'agency' ? 'text-amber-400' : 'text-white'
-                    )}>
-                      {planData.credits.toLocaleString()}
-                    </span>
+                <div className="mb-8">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold text-white">${planData.price}</span>
+                    <span className="text-zinc-500">/mo</span>
                   </div>
-                  <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(planData.credits / 12000) * 100}%` }}
-                      transition={{ duration: 1, delay: 0.5 }}
-                      className={cn("h-full rounded-full", planData.badgeColor || 'bg-zinc-600')}
-                    />
+                  <div className={`mt-4 p-3 ${isCreator ? 'bg-zinc-950' : 'bg-zinc-900'} rounded-xl border border-zinc-800 flex items-center justify-between`}>
+                    <span className="text-xs font-medium text-zinc-400">Monthly Credits</span>
+                    <div className="flex items-center gap-2">
+                      {planData.credits > 0 && (
+                        isAgency 
+                          ? <Crown size={14} className="text-amber-400" />
+                          : <Sparkles size={14} className="text-violet-400" />
+                      )}
+                      <span className={`text-sm font-bold ${isAgency ? 'text-amber-400' : 'text-white'}`}>
+                        {planData.credits.toLocaleString()}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* FEATURES */}
-                <div className="flex-1 space-y-2 mb-8">
+                <div className="space-y-4 mb-8 flex-1">
                   {planData.features.map((feature, idx) => (
                     <FeatureRow key={idx} feature={feature} />
                   ))}
                 </div>
 
                 {/* BUTTON */}
-                <button 
-                  onClick={() => {
-                    if (planData.id !== 'browser' && !isCurrent) {
-                      handleSubscribe(planData.id as 'creator' | 'agency');
-                    }
-                  }}
-                  disabled={buttonConfig.disabled}
-                  className={cn(
-                    "w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2",
-                    buttonConfig.style
-                  )}
-                >
-                  {purchasing === planData.id && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {buttonConfig.text}
-                </button>
+                {buttonConfig.isLink ? (
+                  <Link 
+                    to="/dashboard" 
+                    className={cn(
+                      "w-full py-3 rounded-xl font-bold text-sm transition-all text-center",
+                      buttonConfig.style
+                    )}
+                  >
+                    {buttonConfig.text}
+                  </Link>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      if (!buttonConfig.disabled) {
+                        handleSubscribe(planData.id as 'creator' | 'agency');
+                      }
+                    }}
+                    disabled={buttonConfig.disabled}
+                    className={cn(
+                      "w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
+                      buttonConfig.style
+                    )}
+                  >
+                    {purchasing === planData.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {buttonConfig.text}
+                  </button>
+                )}
 
               </motion.div>
             );
           })}
         </div>
 
-        {/* SPECS & BREAKDOWN */}
+        {/* MODEL COSTS BREAKDOWN */}
         <ToolShowcase />
 
         {/* FAQ SECTION */}
-        <div className="max-w-3xl mx-auto mt-32">
+        <div className="max-w-3xl mx-auto mt-20">
           <h2 className="text-2xl font-bold text-center mb-12">Frequently Asked Questions</h2>
           <div className="space-y-4">
             {FAQS.map((faq, idx) => (
               <div 
                 key={idx} 
-                className="bg-zinc-900/30 border border-zinc-800 rounded-2xl overflow-hidden hover:bg-zinc-900/50 transition-colors"
+                className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden"
               >
-                <button 
+                <button
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                  className="w-full flex items-center justify-between p-6 text-left"
+                  className="w-full flex items-center justify-between p-5 text-left hover:bg-zinc-900/70 transition-colors"
                 >
-                  <span className="font-medium text-zinc-200">{faq.q}</span>
-                  {openFaq === idx ? <ChevronUp className="text-zinc-500" /> : <ChevronDown className="text-zinc-500" />}
+                  <span className="font-medium text-white">{faq.q}</span>
+                  <motion.div
+                    animate={{ rotate: openFaq === idx ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-zinc-400"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </motion.div>
                 </button>
+                
                 <AnimatePresence>
                   {openFaq === idx && (
-                    <motion.div 
+                    <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      className="px-6 pb-6 text-sm text-zinc-400 leading-relaxed"
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
                     >
-                      {faq.a}
+                      <div className="px-5 pb-5 text-sm text-zinc-400 leading-relaxed">
+                        {faq.a}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -446,16 +427,6 @@ export default function Pricing() {
             ))}
           </div>
         </div>
-
-        {/* FOOTER NOTE */}
-        <div className="text-center mt-20 text-zinc-600 text-sm">
-          <p>Prices in USD. Cancel anytime via the dashboard.</p>
-          <div className="flex justify-center gap-4 mt-4">
-            <span className="flex items-center gap-1"><Shield size={12} /> Secure Payment</span>
-            <span className="flex items-center gap-1"><Zap size={12} /> Instant Access</span>
-          </div>
-        </div>
-
       </div>
     </MainLayout>
   );
