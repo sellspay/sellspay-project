@@ -7,12 +7,13 @@ const corsHeaders = {
 };
 
 // Credit costs for different model types (must match frontend)
+// Updated Fair Pricing: 8x reduction to match actual API costs
 const MODEL_COSTS: Record<string, number> = {
-  'nano-banana': 100,
-  'flux-pro': 100,
-  'recraft-v3': 100,
-  'luma-ray-2': 500,
-  'kling-video': 500,
+  'nano-banana': 10,     // Was 100 - Image gen
+  'flux-pro': 10,        // Was 100 - Image gen
+  'recraft-v3': 10,      // Was 100 - Image gen
+  'luma-ray-2': 50,      // Was 500 - Video gen
+  'kling-video': 50,     // Was 500 - Video gen
 };
 
 // Map model IDs to Lovable AI models

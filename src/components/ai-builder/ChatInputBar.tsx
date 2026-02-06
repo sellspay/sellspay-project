@@ -1,26 +1,77 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { 
   Plus, Send, Image as ImageIcon, 
   History, Settings, X, Square,
   Sparkles, ChevronDown, Bot, Zap, BrainCircuit, FileText, ArrowUp,
-  Paperclip, Film, Video, Coins
+  Paperclip, Film, Video, Coins, Mic
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Speech Recognition type declarations
+interface SpeechRecognitionEvent extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  length: number;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognition;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: SpeechRecognitionConstructor;
+    webkitSpeechRecognition: SpeechRecognitionConstructor;
+  }
+}
+
 // --- MODEL CONFIGURATION (Single Source of Truth) ---
+// Updated Fair Pricing: 8x reduction to match actual API costs
 export const AI_MODELS = {
   code: [
-    { id: "vibecoder-pro", name: "Vibecoder Pro", desc: "Best for complex layouts", cost: 25, icon: Sparkles, category: "code" },
+    { id: "vibecoder-pro", name: "Vibecoder Pro", desc: "Best for complex layouts", cost: 3, icon: Sparkles, category: "code" },
     { id: "vibecoder-flash", name: "Vibecoder Flash", desc: "Fast, for small edits", cost: 0, icon: Zap, category: "code" },
   ],
   image: [
-    { id: "nano-banana", name: "Nano Banana", desc: "Gemini Image Gen", cost: 100, icon: ImageIcon, category: "image" },
-    { id: "flux-pro", name: "Flux 1.1 Pro", desc: "High quality images", cost: 100, icon: Sparkles, category: "image" },
-    { id: "recraft-v3", name: "Recraft V3", desc: "Vector & SVG ready", cost: 100, icon: ImageIcon, category: "image" },
+    { id: "nano-banana", name: "Nano Banana", desc: "Gemini Image Gen", cost: 10, icon: ImageIcon, category: "image" },
+    { id: "flux-pro", name: "Flux 1.1 Pro", desc: "High quality images", cost: 10, icon: Sparkles, category: "image" },
+    { id: "recraft-v3", name: "Recraft V3", desc: "Vector & SVG ready", cost: 10, icon: ImageIcon, category: "image" },
   ],
   video: [
-    { id: "luma-ray-2", name: "Luma Ray 2", desc: "Premium video gen", cost: 500, icon: Film, category: "video" },
-    { id: "kling-video", name: "Kling Video", desc: "High quality video", cost: 500, icon: Video, category: "video" },
+    { id: "luma-ray-2", name: "Luma Ray 2", desc: "Premium video gen", cost: 50, icon: Film, category: "video" },
+    { id: "kling-video", name: "Kling Video", desc: "High quality video", cost: 50, icon: Video, category: "video" },
   ],
 } as const;
 
@@ -89,7 +140,10 @@ function ModelOption({
   
   return (
     <button 
-      onClick={onClick} 
+      onClick={(e) => {
+        e.stopPropagation(); // Prevent click-outside from closing before selection
+        onClick();
+      }} 
       className={cn(
         "w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors",
         active ? "bg-zinc-800" : "hover:bg-zinc-800/60",
@@ -126,6 +180,32 @@ function ModelOption({
   );
 }
 
+// Waveform Icon for Speech-to-Text
+function WaveformIcon({ isActive, className }: { isActive: boolean; className?: string }) {
+  const heights = [1, 2, 3, 2.5, 3.5, 2, 1];
+  
+  return (
+    <div className={cn("flex items-center justify-center gap-[2px] h-4", className)}>
+      {heights.map((h, i) => (
+        <div 
+          key={i}
+          className={cn(
+            "w-[2px] rounded-full transition-all duration-150",
+            isActive 
+              ? "bg-red-400 animate-pulse" 
+              : "bg-current"
+          )}
+          style={{ 
+            height: isActive ? `${h * 4}px` : '4px',
+            animationDelay: isActive ? `${i * 75}ms` : '0ms',
+            animationDuration: '400ms'
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function ChatInputBar({ 
   value, 
   onChange, 
@@ -143,9 +223,76 @@ export function ChatInputBar({
   const [isPlanMode, setIsPlanMode] = useState(false);
   const [selectedModel, setSelectedModel] = useState<AIModel>(AI_MODELS.code[0]);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [isListening, setIsListening] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
+
+  // Speech-to-Text Handler
+  const toggleSpeechRecognition = useCallback(() => {
+    // Check browser support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      console.warn('Speech recognition not supported in this browser');
+      return;
+    }
+
+    if (isListening && speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript = transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        onChange(value + (value ? ' ' : '') + finalTranscript);
+      }
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    speechRecognitionRef.current = recognition;
+    recognition.start();
+  }, [isListening, value, onChange]);
+
+  // Cleanup speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -250,9 +397,9 @@ export function ChatInputBar({
               <ChevronDown size={10} className={cn("transition-transform", showModelMenu && "rotate-180")} />
             </button>
 
-            {/* MODEL DROPDOWN MATRIX - Pops UP */}
+            {/* MODEL DROPDOWN MATRIX - Pops UP with solid opaque background */}
             {showModelMenu && (
-              <div className="absolute bottom-full mb-2 left-0 w-64 bg-zinc-900/98 backdrop-blur-xl border border-zinc-700/50 rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-50 animate-in fade-in-0 zoom-in-95 duration-150 origin-bottom-left">
+              <div className="absolute bottom-full mb-2 left-0 w-64 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 overflow-hidden z-[100] ring-1 ring-white/5 animate-in fade-in-0 zoom-in-95 duration-150 origin-bottom-left">
                 <div className="p-2 max-h-[400px] overflow-y-auto">
                   {/* Coding Models */}
                   <div className="px-2 py-1.5 mb-1">
@@ -334,9 +481,9 @@ export function ChatInputBar({
               <Plus size={18} className={cn("transition-transform", showMenu && "rotate-45")} />
             </button>
 
-            {/* Popup menu - Pops UP */}
+            {/* Popup menu - Pops UP with solid opaque background */}
             {showMenu && (
-              <div className="absolute bottom-full left-0 mb-2 z-50 w-56 bg-zinc-900/98 backdrop-blur-xl border border-zinc-700/50 rounded-xl shadow-2xl shadow-black/50 p-1.5 animate-in fade-in-0 zoom-in-95 duration-150 origin-bottom-left">
+              <div className="absolute bottom-full left-0 mb-2 z-[100] w-56 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 ring-1 ring-white/5 p-1.5 animate-in fade-in-0 zoom-in-95 duration-150 origin-bottom-left">
                 <div className="px-2 py-1.5 mb-1">
                   <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium">
                     Attachments
@@ -348,6 +495,7 @@ export function ChatInputBar({
                   shortcut="⌘I"
                   onClick={() => {
                     fileInputRef.current?.click();
+                    setShowMenu(false);
                   }}
                 />
                 <MenuItem 
@@ -356,6 +504,7 @@ export function ChatInputBar({
                   shortcut="⌘U"
                   onClick={() => {
                     fileInputRef.current?.click();
+                    setShowMenu(false);
                   }}
                 />
                 <MenuItem 
@@ -419,6 +568,25 @@ export function ChatInputBar({
 
           <div className="flex items-center gap-2 pb-0.5">
             
+            {/* SPEECH-TO-TEXT MICROPHONE BUTTON */}
+            <button
+              type="button"
+              onClick={toggleSpeechRecognition}
+              className={cn(
+                "p-2 rounded-xl transition-all",
+                isListening 
+                  ? "bg-red-500/20 text-red-400 shadow-lg shadow-red-900/20 ring-2 ring-red-500/30" 
+                  : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50"
+              )}
+              title={isListening ? "Stop listening" : "Voice input (Speech-to-Text)"}
+            >
+              {isListening ? (
+                <WaveformIcon isActive={true} />
+              ) : (
+                <Mic size={16} />
+              )}
+            </button>
+
             {/* THE PLAN TOGGLE BUTTON (only show for code models) */}
             {selectedModel.category === 'code' && (
               <button

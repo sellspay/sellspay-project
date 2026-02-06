@@ -12,14 +12,16 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 };
 
 // Credit costs for different actions
+// Updated Fair Pricing: 8x reduction to match actual API costs
 const CREDIT_COSTS: Record<string, number> = {
-  vibecoder_gen: 25,
-  image_gen: 100,
-  video_gen: 500,
-  sfx_gen: 25,
-  voice_isolator: 25,
-  sfx_isolator: 25,
-  music_splitter: 25,
+  vibecoder_gen: 3,      // Was 25 - Premium coding model
+  vibecoder_flash: 0,    // Free tier for small edits
+  image_gen: 10,         // Was 100 - ~$0.04 API cost × 2.5 margin
+  video_gen: 50,         // Was 500 - ~$0.50 API cost × 1.25 margin
+  sfx_gen: 5,            // Was 25 - Adjusted
+  voice_isolator: 5,     // Was 25 - Adjusted
+  sfx_isolator: 5,       // Was 25 - Adjusted
+  music_splitter: 5,     // Was 25 - Adjusted
 };
 
 // Action to required capability mapping
