@@ -8,7 +8,7 @@ import { ProjectSidebar } from './ProjectSidebar';
 import { PreviewErrorBoundary } from './PreviewErrorBoundary';
 import { VibecoderHeader } from './VibecoderHeader';
 import { useStreamingCode } from './useStreamingCode';
-import { useVibecoderProjects } from './hooks/useVibecoderProjects';
+import { useVibecoderProjects, type VibecoderMessage } from './hooks/useVibecoderProjects';
 import { useAgentLoop } from '@/hooks/useAgentLoop';
 import { GenerationCanvas } from './GenerationCanvas';
 import { PlacementPromptModal } from './PlacementPromptModal';
@@ -20,6 +20,7 @@ import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke
 import { LovableHero } from './LovableHero';
 import { PremiumLoadingScreen } from './PremiumLoadingScreen';
 import { FixErrorToast } from './FixErrorToast';
+import { checkPolicyViolation } from '@/utils/policyGuard';
 
 interface AIBuilderCanvasProps {
   profileId: string;
@@ -598,6 +599,43 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Send message handler (with auto-create) - NOW USES AGENT LOOP
   // Implements the "Chat-to-Create" flow: first message creates project automatically
   const handleSendMessage = async (prompt: string) => {
+    // 🛡️ POLICY GUARD: Check for forbidden requests BEFORE any processing
+    const violation = checkPolicyViolation(prompt);
+    if (violation) {
+      console.warn(`🛑 Policy Violation: ${violation.id}`);
+      
+      // If we have an active project, add the user message first
+      if (activeProjectId) {
+        await addMessage('user', prompt, undefined, activeProjectId);
+      }
+      
+      // Add policy violation response as a local-only message (not persisted to DB)
+      const policyResponse: VibecoderMessage = {
+        id: `policy-${Date.now()}`,
+        project_id: activeProjectId || 'none',
+        role: 'assistant',
+        content: violation.message,
+        code_snapshot: null,
+        rating: 0,
+        created_at: new Date().toISOString(),
+        meta_data: {
+          type: 'policy_violation',
+          category: violation.category,
+        },
+      };
+      
+      // Update local messages state (does NOT call API or persist)
+      // We need to access setMessages from useVibecoderProjects, but it's not exposed.
+      // Instead, we'll add it directly through addMessage mechanism with no code snapshot
+      // For now, show a toast as immediate feedback
+      toast.warning(violation.message, {
+        duration: 8000,
+        icon: '🛡️',
+      });
+      
+      return; // ⛔ HARD STOP - do NOT call AI
+    }
+    
     const isFreshStart = !activeProjectId;
 
     // Cover Sandpack until bundling finishes (prevents brief error flash after generation)

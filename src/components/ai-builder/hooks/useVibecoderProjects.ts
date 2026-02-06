@@ -20,6 +20,11 @@ export interface VibecoderMessage {
   code_snapshot: string | null;
   rating: number;
   created_at: string;
+  // Policy violation metadata (local-only, not persisted)
+  meta_data?: {
+    type?: 'policy_violation' | string;
+    category?: string;
+  };
 }
 
 export function useVibecoderProjects() {
