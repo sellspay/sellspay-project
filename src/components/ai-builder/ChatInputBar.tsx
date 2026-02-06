@@ -192,29 +192,40 @@ function ModelOption({
   );
 }
 
-// Waveform Icon for Speech-to-Text
+// Waveform keyframe animation styles
+const waveformStyles = `
+@keyframes waveform {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+`;
+
+// Waveform Icon for Speech-to-Text - Compact animated version
 function WaveformIcon({ isActive, className }: { isActive: boolean; className?: string }) {
-  const heights = [1, 2, 3, 2.5, 3.5, 2, 1];
-  
   return (
-    <div className={cn("flex items-center justify-center gap-[2px] h-4", className)}>
-      {heights.map((h, i) => (
-        <div 
-          key={i}
-          className={cn(
-            "w-[2px] rounded-full transition-all duration-150",
-            isActive 
-              ? "bg-red-400 animate-pulse" 
-              : "bg-current"
-          )}
-          style={{ 
-            height: isActive ? `${h * 4}px` : '4px',
-            animationDelay: isActive ? `${i * 75}ms` : '0ms',
-            animationDuration: '400ms'
-          }}
-        />
-      ))}
-    </div>
+    <>
+      <style>{waveformStyles}</style>
+      <div className={cn("flex items-center justify-center gap-[1.5px] h-3 w-4", className)}>
+        {[0.4, 0.7, 1, 0.7, 0.4].map((scale, i) => (
+          <div 
+            key={i}
+            className={cn(
+              "w-[1.5px] rounded-full transition-all duration-200",
+              isActive 
+                ? "bg-red-400" 
+                : "bg-current"
+            )}
+            style={{ 
+              height: isActive ? '100%' : '3px',
+              transform: isActive ? `scaleY(${scale})` : 'scaleY(1)',
+              animation: isActive 
+                ? `waveform 0.6s ease-in-out ${i * 0.08}s infinite alternate` 
+                : 'none',
+            }}
+          />
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -577,7 +588,7 @@ export function ChatInputBar({
       )}
 
       {/* COMPACT INPUT BAR - Matching reference image */}
-      <div className="bg-zinc-800/90 backdrop-blur-sm border border-zinc-700 rounded-2xl overflow-hidden">
+      <div className="bg-zinc-800/90 backdrop-blur-sm border border-orange-500/30 rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(249,115,22,0.15)] hover:shadow-[0_0_30px_rgba(249,115,22,0.25)] transition-shadow duration-300">
         {/* Single-line input row */}
         <div className="flex items-center gap-1 px-3 py-2.5">
           <textarea
@@ -650,17 +661,13 @@ export function ChatInputBar({
               type="button" 
               onClick={toggleSpeechRecognition}
               className={cn(
-                "p-1.5 transition-colors rounded-lg",
+                "p-1 transition-colors rounded-md",
                 isListening 
-                  ? "text-red-400" 
-                  : "text-zinc-500 hover:text-white hover:bg-zinc-700"
+                  ? "text-red-400 bg-red-500/10" 
+                  : "text-zinc-500 hover:text-white hover:bg-zinc-700/50"
               )}
             >
-              {isListening ? (
-                <WaveformIcon isActive={true} />
-              ) : (
-                <WaveformIcon isActive={false} />
-              )}
+              <WaveformIcon isActive={isListening} />
             </button>
             
             {/* Stop / Send button */}
