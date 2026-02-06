@@ -341,11 +341,22 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
         toast.info('Previous project was deleted. Starting fresh.');
       } else {
-        // Project verified - load code from last message
-        if (messages.length > 0) {
-          const lastSnapshot = getLastCodeSnapshot();
-          if (lastSnapshot) {
-            setCode(lastSnapshot);
+        // Project verified - load code.
+        // Primary source of truth: last assistant code_snapshot in message history.
+        // Fallback: profile-scoped /App.tsx persisted in project_files.
+        const lastSnapshot = getLastCodeSnapshot();
+        if (lastSnapshot) {
+          setCode(lastSnapshot);
+        } else {
+          const { data: fileRow, error: fileErr } = await supabase
+            .from('project_files')
+            .select('content')
+            .eq('profile_id', profileId)
+            .eq('file_path', '/App.tsx')
+            .maybeSingle();
+
+          if (!fileErr && fileRow?.content) {
+            setCode(fileRow.content);
           }
         }
       }
@@ -354,7 +365,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
 
     verifyAndLoadProject();
-  }, [activeProjectId, messages, getLastCodeSnapshot, setCode, resetCode, resetAgent]);
+  }, [activeProjectId, messages, getLastCodeSnapshot, profileId, setCode, resetCode, resetAgent]);
 
   // Save vibecoder code to project_files
   const saveVibecoderCode = async (codeContent: string) => {
