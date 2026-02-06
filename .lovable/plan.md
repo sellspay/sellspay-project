@@ -1,218 +1,182 @@
 
-# Implementation Plan: Real-Time Transparency & Marketplace Protocol
+# Implementation Plan: Silent Enforcer Prompt + Full Message Display + Sandpack Standard Library
 
-This plan implements two major features for the Vibecoder AI Builder:
+This plan addresses three distinct issues:
 
-1. **Real-Time Transparency** - Live streaming logs that show the AI's "thought process" step-by-step
-2. **Marketplace Protocol** - "Iron Dome" safeguards to prevent sellers from adding external payment gateways
+1. **Silent Enforcer** - Stop the AI from announcing "Integrating payment gateway" on every build
+2. **Full Message Display** - Remove "View More" truncation so messages display fully
+3. **Standard Library Injection** - Prevent "Red Screen of Death" crashes from missing checkout hooks
 
 ---
 
-## Part 1: Real-Time Transparency (Live Logs)
+## Part 1: Silent Enforcer (System Prompt Refinement)
 
-### Overview
-Instead of a blank screen for 10 seconds followed by a result, users will see live "Building..." logs that animate in real-time, then collapse into a summary card when complete.
+### Problem
+The AI is too eager to show compliance by logging "Integrating secure payment gateway..." even when the user only asked for visual changes like "Change images to anime."
 
-### 1.1 Backend: Add Logging Protocol to System Prompt
+### Solution
+Update the system prompt in `supabase/functions/vibecoder-v2/index.ts` to add an "Infrastructure Awareness" section that tells the AI:
+- The checkout system is **pre-installed** (not something to "integrate")
+- Only log actions that **directly relate to the user's request**
+- Never log boilerplate like "Setting up React" or "Integrating payments"
 
-**File:** `supabase/functions/vibecoder-v2/index.ts`
+### Changes to System Prompt
 
-Add a new section to the `SYSTEM_PROMPT` that instructs the AI to emit `[LOG: ...]` tags *before* generating code:
+Add this new section after the existing REAL-TIME LOGGING PROTOCOL:
 
 ```text
-REAL-TIME LOGGING PROTOCOL:
-While building, you must "narrate" your actions using specific tags BEFORE writing the code.
-Format: [LOG: Action Description]
+INFRASTRUCTURE AWARENESS (CORE ASSUMPTIONS):
+1. **SellsPay Checkout is PRE-INSTALLED:** You do NOT need to "integrate," "setup," or "install" the checkout protocol. It is already part of the environment. The 'useSellsPayCheckout' hook is always available.
+2. **Implicit Usage:** When you render a product card, just USE the hook silently. Do not list it as a "step" in your build logs unless the user explicitly asked about payments.
+3. **Log Relevance:** Your [LOG: ...] outputs must ONLY reflect the specific changes requested.
+   - If User asks: "Change images to anime"
+   - BAD Log: "[LOG: Integrating secure payment gateway...]" (Redundant)
+   - GOOD Log: "[LOG: Updating product asset URLs...]"
+4. **No Boilerplate Logs:** Never output logs for "Initializing React," "Setting up Tailwind," "Integrating Payments," or "Configuring checkout" if you are just editing an existing component.
+```
 
-Example Output Stream:
-[LOG: Analyzing user request...]
-[LOG: Designing responsive grid layout...]
-[LOG: Creating Hero section with gradient overlay...]
-[LOG: Adding product cards with glassmorphism effect...]
-[LOG: Finalizing layout and animations...]
-/// TYPE: CODE ///
-export default function App() { ... }
+Also refine the RULES section of the logging protocol:
 
+```text
 RULES:
 - Emit 3-6 LOG tags per generation (not too many, not too few)
 - Each LOG should be a short, user-friendly description (5-10 words)
 - LOG tags appear BEFORE the "/// TYPE: CODE ///" flag
 - Do NOT use LOG tags in CHAT mode (questions/refusals)
-```
-
-### 1.2 Frontend: Parse Logs from Stream
-
-**File:** `src/components/ai-builder/useStreamingCode.ts`
-
-Modify the streaming logic to detect and extract `[LOG: ...]` tags:
-
-1. Add a new callback option: `onLogUpdate?: (logs: string[]) => void`
-2. During streaming, use regex to detect `[LOG: ...]` patterns
-3. Push extracted logs to the callback immediately (before the full stream completes)
-4. Strip the LOG tags from the final code output
-
-```typescript
-// Regex pattern for log extraction
-const LOG_PATTERN = /\[LOG:\s*([^\]]+)\]/g;
-
-// Inside the streaming while loop:
-const logMatches = accumulated.matchAll(LOG_PATTERN);
-for (const match of logMatches) {
-  const logText = match[1].trim();
-  if (!seenLogs.has(logText)) {
-    seenLogs.add(logText);
-    accumulatedLogs.push(logText);
-    options.onLogUpdate?.(accumulatedLogs);
-  }
-}
-// Clean buffer before processing as code
-cleanedBuffer = accumulated.replace(LOG_PATTERN, '');
-```
-
-### 1.3 Canvas: Track Live Steps State
-
-**File:** `src/components/ai-builder/AIBuilderCanvas.tsx`
-
-Add state to track "live steps" during streaming:
-
-1. Add `liveSteps` state: `useState<string[]>([])`
-2. Pass `onLogUpdate` callback to `useStreamingCode` that updates `liveSteps`
-3. Clear `liveSteps` when streaming completes
-
-### 1.4 Chat UI: Show Live Steps During Build
-
-**File:** `src/components/ai-builder/VibecoderMessageBubble.tsx`
-
-Update the `AssistantCard` component:
-
-1. Accept a new prop: `liveSteps?: string[]`
-2. When `isStreaming` is true AND `liveSteps` has items, render them as "in-progress" steps
-3. The last step in the list shows a spinning loader; all previous steps show checkmarks
-4. When streaming ends, the steps convert to the final "completed" summary
-
-**New Streaming Card UI:**
-```text
-┌────────────────────────────────────┐
-│ 🔮 Building your request...        │
-│                                    │
-│ ✓ Analyzing user request...        │
-│ ✓ Designing responsive grid...     │
-│ ⟳ Creating Hero section...         │  ← Spinner on last item
-│                                    │
-└────────────────────────────────────┘
-```
-
-### 1.5 Types Update
-
-**File:** `src/components/ai-builder/types/chat.ts`
-
-Update types to support the live streaming state:
-
-```typescript
-export interface LiveBuildState {
-  logs: string[];
-  startedAt: Date;
-}
+- **Context-Aware Logging:** Only log actions that directly change the code based on the CURRENT prompt
+- **Never log infrastructure that's already present:** payments, React setup, Tailwind, etc.
 ```
 
 ---
 
-## Part 2: Marketplace Protocol ("Iron Dome")
+## Part 2: Full Message Display (Remove Collapsible Logic)
 
-### Overview
-SellsPay is a **managed marketplace** (like Roblox/Etsy), not a website builder (like Shopify). Sellers cannot add their own Stripe keys or external payment links. All transactions flow through the platform's unified checkout.
+### Problem
+The "View More" button with 400-character truncation is considered annoying. Users want to see the full AI response immediately and scroll naturally within the chat history.
 
-### 2.1 Backend: Add Financial Protocol to System Prompt
+### Solution
+Remove the `CollapsibleMessage` wrapper and render the message content directly with the safe CSS classes (to prevent layout breaking from long URLs).
 
-**File:** `supabase/functions/vibecoder-v2/index.ts`
+### File: `src/components/ai-builder/VibecoderMessageBubble.tsx`
 
-Add a new "MARKETPLACE PROTOCOL" section that:
+**Changes:**
+1. Remove the `CollapsibleMessage` import
+2. In `UserBubble`: Replace `<CollapsibleMessage content={content} isUser={true} />` with a direct `<div>` containing the text
+3. In `AssistantCard`: Replace `<CollapsibleMessage content={displayContent} isUser={false} />` with a direct `<div>` containing the text
+4. Keep the safety CSS classes: `break-words break-all whitespace-pre-wrap prose prose-sm prose-invert`
 
-1. **Forbids external payment gateways** - The AI must refuse requests to add personal Stripe keys, PayPal links, CashApp, etc.
-2. **Mandates unified checkout** - All "Buy" buttons must use the platform hook
-3. **Provides the correct code pattern** - Shows the AI exactly what to generate
-
-```text
-STRICT MARKETPLACE PROTOCOL (NON-NEGOTIABLE):
-You are the AI Architect for SellsPay, a MANAGED MARKETPLACE.
-
-1. **NO CUSTOM GATEWAYS:** 
-   - You are STRICTLY FORBIDDEN from generating code that asks for Stripe Keys, PayPal Client IDs, or API Secrets.
-   - You CANNOT generate <a href="paypal.me/..."> or CashApp links.
-   - You CANNOT create input fields for "API Key" or "Secret Key" related to payments.
-
-2. **UNIFIED CHECKOUT ONLY:**
-   - All purchases MUST use the 'useSellsPayCheckout()' hook.
-   - Import: import { useSellsPayCheckout } from "@/hooks/useSellsPayCheckout"
-   - When a user clicks "Buy", you do NOT process payment locally.
-   - You ONLY trigger the SellsPay Checkout Modal.
-
-3. **HARD REFUSAL PROTOCOL:**
-   - IF User asks: "Add my PayPal button" or "Link my Stripe API key" or "Add CashApp link"
-   - THEN Output: "/// TYPE: CHAT ///"
-   - AND Say: "I cannot add external payment providers. SellsPay is a managed marketplace that handles all transactions securely to ensure your Creator Protection and automated tax compliance. Your earnings are routed automatically to your Payouts Dashboard."
-
-4. **PRODUCT DATA CONTEXT:**
-   - Products are stored in the 'products' table (id, name, price_cents, creator_id).
-   - When building a Product Card, the actual product data comes from props or a fetch.
-   - For mockups, use placeholder IDs like 'prod_preview_1'.
-
-CORRECT BUY BUTTON CODE:
-const { buyProduct, isProcessing } = useSellsPayCheckout();
-
-<button 
-  onClick={() => buyProduct(product.id)}
-  disabled={isProcessing}
-  className="w-full bg-violet-600 hover:bg-violet-500 text-white py-3 rounded-lg font-bold"
->
-  {isProcessing ? "Redirecting..." : "Purchase Securely"}
-</button>
+**Before:**
+```tsx
+<CollapsibleMessage content={content} isUser={true} />
 ```
 
-### 2.2 Create the Unified Checkout Hook
+**After:**
+```tsx
+<div className="prose prose-sm prose-invert max-w-none leading-relaxed break-words break-all whitespace-pre-wrap">
+  {content}
+</div>
+```
 
-**File:** `src/hooks/useSellsPayCheckout.ts` (New File)
+### File: `src/components/ai-builder/CollapsibleMessage.tsx`
+- This file can be deleted OR kept for potential future use. We'll keep it for now but remove its usage.
 
-Create a simple hook that abstracts the checkout flow. The AI only knows about this hook - it has no knowledge of Stripe internals.
+---
+
+## Part 3: Sandpack Standard Library (Crash Prevention)
+
+### Problem
+When the AI generates code that imports `useSellsPayCheckout`, the Sandpack preview crashes with "Red Screen of Death" because the file doesn't exist in the virtual file system.
+
+### Solution
+Create a "Standard Library" that gets automatically injected into every Sandpack preview. This ensures the marketplace hooks are always available.
+
+### New File: `src/lib/vibecoder-stdlib.ts`
 
 ```typescript
-import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+/**
+ * Standard Library for Vibecoder Sandpack Previews
+ * These files are automatically injected into every preview environment
+ * to prevent crashes when AI-generated code imports platform hooks.
+ */
+export const VIBECODER_STDLIB = {
+  // The SellsPay Checkout Hook (mocked for preview)
+  '/hooks/useSellsPayCheckout.ts': `import { useState } from 'react';
 
+/**
+ * SellsPay Unified Checkout Hook
+ * This is a preview mock. In production, this triggers the real checkout.
+ */
 export function useSellsPayCheckout() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const buyProduct = async (productId: string) => {
     setIsProcessing(true);
-    try {
-      // Call the platform's unified checkout session
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: { product_id: productId }
-      });
-
-      if (error) throw error;
-
-      // Redirect to the secure SellsPay checkout
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('Checkout unavailable');
-      }
-    } catch (err) {
-      console.error('SellsPay checkout error:', err);
-      alert('Checkout failed. Please try again.');
-    } finally {
+    console.log('[SellsPay Preview] Checkout triggered for:', productId);
+    
+    // Simulate checkout delay
+    setTimeout(() => {
       setIsProcessing(false);
-    }
+      alert('SellsPay Checkout: Redirecting to secure gateway... (Preview Mode)');
+    }, 1000);
   };
 
   return { buyProduct, isProcessing };
 }
+
+// Alias for backwards compatibility
+export const useMarketplace = useSellsPayCheckout;
+`,
+
+  // Common utilities (prevents missing cn() crashes)
+  '/lib/utils.ts': `import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+`,
+};
 ```
 
-### 2.3 UI Terminology Updates (Optional Polish)
+### File: `src/components/ai-builder/VibecoderPreview.tsx`
 
-To reinforce the marketplace model, the system prompt should guide the AI to use "Creator Earnings" instead of "Revenue" and "Wallet" icons instead of "CreditCard" icons when showing payment-related UI.
+**Changes:**
+1. Import the new `VIBECODER_STDLIB` constant
+2. Merge it into the Sandpack `files` object so the hooks are always available
+3. Add `clsx` and `tailwind-merge` to the `customSetup.dependencies`
+
+**Updated files object:**
+```typescript
+import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
+
+// Inside SandpackRenderer:
+const files = useMemo(() => ({
+  // Standard library (hooks, utils) - always available
+  ...VIBECODER_STDLIB,
+  
+  // The AI-generated code
+  '/App.tsx': {
+    code,
+    active: true,
+  },
+  '/index.tsx': {
+    code: `...`, // existing entry point
+    hidden: true,
+  },
+}), [code]);
+```
+
+**Updated dependencies:**
+```typescript
+customSetup={{
+  dependencies: {
+    'lucide-react': 'latest',
+    'framer-motion': '^11.0.0',
+    'clsx': 'latest',
+    'tailwind-merge': 'latest',
+  },
+}}
+```
 
 ---
 
@@ -220,28 +184,26 @@ To reinforce the marketplace model, the system prompt should guide the AI to use
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/vibecoder-v2/index.ts` | Add Real-Time Logging Protocol + Marketplace Protocol to system prompt |
-| `src/components/ai-builder/useStreamingCode.ts` | Add log parsing logic, new `onLogUpdate` callback |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | Add `liveSteps` state, wire up `onLogUpdate` callback |
-| `src/components/ai-builder/VibecoderMessageBubble.tsx` | Add live steps rendering during streaming |
-| `src/components/ai-builder/types/chat.ts` | Add `LiveBuildState` interface |
-| `src/hooks/useSellsPayCheckout.ts` | New file: unified checkout hook for AI-generated storefronts |
+| `supabase/functions/vibecoder-v2/index.ts` | Add "Infrastructure Awareness" section + refine logging rules |
+| `src/components/ai-builder/VibecoderMessageBubble.tsx` | Remove `CollapsibleMessage` usage, render text directly |
+| `src/lib/vibecoder-stdlib.ts` | **New file** - Standard library with checkout hook mock |
+| `src/components/ai-builder/VibecoderPreview.tsx` | Inject STDLIB into Sandpack files, add clsx/tailwind-merge deps |
 
 ---
 
-## Expected User Experience
+## Expected Results
 
-### Real-Time Transparency Flow
-1. User types: "Make a dark anime store"
-2. Immediately: A card appears saying "Building your request..." with pulsing avatar
-3. 0.5s: `[✓] Analyzing user request...` appears
-4. 1.5s: `[✓] Designing responsive grid...` + `[⟳] Creating Hero section...`
-5. 3s: Steps continue animating as logs stream in
-6. Done: Card transforms to "I've designed your storefront!" with static step summary
+### After Part 1 (Silent Enforcer):
+- User: "Change images to anime"
+- AI Logs: `[✓] Updating product asset URLs...` `[✓] Applying changes...`
+- (No more "Integrating payment gateway" spam)
 
-### Marketplace Protocol Flow
-1. User asks: "Add my personal Stripe key so I get paid directly"
-2. AI detects violation, enters CHAT mode
-3. Response: "I cannot add external payment providers. SellsPay handles all transactions securely..."
-4. User asks: "Fine, just make a Buy button"
-5. AI generates code with `useSellsPayCheckout()` hook - no raw Stripe code
+### After Part 2 (Full Display):
+- Long AI responses show completely without "View More" button
+- Users scroll the chat panel naturally to read everything
+- Long URLs/code still break correctly without widening the layout
+
+### After Part 3 (Standard Library):
+- No more "Red Screen of Death" when AI uses `useSellsPayCheckout()`
+- The hook is mocked in preview (shows alert with "Preview Mode")
+- The `cn()` utility is also available, preventing common crashes
