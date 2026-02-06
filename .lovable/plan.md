@@ -1,157 +1,141 @@
 
-# Implementation Plan: AI Personality Fix, Scope Control & Chat Input Overhaul
+# Implementation Plan: Menu Fix, Speech-to-Text, and Fair Pricing Economy
 
 ## Overview
 
-This plan addresses three distinct issues:
-1. **Robotic AI Responses**: The AI uses repetitive phrases like "I've drafted a premium layout..."
-2. **Scope Creep**: The AI "helpfully" modifies unrelated code when asked for simple changes
-3. **Chat Input UI**: The current input is a basic single-line field; needs upgrade to match the floating design with + menu
+This plan addresses three critical issues:
+1. **CSS Z-Index & Transparency Issues**: Menus are see-through and feel unclickable due to opacity and stacking problems
+2. **Speech-to-Text Microphone Button**: Add a waveform-style microphone button for voice input
+3. **Fair Pricing Economy**: Current credit costs are 8x more expensive than competitors—need price restructuring
 
 ---
 
-## Part 1: Fix Robotic AI Responses (Backend)
+## Part 1: Fix Menu Transparency & Clickability
 
-### File: `supabase/functions/vibecoder-v2/index.ts`
+### Problem Analysis
+- Menus use `bg-zinc-900/98` which can still show transparency artifacts
+- Click events may be getting lost due to z-index conflicts
+- Need solid background with proper layering
 
-**Current State**: The system prompt already has personality guidelines (lines 29-52) but they're not aggressive enough.
+### Changes to `src/components/ai-builder/ChatInputBar.tsx`
 
-**Changes**: Enhance the personality section with stricter rules and add explicit banned phrases list.
+**Menu Styling Updates:**
+- Change menu background from `bg-zinc-900/98` to solid `bg-zinc-950` with `ring-1 ring-white/5`
+- Increase z-index from `z-50` to `z-[100]`
+- Add `e.stopPropagation()` to button clicks to prevent event bubbling
+- Add explicit click-outside overlay with higher z-index stacking
 
-**Updated Section** (replaces lines 29-52):
+**Visual Improvements:**
+- Solid opaque background for all dropdowns
+- Enhanced shadow: `shadow-2xl shadow-black/60`
+- Border styling: `border border-zinc-800`
 
+---
+
+## Part 2: Add Microphone/Waveform Speech-to-Text Button
+
+### Feature Details
+- Add animated waveform icon next to the textarea
+- When clicked, initiates speech recognition
+- Visual feedback: pulsing waveform animation while listening
+- Transcribed text appends to the input field
+
+### Implementation
+1. **New Icon Component**: Create animated waveform SVG with bars
+2. **Speech Recognition Hook**: Use browser's `SpeechRecognition` API (Web Speech API)
+3. **UI States**: 
+   - Idle: Static waveform icon
+   - Listening: Pulsing red waveform with animation
+   - Processing: Brief loading state
+
+### New State Variables:
 ```typescript
-═══════════════════════════════════════════════════════════════
-PERSONALITY & REFLECTION (Dynamic Responses) - CRITICAL
-═══════════════════════════════════════════════════════════════
-You are "Vibecoder," a creative, enthusiastic, and elite UI Architect.
-
-**THE "ROBOTIC REPETITION" RULE (STRICT):**
-NEVER use these phrases or variations:
-- "I've drafted a premium layout..."
-- "I have generated a layout..."
-- "Here is the layout..."
-- "I have created a design..."
-- "Check the preview!"
-- "Based on your request, I..."
-- "I've implemented..."
-
-**THE "MIRRORING" RULE (MANDATORY):**
-You must start your response by directly acknowledging the *specific* action you're taking:
-- User: "Fix the scrollbar." 
-  → You: "Polishing the scrollbar. Removing default browser styling and applying a custom thin track..."
-- User: "Make it red." 
-  → You: "Switching the primary palette to Crimson Red. Updating button gradients and border accents..."
-- User: "The site is broken." 
-  → You: "Diagnosing the crash. Parsing error log and patching the broken dependency..."
-- User: "Add more products."
-  → You: "Expanding the product grid. Adding 4 new featured items with anime-themed imagery..."
-- User: "Make a professional store for my clothing brand."
-  → You: "Building your clothing brand storefront. High-fashion typography with clean gallery layout."
-
-TONE: 
-- Concise, confident, and action-oriented
-- You are a Senior Designer at Apple, not a customer support bot
-- Lead with WHAT you're doing, not "I have done X"
-- Use present continuous tense: "Adding...", "Updating...", "Building..."
+const [isListening, setIsListening] = useState(false);
+const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
 ```
 
----
-
-## Part 2: Add Scope Control Protocol (Backend)
-
-### File: `supabase/functions/vibecoder-v2/index.ts`
-
-**Changes**: Add a new section after the existing "INFRASTRUCTURE AWARENESS" section (after line 124).
-
-**New Section** (insert after line 124):
-
-```typescript
-═══════════════════════════════════════════════════════════════
-SCOPE OF WORK & CONSERVATION PROTOCOL (CRITICAL)
-═══════════════════════════════════════════════════════════════
-**THE "SURGICAL PRECISION" RULE:**
-You are forbidden from refactoring, reorganizing, or "cleaning up" code that is unrelated to the user's specific request.
-
-**IF** User asks: "Make the button red"
-**THEN**:
-   - Change the button class
-   - **DO NOT** reorder the imports
-   - **DO NOT** change variable names elsewhere
-   - **DO NOT** "optimize" unrelated functions
-   - **DO NOT** modify the footer, hero, or other sections
-
-**CONSERVATION OF STATE:**
-- Assume the current code is PERFECT aside from the specific change requested
-- When rewriting a file, copy existing logic EXACTLY for all unchanged parts
-- Preserve all existing:
-  - Import statements (order and naming)
-  - Function names and signatures
-  - CSS classes on unrelated elements
-  - Comments and whitespace structure
-
-**ZERO SIDE EFFECTS:**
-- A request to "add a link" must NEVER break the navbar layout
-- A request to "change images" must NEVER modify the checkout button
-- A request to "update colors" must NEVER rename components
-
-**VERIFICATION STEP:**
-Before outputting code, ask yourself: "Did I change anything I wasn't asked to?" 
-If yes, REVERT those changes immediately.
-
-**SCOPE EXAMPLES:**
-- User: "Change the product link to redirect to /products"
-  ONLY change: The href or onClick on that specific link
-  DO NOT change: Import order, variable names, other sections
-
-- User: "Make the hero section taller"
-  ONLY change: The height/padding of the hero section
-  DO NOT change: The product grid, footer, or navigation
-```
-
----
-
-## Part 3: Premium Chat Input Component (Frontend)
-
-### File: `src/components/ai-builder/ChatInputBar.tsx` (NEW FILE)
-
-Create a new premium chat input component with:
-- **Floating design** with rounded corners and shadow
-- **+ Menu button** on the left with popup menu
-- **Auto-resizing textarea** that grows with content
-- **Plan/Visual toggle** indicator
-- **Animated send button** with loading state
-
-**Features**:
-- `Plus` button opens a menu with options (Image, History, Settings, etc.)
-- Textarea auto-expands as user types (up to 200px max)
-- Enter key submits, Shift+Enter for newline
-- Clean dark-mode styling consistent with the canvas
-
-### File: `src/components/ai-builder/VibecoderChat.tsx`
-
-**Changes**: Replace the current form input section (lines 255-278) with the new `ChatInputBar` component.
-
-**Current Input** (to be replaced):
+### Waveform Animation (CSS/Tailwind):
 ```tsx
-<form onSubmit={handleSubmit} className="flex-shrink-0 p-4 border-t border-border/30 bg-background">
-  <div className="flex gap-2 items-center">
-    <Input value={input} ... />
-    <Button type="submit" ... />
+<button className="group relative p-2 rounded-xl transition-all">
+  <div className="flex items-end gap-0.5 h-4">
+    {[1, 2, 3, 2, 1].map((h, i) => (
+      <div 
+        key={i}
+        className={cn(
+          "w-0.5 bg-current rounded-full transition-all",
+          isListening && "animate-pulse"
+        )}
+        style={{ 
+          height: isListening ? `${h * 4}px` : '4px',
+          animationDelay: `${i * 0.1}s`
+        }}
+      />
+    ))}
   </div>
-</form>
+</button>
 ```
 
-**New Integration**:
-```tsx
-<ChatInputBar
-  value={input}
-  onChange={setInput}
-  onSubmit={handleSubmit}
-  isGenerating={isStreaming}
-  onCancel={onCancel}
-  placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
-/>
+---
+
+## Part 3: Fair Pricing Economy Restructure
+
+### Current vs. New Pricing
+
+| Action | Current Cost | New Cost | Justification |
+|--------|-------------|----------|---------------|
+| Vibecoder Pro | 25c | 3c | Premium coding model |
+| Vibecoder Flash | 0c | 0c | Free for small edits |
+| Image Gen (Flux/Recraft) | 100c | 10c | ~$0.04 API cost × 2.5 margin |
+| Video Gen (Kling/Luma) | 500c | 50c | ~$0.50 API cost × 1.25 margin |
+
+### User Impact
+- **Before**: 2,500 credits = 25 videos OR 100 chat messages
+- **After**: 2,500 credits = 50 videos OR 833 chat messages
+
+### Files to Update
+
+**1. Frontend: `src/components/ai-builder/ChatInputBar.tsx`**
+```typescript
+export const AI_MODELS = {
+  code: [
+    { id: "vibecoder-pro", name: "Vibecoder Pro", cost: 3, ... },
+    { id: "vibecoder-flash", name: "Vibecoder Flash", cost: 0, ... },
+  ],
+  image: [
+    { id: "nano-banana", name: "Nano Banana", cost: 10, ... },
+    { id: "flux-pro", name: "Flux 1.1 Pro", cost: 10, ... },
+    { id: "recraft-v3", name: "Recraft V3", cost: 10, ... },
+  ],
+  video: [
+    { id: "luma-ray-2", name: "Luma Ray 2", cost: 50, ... },
+    { id: "kling-video", name: "Kling Video", cost: 50, ... },
+  ],
+};
+```
+
+**2. Backend: `supabase/functions/deduct-ai-credits/index.ts`**
+```typescript
+const CREDIT_COSTS: Record<string, number> = {
+  vibecoder_gen: 3,      // Was 25
+  vibecoder_flash: 0,    // Free tier
+  image_gen: 10,         // Was 100
+  video_gen: 50,         // Was 500
+  sfx_gen: 5,            // Adjusted
+  voice_isolator: 5,
+  sfx_isolator: 5,
+  music_splitter: 5,
+};
+```
+
+**3. Backend: `supabase/functions/storefront-generate-asset/index.ts`**
+```typescript
+const MODEL_COSTS: Record<string, number> = {
+  'nano-banana': 10,     // Was 100
+  'flux-pro': 10,        // Was 100
+  'recraft-v3': 10,      // Was 100
+  'luma-ray-2': 50,      // Was 500
+  'kling-video': 50,     // Was 500
+};
 ```
 
 ---
@@ -160,24 +144,26 @@ Create a new premium chat input component with:
 
 | File | Type | Changes |
 |------|------|---------|
-| `supabase/functions/vibecoder-v2/index.ts` | Backend | Enhance personality rules, add scope control protocol |
-| `src/components/ai-builder/ChatInputBar.tsx` | NEW | Premium floating input with + menu |
-| `src/components/ai-builder/VibecoderChat.tsx` | Frontend | Integrate new ChatInputBar component |
+| `src/components/ai-builder/ChatInputBar.tsx` | Frontend | Fix menu z-index/opacity, add microphone button, update pricing |
+| `supabase/functions/deduct-ai-credits/index.ts` | Backend | Update CREDIT_COSTS map with new values |
+| `supabase/functions/storefront-generate-asset/index.ts` | Backend | Update MODEL_COSTS map with new values |
 
 ---
 
 ## Expected Results
 
-**After Part 1 (Personality Fix)**:
-- AI will never say "I've drafted a premium layout..."
-- Responses will mirror user's specific request: "Polishing the scrollbar..." instead of generic templates
+**After Part 1 (Menu Fix)**:
+- Solid opaque dropdown backgrounds
+- All menu items clickable without event leakage
+- Proper z-index stacking above all content
 
-**After Part 2 (Scope Control)**:
-- AI will ONLY modify what was asked
-- No more surprise refactoring or "helpful" cleanup
+**After Part 2 (Speech-to-Text)**:
+- Animated waveform microphone button
+- Click to start voice input
+- Transcribed text appears in input field
+- Visual feedback during listening
 
-**After Part 3 (Chat Input)**:
-- Modern floating input design matching the reference screenshots
-- + Menu for future expansion (attachments, screenshots)
-- Auto-resizing textarea for longer prompts
-- Clean visual hierarchy with Plan/Visual toggle indicator
+**After Part 3 (Fair Pricing)**:
+- 8x reduction in perceived cost
+- Users feel credits are valuable and generous
+- Healthier profit margins aligned with API costs
