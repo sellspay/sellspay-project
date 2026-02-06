@@ -257,7 +257,7 @@ root.render(<App />);`,
       >
         <ErrorDetector onError={onError} />
         <div className="h-full w-full flex-1 flex flex-col" style={{ height: '100%' }}>
-          {viewMode === 'preview' || viewMode === 'generation' ? (
+          {viewMode === 'preview' || viewMode === 'image' || viewMode === 'video' ? (
             <SandpackPreviewComponent 
               showOpenInCodeSandbox={false}
               showRefreshButton={true}

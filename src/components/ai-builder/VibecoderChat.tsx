@@ -146,6 +146,7 @@ export function VibecoderChat({
     if (!input.trim() || isStreaming) return;
     
     // Check if this is an image/video model - route to asset generation
+    // This auto-switches to the Image or Video tab
     const isAssetModel = options.model.category === 'image' || options.model.category === 'video';
     
     if (isAssetModel && onGenerateAsset) {

@@ -1,6 +1,7 @@
 import { 
   ArrowLeft, ChevronDown, Eye, Code2, 
-  Monitor, Smartphone, RefreshCw, ExternalLink, Loader2, Palette
+  Monitor, Smartphone, RefreshCw, ExternalLink, Loader2,
+  Image as ImageIcon, Film
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,37 @@ interface VibecoderHeaderProps {
   isPublishing: boolean;
   isEmpty: boolean;
   username?: string | null;
+}
+
+// Tab button component for the view switcher
+function TabButton({ 
+  mode, 
+  icon: Icon, 
+  label, 
+  isActive, 
+  onClick,
+  activeClass = "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+}: { 
+  mode: ViewMode; 
+  icon: React.ElementType; 
+  label: string; 
+  isActive: boolean; 
+  onClick: () => void;
+  activeClass?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+        isActive 
+          ? activeClass 
+          : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+      }`}
+    >
+      <Icon className="w-3.5 h-3.5" />
+      {label}
+    </button>
+  );
 }
 
 export function VibecoderHeader({ 
@@ -71,72 +103,79 @@ export function VibecoderHeader({
         )}
       </div>
 
-      {/* CENTER: View Switcher + Device Toggles */}
+      {/* CENTER: 4-Mode View Switcher */}
       <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
-        {/* Preview/Code/Studio Pill */}
+        {/* Preview/Code/Image/Video Pill */}
         <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-900 border border-zinc-800">
-          <button
+          {/* Builder Group */}
+          <TabButton
+            mode="preview"
+            icon={Eye}
+            label="Preview"
+            isActive={viewMode === 'preview'}
             onClick={() => setViewMode('preview')}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              viewMode === 'preview' 
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20" 
-                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-            }`}
-          >
-            <Eye className="w-3.5 h-3.5" />
-            Preview
-          </button>
+            activeClass="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+          />
 
-          <button
+          <TabButton
+            mode="code"
+            icon={Code2}
+            label="Code"
+            isActive={viewMode === 'code'}
             onClick={() => setViewMode('code')}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              viewMode === 'code' 
-                ? "bg-zinc-700 text-white" 
-                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-            }`}
-          >
-            <Code2 className="w-3.5 h-3.5" />
-            Code
-          </button>
+            activeClass="bg-zinc-700 text-white"
+          />
 
-          <button
-            onClick={() => setViewMode('generation')}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              viewMode === 'generation' 
-                ? "bg-amber-600 text-white shadow-lg shadow-amber-900/20" 
-                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-            }`}
-          >
-            <Palette className="w-3.5 h-3.5" />
-            Studio
-          </button>
+          {/* Divider */}
+          <div className="w-px h-4 bg-zinc-700 mx-1" />
+
+          {/* Creative Studio Group */}
+          <TabButton
+            mode="image"
+            icon={ImageIcon}
+            label="Image"
+            isActive={viewMode === 'image'}
+            onClick={() => setViewMode('image')}
+            activeClass="bg-amber-600 text-white shadow-lg shadow-amber-900/20"
+          />
+
+          <TabButton
+            mode="video"
+            icon={Film}
+            label="Video"
+            isActive={viewMode === 'video'}
+            onClick={() => setViewMode('video')}
+            activeClass="bg-pink-600 text-white shadow-lg shadow-pink-900/20"
+          />
         </div>
 
-        {/* Device Toggles */}
-        <div className="flex items-center gap-0.5 p-1 rounded-lg bg-zinc-900 border border-zinc-800">
-          <button 
-            onClick={() => setDeviceMode('desktop')}
-            className={`p-1.5 rounded-md transition-colors ${
-              deviceMode === 'desktop' 
-                ? 'text-zinc-200 bg-zinc-700' 
-                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-            }`}
-            title="Desktop view"
-          >
-            <Monitor className="w-4 h-4" />
-          </button>
-          <button 
-            onClick={() => setDeviceMode('mobile')}
-            className={`p-1.5 rounded-md transition-colors ${
-              deviceMode === 'mobile' 
-                ? 'text-zinc-200 bg-zinc-700' 
-                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-            }`}
-            title="Mobile view"
-          >
-            <Smartphone className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Device Toggles (only show for preview mode) */}
+        {viewMode === 'preview' && (
+          <div className="flex items-center gap-0.5 p-1 rounded-lg bg-zinc-900 border border-zinc-800">
+            <button 
+              onClick={() => setDeviceMode('desktop')}
+              className={`p-1.5 rounded-md transition-colors ${
+                deviceMode === 'desktop' 
+                  ? 'text-zinc-200 bg-zinc-700' 
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+              }`}
+              title="Desktop view"
+            >
+              <Monitor className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setDeviceMode('mobile')}
+              className={`p-1.5 rounded-md transition-colors ${
+                deviceMode === 'mobile' 
+                  ? 'text-zinc-200 bg-zinc-700' 
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+              }`}
+              title="Mobile view"
+            >
+              <Smartphone className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* RIGHT: Address Bar & Actions */}
