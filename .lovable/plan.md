@@ -1,163 +1,200 @@
 
-# Fresh Boot Experience: Chat-to-Create Transformation
+# Race Condition Fix: Strict Project ID Locking
 
-## Overview
+## Problem Analysis
 
-Transform the AI Builder from a "button-first" onboarding flow into a seamless "prompt-first" experience where the user's intent (typing and sending a message) is the sole trigger for project creation.
+The race condition occurs because:
 
-## Current vs. Target State
+1. **User starts "New Project"** → AI begins generating code in the background
+2. **User switches to "Old Project"** before generation completes
+3. **AI finishes** and writes the result to the current canvas state
+4. The canvas blindly applies the new code to whatever project is currently active, **overwriting the old project**
 
-```text
-Current Flow:
-+---------------------+       +---------------------+       +---------------------+
-|   Empty Canvas      |  -->  | Click "Start new    |  -->  |  Project Created,   |
-|   (no chat visible) |       |  project" button    |       |  now can use chat   |
-+---------------------+       +---------------------+       +---------------------+
-
-Target Flow:
-+---------------------+       +---------------------+
-|   Empty Canvas      |  -->  |  User types prompt, |
-|   WITH chat input   |       |  project auto-creates,
-|   always visible    |       |  generation starts   |
-+---------------------+       +---------------------+
-```
-
-## Implementation Plan
-
-### Step 1: Redesign EmptyCanvasState Component
-
-Upgrade the empty state to a premium, professional "zero state" that feels aspirational:
-
-**Changes:**
-- Remove the "Start a new project" button entirely
-- Add a floating call-to-action that directs users to the chat input (e.g., "Just type your idea in the chat to begin")
-- Upgrade visual treatment with a dark gradient background and inspiration cards (Portfolio, Store, SaaS Landing, etc.)
-- Cards are non-interactive visual cues, not buttons
-
-**Visual Hierarchy:**
-```text
-+-----------------------------------------------+
-|                                               |
-|           [Sparkles Icon with Glow]           |
-|                                               |
-|    "What do you want to build today?"         |
-|    I'm your AI engineering team...            |
-|                                               |
-|   [Portfolio] [Store] [SaaS] [Dashboard]      |
-|                                               |
-|   --> Just type your idea in the chat         |
-|                                               |
-+-----------------------------------------------+
-```
-
-### Step 2: Always-Visible Chat Input
-
-The chat panel must remain visible even when `hasActiveProject` is `false`.
-
-**Current AIBuilderCanvas structure (lines 705-790):**
-```text
-{!hasActiveProject ? (
-  <EmptyCanvasState />      // NO CHAT!
-) : (
-  <PreviewPanel + ChatPanel>
-)}
-```
-
-**New structure:**
-```text
-<div className="flex-1 flex">
-  {/* LEFT: Empty State OR Live Preview */}
-  {!hasActiveProject ? (
-    <EmptyCanvasState />
-  ) : (
-    <LivePreviewPanel />
-  )}
-
-  {/* RIGHT: Chat Panel - ALWAYS VISIBLE */}
-  <ChatPanel onSendMessage={handleSendMessage} />
-</div>
-```
-
-This ensures the user can type immediately on page load.
-
-### Step 3: Modify handleSendMessage for Genesis Prompt
-
-The `handleSendMessage` function already calls `ensureProject()`, but we want clearer UX feedback:
+The root cause: There is **no verification** that the project the user is viewing when generation completes is the same project that initiated the generation.
 
 ```text
-handleSendMessage(prompt):
-  1. If no active project:
-     - Show "Creating your workspace..." log in chat
-     - Call ensureProject() to silently create DB record
-     - Update URL to include project ID
-  2. Add user message to history
-  3. Start agent loop (code generation begins)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        RACE CONDITION TIMELINE                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ T=0s    User clicks "New Project", types prompt                             │
+│         → startAgent() called with Project A's context                      │
+│                                                                             │
+│ T=2s    AI is generating in background...                                   │
+│         User clicks on "Old Project B" in sidebar                           │
+│         → activeProjectId changes to B                                      │
+│                                                                             │
+│ T=5s    AI finishes generating code for Project A                           │
+│         → onComplete() fires, code is written to canvas                     │
+│         → addMessage() saves to activeProjectId (now B!) ← BUG!             │
+│         → Project B's history is corrupted with Project A's code            │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The existing code already handles this via `ensureProject()` (line 425), but we'll add visual polish.
+## Solution: Strict ID Locking
 
-### Step 4: Project Naming from First Prompt
+Implement a **generation lock** that captures the project ID when generation starts and verifies it before any writes.
 
-Currently, projects get a generic name "New Storefront" on explicit creation. With chat-to-create, we should derive a smarter name from the first prompt:
+### Technical Changes
 
-```text
-// In handleSendMessage:
-const projectName = generateProjectName(prompt);
-// e.g., "Premium Store" from "A luxury dark mode storefront..."
+#### 1. Add `generationLockRef` to `AIBuilderCanvas.tsx`
 
-const projectId = await ensureProject(projectName);
+Create a ref that stores the project ID when a generation starts:
+
+```typescript
+// New ref to lock generation to a specific project
+const generationLockRef = useRef<string | null>(null);
 ```
 
-This requires a minor enhancement to `ensureProject()` or `createProject()` to accept an optional name parameter.
+#### 2. Lock the Project ID When Generation Starts
 
----
+In `handleSendMessage()`, capture the project ID BEFORE starting the agent:
 
-## Technical Changes Summary
+```typescript
+const handleSendMessage = async (prompt: string) => {
+  // ...existing auto-create logic...
+  
+  const projectId = await ensureProject(projectName);
+  if (!projectId) return;
+  
+  // LOCK: Capture which project this generation belongs to
+  generationLockRef.current = projectId;
+  
+  await addMessage('user', prompt);
+  startAgent(prompt, code !== DEFAULT_CODE ? code : undefined);
+};
+```
 
-### File 1: src/components/ai-builder/EmptyCanvasState.tsx
+#### 3. Verify Lock Before Writes in `useStreamingCode`
 
-| Change | Details |
-|--------|---------|
-| Remove "Start a new project" button | Users trigger creation via chat, not button click |
-| Add inspiration cards | Non-clickable visual cues for Portfolio, Store, SaaS, Dashboard, Blog |
-| Add CTA directing to chat | "Just type your idea in the chat to begin" with arrow pointing right |
-| Upgrade visuals | Dark gradient background, glowing icon, premium typography |
+Modify the `useStreamingCode` hook to accept a `shouldAbort` callback that checks the lock:
 
-### File 2: src/components/ai-builder/AIBuilderCanvas.tsx
+```typescript
+// In useStreamingCode options
+interface UseStreamingCodeOptions {
+  // ...existing options...
+  shouldAbort?: () => boolean; // NEW: Check if we should stop
+}
 
-| Change | Details |
-|--------|---------|
-| Restructure layout | Chat panel always rendered, empty state only replaces preview area |
-| Update handleSendMessage | Add visual feedback ("Creating workspace...") before ensureProject() |
-| Smart project naming | Extract title from first prompt (first 4-5 words or keyword extraction) |
+// Inside streamCode, check before final writes:
+if (options.shouldAbort?.()) {
+  console.warn('🛑 Aborted: Project changed during generation');
+  setState(prev => ({ ...prev, isStreaming: false }));
+  return;
+}
+options.onComplete?.(finalCode);
+```
 
-### File 3: src/components/ai-builder/hooks/useVibecoderProjects.ts
+#### 4. Guard the Callbacks in `AIBuilderCanvas.tsx`
 
-| Change | Details |
-|--------|---------|
-| Update createProject() | Accept optional `name` parameter with fallback to timestamp-based default |
-| Update ensureProject() | Pass optional name to createProject() |
+Modify the `useStreamingCode` initialization to include abort checking:
 
----
+```typescript
+const { streamCode, ... } = useStreamingCode({
+  shouldAbort: () => {
+    // If the lock doesn't match current project, abort
+    if (generationLockRef.current && 
+        generationLockRef.current !== activeProjectId) {
+      console.warn(`🛑 BLOCKED: Generation for ${generationLockRef.current} but viewing ${activeProjectId}`);
+      return true;
+    }
+    return false;
+  },
+  onComplete: async (finalCode) => {
+    // Double-check the lock before saving
+    if (generationLockRef.current !== activeProjectId) {
+      console.warn('🛑 Discarded code: Project mismatch');
+      generationLockRef.current = null;
+      return;
+    }
+    
+    // Safe to save - project matches
+    await addMessage('assistant', 'Generated your storefront design.', finalCode);
+    generationLockRef.current = null; // Release lock
+    onStreamingComplete();
+  },
+  // ...rest of options
+});
+```
 
-## User Experience Flow
+#### 5. Clear Lock on Project Switch
 
-1. **User lands on /ai-builder** - Sees the premium empty state on the left, empty chat panel on the right with quick prompt suggestions
-2. **User types first prompt** - "A luxury dark mode storefront for selling digital presets"
-3. **User hits Enter/Send** - System:
-   - Extracts smart name: "Luxury Dark Mode Storefront"
-   - Calls `createProject("Luxury Dark Mode Storefront")`
-   - Updates URL to `/ai-builder?project=abc123`
-   - Adds user message to chat history
-   - Starts agent loop (Planning → Writing → Building)
-4. **Empty state swaps to live preview** - Sandpack mounts, code streams in real-time
-5. **User iterates** - Subsequent prompts refine the design
+In the project verification `useEffect`, abort any in-flight generation:
 
----
+```typescript
+useEffect(() => {
+  async function verifyAndLoadProject() {
+    // If there's an active generation for a DIFFERENT project, abort it
+    if (generationLockRef.current && 
+        generationLockRef.current !== activeProjectId) {
+      console.warn(`🛑 Aborting generation for ${generationLockRef.current} (switched to ${activeProjectId})`);
+      cancelStream(); // Stop the HTTP stream
+      cancelAgent();  // Reset agent state
+      generationLockRef.current = null;
+    }
+    
+    // ...rest of existing verification logic...
+  }
+  
+  verifyAndLoadProject();
+}, [activeProjectId, ...]);
+```
 
-## Technical Notes
+#### 6. Guard `addMessage` at the Source
 
-- The `hasActiveProject` check determines what shows in the LEFT panel only (Empty State vs. Preview)
-- The Chat panel is always mounted, ensuring the input bar is immediately accessible
-- The `onCreateProject` callback on EmptyCanvasState can be removed entirely (it was only used by the button)
-- The StarterCard components become purely decorative, not interactive
+Add a safety check directly in the `addMessage` function:
+
+```typescript
+// In useVibecoderProjects.ts
+const addMessage = useCallback(async (
+  role: 'user' | 'assistant' | 'system',
+  content: string | null,
+  codeSnapshot?: string | null,
+  forProjectId?: string // NEW: Optional explicit project ID
+) => {
+  const targetProjectId = forProjectId || activeProjectId;
+  if (!targetProjectId) return null;
+  
+  // Save to the explicit project, not just "current"
+  const { data, error } = await supabase
+    .from('vibecoder_messages')
+    .insert({
+      project_id: targetProjectId,
+      role,
+      content,
+      code_snapshot: codeSnapshot ?? null,
+    })
+    .select()
+    .single();
+  
+  // Only update local state if target matches active
+  if (targetProjectId === activeProjectId && !error) {
+    setMessages(prev => [...prev, data as VibecoderMessage]);
+  }
+  
+  return data;
+}, [activeProjectId]);
+```
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | Add `generationLockRef`, guard all callbacks, abort on project switch |
+| `src/components/ai-builder/useStreamingCode.ts` | Add `shouldAbort` option, check before `onComplete` |
+| `src/components/ai-builder/hooks/useVibecoderProjects.ts` | Add optional `forProjectId` param to `addMessage` |
+| `src/hooks/useAgentLoop.ts` | Add project ID tracking to ensure agent respects the lock |
+
+### Edge Cases Handled
+
+1. **User switches projects mid-generation** → Generation is aborted, no data written
+2. **User deletes the generating project** → Lock becomes orphaned, writes are blocked
+3. **User creates new project while old is generating** → Old generation is aborted
+4. **User refreshes mid-generation** → Lock is lost, generation result is discarded
+
+### Verification Steps
+
+After implementation, test these scenarios:
+1. Start generation on Project A, switch to Project B before completion → B unchanged
+2. Start generation, create new project before completion → Old generation discarded  
+3. Start generation, delete the project → No crash, no orphan data
+4. Complete a full generation without switching → Works normally
