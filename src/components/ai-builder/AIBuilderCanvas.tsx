@@ -267,7 +267,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     return () => window.clearTimeout(timeout);
   }, [isAwaitingPreviewReady, isStreaming]);
 
-  // Agent loop for VibeCoder 2.0 multi-agent pipeline
+  // Agent loop for VibeCoder 2.1 multi-agent pipeline
   const {
     agentStep,
     agentLogs,
@@ -275,19 +275,21 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     startAgent,
     cancelAgent,
     resetAgent,
+    healCode, // VibeCoder 2.1: Direct healing with runtime errors
     onStreamLog,
     onStreamingComplete,
     onStreamingError,
     triggerSelfCorrection,
     lockedProjectId,
     architectPlan,
+    lastGeneratedCode, // VibeCoder 2.1: Track last code for healing
     mountProject: mountAgentProject,
     unmountProject: unmountAgentProject,
   } = useAgentLoop({
     onStreamCode: streamCode,
     onCodeGenerated: async (generatedCode, summary) => {
       // Handle code from the orchestrator
-      console.log('[VibeCoder 2.0] Code generated:', generatedCode.length, 'chars');
+      console.log('[VibeCoder 2.1] Code generated:', generatedCode.length, 'chars');
       setCode(generatedCode);
       
       // Hard refresh the preview by incrementing refreshKey
@@ -300,7 +302,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       generationLockRef.current = null;
     },
     onPlanGenerated: (plan) => {
-      console.log('[VibeCoder 2.0] Architect plan:', plan);
+      console.log('[VibeCoder 2.1] Architect plan:', plan);
       // Plan is stored in agentState.architectPlan for optional display
     },
     onComplete: () => {
@@ -892,11 +894,16 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   }, [triggerSelfCorrection, handleSendMessage]);
 
   // When Sandpack reports an error, show one-click fix toast (NO chat injection)
+  // VibeCoder 2.1: When Sandpack reports an error, trigger the healing agent
   const handlePreviewError = useCallback((errorMsg: string) => {
     setPreviewError(errorMsg);
     setShowFixToast(true);
+    
     // Trigger self-correction state in agent for UI feedback
     triggerSelfCorrection(errorMsg);
+    
+    // VibeCoder 2.1: We now have direct healing capability
+    // The FixErrorToast will call handleFixError which uses healCode
     // DO NOT add error messages to chat - keep chat clean!
   }, [triggerSelfCorrection]);
 
@@ -1301,8 +1308,10 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       error={previewError}
                       onDismiss={() => setShowFixToast(false)}
                       onFix={() => {
-                        const report = `CRITICAL_ERROR_REPORT: The preview has the following build error: "${previewError}". Analyze the latest code you generated, identify the cause (syntax error, missing import, undefined variable, etc.), and fix it immediately. Do NOT ask questions.`;
-                        handleAutoFix(report);
+                        // VibeCoder 2.1: Use direct healing with runtime context
+                        // This goes to vibecoder-heal endpoint (skips Architect)
+                        const codeToHeal = lastGeneratedCode || code;
+                        healCode(previewError, codeToHeal);
                         setShowFixToast(false);
                       }}
                     />
