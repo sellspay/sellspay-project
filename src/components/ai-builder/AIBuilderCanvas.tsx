@@ -677,7 +677,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   if (projects.length === 0) {
     return (
       <LovableHero
-        onStart={async (prompt) => {
+        onStart={async (prompt, isPlanMode) => {
           // 1. Extract smart project name from first 5 words
           const projectName = prompt.split(/\s+/).slice(0, 5).join(' ');
           
@@ -688,11 +688,17 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             return;
           }
           
-          // 3. Add user message to chat history
+          // 3. Prepare the prompt (inject plan mode instruction if needed)
+          let finalPrompt = prompt;
+          if (isPlanMode) {
+            finalPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${prompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
+          }
+          
+          // 4. Add user message to chat history
           await addMessage('user', prompt);
           
-          // 4. Start the agent with the initial prompt
-          startAgent(prompt, undefined);
+          // 5. Start the agent with the initial prompt
+          startAgent(finalPrompt, undefined);
         }}
         userName={username ?? 'Creator'}
       />

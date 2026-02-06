@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Mic, Plus, ArrowLeft } from "lucide-react";
+import { ArrowRight, Plus, ArrowLeft, AudioLines, ListTodo } from "lucide-react";
 import heroBg from "@/assets/hero-aurora-bg.jpg";
 
 interface LovableHeroProps {
-  onStart: (prompt: string) => void;
+  onStart: (prompt: string, isPlanMode?: boolean) => void;
   userName?: string;
 }
 
@@ -15,21 +15,27 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (prompt.trim()) {
-      onStart(prompt);
+      onStart(prompt, false);
+    }
+  };
+
+  const handlePlanSubmit = () => {
+    if (prompt.trim()) {
+      onStart(prompt, true);
     }
   };
 
   return (
     <div className="h-screen w-full relative overflow-hidden bg-black flex flex-col items-center justify-center p-4">
       
-      {/* Background Image */}
+      {/* Background Image - Full opacity for 4K quality */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${heroBg})` }}
       />
       
-      {/* Overlay gradient for depth */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+      {/* Subtle overlay for text readability */}
+      <div className="absolute inset-0 bg-black/30" />
 
       {/* Back Button */}
       <button
@@ -83,12 +89,27 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
 
             {/* Action Icons */}
             <div className="flex items-center gap-1 pl-2">
+              {/* Soundwave / Voice Button */}
               <button 
                 type="button" 
                 className="p-2 text-zinc-500 hover:text-white transition-colors"
+                title="Voice input"
               >
-                <Mic size={20} />
+                <AudioLines size={20} />
               </button>
+              
+              {/* Plan Button */}
+              <button 
+                type="button"
+                onClick={handlePlanSubmit}
+                disabled={!prompt.trim()}
+                className="p-2 text-zinc-500 hover:text-orange-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Generate a plan first"
+              >
+                <ListTodo size={20} />
+              </button>
+              
+              {/* Submit Button */}
               <button 
                 type="submit"
                 disabled={!prompt.trim()}
