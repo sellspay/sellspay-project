@@ -1,221 +1,327 @@
 
-
-# VibeCoder 2.0 → 2.1: Elite Validation Upgrades
+# SellsPay VibeCoder 2.0+ & Platform Pulse - God-Tier Upgrade Blueprint
 
 ## Executive Summary
 
-This plan addresses three critical weaknesses identified in the current VibeCoder pipeline that are causing a ~30% success rate:
-
-1. **The "Blind" Linter** - Currently only reads text, missing runtime crashes
-2. **No Visual Validation** - Can't detect design issues (contrast, overlaps)
-3. **Flat Credit Pricing** - Simple edits cost the same as full rebuilds
+This plan consolidates the Multi-Agent Engine enhancements, Self-Healing improvements, Premium Changelog UI, and Discord Automation into a cohesive implementation roadmap.
 
 ---
 
-## Current Architecture Analysis
+## Current State Analysis
 
-### What's Working ✅
-- Multi-agent pipeline (Architect → Builder → Linter → Healing)
-- SSE streaming with real-time progress updates
-- Design tokens injected per style profile
-- Static validation catching syntax errors and policy violations
-- SDK components preventing "boring" defaults
+### What's Already Implemented (VibeCoder 2.1)
 
-### Critical Gaps ⚠️
+| Component | Status | Implementation |
+|-----------|--------|----------------|
+| **3-Agent Pipeline** | ✅ Complete | Architect (Gemini 3 Pro) → Builder (Gemini 3 Flash) → Linter (Gemini 2.5 Flash Lite) |
+| **Shadow Render** | ✅ Complete | esbuild WASM transpilation check in `vibecoder-orchestrator` |
+| **Self-Healing Loop** | ✅ Complete | Max 3 retries with full `failedCode` + `fixSuggestion` context |
+| **Dedicated Heal Endpoint** | ✅ Complete | `vibecoder-heal` for runtime error surgery |
+| **Frontend Error Wiring** | ✅ Complete | `FixErrorToast` → `healCode()` in `useAgentLoop.ts` |
+| **Tiered Credits** | ✅ Complete | Complexity-based pricing (1/3/8/15 credits) |
+| **Design Tokens** | ✅ Complete | 6 style profiles with Tailwind recipes in `vibecoder-builder` |
+| **SDK Components** | ✅ Complete | 7 components in `vibecoder-stdlib.ts` (ProductCard, HeroSection, etc.) |
+| **Style Profiles** | ✅ Complete | 6 profiles in `vibecoder-style-profiles.ts` |
 
-| Gap | Current State | Impact |
-|-----|--------------|--------|
-| Runtime Errors | Only caught AFTER code reaches frontend Sandpack | User sees red screen, must click "Fix" |
-| Healing Context | Frontend error flows through `handleSendMessage()` as new prompt, NOT through orchestrator's healing loop | Healing loop in orchestrator never receives runtime errors |
-| Visual QA | None | Unreadable text, broken layouts delivered |
-| Credit Granularity | Fixed 3c (Quick) / 8c (Full) | Losing margin on complex builds |
+### Missing or Needs Enhancement
+
+| Gap | Current State | Blueprint Requirement |
+|-----|--------------|----------------------|
+| **Changelog UI** | Basic `platform_updates` table exists | Premium Timeline with version tags, media, Discord sync |
+| **SemVer System** | No versioning | Major.Minor.Patch with automatic tagging |
+| **Discord Webhook** | Not implemented | Auto-post on changelog publish |
+| **SDK Folder** | Components in stdlib (strings) | Real `src/components/sellspay/` folder for discoverability |
+| **Architect uniqueDesignFeature** | Not in current schema | Add to prevent design repetition |
+| **Healing Stats Logging** | Not tracked | Log successful heals for "AI is squashing bugs" display |
 
 ---
 
-## The Fixes
+## Implementation Plan
 
-### 1. Headless Runtime Validation ("Ghost Render")
+### PART 1: Enhanced Multi-Agent Orchestration
 
-**Problem**: The Linter (`vibecoder-linter`) only performs static text analysis. If the Builder writes `products.map()` without optional chaining, the Linter might pass it, but Sandpack crashes.
+#### 1A. Add `uniqueDesignFeature` to Architect Output
 
-**Solution**: Add a "Shadow Render" step in the Orchestrator that attempts a basic JSX transpile + React validation BEFORE delivering code.
+The Architect should output a mandatory "signature element" per build to prevent repetition.
 
-**Implementation**:
+**File**: `supabase/functions/vibecoder-architect/index.ts`
+
+**Changes**:
+- Update JSON schema to include `uniqueDesignFeature`:
+```json
+"uniqueDesignFeature": {
+  "element": "Animated gradient border on hero",
+  "implementation": "bg-gradient-to-r from-cyan-500 via-transparent to-pink-500 animate-gradient"
+}
+```
+- Add to system prompt: "Every design MUST include one unique visual signature that distinguishes it from other stores"
+
+#### 1B. Builder Model Alignment
+
+The blueprint mentions Claude 3.5 Sonnet as an option, but current implementation uses Gemini 3 Flash.
+
+**Decision Required**: Stay with Gemini 3 Flash (current, fast) or add Claude as a fallback for complex builds?
+
+**Recommendation**: Keep Gemini 3 Flash as default - it's integrated with Lovable AI gateway. Adding Claude would require API key management.
+
+#### 1C. Linter Ghost Render Enhancement
+
+The Shadow Render in the orchestrator uses esbuild which catches syntax errors. For true React runtime validation (hooks in loops, etc.), we'd need JSDOM + React - too heavy for edge functions.
+
+**Current Limitation**: esbuild catches ~80% of crashes. True runtime errors still go through frontend `handlePreviewError` → `healCode()`.
+
+**Recommendation**: Keep current architecture - the frontend healing path handles what esbuild misses.
+
+---
+
+### PART 2: SellsPay Pulse (Changelog & Version UI)
+
+#### 2A. Database Schema Enhancement
+
+Add versioning fields to `platform_updates` table:
+
+```sql
+ALTER TABLE platform_updates
+ADD COLUMN version_number text,
+ADD COLUMN version_type text CHECK (version_type IN ('major', 'minor', 'patch')),
+ADD COLUMN media_url text,
+ADD COLUMN media_type text CHECK (media_type IN ('image', 'gif', 'video')),
+ADD COLUMN discord_sent boolean DEFAULT false,
+ADD COLUMN feature_tags text[];
+```
+
+#### 2B. Changelog Page Component
+
+**New File**: `src/pages/Changelog.tsx`
+
+**Visual Design**:
+- Vertical spine timeline with year/month groupings
+- Sticky version tags that pin on scroll
+- Pill tags: `[Added]` (green), `[Improved]` (blue), `[Fixed]` (amber), `[Marketplace]` (purple)
+- Media cards with image/GIF preview
+- Mobile-responsive layout
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                   ORCHESTRATOR FLOW (Updated)               │
-├─────────────────────────────────────────────────────────────┤
-│  1. ARCHITECT → JSON Plan                                   │
-│  2. BUILDER → TSX Code                                      │
-│  3. LINTER (Static) → Syntax/Policy Check                   │
-│  4. 🆕 SHADOW RENDER → Try esbuild transpile + basic eval   │
-│     └─ If fails → Pass real stack trace to HEALING LOOP     │
-│  5. DELIVER CODE                                            │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│  SELLSPAY CHANGELOG                                            │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  February 2026                                                 │
+│  ════════════                                                  │
+│                                                                │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ v2.1.0                                           [Added] │  │
+│  │                                                          │  │
+│  │ Multi-Agent Self-Healing Pipeline                        │  │
+│  │ VibeCoder now fixes its own bugs with a 3-agent loop.   │  │
+│  │                                                          │  │
+│  │ ┌────────────────────────────────────────────────────┐  │  │
+│  │ │  [Screenshot/GIF of self-healing in action]       │  │  │
+│  │ └────────────────────────────────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  January 2026                                                  │
+│  ═══════════                                                   │
+│                                                                │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ v2.0.0                                           [Major] │  │
+│  │                                                          │  │
+│  │ VibeCoder 2.0 Launch                                     │  │
+│  │ Complete rewrite with Architect → Builder → Linter.      │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-**Edge Function Changes** (`vibecoder-orchestrator/index.ts`):
-- Import esbuild WASM for lightweight transpilation in Deno
-- After Linter PASS, attempt `esbuild.transform(code, { loader: 'tsx' })`
-- If transpile fails, extract error line/message and trigger healing with `runtimeError` context
-- This catches ~80% of crashes (undefined vars, missing imports, JSX syntax) before they reach the user
+#### 2C. Changelog Slide-Over Panel (In-App)
 
-**Limitations**:
-- Cannot catch React-specific runtime errors (hooks in loops, missing keys) without a full React runtime
-- True "headless React" (JSDOM + ReactDOMServer) is too heavy for Edge Functions (cold start penalty)
-- We're trading off completeness for speed - esbuild catches the most common issues
+**New File**: `src/components/ai-builder/ChangelogPanel.tsx`
 
----
+- Accessible from VibeCoder header ("What's New" button)
+- Sheet/drawer component that slides in from right
+- Shows last 5 updates with quick dismiss
 
-### 2. Smart Healing Loop (Wire Frontend Errors to Backend)
+#### 2D. Versioning Logic (SemVer)
 
-**Problem**: When Sandpack crashes in the user's browser, the error is captured by `handlePreviewError()` which calls `handleSendMessage(errorMsg)`. This creates a NEW generation request instead of feeding into the Orchestrator's self-healing loop.
+**New File**: `src/lib/versioning.ts`
 
-**Current Flow**:
-```text
-Sandpack Error → handlePreviewError() → handleSendMessage() → NEW startAgent() call
-                                                              ↳ Full pipeline restarts
-```
-
-**Desired Flow**:
-```text
-Sandpack Error → handlePreviewError() → triggerHealingWithContext(error, failedCode)
-                                        ↳ Orchestrator receives runtime error
-                                        ↳ Builder gets full healing context
-```
-
-**Implementation**:
-
-1. **New Edge Endpoint**: Create `vibecoder-heal` that accepts:
-   - `runtimeError`: The actual error message from Sandpack
-   - `failedCode`: The current code that crashed
-   - `architectPlan`: Original plan for context
-   - `styleProfile`: Preserve design intent
-
-2. **Frontend Changes** (`useAgentLoop.ts`):
-   - Add `healCode(error: string, code: string)` method
-   - This calls `vibecoder-heal` directly with runtime context
-   - Skips Architect entirely (we're fixing, not rebuilding)
-
-3. **Healing Prompt Enhancement**:
 ```typescript
-const healingPrompt = `
-🚨 CRITICAL: The code crashed in the browser with this EXACT error:
-"${runtimeError}"
+interface Version {
+  major: number;
+  minor: number;
+  patch: number;
+}
 
-Your previous code that failed:
-\`\`\`tsx
-${failedCode}
-\`\`\`
-
-FIX INSTRUCTIONS:
-1. Find the EXACT line causing "${runtimeError}"
-2. Apply the minimal fix (add optional chaining, fix import, etc.)
-3. Do NOT refactor or change styling
-4. Output the COMPLETE fixed file
-`;
+function incrementVersion(current: Version, type: 'major' | 'minor' | 'patch'): Version;
+function formatVersion(v: Version): string; // "2.1.0"
+function getLatestVersion(): Promise<Version>; // From DB
 ```
 
 ---
 
-### 3. Multimodal Visual Validator (Phase 2 - Future)
+### PART 3: Discord Webhook Automation
 
-**Why Phase 2**: This requires generating a screenshot of the rendered preview, which means:
-- The code must first successfully render in Sandpack
-- We'd need to capture the iframe content and send to Gemini Vision
-- This adds ~3-5 seconds to every generation
+#### 3A. New Edge Function
 
-**Recommended Approach**:
-- Implement as an OPTIONAL "Premium QA" mode users can enable
-- Trigger ONLY if static validation passes
-- Use `google/gemini-3-pro-preview` with image input for design analysis
+**New File**: `supabase/functions/notify-changelog/index.ts`
 
-**Visual QA Prompt** (for future implementation):
+**Trigger**: Called after inserting into `platform_updates` with `version_number` set.
+
+**Payload Structure**:
 ```typescript
-const visualQAPrompt = `
-Analyze this storefront screenshot for design quality issues:
-
-CHECK FOR:
-1. Text readability (contrast ratio, font size)
-2. Overlapping elements
-3. Broken layouts (elements off-screen, squished)
-4. Empty states (missing images showing as broken icons)
-5. Mobile responsiveness issues
-
-STYLE PROFILE: ${styleProfile}
-Expected mood: ${architectPlan.vibeAnalysis.moodKeywords.join(', ')}
-
-If issues found, describe the EXACT fix needed.
-If the design matches the premium ${styleProfile} aesthetic, respond "VISUAL_PASS".
-`;
+const discordPayload = {
+  embeds: [{
+    title: `🚀 SellsPay Evolution: v${versionNumber}`,
+    description: updateSummary,
+    color: 0xEE0000, // SellsPay Brand Red
+    fields: [
+      { name: "✨ Highlight", value: topFeature, inline: true },
+      { name: "📋 Category", value: category, inline: true }
+    ],
+    image: { url: mediaUrl },
+    footer: { text: "Powered by VibeCoder 2.0 Agent Pipeline" },
+    timestamp: new Date().toISOString()
+  }]
+};
 ```
 
-**Not Included in This Plan**: This is complex and should be a separate iteration after the healing loop is proven.
+#### 3B. Secret Configuration
+
+**Required Secret**: `DISCORD_CHANGELOG_WEBHOOK_URL`
+
+This needs to be added via the Lovable secrets manager before the function will work.
+
+#### 3C. Database Trigger Option
+
+For automatic Discord posts, create a Postgres trigger:
+
+```sql
+CREATE OR REPLACE FUNCTION notify_discord_on_changelog()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Only fire when version_number is set and discord_sent is false
+  IF NEW.version_number IS NOT NULL AND NOT COALESCE(NEW.discord_sent, false) THEN
+    PERFORM net.http_post(
+      url := current_setting('app.discord_webhook_url'),
+      body := json_build_object(...)::text
+    );
+    NEW.discord_sent := true;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Alternative**: Manual trigger via admin dashboard button (simpler, more control).
 
 ---
 
-### 4. Tiered Complexity Credits
+### PART 4: Elite Style Engine Improvements
 
-**Problem**: A quick "change button color" costs the same as "rebuild entire store with 5 sections".
+#### 4A. Physical SDK Components Folder
 
-**Solution**: Use the Architect's `complexityScore` to set dynamic pricing.
+Currently, SDK components exist as strings in `vibecoder-stdlib.ts`. For better discoverability and import clarity, create actual files:
 
-**New Credit Tiers**:
+**New Files**:
+- `src/components/sellspay/index.ts` (barrel export)
+- `src/components/sellspay/ProductCard.tsx`
+- `src/components/sellspay/CheckoutButton.tsx`
+- `src/components/sellspay/HeroSection.tsx`
+- `src/components/sellspay/FeaturedProducts.tsx`
+- `src/components/sellspay/CreatorBio.tsx`
+- `src/components/sellspay/StickyNav.tsx`
+- `src/components/sellspay/TestimonialCard.tsx`
+- `src/components/sellspay/StatsBar.tsx`
 
-| Complexity Score | Description | Credit Cost |
-|-----------------|-------------|-------------|
-| 1-3 (Low) | Simple edit, single element | 1 credit |
-| 4-6 (Medium) | Section change, add component | 5 credits |
-| 7-10 (High) | Full page rebuild, multi-section | 15 credits |
+These mirror the stdlib versions but exist in the actual codebase for:
+1. Type checking in the editor
+2. AI discoverability when searching the codebase
+3. Potential reuse in non-Sandpack contexts
 
-**Implementation** (`vibecoder-orchestrator/index.ts`):
-- After Architect returns `complexityScore`, calculate credits
-- For `skipArchitect` (quick edit), default to Low tier
-- Deduct appropriate amount before Builder runs
+#### 4B. Healing Stats Logger
 
-**UI Changes** (`ChatInputBar.tsx`):
-- Show estimated credit cost BEFORE sending
-- "This will use ~5 credits based on complexity"
+Track successful self-corrections for a future "VibeCoder Stats" dashboard.
 
----
+**New Table**: `vibecoder_heal_logs`
 
-## Technical Implementation Details
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `supabase/functions/vibecoder-orchestrator/index.ts` | Add shadow render step, tiered credits, healing context |
-| `supabase/functions/vibecoder-heal/index.ts` | NEW - Dedicated healing endpoint |
-| `supabase/functions/vibecoder-builder/index.ts` | Enhanced healing prompt format |
-| `src/hooks/useAgentLoop.ts` | Add `healCode()` method for runtime errors |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | Wire `handlePreviewError` to new healing flow |
-| `supabase/functions/deduct-ai-credits/index.ts` | Support tiered pricing |
-
-### New Dependencies
-
-For shadow rendering in Deno Edge Functions:
-```typescript
-// Use esbuild WASM for lightweight transpilation
-import * as esbuild from "https://deno.land/x/esbuild@v0.20.1/wasm.js";
+```sql
+CREATE TABLE vibecoder_heal_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid REFERENCES vibecoder_projects(id),
+  user_id uuid REFERENCES auth.users(id),
+  error_type text NOT NULL,
+  error_message text,
+  healing_source text CHECK (healing_source IN ('orchestrator', 'frontend')),
+  success boolean DEFAULT false,
+  attempts integer DEFAULT 1,
+  created_at timestamptz DEFAULT now()
+);
 ```
+
+**Usage**: Insert from `vibecoder-heal` and `vibecoder-orchestrator` on successful fixes.
+
+**Display**: Future "AI is squashing bugs" real-time counter on changelog/landing page.
 
 ---
 
 ## Implementation Order
 
-1. **Phase 1a**: Smart Healing Loop (wire frontend errors to backend)
-   - Highest impact, fixes the "user clicks Fix, AI apologizes" loop
-   
-2. **Phase 1b**: Shadow Render in Orchestrator
-   - Catch transpile errors before they reach the user
-   
-3. **Phase 1c**: Tiered Credit Pricing
-   - Protect margins on expensive generations
+| Priority | Task | Effort | Impact |
+|----------|------|--------|--------|
+| 1 | Database migration: Changelog version fields | Low | Medium |
+| 2 | Changelog page UI (`/changelog`) | Medium | High |
+| 3 | Changelog slide-over in AI Builder | Low | Medium |
+| 4 | Discord webhook edge function | Low | High |
+| 5 | Physical SDK folder (parallel to stdlib) | Medium | Low |
+| 6 | Architect `uniqueDesignFeature` | Low | Medium |
+| 7 | Healing stats logger | Low | Low |
 
-4. **Phase 2** (Future): Visual Validator
-   - Premium feature, requires more infrastructure
+---
+
+## Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `supabase/migrations/XXXX_changelog_versioning.sql` | CREATE | Add version fields to platform_updates |
+| `src/pages/Changelog.tsx` | CREATE | Premium changelog page |
+| `src/components/ai-builder/ChangelogPanel.tsx` | CREATE | In-app changelog drawer |
+| `src/components/changelog/ChangelogTimeline.tsx` | CREATE | Reusable timeline component |
+| `src/components/changelog/ChangelogEntry.tsx` | CREATE | Single update card |
+| `src/lib/versioning.ts` | CREATE | SemVer helpers |
+| `supabase/functions/notify-changelog/index.ts` | CREATE | Discord webhook |
+| `src/components/sellspay/*.tsx` | CREATE | Physical SDK components |
+| `supabase/functions/vibecoder-architect/index.ts` | MODIFY | Add uniqueDesignFeature |
+| `supabase/functions/vibecoder-heal/index.ts` | MODIFY | Log healing stats |
+
+---
+
+## Technical Notes
+
+### Discord Webhook Security
+
+The webhook URL is a secret that shouldn't be exposed to the frontend. The edge function approach ensures the URL stays server-side.
+
+### Changelog RLS Policy
+
+```sql
+-- Public read for all published updates
+CREATE POLICY "Public can read published updates"
+ON platform_updates FOR SELECT
+TO public
+USING (true);
+
+-- Only admins can insert/update
+CREATE POLICY "Admins can manage updates"
+ON platform_updates FOR ALL
+TO authenticated
+USING (auth.uid() IN (SELECT user_id FROM admin_users));
+```
+
+### Healing Stats Privacy
+
+The `vibecoder_heal_logs` table should have RLS that only allows:
+- Users to see their own project's heal stats
+- Admins to see aggregate anonymous stats
 
 ---
 
@@ -223,18 +329,8 @@ import * as esbuild from "https://deno.land/x/esbuild@v0.20.1/wasm.js";
 
 | Metric | Current | Target |
 |--------|---------|--------|
-| First-attempt success rate | ~30% | 70%+ |
-| Healing loop effectiveness | ~10% (AI apologizes) | 80%+ (actually fixes) |
-| Average attempts per generation | 2.5 | 1.3 |
-| Credit margin on complex builds | Negative | Positive |
-
----
-
-## Risks & Mitigations
-
-| Risk | Mitigation |
-|------|------------|
-| esbuild WASM cold start in Edge Functions | Lazy-load only when needed, cache initialization |
-| Healing loop infinite retry | Hard cap at 2 retries (already implemented) |
-| Tiered pricing confuses users | Show estimate before send, clear breakdown after |
-
+| First-attempt success rate | ~70% | 85%+ |
+| Average healing attempts | 1.5 | 1.2 |
+| Discord engagement (post views) | N/A | 100+ per update |
+| Changelog page visits | N/A | Track |
+| Unique design features | Repetitive | Distinct per build |
