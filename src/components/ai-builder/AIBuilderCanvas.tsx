@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
 import { VibecoderPreview } from './VibecoderPreview';
@@ -19,6 +18,7 @@ import { parseRoutesFromCode, type SitePage } from '@/utils/routeParser';
 import { toast } from 'sonner';
 import { clearProjectCache } from './utils/projectCache';
 import { LovableHero } from './LovableHero';
+import { PremiumLoadingScreen } from './PremiumLoadingScreen';
 
 interface AIBuilderCanvasProps {
   profileId: string;
@@ -26,6 +26,7 @@ interface AIBuilderCanvasProps {
 
 export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isPublished, setIsPublished] = useState(false);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
@@ -64,6 +65,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   
   // Page navigation state for storefront preview
   const [previewPath, setPreviewPath] = useState("/");
+  
+  // Flag to prevent double-firing agent on mount with location state
+  const hasStartedInitialRef = useRef(false);
   
   // Handle model change with auto-tab switching
   const handleModelChange = useCallback((model: AIModel) => {
@@ -209,6 +213,24 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       setShowOnboarding(true);
     }
   }, [loading, needsOnboarding]);
+
+  // AUTO-START: Pick up initial prompt from navigation state (passed from Hero)
+  useEffect(() => {
+    const initialPrompt = (location.state as { initialPrompt?: string })?.initialPrompt;
+    
+    // Check if we just arrived with a prompt to auto-start
+    if (activeProjectId && initialPrompt && !hasStartedInitialRef.current && !projectsLoading) {
+      console.log('🚀 Picking up initial prompt from navigation:', initialPrompt);
+      
+      hasStartedInitialRef.current = true;
+      
+      // Trigger the agent immediately
+      startAgent(initialPrompt, undefined);
+      
+      // Clear the state so it doesn't re-fire on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [activeProjectId, location.state, projectsLoading, startAgent]);
 
   // Load basic data needed for the AI Builder shell (header, credits, publish state)
   // IMPORTANT: We intentionally do NOT load '/App.tsx' from the global project_files slot here.
@@ -642,16 +664,9 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   }, [viewMode, currentVideoAsset, currentImageAsset]);
 
 
-  // Show loading while verifying project OR initial data load
+  // Show premium loading screen while verifying project OR initial data load
   if (loading || projectsLoading || isVerifyingProject) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        {isVerifyingProject && (
-          <p className="text-sm text-muted-foreground">Verifying project...</p>
-        )}
-      </div>
-    );
+    return <PremiumLoadingScreen />;
   }
 
   // Show onboarding modal for first-time users
@@ -681,9 +696,9 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           // 1. Extract smart project name from first 5 words
           const projectName = prompt.split(/\s+/).slice(0, 5).join(' ');
           
-          // 2. Create the project
-          const projectId = await ensureProject(projectName);
-          if (!projectId) {
+          // 2. Create the project (this also navigates via URL update)
+          const newProjectId = await ensureProject(projectName);
+          if (!newProjectId) {
             toast.error('Failed to create project');
             return;
           }
@@ -694,11 +709,15 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             finalPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${prompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
           }
           
-          // 4. Add user message to chat history
+          // 4. IMPORTANT: Save the FIRST user message to DB so history persists
           await addMessage('user', prompt);
           
-          // 5. Start the agent with the initial prompt
-          startAgent(finalPrompt, undefined);
+          // 5. Navigate to the project URL with initialPrompt in state
+          // The useEffect above will pick this up and start the agent
+          navigate(`/ai-builder?project=${newProjectId}`, { 
+            state: { initialPrompt: finalPrompt },
+            replace: true, // Replace current URL so back button works correctly
+          });
         }}
         userName={username ?? 'Creator'}
       />
