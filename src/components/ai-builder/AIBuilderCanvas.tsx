@@ -539,6 +539,11 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         username={username}
         currentPath={previewPath}
         onNavigate={setPreviewPath}
+        onRegenerate={(tweak) => {
+          // Send tweak as a new message to refine the current design
+          handleSendMessage(`Refine the current design: ${tweak}`);
+        }}
+        isGenerating={isStreaming}
         avatarUrl={userAvatarUrl}
         userCredits={userCredits}
         subscriptionTier={subscriptionTier}
