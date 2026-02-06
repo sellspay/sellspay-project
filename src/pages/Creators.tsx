@@ -159,10 +159,12 @@ export default function Creators() {
           </div>
         </div>
 
-        {/* --- CATEGORY NAV (STICKY) --- */}
+        {/* --- CATEGORY NAV (STICKY CHIP CLOUD) --- */}
         <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-            <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+            <p className="text-xs font-medium text-muted-foreground mb-3 hidden sm:block">Browse by Category</p>
+            {/* Responsive: flex-wrap on desktop for chip cloud, horizontal scroll on mobile */}
+            <div className="flex flex-wrap gap-2 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:scrollbar-none max-sm:pb-1">
               {CREATOR_CATEGORIES.map(cat => {
                 const Icon = cat.icon;
                 const isActive = activeCategory === cat.id;
@@ -171,10 +173,10 @@ export default function Creators() {
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
                     className={`
-                      flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0
+                      flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border shrink-0
                       ${isActive 
-                        ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
-                        : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                        ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105 z-10" 
+                        : "bg-card/50 text-muted-foreground border-border hover:border-primary/50 hover:text-foreground hover:bg-card"
                       }
                     `}
                   >
