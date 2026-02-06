@@ -384,15 +384,15 @@ const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
         */}
         <div className="relative min-h-[100svh] w-full overflow-visible">
          <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-4 sm:gap-6 lg:gap-0 px-4 sm:px-6 lg:px-0 py-8 lg:py-0">
-           <div
-             ref={textRef}
-             className="lg:absolute lg:left-[4%] xl:left-[5%] lg:top-1/2 lg:-translate-y-1/2 z-10 text-center lg:text-left w-full lg:w-auto lg:max-w-[35%] xl:max-w-[40%] order-1 lg:order-none"
-           >
-             <h2
-               data-headline
-               className="text-[2rem] sm:text-[2.5rem] md:text-[3.5rem] lg:text-[4rem] xl:text-[5rem] 2xl:text-[6rem] font-black leading-[0.95] tracking-[-0.02em]"
-               style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
-             >
+            <div
+              ref={textRef}
+              className="lg:absolute lg:left-[3%] xl:left-[4%] lg:top-1/2 lg:-translate-y-1/2 z-10 text-center lg:text-left w-full lg:w-auto lg:max-w-[25%] xl:max-w-[28%] order-1 lg:order-none"
+            >
+            <h2
+                data-headline
+                className="text-[1.5rem] sm:text-[1.75rem] md:text-[2rem] lg:text-[2.5rem] xl:text-[3rem] 2xl:text-[3.5rem] font-bold leading-[1.1] tracking-[-0.01em] opacity-90"
+                style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
+              >
                <span ref={(el) => { headlineLineRefs.current[0] = el; }} className="block">
                  {headlineLines[0]}
                </span>
@@ -401,11 +401,11 @@ const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
                </span>
              </h2>
            </div>
-            <div className="lg:absolute lg:right-[3%] xl:right-[4%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:block overflow-x-clip overflow-y-visible">
-             <div
-               ref={deckRef}
-              className="deck relative w-[85vw] sm:w-[75vw] md:w-[65vw] lg:w-[48vw] xl:w-[50vw] max-w-[800px] aspect-[16/10] overflow-visible"
-             >
+            <div className="lg:absolute lg:right-[2%] xl:right-[3%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:justify-end overflow-x-clip overflow-y-visible">
+              <div
+                ref={deckRef}
+                className="deck relative w-[90vw] sm:w-[85vw] md:w-[80vw] lg:w-[62vw] xl:w-[65vw] max-w-[1100px] aspect-[16/10] overflow-visible"
+              >
                {steps.map((step, idx) => (
                  <div
                    key={idx}
