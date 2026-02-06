@@ -11,6 +11,12 @@ export interface BuildStep {
   fileName?: string; // For file-related steps
 }
 
+// Live build state for real-time transparency during streaming
+export interface LiveBuildState {
+  logs: string[];
+  startedAt: Date;
+}
+
 export interface EnhancedMessage {
   id: string;
   role: 'user' | 'assistant';

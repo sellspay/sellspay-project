@@ -1,10 +1,14 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+// Regex pattern for extracting live log tags
+const LOG_PATTERN = /\[LOG:\s*([^\]]+)\]/g;
+
 interface UseStreamingCodeOptions {
   onChunk?: (accumulated: string) => void;
   onComplete?: (finalCode: string) => void;
   onChatResponse?: (text: string) => void;
+  onLogUpdate?: (logs: string[]) => void; // Real-time transparency logs
   onError?: (error: Error) => void;
 }
 
@@ -89,6 +93,10 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       const decoder = new TextDecoder();
       let accumulated = '';
       let mode: StreamMode = 'detecting';
+      
+      // Real-time transparency: track logs as they stream in
+      const seenLogs = new Set<string>();
+      const accumulatedLogs: string[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -96,6 +104,17 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
         const chunk = decoder.decode(value, { stream: true });
         accumulated += chunk;
+
+        // Extract [LOG: ...] tags for real-time transparency
+        const logMatches = accumulated.matchAll(LOG_PATTERN);
+        for (const match of logMatches) {
+          const logText = match[1].trim();
+          if (!seenLogs.has(logText)) {
+            seenLogs.add(logText);
+            accumulatedLogs.push(logText);
+            options.onLogUpdate?.([...accumulatedLogs]);
+          }
+        }
 
         // Intent Router: Detect response type in first ~100 chars
         if (mode === 'detecting' && accumulated.length > 20) {
@@ -106,7 +125,11 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
             setState(prev => ({ ...prev, isStreaming: false }));
           } else if (accumulated.includes('/// TYPE: CODE ///')) {
             mode = 'code';
-            accumulated = accumulated.replace('/// TYPE: CODE ///', '').trim();
+            // Clean the type flag and all LOG tags from the code portion
+            accumulated = accumulated
+              .replace('/// TYPE: CODE ///', '')
+              .replace(LOG_PATTERN, '')
+              .trim();
           } else if (accumulated.length > 100) {
             // Fallback: assume code if no flag found after 100 chars
             mode = 'code';
@@ -120,8 +143,9 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         }
 
         if (mode === 'code') {
-          // Clean up markdown code fences if the LLM includes them
+          // Clean up markdown code fences and LOG tags if the LLM includes them
           let cleanCode = accumulated
+            .replace(LOG_PATTERN, '') // Remove any LOG tags
             .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
             .replace(/\n?```\s*$/i, '')
             .trim();
@@ -141,8 +165,9 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         return chatText;
       }
 
-      // Final cleanup for code mode
+      // Final cleanup for code mode - strip LOG tags and markdown fences
       const finalCode = accumulated
+        .replace(LOG_PATTERN, '') // Remove any remaining LOG tags
         .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
         .replace(/\n?```\s*$/i, '')
         .trim();
