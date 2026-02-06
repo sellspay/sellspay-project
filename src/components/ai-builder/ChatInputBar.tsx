@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { 
   Plus, Send, Image as ImageIcon, 
   History, Settings, X, Square,
@@ -89,10 +90,16 @@ interface ChatInputBarProps {
   onCancel: () => void;
   placeholder?: string;
   userCredits?: number;
-  onGenerateAsset?: () => void;  // Callback when user wants to generate an asset
-  onOpenHistory?: () => void;    // Callback to open conversation history
-  onOpenSettings?: () => void;   // Callback to open AI settings
+  onGenerateAsset?: () => void;
+  onOpenHistory?: () => void;
+  onOpenSettings?: () => void;
 }
+
+// Portal component to render children directly on document.body
+const Portal = ({ children }: { children: React.ReactNode }) => {
+  if (typeof window === "undefined") return null;
+  return createPortal(children, document.body);
+};
 
 function MenuItem({ 
   icon: Icon, 
@@ -141,7 +148,7 @@ function ModelOption({
   return (
     <button 
       onClick={(e) => {
-        e.stopPropagation(); // Prevent click-outside from closing before selection
+        e.stopPropagation();
         onClick();
       }} 
       className={cn(
@@ -225,13 +232,18 @@ export function ChatInputBar({
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isListening, setIsListening] = useState(false);
   
+  // Portal positioning state
+  const [modelMenuCoords, setModelMenuCoords] = useState({ top: 0, left: 0 });
+  const [plusMenuCoords, setPlusMenuCoords] = useState({ top: 0, left: 0 });
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
+  const modelButtonRef = useRef<HTMLButtonElement>(null);
+  const plusButtonRef = useRef<HTMLButtonElement>(null);
 
   // Speech-to-Text Handler
   const toggleSpeechRecognition = useCallback(() => {
-    // Check browser support
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -256,14 +268,11 @@ export function ChatInputBar({
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let finalTranscript = '';
-      let interimTranscript = '';
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
           finalTranscript += transcript;
-        } else {
-          interimTranscript = transcript;
         }
       }
 
@@ -308,7 +317,6 @@ export function ChatInputBar({
       setAttachments(prev => [...prev, e.target.files![0]]);
       setShowMenu(false);
     }
-    // Reset input so same file can be selected again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -331,7 +339,6 @@ export function ChatInputBar({
     if ((!value.trim() && attachments.length === 0) || isGenerating) return;
     
     if (!canAfford(selectedModel)) {
-      // This will be handled by the parent component
       return;
     }
 
@@ -348,6 +355,32 @@ export function ChatInputBar({
     setShowModelMenu(false);
   };
 
+  // Toggle model menu with position calculation
+  const toggleModelMenu = () => {
+    if (!showModelMenu && modelButtonRef.current) {
+      const rect = modelButtonRef.current.getBoundingClientRect();
+      setModelMenuCoords({
+        left: rect.left,
+        top: rect.top,
+      });
+    }
+    setShowModelMenu(!showModelMenu);
+    setShowMenu(false);
+  };
+
+  // Toggle plus menu with position calculation
+  const togglePlusMenu = () => {
+    if (!showMenu && plusButtonRef.current) {
+      const rect = plusButtonRef.current.getBoundingClientRect();
+      setPlusMenuCoords({
+        left: rect.left,
+        top: rect.top,
+      });
+    }
+    setShowMenu(!showMenu);
+    setShowModelMenu(false);
+  };
+
   return (
     <div className="flex-shrink-0 p-4 bg-background relative">
       {/* Hidden file input */}
@@ -359,15 +392,145 @@ export function ChatInputBar({
         className="hidden"
       />
 
-      {/* Click outside to close menus */}
-      {(showMenu || showModelMenu) && (
-        <div 
-          className="fixed inset-0 z-40 bg-transparent" 
-          onClick={() => {
-            setShowMenu(false);
-            setShowModelMenu(false);
-          }} 
-        />
+      {/* Portal-based Model Menu */}
+      {showModelMenu && (
+        <Portal>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-[9998]" 
+            onClick={() => setShowModelMenu(false)} 
+          />
+          {/* Menu */}
+          <div 
+            className="fixed z-[9999] w-64 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 overflow-hidden ring-1 ring-white/5 animate-in fade-in-0 zoom-in-95 duration-150"
+            style={{ 
+              left: modelMenuCoords.left,
+              bottom: typeof window !== 'undefined' ? window.innerHeight - modelMenuCoords.top + 8 : 0,
+            }}
+          >
+            <div className="p-2 max-h-[400px] overflow-y-auto">
+              {/* Coding Models */}
+              <div className="px-2 py-1.5 mb-1">
+                <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold">
+                  Coding
+                </span>
+              </div>
+              {AI_MODELS.code.map(model => (
+                <ModelOption 
+                  key={model.id}
+                  model={model}
+                  active={selectedModel.id === model.id}
+                  onClick={() => handleModelSelect(model)}
+                  canAfford={canAfford(model)}
+                />
+              ))}
+              
+              {/* Image Models */}
+              <div className="px-2 py-1.5 mt-3 mb-1">
+                <span className="text-[10px] uppercase tracking-widest text-amber-400/70 font-semibold">
+                  Image Generation
+                </span>
+              </div>
+              {AI_MODELS.image.map(model => (
+                <ModelOption 
+                  key={model.id}
+                  model={model}
+                  active={selectedModel.id === model.id}
+                  onClick={() => handleModelSelect(model)}
+                  canAfford={canAfford(model)}
+                />
+              ))}
+              
+              {/* Video Models */}
+              <div className="px-2 py-1.5 mt-3 mb-1">
+                <span className="text-[10px] uppercase tracking-widest text-pink-400/70 font-semibold">
+                  Video Generation
+                </span>
+              </div>
+              {AI_MODELS.video.map(model => (
+                <ModelOption 
+                  key={model.id}
+                  model={model}
+                  active={selectedModel.id === model.id}
+                  onClick={() => handleModelSelect(model)}
+                  canAfford={canAfford(model)}
+                />
+              ))}
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* Portal-based Plus Menu */}
+      {showMenu && (
+        <Portal>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-[9998]" 
+            onClick={() => setShowMenu(false)} 
+          />
+          {/* Menu */}
+          <div 
+            className="fixed z-[9999] w-56 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 ring-1 ring-white/5 p-1.5 animate-in fade-in-0 zoom-in-95 duration-150"
+            style={{ 
+              left: plusMenuCoords.left,
+              bottom: typeof window !== 'undefined' ? window.innerHeight - plusMenuCoords.top + 8 : 0,
+            }}
+          >
+            <div className="px-2 py-1.5 mb-1">
+              <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium">
+                Attachments
+              </span>
+            </div>
+            <MenuItem 
+              icon={ImageIcon} 
+              label="Upload Image" 
+              shortcut="⌘I"
+              onClick={() => {
+                fileInputRef.current?.click();
+                setShowMenu(false);
+              }}
+            />
+            <MenuItem 
+              icon={Paperclip} 
+              label="Upload File" 
+              shortcut="⌘U"
+              onClick={() => {
+                fileInputRef.current?.click();
+                setShowMenu(false);
+              }}
+            />
+            <MenuItem 
+              icon={Sparkles} 
+              label="Generate Asset" 
+              onClick={() => {
+                handleModelSelect(AI_MODELS.image[0]);
+                setShowMenu(false);
+                onGenerateAsset?.();
+              }}
+            />
+            
+            <div className="h-px bg-zinc-800 my-1.5" />
+            
+            <MenuItem 
+              icon={History} 
+              label="History" 
+              shortcut="⌘H"
+              onClick={() => {
+                setShowMenu(false);
+                onOpenHistory?.();
+              }}
+            />
+            <MenuItem 
+              icon={Settings} 
+              label="Settings"
+              onClick={() => {
+                setShowMenu(false);
+                onOpenSettings?.();
+              }}
+            />
+          </div>
+        </Portal>
       )}
 
       {/* The floating input container */}
@@ -380,78 +543,22 @@ export function ChatInputBar({
         
         {/* TOP BAR: MODEL SELECTOR & CREDITS */}
         <div className="flex items-center justify-between px-3 pt-2.5 pb-0">
-          <div className="relative">
-            <button 
-              onClick={() => setShowModelMenu(!showModelMenu)}
-              className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded-md hover:bg-zinc-700/50"
-            >
-              <selectedModel.icon size={12} className={cn(
-                selectedModel.category === 'video' ? "text-pink-400" :
-                selectedModel.category === 'image' ? "text-amber-400" :
-                isPlanMode ? "text-blue-400" : "text-violet-400"
-              )} />
-              <span>{selectedModel.name}</span>
-              {selectedModel.cost > 0 && (
-                <span className="text-[10px] text-zinc-500">({selectedModel.cost}c)</span>
-              )}
-              <ChevronDown size={10} className={cn("transition-transform", showModelMenu && "rotate-180")} />
-            </button>
-
-            {/* MODEL DROPDOWN MATRIX - Pops UP with solid opaque background */}
-            {showModelMenu && (
-              <div className="absolute bottom-full mb-2 left-0 w-64 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 overflow-hidden z-[100] ring-1 ring-white/5 animate-in fade-in-0 zoom-in-95 duration-150 origin-bottom-left">
-                <div className="p-2 max-h-[400px] overflow-y-auto">
-                  {/* Coding Models */}
-                  <div className="px-2 py-1.5 mb-1">
-                    <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold">
-                      Coding
-                    </span>
-                  </div>
-                  {AI_MODELS.code.map(model => (
-                    <ModelOption 
-                      key={model.id}
-                      model={model}
-                      active={selectedModel.id === model.id}
-                      onClick={() => handleModelSelect(model)}
-                      canAfford={canAfford(model)}
-                    />
-                  ))}
-                  
-                  {/* Image Models */}
-                  <div className="px-2 py-1.5 mt-3 mb-1">
-                    <span className="text-[10px] uppercase tracking-widest text-amber-400/70 font-semibold">
-                      Image Generation
-                    </span>
-                  </div>
-                  {AI_MODELS.image.map(model => (
-                    <ModelOption 
-                      key={model.id}
-                      model={model}
-                      active={selectedModel.id === model.id}
-                      onClick={() => handleModelSelect(model)}
-                      canAfford={canAfford(model)}
-                    />
-                  ))}
-                  
-                  {/* Video Models */}
-                  <div className="px-2 py-1.5 mt-3 mb-1">
-                    <span className="text-[10px] uppercase tracking-widest text-pink-400/70 font-semibold">
-                      Video Generation
-                    </span>
-                  </div>
-                  {AI_MODELS.video.map(model => (
-                    <ModelOption 
-                      key={model.id}
-                      model={model}
-                      active={selectedModel.id === model.id}
-                      onClick={() => handleModelSelect(model)}
-                      canAfford={canAfford(model)}
-                    />
-                  ))}
-                </div>
-              </div>
+          <button 
+            ref={modelButtonRef}
+            onClick={toggleModelMenu}
+            className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded-md hover:bg-zinc-700/50"
+          >
+            <selectedModel.icon size={12} className={cn(
+              selectedModel.category === 'video' ? "text-pink-400" :
+              selectedModel.category === 'image' ? "text-amber-400" :
+              isPlanMode ? "text-blue-400" : "text-violet-400"
+            )} />
+            <span>{selectedModel.name}</span>
+            {selectedModel.cost > 0 && (
+              <span className="text-[10px] text-zinc-500">({selectedModel.cost}c)</span>
             )}
-          </div>
+            <ChevronDown size={10} className={cn("transition-transform", showModelMenu && "rotate-180")} />
+          </button>
 
           {/* Credits Display */}
           <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
@@ -467,79 +574,19 @@ export function ChatInputBar({
         <div className="flex items-end gap-2 p-2">
           
           {/* Plus menu button */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowMenu(!showMenu)}
-              className={cn(
-                "p-2 rounded-xl transition-all",
-                showMenu 
-                  ? "bg-zinc-700 text-white" 
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50"
-              )}
-            >
-              <Plus size={18} className={cn("transition-transform", showMenu && "rotate-45")} />
-            </button>
-
-            {/* Popup menu - Pops UP with solid opaque background */}
-            {showMenu && (
-              <div className="absolute bottom-full left-0 mb-2 z-[100] w-56 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 ring-1 ring-white/5 p-1.5 animate-in fade-in-0 zoom-in-95 duration-150 origin-bottom-left">
-                <div className="px-2 py-1.5 mb-1">
-                  <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium">
-                    Attachments
-                  </span>
-                </div>
-                <MenuItem 
-                  icon={ImageIcon} 
-                  label="Upload Image" 
-                  shortcut="⌘I"
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                    setShowMenu(false);
-                  }}
-                />
-                <MenuItem 
-                  icon={Paperclip} 
-                  label="Upload File" 
-                  shortcut="⌘U"
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                    setShowMenu(false);
-                  }}
-                />
-                <MenuItem 
-                  icon={Sparkles} 
-                  label="Generate Asset" 
-                  onClick={() => {
-                    // Switch to an image model and trigger callback
-                    handleModelSelect(AI_MODELS.image[0]);
-                    setShowMenu(false);
-                    onGenerateAsset?.();
-                  }}
-                />
-                
-                <div className="h-px bg-zinc-800 my-1.5" />
-                
-                <MenuItem 
-                  icon={History} 
-                  label="History" 
-                  shortcut="⌘H"
-                  onClick={() => {
-                    setShowMenu(false);
-                    onOpenHistory?.();
-                  }}
-                />
-                <MenuItem 
-                  icon={Settings} 
-                  label="Settings"
-                  onClick={() => {
-                    setShowMenu(false);
-                    onOpenSettings?.();
-                  }}
-                />
-              </div>
+          <button
+            ref={plusButtonRef}
+            type="button"
+            onClick={togglePlusMenu}
+            className={cn(
+              "p-2 rounded-xl transition-all",
+              showMenu 
+                ? "bg-zinc-700 text-white" 
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50"
             )}
-          </div>
+          >
+            <Plus size={18} className={cn("transition-transform", showMenu && "rotate-45")} />
+          </button>
 
           {/* Textarea */}
           <textarea
