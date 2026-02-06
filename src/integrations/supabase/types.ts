@@ -2641,9 +2641,17 @@ export type Database = {
           bio: string | null
           created_at: string | null
           creator_tags: string[] | null
+          editor_about: string | null
+          editor_city: string | null
+          editor_country: string | null
+          editor_hourly_rate_cents: number | null
+          editor_languages: string[] | null
+          editor_services: string[] | null
+          editor_social_links: Json | null
           full_name: string | null
           id: string | null
           is_creator: boolean | null
+          is_editor: boolean | null
           is_owner: boolean | null
           social_links: Json | null
           user_id: string | null
@@ -2657,9 +2665,17 @@ export type Database = {
           bio?: string | null
           created_at?: string | null
           creator_tags?: string[] | null
+          editor_about?: string | null
+          editor_city?: string | null
+          editor_country?: string | null
+          editor_hourly_rate_cents?: number | null
+          editor_languages?: string[] | null
+          editor_services?: string[] | null
+          editor_social_links?: Json | null
           full_name?: string | null
           id?: string | null
           is_creator?: boolean | null
+          is_editor?: boolean | null
           is_owner?: never
           social_links?: Json | null
           user_id?: string | null
@@ -2673,9 +2689,17 @@ export type Database = {
           bio?: string | null
           created_at?: string | null
           creator_tags?: string[] | null
+          editor_about?: string | null
+          editor_city?: string | null
+          editor_country?: string | null
+          editor_hourly_rate_cents?: number | null
+          editor_languages?: string[] | null
+          editor_services?: string[] | null
+          editor_social_links?: Json | null
           full_name?: string | null
           id?: string | null
           is_creator?: boolean | null
+          is_editor?: boolean | null
           is_owner?: never
           social_links?: Json | null
           user_id?: string | null
