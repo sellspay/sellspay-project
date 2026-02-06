@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/lib/auth';
 
 interface UseUserCreditsReturn {
   credits: number;
@@ -9,12 +10,25 @@ interface UseUserCreditsReturn {
   deductCredits: (amount: number, action: string) => Promise<boolean>;
 }
 
+const PRIVILEGED_CREDITS = 999_999;
+
 export function useUserCredits(): UseUserCreditsReturn {
+  const { isAdmin, isOwner } = useAuth();
+  const isPrivileged = isAdmin || isOwner;
+
   const [credits, setCredits] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCredits = useCallback(async () => {
+    // Owner/Admin bypass: treat as unlimited and skip all wallet reads.
+    if (isPrivileged) {
+      setCredits(PRIVILEGED_CREDITS);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -48,9 +62,12 @@ export function useUserCredits(): UseUserCreditsReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isPrivileged]);
 
   const deductCredits = useCallback(async (amount: number, action: string): Promise<boolean> => {
+    // Owner/Admin bypass: never deduct.
+    if (isPrivileged) return true;
+
     try {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session?.user) {
@@ -62,7 +79,7 @@ export function useUserCredits(): UseUserCreditsReturn {
       });
 
       if (error) throw error;
-      
+
       if (!data.success) {
         if (data.error === 'INSUFFICIENT_CREDITS') {
           setError('Insufficient credits');
@@ -79,7 +96,7 @@ export function useUserCredits(): UseUserCreditsReturn {
       setError(err instanceof Error ? err.message : 'Failed to deduct credits');
       return false;
     }
-  }, []);
+  }, [isPrivileged]);
 
   useEffect(() => {
     fetchCredits();
@@ -96,6 +113,9 @@ export function useUserCredits(): UseUserCreditsReturn {
 
   // Subscribe to wallet changes in real-time
   useEffect(() => {
+    // Owner/Admin bypass: nothing to subscribe to.
+    if (isPrivileged) return;
+
     const setupRealtimeSubscription = async () => {
       const { data: session } = await supabase.auth.getSession();
       if (!session.session?.user) return;
@@ -124,7 +144,7 @@ export function useUserCredits(): UseUserCreditsReturn {
     };
 
     setupRealtimeSubscription();
-  }, []);
+  }, [isPrivileged]);
 
   return {
     credits,
