@@ -420,9 +420,24 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   };
 
   // Send message handler (with auto-create) - NOW USES AGENT LOOP
+  // Implements the "Chat-to-Create" flow: first message creates project automatically
   const handleSendMessage = async (prompt: string) => {
-    // Auto-create project if we don't have one yet
-    const projectId = await ensureProject();
+    const isFreshStart = !activeProjectId;
+    
+    // Generate a smart project name from the first prompt
+    // Extract first 4-5 meaningful words as the project name
+    let projectName: string | undefined;
+    if (isFreshStart) {
+      const words = prompt
+        .replace(/[^\w\s]/g, '') // Remove punctuation
+        .split(/\s+/)
+        .filter(w => w.length > 2) // Skip tiny words
+        .slice(0, 5);
+      projectName = words.length > 0 ? words.join(' ') : undefined;
+    }
+    
+    // Auto-create project if we don't have one yet (with smart name)
+    const projectId = await ensureProject(projectName);
     if (!projectId) {
       toast.error('Failed to start project');
       return;
@@ -701,93 +716,93 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           onSignOut={handleSignOut}
         />
 
-        {/* Split View Content */}
-        {!hasActiveProject ? (
-          <EmptyCanvasState onCreateProject={handleCreateProject} />
-        ) : (
-          <div className="flex-1 flex min-h-0 overflow-hidden">
-            {/* Preview panel - PURE CANVAS (no border, shadow separation) */}
-            <div
-              className="flex-1 min-w-0 bg-background overflow-hidden relative flex flex-col"
-              style={{ isolation: 'isolate', contain: 'strict' }}
-            >
-              {/* Conditional Content: Image Studio / Video Studio / Preview / Code */}
-              {(viewMode === 'image' || viewMode === 'video') ? (
-                <GenerationCanvas
-                  mode={viewMode}
-                  asset={currentAsset}
-                  isLoading={isCurrentlyGenerating}
-                  onRetry={handleRetryAsset}
-                  onUseInCanvas={() => setShowPlacementModal(true)}
-                  onFeedback={handleAssetFeedback}
-                  activeModel={activeModel}
-                />
-              ) : (
-                <div className={`flex-1 min-h-0 ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}>
-                  <div
-                    className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'}`}
-                  >
-                    <PreviewErrorBoundary
-                      onAutoFix={handleAutoFix}
-                      onReset={resetCode}
-                    >
-                      <VibecoderPreview
-                        key={`preview-${activeProjectId}-${resetKey}-${refreshKey}`}
-                        code={code}
-                        isStreaming={isStreaming}
-                        viewMode={viewMode}
-                        onError={(error) => {
-                          console.warn('[VibecoderPreview] Sandpack error detected:', error);
-                        }}
-                      />
-                    </PreviewErrorBoundary>
-                  </div>
-                </div>
-              )}
-
-              {/* Overlay while dragging */}
-              {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
-            </div>
-
-            {/* Chat panel - only when an active project exists */}
-            <div
-              style={{ width: sidebarWidth }}
-              className="shrink-0 flex flex-col bg-muted/50 overflow-hidden relative"
-            >
-              {/* Refined drag handle - subtle until interaction */}
-              <div
-                onMouseDown={startResizing}
-                className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 transition-all ${
-                  isDragging
-                    ? 'bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.35)]'
-                    : 'bg-transparent hover:bg-border'
-                }`}
-              />
-
-              <VibecoderChat
-                key={`chat-${activeProjectId}-${resetKey}`}
-                onSendMessage={handleSendMessage}
-                onGenerateAsset={handleGenerateAsset}
-                isStreaming={isStreaming || isAgentRunning}
-                onCancel={() => {
-                  cancelStream();
-                  cancelAgent();
-                }}
-                messages={messages}
-                onRateMessage={rateMessage}
-                onRestoreToVersion={handleRestoreCode}
-                projectName={activeProject?.name}
-                liveSteps={liveSteps}
-                agentStep={agentStep}
-                agentLogs={agentLogs}
-                isAgentMode={isAgentRunning}
+        {/* Split View Content - Chat is ALWAYS visible */}
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          {/* LEFT PANEL: Empty Canvas OR Live Preview */}
+          <div
+            className="flex-1 min-w-0 bg-background overflow-hidden relative flex flex-col"
+            style={{ isolation: 'isolate', contain: 'strict' }}
+          >
+            {!hasActiveProject ? (
+              /* Fresh Boot: Professional empty state */
+              <EmptyCanvasState />
+            ) : (viewMode === 'image' || viewMode === 'video') ? (
+              /* Creative Studio: Image/Video generation */
+              <GenerationCanvas
+                mode={viewMode}
+                asset={currentAsset}
+                isLoading={isCurrentlyGenerating}
+                onRetry={handleRetryAsset}
+                onUseInCanvas={() => setShowPlacementModal(true)}
+                onFeedback={handleAssetFeedback}
                 activeModel={activeModel}
-                onOpenBilling={() => window.open('/pricing', '_blank')}
-                onModelChange={handleModelChange}
               />
-            </div>
+            ) : (
+              /* Live Preview: Sandpack iframe */
+              <div className={`flex-1 min-h-0 ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}>
+                <div
+                  className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'}`}
+                >
+                  <PreviewErrorBoundary
+                    onAutoFix={handleAutoFix}
+                    onReset={resetCode}
+                  >
+                    <VibecoderPreview
+                      key={`preview-${activeProjectId}-${resetKey}-${refreshKey}`}
+                      code={code}
+                      isStreaming={isStreaming}
+                      viewMode={viewMode}
+                      onError={(error) => {
+                        console.warn('[VibecoderPreview] Sandpack error detected:', error);
+                      }}
+                    />
+                  </PreviewErrorBoundary>
+                </div>
+              </div>
+            )}
+
+            {/* Overlay while dragging */}
+            {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
           </div>
-        )}
+
+          {/* RIGHT PANEL: Chat - ALWAYS VISIBLE */}
+          <div
+            style={{ width: sidebarWidth }}
+            className="shrink-0 flex flex-col bg-muted/50 overflow-hidden relative"
+          >
+            {/* Refined drag handle - subtle until interaction */}
+            <div
+              onMouseDown={startResizing}
+              className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 transition-all ${
+                isDragging
+                  ? 'bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.35)]'
+                  : 'bg-transparent hover:bg-border'
+              }`}
+            />
+
+            <VibecoderChat
+              key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
+              onSendMessage={handleSendMessage}
+              onGenerateAsset={handleGenerateAsset}
+              isStreaming={isStreaming || isAgentRunning}
+              onCancel={() => {
+                cancelStream();
+                cancelAgent();
+              }}
+              messages={messages}
+              onRateMessage={rateMessage}
+              onRestoreToVersion={handleRestoreCode}
+              projectName={activeProject?.name ?? 'New Project'}
+              liveSteps={liveSteps}
+              agentStep={agentStep}
+              agentLogs={agentLogs}
+              isAgentMode={isAgentRunning}
+              activeModel={activeModel}
+              onOpenBilling={() => window.open('/pricing', '_blank')}
+              onModelChange={handleModelChange}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Placement Prompt Modal */}
