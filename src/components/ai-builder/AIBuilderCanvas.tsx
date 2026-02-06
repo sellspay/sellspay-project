@@ -8,7 +8,6 @@ import { VibecoderChat } from './VibecoderChat';
 import { ProjectSidebar } from './ProjectSidebar';
 import { PreviewErrorBoundary } from './PreviewErrorBoundary';
 import { VibecoderHeader } from './VibecoderHeader';
-import { EmptyCanvasState } from './EmptyCanvasState';
 import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects } from './hooks/useVibecoderProjects';
 import { useAgentLoop } from '@/hooks/useAgentLoop';
@@ -716,17 +715,14 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           onSignOut={handleSignOut}
         />
 
-        {/* Split View Content - Chat is ALWAYS visible */}
+        {/* Split View Content - Chat + Preview always visible */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
-          {/* LEFT PANEL: Empty Canvas OR Live Preview */}
+          {/* LEFT PANEL: Always show Sandpack preview (default code when no project) */}
           <div
             className="flex-1 min-w-0 bg-background overflow-hidden relative flex flex-col"
             style={{ isolation: 'isolate', contain: 'strict' }}
           >
-            {!hasActiveProject ? (
-              /* Fresh Boot: Professional empty state */
-              <EmptyCanvasState />
-            ) : (viewMode === 'image' || viewMode === 'video') ? (
+            {(viewMode === 'image' || viewMode === 'video') ? (
               /* Creative Studio: Image/Video generation */
               <GenerationCanvas
                 mode={viewMode}
@@ -738,7 +734,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 activeModel={activeModel}
               />
             ) : (
-              /* Live Preview: Sandpack iframe */
+              /* Live Preview: Sandpack iframe - always rendered with DEFAULT_CODE when no project */
               <div className={`flex-1 min-h-0 ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}>
                 <div
                   className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'}`}
@@ -748,7 +744,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                     onReset={resetCode}
                   >
                     <VibecoderPreview
-                      key={`preview-${activeProjectId}-${resetKey}-${refreshKey}`}
+                      key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
                       code={code}
                       isStreaming={isStreaming}
                       viewMode={viewMode}
