@@ -16,6 +16,13 @@ const CREDIT_COSTS: Record<string, number> = {
 
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
+// Model Configuration Mapping - Route to different AI backends
+const MODEL_CONFIG: Record<string, { modelId: string }> = {
+  'vibecoder-pro': { modelId: 'google/gemini-3-flash-preview' },
+  'vibecoder-flash': { modelId: 'google/gemini-2.5-flash-lite' },
+  'reasoning-o1': { modelId: 'openai/gpt-5.2' },
+};
+
 const SYSTEM_PROMPT = `You are an expert E-commerce UI/UX Designer for "SellsPay".
 Your goal is to either BUILD the requested interface OR ANSWER user questions/refuse invalid requests.
 
@@ -462,6 +469,10 @@ serve(async (req) => {
       });
     }
 
+    // Get the model configuration based on selected model
+    const config = MODEL_CONFIG[model] || MODEL_CONFIG['vibecoder-pro'];
+    console.log(`Using model: ${config.modelId} for request`);
+
     // Call Lovable AI with streaming
     const response = await fetch(LOVABLE_AI_URL, {
       method: "POST",
@@ -470,7 +481,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: config.modelId,  // Dynamic model selection
         messages,
         stream: true,
         max_tokens: 8000,
