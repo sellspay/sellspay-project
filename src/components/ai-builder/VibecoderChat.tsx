@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Send, Loader2, Square, RefreshCw, Code2, Sparkles, Undo2, CheckCircle2 } from 'lucide-react';
+import { Loader2, RefreshCw, Code2, Sparkles, Undo2, CheckCircle2 } from 'lucide-react';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { ChatInterface } from './VibecoderMessageBubble';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import { motion } from 'framer-motion';
-
+import { ChatInputBar } from './ChatInputBar';
 interface VibecoderChatProps {
   onSendMessage: (message: string) => void;
   isStreaming: boolean;
@@ -252,30 +251,15 @@ export function VibecoderChat({
         )}
       </div>
 
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="flex-shrink-0 p-4 border-t border-border/30 bg-background">
-        <div className="flex gap-2 items-center">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
-            disabled={isStreaming}
-            className="flex-1 h-10 bg-muted/30 border-border/40"
-          />
-          <Button
-            type="submit"
-            disabled={!input.trim() || isStreaming}
-            size="icon"
-            className="h-10 w-10 shrink-0 bg-violet-600 hover:bg-violet-500"
-          >
-            {isStreaming ? (
-              <Square className="w-4 h-4 fill-current" onClick={(e) => { e.preventDefault(); onCancel(); }} />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </Button>
-        </div>
-      </form>
+      {/* Premium Chat Input */}
+      <ChatInputBar
+        value={input}
+        onChange={setInput}
+        onSubmit={handleSubmit}
+        isGenerating={isStreaming}
+        onCancel={onCancel}
+        placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
+      />
     </div>
   );
 }
