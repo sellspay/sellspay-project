@@ -386,6 +386,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // would trigger unmount/remount, aborting in-flight AI generations.
   const previousProjectIdRef = useRef<string | null>(null);
   
+  // Tracks which project is currently being loaded by the orchestrator
+  // The restoration effect checks this to avoid opening the gate prematurely
+  const loadingProjectRef = useRef<string | null>(null);
+  
   // Memoize stable references to avoid re-runs
   const getLastCodeSnapshotRef = useRef(getLastCodeSnapshot);
   getLastCodeSnapshotRef.current = getLastCodeSnapshot;
@@ -401,6 +405,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // 🚨 CRITICAL: These MUST run SYNCHRONOUSLY (not inside async function)
     // Otherwise React will render with stale contentProjectId before the gate closes
     setContentProjectId(null); // Close the gate IMMEDIATELY
+    setIsVerifyingProject(true); // Block restoration effect from running too early
+    loadingProjectRef.current = activeProjectId; // Mark which project is being loaded
     unmountAgentProject();
     cancelStream();
     cancelAgent();
@@ -507,6 +513,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       }
 
       setIsVerifyingProject(false);
+      loadingProjectRef.current = null; // Clear loading lock - restoration effect can now run
     }
 
     loadRoute();
@@ -528,6 +535,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const hasRestoredCodeRef = useRef<string | null>(null);
   
   useEffect(() => {
+    // Skip if orchestrator is still loading this project (ref-based check for race condition)
+    if (loadingProjectRef.current === activeProjectId) return;
+    
+    // Skip if orchestrator is still verifying the project exists
+    if (isVerifyingProject) return;
+    
     // Skip if messages are still loading
     if (messagesLoading) return;
     
@@ -551,7 +564,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // CONTENT GATE: Now it's safe to render - correct code/messages are mounted
     console.log('🚪 Opening content gate for project:', activeProjectId);
     setContentProjectId(activeProjectId);
-  }, [activeProjectId, messagesLoading, messages.length, getLastCodeSnapshot, setCode, isStreaming]);
+  }, [activeProjectId, messagesLoading, isVerifyingProject, getLastCodeSnapshot, setCode, isStreaming]);
 
   // Reset restoration tracker when project changes
   useEffect(() => {
