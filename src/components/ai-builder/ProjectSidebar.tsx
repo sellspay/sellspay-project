@@ -90,6 +90,9 @@ export function ProjectSidebar({
     }
   };
 
+  // Hide sidebar entirely when no projects exist (fresh user)
+  const hasProjects = projects.length > 0;
+
   if (collapsed) {
     return (
       <div className="w-12 bg-zinc-950/80 flex flex-col items-center py-4 gap-2 shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)]">
@@ -101,14 +104,17 @@ export function ProjectSidebar({
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onCreateProject}
-          className="h-8 w-8 text-primary"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+        {/* Only show New Project button if user already has projects */}
+        {hasProjects && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onCreateProject}
+            className="h-8 w-8 text-primary"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        )}
         <div className="flex-1 overflow-y-auto w-full space-y-1 px-1.5">
           {projects.slice(0, 10).map((project) => (
             <Button
@@ -144,14 +150,17 @@ export function ProjectSidebar({
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button
-            onClick={onCreateProject}
-            className="flex-1 gap-2 bg-primary hover:bg-primary/90"
-            size="sm"
-          >
-            <Plus className="h-4 w-4" />
-            New Project
-          </Button>
+          {/* Only show New Project button if user already has projects */}
+          {hasProjects && (
+            <Button
+              onClick={onCreateProject}
+              className="flex-1 gap-2 bg-primary hover:bg-primary/90"
+              size="sm"
+            >
+              <Plus className="h-4 w-4" />
+              New Project
+            </Button>
+          )}
         </div>
 
         {/* Project list */}
