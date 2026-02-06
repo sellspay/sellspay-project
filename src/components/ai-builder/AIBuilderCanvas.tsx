@@ -210,20 +210,17 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   }, [loading, needsOnboarding]);
 
-  // Load existing vibecoder code
+  // Load basic data needed for the AI Builder shell (header, credits, publish state)
+  // IMPORTANT: We intentionally do NOT load '/App.tsx' from the global project_files slot here.
+  // Code should be derived from the active project (messages/code snapshots). Otherwise, deleted
+  // projects can "reappear" on refresh due to leftover profile-scoped cached code.
   useEffect(() => {
     const loadData = async () => {
-      const [layoutResp, filesResp, profileResp, walletResp] = await Promise.all([
+      const [layoutResp, profileResp, walletResp] = await Promise.all([
         supabase
           .from('ai_storefront_layouts')
           .select('*')
           .eq('profile_id', profileId)
-          .maybeSingle(),
-        supabase
-          .from('project_files')
-          .select('content')
-          .eq('profile_id', profileId)
-          .eq('file_path', '/App.tsx')
           .maybeSingle(),
         supabase
           .from('profiles')
@@ -239,11 +236,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
       if (layoutResp.data) {
         setIsPublished(layoutResp.data.is_published);
-      }
-
-      // Load saved vibecoder code if exists
-      if (filesResp.data?.content) {
-        setCode(filesResp.data.content);
       }
 
       // Set profile data for header
@@ -262,7 +254,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     };
 
     loadData();
-  }, [profileId, setCode]);
+  }, [profileId]);
 
   // Sign out handler
   const handleSignOut = async () => {
@@ -455,29 +447,46 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Handle project deletion (uses the "Total Deletion" RPC + Scorched Earth cache clear)
   const handleDeleteProject = async (projectIdToDelete: string) => {
     const isActiveProject = activeProjectId === projectIdToDelete;
+    const remainingAfterDelete = projects.filter(p => p.id !== projectIdToDelete);
+
     const success = await deleteProject(projectIdToDelete);
-    
+
     if (success) {
+      // If that was the LAST project, also wipe the profile-scoped code slot.
+      // Otherwise a hard refresh can reload old code from project_files and look like a "zombie".
+      if (remainingAfterDelete.length === 0) {
+        try {
+          await supabase
+            .from('project_files')
+            .delete()
+            .eq('profile_id', profileId)
+            .eq('file_path', '/App.tsx');
+        } catch (err) {
+          // Non-fatal; the UI reset below still prevents rendering in the canvas.
+          console.warn('[AIBuilderCanvas] Failed to clear project_files /App.tsx after last-project delete', err);
+        }
+      }
+
       // If we deleted the active project, force a COMPLETE nuclear reset
       if (isActiveProject) {
         // 1. Reset code to blank slate
         resetCode();
-        
+
         // 2. Clear chat response state
         setChatResponse(null);
-        
+
         // 3. Clear agent/streaming state
         setLiveSteps([]);
         resetAgent();
-        
+
         // 4. Reset view mode to default
         setViewMode('preview');
         setPreviewPath('/');
-        
+
         // 5. Clear any generated assets
         setCurrentImageAsset(null);
         setCurrentVideoAsset(null);
-        
+
         // 6. Increment resetKey to force React to DESTROY and re-mount all preview/chat components
         // This ensures no stale state survives in child components
         setResetKey(prev => prev + 1);
