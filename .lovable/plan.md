@@ -1,212 +1,199 @@
 
 
-# Creative Studio Implementation Plan
+# Profile Menu & Dynamic Paywall Button Implementation
 
 ## Overview
 
-This plan implements a **Creative Studio** — a dedicated workspace for generating images/videos that is architecturally separate from the website building preview. Users can:
-1. Generate assets using image/video models (Flux, Nano Banana, Kling, Luma)
-2. Review the generated asset in a dedicated canvas
-3. Inject the asset into their website with natural language placement instructions
+This plan implements two key UX enhancements for the AI Builder:
+
+1. **Profile Menu** - A polished avatar dropdown in the header next to Publish, showing credit balance, profile links, and settings
+2. **Dynamic Paywall Button** - Transform the send button into an "Upgrade/Top Up" CTA when users can't afford the selected model
 
 ---
 
-## Architecture Diagram
+## Part 1: ProfileMenu Component (NEW)
 
+### File: `src/components/ai-builder/ProfileMenu.tsx`
+
+Create a new dropdown component with:
+
+**Trigger Element:**
+- 36x36 rounded avatar (image or initials fallback)
+- Ring effect on hover/focus
+- Active state with violet ring
+
+**Dropdown Content (Portal-based for z-index safety):**
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                        AIBuilderCanvas                              │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│   viewMode: 'preview' | 'code' | 'generation'  ◄── NEW STATE        │
-│   currentAsset: GeneratedAsset | null           ◄── NEW STATE        │
-│   isAssetGenerating: boolean                    ◄── NEW STATE        │
-│                                                                     │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│   ┌─────────────┐     ┌─────────────────────────────────────────┐   │
-│   │  Project    │     │          MAIN CANVAS AREA               │   │
-│   │  Sidebar    │     │  ┌─────────────────────────────────────┐│   │
-│   │             │     │  │  if viewMode === 'generation':     ││   │
-│   │             │     │  │    <GenerationCanvas />              ││   │
-│   │             │     │  │  else:                               ││   │
-│   │             │     │  │    <VibecoderPreview />              ││   │
-│   │             │     │  └─────────────────────────────────────┘│   │
-│   └─────────────┘     └─────────────────────────────────────────┘   │
-│                                                                     │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │                   CHAT PANEL                                │   │
-│   │   ChatInputBar (model selector detects image/video models)  │   │
-│   └─────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────┐
+│  [Avatar] Username                  │
+│           Pro Member (tier badge)   │
+├─────────────────────────────────────┤
+│  ┌─────────────────────────────────┐│
+│  │ ✨  Balance                     ││
+│  │     2,450 Credits    [Top Up]  ││
+│  └─────────────────────────────────┘│
+├─────────────────────────────────────┤
+│  👤 My Profile          →          │
+│  ⚙️ Settings            →          │
+│  💳 Billing             →          │
+├─────────────────────────────────────┤
+│  🚪 Sign Out                        │
+└─────────────────────────────────────┘
 ```
-
----
-
-## Part 1: New Types & State Management
-
-### File: `src/components/ai-builder/types/generation.ts` (NEW)
-
-Define the generated asset interface and related types:
-
-```typescript
-export interface GeneratedAsset {
-  id: string;
-  type: 'image' | 'video';
-  url: string;
-  prompt: string;
-  modelId: string;
-  createdAt: Date;
-}
-
-export type ViewMode = 'preview' | 'code' | 'generation';
-```
-
-### File: `src/components/ai-builder/AIBuilderCanvas.tsx` (MODIFY)
-
-Add new state variables:
-- `viewMode: 'preview' | 'code' | 'generation'` (extend existing)
-- `currentAsset: GeneratedAsset | null`
-- `isAssetGenerating: boolean`
-- `showPlacementModal: boolean`
-
-Add new handlers:
-- `handleAssetGeneration()` — calls backend, switches to generation view
-- `handleApplyToCanvas()` — takes placement instructions and constructs special prompt
-- `handleRetryGeneration()` — regenerates with same prompt
-
----
-
-## Part 2: Generation Canvas Component (NEW)
-
-### File: `src/components/ai-builder/GenerationCanvas.tsx`
-
-A new component that replaces the website preview when in generation mode.
-
-**Three Visual States:**
-
-| State | Description |
-|-------|-------------|
-| Empty | No generation started — shows "Creative Studio" placeholder with icon |
-| Loading | Generation in progress — animated spinner with "Creating magic..." text |
-| Result | Asset displayed with floating action toolbar |
-
-**Action Toolbar (on Result state):**
-- 👍 / 👎 — Feedback buttons
-- 🔄 Retry — Regenerate with same prompt
-- ✨ Use in Canvas — Opens PlacementPromptModal
 
 **Props:**
 ```typescript
-interface GenerationCanvasProps {
-  asset: GeneratedAsset | null;
-  isLoading: boolean;
-  onRetry: () => void;
-  onUseInCanvas: () => void;
-  onFeedback: (rating: 'positive' | 'negative') => void;
+interface ProfileMenuProps {
+  avatarUrl?: string | null;
+  username?: string | null;
+  userCredits: number;
+  onSignOut: () => void;
 }
 ```
 
-**Design:**
-- Full-height dark background (`bg-zinc-950`)
-- Asset centered with `max-h-full max-w-full object-contain`
-- Video uses HTML5 video player with controls
-- Floating toolbar at bottom center with glassmorphism styling
+**Technical Details:**
+- Use React Portal to escape parent z-index/overflow constraints
+- Click-outside handler to close menu
+- Navigate using `useNavigate()` for profile/settings/billing links
 
 ---
 
-## Part 3: Placement Prompt Modal (NEW)
+## Part 2: Header Integration
 
-### File: `src/components/ai-builder/PlacementPromptModal.tsx`
-
-A modal that appears when user clicks "Use in Canvas".
-
-**UI Elements:**
-- Thumbnail of the generated asset (16x16 preview)
-- Headline: "Where should this go?"
-- Subtext: "Describe the exact location on your canvas"
-- Textarea for placement instructions
-- Submit button: "Apply to Canvas"
-
-**Behavior:**
-1. User enters natural language instructions (e.g., "Replace the main hero image")
-2. On submit, constructs a special prompt for the AI:
-   ```
-   [ASSET_INJECTION_REQUEST]
-   Asset Type: image
-   Asset URL: https://...base64...
-   User Instructions: Replace the main hero image with this logo
-   
-   TASK: Modify the existing code to place this asset as specified.
-   ```
-3. Closes modal, switches to preview mode, triggers code generation
-
----
-
-## Part 4: ChatInputBar Integration
-
-### File: `src/components/ai-builder/ChatInputBar.tsx` (MODIFY)
-
-The `AI_MODELS` config already has `category` property. We need to ensure the parent component can detect when an image/video model is selected.
+### File: `src/components/ai-builder/VibecoderHeader.tsx`
 
 **Changes:**
-- Export the `category` property on `AIModel` type
-- No structural changes needed — the parent (`VibecoderChat`) receives the model in `onSubmit`
+1. Add new prop: `avatarUrl?: string | null`
+2. Add new prop: `userCredits: number`
+3. Add new prop: `onSignOut: () => void`
+4. Import `ProfileMenu` component
+5. Add vertical divider after Publish button
+6. Place `<ProfileMenu />` at the end of RIGHT section
+
+**Updated RIGHT section:**
+```tsx
+{/* RIGHT: Actions */}
+<div className="flex items-center gap-3">
+  {/* Address Bar */}
+  ...
+  
+  {/* View Live Button */}
+  ...
+
+  {/* Publish Button */}
+  <Button ...>Publish</Button>
+
+  {/* VISUAL DIVIDER */}
+  <div className="w-px h-6 bg-zinc-800" />
+
+  {/* PROFILE MENU */}
+  <ProfileMenu 
+    avatarUrl={avatarUrl}
+    username={username}
+    userCredits={userCredits}
+    onSignOut={onSignOut}
+  />
+</div>
+```
 
 ---
 
-## Part 5: Chat Handler Flow Routing
+## Part 3: AIBuilderCanvas State Integration
 
-### File: `src/components/ai-builder/VibecoderChat.tsx` (MODIFY)
+### File: `src/components/ai-builder/AIBuilderCanvas.tsx`
 
-Update `handleSubmit` to detect asset models and route appropriately:
+**Changes:**
+1. Import `useUserCredits` hook (already imported in VibecoderChat)
+2. Fetch user profile data for avatar URL
+3. Pass credits and avatar to `VibecoderHeader`
+4. Add sign-out handler
 
+**New State:**
 ```typescript
-const handleSubmit = (options: { model: AIModel; ... }) => {
-  const isAssetModel = options.model.category === 'image' || options.model.category === 'video';
-  
-  if (isAssetModel) {
-    // Call onGenerateAsset with model and prompt
-    onGenerateAsset?.(options.model, input);
-  } else {
-    // Existing code generation flow
-    onSendMessage(finalPrompt);
-  }
+const { credits: userCredits } = useUserCredits();
+const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+
+// In loadData effect, also fetch avatar
+const profileResp = await supabase
+  .from('profiles')
+  .select('username, avatar_url')
+  .eq('id', profileId)
+  .maybeSingle();
+
+if (profileResp.data?.avatar_url) {
+  setUserAvatarUrl(profileResp.data.avatar_url);
+}
+```
+
+**Sign-out Handler:**
+```typescript
+const handleSignOut = async () => {
+  await supabase.auth.signOut();
+  navigate('/login');
 };
 ```
 
-**New Prop on VibecoderChat:**
-```typescript
-onGenerateAsset?: (model: AIModel, prompt: string) => void;
+---
+
+## Part 4: Dynamic Paywall Button
+
+### File: `src/components/ai-builder/ChatInputBar.tsx`
+
+**Changes to Send Button Logic:**
+
+1. Add new prop: `onOpenBilling?: () => void`
+2. Modify `handleSubmit` to intercept when `!canAfford`
+3. Transform button appearance when user can't afford selected model
+
+**New Button Behavior:**
+
+| State | Appearance | Action |
+|-------|------------|--------|
+| Empty input | Gray arrow (disabled) | None |
+| Has input + can afford | Colored arrow (violet/amber/pink) | Submit |
+| Has input + cannot afford | Orange "Top Up" with Lock icon | Opens billing modal |
+| Generating | Red square (stop) | Cancel |
+
+**Updated Button Code:**
+```tsx
+{!canAfford(selectedModel) && (value.trim() || attachments.length > 0) ? (
+  // PAYWALL GATE - Transform to upgrade CTA
+  <button
+    onClick={() => onOpenBilling?.()}
+    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 
+               text-white shadow-lg shadow-orange-900/30 flex items-center gap-2 
+               font-bold text-xs animate-pulse"
+  >
+    <Lock size={14} />
+    <span>Top Up</span>
+  </button>
+) : (
+  // Normal send/stop button
+  <button ... current logic ... />
+)}
 ```
+
+**Visual Warning:**
+- Add red border glow to input container when `!canAfford`
+- Show small warning text below input: "Insufficient credits for {model} ({cost}c)"
 
 ---
 
-## Part 6: Header View Mode Update
+## Part 5: Billing Flow Connection
 
-### File: `src/components/ai-builder/VibecoderHeader.tsx` (MODIFY)
+### File: `src/components/ai-builder/VibecoderChat.tsx`
 
-Extend the view mode pill to support a third "Studio" option:
+**Changes:**
+1. Add state: `const [showBillingModal, setShowBillingModal] = useState(false)`
+2. Pass `onOpenBilling` prop to ChatInputBar
+3. Import/use existing `UpgradeModal` component (if exists) or navigate to `/pricing`
 
+**Alternative:** Navigate directly to `/pricing` page:
 ```typescript
-viewMode: 'preview' | 'code' | 'generation'
+const handleOpenBilling = () => {
+  window.open('/pricing', '_blank');
+};
 ```
-
-Add a third button in the view switcher with 🎨 icon and "Studio" label. This allows manual switching between modes.
-
----
-
-## Part 7: Backend Integration
-
-### File: `supabase/functions/storefront-generate-asset/index.ts` (EXISTING)
-
-This function already handles:
-- Credit deduction
-- Image generation via Lovable AI
-- Saving to `storefront_generated_assets` table
-
-**No changes needed** — the frontend will call this function from `AIBuilderCanvas`.
 
 ---
 
@@ -214,46 +201,46 @@ This function already handles:
 
 | File | Action | Changes |
 |------|--------|---------|
-| `src/components/ai-builder/types/generation.ts` | CREATE | New types for GeneratedAsset, ViewMode |
-| `src/components/ai-builder/GenerationCanvas.tsx` | CREATE | New canvas component with 3 states (empty/loading/result) |
-| `src/components/ai-builder/PlacementPromptModal.tsx` | CREATE | Modal for asset placement instructions |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | MODIFY | Add generation state, asset state, routing logic |
-| `src/components/ai-builder/VibecoderChat.tsx` | MODIFY | Add onGenerateAsset prop and routing in handleSubmit |
-| `src/components/ai-builder/VibecoderHeader.tsx` | MODIFY | Add "Studio" view mode option |
-| `src/components/ai-builder/ChatInputBar.tsx` | MINOR | Ensure category export on AIModel type |
+| `src/components/ai-builder/ProfileMenu.tsx` | CREATE | New dropdown component with avatar, credits, and navigation |
+| `src/components/ai-builder/VibecoderHeader.tsx` | MODIFY | Add ProfileMenu after Publish button with divider |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | MODIFY | Pass avatar and credits to header, add sign-out handler |
+| `src/components/ai-builder/ChatInputBar.tsx` | MODIFY | Add paywall logic to send button, warning states |
+| `src/components/ai-builder/VibecoderChat.tsx` | MODIFY | Add onOpenBilling handler and pass to ChatInputBar |
+| `src/components/ai-builder/index.ts` | MODIFY | Export ProfileMenu |
 
 ---
 
-## User Flow Summary
+## User Flow Examples
 
-1. **Select Model**: User clicks model dropdown, selects "Flux 1.1 Pro"
-2. **Type Prompt**: "A premium logo with violet accents"
-3. **Submit**: System detects image model → routes to asset generation
-4. **View Switches**: `viewMode` changes to `'generation'`, website preview replaced by Creative Studio
-5. **Loading**: Spinner with "Creating magic..." while backend generates
-6. **Result**: Generated image appears centered, floating toolbar visible
-7. **Use in Canvas**: User clicks button → PlacementPromptModal opens
-8. **Instructions**: User types "Put this in the header section"
-9. **Apply**: Modal closes, `viewMode` changes to `'preview'`, special prompt sent to code generator
-10. **Result**: Website preview shows with new image inserted
+### Profile Menu Flow:
+1. User clicks avatar in top-right corner
+2. Dropdown appears with glassmorphism styling
+3. Shows "Balance: 2,450 Credits" with Top Up button
+4. Links to Profile, Settings, Billing
+5. Sign Out at bottom
+
+### Paywall Gate Flow:
+1. User has 5 credits, selects "Flux 1.1 Pro" (costs 10c)
+2. Input border glows red
+3. Send button transforms: Gray Arrow → Orange "🔒 Top Up"
+4. Small red text appears: "Insufficient credits for Flux 1.1 Pro (10c)"
+5. Clicking "Top Up" opens pricing page in new tab (or billing modal)
 
 ---
 
 ## Technical Considerations
 
-### Asset URL Handling
-The Lovable AI image generation returns base64-encoded images. These will be passed directly to the Sandpack preview since:
-- Base64 URLs work in `<img src="data:image/...">` tags
-- No separate upload/storage step needed for preview
-- Assets can optionally be saved to Supabase Storage later for persistence
+### Portal Usage (ProfileMenu)
+- Menu rendered via `createPortal(menu, document.body)` to escape header overflow
+- Position calculated using `getBoundingClientRect()` 
+- Click-outside listener to close
 
-### Credit Tracking
-The existing `storefront-generate-asset` function already deducts credits before generation. The frontend should:
-- Check user credits before allowing generation
-- Display toast on 402 (insufficient credits) response
+### Credits Display
+- Show balance formatted with `toLocaleString()` (e.g., "2,450")
+- Red color when credits < 100
+- "Low Balance" badge when credits < selected model cost
 
-### Error Handling
-- If generation fails, refund credits (already implemented in backend)
-- Show error toast and remain in generation view
-- Allow retry with same prompt
+### Avatar Fallback
+- If no `avatar_url`, show initials (first 2 chars of username)
+- Gradient background for initials
 
