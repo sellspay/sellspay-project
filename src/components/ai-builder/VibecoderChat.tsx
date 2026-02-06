@@ -5,7 +5,8 @@ import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { ChatInterface } from './VibecoderMessageBubble';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import { motion } from 'framer-motion';
-import { ChatInputBar } from './ChatInputBar';
+import { ChatInputBar, type AIModel } from './ChatInputBar';
+import { useUserCredits } from '@/hooks/useUserCredits';
 interface VibecoderChatProps {
   onSendMessage: (message: string) => void;
   isStreaming: boolean;
@@ -131,11 +132,17 @@ export function VibecoderChat({
     }
   }, [messages, isStreaming]);
 
-  const handleSubmit = (e?: React.FormEvent, isPlanMode?: boolean, model?: string) => {
-    e?.preventDefault();
+  // User credits hook
+  const { credits: userCredits } = useUserCredits();
+
+  const handleSubmit = (options: { 
+    isPlanMode: boolean; 
+    model: AIModel; 
+    attachments: File[];
+  }) => {
     if (!input.trim() || isStreaming) return;
-    // TODO: Use isPlanMode and model for plan-based generation
-    console.log('Submit with Plan Mode:', isPlanMode, 'Model:', model);
+    // TODO: Use isPlanMode, model, and attachments for enhanced generation
+    console.log('Submit with Plan Mode:', options.isPlanMode, 'Model:', options.model.name, 'Attachments:', options.attachments.length);
     onSendMessage(input.trim());
     setInput('');
   };
@@ -261,6 +268,7 @@ export function VibecoderChat({
         isGenerating={isStreaming}
         onCancel={onCancel}
         placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
+        userCredits={userCredits}
       />
     </div>
   );
