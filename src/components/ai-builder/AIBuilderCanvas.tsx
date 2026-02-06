@@ -392,27 +392,22 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   
   useLayoutEffect(() => {
     let isMounted = true;
+    
+    // Skip if project ID hasn't actually changed (prevents re-runs from other deps)
+    if (previousProjectIdRef.current === activeProjectId && previousProjectIdRef.current !== null) {
+      return;
+    }
+    
+    // 🚨 CRITICAL: These MUST run SYNCHRONOUSLY (not inside async function)
+    // Otherwise React will render with stale contentProjectId before the gate closes
+    setContentProjectId(null); // Close the gate IMMEDIATELY
+    unmountAgentProject();
+    cancelStream();
+    cancelAgent();
+    forceResetStreaming();
+    generationLockRef.current = null;
 
     async function loadRoute() {
-      // Skip if project ID hasn't actually changed (prevents re-runs from other deps)
-      if (previousProjectIdRef.current === activeProjectId && previousProjectIdRef.current !== null) {
-        return;
-      }
-      
-      // CONTENT GATE: Immediately mark workspace as "unmounted" for this route.
-      // This makes the gatekeeper block rendering on the very first render after a project switch.
-      setContentProjectId(null);
-
-      // 1. IMMEDIATE UNMOUNT: Wipe React State FIRST (before any async operations)
-      unmountAgentProject();
-      
-      // ALWAYS cancel any in-progress streams/agent when switching projects
-      // This ensures isStreaming and isAgentRunning reset to false
-      cancelStream();
-      cancelAgent();
-      forceResetStreaming(); // Safety valve to ensure isStreaming is definitely false
-      generationLockRef.current = null;
-
       // 2. DETECT PROJECT SWITCH: If switching to a different project, nuke the cache
       const isProjectSwitch = previousProjectIdRef.current !== null && 
                                previousProjectIdRef.current !== activeProjectId;
@@ -979,6 +974,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     activeProjectId && (
       contentProjectId !== activeProjectId ||
       isVerifyingProject ||
+      messagesLoading ||
       (lockedProjectId && lockedProjectId !== activeProjectId)
     )
   );
