@@ -123,6 +123,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     activeProject,
     messages,
     loading: projectsLoading,
+    messagesLoading,
     createProject,
     ensureProject,
     deleteProject,
@@ -675,8 +676,12 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   }, [viewMode, currentVideoAsset, currentImageAsset]);
 
 
-  // Show premium loading screen while verifying project OR initial data load
-  if (loading || projectsLoading || isVerifyingProject) {
+  // Show premium loading screen until EVERYTHING is ready:
+  // - Initial profile/layout data loaded
+  // - Projects list loaded
+  // - Active project verified
+  // - Messages/chat history loaded
+  if (loading || projectsLoading || isVerifyingProject || messagesLoading) {
     return <PremiumLoadingScreen />;
   }
 
