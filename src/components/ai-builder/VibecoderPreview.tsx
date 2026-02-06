@@ -6,9 +6,9 @@ import {
   SandpackPreview as SandpackPreviewComponent,
   SandpackCodeEditor,
 } from '@codesandbox/sandpack-react';
-import { Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
+import heroBg from '@/assets/hero-aurora-bg.jpg';
 import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
 import type { ViewMode } from './types/generation';
 
@@ -50,97 +50,89 @@ const SANDPACK_HEIGHT_FIX = `
   }
 `;
 
-// Premium loading steps with icons
+// Premium loading steps - clean text labels
 const LOADING_STEPS = [
-  { id: 1, label: "Analyzing your vision...", icon: "🧠" },
-  { id: 2, label: "Designing premium layout...", icon: "🎨" },
-  { id: 3, label: "Scaffolding React components...", icon: "⚛️" },
-  { id: 4, label: "Configuring product displays...", icon: "🛍️" },
-  { id: 5, label: "Injecting Tailwind styles...", icon: "💅" },
-  { id: 6, label: "Polishing interactions...", icon: "✨" },
+  "Analyzing your vision...",
+  "Designing premium layout...",
+  "Scaffolding React components...",
+  "Configuring product displays...",
+  "Injecting Tailwind styles...",
+  "Polishing interactions...",
 ];
 
-// Premium "Lovable-style" Loading Overlay with card shuffle animation
+// Premium Loading Overlay - matches PremiumLoadingScreen aesthetic
 function LoadingOverlay({ currentStep }: { currentStep: number }) {
-  const step = LOADING_STEPS[currentStep % LOADING_STEPS.length];
+  const stepLabel = LOADING_STEPS[currentStep % LOADING_STEPS.length];
   const progress = ((currentStep % LOADING_STEPS.length) + 1) / LOADING_STEPS.length * 100;
 
   return (
-    <div className="absolute inset-0 z-20 bg-zinc-950/90 backdrop-blur-xl flex flex-col items-center justify-center">
-      {/* Ambient glow effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
-      </div>
+    <div className="absolute inset-0 z-20 bg-black flex flex-col items-center justify-center overflow-hidden">
+      {/* Background Image - Same as PremiumLoadingScreen */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${heroBg})` }}
+      />
+      
+      {/* Subtle overlay for depth */}
+      <div className="absolute inset-0 bg-black/40" />
 
-      {/* Logo with pulsing glow */}
-      <motion.div 
-        className="relative mb-12"
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-      >
-        {/* Glow ring */}
-        <div className="absolute -inset-4 bg-gradient-to-r from-violet-500/20 via-blue-500/20 to-violet-500/20 rounded-3xl blur-xl animate-pulse" />
+      {/* Animated ambient glow orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-violet-600/10 rounded-full blur-[120px] animate-pulse-slow" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-fuchsia-600/10 rounded-full blur-[120px] animate-pulse-slow [animation-delay:1000ms]" />
+      </div>
+      
+      {/* MAIN CONTENT */}
+      <div className="relative z-10 flex flex-col items-center">
         
-        {/* Logo container */}
-        <div className="relative p-6 bg-zinc-900/80 border border-zinc-800/50 rounded-2xl backdrop-blur-sm">
-          <img 
-            src={sellspayLogo} 
-            alt="SellsPay" 
-            className="w-16 h-16 object-contain"
+        {/* Pulsing Logo Container */}
+        <div className="mb-8 relative">
+          {/* Subtle glow behind logo */}
+          <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full animate-pulse-slow scale-150" />
+          
+          <div className="relative bg-zinc-900/80 backdrop-blur-md border border-white/10 p-5 rounded-2xl shadow-2xl shadow-orange-500/10 animate-pulse">
+            <img 
+              src={sellspayLogo} 
+              alt="SellsPay" 
+              className="w-12 h-12 object-contain"
+            />
+          </div>
+        </div>
+
+        {/* Dynamic Status Text */}
+        <motion.h2 
+          key={stepLabel}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight text-center"
+        >
+          {stepLabel}
+        </motion.h2>
+        
+        {/* Subtext */}
+        <p className="text-zinc-400 text-sm mb-8">
+          Building your storefront
+        </p>
+
+        {/* PROGRESS BAR - Same style as PremiumLoadingScreen */}
+        <div className="w-64 h-1 bg-zinc-800/50 rounded-full overflow-hidden relative">
+          {/* Animated Gradient Bar */}
+          <motion.div 
+            className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-500 via-rose-500 to-orange-500 rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
           />
         </div>
 
-        {/* Orbiting sparkle */}
-        <motion.div
-          className="absolute -right-2 -top-2"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-        >
-          <Sparkles className="w-5 h-5 text-violet-400" />
-        </motion.div>
-      </motion.div>
-
-      {/* The Card Shuffle Animation */}
-      <div className="relative h-24 w-80">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step.id}
-            initial={{ y: 40, opacity: 0, scale: 0.95, rotateX: -15 }}
-            animate={{ y: 0, opacity: 1, scale: 1, rotateX: 0 }}
-            exit={{ y: -40, opacity: 0, scale: 0.95, rotateX: 15 }}
-            transition={{ 
-              duration: 0.5, 
-              ease: [0.32, 0.72, 0, 1],
-            }}
-            className="absolute inset-0"
-          >
-            {/* Glassmorphism card */}
-            <div className="h-full w-full rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl shadow-violet-500/10 flex items-center justify-center gap-4 px-6">
-              <span className="text-3xl">{step.icon}</span>
-              <span className="text-zinc-200 font-medium tracking-tight">
-                {step.label}
-              </span>
-            </div>
-          </motion.div>
-        </AnimatePresence>
+        {/* Subtle status indicator */}
+        <div className="flex items-center gap-2 mt-6 text-xs text-zinc-500">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+          <span>VibeCoder generating</span>
+        </div>
       </div>
-
-      {/* Progress bar */}
-      <div className="mt-10 w-64 h-1 bg-zinc-800/50 rounded-full overflow-hidden">
-        <motion.div 
-          className="h-full bg-gradient-to-r from-violet-500 to-blue-500 rounded-full"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-        />
-      </div>
-
-      {/* Subtle branding */}
-      <p className="mt-6 text-xs text-zinc-600 font-medium tracking-wide">
-        Powered by Vibecoder AI
-      </p>
     </div>
   );
 }
