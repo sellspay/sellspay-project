@@ -226,9 +226,24 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
 
         {/* Suggestion Chips - now just paste text */}
         <div className="flex flex-wrap justify-center gap-3 mt-8 animate-in fade-in duration-1000 delay-300">
-          <SuggestionChip label="SaaS Dashboard" onClick={() => handleSuggestionClick("Create a dark mode SaaS dashboard")} />
-          <SuggestionChip label="Portfolio Site" onClick={() => handleSuggestionClick("Build a minimalist portfolio for a designer")} />
-          <SuggestionChip label="E-Commerce" onClick={() => handleSuggestionClick("Design a luxury watch store landing page")} />
+          <SuggestionChip 
+            label="SaaS Dashboard" 
+            onClick={() => handleSuggestionClick(
+              "Build a premium dark-mode SaaS analytics dashboard with: a top stats bar showing MRR, active users, churn rate, and growth percentage with animated counters; a main area chart for revenue trends with gradient fills and hover tooltips; a secondary bar chart for user signups by source; a recent activity feed with avatars and timestamps; a sidebar with glassmorphism showing quick actions. Use zinc-900 background, subtle purple/blue accent gradients, rounded-2xl cards with soft shadows, smooth fade-in animations on load, and hover micro-interactions on all interactive elements. Typography should be clean with tracking-tight headings."
+            )} 
+          />
+          <SuggestionChip 
+            label="Portfolio Site" 
+            onClick={() => handleSuggestionClick(
+              "Create a stunning minimalist portfolio for a senior product designer with: an animated hero section featuring a large serif headline with a subtle text reveal animation; a curated project showcase grid (3 columns) with hover zoom effects and overlay descriptions; an about section with a professional photo, bio, and floating skill tags; a testimonials carousel with client quotes and company logos; a contact section with social links and a simple inquiry form. Use an off-white cream background with deep charcoal text, elegant serif/sans-serif font pairing, generous whitespace, smooth scroll-triggered animations, and delicate accent colors (terracotta or sage green). Include a sticky minimal header."
+            )} 
+          />
+          <SuggestionChip 
+            label="E-Commerce" 
+            onClick={() => handleSuggestionClick(
+              "Design a luxury watch e-commerce landing page with: a cinematic full-bleed hero featuring a large product image with parallax effect and bold headline with gold accent text; a featured collection row with horizontal scroll and product cards showing price, name, and quick-view hover state; a craftsmanship section with split layout (image left, text right) highlighting materials and heritage; a customer reviews section with star ratings and verified badges; a newsletter signup with elegant input styling. Use deep black background with warm gold (#C9A962) accents, sophisticated serif typography, high-contrast product photography, smooth reveal animations, and subtle grain texture overlay for premium feel."
+            )} 
+          />
         </div>
       </div>
 
