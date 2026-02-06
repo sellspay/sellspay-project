@@ -1,142 +1,183 @@
 
-# Implementation Plan: UI Cleanup + Hard Refresh Fix for White Screen of Death
+# Implementation Plan: AI Personality Fix, Scope Control & Chat Input Overhaul
 
-## Problem Summary
+## Overview
 
-1. **White Screen of Death**: When the Sandpack preview stalls or crashes, users see a blank white canvas with no way to recover. The AI cannot fix this since it's a runtime freeze, not a syntax error.
-
-2. **UI Redundancy**: Undo/Redo buttons appear in multiple places (Canvas Toolbar AND Chat Header), creating confusion about which to use.
-
-## Solution Overview
-
-We will:
-1. **Remove Undo/Redo from Canvas Toolbar** - Keep only project identity in the left section
-2. **Add a Refresh button** to the address bar that triggers a Hard Refresh
-3. **Implement the "key reset" pattern** - Changing the key on `VibecoderPreview` forces React to destroy and recreate the component, fixing white screens
+This plan addresses three distinct issues:
+1. **Robotic AI Responses**: The AI uses repetitive phrases like "I've drafted a premium layout..."
+2. **Scope Creep**: The AI "helpfully" modifies unrelated code when asked for simple changes
+3. **Chat Input UI**: The current input is a basic single-line field; needs upgrade to match the floating design with + menu
 
 ---
 
-## Architecture
+## Part 1: Fix Robotic AI Responses (Backend)
 
-```text
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│ Canvas Toolbar                                                                  │
-│  [S] Project ▾       │  [Preview] [Code] │ 📱 💻  │  🟢 /ai-builder  ↻          │
-│  ↑ No Undo/Redo      │       Center       │        │         ↑ REFRESH BUTTON    │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
+### File: `supabase/functions/vibecoder-v2/index.ts`
 
-**The Refresh Button (↻)** in the address bar will:
-- Increment a `refreshKey` state variable
-- Pass this key to `VibecoderPreview`
-- React sees the key change and destroys/rebuilds the component
-- This clears stuck state, infinite loops, or renderer crashes
+**Current State**: The system prompt already has personality guidelines (lines 29-52) but they're not aggressive enough.
 
----
+**Changes**: Enhance the personality section with stricter rules and add explicit banned phrases list.
 
-## Part 1: Update CanvasToolbar.tsx
-
-**Changes:**
-
-1. **Remove imports for Undo2, Redo2** - No longer needed
-2. **Add RefreshCw import** - For the refresh button icon
-3. **Remove history control props** - onUndo, onRedo, canUndo, canRedo
-4. **Add onRefresh prop** - New callback for Hard Refresh
-5. **Remove the "History Controls" section** from left side
-6. **Add Refresh button** to the address bar section (right side)
-
-**Updated Props Interface:**
-```typescript
-interface CanvasToolbarProps {
-  viewMode: 'preview' | 'code';
-  setViewMode: (mode: 'preview' | 'code') => void;
-  projectName?: string;
-  deviceMode?: 'desktop' | 'mobile';
-  setDeviceMode?: (mode: 'desktop' | 'mobile') => void;
-  onRefresh: () => void;  // NEW - triggers hard refresh
-}
-```
-
-**Key UI Changes:**
-- Left section: Only project name pill (no undo/redo)
-- Right section: Address bar now includes a clickable RefreshCw icon with hover effects
-
----
-
-## Part 2: Update AIBuilderCanvas.tsx
-
-**Changes:**
-
-1. **Add refreshKey state** - Starts at 0, incremented on refresh
-2. **Create handleRefresh function** - Increments refreshKey
-3. **Update CanvasToolbar props** - Remove undo/redo, add onRefresh
-4. **Update VibecoderPreview key** - Include refreshKey in the component key
-
-**Code Updates:**
+**Updated Section** (replaces lines 29-52):
 
 ```typescript
-// Add state for hard refresh
-const [refreshKey, setRefreshKey] = useState(0);
+═══════════════════════════════════════════════════════════════
+PERSONALITY & REFLECTION (Dynamic Responses) - CRITICAL
+═══════════════════════════════════════════════════════════════
+You are "Vibecoder," a creative, enthusiastic, and elite UI Architect.
 
-// Handler to force preview recreation
-const handleRefresh = useCallback(() => {
-  setRefreshKey(prev => prev + 1);
-}, []);
+**THE "ROBOTIC REPETITION" RULE (STRICT):**
+NEVER use these phrases or variations:
+- "I've drafted a premium layout..."
+- "I have generated a layout..."
+- "Here is the layout..."
+- "I have created a design..."
+- "Check the preview!"
+- "Based on your request, I..."
+- "I've implemented..."
 
-// Update CanvasToolbar (remove undo/redo props)
-<CanvasToolbar
-  viewMode={viewMode}
-  setViewMode={setViewMode}
-  projectName={activeProject?.name}
-  deviceMode={deviceMode}
-  setDeviceMode={setDeviceMode}
-  onRefresh={handleRefresh}  // NEW
-/>
+**THE "MIRRORING" RULE (MANDATORY):**
+You must start your response by directly acknowledging the *specific* action you're taking:
+- User: "Fix the scrollbar." 
+  → You: "Polishing the scrollbar. Removing default browser styling and applying a custom thin track..."
+- User: "Make it red." 
+  → You: "Switching the primary palette to Crimson Red. Updating button gradients and border accents..."
+- User: "The site is broken." 
+  → You: "Diagnosing the crash. Parsing error log and patching the broken dependency..."
+- User: "Add more products."
+  → You: "Expanding the product grid. Adding 4 new featured items with anime-themed imagery..."
+- User: "Make a professional store for my clothing brand."
+  → You: "Building your clothing brand storefront. High-fashion typography with clean gallery layout."
 
-// Update VibecoderPreview key to include refreshKey
-<VibecoderPreview 
-  key={`preview-${activeProjectId}-${resetKey}-${refreshKey}`}
-  // ... rest of props
-/>
+TONE: 
+- Concise, confident, and action-oriented
+- You are a Senior Designer at Apple, not a customer support bot
+- Lead with WHAT you're doing, not "I have done X"
+- Use present continuous tense: "Adding...", "Updating...", "Building..."
 ```
 
 ---
 
-## Part 3: VibecoderChat (No Changes Needed)
+## Part 2: Add Scope Control Protocol (Backend)
 
-The chat panel already has its own Undo button in the header, which is the correct single location for this functionality. No changes are required here.
+### File: `supabase/functions/vibecoder-v2/index.ts`
+
+**Changes**: Add a new section after the existing "INFRASTRUCTURE AWARENESS" section (after line 124).
+
+**New Section** (insert after line 124):
+
+```typescript
+═══════════════════════════════════════════════════════════════
+SCOPE OF WORK & CONSERVATION PROTOCOL (CRITICAL)
+═══════════════════════════════════════════════════════════════
+**THE "SURGICAL PRECISION" RULE:**
+You are forbidden from refactoring, reorganizing, or "cleaning up" code that is unrelated to the user's specific request.
+
+**IF** User asks: "Make the button red"
+**THEN**:
+   - Change the button class
+   - **DO NOT** reorder the imports
+   - **DO NOT** change variable names elsewhere
+   - **DO NOT** "optimize" unrelated functions
+   - **DO NOT** modify the footer, hero, or other sections
+
+**CONSERVATION OF STATE:**
+- Assume the current code is PERFECT aside from the specific change requested
+- When rewriting a file, copy existing logic EXACTLY for all unchanged parts
+- Preserve all existing:
+  - Import statements (order and naming)
+  - Function names and signatures
+  - CSS classes on unrelated elements
+  - Comments and whitespace structure
+
+**ZERO SIDE EFFECTS:**
+- A request to "add a link" must NEVER break the navbar layout
+- A request to "change images" must NEVER modify the checkout button
+- A request to "update colors" must NEVER rename components
+
+**VERIFICATION STEP:**
+Before outputting code, ask yourself: "Did I change anything I wasn't asked to?" 
+If yes, REVERT those changes immediately.
+
+**SCOPE EXAMPLES:**
+- User: "Change the product link to redirect to /products"
+  ONLY change: The href or onClick on that specific link
+  DO NOT change: Import order, variable names, other sections
+
+- User: "Make the hero section taller"
+  ONLY change: The height/padding of the hero section
+  DO NOT change: The product grid, footer, or navigation
+```
+
+---
+
+## Part 3: Premium Chat Input Component (Frontend)
+
+### File: `src/components/ai-builder/ChatInputBar.tsx` (NEW FILE)
+
+Create a new premium chat input component with:
+- **Floating design** with rounded corners and shadow
+- **+ Menu button** on the left with popup menu
+- **Auto-resizing textarea** that grows with content
+- **Plan/Visual toggle** indicator
+- **Animated send button** with loading state
+
+**Features**:
+- `Plus` button opens a menu with options (Image, History, Settings, etc.)
+- Textarea auto-expands as user types (up to 200px max)
+- Enter key submits, Shift+Enter for newline
+- Clean dark-mode styling consistent with the canvas
+
+### File: `src/components/ai-builder/VibecoderChat.tsx`
+
+**Changes**: Replace the current form input section (lines 255-278) with the new `ChatInputBar` component.
+
+**Current Input** (to be replaced):
+```tsx
+<form onSubmit={handleSubmit} className="flex-shrink-0 p-4 border-t border-border/30 bg-background">
+  <div className="flex gap-2 items-center">
+    <Input value={input} ... />
+    <Button type="submit" ... />
+  </div>
+</form>
+```
+
+**New Integration**:
+```tsx
+<ChatInputBar
+  value={input}
+  onChange={setInput}
+  onSubmit={handleSubmit}
+  isGenerating={isStreaming}
+  onCancel={onCancel}
+  placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
+/>
+```
 
 ---
 
 ## Technical Summary
 
-| File | Changes |
-|------|---------|
-| `src/components/ai-builder/CanvasToolbar.tsx` | Remove Undo/Redo, add Refresh button with handler |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | Add refreshKey state, handleRefresh, update props |
+| File | Type | Changes |
+|------|------|---------|
+| `supabase/functions/vibecoder-v2/index.ts` | Backend | Enhance personality rules, add scope control protocol |
+| `src/components/ai-builder/ChatInputBar.tsx` | NEW | Premium floating input with + menu |
+| `src/components/ai-builder/VibecoderChat.tsx` | Frontend | Integrate new ChatInputBar component |
 
 ---
 
-## Why This Fixes the White Screen
+## Expected Results
 
-When a user clicks the refresh icon:
+**After Part 1 (Personality Fix)**:
+- AI will never say "I've drafted a premium layout..."
+- Responses will mirror user's specific request: "Polishing the scrollbar..." instead of generic templates
 
-1. `refreshKey` changes from `0` to `1`
-2. The `key` prop on `VibecoderPreview` becomes different
-3. React treats it as a **completely new component**
-4. React **destroys** the old stuck iframe entirely
-5. React **creates** a fresh preview instance
+**After Part 2 (Scope Control)**:
+- AI will ONLY modify what was asked
+- No more surprise refactoring or "helpful" cleanup
 
-This clears:
-- Stuck memory from infinite loops
-- Crashed renderer state
-- Stalled Sandpack server connections
-- Any silent JavaScript errors
-
----
-
-## Expected Result
-
-**Before**: User sees white screen with no recovery option except page refresh
-
-**After**: User clicks small ↻ icon in address bar → preview instantly rebuilds → problem solved
+**After Part 3 (Chat Input)**:
+- Modern floating input design matching the reference screenshots
+- + Menu for future expansion (attachments, screenshots)
+- Auto-resizing textarea for longer prompts
+- Clean visual hierarchy with Plan/Visual toggle indicator
