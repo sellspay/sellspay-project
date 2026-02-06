@@ -61,35 +61,13 @@ function calculateCredits(complexityScore: number, skipArchitect: boolean): numb
 }
 
 // ═══════════════════════════════════════════════════════════════
-// SHADOW RENDER - Lightweight transpilation check
+// SHADOW RENDER - DISABLED (esbuild WASM not supported in Deno Edge)
 // ═══════════════════════════════════════════════════════════════
-async function shadowRender(code: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    // Use esbuild WASM for lightweight transpilation
-    const esbuild = await import("https://deno.land/x/esbuild@v0.20.1/wasm.js");
-    await esbuild.initialize({
-      wasmURL: "https://deno.land/x/esbuild@v0.20.1/esbuild.wasm",
-    });
-    
-    // Attempt to transpile the code
-    await esbuild.transform(code, {
-      loader: 'tsx',
-      jsx: 'automatic',
-      target: 'es2020',
-    });
-    
-    // Clean up
-    esbuild.stop();
-    
-    return { success: true };
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    console.log("[SHADOW RENDER] Transpile failed:", errorMessage.substring(0, 200));
-    return { 
-      success: false, 
-      error: errorMessage 
-    };
-  }
+// NOTE: esbuild WASM requires Web Workers which aren't available in Deno.
+// We now rely on the Linter agent and Sandpack's own error detection.
+function shadowRender(_code: string): { success: boolean; error?: string } {
+  // Always pass - let Sandpack handle runtime validation
+  return { success: true };
 }
 
 function tryEnqueue(controller: ReadableStreamDefaultController, chunk: Uint8Array): boolean {
@@ -433,6 +411,9 @@ serve(async (req: Request) => {
           
           // Extract code from streaming response
           const builderContent = await extractStreamedCode(builderResponse);
+          
+          // Extract summary FIRST before stripping markers
+          const summary = extractSummaryFromResponse(builderContent);
           const generatedCode = extractCodeFromResponse(builderContent);
           
           if (!generatedCode || generatedCode.length < 50) {
@@ -444,18 +425,18 @@ serve(async (req: Request) => {
             return;
           }
           
+          // Store summary for final delivery
+          let builderSummary = summary || "Applied changes to your storefront.";
+          
           sendEvent(controller, { type: 'log', data: `Generated ${generatedCode.split('\n').length} lines of code` }, streamState);
           
           // ───────────────────────────────────────────────────────────
           // SHADOW RENDER STAGE (New in v2.1)
           // ───────────────────────────────────────────────────────────
-          sendEvent(controller, { 
-            type: 'status', 
-            step: 'shadow-render',
-            data: { message: "Running transpilation check..." } 
-          }, streamState);
-          
-          const shadowResult = await shadowRender(generatedCode);
+          // SHADOW RENDER STAGE - Now always passes (esbuild WASM disabled)
+          // Sandpack handles runtime validation on the client
+          // ───────────────────────────────────────────────────────────
+          const shadowResult = shadowRender(generatedCode); // sync, always passes
           
           if (!shadowResult.success) {
             sendEvent(controller, { 
@@ -554,7 +535,7 @@ serve(async (req: Request) => {
           type: 'code', 
           data: { 
             code: finalCode,
-            summary: extractSummaryFromResponse(finalCode) || "Storefront generated successfully.",
+            summary: "Storefront generated successfully.",
           } 
         }, streamState);
         
