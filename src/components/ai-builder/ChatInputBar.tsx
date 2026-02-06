@@ -241,6 +241,7 @@ export function ChatInputBar({
   const selectedModel = activeModel ?? internalModel;
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState(""); // Live speech text (popup only)
   
   // Portal positioning state
   const [modelMenuCoords, setModelMenuCoords] = useState({ top: 0, left: 0 });
@@ -254,6 +255,8 @@ export function ChatInputBar({
 
   // Ref to remember text before speech started (for appending)
   const promptBeforeSpeechRef = useRef("");
+  // Ref to track latest transcript for onend handler (closure issue)
+  const transcriptRef = useRef("");
 
   // Speech-to-Text Handler with REAL-TIME interim results
   const toggleSpeechRecognition = useCallback(() => {
@@ -288,20 +291,22 @@ export function ChatInputBar({
 
       // Loop through results - Speech API returns fragments
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
+        const transcriptText = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript;
+          finalTranscript += transcriptText;
         } else {
-          interimTranscript += transcript;
+          interimTranscript += transcriptText;
         }
       }
 
-      // UPDATE UI INSTANTLY with both final AND interim text
-      const spacing = promptBeforeSpeechRef.current ? ' ' : '';
-      onChange(promptBeforeSpeechRef.current + spacing + finalTranscript + interimTranscript);
+      // Update the POPUP with live speech, NOT the main input (prevents resize loops)
+      const currentTranscript = finalTranscript + interimTranscript;
+      setTranscript(currentTranscript);
+      transcriptRef.current = currentTranscript; // Keep ref in sync for onend
 
       // Update base text when final transcript is confirmed
       if (finalTranscript) {
+        const spacing = promptBeforeSpeechRef.current ? ' ' : '';
         promptBeforeSpeechRef.current += spacing + finalTranscript;
       }
     };
@@ -313,6 +318,14 @@ export function ChatInputBar({
 
     recognition.onend = () => {
       setIsListening(false);
+      // Use ref for latest transcript (closure issue with state)
+      const finalText = transcriptRef.current.trim();
+      if (finalText) {
+        const spacing = promptBeforeSpeechRef.current ? ' ' : '';
+        onChange(promptBeforeSpeechRef.current + spacing + finalText);
+      }
+      setTranscript("");
+      transcriptRef.current = "";
     };
 
     speechRecognitionRef.current = recognition;
@@ -420,6 +433,30 @@ export function ChatInputBar({
 
   return (
     <div className="flex-shrink-0 p-4 bg-background relative">
+      
+      {/* SPEECH POPUP BUBBLE (Floats ABOVE input - prevents layout collision) */}
+      {isListening && (
+        <div className="absolute bottom-full left-4 right-4 mb-2 z-20 animate-in slide-in-from-bottom-2 fade-in duration-200">
+          <div className="bg-zinc-800/95 border border-zinc-700 p-4 rounded-2xl shadow-2xl flex items-start gap-4 backdrop-blur-md">
+            <div className="p-2 bg-red-500/10 rounded-full animate-pulse text-red-500 shrink-0">
+              <Mic size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Listening...</p>
+              <p className="text-lg text-white font-medium leading-relaxed break-words">
+                {transcript || <span className="text-zinc-600 italic">Say something...</span>}
+              </p>
+            </div>
+            <button 
+              onClick={toggleSpeechRecognition} 
+              className="p-1.5 hover:bg-zinc-700 rounded-full text-zinc-500 hover:text-white transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -734,17 +771,17 @@ export function ChatInputBar({
               </button>
             )}
           </div>
-
-          {/* Low Balance Warning */}
-          {!canAfford(selectedModel) && (value.trim() || attachments.length > 0) && (
-            <div className="px-3 pb-2">
-              <p className="text-[10px] text-red-400 font-medium flex items-center gap-1.5">
-                <Lock size={10} />
-                Insufficient credits for {selectedModel.name} ({selectedModel.cost}c)
-              </p>
-            </div>
-          )}
         </div>
+
+        {/* Low Balance Warning - OUTSIDE the flex container to prevent layout collision */}
+        {!canAfford(selectedModel) && (value.trim() || attachments.length > 0) && (
+          <div className="px-3 pb-2">
+            <p className="text-[10px] text-red-400 font-medium flex items-center gap-1.5">
+              <Lock size={10} />
+              Insufficient credits for {selectedModel.name} ({selectedModel.cost}c)
+            </p>
+          </div>
+        )}
 
         {/* Attachment Previews */}
         {attachments.length > 0 && (
