@@ -202,6 +202,7 @@ export function useVibecoderProjects() {
   // Add message (auto-saves to DB)
   // RACE CONDITION GUARD: Optional forProjectId allows explicit targeting
   // to prevent writes to wrong project if user switched mid-generation
+  // OPTIMISTIC UPDATE: Always update local state for better UX
   const addMessage = useCallback(async (
     role: 'user' | 'assistant' | 'system',
     content: string | null,
@@ -210,6 +211,21 @@ export function useVibecoderProjects() {
   ) => {
     const targetProjectId = forProjectId || activeProjectId;
     if (!targetProjectId) return null;
+
+    // Create optimistic message for immediate UI update
+    const optimisticMessage: VibecoderMessage = {
+      id: `optimistic-${Date.now()}`,
+      project_id: targetProjectId,
+      role,
+      content,
+      code_snapshot: codeSnapshot ?? null,
+      rating: 0,
+      created_at: new Date().toISOString(),
+    };
+
+    // OPTIMISTIC UPDATE: Immediately show the message in UI
+    // This ensures user sees their prompt right away even if project was just created
+    setMessages(prev => [...prev, optimisticMessage]);
 
     const { data, error } = await supabase
       .from('vibecoder_messages')
@@ -224,16 +240,17 @@ export function useVibecoderProjects() {
 
     if (error) {
       console.error('Failed to add message:', error);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
       return null;
     }
 
     const newMessage = data as VibecoderMessage;
     
-    // Only update local state if target matches currently active project
-    // (prevents UI desync when writing to a background project)
-    if (targetProjectId === activeProjectId) {
-      setMessages(prev => [...prev, newMessage]);
-    }
+    // Replace optimistic message with real one from DB
+    setMessages(prev => prev.map(m => 
+      m.id === optimisticMessage.id ? newMessage : m
+    ));
     
     return newMessage;
   }, [activeProjectId]);

@@ -190,7 +190,9 @@ export function VibecoderChat({
     onSendMessage(prompt);
   };
 
-  const isEmpty = messages.length === 0;
+  // Show empty state only if there are no messages AND we're not actively streaming
+  // During streaming, we should show the agent progress even if messages haven't loaded yet
+  const isEmpty = messages.length === 0 && !isStreaming;
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background rounded-r-2xl">
@@ -261,13 +263,16 @@ export function VibecoderChat({
             </div>
           </div>
         ) : (
-        <>
-            <ChatInterface 
-              messages={messages}
-              onRateMessage={onRateMessage}
-              onRestoreToVersion={onRestoreToVersion}
-            />
-            {/* Show Agent Progress UI (premium) or fallback to LiveBuildingCard */}
+          <>
+            {/* Only render ChatInterface if there are actual messages */}
+            {messages.length > 0 && (
+              <ChatInterface 
+                messages={messages}
+                onRateMessage={onRateMessage}
+                onRestoreToVersion={onRestoreToVersion}
+              />
+            )}
+            {/* Show Agent Progress UI (premium) or fallback to LiveBuildingCard during streaming */}
             {isStreaming && (
               isAgentMode && agentStep && agentStep !== 'idle' ? (
                 <AgentProgress currentStep={agentStep} logs={agentLogs} />
