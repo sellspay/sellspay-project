@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw, Code2, Sparkles, Undo2, CheckCircle2 } from 'lucide-react';
+import { Loader2, Code2, Sparkles, CheckCircle2 } from 'lucide-react';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { ChatInterface } from './VibecoderMessageBubble';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
@@ -13,10 +13,6 @@ interface VibecoderChatProps {
   onGenerateAsset?: (model: AIModel, prompt: string) => void;
   isStreaming: boolean;
   onCancel: () => void;
-  onReset: () => void;
-  onUndo: () => void;
-  hasCode: boolean;
-  canUndo: boolean;
   messages: VibecoderMessage[];
   onRateMessage: (messageId: string, rating: -1 | 0 | 1) => void;
   onRestoreToVersion: (messageId: string) => void;
@@ -111,10 +107,6 @@ export function VibecoderChat({
   onGenerateAsset,
   isStreaming, 
   onCancel, 
-  onReset,
-  onUndo,
-  hasCode,
-  canUndo,
   messages,
   onRateMessage,
   onRestoreToVersion,
@@ -217,32 +209,7 @@ export function VibecoderChat({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {canUndo && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onUndo}
-              className="gap-1.5 text-muted-foreground"
-              disabled={isStreaming}
-            >
-              <Undo2 className="w-4 h-4" />
-              Undo
-            </Button>
-          )}
-          {hasCode && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onReset}
-              className="gap-1.5 text-muted-foreground"
-              disabled={isStreaming}
-            >
-              <RefreshCw className="w-4 h-4" />
-              Reset
-            </Button>
-          )}
-        </div>
+        <div className="flex items-center gap-2" />
       </div>
 
       {/* Chat area */}
