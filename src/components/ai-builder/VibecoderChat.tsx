@@ -8,7 +8,7 @@ import { ChatInputBar, type AIModel } from './ChatInputBar';
 import { useUserCredits } from '@/hooks/useUserCredits';
 import { LiveThought } from './LiveThought';
 import { type AgentStep } from './AgentProgress';
-
+import { InsufficientCreditsCard, isCreditsError, parseCreditsError } from './InsufficientCreditsCard';
 interface VibecoderChatProps {
   onSendMessage: (message: string, styleProfile?: string) => void;
   onGenerateAsset?: (model: AIModel, prompt: string) => void;
@@ -33,6 +33,9 @@ interface VibecoderChatProps {
   architectPlan?: Record<string, unknown>;
   // Billing callback
   onOpenBilling?: () => void;
+  // Error state for credit failures
+  agentError?: string;
+  agentErrorType?: 'credits' | 'auth' | 'api' | 'unknown';
 }
 
 // Live Building Card - shows steps as they stream in
@@ -130,6 +133,8 @@ export function VibecoderChat({
   activeStyleProfile,
   onStyleProfileChange,
   onOpenBilling,
+  agentError,
+  agentErrorType,
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -276,6 +281,14 @@ export function VibecoderChat({
               <LiveThought 
                 logs={agentLogs.length > 0 ? agentLogs : liveSteps} 
                 isThinking={true} 
+              />
+            )}
+            
+            {/* Credit Error Card - Shows when backend rejects due to insufficient credits */}
+            {agentStep === 'error' && agentErrorType === 'credits' && agentError && (
+              <InsufficientCreditsCard
+                {...parseCreditsError(agentError)}
+                onUpgrade={() => onOpenBilling?.()}
               />
             )}
           </>

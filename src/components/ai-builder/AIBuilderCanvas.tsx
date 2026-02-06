@@ -21,6 +21,8 @@ import { LovableHero } from './LovableHero';
 import { PremiumLoadingScreen } from './PremiumLoadingScreen';
 import { FixErrorToast } from './FixErrorToast';
 import { checkPolicyViolation } from '@/utils/policyGuard';
+import { UpgradeModal } from '@/components/subscription/UpgradeModal';
+import { useUserCredits } from '@/hooks/useUserCredits';
 
 interface AIBuilderCanvasProps {
   profileId: string;
@@ -34,11 +36,16 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [publishing, setPublishing] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
-  const [userCredits, setUserCredits] = useState(0);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
+  // Credit preflight: Use the user credits hook for real-time balance
+  const { credits: userCredits } = useUserCredits();
+  
+  // UpgradeModal state for credit preflight failures
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Minimum loading time state - ensures smooth loading animation
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
@@ -285,6 +292,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     lastGeneratedCode, // VibeCoder 2.1: Track last code for healing
     mountProject: mountAgentProject,
     unmountProject: unmountAgentProject,
+    // Credit error handling
+    agentError,
+    agentErrorType,
   } = useAgentLoop({
     onStreamCode: streamCode,
     onCodeGenerated: async (generatedCode, summary) => {
@@ -387,10 +397,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         setSubscriptionTier(profileResp.data.subscription_tier);
       }
 
-      // Set user credits
-      if (walletResp.data) {
-        setUserCredits(walletResp.data.balance ?? 0);
-      }
+      // Note: Credits now come from useUserCredits hook (real-time sync)
 
       setLoading(false);
     };
@@ -721,6 +728,16 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Send message handler (with auto-create) - NOW USES AGENT LOOP
   // Implements the "Chat-to-Create" flow: first message creates project automatically
   const handleSendMessage = async (prompt: string) => {
+    // 💰 PREFLIGHT CHECK: Block immediately if user has insufficient credits
+    // Quick edit = 1c, Full build = 3c (minimum tier before Architect estimates true cost)
+    const isLikelyQuickEdit = code !== DEFAULT_CODE && prompt.length < 100;
+    const estimatedCredits = isLikelyQuickEdit ? 1 : 3;
+    
+    if (userCredits < estimatedCredits) {
+      setShowUpgradeModal(true);
+      return; // ⛔ Block generation - no API call wasted
+    }
+    
     // 🛡️ POLICY GUARD: Check for forbidden requests BEFORE any processing
     const violation = checkPolicyViolation(prompt);
     if (violation) {
@@ -1361,11 +1378,13 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 agentLogs={agentLogs}
                 isAgentMode={isAgentRunning}
                 activeModel={activeModel}
-                onOpenBilling={() => window.open('/pricing', '_blank')}
+                onOpenBilling={() => setShowUpgradeModal(true)}
                 onModelChange={handleModelChange}
                 activeStyleProfile={activeStyleProfile}
                 onStyleProfileChange={setActiveStyleProfile}
                 architectPlan={architectPlan}
+                agentError={agentError}
+                agentErrorType={agentErrorType}
               />
             </div>
           </div>
@@ -1379,6 +1398,13 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         onClose={() => setShowPlacementModal(false)}
         onSubmit={handleApplyAssetToCanvas}
         asset={currentAsset}
+      />
+      
+      {/* Credit Preflight Upgrade Modal */}
+      <UpgradeModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        insufficientCredits={true}
       />
     </div>
   );
