@@ -60,6 +60,28 @@ export { useSellsPayCheckout as useMarketplace, useSellsPayCheckout as default }
 `,
 
   // ============================================
+  // SPELLING VARIATIONS: AI sometimes uses "Sales" instead of "Sells"
+  // ============================================
+  
+  // Catch "useSalesPayCheckout" (one L) spelling
+  '/hooks/useSalesPayCheckout.ts': `export * from './useSellsPayCheckout';
+export { useSellsPayCheckout as useSalesPayCheckout, useSellsPayCheckout as default } from './useSellsPayCheckout';
+`,
+
+  '/useSalesPayCheckout.ts': `export * from './hooks/useSellsPayCheckout';
+export { useSellsPayCheckout as useSalesPayCheckout, useSellsPayCheckout as default } from './hooks/useSellsPayCheckout';
+`,
+
+  // Catch src/ prefix variations
+  '/src/hooks/useSellsPayCheckout.ts': `export * from '../hooks/useSellsPayCheckout';
+export { useSellsPayCheckout as default } from '../hooks/useSellsPayCheckout';
+`,
+
+  '/src/hooks/useSalesPayCheckout.ts': `export * from '../hooks/useSellsPayCheckout';
+export { useSellsPayCheckout as useSalesPayCheckout, useSellsPayCheckout as default } from '../hooks/useSellsPayCheckout';
+`,
+
+  // ============================================
   // UTILITIES: Common helper functions
   // ============================================
   
