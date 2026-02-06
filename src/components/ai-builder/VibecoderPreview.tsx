@@ -276,18 +276,37 @@ const SandpackRenderer = memo(function SandpackRenderer({
         { code: content, hidden: true }
       ])
     ),
-    // The AI-generated code
-    '/App.tsx': {
+    // Vite-style entrypoints (avoids CRA/react-error-overlay which can mutate Error.message)
+    '/src/App.tsx': {
       code,
       active: true,
     },
-    '/index.tsx': {
+    '/src/main.tsx': {
       code: `import React from "react";
-import { createRoot } from "react-dom/client";
+import ReactDOM from "react-dom/client";
 import App from "./App";
 
-const root = createRoot(document.getElementById("root")!);
-root.render(<App />);`,
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`,
+      hidden: true,
+    },
+    // Basic Vite index.html
+    '/index.html': {
+      code: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`,
       hidden: true,
     },
   }), [code]);
@@ -295,7 +314,7 @@ root.render(<App />);`,
   return (
     <div className="h-full w-full flex flex-col" style={{ height: '100%' }}>
       <SandpackProvider
-        template="react-ts"
+        template="vite-react-ts"
         theme={customTheme}
         files={files}
         options={{
