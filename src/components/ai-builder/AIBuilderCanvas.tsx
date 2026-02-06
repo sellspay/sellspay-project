@@ -1075,6 +1075,15 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     )
   );
 
+  // === AUTO-SELECT: If no active project but projects exist, auto-select first one ===
+  // This runs as an effect to avoid calling selectProject during render (infinite loop)
+  // MUST be before early returns to satisfy React hooks rules
+  useEffect(() => {
+    if (!activeProjectId && projects.length > 0 && !projectsLoading) {
+      selectProject(projects[0].id);
+    }
+  }, [activeProjectId, projects, projectsLoading, selectProject]);
+
   if (shouldShowLoading) {
     return (
       <PremiumLoadingScreen
@@ -1135,9 +1144,10 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     });
   };
 
+
   // === DOORWAY: If no active project ===
   // - Fresh users (no projects): full-screen doorway
-  // - Existing users: AUTO-SELECT first project (no LovableHero splash)
+  // - Existing users: show loading while auto-select effect runs
   if (!activeProjectId) {
     if (projects.length === 0) {
       return (
@@ -1149,11 +1159,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
       );
     }
 
-    // Auto-select the most recent project instead of showing the Hero screen
-    // This effect triggers navigation via selectProject, which updates the URL
-    selectProject(projects[0].id);
-    
-    // Show loading state briefly while navigation happens
+    // Show loading state briefly while auto-select effect navigates
     return (
       <div className="h-screen w-full bg-zinc-950 flex items-center justify-center">
         <div className="animate-pulse text-zinc-500">Loading project...</div>
