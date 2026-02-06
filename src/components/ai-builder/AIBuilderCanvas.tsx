@@ -38,6 +38,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
+  // Minimum loading time state - ensures smooth loading animation
+  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
+  
   // Reset key to force component re-mount on project deletion
   const [resetKey, setResetKey] = useState(0);
   
@@ -681,16 +684,18 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   }, [viewMode, currentVideoAsset, currentImageAsset]);
 
 
-  // Show premium loading screen until data is ready:
-  // - Initial profile/layout data loaded
-  // - Projects list loaded
-  // - Active project verified
-  // - Messages/chat history loaded
-  // Note: Canvas (Sandpack) readiness is handled via overlay in the main render
+  // Show premium loading screen until BOTH conditions are met:
+  // 1. Data is loaded (projects, messages, verification)
+  // 2. Minimum loading animation has completed (4 seconds for smooth UX)
   const isDataLoading = loading || projectsLoading || isVerifyingProject || messagesLoading;
+  const shouldShowLoading = isDataLoading || !minLoadingComplete;
   
-  if (isDataLoading) {
-    return <PremiumLoadingScreen />;
+  if (shouldShowLoading) {
+    return (
+      <PremiumLoadingScreen 
+        onComplete={() => setMinLoadingComplete(true)}
+      />
+    );
   }
 
   // Show onboarding modal for first-time users
