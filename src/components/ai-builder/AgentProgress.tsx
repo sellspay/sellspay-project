@@ -5,7 +5,19 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
-export type AgentStep = 'idle' | 'planning' | 'reading' | 'writing' | 'installing' | 'verifying' | 'done' | 'error';
+export type AgentStep = 
+  | 'idle' 
+  | 'architect'    // NEW: Creating blueprint
+  | 'planning'     // Analyzing plan
+  | 'building'     // NEW: Generating code  
+  | 'linting'      // NEW: Validating code
+  | 'healing'      // NEW: Auto-fixing errors
+  | 'reading' 
+  | 'writing' 
+  | 'installing' 
+  | 'verifying' 
+  | 'done' 
+  | 'error';
 
 interface AgentProgressProps {
   currentStep: AgentStep;
@@ -141,8 +153,16 @@ function StepIcon({ step }: { step: AgentStep }) {
   const size = 16;
   
   switch (step) {
+    case 'architect':
+      return <BrainCircuit size={size} className="animate-pulse" />;
     case 'planning': 
       return <BrainCircuit size={size} className="animate-pulse" />;
+    case 'building':
+      return <FileCode size={size} className="animate-pulse" />;
+    case 'linting':
+      return <Search size={size} />;
+    case 'healing':
+      return <Terminal size={size} className="animate-pulse" />;
     case 'reading': 
       return <Search size={size} />;
     case 'writing': 
@@ -162,9 +182,13 @@ function StepIcon({ step }: { step: AgentStep }) {
 
 function getStepLabel(step: AgentStep): string {
   switch (step) {
-    case 'planning': return "Architecting Solution...";
+    case 'architect': return "Creating Blueprint...";
+    case 'planning': return "Analyzing Architecture...";
+    case 'building': return "Generating Code...";
+    case 'linting': return "Validating Code...";
+    case 'healing': return "Self-Correcting...";
     case 'reading': return "Analyzing Context...";
-    case 'writing': return "Generating Code...";
+    case 'writing': return "Writing Code...";
     case 'installing': return "Updating Dependencies...";
     case 'verifying': return "Running Verification...";
     case 'done': return "Complete";
@@ -176,10 +200,14 @@ function getStepLabel(step: AgentStep): string {
 function getStepProgress(step: AgentStep): number {
   switch (step) {
     case 'idle': return 0;
-    case 'planning': return 15;
+    case 'architect': return 10;
+    case 'planning': return 20;
+    case 'building': return 40;
+    case 'linting': return 70;
+    case 'healing': return 80;
     case 'reading': return 30;
-    case 'writing': return 60;
-    case 'installing': return 80;
+    case 'writing': return 50;
+    case 'installing': return 85;
     case 'verifying': return 95;
     case 'done': return 100;
     case 'error': return 100;
