@@ -29,14 +29,14 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
     // Reset height to auto to correctly calculate shrink
     textarea.style.height = "auto";
     
-    // Calculate new height, capped at ~200px (approx 8 lines)
-    const newHeight = Math.min(textarea.scrollHeight, 200);
+    // Calculate new height, capped at ~400px (approx 16-20 lines)
+    const newHeight = Math.min(textarea.scrollHeight, 400);
     
-    // Set height (min 24px for single line)
-    textarea.style.height = `${Math.max(24, newHeight)}px`;
+    // Set height (min 56px for comfortable single line)
+    textarea.style.height = `${Math.max(56, newHeight)}px`;
     
     // Show scrollbar only if we hit the limit
-    textarea.style.overflowY = textarea.scrollHeight > 200 ? "auto" : "hidden";
+    textarea.style.overflowY = textarea.scrollHeight > 400 ? "auto" : "hidden";
   }, [prompt]);
   const navigate = useNavigate();
   const { isPremium, credits, hasCredits, goToPricing, loading: subLoading } = useSubscription();
@@ -179,17 +179,19 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
           onSubmit={handleSubmit}
           className="w-full relative group animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-rose-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-rose-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           
-          <div className="relative bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex items-end shadow-2xl transition-all focus-within:border-orange-500/30 focus-within:bg-zinc-900/90 focus-within:scale-[1.01]">
+          <div className="relative bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-3 flex shadow-2xl transition-all focus-within:border-orange-500/30 focus-within:bg-zinc-900/90">
             
-            {/* Add Button */}
-            <button 
-              type="button" 
-              className="p-3 mb-0.5 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all mr-2 shrink-0"
-            >
-              <Plus size={20} />
-            </button>
+            {/* Add Button (Bottom Left) */}
+            <div className="flex flex-col justify-end pb-1.5 pl-1 shrink-0">
+              <button 
+                type="button" 
+                className="p-2 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all"
+              >
+                <Plus size={20} />
+              </button>
+            </div>
 
             {/* Auto-Expanding Textarea */}
             <textarea
@@ -204,13 +206,13 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
               }}
               placeholder="Ask VibeCoder to create a landing page for..."
               rows={1}
-              className="flex-1 bg-transparent border-none text-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-0 font-medium resize-none py-2.5 max-h-[200px] scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent"
-              style={{ minHeight: "24px" }}
+              className="w-full bg-transparent border-none text-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-0 font-medium resize-none py-3 px-3 min-h-[56px] max-h-[400px] scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent leading-relaxed"
               autoFocus
             />
 
-            {/* Action Icons */}
-            <div className="flex items-center gap-1 pl-2 mb-0.5 shrink-0">
+            {/* Action Icons (Bottom Right) */}
+            <div className="flex flex-col justify-end pb-1.5 pr-1 shrink-0">
+              <div className="flex items-center gap-2 bg-zinc-900/50 rounded-xl p-1 backdrop-blur-md">
               {/* Microphone / Voice Button */}
               <button 
                 type="button" 
@@ -247,12 +249,18 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
               >
                 <ArrowRight size={20} />
               </button>
+              </div>
             </div>
+          </div>
+          
+          {/* Helper text for Enter vs Shift+Enter */}
+          <div className="absolute -bottom-6 right-4 text-[10px] text-zinc-600 font-medium opacity-0 group-focus-within:opacity-100 transition-opacity">
+            Press Enter to send, Shift+Enter for new line
           </div>
         </form>
 
         {/* Suggestion Chips - now just paste text */}
-        <div className="flex flex-wrap justify-center gap-3 mt-8 animate-in fade-in duration-1000 delay-300">
+        <div className="flex flex-wrap justify-center gap-3 mt-10 animate-in fade-in duration-1000 delay-300">
           <SuggestionChip 
             label="SaaS Dashboard" 
             onClick={() => handleSuggestionClick(
