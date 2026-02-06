@@ -19,7 +19,7 @@ interface VibecoderChatProps {
   onRestoreToVersion: (messageId: string) => void;
   projectName?: string;
   liveSteps?: string[]; // Real-time transparency logs (legacy fallback)
-  // Agent mode props (new premium experience)
+  // Agent mode props (VibeCoder 2.0)
   agentStep?: AgentStep;
   agentLogs?: string[];
   isAgentMode?: boolean;
@@ -27,8 +27,10 @@ interface VibecoderChatProps {
   activeModel?: AIModel;
   onModelChange?: (model: AIModel) => void;
   // Style profile state
-  activeStyleProfile?: string;
-  onStyleProfileChange?: (profileId: string) => void;
+  activeStyleProfile?: string | null;
+  onStyleProfileChange?: (profileId: string | null) => void;
+  // VibeCoder 2.0: Architect plan for optional display
+  architectPlan?: Record<string, unknown>;
   // Billing callback
   onOpenBilling?: () => void;
 }

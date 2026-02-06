@@ -71,6 +71,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // LIFTED STATE: Active model from ChatInputBar
   const [activeModel, setActiveModel] = useState<AIModel>(AI_MODELS.code[0]);
   
+  // VibeCoder 2.0: Style profile for multi-agent pipeline
+  const [activeStyleProfile, setActiveStyleProfile] = useState<string | null>(null);
+  
   // Generation state for Creative Studio (Image & Video tabs)
   const [currentImageAsset, setCurrentImageAsset] = useState<GeneratedAsset | null>(null);
   const [currentVideoAsset, setCurrentVideoAsset] = useState<GeneratedAsset | null>(null);
@@ -264,7 +267,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     return () => window.clearTimeout(timeout);
   }, [isAwaitingPreviewReady, isStreaming]);
 
-  // Agent loop for premium multi-step experience
+  // Agent loop for VibeCoder 2.0 multi-agent pipeline
   const {
     agentStep,
     agentLogs,
@@ -277,14 +280,32 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     onStreamingError,
     triggerSelfCorrection,
     lockedProjectId,
+    architectPlan,
     mountProject: mountAgentProject,
     unmountProject: unmountAgentProject,
   } = useAgentLoop({
     onStreamCode: streamCode,
+    onCodeGenerated: async (generatedCode, summary) => {
+      // Handle code from the orchestrator
+      console.log('[VibeCoder 2.0] Code generated:', generatedCode.length, 'chars');
+      setCode(generatedCode);
+      
+      // Add assistant message with code snapshot
+      if (generationLockRef.current) {
+        await addMessage('assistant', summary, generatedCode, generationLockRef.current);
+      }
+      generationLockRef.current = null;
+    },
+    onPlanGenerated: (plan) => {
+      console.log('[VibeCoder 2.0] Architect plan:', plan);
+      // Plan is stored in agentState.architectPlan for optional display
+    },
     onComplete: () => {
       console.log('[AgentLoop] Complete');
+      setIsAwaitingPreviewReady(false);
     },
     getActiveProjectId: () => activeProjectId,
+    getUserId: () => profileId,
   });
 
   // Dynamically detected pages from generated code
@@ -749,9 +770,18 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // Add user message to history (with explicit project ID for safety)
     await addMessage('user', prompt, undefined, projectId);
 
-    // Start the agent loop (which internally calls streamCode)
-    // Pass the project ID to lock the agent to this specific project
-    startAgent(prompt, code !== DEFAULT_CODE ? code : undefined, projectId);
+    // Determine if this is a quick edit (skip architect) or full build
+    const isQuickEdit = code !== DEFAULT_CODE && prompt.length < 100;
+
+    // Start the VibeCoder 2.0 multi-agent pipeline
+    // Pass style profile and skip architect for quick edits
+    startAgent(
+      prompt, 
+      code !== DEFAULT_CODE ? code : undefined, 
+      projectId,
+      activeStyleProfile || undefined,
+      isQuickEdit
+    );
   };
 
   // Handle new project creation - FRESH START PROTOCOL
@@ -1325,6 +1355,9 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 activeModel={activeModel}
                 onOpenBilling={() => window.open('/pricing', '_blank')}
                 onModelChange={handleModelChange}
+                activeStyleProfile={activeStyleProfile}
+                onStyleProfileChange={setActiveStyleProfile}
+                architectPlan={architectPlan}
               />
             </div>
           </div>
