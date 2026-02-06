@@ -47,51 +47,17 @@ export class PreviewErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
+      // DON'T render any error UI here - FixErrorToast at bottom handles everything
+      // Just call the auto-fix handler to notify parent
       return (
-        <div className="h-full w-full flex flex-col items-center justify-center bg-red-950/90 text-red-200 p-8 text-center backdrop-blur-sm relative overflow-hidden">
-          {/* Background Pulse */}
-          <div className="absolute inset-0 bg-red-500/10 animate-pulse" />
-          
-          <div className="relative z-10 flex flex-col items-center max-w-md">
-            {/* Error Icon */}
-            <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(239,68,68,0.5)]">
-              <AlertTriangle className="text-white" size={32} />
+        <div className="h-full w-full flex items-center justify-center bg-muted/20">
+          {/* Minimal fallback - no visible error UI since FixErrorToast is shown */}
+          <div className="text-center p-8">
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="text-muted-foreground" size={24} />
             </div>
-            
-            <h3 className="text-2xl font-bold text-white mb-2">Build Failed</h3>
-            
-            {/* Error Message */}
-            <div className="w-full mb-8">
-              <p className="text-sm font-mono bg-black/50 p-4 rounded-lg border border-red-500/30 text-red-300 text-left overflow-auto max-h-32 shadow-inner break-words">
-                {this.state.error?.message || 'Unknown error'}
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col gap-3 w-full">
-              {/* Auto-Fix Button */}
-              <button 
-                onClick={this.handleAutoFix}
-                className="group relative flex items-center justify-center gap-3 px-8 py-4 bg-white text-black font-bold rounded-xl hover:scale-105 transition-all shadow-xl hover:shadow-2xl w-full"
-              >
-                <div className="absolute inset-0 bg-violet-500/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-                <Sparkles size={20} className="text-violet-600 animate-pulse relative z-10" />
-                <span className="relative z-10">Auto-Fix with AI</span>
-              </button>
-              
-              {/* Manual Reset Button */}
-              <button 
-                onClick={this.handleManualReset}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-red-500/20 text-red-200 font-medium rounded-lg hover:bg-red-500/30 transition-colors border border-red-500/30"
-              >
-                <RefreshCcw size={16} />
-                <span>Reset Preview</span>
-              </button>
-            </div>
-            
-            <p className="mt-6 text-xs text-red-400/80">
-              The AI will analyze the error log and rewrite the code.
-            </p>
+            <p className="text-sm text-muted-foreground">Preview paused due to error</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">Use the fix button below</p>
           </div>
         </div>
       );
