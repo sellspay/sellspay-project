@@ -1,151 +1,154 @@
 
-
-# ChatInputBar Layout Fix & PageNavigator Cleanup
+# Dynamic Page Navigator & ChatInputBar UI Polish
 
 ## Overview
 
-This plan fixes two key issues in the AI Builder:
+This plan addresses two issues:
 
-1. **ChatInputBar Layout Collision** - The speech-to-text updates are causing layout glitches because interim text changes trigger textarea resize logic too aggressively. The "Low Balance" warning is also improperly nested inside the flex container.
+1. **Page Navigator Sync** - The dropdown shows hardcoded pages (Home, Products, Contact) while the AI may generate different pages (Home, Products, Bundles, Support). We need to make it dynamic.
 
-2. **PageNavigator Cleanup** - Remove the "Login" page and "Create New Page" button, and ensure navigation actually works.
+2. **ChatInputBar Scrollbar Polish** - Hide the ugly gray scrollbar while keeping scroll functionality, and ensure the textarea has proper padding.
 
 ---
 
-## Part 1: ChatInputBar Layout Stabilization
+## Part 1: Dynamic Page Navigator
 
 ### Problem Analysis
 
-Looking at the current code (lines 738-746), the "Low Balance Warning" is placed **inside** the flex container (`<div className="flex items-end gap-2 p-2">`). This causes:
-
-1. The warning text competes with the textarea for space
-2. Speech-to-text interim results trigger resize calculations
-3. The layout "fights" between elements, causing infinite scroll glitches
-
-### Solution: Move Warning Outside + Add Speech Popup Bubble
-
-**File:** `src/components/ai-builder/ChatInputBar.tsx`
-
-#### Change 1: Extract Warning from Flex Container
-
-Move the "Insufficient credits" warning **outside** the main flex container so it doesn't affect layout calculations.
-
-```text
-Current structure (BROKEN):
-┌─────────────────────────────────────────┐
-│ [Model Selector]           [Credits]    │
-│ ┌─────────────────────────────────────┐ │
-│ │ [+] [Textarea......] [Mic] [Send]   │ │
-│ │ [Warning text inside flex!]         │ │ ← PROBLEM
-│ └─────────────────────────────────────┘ │
-└─────────────────────────────────────────┘
-
-Fixed structure:
-┌─────────────────────────────────────────┐
-│ [Model Selector]           [Credits]    │
-│ ┌─────────────────────────────────────┐ │
-│ │ [+] [Textarea......] [Mic] [Send]   │ │
-│ └─────────────────────────────────────┘ │
-└─────────────────────────────────────────┘
-│ [Warning text OUTSIDE the box]          │ ← FIXED
-```
-
-#### Change 2: Add Floating Speech Bubble
-
-When `isListening` is true, show a floating "popup" bubble above the input container. This separates the live speech text from the main textarea, preventing resize loops.
-
-```text
-┌─────────────────────────────────────────┐
-│ 🔴 Listening...                         │ ← Floating bubble
-│ "Hello this is what I'm saying..."      │
-│                                     [X] │
-└─────────────────────────────────────────┘
-                    ▼
-┌─────────────────────────────────────────┐
-│ [Model Selector]           [Credits]    │
-│ [+] [Textarea......] [Mic] [Send]       │
-└─────────────────────────────────────────┘
-```
-
-#### Change 3: Separate Speech State
-
-Add a `transcript` state to hold the live speech text separately from the main `value`. This prevents constant re-renders of the textarea while speaking.
-
+The current `PageNavigator.tsx` has a hardcoded `SITE_PAGES` array:
 ```typescript
-const [transcript, setTranscript] = useState("");  // Live speech text (popup only)
-
-// In onresult handler:
-recognition.onresult = (event) => {
-  let liveText = "";
-  for (let i = event.resultIndex; i < event.results.length; i++) {
-    liveText += event.results[i][0].transcript;
-  }
-  setTranscript(liveText);  // Update popup, NOT main input
-};
-
-// When mic stops, append to main input:
-recognition.onend = () => {
-  if (transcript.trim()) {
-    const spacing = value.trim() ? " " : "";
-    onChange(value + spacing + transcript);
-  }
-  setTranscript("");
-};
+const SITE_PAGES = [
+  { id: "home", path: "/", label: "Home", icon: Layout },
+  { id: "products", path: "/products", label: "Products", icon: ShoppingBag },
+  { id: "contact", path: "/contact", label: "Contact", icon: Mail },
+];
 ```
 
-### Technical Details
+When the AI generates a site with different routes, this dropdown doesn't update.
 
-| Line Range | Change |
-|------------|--------|
-| 243 | Add `transcript` state: `const [transcript, setTranscript] = useState("");` |
-| 256-257 | Update `promptBeforeSpeechRef` to track text before mic started |
-| 285-306 | Modify `onresult` to update `transcript` state instead of `value` |
-| 314-316 | Update `onend` to append transcript to value and clear |
-| 422-430 | Add floating speech bubble JSX before the main container |
-| 738-746 | Move warning outside the rounded container |
+### Solution: Accept Pages as a Prop
 
----
-
-## Part 2: PageNavigator Cleanup
-
-### Problem Analysis
-
-Looking at `src/components/ai-builder/PageNavigator.tsx` (provided in context):
-
-1. Contains a "Login" page that shouldn't be in a storefront navigator
-2. Has a "Create New Page" button that implies users can create pages (only AI should)
-3. The `onPageChange` callback exists but navigation isn't wired up
-
-### Solution
+#### Step 1: Update PageNavigator to Accept Dynamic Pages
 
 **File:** `src/components/ai-builder/PageNavigator.tsx`
 
-#### Change 1: Remove Login from SITE_PAGES
+- Remove the hardcoded `SITE_PAGES` constant
+- Accept a `pages` prop with the shape `{ id: string; path: string; label: string }[]`
+- Export the `SitePage` interface for reuse
+- Update rendering to use the passed `pages` prop
+- Change header text from "Site Pages" to "Detected Pages"
+
+#### Step 2: Create Route Parser Utility
+
+**File:** `src/utils/routeParser.ts` (NEW)
+
+Create a utility function that parses generated code to extract route definitions:
 
 ```typescript
-// BEFORE
-const SITE_PAGES = [
-  { id: "home", path: "/", label: "Home", icon: Layout },
-  { id: "products", path: "/products", label: "Products", icon: ShoppingBag },
-  { id: "login", path: "/login", label: "Login", icon: User },  // ← REMOVE
-  { id: "contact", path: "/contact", label: "Contact", icon: Mail },
-];
+export interface SitePage {
+  id: string;
+  path: string;
+  label: string;
+}
 
-// AFTER
-const SITE_PAGES = [
-  { id: "home", path: "/", label: "Home", icon: Layout },
-  { id: "products", path: "/products", label: "Products", icon: ShoppingBag },
-  { id: "contact", path: "/contact", label: "Contact", icon: Mail },
-];
+export function parseRoutesFromCode(code: string): SitePage[] {
+  const pages: SitePage[] = [{ id: 'home', path: '/', label: 'Home' }];
+  
+  // Regex to find Route path definitions
+  const routeRegex = /<Route[^>]*path=["']([^"']+)["'][^>]*>/g;
+  let match;
+  
+  const foundPaths = new Set<string>(['/']);
+  
+  while ((match = routeRegex.exec(code)) !== null) {
+    const path = match[1];
+    // Skip already found, dynamic routes (:id), and root
+    if (!path || path === '/' || foundPaths.has(path) || path.includes(':')) continue;
+    
+    foundPaths.add(path);
+    
+    // Convert "/about-us" -> "About Us"
+    const label = path
+      .replace('/', '')
+      .split('-')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    
+    pages.push({ id: path, path, label });
+  }
+  
+  return pages;
+}
 ```
 
-#### Change 2: Remove "Create New Page" Button
+#### Step 3: Wire Up in AIBuilderCanvas
 
-Delete the footer section with the `<Plus />` icon button (lines ~95-105 in PageNavigator.tsx).
+**File:** `src/components/ai-builder/AIBuilderCanvas.tsx`
 
-#### Change 3: Update Interface to Include onNavigate
+Add state and effect to parse routes from generated code:
 
-Rename `onPageChange` to `onNavigate` for clarity and ensure it's called on selection.
+```typescript
+// Add state for detected pages
+const [detectedPages, setDetectedPages] = useState<SitePage[]>([
+  { id: 'home', path: '/', label: 'Home' }
+]);
+
+// Parse routes whenever code changes
+useEffect(() => {
+  if (code) {
+    const pages = parseRoutesFromCode(code);
+    setDetectedPages(pages);
+  }
+}, [code]);
+```
+
+#### Step 4: Update VibecoderHeader Props
+
+**File:** `src/components/ai-builder/VibecoderHeader.tsx`
+
+- Add `pages: SitePage[]` prop to interface
+- Pass `pages` to the `PageNavigator` component
+
+---
+
+## Part 2: ChatInputBar Scrollbar Polish
+
+### Problem Analysis
+
+The textarea shows an ugly gray scrollbar when content exceeds 6 lines. While scrolling should remain functional, the visual scrollbar is distracting.
+
+### Solution: CSS Hide Scrollbar + Improved Padding
+
+**File:** `src/components/ai-builder/ChatInputBar.tsx`
+
+#### Change 1: Add Scrollbar-Hiding CSS
+
+Inject a `<style>` tag or use Tailwind utilities to hide scrollbars cross-browser:
+
+```typescript
+const hideScrollbarStyle = `
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+`;
+```
+
+#### Change 2: Apply Class to Textarea
+
+Update the textarea className to include `no-scrollbar`:
+
+```typescript
+className={cn(
+  "flex-1 bg-transparent text-sm text-zinc-100 resize-none outline-none py-2 px-1",
+  "min-h-[36px] max-h-[160px]",
+  "no-scrollbar", // <-- Add this instead of scrollbar-thin classes
+  "disabled:opacity-50 disabled:cursor-not-allowed",
+  // ...rest
+)}
+```
+
+#### Change 3: Improved Padding Right
+
+Ensure text doesn't feel cramped near the edge by adding `pr-2` (8px padding right) to the textarea.
 
 ---
 
@@ -153,24 +156,22 @@ Rename `onPageChange` to `onNavigate` for clarity and ensure it's called on sele
 
 | File | Action | Changes |
 |------|--------|---------|
-| `src/components/ai-builder/ChatInputBar.tsx` | MODIFY | Add transcript state, speech popup bubble, move warning outside container |
-| `src/components/ai-builder/PageNavigator.tsx` | MODIFY | Remove Login page, remove Create New Page button |
+| `src/components/ai-builder/PageNavigator.tsx` | MODIFY | Accept `pages` prop instead of hardcoded list, export `SitePage` type |
+| `src/utils/routeParser.ts` | CREATE | New utility to parse routes from generated TSX code |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | MODIFY | Add `detectedPages` state, parse routes on code change, pass to header |
+| `src/components/ai-builder/VibecoderHeader.tsx` | MODIFY | Accept and forward `pages` prop to PageNavigator |
+| `src/components/ai-builder/ChatInputBar.tsx` | MODIFY | Add `no-scrollbar` CSS, apply to textarea, improve padding |
 
 ---
 
 ## Expected Results
 
-### ChatInputBar
+### Page Navigator
+- Dropdown now shows pages detected from the AI-generated code
+- "Bundles", "Support", or any custom route the AI generates will appear automatically
+- Login/Auth pages are filtered out by the parser (routes with `:` are skipped)
 
-- ✅ Speech popup appears as floating bubble above input
-- ✅ Main textarea doesn't resize during speech
-- ✅ Warning text is outside the box, no layout collision
-- ✅ Users can type with 0 credits (only Send button is blocked)
-- ✅ No more infinite scroll glitch
-
-### PageNavigator
-
-- ✅ Only shows Home, Products, Contact pages
-- ✅ No "Create New Page" button
-- ✅ Clicking a page triggers navigation callback
-
+### Chat Input Box
+- Scrollbar is invisible but scrolling still works
+- Text has proper padding and doesn't feel cramped
+- Clean, premium look matching the rest of the UI
