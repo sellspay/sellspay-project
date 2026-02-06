@@ -317,9 +317,9 @@ serve(async (req: Request) => {
             type: 'status', 
             step: 'architect',
             data: { message: "Analyzing request and creating blueprint..." } 
-          });
+          }, streamState);
           
-          sendEvent(controller, { type: 'log', data: "Initializing Architect agent..." });
+          sendEvent(controller, { type: 'log', data: "Initializing Architect agent..." }, streamState);
           
           const architectResponse = await callAgent('vibecoder-architect', {
             prompt,
@@ -340,9 +340,9 @@ serve(async (req: Request) => {
           // Extract complexity score for tiered pricing
           complexityScore = Number(architectPlan?.complexityScore) || 5;
           
-          sendEvent(controller, { type: 'log', data: `Style: ${architectPlan?.vibeAnalysis?.visualStyle || 'Custom'}` });
-          sendEvent(controller, { type: 'log', data: `Complexity: ${complexityScore}/10` });
-          sendEvent(controller, { type: 'plan', data: architectPlan });
+          sendEvent(controller, { type: 'log', data: `Style: ${architectPlan?.vibeAnalysis?.visualStyle || 'Custom'}` }, streamState);
+          sendEvent(controller, { type: 'log', data: `Complexity: ${complexityScore}/10` }, streamState);
+          sendEvent(controller, { type: 'plan', data: architectPlan }, streamState);
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -378,7 +378,7 @@ serve(async (req: Request) => {
           }
         }
         
-        sendEvent(controller, { type: 'log', data: isPrivileged ? 'Credits used: 0 (owner/admin bypass)' : `Credits used: ${actualCredits}` });
+        sendEvent(controller, { type: 'log', data: isPrivileged ? 'Credits used: 0 (owner/admin bypass)' : `Credits used: ${actualCredits}` }, streamState);
 
         // ═══════════════════════════════════════════════════════════════
         // STAGE 2, 3, 4: BUILD + SHADOW RENDER + LINT LOOP (with self-healing)
@@ -407,14 +407,14 @@ serve(async (req: Request) => {
                 ? `Self-healing attempt ${attempts - 1}...` 
                 : "Generating code..." 
             } 
-          });
+          }, streamState);
           
           sendEvent(controller, { 
             type: 'log', 
             data: attempts > 1 
               ? `Applying fix for: ${healingContext?.errorType}` 
               : "Builder agent started..." 
-          });
+          }, streamState);
           
           const builderResponse = await callAgent('vibecoder-builder', {
             prompt,
@@ -444,7 +444,7 @@ serve(async (req: Request) => {
             return;
           }
           
-          sendEvent(controller, { type: 'log', data: `Generated ${generatedCode.split('\n').length} lines of code` });
+          sendEvent(controller, { type: 'log', data: `Generated ${generatedCode.split('\n').length} lines of code` }, streamState);
           
           // ───────────────────────────────────────────────────────────
           // SHADOW RENDER STAGE (New in v2.1)
@@ -453,7 +453,7 @@ serve(async (req: Request) => {
             type: 'status', 
             step: 'shadow-render',
             data: { message: "Running transpilation check..." } 
-          });
+          }, streamState);
           
           const shadowResult = await shadowRender(generatedCode);
           
@@ -461,14 +461,14 @@ serve(async (req: Request) => {
             sendEvent(controller, { 
               type: 'log', 
               data: `⚠️ Transpile error: ${shadowResult.error?.substring(0, 100)}` 
-            });
+            }, streamState);
             
             if (attempts >= maxAttempts) {
               // Max retries reached, deliver anyway with warning
               sendEvent(controller, { 
                 type: 'log', 
                 data: "Max retries reached - delivering code with known transpile issues" 
-              });
+              }, streamState);
               finalCode = generatedCode;
               break;
             }
@@ -481,11 +481,11 @@ serve(async (req: Request) => {
               fixSuggestion: 'Fix the syntax error in the TSX code. Check for missing imports, unclosed tags, or invalid JSX.',
             };
             
-            sendEvent(controller, { type: 'log', data: "Triggering self-correction..." });
+            sendEvent(controller, { type: 'log', data: "Triggering self-correction..." }, streamState);
             continue; // Retry with healing context
           }
           
-          sendEvent(controller, { type: 'log', data: "✓ Transpilation passed" });
+          sendEvent(controller, { type: 'log', data: "✓ Transpilation passed" }, streamState);
           
           // ───────────────────────────────────────────────────────────
           // LINTER STAGE
@@ -494,9 +494,9 @@ serve(async (req: Request) => {
             type: 'status', 
             step: 'linter',
             data: { message: "Validating code..." } 
-          });
+          }, streamState);
           
-          sendEvent(controller, { type: 'log', data: "Running validation checks..." });
+          sendEvent(controller, { type: 'log', data: "Running validation checks..." }, streamState);
           
           const linterResponse = await callAgent('vibecoder-linter', {
             code: generatedCode,
@@ -505,7 +505,7 @@ serve(async (req: Request) => {
           
           if (!linterResponse.ok) {
             // Linter failed - but don't block, just warn
-            sendEvent(controller, { type: 'log', data: "⚠️ Linter unavailable, proceeding with code" });
+            sendEvent(controller, { type: 'log', data: "⚠️ Linter unavailable, proceeding with code" }, streamState);
             finalCode = generatedCode;
             break;
           }
@@ -513,7 +513,7 @@ serve(async (req: Request) => {
           const lintResult = await linterResponse.json();
           
           if (lintResult.verdict === 'PASS') {
-            sendEvent(controller, { type: 'log', data: "✓ All validation checks passed" });
+            sendEvent(controller, { type: 'log', data: "✓ All validation checks passed" }, streamState);
             finalCode = generatedCode;
             break;
           }
@@ -524,14 +524,14 @@ serve(async (req: Request) => {
           sendEvent(controller, { 
             type: 'log', 
             data: `⚠️ ${lintResult.errorType}: ${lintResult.explanation}` 
-          });
+          }, streamState);
           
           if (attempts >= maxAttempts) {
             // Max retries reached, return code anyway with warning
             sendEvent(controller, { 
               type: 'log', 
               data: "Max retries reached - delivering code with known issues" 
-            });
+            }, streamState);
             finalCode = generatedCode;
             break;
           }
@@ -544,7 +544,7 @@ serve(async (req: Request) => {
             fixSuggestion: lintResult.fixSuggestion,
           };
           
-          sendEvent(controller, { type: 'log', data: "Triggering self-correction..." });
+          sendEvent(controller, { type: 'log', data: "Triggering self-correction..." }, streamState);
         }
 
         // ═══════════════════════════════════════════════════════════════
