@@ -21,3 +21,4 @@ export type { GeneratedAsset, ViewMode } from './types/generation';
 // Chat UI components
 export { ChatInputBar } from './ChatInputBar';
 export { PlanApprovalCard } from './PlanApprovalCard';
+export { ProfileMenu } from './ProfileMenu';
