@@ -291,11 +291,15 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     navigate('/login');
   };
 
+  // Reset canvas-ready whenever the preview instance is expected to change.
+  // IMPORTANT: Do NOT tie this to `messages` loading, otherwise we can get stuck in
+  // "Loading canvas..." if Sandpack already fired `onReady` before messages arrive.
+  useEffect(() => {
+    setIsCanvasReady(false);
+  }, [activeProjectId, resetKey, refreshKey, viewMode]);
+
   // SCORCHED EARTH: Verify project exists on switch & force reset if zombie detected
   useEffect(() => {
-    // Reset canvas ready state when project changes to re-trigger Sandpack ready detection
-    setIsCanvasReady(false);
-
     async function verifyAndLoadProject() {
       // No project selected - force a true blank slate (prevents zombie UI from sticking around)
       if (!activeProjectId) {
