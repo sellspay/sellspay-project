@@ -1,378 +1,247 @@
 
+# Implementation Plan: Real-Time Transparency & Marketplace Protocol
 
-# Credit Economy Overhaul: Elite Monetization System
+This plan implements two major features for the Vibecoder AI Builder:
 
-## Overview
-
-This plan completely replaces the current credit economy with a new 3-tier subscription system designed for high-margin monetization. The new system introduces:
-
-- **Browser (Free)**: $0/mo - Browsing only, no AI tools
-- **Creator (Pro)**: $69/mo - 2,500 credits + Vibecoder + Image Gen + 5% seller fee
-- **Agency (Elite)**: $199/mo - 12,000 credits + Video Gen + 0% seller fee + Gold Badge
+1. **Real-Time Transparency** - Live streaming logs that show the AI's "thought process" step-by-step
+2. **Marketplace Protocol** - "Iron Dome" safeguards to prevent sellers from adding external payment gateways
 
 ---
 
-## Phase 1: Database Cleanup (Delete Current Economy)
+## Part 1: Real-Time Transparency (Live Logs)
 
-### Tables to Drop
-| Table | Purpose (Current) |
-|-------|-------------------|
-| `credit_packages` | Subscription tiers (Starter, Basic, Pro, Power, Enterprise) |
-| `credit_transactions` | Usage and purchase audit log |
-| `credit_topups` | One-time credit top-up products |
-| `wallet_ledger_entries` | Credit wallet transaction log |
+### Overview
+Instead of a blank screen for 10 seconds followed by a result, users will see live "Building..." logs that animate in real-time, then collapse into a summary card when complete.
 
-### Columns to Remove from `profiles`
-- `credit_balance` (integer, default 3)
+### 1.1 Backend: Add Logging Protocol to System Prompt
 
-### Edge Functions to Delete
-| Function | Purpose |
-|----------|---------|
-| `check-credits` | Returns user's credit balance |
-| `deduct-credit` | Subtracts 1 credit per tool use |
-| `add-credits` | Adds credits after Stripe session verification |
-| `create-credit-checkout` | Creates Stripe subscription checkout |
-| `create-topup-checkout` | Creates one-time top-up checkout |
-| `manage-credit-subscription` | Checks/manages subscription status via Stripe |
+**File:** `supabase/functions/vibecoder-v2/index.ts`
 
----
+Add a new section to the `SYSTEM_PROMPT` that instructs the AI to emit `[LOG: ...]` tags *before* generating code:
 
-## Phase 2: New Database Schema
+```text
+REAL-TIME LOGGING PROTOCOL:
+While building, you must "narrate" your actions using specific tags BEFORE writing the code.
+Format: [LOG: Action Description]
 
-### New Table: `user_wallets`
-Replaces the `credit_balance` column with a dedicated wallet system for atomic operations.
+Example Output Stream:
+[LOG: Analyzing user request...]
+[LOG: Designing responsive grid layout...]
+[LOG: Creating Hero section with gradient overlay...]
+[LOG: Adding product cards with glassmorphism effect...]
+[LOG: Finalizing layout and animations...]
+/// TYPE: CODE ///
+export default function App() { ... }
 
-```sql
-CREATE TABLE user_wallets (
-  user_id uuid REFERENCES auth.users NOT NULL PRIMARY KEY,
-  balance int DEFAULT 0 NOT NULL,
-  last_refill_at timestamptz DEFAULT now()
-);
+RULES:
+- Emit 3-6 LOG tags per generation (not too many, not too few)
+- Each LOG should be a short, user-friendly description (5-10 words)
+- LOG tags appear BEFORE the "/// TYPE: CODE ///" flag
+- Do NOT use LOG tags in CHAT mode (questions/refusals)
 ```
 
-### New Table: `wallet_transactions`
-Clean audit trail for all credit movements.
+### 1.2 Frontend: Parse Logs from Stream
 
-```sql
-CREATE TABLE wallet_transactions (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid REFERENCES auth.users NOT NULL,
-  amount int NOT NULL,  -- Negative for usage, positive for refills
-  action text NOT NULL, -- 'vibecoder_gen', 'image_gen', 'video_gen', 'monthly_refill', 'topup'
-  description text,
-  created_at timestamptz DEFAULT now()
-);
-```
+**File:** `src/components/ai-builder/useStreamingCode.ts`
 
-### New Table: `subscription_plans`
-Defines the 3 tiers and their capabilities.
+Modify the streaming logic to detect and extract `[LOG: ...]` tags:
 
-```sql
-CREATE TABLE subscription_plans (
-  id text PRIMARY KEY,  -- 'browser', 'creator', 'agency'
-  name text NOT NULL,
-  price_cents int NOT NULL,
-  yearly_price_cents int,
-  monthly_credits int NOT NULL,
-  vibecoder_access boolean DEFAULT false,
-  image_gen_access boolean DEFAULT false,
-  video_gen_access boolean DEFAULT false,
-  seller_fee_percent numeric(4,2) DEFAULT 10,
-  badge_type text DEFAULT 'none',  -- 'none', 'grey', 'gold'
-  stripe_price_id text,
-  stripe_yearly_price_id text,
-  created_at timestamptz DEFAULT now()
-);
-```
-
-### Updated `profiles` Table
-Add subscription tracking columns.
-
-```sql
-ALTER TABLE profiles
-ADD COLUMN subscription_plan text DEFAULT 'browser' REFERENCES subscription_plans(id),
-ADD COLUMN subscription_status text DEFAULT 'active',
-ADD COLUMN subscription_expires_at timestamptz,
-ADD COLUMN stripe_customer_id text,
-ADD COLUMN stripe_subscription_id text;
-```
-
-### Database Function: `deduct_credits`
-Atomic credit deduction with race-condition protection.
-
-```sql
-CREATE OR REPLACE FUNCTION deduct_credits(p_user_id uuid, p_amount int, p_action text)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  current_bal int;
-BEGIN
-  SELECT balance INTO current_bal FROM user_wallets WHERE user_id = p_user_id FOR UPDATE;
-  
-  IF current_bal IS NULL OR current_bal < p_amount THEN
-    RETURN false;
-  END IF;
-
-  UPDATE user_wallets SET balance = balance - p_amount WHERE user_id = p_user_id;
-  
-  INSERT INTO wallet_transactions (user_id, amount, action, description)
-  VALUES (p_user_id, -p_amount, p_action, 'AI generation');
-
-  RETURN true;
-END;
-$$;
-```
-
----
-
-## Phase 3: Credit Cost Structure
-
-| Action | Credit Cost | Tier Required |
-|--------|-------------|---------------|
-| Vibecoder (Code Generation) | 25 | Creator+ |
-| Image Generation (Flux) | 100 | Creator+ |
-| Video Generation (Luma) | 500 | Agency only |
-| SFX Generator | 25 | Creator+ |
-| Voice Isolator | 25 | Creator+ |
-
-### Monthly Allocations
-- **Creator ($69)**: 2,500 credits = ~100 code gens OR ~25 images
-- **Agency ($199)**: 12,000 credits = ~24 videos OR ~480 code gens
-
----
-
-## Phase 4: New Edge Functions
-
-### `check-subscription` (Replaces `check-credits`)
-Returns user's plan tier, credit balance, and capabilities.
+1. Add a new callback option: `onLogUpdate?: (logs: string[]) => void`
+2. During streaming, use regex to detect `[LOG: ...]` patterns
+3. Push extracted logs to the callback immediately (before the full stream completes)
+4. Strip the LOG tags from the final code output
 
 ```typescript
-// Response shape
-{
-  plan: 'browser' | 'creator' | 'agency',
-  credits: number,
-  capabilities: {
-    vibecoder: boolean,
-    imageGen: boolean,
-    videoGen: boolean,
-  },
-  sellerFee: number,
-  badge: 'none' | 'grey' | 'gold',
-  expiresAt: string | null,
+// Regex pattern for log extraction
+const LOG_PATTERN = /\[LOG:\s*([^\]]+)\]/g;
+
+// Inside the streaming while loop:
+const logMatches = accumulated.matchAll(LOG_PATTERN);
+for (const match of logMatches) {
+  const logText = match[1].trim();
+  if (!seenLogs.has(logText)) {
+    seenLogs.add(logText);
+    accumulatedLogs.push(logText);
+    options.onLogUpdate?.(accumulatedLogs);
+  }
+}
+// Clean buffer before processing as code
+cleanedBuffer = accumulated.replace(LOG_PATTERN, '');
+```
+
+### 1.3 Canvas: Track Live Steps State
+
+**File:** `src/components/ai-builder/AIBuilderCanvas.tsx`
+
+Add state to track "live steps" during streaming:
+
+1. Add `liveSteps` state: `useState<string[]>([])`
+2. Pass `onLogUpdate` callback to `useStreamingCode` that updates `liveSteps`
+3. Clear `liveSteps` when streaming completes
+
+### 1.4 Chat UI: Show Live Steps During Build
+
+**File:** `src/components/ai-builder/VibecoderMessageBubble.tsx`
+
+Update the `AssistantCard` component:
+
+1. Accept a new prop: `liveSteps?: string[]`
+2. When `isStreaming` is true AND `liveSteps` has items, render them as "in-progress" steps
+3. The last step in the list shows a spinning loader; all previous steps show checkmarks
+4. When streaming ends, the steps convert to the final "completed" summary
+
+**New Streaming Card UI:**
+```text
+┌────────────────────────────────────┐
+│ 🔮 Building your request...        │
+│                                    │
+│ ✓ Analyzing user request...        │
+│ ✓ Designing responsive grid...     │
+│ ⟳ Creating Hero section...         │  ← Spinner on last item
+│                                    │
+└────────────────────────────────────┘
+```
+
+### 1.5 Types Update
+
+**File:** `src/components/ai-builder/types/chat.ts`
+
+Update types to support the live streaming state:
+
+```typescript
+export interface LiveBuildState {
+  logs: string[];
+  startedAt: Date;
 }
 ```
 
-### `deduct-ai-credits`
-Deducts credits based on action type, enforces tier gating.
-
-### `create-plan-checkout`
-Creates Stripe checkout for Creator/Agency subscriptions.
-
-### `stripe-subscription-webhook`
-Handles subscription lifecycle: created, renewed, cancelled.
-
 ---
 
-## Phase 5: Frontend Hook Replacement
+## Part 2: Marketplace Protocol ("Iron Dome")
 
-### Delete
-- `src/hooks/useCredits.ts`
-- `src/components/credits/CreditWallet.tsx`
-- `src/components/credits/TopUpDialog.tsx`
+### Overview
+SellsPay is a **managed marketplace** (like Roblox/Etsy), not a website builder (like Shopify). Sellers cannot add their own Stripe keys or external payment links. All transactions flow through the platform's unified checkout.
 
-### New: `src/hooks/useSubscription.ts`
+### 2.1 Backend: Add Financial Protocol to System Prompt
+
+**File:** `supabase/functions/vibecoder-v2/index.ts`
+
+Add a new "MARKETPLACE PROTOCOL" section that:
+
+1. **Forbids external payment gateways** - The AI must refuse requests to add personal Stripe keys, PayPal links, CashApp, etc.
+2. **Mandates unified checkout** - All "Buy" buttons must use the platform hook
+3. **Provides the correct code pattern** - Shows the AI exactly what to generate
+
+```text
+STRICT MARKETPLACE PROTOCOL (NON-NEGOTIABLE):
+You are the AI Architect for SellsPay, a MANAGED MARKETPLACE.
+
+1. **NO CUSTOM GATEWAYS:** 
+   - You are STRICTLY FORBIDDEN from generating code that asks for Stripe Keys, PayPal Client IDs, or API Secrets.
+   - You CANNOT generate <a href="paypal.me/..."> or CashApp links.
+   - You CANNOT create input fields for "API Key" or "Secret Key" related to payments.
+
+2. **UNIFIED CHECKOUT ONLY:**
+   - All purchases MUST use the 'useSellsPayCheckout()' hook.
+   - Import: import { useSellsPayCheckout } from "@/hooks/useSellsPayCheckout"
+   - When a user clicks "Buy", you do NOT process payment locally.
+   - You ONLY trigger the SellsPay Checkout Modal.
+
+3. **HARD REFUSAL PROTOCOL:**
+   - IF User asks: "Add my PayPal button" or "Link my Stripe API key" or "Add CashApp link"
+   - THEN Output: "/// TYPE: CHAT ///"
+   - AND Say: "I cannot add external payment providers. SellsPay is a managed marketplace that handles all transactions securely to ensure your Creator Protection and automated tax compliance. Your earnings are routed automatically to your Payouts Dashboard."
+
+4. **PRODUCT DATA CONTEXT:**
+   - Products are stored in the 'products' table (id, name, price_cents, creator_id).
+   - When building a Product Card, the actual product data comes from props or a fetch.
+   - For mockups, use placeholder IDs like 'prod_preview_1'.
+
+CORRECT BUY BUTTON CODE:
+const { buyProduct, isProcessing } = useSellsPayCheckout();
+
+<button 
+  onClick={() => buyProduct(product.id)}
+  disabled={isProcessing}
+  className="w-full bg-violet-600 hover:bg-violet-500 text-white py-3 rounded-lg font-bold"
+>
+  {isProcessing ? "Redirecting..." : "Purchase Securely"}
+</button>
+```
+
+### 2.2 Create the Unified Checkout Hook
+
+**File:** `src/hooks/useSellsPayCheckout.ts` (New File)
+
+Create a simple hook that abstracts the checkout flow. The AI only knows about this hook - it has no knowledge of Stripe internals.
 
 ```typescript
-interface UseSubscriptionReturn {
-  plan: 'browser' | 'creator' | 'agency';
-  credits: number;
-  loading: boolean;
-  capabilities: {
-    vibecoder: boolean;
-    imageGen: boolean;
-    videoGen: boolean;
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+export function useSellsPayCheckout() {
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const buyProduct = async (productId: string) => {
+    setIsProcessing(true);
+    try {
+      // Call the platform's unified checkout session
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { product_id: productId }
+      });
+
+      if (error) throw error;
+
+      // Redirect to the secure SellsPay checkout
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('Checkout unavailable');
+      }
+    } catch (err) {
+      console.error('SellsPay checkout error:', err);
+      alert('Checkout failed. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
-  sellerFee: number;
-  badge: 'none' | 'grey' | 'gold';
-  
-  // Actions
-  canUseFeature: (feature: 'vibecoder' | 'image' | 'video') => boolean;
-  deductCredits: (action: string, amount: number) => Promise<boolean>;
-  refreshSubscription: () => Promise<void>;
+
+  return { buyProduct, isProcessing };
 }
 ```
 
----
+### 2.3 UI Terminology Updates (Optional Polish)
 
-## Phase 6: UI Components
-
-### New: Premium Lock Overlay
-Shown over tools when user lacks the required tier.
-
-```
-+----------------------------------+
-|         🔒 Unlock Vibecoder      |
-|                                  |
-|   Build unlimited storefronts   |
-|   with our Premium AI architect. |
-|                                  |
-|   [Upgrade to Creator - $69/mo] |
-+----------------------------------+
-```
-
-### New: Credit Fuel Gauge (Header)
-Replaces the current credit badge.
-
-```
-┌────────────────────────┐
-│  ⚡ 2,340 Credits      │
-│  ━━━━━━━━━━━░░░ 94%   │
-│  [+] Top Up            │
-└────────────────────────┘
-```
-
-### New: Locked Tool Button (Visible but Locked)
-Tools show with a lock icon for lower tiers.
-
-```typescript
-<ToolButton 
-  icon={<Video />}
-  label="Video Gen"
-  locked={!capabilities.videoGen}
-  lockBadge="AGENCY"
-  onClick={handleVideoGen}
-/>
-```
+To reinforce the marketplace model, the system prompt should guide the AI to use "Creator Earnings" instead of "Revenue" and "Wallet" icons instead of "CreditCard" icons when showing payment-related UI.
 
 ---
 
-## Phase 7: Vibecoder Gating
+## Technical Summary
 
-### Before First Prompt
-- Check user's plan via `useSubscription`
-- If `plan === 'browser'`: Show `PremiumGate` overlay
-- If `plan !== 'browser'` but `credits < 25`: Show "Out of Fuel" overlay
-
-### On Generate
-1. Frontend checks `credits >= 25`
-2. Call `deduct-ai-credits` with `action: 'vibecoder_gen'`
-3. If success: Proceed with generation
-4. If fail (402): Show "Out of Fuel" modal
-
-### Backend Enforcement
-The `vibecoder-v2` edge function will:
-1. Verify user's plan tier
-2. Attempt credit deduction via RPC
-3. Only call Gemini if both pass
-
----
-
-## Phase 8: Pricing Page Redesign
-
-Replace the current 5-tier card layout with a 3-tier premium design.
-
-### Structure
-```
-Browser (Free)    Creator ($69)    Agency ($199)
-────────────────────────────────────────────────
-0 credits         2,500/mo         12,000/mo
-10% seller fee    5% seller fee    0% seller fee
-No AI tools       Code + Image     Code + Image + Video
-No badge          Grey badge       Gold badge
-```
-
-### Seller Fee Value Prop
-Highlight the savings prominently:
-- "Sell $1,000/mo? Save $50 with Creator."
-- "Sell $5,000/mo? Save $500 with Agency."
-
----
-
-## Phase 9: Stripe Product Setup
-
-### Products to Create in Stripe
-| Product | Monthly Price | Yearly Price |
-|---------|---------------|--------------|
-| Creator | $69 | $690 (save ~15%) |
-| Agency | $199 | $1,990 (save ~15%) |
-
-### Top-Up Packs (One-Time)
-| Pack | Credits | Price |
-|------|---------|-------|
-| Starter | 500 | $9 |
-| Pro | 2,500 | $39 |
-| Power | 6,000 | $79 |
-
----
-
-## Files to Modify
-
-### Delete
-| File | Reason |
-|------|--------|
-| `src/hooks/useCredits.ts` | Replaced by `useSubscription` |
-| `src/components/credits/CreditWallet.tsx` | Replaced by new Credit Fuel Gauge |
-| `src/components/credits/TopUpDialog.tsx` | Replaced by new Top-Up modal |
-| `supabase/functions/check-credits/` | Replaced by `check-subscription` |
-| `supabase/functions/deduct-credit/` | Replaced by `deduct-ai-credits` |
-| `supabase/functions/add-credits/` | No longer needed |
-| `supabase/functions/create-credit-checkout/` | Replaced by `create-plan-checkout` |
-| `supabase/functions/create-topup-checkout/` | Will be rebuilt for new packs |
-| `supabase/functions/manage-credit-subscription/` | Merged into `check-subscription` |
-
-### Create
-| File | Purpose |
-|------|---------|
-| `src/hooks/useSubscription.ts` | New subscription + credits hook |
-| `src/components/subscription/CreditFuelGauge.tsx` | Header credit indicator |
-| `src/components/subscription/PlanLockOverlay.tsx` | Premium gate for tools |
-| `src/components/subscription/UpgradeModal.tsx` | Tier upgrade CTA modal |
-| `supabase/functions/check-subscription/` | Unified plan + credits check |
-| `supabase/functions/deduct-ai-credits/` | Deduct with action type |
-| `supabase/functions/create-plan-checkout/` | Stripe subscription checkout |
-| `supabase/functions/subscription-webhook/` | Handle Stripe events |
-
-### Update
 | File | Changes |
 |------|---------|
-| `src/pages/Pricing.tsx` | Complete redesign for 3-tier system |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | Use `useSubscription`, add gates |
-| `src/components/ai-builder/VibecoderChat.tsx` | Credit check before generation |
-| `src/components/tools/ToolContent.tsx` | Replace `useCredits` with `useSubscription` |
-| `src/components/tools/ProToolsGate.tsx` | Update for tier-based gating |
-| `supabase/functions/vibecoder-v2/index.ts` | Add plan + credit enforcement |
-| `src/pages/AIBuilder.tsx` | Add subscription check |
+| `supabase/functions/vibecoder-v2/index.ts` | Add Real-Time Logging Protocol + Marketplace Protocol to system prompt |
+| `src/components/ai-builder/useStreamingCode.ts` | Add log parsing logic, new `onLogUpdate` callback |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | Add `liveSteps` state, wire up `onLogUpdate` callback |
+| `src/components/ai-builder/VibecoderMessageBubble.tsx` | Add live steps rendering during streaming |
+| `src/components/ai-builder/types/chat.ts` | Add `LiveBuildState` interface |
+| `src/hooks/useSellsPayCheckout.ts` | New file: unified checkout hook for AI-generated storefronts |
 
 ---
 
-## Migration Strategy
+## Expected User Experience
 
-1. **Database First**: Run cleanup migration to drop old tables, then create new schema
-2. **Edge Functions**: Deploy new functions alongside old ones, switch references
-3. **Frontend**: Update hooks and components, test thoroughly
-4. **Stripe**: Create new products/prices, update webhook handlers
-5. **Launch**: Flip the switch, monitor for issues
+### Real-Time Transparency Flow
+1. User types: "Make a dark anime store"
+2. Immediately: A card appears saying "Building your request..." with pulsing avatar
+3. 0.5s: `[✓] Analyzing user request...` appears
+4. 1.5s: `[✓] Designing responsive grid...` + `[⟳] Creating Hero section...`
+5. 3s: Steps continue animating as logs stream in
+6. Done: Card transforms to "I've designed your storefront!" with static step summary
 
-### Data Migration
-- Users with existing subscriptions: Map to closest new tier
-- Users with credit balances: Convert at 1:1 ratio to new wallet
-- Log all migrations for audit
-
----
-
-## Technical Notes
-
-### RLS Policies
-All new tables will have RLS enabled:
-- `user_wallets`: Users can only read/update their own row
-- `wallet_transactions`: Users can only read their own transactions
-- `subscription_plans`: Public read access
-
-### Webhook Security
-The Stripe webhook endpoint will verify signatures using `stripe.webhooks.constructEvent()` to prevent spoofing.
-
-### Rate Limiting
-Consider adding rate limits to the `deduct-ai-credits` function to prevent abuse.
-
+### Marketplace Protocol Flow
+1. User asks: "Add my personal Stripe key so I get paid directly"
+2. AI detects violation, enters CHAT mode
+3. Response: "I cannot add external payment providers. SellsPay handles all transactions securely..."
+4. User asks: "Fine, just make a Buy button"
+5. AI generates code with `useSellsPayCheckout()` hook - no raw Stripe code
