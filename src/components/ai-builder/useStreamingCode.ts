@@ -167,23 +167,31 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         return chatText;
       }
 
-      // Extract the AI's natural language summary (text before /// TYPE: CODE ///)
-      // This captures the AI's explanation of what it built
+      // Extract the AI's natural language summary from the stream
+      // Expected format: 
+      //   Summary text here...
+      //   ✅ **Section**: details...
+      //   [LOG: Action 1...]
+      //   [LOG: Action 2...]
+      //   /// TYPE: CODE ///
+      //   export default function App() { ... }
+      //
+      // We extract everything BEFORE "/// TYPE: CODE ///" and strip LOG tags
       const extractAISummary = (rawStream: string): string => {
-        // Remove LOG tags first
-        let cleaned = rawStream.replace(LOG_PATTERN, '').trim();
-        
         // Find the TYPE: CODE marker
-        const codeMarkerIndex = cleaned.indexOf('/// TYPE: CODE ///');
+        const codeMarkerIndex = rawStream.indexOf('/// TYPE: CODE ///');
+        if (codeMarkerIndex <= 0) return '';
         
-        if (codeMarkerIndex > 0) {
-          // Everything before the code marker is the AI's summary
-          const summaryText = cleaned.substring(0, codeMarkerIndex).trim();
-          // Clean up any stray type markers that might have been partially detected
-          return summaryText.replace(/\/\/\/\s*TYPE:\s*\w+\s*\/\/\//g, '').trim();
-        }
+        // Get everything before the type marker
+        let summaryPart = rawStream.substring(0, codeMarkerIndex).trim();
         
-        return ''; // No summary found (pure code response)
+        // Remove LOG tags from the summary
+        summaryPart = summaryPart.replace(LOG_PATTERN, '').trim();
+        
+        // Clean up excessive whitespace
+        summaryPart = summaryPart.replace(/\n{3,}/g, '\n\n').trim();
+        
+        return summaryPart;
       };
 
       const aiSummary = extractAISummary(accumulated);
