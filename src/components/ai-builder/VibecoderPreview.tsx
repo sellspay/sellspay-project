@@ -193,28 +193,8 @@ root.render(<App />);`,
   }), [code]);
 
   return (
-    <SandpackProvider
-      template="react-ts"
-      theme={customTheme}
-      files={files}
-      options={{
-        externalResources: [
-          'https://cdn.tailwindcss.com',
-        ],
-        recompileMode: 'delayed',
-        recompileDelay: 500,
-      }}
-      customSetup={{
-        dependencies: {
-          'lucide-react': 'latest',
-          'framer-motion': '^11.0.0',
-          'clsx': 'latest',
-          'tailwind-merge': 'latest',
-        },
-      }}
-    >
-      <ErrorDetector onError={onError} />
-      <Sandpack
+    <div className="h-full w-full flex flex-col" style={{ height: '100%' }}>
+      <SandpackProvider
         template="react-ts"
         theme={customTheme}
         files={files}
@@ -222,21 +202,8 @@ root.render(<App />);`,
           externalResources: [
             'https://cdn.tailwindcss.com',
           ],
-          showNavigator: false,
-          showLineNumbers: true,
-          showTabs: false,
-          editorHeight: '100%',
-          classes: {
-            'sp-wrapper': 'h-full !rounded-none !border-0',
-            'sp-layout': 'h-full !rounded-none !border-0 !bg-transparent',
-            'sp-stack': 'h-full',
-            'sp-editor': 'h-full',
-            'sp-preview': 'h-full !bg-zinc-950',
-            'sp-preview-container': 'h-full',
-            'sp-preview-iframe': 'h-full',
-          },
-          // Only show preview, hide editor
-          editorWidthPercentage: 0,
+          recompileMode: 'delayed',
+          recompileDelay: 500,
         }}
         customSetup={{
           dependencies: {
@@ -246,8 +213,45 @@ root.render(<App />);`,
             'tailwind-merge': 'latest',
           },
         }}
-      />
-    </SandpackProvider>
+      >
+        <ErrorDetector onError={onError} />
+        <div className="h-full w-full flex-1 flex flex-col" style={{ height: '100%' }}>
+          <Sandpack
+            template="react-ts"
+            theme={customTheme}
+            files={files}
+            options={{
+              externalResources: [
+                'https://cdn.tailwindcss.com',
+              ],
+              showNavigator: false,
+              showLineNumbers: true,
+              showTabs: false,
+              editorHeight: '100%',
+              classes: {
+                'sp-wrapper': '!h-full !min-h-full !rounded-none !border-0 !flex !flex-col',
+                'sp-layout': '!h-full !min-h-full !flex-1 !rounded-none !border-0 !bg-transparent !flex !flex-col',
+                'sp-stack': '!h-full !min-h-full !flex-1',
+                'sp-editor': '!h-full',
+                'sp-preview': '!h-full !min-h-full !flex-1 !bg-zinc-950',
+                'sp-preview-container': '!h-full !min-h-full !flex-1',
+                'sp-preview-iframe': '!h-full !min-h-full',
+              },
+              // Only show preview, hide editor
+              editorWidthPercentage: 0,
+            }}
+            customSetup={{
+              dependencies: {
+                'lucide-react': 'latest',
+                'framer-motion': '^11.0.0',
+                'clsx': 'latest',
+                'tailwind-merge': 'latest',
+              },
+            }}
+          />
+        </div>
+      </SandpackProvider>
+    </div>
   );
 });
 
