@@ -850,12 +850,24 @@ const ProfilePage: React.FC = () => {
             .select('is_published, vibecoder_mode')
             .eq('profile_id', data.id)
             .maybeSingle(),
-          supabase
-            .from('project_files')
-            .select('content')
-            .eq('profile_id', data.id)
-            .eq('file_path', '/App.tsx')
-            .maybeSingle(),
+          // Prefer the dedicated published code path, with legacy fallback
+          (async () => {
+            const published = await supabase
+              .from('project_files')
+              .select('content')
+              .eq('profile_id', data.id)
+              .eq('file_path', '/App.published.tsx')
+              .maybeSingle();
+
+            if (published.data?.content) return published;
+
+            return supabase
+              .from('project_files')
+              .select('content')
+              .eq('profile_id', data.id)
+              .eq('file_path', '/App.tsx')
+              .maybeSingle();
+          })(),
         ]);
         
         setAiStorefrontPublished(aiLayoutRes.data?.is_published ?? false);
