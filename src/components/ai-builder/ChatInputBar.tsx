@@ -626,15 +626,15 @@ export function ChatInputBar({
               <Plus size={16} />
             </button>
             
-            {/* Visual edits chip */}
+            {/* Model selector chip */}
             <button
               ref={modelButtonRef}
               type="button"
               onClick={toggleModelMenu}
               className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors"
             >
-              <Sparkles size={12} className="text-violet-400" />
-              <span>{selectedModel.name === 'Vibecoder Pro' ? 'Visual edits' : selectedModel.name}</span>
+              <selectedModel.icon size={12} className="text-violet-400" />
+              <span>{selectedModel.name}</span>
             </button>
           </div>
           
