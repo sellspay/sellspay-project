@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Store, Package, Star } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
+import { ImageWithFallback } from '@/components/ui/image-with-fallback';
 import { CREATOR_CATEGORIES } from './creatorCategories';
 
 export interface Creator {
@@ -34,15 +35,11 @@ export function CreatorCard({ creator }: CreatorCardProps) {
     >
       {/* BRAND BANNER */}
       <div className="relative h-28 overflow-hidden">
-        {creator.banner_url ? (
-          <img 
-            src={creator.banner_url} 
-            alt="" 
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/20 via-violet-500/20 to-fuchsia-500/20" />
-        )}
+        <ImageWithFallback
+          src={creator.banner_url}
+          alt={`${creator.full_name || creator.username} banner`}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent" />
       </div>
 
