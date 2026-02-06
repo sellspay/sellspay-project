@@ -397,8 +397,19 @@ serve(async (req) => {
     const userId = userData.user.id;
     const cost = CREDIT_COSTS[model] ?? 3; // Default to pro cost
 
-    // Only deduct if cost > 0 (flash is free)
-    if (cost > 0) {
+    // Check if user is admin/owner (bypasses credit checks)
+    const { data: isPrivileged } = await supabase.rpc('has_role', { 
+      _user_id: userId, 
+      _role: 'owner' 
+    });
+    const { data: isAdmin } = await supabase.rpc('has_role', { 
+      _user_id: userId, 
+      _role: 'admin' 
+    });
+    const bypassCredits = isPrivileged === true || isAdmin === true;
+
+    // Only deduct if cost > 0 (flash is free) AND user is not privileged
+    if (cost > 0 && !bypassCredits) {
       // Get current balance
       const { data: wallet, error: walletError } = await supabase
         .from('user_wallets')
