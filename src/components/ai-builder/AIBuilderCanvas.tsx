@@ -1180,10 +1180,21 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             </div>
           </div>
         ) : (
-        <div className="flex-1 flex min-h-0 overflow-hidden">
+        <div className="flex-1 flex min-h-0 overflow-hidden relative">
+          {/* === GLOBAL TRANSITION CURTAIN === 
+              Covers the ENTIRE workspace during project switch.
+              Uses opacity transition for smooth 0.2s fade-out/fade-in.
+              Sits ABOVE all content (z-50) so flicker is hidden behind it. */}
+          <div
+            className={`pointer-events-none absolute inset-0 z-50 bg-zinc-950 transition-opacity duration-200 ease-out ${
+              isProjectTransitioning ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+            style={{ willChange: 'opacity' }}
+          />
+
           {/* LEFT PANEL: Preview/Studio (seamless) */}
           <div
-            className="flex-1 min-w-0 overflow-hidden relative flex flex-col"
+            className="flex-1 min-w-0 overflow-hidden relative flex flex-col bg-zinc-950"
             style={{ isolation: 'isolate', contain: 'strict' }}
           >
             {/* Soft edge shadow to separate preview from chat without boxing */}
@@ -1206,10 +1217,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 <div
                   className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-800 shadow-2xl bg-zinc-950' : 'w-full'} relative`}
                 >
-                  {/* Transition mask: solid cover during project switch - NO transition delay */}
-                  {isProjectTransitioning && (
-                    <div className="pointer-events-none absolute inset-0 z-30 bg-zinc-950" />
-                  )}
 
                   <PreviewErrorBoundary
                     onAutoFix={handleAutoFix}
