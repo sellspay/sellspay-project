@@ -9,6 +9,7 @@ import { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboardi
 import { VibecoderPreview } from './VibecoderPreview';
 import { VibecoderChat } from './VibecoderChat';
 import { ProjectSidebar } from './ProjectSidebar';
+import { PreviewErrorBoundary } from './PreviewErrorBoundary';
 import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects } from './hooks/useVibecoderProjects';
 import { toast } from 'sonner';
@@ -389,6 +390,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   };
 
+  // Handle auto-fix from error boundary (self-healing AI)
+  const handleAutoFix = useCallback((errorMsg: string) => {
+    // Send the error report to the AI for automatic repair
+    handleVibecoderMessage(errorMsg);
+  }, [handleVibecoderMessage]);
+
   if (loading || projectsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -535,11 +542,20 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           {mode === 'blocks' ? (
             <AIBuilderPreview layout={layout} isEmpty={isEmpty} isBuilding={isBuilding} />
           ) : (
-            <VibecoderPreview 
-              key={`preview-${activeProjectId}-${resetKey}`}
-              code={code} 
-              isStreaming={isStreaming} 
-            />
+            <PreviewErrorBoundary 
+              onAutoFix={handleAutoFix} 
+              onReset={resetCode}
+            >
+              <VibecoderPreview 
+                key={`preview-${activeProjectId}-${resetKey}`}
+                code={code} 
+                isStreaming={isStreaming}
+                onError={(error) => {
+                  // Log the error but don't auto-trigger fix (let user click button)
+                  console.warn('[VibecoderPreview] Sandpack error detected:', error);
+                }}
+              />
+            </PreviewErrorBoundary>
           )}
           {/* Overlay while dragging (prevents iframe stealing mouse events) */}
           {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
