@@ -18,7 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, 
-  CreditCard, Wallet, Loader2, Package, Sparkles,
+  CreditCard, Loader2, Package, Sparkles,
   Wand2, Music, FileVideo, Film, Headphones, ArrowRight
 } from 'lucide-react';
 import { useState } from 'react';
@@ -321,32 +321,6 @@ export default function Header() {
               Pricing
             </Link>
 
-            {/* Credit Wallet - Premium 3D style */}
-            {user && (
-              <Link
-                to="/pricing"
-                className={cn(
-                  "hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl",
-                  "bg-gradient-to-b from-primary/20 to-primary/10",
-                  "border border-primary/30",
-                  "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_8px_rgba(0,0,0,0.2)]",
-                  "transition-all duration-300",
-                  "hover:from-primary/30 hover:to-primary/15",
-                  "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)]"
-                )}
-              >
-                {creditsLoading ? (
-                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                ) : (
-                  <>
-                    <Wallet className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-semibold text-foreground">
-                      {credits}
-                    </span>
-                  </>
-                )}
-              </Link>
-            )}
 
             {/* Editor Chat Icon */}
             {user && <EditorChatIcon />}
@@ -400,29 +374,6 @@ export default function Header() {
                       <span className="text-sm font-semibold text-foreground">{fullName || username || 'User'}</span>
                       <span className="text-xs text-muted-foreground truncate max-w-[140px]">{user.email}</span>
                     </div>
-                  </div>
-                  
-                  {/* Mobile wallet display */}
-                  <div className="sm:hidden px-2 pb-2">
-                    <Link
-                      to="/pricing"
-                      className={cn(
-                        "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg",
-                        "bg-primary/15 hover:bg-primary/25",
-                        "transition-colors duration-200"
-                      )}
-                    >
-                      {creditsLoading ? (
-                        <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                      ) : (
-                        <>
-                          <Wallet className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-semibold text-foreground">
-                            {credits} Credits
-                          </span>
-                        </>
-                      )}
-                    </Link>
                   </div>
                   
                   <DropdownMenuSeparator className="bg-border my-1" />
