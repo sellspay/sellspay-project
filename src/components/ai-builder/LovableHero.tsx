@@ -19,6 +19,25 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
   const [gateType, setGateType] = useState<'subscription' | 'credits'>('subscription');
   
   const recognitionRef = useRef<any>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // Reset height to auto to correctly calculate shrink
+    textarea.style.height = "auto";
+    
+    // Calculate new height, capped at ~200px (approx 8 lines)
+    const newHeight = Math.min(textarea.scrollHeight, 200);
+    
+    // Set height (min 24px for single line)
+    textarea.style.height = `${Math.max(24, newHeight)}px`;
+    
+    // Show scrollbar only if we hit the limit
+    textarea.style.overflowY = textarea.scrollHeight > 200 ? "auto" : "hidden";
+  }, [prompt]);
   const navigate = useNavigate();
   const { isPremium, credits, hasCredits, goToPricing, loading: subLoading } = useSubscription();
 
@@ -162,28 +181,36 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
         >
           <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-rose-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           
-          <div className="relative bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex items-center shadow-2xl transition-all focus-within:border-orange-500/30 focus-within:bg-zinc-900/90 focus-within:scale-[1.01]">
+          <div className="relative bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex items-end shadow-2xl transition-all focus-within:border-orange-500/30 focus-within:bg-zinc-900/90 focus-within:scale-[1.01]">
             
             {/* Add Button */}
             <button 
               type="button" 
-              className="p-3 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all mr-2"
+              className="p-3 mb-0.5 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all mr-2 shrink-0"
             >
               <Plus size={20} />
             </button>
 
-            {/* Text Input */}
-            <input 
-              type="text" 
+            {/* Auto-Expanding Textarea */}
+            <textarea
+              ref={textareaRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
               placeholder="Ask VibeCoder to create a landing page for..."
-              className="flex-1 bg-transparent border-none text-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-0 font-medium"
+              rows={1}
+              className="flex-1 bg-transparent border-none text-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-0 font-medium resize-none py-2.5 max-h-[200px] scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent"
+              style={{ minHeight: "24px" }}
               autoFocus
             />
 
             {/* Action Icons */}
-            <div className="flex items-center gap-1 pl-2">
+            <div className="flex items-center gap-1 pl-2 mb-0.5 shrink-0">
               {/* Microphone / Voice Button */}
               <button 
                 type="button" 
