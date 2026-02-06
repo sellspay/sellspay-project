@@ -35,6 +35,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
   const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
   
+  // Hard refresh state for fixing white screen of death
+  const [refreshKey, setRefreshKey] = useState(0);
+  
   // Resizable sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [isDragging, setIsDragging] = useState(false);
@@ -216,6 +219,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       toast.success('Reverted to previous version');
     }
   }, [getPreviousCodeSnapshot, setCode]);
+
+  // Hard refresh to fix white screen of death
+  const handleRefresh = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
 
   // Restore specific code version (time travel with DB sync)
   const handleRestoreCode = useCallback(async (messageId: string) => {
@@ -430,10 +438,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
             viewMode={viewMode}
             setViewMode={setViewMode}
             projectName={activeProject?.name}
-            onUndo={handleUndo}
-            canUndo={canUndo}
             deviceMode={deviceMode}
             setDeviceMode={setDeviceMode}
+            onRefresh={handleRefresh}
           />
           
           {/* Preview/Code Content */}
@@ -446,7 +453,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
                 onReset={resetCode}
               >
                 <VibecoderPreview 
-                  key={`preview-${activeProjectId}-${resetKey}`}
+                  key={`preview-${activeProjectId}-${resetKey}-${refreshKey}`}
                   code={code} 
                   isStreaming={isStreaming}
                   viewMode={viewMode}
