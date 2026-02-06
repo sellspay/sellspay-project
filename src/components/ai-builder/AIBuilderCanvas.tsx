@@ -798,7 +798,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
   // === EXISTING USER: Show the full editor interface ===
   return (
-    <div className="h-screen w-full bg-black text-white flex overflow-hidden">
+    <div className="h-screen w-full bg-background flex overflow-hidden p-2">
       {/* Project sidebar - outside main container */}
       <ProjectSidebar
         projects={projects}
@@ -812,8 +812,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
-      {/* MAIN WORKSPACE - Full height, no outer border */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-black">
+      {/* MAIN SEAMLESS CONTAINER */}
+      <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border overflow-hidden bg-background">
         {/* Integrated Header */}
         <VibecoderHeader
           projectName={activeProject?.name}
@@ -831,6 +831,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           onNavigate={setPreviewPath}
           pages={detectedPages}
           onRegenerate={(tweak) => {
+            // Send tweak as a new message to refine the current design
             handleSendMessage(`Refine the current design: ${tweak}`);
           }}
           isGenerating={isStreaming}
@@ -840,134 +841,112 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           onSignOut={handleSignOut}
         />
 
-        {/* Split View Content - Floating Canvas + Anchored Chat */}
-        <div className="flex-1 flex min-h-0 overflow-hidden relative">
-          
-          {/* LEFT: THE FLOATING CANVAS */}
-          <div className="flex-1 flex flex-col min-w-0 p-4 pr-0">
-            {/* Floating card container */}
-            <div 
-              className="flex-1 bg-zinc-900/50 rounded-2xl border border-zinc-800 overflow-hidden shadow-2xl relative flex flex-col"
-              style={{ isolation: 'isolate', contain: 'strict' }}
-            >
-              {/* Browser Chrome Toolbar */}
-              <div className="h-9 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 gap-2 shrink-0">
-                {/* Traffic lights */}
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/30" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/30" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/30" />
+        {/* Split View Content - Chat + Preview always visible */}
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          {/* LEFT PANEL: Always show Sandpack preview (default code when no project) */}
+          <div
+            className="flex-1 min-w-0 bg-background overflow-hidden relative flex flex-col"
+            style={{ isolation: 'isolate', contain: 'strict' }}
+          >
+            {(viewMode === 'image' || viewMode === 'video') ? (
+              /* Creative Studio: Image/Video generation */
+              <GenerationCanvas
+                mode={viewMode}
+                asset={currentAsset}
+                isLoading={isCurrentlyGenerating}
+                onRetry={handleRetryAsset}
+                onUseInCanvas={() => setShowPlacementModal(true)}
+                onFeedback={handleAssetFeedback}
+                activeModel={activeModel}
+              />
+            ) : (
+              /* Live Preview: Sandpack iframe - always rendered with DEFAULT_CODE when no project */
+              <div className={`flex-1 min-h-0 relative ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}>
+                <div
+                  className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'}`}
+                >
+                  <PreviewErrorBoundary
+                    onAutoFix={handleAutoFix}
+                    onReset={resetCode}
+                  >
+                    <VibecoderPreview
+                      key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
+                      code={code}
+                      isStreaming={isStreaming}
+                      viewMode={viewMode}
+                      onReady={() => setIsCanvasReady(true)}
+                      onError={(error) => {
+                        console.warn('[VibecoderPreview] Sandpack error detected:', error);
+                        setSandpackError(error);
+                        setIsCanvasReady(true); // unblock overlay so the user can see the error UI
+                      }}
+                    />
+                  </PreviewErrorBoundary>
                 </div>
-                {/* URL bar */}
-                <div className="ml-4 px-3 py-1 bg-zinc-950 rounded-md border border-zinc-800 text-[10px] text-zinc-500 font-mono flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500/60 animate-pulse" />
-                  localhost:3000{previewPath}
-                </div>
-                {/* Device mode indicator */}
-                <div className="ml-auto text-[10px] text-zinc-600">
-                  {deviceMode === 'mobile' ? '📱 375px' : '🖥️ Desktop'}
-                </div>
-              </div>
-
-              {/* ACTUAL PREVIEW CONTENT */}
-              <div className="flex-1 relative bg-zinc-950">
-                {(viewMode === 'image' || viewMode === 'video') ? (
-                  <GenerationCanvas
-                    mode={viewMode}
-                    asset={currentAsset}
-                    isLoading={isCurrentlyGenerating}
-                    onRetry={handleRetryAsset}
-                    onUseInCanvas={() => setShowPlacementModal(true)}
-                    onFeedback={handleAssetFeedback}
-                    activeModel={activeModel}
-                  />
-                ) : (
-                  <div className={`h-full w-full relative ${deviceMode === 'mobile' ? 'flex items-center justify-center' : ''}`}>
-                    <div className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-800 shadow-2xl bg-zinc-950' : 'w-full'}`}>
-                      <PreviewErrorBoundary
-                        onAutoFix={handleAutoFix}
-                        onReset={resetCode}
-                      >
-                        <VibecoderPreview
-                          key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
-                          code={code}
-                          isStreaming={isStreaming}
-                          viewMode={viewMode}
-                          onReady={() => setIsCanvasReady(true)}
-                          onError={(error) => {
-                            console.warn('[VibecoderPreview] Sandpack error detected:', error);
-                            setSandpackError(error);
-                            setIsCanvasReady(true);
-                          }}
-                        />
-                      </PreviewErrorBoundary>
+                
+                {/* Canvas loading overlay - shows until Sandpack is ready */}
+                {!isCanvasReady && !sandpackError && (
+                  <div className="absolute inset-0 z-30 bg-background flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading canvas...</span>
                     </div>
-                    
-                    {/* Canvas loading overlay */}
-                    {!isCanvasReady && !sandpackError && (
-                      <div className="absolute inset-0 z-30 bg-zinc-950 flex items-center justify-center">
-                        <div className="flex flex-col items-center gap-4">
-                          <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-                          <span className="text-sm text-zinc-500">Loading canvas...</span>
-                        </div>
-                      </div>
-                    )}
+                  </div>
+                )}
 
-                    {/* Sandpack error recovery panel */}
-                    {sandpackError && (
-                      <div className="absolute inset-0 z-30 bg-zinc-950 flex items-center justify-center p-6">
-                        <div className="w-full max-w-xl rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-lg">
-                          <h3 className="text-base font-semibold text-white">Preview failed to load</h3>
-                          <p className="mt-1 text-sm text-zinc-400">
-                            Sandboxed preview reported an error while bundling.
-                          </p>
-                          <pre className="mt-4 max-h-48 overflow-auto rounded-lg bg-zinc-950 p-3 text-xs text-zinc-300 whitespace-pre-wrap break-words border border-zinc-800">
-                            {sandpackError}
-                          </pre>
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={handleRefresh}
-                              className="inline-flex items-center justify-center rounded-md bg-orange-600 px-3 py-2 text-sm font-medium text-white hover:bg-orange-500 transition-colors"
-                            >
-                              Hard Refresh (↻)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSandpackError(null);
-                                setIsCanvasReady(false);
-                                setRefreshKey((p) => p + 1);
-                              }}
-                              className="inline-flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-700 transition-colors"
-                            >
-                              Retry
-                            </button>
-                          </div>
-                        </div>
+                {/* If Sandpack errors, show a recovery panel (and keep preview behind it) */}
+                {sandpackError && (
+                  <div className="absolute inset-0 z-30 bg-background flex items-center justify-center p-6">
+                    <div className="w-full max-w-xl rounded-2xl border border-border bg-card p-6 shadow-lg">
+                      <h3 className="text-base font-semibold text-foreground">Preview failed to load</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Sandboxed preview reported an error while bundling.
+                      </p>
+                      <pre className="mt-4 max-h-48 overflow-auto rounded-lg bg-muted p-3 text-xs text-foreground whitespace-pre-wrap break-words">
+                        {sandpackError}
+                      </pre>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={handleRefresh}
+                          className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+                        >
+                          Hard Refresh (↻)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSandpackError(null);
+                            setIsCanvasReady(false);
+                            setRefreshKey((p) => p + 1);
+                          }}
+                          className="inline-flex items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground"
+                        >
+                          Retry
+                        </button>
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-            
-            {/* Overlay while dragging sidebar */}
+            )}
+
+            {/* Overlay while dragging */}
             {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
           </div>
 
-          {/* RIGHT: THE CHAT SIDEBAR - Solid black, crisp border */}
+          {/* RIGHT PANEL: Chat - ALWAYS VISIBLE */}
           <div
             style={{ width: sidebarWidth }}
-            className="shrink-0 flex flex-col bg-black border-l border-zinc-800/80 overflow-hidden relative z-10"
+            className="shrink-0 flex flex-col bg-muted/50 overflow-hidden relative"
           >
-            {/* Refined drag handle */}
+            {/* Refined drag handle - subtle until interaction */}
             <div
               onMouseDown={startResizing}
               className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 transition-all ${
                 isDragging
-                  ? 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]'
-                  : 'bg-transparent hover:bg-zinc-700'
+                  ? 'bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.35)]'
+                  : 'bg-transparent hover:bg-border'
               }`}
             />
 
