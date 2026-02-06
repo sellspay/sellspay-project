@@ -77,8 +77,11 @@ export function useVibecoderProjects() {
 
   // Load messages when active project changes
   useEffect(() => {
+    // CRITICAL: Immediately clear messages to prevent cross-project bleed
+    // This ensures the UI/restoration logic never sees stale messages from the previous project
+    setMessages([]);
+    
     if (!activeProjectId) {
-      setMessages([]);
       return;
     }
 
@@ -349,9 +352,14 @@ export function useVibecoderProjects() {
     }
   }, [activeProjectId]);
 
-  // Select project
+  // Select project - also syncs URL so refresh lands on the same project
   const selectProject = useCallback((projectId: string) => {
     setActiveProjectId(projectId);
+    
+    // Sync URL query param for refresh consistency
+    const url = new URL(window.location.href);
+    url.searchParams.set('project', projectId);
+    window.history.replaceState(null, '', url.toString());
   }, []);
 
   // Clear active project - used for "Fresh Start" flow

@@ -82,8 +82,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Page navigation state for storefront preview
   const [previewPath, setPreviewPath] = useState("/");
   
-  // Flag to prevent double-firing agent on mount with location state
-  const hasStartedInitialRef = useRef(false);
+  // Per-project guard to prevent double-firing agent on mount with location state
+  // Stores the project ID for which we've already triggered the initial prompt
+  const startedInitialForProjectRef = useRef<string | null>(null);
   
   // 🔒 GENERATION LOCK: Captures the project ID when generation starts
   // Prevents race condition where AI writes to wrong project if user switches mid-generation
@@ -299,10 +300,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     const initialPrompt = (location.state as { initialPrompt?: string })?.initialPrompt;
 
     // Check if we just arrived with a prompt to auto-start
-    if (activeProjectId && initialPrompt && !hasStartedInitialRef.current && !projectsLoading) {
+    // Guard: Only fire once per project - prevents double-trigger on re-renders
+    if (activeProjectId && initialPrompt && startedInitialForProjectRef.current !== activeProjectId && !projectsLoading) {
       console.log('🚀 Picking up initial prompt from navigation:', initialPrompt);
 
-      hasStartedInitialRef.current = true;
+      // Mark this project as having started its initial prompt
+      startedInitialForProjectRef.current = activeProjectId;
 
       // 🔒 LOCK: Set generation lock to this project
       generationLockRef.current = activeProjectId;
@@ -488,29 +491,24 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
         toast.info('Previous project was deleted. Starting fresh.');
       } else {
-        // Project verified - load code.
+        // Project verified - prepare for code loading.
         console.log("✅ DB Data received. Mounting.");
         
         // Mount the agent with this project ID (sets the lock)
         mountAgentProject(activeProjectId);
         
-        // Source of truth: last assistant code_snapshot in message history (project-scoped).
-        // Use the ref to get latest snapshot without adding `messages` to deps
-        const lastSnapshot = getLastCodeSnapshotRef.current();
-        if (lastSnapshot) {
-          setCode(lastSnapshot);
-        } else {
-          // Brand new project (no generations yet) → show blank template.
-          resetCode();
-        }
+        // DO NOT load code here! Messages haven't loaded yet.
+        // The separate "restoration effect" will handle code once messagesLoading=false.
+        // For now, reset to blank to avoid showing stale code from previous project.
+        resetCode();
         
         // SAFETY: After loading, ensure we're not stuck in a generating state
         // This catches edge cases where the previous generation didn't clean up
         setLiveSteps([]);
         setChatResponse(null);
 
-        // CONTENT GATE: Now it's safe to render this project.
-        setContentProjectId(activeProjectId);
+        // NOTE: contentProjectId is NOT set here anymore.
+        // It will be set by the restoration effect once messages are loaded and code is mounted.
       }
 
       setIsVerifyingProject(false);
@@ -531,6 +529,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // This effect runs AFTER messages load from the database.
   // It restores the last code snapshot once messages are available.
   // Separated from the main orchestrator to avoid the infinite loop bug.
+  // ALSO sets contentProjectId to "open the gate" once correct content is mounted.
   const hasRestoredCodeRef = useRef<string | null>(null);
   
   useEffect(() => {
@@ -550,11 +549,13 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     if (lastSnapshot) {
       console.log('📦 Restoring code from message history for project:', activeProjectId);
       setCode(lastSnapshot);
-      hasRestoredCodeRef.current = activeProjectId;
-    } else if (messages.length === 0) {
-      // Brand new project with no messages - mark as restored to avoid re-running
-      hasRestoredCodeRef.current = activeProjectId;
     }
+    // Mark as restored (even if no snapshot - prevents re-running)
+    hasRestoredCodeRef.current = activeProjectId;
+    
+    // CONTENT GATE: Now it's safe to render - correct code/messages are mounted
+    console.log('🚪 Opening content gate for project:', activeProjectId);
+    setContentProjectId(activeProjectId);
   }, [activeProjectId, messagesLoading, messages.length, getLastCodeSnapshot, setCode, isStreaming]);
 
   // Reset restoration tracker when project changes
