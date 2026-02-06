@@ -617,10 +617,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             onGenerateAsset={handleGenerateAsset}
             isStreaming={isStreaming}
             onCancel={cancelStream}
-            onReset={resetCode}
-            onUndo={handleUndo}
-            hasCode={code !== DEFAULT_CODE}
-            canUndo={canUndo}
             messages={messages}
             onRateMessage={rateMessage}
             onRestoreToVersion={handleRestoreCode}
