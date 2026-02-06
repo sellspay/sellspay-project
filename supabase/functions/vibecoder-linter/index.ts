@@ -9,110 +9,208 @@ const corsHeaders = {
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 /**
- * VibeCoder Linter Agent
+ * VibeCoder Linter Agent (v2.1)
  * 
  * Role: Senior QA Engineer & Security Auditor
  * Model: google/gemini-2.5-flash-lite (cheap & fast)
  * 
- * This agent is the FINAL GATEKEEPER before code reaches the user.
- * It scans for:
- * - Syntax errors (missing brackets, invalid JSX)
- * - Import errors (hallucinated libraries)
- * - Policy violations (auth forms, payment gateways)
- * - Design fidelity (did Builder follow Architect's plan?)
+ * IMPROVEMENTS:
+ * - Static syntax validation BEFORE AI call
+ * - Runtime pattern detection (common crash patterns)
+ * - Stricter policy enforcement
+ * - Actionable fix suggestions
  */
 
+// ═══════════════════════════════════════════════════════════════
+// STATIC VALIDATION (runs before AI call)
+// ═══════════════════════════════════════════════════════════════
+
+interface StaticValidationResult {
+  isValid: boolean;
+  errorType: string;
+  explanation: string;
+  location: string;
+  fixSuggestion: string;
+}
+
+function runStaticValidation(code: string): StaticValidationResult | null {
+  // 1. Check for balanced brackets
+  const brackets = { '{': '}', '(': ')', '[': ']' };
+  const stack: string[] = [];
+  let inString = false;
+  let stringChar = '';
+  let lineNum = 1;
+  
+  for (let i = 0; i < code.length; i++) {
+    const char = code[i];
+    if (char === '\n') lineNum++;
+    
+    // Track string state
+    if ((char === '"' || char === "'" || char === '`') && (i === 0 || code[i-1] !== '\\')) {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+      continue;
+    }
+    
+    if (inString) continue;
+    
+    if (char in brackets) {
+      stack.push(char);
+    } else if (Object.values(brackets).includes(char)) {
+      const expected = Object.entries(brackets).find(([, v]) => v === char)?.[0];
+      if (stack.length === 0 || stack[stack.length - 1] !== expected) {
+        return {
+          isValid: false,
+          errorType: 'Syntax',
+          explanation: `Unmatched closing bracket '${char}' at line ${lineNum}`,
+          location: `Line ${lineNum}`,
+          fixSuggestion: `Check for missing opening bracket or extra closing bracket near line ${lineNum}`,
+        };
+      }
+      stack.pop();
+    }
+  }
+  
+  if (stack.length > 0) {
+    return {
+      isValid: false,
+      errorType: 'Syntax',
+      explanation: `Unclosed bracket '${stack[stack.length - 1]}' - code is incomplete`,
+      location: 'End of file',
+      fixSuggestion: `Add missing closing '${brackets[stack[stack.length - 1] as keyof typeof brackets]}' at the end of the file`,
+    };
+  }
+  
+  // 2. Check for common runtime crash patterns
+  const runtimePatterns = [
+    {
+      pattern: /\.map\s*\(\s*[^?]/g,
+      without: /\?\./,
+      error: 'Unsafe array mapping without optional chaining',
+      fix: 'Use products?.map() instead of products.map()',
+    },
+    {
+      pattern: /import\s+.*from\s+['"](@chakra-ui|@mui|@material-ui|antd|semantic-ui)/,
+      error: 'Unsupported UI library import',
+      fix: 'Remove the import. Use Tailwind CSS and Lucide icons only.',
+    },
+    {
+      pattern: /import\s+.*from\s+['"]axios['"]/,
+      error: 'Axios import detected - backend calls not allowed',
+      fix: 'Remove axios. Use useSellsPayCheckout for purchases.',
+    },
+    {
+      pattern: /<form.*onSubmit.*(?:login|signin|signup|register|password)/i,
+      error: 'Auth form detected - authentication is handled by SellsPay',
+      fix: 'Remove the auth form entirely. Users authenticate via SellsPay.',
+    },
+    {
+      pattern: /(?:stripe|paypal|STRIPE|PAYPAL).*(?:key|secret|publishable)/i,
+      error: 'Payment gateway configuration detected',
+      fix: 'Remove payment configuration. Use useSellsPayCheckout() instead.',
+    },
+    {
+      pattern: /src\s*=\s*["'](?:\.\/|\/(?!https?:)|\.\.\/)/,
+      error: 'Local image path detected',
+      fix: 'Replace with Unsplash URL: https://images.unsplash.com/photo-XXXXX',
+    },
+  ];
+  
+  for (const { pattern, error, fix } of runtimePatterns) {
+    if (pattern.test(code)) {
+      const match = code.match(pattern);
+      const lineNum = code.substring(0, match?.index || 0).split('\n').length;
+      return {
+        isValid: false,
+        errorType: pattern.source.includes('auth') || pattern.source.includes('stripe') ? 'Policy' : 'Syntax',
+        explanation: error,
+        location: `Line ${lineNum}`,
+        fixSuggestion: fix,
+      };
+    }
+  }
+  
+  // 3. Check for missing export default
+  if (!code.includes('export default')) {
+    return {
+      isValid: false,
+      errorType: 'Syntax',
+      explanation: 'Missing export default - component will not render',
+      location: 'File level',
+      fixSuggestion: 'Add "export default function App()" at the start of the component',
+    };
+  }
+  
+  return null; // Passed static validation
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AI LINTER PROMPT
+// ═══════════════════════════════════════════════════════════════
+
 const LINTER_SYSTEM_PROMPT = `You are the final gatekeeper for SellsPay VibeCoder.
-Your job is to read the Builder's code and find why it might fail.
-You do NOT fix the code—you identify the "Bug Signature" so the Builder can retry.
+Your job is to find bugs that will cause RUNTIME CRASHES or VISUAL FAILURES.
+You do NOT fix the code—you provide a precise "Bug Report" so the Builder can fix it.
 
-### VALIDATION CHECKS
+### YOUR CHECKS (in priority order)
 
-1. **SYNTAX & RUNTIME**
-   - Are there unclosed brackets \`}\`, \`)\`, or \`]\`?
-   - Are there variables used that were never defined?
-   - Are all imported components actually available in standard React/Vite?
-   - Valid imports: react, lucide-react, framer-motion, tailwind classes
-   - Invalid imports: @chakra-ui, @mui, random-library-name
+1. **RUNTIME CRASH RISKS**
+   - Mapping over potentially undefined arrays without optional chaining
+   - Accessing properties on null/undefined objects
+   - Missing unique keys in list renders
+   - Undefined variables or functions
+   - Invalid hook usage (hooks in conditionals/loops)
 
-2. **MARKETPLACE COMPLIANCE**
-   - Did the Builder create a custom Login or Signup form? → CRITICAL FAILURE
-   - Did the Builder use \`fetch\` or \`axios\` for payment endpoints? → CRITICAL FAILURE
-   - Did the Builder include Stripe/PayPal API key inputs? → CRITICAL FAILURE
-   - Is \`useSellsPayCheckout\` properly imported and used? → Required for any purchase button
+2. **IMPORT VALIDATION**
+   - Only these are allowed: react, lucide-react, framer-motion, @/hooks/useSellsPayCheckout, @/components/sellspay/*
+   - Flag any imports from: @chakra-ui, @mui, axios, @stripe, or unknown packages
 
-3. **LAYOUT COMPLIANCE**
-   - Is the Hero section the FIRST element in the return? → Required
-   - Is there a nav bar placed at the absolute top (above hero)? → FAILURE
+3. **POLICY VIOLATIONS (CRITICAL)**
+   - Login/Signup forms → FAIL
+   - Stripe/PayPal direct integration → FAIL
+   - API calls with fetch/axios → FAIL
 
-4. **DESIGN FIDELITY**
-   - Does the code include the creative "Vibe" from the Architect's plan?
-   - If Architect said "Cyberpunk" but code uses basic white/gray → LOW CREATIVITY
-   - Check for: gradient classes, animation usage, custom shadows
+4. **LAYOUT COMPLIANCE**
+   - Hero must be FIRST element in return statement
+   - No fixed navbar at top (should be sticky below hero)
 
-5. **IMAGE PROTOCOL**
-   - Are there any local image paths (./assets, /images)? → FAILURE
-   - All images must use https:// URLs (Unsplash preferred)
+5. **DESIGN FIDELITY** (only if Architect plan provided)
+   - Does code use the requested style (colors, typography)?
+   - Are motion animations included?
 
-### OUTPUT FORMAT (STRICT JSON)
-You MUST respond with ONLY valid JSON:
-
+### OUTPUT FORMAT (STRICT JSON ONLY)
+\`\`\`json
 {
   "verdict": "PASS" | "FAIL",
-  "errorType": "Syntax" | "Policy" | "Layout" | "Creativity" | "Images" | "None",
-  "severity": "critical" | "warning" | "info",
-  "explanation": "Short, blunt description of what is wrong.",
-  "location": "Line number, component name, or 'multiple'",
-  "fixSuggestion": "Specific instruction for the Builder to fix this"
+  "errorType": "Syntax" | "Runtime" | "Policy" | "Layout" | "Imports" | "Design" | "None",
+  "severity": "critical" | "warning",
+  "explanation": "One sentence describing the exact issue",
+  "location": "Component name or line number",
+  "fixSuggestion": "Specific code-level instruction to fix"
 }
+\`\`\`
 
 ### EXAMPLES
 
-**PASS Example:**
-{
-  "verdict": "PASS",
-  "errorType": "None",
-  "severity": "info",
-  "explanation": "Code passes all validation checks. Hero first, no auth forms, images use Unsplash.",
-  "location": "N/A",
-  "fixSuggestion": "N/A"
-}
+PASS:
+{"verdict":"PASS","errorType":"None","severity":"info","explanation":"All checks passed","location":"N/A","fixSuggestion":"N/A"}
 
-**FAIL - Syntax Example:**
-{
-  "verdict": "FAIL",
-  "errorType": "Syntax",
-  "severity": "critical",
-  "explanation": "Missing closing bracket on line 45. The products.map() function is not closed.",
-  "location": "Line 45",
-  "fixSuggestion": "Add a closing }) after the product card JSX."
-}
+FAIL - Runtime:
+{"verdict":"FAIL","errorType":"Runtime","severity":"critical","explanation":"products.map() will crash if products is undefined","location":"ProductGrid component","fixSuggestion":"Change to products?.map() or add null check"}
 
-**FAIL - Policy Example:**
-{
-  "verdict": "FAIL",
-  "errorType": "Policy",
-  "severity": "critical",
-  "explanation": "Code includes a login form with email/password inputs. Auth is handled by SellsPay.",
-  "location": "LoginModal component",
-  "fixSuggestion": "Remove the login form entirely. Users authenticate via SellsPay."
-}
+FAIL - Policy:
+{"verdict":"FAIL","errorType":"Policy","severity":"critical","explanation":"Contains email/password login form","location":"Lines 45-80","fixSuggestion":"Remove the entire auth form - SellsPay handles authentication"}
 
-**FAIL - Layout Example:**
-{
-  "verdict": "FAIL",
-  "errorType": "Layout",
-  "severity": "warning",
-  "explanation": "Navigation bar is placed above the Hero section, violating layout law.",
-  "location": "Line 12-25",
-  "fixSuggestion": "Move the nav element below the Hero section and add sticky top-0."
-}
-
-Be STRICT. If there's any doubt, lean toward FAIL with a clear fix suggestion.`;
+Be STRICT. Any potential crash = FAIL.`;
 
 interface LinterRequest {
   code: string;
   architectPlan?: Record<string, unknown>;
+  runtimeError?: string; // Error from shadow rendering
 }
 
 serve(async (req: Request) => {
@@ -121,7 +219,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { code, architectPlan } = await req.json() as LinterRequest;
+    const { code, architectPlan, runtimeError } = await req.json() as LinterRequest;
 
     if (!code) {
       return new Response(
@@ -130,20 +228,63 @@ serve(async (req: Request) => {
       );
     }
 
+    // ─────────────────────────────────────────────────────────
+    // STEP 1: Static Validation (instant, no AI call)
+    // ─────────────────────────────────────────────────────────
+    const staticResult = runStaticValidation(code);
+    if (staticResult) {
+      console.log("[Linter] Static validation failed:", staticResult.explanation);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          verdict: 'FAIL',
+          errorType: staticResult.errorType,
+          severity: 'critical',
+          explanation: staticResult.explanation,
+          location: staticResult.location,
+          fixSuggestion: staticResult.fixSuggestion,
+          source: 'static',
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // STEP 2: If runtime error provided, return immediately
+    // ─────────────────────────────────────────────────────────
+    if (runtimeError) {
+      console.log("[Linter] Runtime error provided:", runtimeError);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          verdict: 'FAIL',
+          errorType: 'Runtime',
+          severity: 'critical',
+          explanation: runtimeError,
+          location: 'Runtime',
+          fixSuggestion: `Fix the runtime error: ${runtimeError}`,
+          source: 'runtime',
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // STEP 3: AI-based semantic validation
+    // ─────────────────────────────────────────────────────────
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Build the user message
     let userMessage = `## Code to Validate\n\`\`\`tsx\n${code}\n\`\`\`\n`;
     
     if (architectPlan) {
       userMessage += `\n## Original Architect's Plan\n\`\`\`json\n${JSON.stringify(architectPlan, null, 2)}\n\`\`\`\n`;
-      userMessage += `\nVerify the code implements the Architect's vision (style, colors, components).`;
+      userMessage += `\nVerify the code implements the Architect's vision.`;
     }
 
-    userMessage += `\n## Instructions\nValidate this code against all checks. Output ONLY the JSON verdict.`;
+    userMessage += `\n## Instructions\nValidate this code. Focus on RUNTIME CRASH risks first. Output ONLY the JSON verdict.`;
 
     const response = await fetch(LOVABLE_AI_URL, {
       method: "POST",
@@ -157,8 +298,8 @@ serve(async (req: Request) => {
           { role: "system", content: LINTER_SYSTEM_PROMPT },
           { role: "user", content: userMessage },
         ],
-        temperature: 0.3, // Low temperature for consistent validation
-        max_tokens: 1000,
+        temperature: 0.2,
+        max_tokens: 800,
       }),
     });
 
@@ -186,13 +327,11 @@ serve(async (req: Request) => {
     // Parse the JSON verdict
     let verdict;
     try {
-      // Handle potential markdown code blocks
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
       const jsonStr = jsonMatch ? jsonMatch[1].trim() : content.trim();
       verdict = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error("Failed to parse linter response:", content);
-      // Default to PASS if parsing fails (don't block on linter errors)
       verdict = {
         verdict: "PASS",
         errorType: "None",
@@ -207,7 +346,7 @@ serve(async (req: Request) => {
       JSON.stringify({ 
         success: true, 
         ...verdict,
-        model: "google/gemini-2.5-flash-lite",
+        source: 'ai',
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

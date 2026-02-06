@@ -328,11 +328,12 @@ serve(async (req: Request) => {
             break;
           }
           
-          // Prepare healing context for next attempt
+          // Prepare healing context for next attempt - include FULL failed code + fix suggestion
           healingContext = {
             errorType: lintResult.errorType,
             errorMessage: lintResult.explanation,
-            failedCode: generatedCode.substring(0, 1000),
+            failedCode: generatedCode, // Send FULL code, not truncated
+            fixSuggestion: lintResult.fixSuggestion,
           };
           
           sendEvent(controller, { type: 'log', data: "Triggering self-correction..." });
