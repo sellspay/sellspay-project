@@ -65,9 +65,26 @@ export const POLICY_RULES: PolicyRule[] = [
  * Returns the matched rule if a violation is found, or null if the prompt is allowed.
  */
 export function checkPolicyViolation(prompt: string): PolicyRule | null {
-  const lowerPrompt = prompt.toLowerCase();
-  
-  return POLICY_RULES.find(rule =>
-    rule.keywords.some(keyword => lowerPrompt.includes(keyword))
-  ) ?? null;
+  const normalized = (prompt || '').toLowerCase();
+
+  return (
+    POLICY_RULES.find((rule) =>
+      rule.keywords.some((keyword) => {
+        const re = keywordToRegex(keyword);
+        return re.test(normalized);
+      })
+    ) ?? null
+  );
+}
+
+function keywordToRegex(keyword: string): RegExp {
+  // Convert keyword phrase into a whitespace-tolerant, word-boundary regex.
+  // Example: "settings page" => /\bsettings\s+page\b/i
+  const escaped = escapeRegExp(keyword.trim().toLowerCase());
+  const wsTolerant = escaped.replace(/\s+/g, '\\s+');
+  return new RegExp(`\\b${wsTolerant}\\b`, 'i');
+}
+
+function escapeRegExp(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

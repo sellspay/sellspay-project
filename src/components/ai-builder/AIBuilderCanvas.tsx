@@ -654,39 +654,23 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     const violation = checkPolicyViolation(prompt);
     if (violation) {
       console.warn(`🛑 Policy Violation: ${violation.id}`);
-      
-      // If we have an active project, add the user message first
+      console.warn('[PolicyGuard] Blocked prompt (first 300 chars):', (prompt || '').slice(0, 300));
+
+      // If we have an active project, persist the user message + assistant response
+      // so the UI shows a clear explanation (instead of "nothing happened").
       if (activeProjectId) {
         await addMessage('user', prompt, undefined, activeProjectId);
+        await addMessage('assistant', violation.message, undefined, activeProjectId);
       }
-      
-      // Add policy violation response as a local-only message (not persisted to DB)
-      const policyResponse: VibecoderMessage = {
-        id: `policy-${Date.now()}`,
-        project_id: activeProjectId || 'none',
-        role: 'assistant',
-        content: violation.message,
-        code_snapshot: null,
-        rating: 0,
-        created_at: new Date().toISOString(),
-        meta_data: {
-          type: 'policy_violation',
-          category: violation.category,
-        },
-      };
-      
-      // Update local messages state (does NOT call API or persist)
-      // We need to access setMessages from useVibecoderProjects, but it's not exposed.
-      // Instead, we'll add it directly through addMessage mechanism with no code snapshot
-      // For now, show a toast as immediate feedback
+
       toast.warning(violation.message, {
         duration: 8000,
         icon: '🛡️',
       });
-      
+
       return; // ⛔ HARD STOP - do NOT call AI
     }
-    
+
     const isFreshStart = !activeProjectId;
 
     // Cover Sandpack until bundling finishes (prevents brief error flash after generation)
