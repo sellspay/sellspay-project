@@ -314,11 +314,235 @@ export function CreatorBio({ name, avatar, bio, socialLinks, className = '' }: C
 export default CreatorBio;
 `,
 
-  // SDK index export
+  // Hero Section component
+  '/src/components/sellspay/HeroSection.tsx': `import React from 'react';
+import { motion } from 'framer-motion';
+
+interface HeroSectionProps {
+  title: string;
+  subtitle?: string;
+  backgroundImage?: string;
+  ctaText?: string;
+  onCtaClick?: () => void;
+  overlay?: 'dark' | 'gradient' | 'none';
+  className?: string;
+}
+
+export function HeroSection({
+  title,
+  subtitle,
+  backgroundImage,
+  ctaText,
+  onCtaClick,
+  overlay = 'dark',
+  className = ''
+}: HeroSectionProps) {
+  const overlayStyles = {
+    dark: 'bg-black/60',
+    gradient: 'bg-gradient-to-b from-black/80 via-black/40 to-black/80',
+    none: '',
+  };
+
+  return (
+    <section 
+      className={\`relative min-h-[80vh] flex items-center justify-center overflow-hidden \${className}\`}
+      style={backgroundImage ? { backgroundImage: \`url(\${backgroundImage})\`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+    >
+      {overlay !== 'none' && (
+        <div className={\`absolute inset-0 \${overlayStyles[overlay]}\`} />
+      )}
+      
+      <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+        <motion.h1 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-6"
+        >
+          {title}
+        </motion.h1>
+        
+        {subtitle && (
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-xl text-zinc-300 max-w-2xl mx-auto mb-8"
+          >
+            {subtitle}
+          </motion.p>
+        )}
+        
+        {ctaText && (
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            onClick={onCtaClick}
+            className="px-8 py-4 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors"
+          >
+            {ctaText}
+          </motion.button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export default HeroSection;
+`,
+
+  // Sticky Navigation component
+  '/src/components/sellspay/StickyNav.tsx': `import React from 'react';
+
+interface StickyNavProps {
+  tabs: string[];
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  variant?: 'glass' | 'solid' | 'minimal';
+  className?: string;
+}
+
+export function StickyNav({
+  tabs,
+  activeTab,
+  onTabChange,
+  variant = 'glass',
+  className = ''
+}: StickyNavProps) {
+  const variants = {
+    glass: 'bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-800',
+    solid: 'bg-zinc-900 border-b border-zinc-800',
+    minimal: 'bg-transparent',
+  };
+
+  return (
+    <nav className={\`sticky top-0 z-40 \${variants[variant]} \${className}\`}>
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="flex gap-1 py-2">
+          {tabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => onTabChange(tab)}
+              className={\`px-4 py-2 rounded-lg font-medium transition-colors \${
+                activeTab === tab 
+                  ? 'bg-zinc-800 text-white' 
+                  : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+              }\`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+export default StickyNav;
+`,
+
+  // Testimonial Card component
+  '/src/components/sellspay/TestimonialCard.tsx': `import React from 'react';
+import { Star } from 'lucide-react';
+
+interface TestimonialCardProps {
+  quote: string;
+  author: string;
+  avatar?: string;
+  rating?: number;
+  className?: string;
+}
+
+export function TestimonialCard({
+  quote,
+  author,
+  avatar,
+  rating = 5,
+  className = ''
+}: TestimonialCardProps) {
+  return (
+    <div className={\`bg-zinc-900 border border-zinc-800 rounded-2xl p-6 \${className}\`}>
+      {rating > 0 && (
+        <div className="flex gap-1 mb-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Star 
+              key={i} 
+              size={16} 
+              className={i < rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-700'} 
+            />
+          ))}
+        </div>
+      )}
+      <p className="text-zinc-300 mb-4 leading-relaxed">"{quote}"</p>
+      <div className="flex items-center gap-3">
+        {avatar && (
+          <img 
+            src={avatar} 
+            alt={author} 
+            className="w-10 h-10 rounded-full object-cover"
+          />
+        )}
+        <span className="font-medium text-zinc-100">{author}</span>
+      </div>
+    </div>
+  );
+}
+
+export default TestimonialCard;
+`,
+
+  // Stats Bar component
+  '/src/components/sellspay/StatsBar.tsx': `import React from 'react';
+import { motion } from 'framer-motion';
+
+interface Stat {
+  value: string;
+  label: string;
+}
+
+interface StatsBarProps {
+  stats: Stat[];
+  className?: string;
+}
+
+export function StatsBar({ stats, className = '' }: StatsBarProps) {
+  return (
+    <div className={\`py-12 px-6 bg-zinc-900/50 border-y border-zinc-800 \${className}\`}>
+      <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
+        {stats.map((stat, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className="text-center"
+          >
+            <div className="text-3xl md:text-4xl font-bold text-white mb-1">
+              {stat.value}
+            </div>
+            <div className="text-sm text-zinc-500 uppercase tracking-wider">
+              {stat.label}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default StatsBar;
+`,
+
+  // SDK index export (updated)
   '/src/components/sellspay/index.ts': `export { ProductCard } from './ProductCard';
 export { CheckoutButton } from './CheckoutButton';
 export { FeaturedProducts } from './FeaturedProducts';
 export { CreatorBio } from './CreatorBio';
+export { HeroSection } from './HeroSection';
+export { StickyNav } from './StickyNav';
+export { TestimonialCard } from './TestimonialCard';
+export { StatsBar } from './StatsBar';
 `,
 
   // Alias for @sellspay/core style imports
