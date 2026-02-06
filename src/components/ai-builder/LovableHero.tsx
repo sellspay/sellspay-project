@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { ArrowRight, Mic, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ArrowRight, Mic, Plus, ArrowLeft } from "lucide-react";
 import heroBg from "@/assets/hero-aurora-bg.jpg";
 
 interface LovableHeroProps {
@@ -9,6 +10,7 @@ interface LovableHeroProps {
 
 export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps) {
   const [prompt, setPrompt] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -28,6 +30,15 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
       
       {/* Overlay gradient for depth */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+
+      {/* Back Button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
+      >
+        <ArrowLeft size={16} />
+        <span>Back</span>
+      </button>
 
       <div className="relative z-10 w-full max-w-2xl flex flex-col items-center text-center">
         
