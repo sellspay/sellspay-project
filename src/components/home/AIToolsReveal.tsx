@@ -58,12 +58,14 @@ const DEFAULT_STEPS: Step[] = [
  ];
  
 const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a1a1a"];
- const STEP_DISTANCE_DESKTOP = 500;
- const STEP_DISTANCE_MOBILE = 300;
- const STACK_Y = 14;
- const STACK_SCALE = 0.02;
- const TOP_CARD_SCALE = 0.97;
+const STEP_DISTANCE_DESKTOP = 500;
+const STEP_DISTANCE_MOBILE = 300;
+const STACK_Y = 14;
+const STACK_SCALE = 0.02;
+const TOP_CARD_SCALE = 0.97;
 const HOLD_RATIO = 0.4; // 40% of each step is a "pause" before next panel
+const ENTRY_BUFFER = 200; // Scroll distance for smooth entry transition
+const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
  
  export function AIToolsReveal() {
    const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -160,8 +162,9 @@ const HOLD_RATIO = 0.4; // 40% of each step is a "pause" before next panel
        if (!text || cards.length === 0) return;
  
        const headlineEl = text.querySelector("[data-headline]") as HTMLElement | null;
-       const totalScrollDistance = (panelCount - 1) * stepDistance;
- 
+        const totalScrollDistance = ENTRY_BUFFER + (panelCount - 1) * stepDistance + EXIT_BUFFER;
+
+        // Set initial states
         gsap.set(section, { backgroundColor: steps[0].bg });
         if (headlineEl) gsap.set(headlineEl, { color: steps[0].text });
  
@@ -281,33 +284,54 @@ const HOLD_RATIO = 0.4; // 40% of each step is a "pause" before next panel
           deckTweensAtStep(step, pos, animDuration);
         }
  
-       // Drive both the stack + background/text colors from one ScrollTrigger
-       ScrollTrigger.create({
-         trigger: section,
-         start: "top top",
-         end: `+=${totalScrollDistance}`,
-         pin: true,
-         pinSpacing: true,
-         anticipatePin: 1,
-         invalidateOnRefresh: true,
-         scrub: true,
-         onUpdate: (self) => {
-           stackTl.progress(self.progress);
-          colorTl.time(self.progress * panelCount);
- 
-           // Headline updates only (no transforms) to keep things stable
-           const totalTransitions = panelCount - 1;
-           const stepP = 1 / totalTransitions;
-           const clamped = Math.max(0, Math.min(1, self.progress));
-           const base = Math.floor(clamped / stepP);
-           const local = (clamped - base * stepP) / stepP;
-           const activeIdx = local >= 0.3 ? Math.min(panelCount - 1, base + 1) : base;
-           setHeadline(activeIdx);
+        // Drive both the stack + background/text colors from one ScrollTrigger
+        ScrollTrigger.create({
+          trigger: section,
+          start: "top top",
+          end: `+=${totalScrollDistance}`,
+          pin: true,
+          pinSpacing: true,
+          anticipatePin: 0, // Disabled to prevent jarring teleport on entry
+          invalidateOnRefresh: true,
+          scrub: 0.5, // Slight smoothing to prevent jank
+          onUpdate: (self) => {
+            // Map progress to account for entry/exit buffers
+            const coreScrollDistance = (panelCount - 1) * stepDistance;
+            const entryRatio = ENTRY_BUFFER / totalScrollDistance;
+            const exitRatio = EXIT_BUFFER / totalScrollDistance;
+            const coreRatio = coreScrollDistance / totalScrollDistance;
+            
+            // Clamp progress within the core animation range
+            let coreProgress = 0;
+            if (self.progress <= entryRatio) {
+              // Entry buffer: stay at 0
+              coreProgress = 0;
+            } else if (self.progress >= (1 - exitRatio)) {
+              // Exit buffer: stay at 1
+              coreProgress = 1;
+            } else {
+              // Core animation: map to 0-1
+              coreProgress = (self.progress - entryRatio) / coreRatio;
+            }
+            
+            coreProgress = Math.max(0, Math.min(1, coreProgress));
+            
+            stackTl.progress(coreProgress);
+            colorTl.time(coreProgress * panelCount);
 
-           // Fractional z-index for perfect forward/reverse layering
-           applyZDuringScrub(self.progress);
-         },
-       });
+            // Headline updates only (no transforms) to keep things stable
+            const totalTransitions = panelCount - 1;
+            const stepP = 1 / totalTransitions;
+            const clamped = Math.max(0, Math.min(1, coreProgress));
+            const base = Math.floor(clamped / stepP);
+            const local = (clamped - base * stepP) / stepP;
+            const activeIdx = local >= 0.3 ? Math.min(panelCount - 1, base + 1) : base;
+            setHeadline(activeIdx);
+
+            // Fractional z-index for perfect forward/reverse layering
+            applyZDuringScrub(coreProgress);
+          },
+        });
 
         // Ensure correct stacking on first paint (before ScrollTrigger emits updates)
         applyZDuringScrub(0);
