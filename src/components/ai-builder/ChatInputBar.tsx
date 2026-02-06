@@ -4,7 +4,7 @@ import {
   Plus, Send, Image as ImageIcon, 
   History, Settings, X, Square,
   Sparkles, ChevronDown, Bot, Zap, BrainCircuit, FileText, ArrowUp,
-  Paperclip, Film, Video, Coins, Mic
+  Paperclip, Film, Video, Coins, Mic, Lock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -96,6 +96,8 @@ interface ChatInputBarProps {
   // Controlled model state (lifted from parent)
   activeModel?: AIModel;
   onModelChange?: (model: AIModel) => void;
+  // Paywall callback
+  onOpenBilling?: () => void;
 }
 
 // Portal component to render children directly on document.body
@@ -228,7 +230,8 @@ export function ChatInputBar({
   onOpenHistory,
   onOpenSettings,
   activeModel,
-  onModelChange
+  onModelChange,
+  onOpenBilling,
 }: ChatInputBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
@@ -548,9 +551,11 @@ export function ChatInputBar({
       {/* The floating input container */}
       <div className={cn(
         "relative bg-zinc-900/80 backdrop-blur-xl border rounded-2xl shadow-2xl shadow-black/20 transition-all duration-300",
-        isPlanMode 
-          ? "border-blue-500/30 ring-1 ring-blue-500/20" 
-          : "border-zinc-800 focus-within:ring-1 focus-within:ring-violet-500/50 focus-within:border-violet-500/50"
+        !canAfford(selectedModel) && (value.trim() || attachments.length > 0)
+          ? "border-red-500/30 ring-1 ring-red-500/20"
+          : isPlanMode 
+            ? "border-blue-500/30 ring-1 ring-blue-500/20" 
+            : "border-zinc-800 focus-within:ring-1 focus-within:ring-violet-500/50 focus-within:border-violet-500/50"
       )}>
         
         {/* TOP BAR: MODEL SELECTOR & CREDITS */}
@@ -664,36 +669,54 @@ export function ChatInputBar({
               </button>
             )}
 
-            {/* Send/Stop button */}
-            <button
-              type="button"
-              onClick={isGenerating ? onCancel : handleSubmit}
-              disabled={(!value.trim() && attachments.length === 0) && !isGenerating}
-              className={cn(
-                "p-2 rounded-xl shrink-0 transition-all",
-                isGenerating
-                  ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                  : (value.trim() || attachments.length > 0)
-                    ? !canAfford(selectedModel)
-                      ? "bg-red-500/20 text-red-400"
-                      : selectedModel.category === 'video'
+            {/* Send/Stop button - transforms to Paywall CTA when user can't afford */}
+            {!canAfford(selectedModel) && (value.trim() || attachments.length > 0) ? (
+              <button
+                type="button"
+                onClick={() => onOpenBilling?.()}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-900/30 flex items-center gap-2 font-bold text-xs animate-pulse shrink-0"
+              >
+                <Lock size={14} />
+                <span>Top Up</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={isGenerating ? onCancel : handleSubmit}
+                disabled={(!value.trim() && attachments.length === 0) && !isGenerating}
+                className={cn(
+                  "p-2 rounded-xl shrink-0 transition-all",
+                  isGenerating
+                    ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                    : (value.trim() || attachments.length > 0)
+                      ? selectedModel.category === 'video'
                         ? "bg-pink-600 text-white hover:bg-pink-500 shadow-lg shadow-pink-900/20"
                         : selectedModel.category === 'image'
                           ? "bg-amber-600 text-white hover:bg-amber-500 shadow-lg shadow-amber-900/20"
                           : isPlanMode
                             ? "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20"
                             : "bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-900/20"
-                    : "bg-zinc-700/50 text-zinc-500 cursor-not-allowed"
-              )}
-              title={!canAfford(selectedModel) ? `Insufficient credits. Need ${selectedModel.cost}` : undefined}
-            >
-              {isGenerating ? (
-                <Square size={16} className="fill-current" />
-              ) : (
-                <ArrowUp size={16} strokeWidth={2.5} />
-              )}
-            </button>
+                      : "bg-zinc-700/50 text-zinc-500 cursor-not-allowed"
+                )}
+              >
+                {isGenerating ? (
+                  <Square size={16} className="fill-current" />
+                ) : (
+                  <ArrowUp size={16} strokeWidth={2.5} />
+                )}
+              </button>
+            )}
           </div>
+
+          {/* Low Balance Warning */}
+          {!canAfford(selectedModel) && (value.trim() || attachments.length > 0) && (
+            <div className="px-3 pb-2">
+              <p className="text-[10px] text-red-400 font-medium flex items-center gap-1.5">
+                <Lock size={10} />
+                Insufficient credits for {selectedModel.name} ({selectedModel.cost}c)
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Attachment Previews */}

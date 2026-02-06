@@ -25,6 +25,8 @@ interface VibecoderChatProps {
   // Controlled model state
   activeModel?: AIModel;
   onModelChange?: (model: AIModel) => void;
+  // Billing callback
+  onOpenBilling?: () => void;
 }
 
 // Live Building Card - shows steps as they stream in
@@ -120,6 +122,7 @@ export function VibecoderChat({
   liveSteps = [],
   activeModel,
   onModelChange,
+  onOpenBilling,
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -306,6 +309,7 @@ export function VibecoderChat({
         userCredits={userCredits}
         activeModel={activeModel}
         onModelChange={onModelChange}
+        onOpenBilling={onOpenBilling}
       />
     </div>
   );

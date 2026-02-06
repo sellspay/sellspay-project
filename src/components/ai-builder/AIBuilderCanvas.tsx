@@ -26,6 +26,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+  const [userCredits, setUserCredits] = useState(0);
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -168,7 +171,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Load existing vibecoder code
   useEffect(() => {
     const loadData = async () => {
-      const [layoutResp, filesResp, profileResp] = await Promise.all([
+      const [layoutResp, filesResp, profileResp, walletResp] = await Promise.all([
         supabase
           .from('ai_storefront_layouts')
           .select('*')
@@ -182,8 +185,13 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           .maybeSingle(),
         supabase
           .from('profiles')
-          .select('username')
+          .select('username, avatar_url, subscription_tier')
           .eq('id', profileId)
+          .maybeSingle(),
+        supabase
+          .from('user_wallets')
+          .select('balance')
+          .eq('user_id', profileId)
           .maybeSingle(),
       ]);
 
@@ -196,9 +204,16 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         setCode(filesResp.data.content);
       }
 
-      // Set username for View Live link
-      if (profileResp.data?.username) {
+      // Set profile data for header
+      if (profileResp.data) {
         setUsername(profileResp.data.username);
+        setUserAvatarUrl(profileResp.data.avatar_url);
+        setSubscriptionTier(profileResp.data.subscription_tier);
+      }
+
+      // Set user credits
+      if (walletResp.data) {
+        setUserCredits(walletResp.data.balance ?? 0);
       }
 
       setLoading(false);
@@ -206,6 +221,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
     loadData();
   }, [profileId, setCode]);
+
+  // Sign out handler
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
 
   // Load code from last message when switching projects
   useEffect(() => {
@@ -513,6 +534,10 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         isPublishing={publishing}
         isEmpty={isEmpty}
         username={username}
+        avatarUrl={userAvatarUrl}
+        userCredits={userCredits}
+        subscriptionTier={subscriptionTier}
+        onSignOut={handleSignOut}
       />
 
       {/* Main content - split view */}
@@ -602,6 +627,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             projectName={activeProject?.name}
             liveSteps={liveSteps}
             activeModel={activeModel}
+            onOpenBilling={() => window.open('/pricing', '_blank')}
             onModelChange={handleModelChange}
           />
         </div>

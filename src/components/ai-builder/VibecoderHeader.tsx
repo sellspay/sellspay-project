@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
 import type { ViewMode } from "./types/generation";
+import { ProfileMenu } from "./ProfileMenu";
 
 interface VibecoderHeaderProps {
   projectName?: string;
@@ -20,6 +21,11 @@ interface VibecoderHeaderProps {
   isPublishing: boolean;
   isEmpty: boolean;
   username?: string | null;
+  // Profile menu props
+  avatarUrl?: string | null;
+  userCredits?: number;
+  subscriptionTier?: string | null;
+  onSignOut?: () => void;
 }
 
 // Tab button component for the view switcher
@@ -65,6 +71,10 @@ export function VibecoderHeader({
   isPublishing,
   isEmpty,
   username,
+  avatarUrl,
+  userCredits = 0,
+  subscriptionTier,
+  onSignOut,
 }: VibecoderHeaderProps) {
   const navigate = useNavigate();
 
@@ -220,6 +230,20 @@ export function VibecoderHeader({
           )}
           {isPublished ? 'Update' : 'Publish'}
         </Button>
+
+        {/* Visual Divider */}
+        <div className="w-px h-6 bg-zinc-800" />
+
+        {/* Profile Menu */}
+        {onSignOut && (
+          <ProfileMenu
+            avatarUrl={avatarUrl}
+            username={username}
+            userCredits={userCredits}
+            subscriptionTier={subscriptionTier}
+            onSignOut={onSignOut}
+          />
+        )}
       </div>
     </header>
   );
