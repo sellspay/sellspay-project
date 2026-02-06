@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import type { GeneratedAsset } from "./types/generation";
 
 interface GenerationCanvasProps {
+  mode?: 'image' | 'video';
   asset: GeneratedAsset | null;
   isLoading: boolean;
   onRetry: () => void;
@@ -15,12 +16,31 @@ interface GenerationCanvasProps {
 }
 
 export function GenerationCanvas({ 
+  mode = 'image',
   asset, 
   isLoading, 
   onRetry, 
   onUseInCanvas,
   onFeedback 
 }: GenerationCanvasProps) {
+  
+  // Mode-specific content
+  const isVideoMode = mode === 'video';
+  const emptyTitle = isVideoMode ? "Video Studio" : "Image Studio";
+  const emptyDesc = isVideoMode 
+    ? "Generate cinematic video clips with Kling AI, Luma Ray 2, or other video models."
+    : "Create logos, hero images, and assets with Flux 1.1 Pro or Nano Banana.";
+  const modelBadges = isVideoMode 
+    ? [
+        { name: 'Kling AI', color: 'pink' },
+        { name: 'Luma Ray 2', color: 'cyan' },
+        { name: 'MiniMax', color: 'violet' },
+      ]
+    : [
+        { name: 'Flux 1.1 Pro', color: 'amber' },
+        { name: 'Nano Banana', color: 'violet' },
+        { name: 'Recraft v3', color: 'blue' },
+      ];
   
   // 1. EMPTY STATE (No generation started yet)
   if (!asset && !isLoading) {
@@ -33,30 +53,33 @@ export function GenerationCanvas({
           className="p-8 bg-zinc-900 rounded-3xl border border-zinc-800 flex flex-col items-center gap-5 shadow-2xl"
         >
           <div className="flex gap-4 opacity-50">
-            <div className="p-3 bg-zinc-800 rounded-2xl">
-              <ImageIcon size={28} />
-            </div>
-            <div className="p-3 bg-zinc-800 rounded-2xl">
-              <Film size={28} />
+            <div className={`p-3 rounded-2xl ${isVideoMode ? 'bg-pink-500/10' : 'bg-amber-500/10'}`}>
+              {isVideoMode ? (
+                <Film size={28} className="text-pink-400" />
+              ) : (
+                <ImageIcon size={28} className="text-amber-400" />
+              )}
             </div>
           </div>
           <div className="text-center">
-            <h3 className="text-xl font-semibold text-zinc-200 mb-2">Creative Studio</h3>
-            <p className="text-sm text-zinc-500 max-w-[280px] leading-relaxed">
-              Select an image or video model, describe what you want, and your generated assets will appear here.
+            <h3 className="text-xl font-semibold text-zinc-200 mb-2">{emptyTitle}</h3>
+            <p className="text-sm text-zinc-500 max-w-[300px] leading-relaxed">
+              {emptyDesc}
             </p>
           </div>
-          <div className="flex gap-2 mt-2">
-            <span className="text-[10px] px-2 py-1 bg-amber-500/10 text-amber-400 rounded-full border border-amber-500/20">
-              Flux 1.1 Pro
-            </span>
-            <span className="text-[10px] px-2 py-1 bg-pink-500/10 text-pink-400 rounded-full border border-pink-500/20">
-              Luma Ray 2
-            </span>
-            <span className="text-[10px] px-2 py-1 bg-violet-500/10 text-violet-400 rounded-full border border-violet-500/20">
-              Nano Banana
-            </span>
+          <div className="flex gap-2 mt-2 flex-wrap justify-center">
+            {modelBadges.map((badge) => (
+              <span 
+                key={badge.name}
+                className={`text-[10px] px-2 py-1 bg-${badge.color}-500/10 text-${badge.color}-400 rounded-full border border-${badge.color}-500/20`}
+              >
+                {badge.name}
+              </span>
+            ))}
           </div>
+          <p className="text-xs text-zinc-600 mt-4">
+            Select a model below and describe what you want
+          </p>
         </motion.div>
       </div>
     );
@@ -72,11 +95,13 @@ export function GenerationCanvas({
           className="relative"
         >
           {/* Pulsing glow background */}
-          <div className="absolute inset-0 blur-3xl bg-violet-500/20 rounded-full scale-150 animate-pulse" />
+          <div className={`absolute inset-0 blur-3xl rounded-full scale-150 animate-pulse ${
+            isVideoMode ? 'bg-pink-500/20' : 'bg-amber-500/20'
+          }`} />
           
           {/* Spinner */}
           <div className="relative p-6 bg-zinc-900 rounded-3xl border border-zinc-800 shadow-2xl">
-            <Loader2 size={48} className="text-violet-400 animate-spin" />
+            <Loader2 size={48} className={isVideoMode ? "text-pink-400 animate-spin" : "text-amber-400 animate-spin"} />
           </div>
         </motion.div>
         
@@ -86,8 +111,12 @@ export function GenerationCanvas({
           transition={{ delay: 0.2 }}
           className="text-center"
         >
-          <p className="text-lg font-medium text-zinc-300 animate-pulse">Creating magic...</p>
-          <p className="text-sm text-zinc-500 mt-1">This may take a few seconds</p>
+          <p className="text-lg font-medium text-zinc-300 animate-pulse">
+            {isVideoMode ? 'Rendering video...' : 'Creating image...'}
+          </p>
+          <p className="text-sm text-zinc-500 mt-1">
+            {isVideoMode ? 'This may take up to 60 seconds' : 'This may take a few seconds'}
+          </p>
         </motion.div>
       </div>
     );

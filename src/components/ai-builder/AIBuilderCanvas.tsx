@@ -33,13 +33,15 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Reset key to force component re-mount on project deletion
   const [resetKey, setResetKey] = useState(0);
   
-  // View mode state (Preview vs Code vs Generation)
+  // View mode state (Preview vs Code vs Image vs Video)
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
   
-  // Generation state for Creative Studio
-  const [currentAsset, setCurrentAsset] = useState<GeneratedAsset | null>(null);
-  const [isAssetGenerating, setIsAssetGenerating] = useState(false);
+  // Generation state for Creative Studio (Image & Video tabs)
+  const [currentImageAsset, setCurrentImageAsset] = useState<GeneratedAsset | null>(null);
+  const [currentVideoAsset, setCurrentVideoAsset] = useState<GeneratedAsset | null>(null);
+  const [isImageGenerating, setIsImageGenerating] = useState(false);
+  const [isVideoGenerating, setIsVideoGenerating] = useState(false);
   const [showPlacementModal, setShowPlacementModal] = useState(false);
   const [lastAssetPrompt, setLastAssetPrompt] = useState<string>('');
   const [lastAssetModel, setLastAssetModel] = useState<AIModel | null>(null);
@@ -348,10 +350,20 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   
   // Generate asset from image/video model
   const handleGenerateAsset = useCallback(async (model: AIModel, prompt: string) => {
-    // Switch to generation view immediately
-    setViewMode('generation');
-    setIsAssetGenerating(true);
-    setCurrentAsset(null);
+    const isVideoModel = model.category === 'video';
+    
+    // Switch to the appropriate view immediately
+    setViewMode(isVideoModel ? 'video' : 'image');
+    
+    // Set loading state for the appropriate type
+    if (isVideoModel) {
+      setIsVideoGenerating(true);
+      setCurrentVideoAsset(null);
+    } else {
+      setIsImageGenerating(true);
+      setCurrentImageAsset(null);
+    }
+    
     setLastAssetPrompt(prompt);
     setLastAssetModel(model);
 
@@ -361,26 +373,37 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         body: { 
           prompt, 
           modelId: model.id,
-          type: model.category === 'video' ? 'video' : 'image',
+          type: isVideoModel ? 'video' : 'image',
         },
       });
 
       if (error) throw error;
 
-      // Set the generated asset
-      setCurrentAsset({
+      // Create the asset object
+      const newAsset: GeneratedAsset = {
         id: crypto.randomUUID(),
-        type: model.category === 'video' ? 'video' : 'image',
+        type: isVideoModel ? 'video' : 'image',
         url: data.url || data.imageUrl,
         prompt,
         modelId: model.id,
         createdAt: new Date(),
-      });
+      };
+
+      // Set the generated asset to the appropriate state
+      if (isVideoModel) {
+        setCurrentVideoAsset(newAsset);
+      } else {
+        setCurrentImageAsset(newAsset);
+      }
     } catch (error) {
       console.error('Asset generation failed:', error);
       toast.error('Failed to generate asset. Please try again.');
     } finally {
-      setIsAssetGenerating(false);
+      if (isVideoModel) {
+        setIsVideoGenerating(false);
+      } else {
+        setIsImageGenerating(false);
+      }
     }
   }, []);
 
@@ -391,9 +414,14 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   }, [lastAssetModel, lastAssetPrompt, handleGenerateAsset]);
 
+  // Get the current active asset based on view mode
+  const currentAsset = viewMode === 'video' ? currentVideoAsset : currentImageAsset;
+  const isCurrentlyGenerating = viewMode === 'video' ? isVideoGenerating : isImageGenerating;
+
   // Apply generated asset to canvas via code injection
   const handleApplyAssetToCanvas = useCallback((instructions: string) => {
-    if (!currentAsset) return;
+    const assetToApply = viewMode === 'video' ? currentVideoAsset : currentImageAsset;
+    if (!assetToApply) return;
 
     setShowPlacementModal(false);
     setViewMode('preview');
@@ -401,11 +429,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // Construct a specialized prompt for the AI to inject the asset
     const injectionPrompt = `
 [ASSET_INJECTION_REQUEST]
-Asset Type: ${currentAsset.type}
-Asset URL: ${currentAsset.url}
+Asset Type: ${assetToApply.type}
+Asset URL: ${assetToApply.url}
 User Instructions: ${instructions}
 
-TASK: Modify the existing storefront code to place this ${currentAsset.type} asset as specified by the user. 
+TASK: Modify the existing storefront code to place this ${assetToApply.type} asset as specified by the user. 
 - Use an <img> tag for images or <video> tag for videos
 - Apply appropriate styling (object-fit, width, height) based on the placement
 - Ensure the asset is responsive and fits the design
@@ -414,16 +442,21 @@ TASK: Modify the existing storefront code to place this ${currentAsset.type} ass
     // Send to the code generator
     handleSendMessage(injectionPrompt);
     
-    // Clear the current asset
-    setCurrentAsset(null);
-  }, [currentAsset, handleSendMessage]);
+    // Clear the appropriate asset
+    if (viewMode === 'video') {
+      setCurrentVideoAsset(null);
+    } else {
+      setCurrentImageAsset(null);
+    }
+  }, [viewMode, currentVideoAsset, currentImageAsset, handleSendMessage]);
 
   // Asset feedback handler
   const handleAssetFeedback = useCallback((rating: 'positive' | 'negative') => {
+    const activeAsset = viewMode === 'video' ? currentVideoAsset : currentImageAsset;
     // TODO: Log feedback for model improvement
-    console.log('Asset feedback:', rating, currentAsset?.id);
+    console.log('Asset feedback:', rating, activeAsset?.id);
     toast.success(rating === 'positive' ? 'Thanks for the feedback!' : 'Noted! Try regenerating.');
-  }, [currentAsset]);
+  }, [viewMode, currentVideoAsset, currentImageAsset]);
 
 
   if (loading || projectsLoading) {
@@ -488,11 +521,12 @@ TASK: Modify the existing storefront code to place this ${currentAsset.type} ass
           className="flex-1 min-w-0 border-r border-zinc-800 bg-black overflow-hidden relative flex flex-col"
           style={{ isolation: 'isolate', contain: 'strict' }}
         >
-          {/* Conditional Content: Generation Canvas vs Preview/Code */}
-          {viewMode === 'generation' ? (
+          {/* Conditional Content: Image Studio / Video Studio / Preview / Code */}
+          {(viewMode === 'image' || viewMode === 'video') ? (
             <GenerationCanvas
+              mode={viewMode}
               asset={currentAsset}
-              isLoading={isAssetGenerating}
+              isLoading={isCurrentlyGenerating}
               onRetry={handleRetryAsset}
               onUseInCanvas={() => setShowPlacementModal(true)}
               onFeedback={handleAssetFeedback}
