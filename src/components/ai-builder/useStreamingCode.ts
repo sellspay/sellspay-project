@@ -9,6 +9,7 @@ interface UseStreamingCodeOptions {
   onComplete?: (finalCode: string) => void;
   onChatResponse?: (text: string) => void;
   onLogUpdate?: (logs: string[]) => void; // Real-time transparency logs
+  onSummary?: (summary: string) => void; // NEW: AI's natural language response extracted from stream
   onError?: (error: Error) => void;
   shouldAbort?: () => boolean; // Race condition guard: check if generation should be discarded
 }
@@ -164,6 +165,30 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         setState(prev => ({ ...prev, isStreaming: false }));
         options.onChatResponse?.(chatText);
         return chatText;
+      }
+
+      // Extract the AI's natural language summary (text before /// TYPE: CODE ///)
+      // This captures the AI's explanation of what it built
+      const extractAISummary = (rawStream: string): string => {
+        // Remove LOG tags first
+        let cleaned = rawStream.replace(LOG_PATTERN, '').trim();
+        
+        // Find the TYPE: CODE marker
+        const codeMarkerIndex = cleaned.indexOf('/// TYPE: CODE ///');
+        
+        if (codeMarkerIndex > 0) {
+          // Everything before the code marker is the AI's summary
+          const summaryText = cleaned.substring(0, codeMarkerIndex).trim();
+          // Clean up any stray type markers that might have been partially detected
+          return summaryText.replace(/\/\/\/\s*TYPE:\s*\w+\s*\/\/\//g, '').trim();
+        }
+        
+        return ''; // No summary found (pure code response)
+      };
+
+      const aiSummary = extractAISummary(accumulated);
+      if (aiSummary) {
+        options.onSummary?.(aiSummary);
       }
 
       // Final cleanup for code mode - strip LOG tags and markdown fences
