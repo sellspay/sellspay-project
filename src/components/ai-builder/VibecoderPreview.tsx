@@ -322,6 +322,7 @@ root.render(<App />);`,
               <SandpackPreviewComponent
                 showOpenInCodeSandbox={false}
                 showRefreshButton={true}
+                showSandpackErrorOverlay={false}
                 style={{ height: '100%', flex: 1 }}
               />
             ) : (
