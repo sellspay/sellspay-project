@@ -1,235 +1,151 @@
 
-# Creators Discovery Hub - Complete Rebuild
+
+# ChatInputBar Layout Fix & PageNavigator Cleanup
 
 ## Overview
 
-Transform the basic Creators listing into a premium **Discovery Hub** that helps buyers find creators by niche (Day Traders, 3D Artists, Notion Architects, etc.). This includes:
+This plan fixes two key issues in the AI Builder:
 
-1. **Hero Search Section** - Bold header with "Find your favorite Creator" and centered search bar
-2. **Category Navigation Bar** - 12 industry-standard categories that are sticky and horizontally scrollable
-3. **Redesigned Creator Cards** - Cover banners, self-labeled tags, niche labels, and stats footer
-4. **Database Schema Update** - Add `creator_tags` column for self-labeling
+1. **ChatInputBar Layout Collision** - The speech-to-text updates are causing layout glitches because interim text changes trigger textarea resize logic too aggressively. The "Low Balance" warning is also improperly nested inside the flex container.
 
----
-
-## Database Changes
-
-### Add `creator_tags` Column to Profiles
-
-A new `text[]` column to store creator-selected categories:
-
-```sql
-ALTER TABLE profiles ADD COLUMN creator_tags text[] DEFAULT '{}';
-
--- Update the public_profiles view to include creator_tags
-CREATE OR REPLACE VIEW public_profiles AS
-SELECT 
-  -- existing columns...
-  p.creator_tags,
-  EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = p.user_id AND ur.role = 'owner') as is_owner
-FROM profiles p;
-```
-
-**Categories to support:**
-- `software` - Software & SaaS
-- `finance` - Trading & Finance
-- `business` - E-commerce & Biz
-- `design` - Design & Art
-- `3d` - 3D & VFX
-- `video` - Video & LUTs
-- `education` - Courses & Tutorials
-- `productivity` - Notion & Templates
-- `audio` - Audio & Music
-- `gaming` - Gaming & Mods
-- `lifestyle` - Fitness & Lifestyle
+2. **PageNavigator Cleanup** - Remove the "Login" page and "Create New Page" button, and ensure navigation actually works.
 
 ---
 
-## Component Architecture
+## Part 1: ChatInputBar Layout Stabilization
 
-### Category Configuration (Shared)
+### Problem Analysis
 
-```typescript
-const CREATOR_CATEGORIES = [
-  { id: "all", label: "All Creators", icon: Zap },
-  { id: "software", label: "Software & SaaS", icon: Code2 },
-  { id: "finance", label: "Trading & Finance", icon: TrendingUp },
-  { id: "business", label: "E-commerce & Biz", icon: Briefcase },
-  { id: "design", label: "Design & Art", icon: PenTool },
-  { id: "3d", label: "3D & VFX", icon: Box },
-  { id: "video", label: "Video & LUTs", icon: Video },
-  { id: "education", label: "Courses & Tutorials", icon: BookOpen },
-  { id: "productivity", label: "Notion & Templates", icon: Layers },
-  { id: "audio", label: "Audio & Music", icon: Music },
-  { id: "gaming", label: "Gaming & Mods", icon: Gamepad2 },
-  { id: "lifestyle", label: "Fitness & Lifestyle", icon: Smile },
-];
-```
+Looking at the current code (lines 738-746), the "Low Balance Warning" is placed **inside** the flex container (`<div className="flex items-end gap-2 p-2">`). This causes:
 
----
+1. The warning text competes with the textarea for space
+2. Speech-to-text interim results trigger resize calculations
+3. The layout "fights" between elements, causing infinite scroll glitches
 
-## Page Layout
+### Solution: Move Warning Outside + Add Speech Popup Bubble
+
+**File:** `src/components/ai-builder/ChatInputBar.tsx`
+
+#### Change 1: Extract Warning from Flex Container
+
+Move the "Insufficient credits" warning **outside** the main flex container so it doesn't affect layout calculations.
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                                                                     │
-│                    ✦ Find your favorite Creator                     │
-│                                                                     │
-│      From Day Traders to 3D Artists—discover the pros powering      │
-│                      the digital economy.                           │
-│                                                                     │
-│               ┌──────────────────────────────────────┐              │
-│               │ 🔍 Search by name, niche, or handle  │              │
-│               └──────────────────────────────────────┘              │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────────────────┐
-│  [All] [Software] [Trading] [E-comm] [Design] [3D] [Video] [→ More] │  ← Sticky/Scrollable
-└─────────────────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────────────────┐
-│                                                                     │
-│  Showing 5 results for "All Creators"                               │
-│                                                                     │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
-│  │ [Cover Img] │  │ [Cover Img] │  │ [Cover Img] │  │ [Cover Img] │ │
-│  │ ┌───────┐   │  │ ┌───────┐   │  │ ┌───────┐   │  │ ┌───────┐   │ │
-│  │ │Avatar │ ✓ │  │ │Avatar │ ✓ │  │ │Avatar │   │  │ │Avatar │ ✓ │ │
-│  │ └───────┘   │  │ └───────┘   │  │ └───────┘   │  │ └───────┘   │ │
-│  │ Name [Owner]│  │ Name        │  │ Name        │  │ Name        │ │
-│  │ Day Trading │  │ VFX Artist  │  │ Productivity│  │ Fitness     │ │
-│  │ @handle     │  │ @handle     │  │ @handle     │  │ @handle     │ │
-│  │             │  │             │  │             │  │             │ │
-│  │ Bio text... │  │ Bio text... │  │ Bio text... │  │ Bio text... │ │
-│  │             │  │             │  │             │  │             │ │
-│  │ [finance]   │  │ [3d][video] │  │ [productivity│ │ [lifestyle] │ │
-│  │ [software]  │  │ [design]    │  │ [design]    │  │ [education] │ │
-│  │             │  │             │  │             │  │             │ │
-│  │ 5p  12k  4.9│  │ 24p 1.2k 4.9│  │ 115p 8.5k 4.7│ │ 3p  900 5.0 │ │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘ │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+Current structure (BROKEN):
+┌─────────────────────────────────────────┐
+│ [Model Selector]           [Credits]    │
+│ ┌─────────────────────────────────────┐ │
+│ │ [+] [Textarea......] [Mic] [Send]   │ │
+│ │ [Warning text inside flex!]         │ │ ← PROBLEM
+│ └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+
+Fixed structure:
+┌─────────────────────────────────────────┐
+│ [Model Selector]           [Credits]    │
+│ ┌─────────────────────────────────────┐ │
+│ │ [+] [Textarea......] [Mic] [Send]   │ │
+│ └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+│ [Warning text OUTSIDE the box]          │ ← FIXED
 ```
 
----
+#### Change 2: Add Floating Speech Bubble
 
-## CreatorCard Component Details
-
-### Card Structure
+When `isListening` is true, show a floating "popup" bubble above the input container. This separates the live speech text from the main textarea, preventing resize loops.
 
 ```text
-┌──────────────────────────────────────┐
-│ ████████ COVER BANNER ████████████   │  ← h-24, gradient overlay
-│ ██████████████████████████████████   │
-├──────────────────────────────────────┤
-│  ┌────┐                              │
-│  │ AV │ ✓                [View Shop] │  ← Avatar + Verified + CTA
-│  └────┘                              │
-│                                      │
-│  **Creator Name** [Owner Badge]      │  ← Name + optional owner badge
-│  Day Trading                         │  ← Niche subtitle
-│  @handle                             │  ← Username in gradient text
-│                                      │
-│  "Full-time Day Trader. Selling..."  │  ← Bio (2 lines max)
-│                                      │
-│  ┌─────────┐ ┌─────────┐             │
-│  │ 📈 finance│ │ 💻 software│          │  ← Self-labeled tags
-│  └─────────┘ └─────────┘             │
-│                                      │
-├──────────────────────────────────────┤
-│  📦 5 Prods   |   🔥 12k Sales   |   ⭐ 4.9  │  ← Stats footer
-└──────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│ 🔴 Listening...                         │ ← Floating bubble
+│ "Hello this is what I'm saying..."      │
+│                                     [X] │
+└─────────────────────────────────────────┘
+                    ▼
+┌─────────────────────────────────────────┐
+│ [Model Selector]           [Credits]    │
+│ [+] [Textarea......] [Mic] [Send]       │
+└─────────────────────────────────────────┘
 ```
 
-### Visual Styling
+#### Change 3: Separate Speech State
 
-- **Cover Banner**: Gradient overlay (from-black/60 to-transparent) for text readability
-- **Avatar**: w-16 h-16 with ring-4 ring-zinc-900, positioned to overlap the banner
-- **Verified Badge**: Blue checkmark, rainbow animated for owner role
-- **Owner Badge**: Orange gradient pill "Admin" 
-- **Tag Pills**: Zinc-800 with category icon and lowercase text
-- **Stats Footer**: Zinc-800/50 background with Package/Flame/Star icons
-
----
-
-## Data Fetching Strategy
-
-### Enhanced Creator Interface
+Add a `transcript` state to hold the live speech text separately from the main `value`. This prevents constant re-renders of the textarea while speaking.
 
 ```typescript
-interface Creator {
-  id: string;
-  user_id: string | null;
-  username: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-  banner_url: string | null;
-  bio: string | null;
-  verified: boolean | null;
-  isOwner: boolean;
-  // NEW FIELDS
-  creator_tags: string[];
-  niche: string; // Derived from primary tag or product types
-  stats: {
-    productCount: number;
-    salesCount: string;
-    avgRating: number;
-  };
-}
-```
+const [transcript, setTranscript] = useState("");  // Live speech text (popup only)
 
-### Fallback for Missing Tags
+// In onresult handler:
+recognition.onresult = (event) => {
+  let liveText = "";
+  for (let i = event.resultIndex; i < event.results.length; i++) {
+    liveText += event.results[i][0].transcript;
+  }
+  setTranscript(liveText);  // Update popup, NOT main input
+};
 
-Until creators self-label, derive categories from their product types:
-
-```typescript
-// Derive niche from products if no creator_tags
-const deriveTags = async (creatorId: string): Promise<string[]> => {
-  const { data: products } = await supabase
-    .from('products')
-    .select('product_type')
-    .eq('creator_id', creatorId)
-    .eq('status', 'published');
-  
-  // Map product_type to category
-  const mapping: Record<string, string> = {
-    'preset': 'video',
-    'lut': 'video',
-    'sfx': 'audio',
-    'music': 'audio',
-    'template': 'productivity',
-    'overlay': 'video',
-    'tutorial': 'education',
-    'project_file': 'video',
-    'digital_art': 'design',
-    '3d_artist': '3d',
-  };
-  
-  const tags = [...new Set(products?.map(p => mapping[p.product_type] || 'design'))];
-  return tags.slice(0, 3);
+// When mic stops, append to main input:
+recognition.onend = () => {
+  if (transcript.trim()) {
+    const spacing = value.trim() ? " " : "";
+    onChange(value + spacing + transcript);
+  }
+  setTranscript("");
 };
 ```
 
+### Technical Details
+
+| Line Range | Change |
+|------------|--------|
+| 243 | Add `transcript` state: `const [transcript, setTranscript] = useState("");` |
+| 256-257 | Update `promptBeforeSpeechRef` to track text before mic started |
+| 285-306 | Modify `onresult` to update `transcript` state instead of `value` |
+| 314-316 | Update `onend` to append transcript to value and clear |
+| 422-430 | Add floating speech bubble JSX before the main container |
+| 738-746 | Move warning outside the rounded container |
+
 ---
 
-## Filter & Search Logic
+## Part 2: PageNavigator Cleanup
+
+### Problem Analysis
+
+Looking at `src/components/ai-builder/PageNavigator.tsx` (provided in context):
+
+1. Contains a "Login" page that shouldn't be in a storefront navigator
+2. Has a "Create New Page" button that implies users can create pages (only AI should)
+3. The `onPageChange` callback exists but navigation isn't wired up
+
+### Solution
+
+**File:** `src/components/ai-builder/PageNavigator.tsx`
+
+#### Change 1: Remove Login from SITE_PAGES
 
 ```typescript
-const filteredCreators = creators.filter(creator => {
-  // 1. Category match
-  const matchesCategory = activeCategory === "all" || 
-    creator.creator_tags.includes(activeCategory);
-  
-  // 2. Search match (name, handle, bio, niche)
-  const q = searchQuery.toLowerCase();
-  const matchesSearch = !searchQuery || 
-    creator.full_name?.toLowerCase().includes(q) ||
-    creator.username?.toLowerCase().includes(q) ||
-    creator.bio?.toLowerCase().includes(q) ||
-    creator.niche?.toLowerCase().includes(q);
-  
-  return matchesCategory && matchesSearch;
-});
+// BEFORE
+const SITE_PAGES = [
+  { id: "home", path: "/", label: "Home", icon: Layout },
+  { id: "products", path: "/products", label: "Products", icon: ShoppingBag },
+  { id: "login", path: "/login", label: "Login", icon: User },  // ← REMOVE
+  { id: "contact", path: "/contact", label: "Contact", icon: Mail },
+];
+
+// AFTER
+const SITE_PAGES = [
+  { id: "home", path: "/", label: "Home", icon: Layout },
+  { id: "products", path: "/products", label: "Products", icon: ShoppingBag },
+  { id: "contact", path: "/contact", label: "Contact", icon: Mail },
+];
 ```
+
+#### Change 2: Remove "Create New Page" Button
+
+Delete the footer section with the `<Plus />` icon button (lines ~95-105 in PageNavigator.tsx).
+
+#### Change 3: Update Interface to Include onNavigate
+
+Rename `onPageChange` to `onNavigate` for clarity and ensure it's called on selection.
 
 ---
 
@@ -237,43 +153,24 @@ const filteredCreators = creators.filter(creator => {
 
 | File | Action | Changes |
 |------|--------|---------|
-| `src/pages/Creators.tsx` | REWRITE | Complete rebuild with Hero, Category Nav, and CreatorCard |
-| Database Migration | CREATE | Add `creator_tags` column to profiles table |
+| `src/components/ai-builder/ChatInputBar.tsx` | MODIFY | Add transcript state, speech popup bubble, move warning outside container |
+| `src/components/ai-builder/PageNavigator.tsx` | MODIFY | Remove Login page, remove Create New Page button |
 
 ---
 
-## Key Features
+## Expected Results
 
-### 1. Hero Search Section
-- Large headline: "Find your favorite Creator"
-- Subtext with industry examples
-- Centered search bar with glass effect
-- Animated background orbs (matching Products page)
+### ChatInputBar
 
-### 2. Sticky Category Navigation
-- Horizontally scrollable on mobile
-- 12 industry categories with icons
-- Active state: white bg, black text, glow effect
-- Sticks to top on scroll (sticky top-16)
+- ✅ Speech popup appears as floating bubble above input
+- ✅ Main textarea doesn't resize during speech
+- ✅ Warning text is outside the box, no layout collision
+- ✅ Users can type with 0 credits (only Send button is blocked)
+- ✅ No more infinite scroll glitch
 
-### 3. Rich Creator Cards
-- Cover banner with gradient overlay
-- Avatar overlapping banner edge
-- Verified + Owner badges
-- Niche label (primary category)
-- Self-labeled tag pills with icons
-- Stats footer: Products, Sales, Rating
+### PageNavigator
 
-### 4. Smart Fallbacks
-- Derive categories from product types if no self-labels
-- Show "Creator" as default niche
-- Use banner_url or gradient placeholder for covers
+- ✅ Only shows Home, Products, Contact pages
+- ✅ No "Create New Page" button
+- ✅ Clicking a page triggers navigation callback
 
----
-
-## Future Enhancements (Not in This Plan)
-
-- Settings page for creators to self-select categories
-- "Top Creators" featured section at the top
-- Sorting options (by sales, by followers, by rating)
-- "Following" filter for logged-in users
