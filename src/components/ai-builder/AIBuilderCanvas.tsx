@@ -290,6 +290,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       console.log('[VibeCoder 2.0] Code generated:', generatedCode.length, 'chars');
       setCode(generatedCode);
       
+      // Hard refresh the preview by incrementing refreshKey
+      setRefreshKey(prev => prev + 1);
+      
       // Add assistant message with code snapshot
       if (generationLockRef.current) {
         await addMessage('assistant', summary, generatedCode, generationLockRef.current);
@@ -302,7 +305,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     },
     onComplete: () => {
       console.log('[AgentLoop] Complete');
-      setIsAwaitingPreviewReady(false);
     },
     getActiveProjectId: () => activeProjectId,
     getUserId: () => profileId,
@@ -335,9 +337,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       // 🔒 LOCK: Set generation lock to this project
       generationLockRef.current = activeProjectId;
 
-      // Any new generation should cover Sandpack until bundling finishes
-      setIsAwaitingPreviewReady(true);
-
+      // No loading overlay - preview will hard refresh when code is ready
       // ⚡ OPTIMISTIC UI: Show user's prompt immediately (don't wait for DB)
       // This fixes "ghost state" where the AI starts working but the chat looks empty
       addMessage('user', initialPrompt, undefined, activeProjectId);
@@ -742,8 +742,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
     const isFreshStart = !activeProjectId;
 
-    // Cover Sandpack until bundling finishes (prevents brief error flash after generation)
-    setIsAwaitingPreviewReady(true);
+    // No loading overlay - preview will hard refresh when code is ready
 
     // Generate a smart project name from the first prompt
     // Extract first 4-5 meaningful words as the project name
@@ -1282,7 +1281,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
                       code={code}
                       isStreaming={isStreaming}
-                      showLoadingOverlay={isStreaming || isAwaitingPreviewReady}
+                      showLoadingOverlay={false}
                       onReady={() => {
                         // 🤝 HANDSHAKE COMPLETE: Sandpack is ready, release the transition lock
                         setIsWaitingForPreviewMount(false);
