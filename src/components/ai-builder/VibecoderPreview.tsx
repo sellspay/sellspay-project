@@ -197,32 +197,36 @@ function ErrorDetector({
   // Some browsers lock error objects as read-only
   // CRITICAL: Do this inside the effect to avoid issues with frozen objects
   useEffect(() => {
-    let currentError: string | null = null;
-    
+    // CRITICAL: Never touch or mutate sandpack.error - it may be frozen/read-only.
+    // Extract message into a brand new string immediately.
+    let safeMessage: string | null = null;
+
     try {
-      // Defensive: Check if error exists and has message property
       if (sandpack.error && typeof sandpack.error === 'object') {
-        // Read message into a new variable immediately
-        const msg = sandpack.error.message;
-        currentError = typeof msg === 'string' ? msg : null;
+        // Read into local variable - DO NOT assign back to error object
+        const rawMsg = sandpack.error.message;
+        if (typeof rawMsg === 'string' && rawMsg.length > 0) {
+          // Create a completely NEW string - never pass the original reference
+          safeMessage = String(rawMsg);
+        }
       }
-    } catch (e) {
-      // If error object is locked/frozen/throws, create a safe fallback
-      console.warn('[ErrorDetector] Failed to read Sandpack error:', e);
-      currentError = sandpack.error ? 'Build error occurred' : null;
+    } catch {
+      // If reading throws (frozen object edge case), use a generic fallback
+      safeMessage = sandpack.error ? 'Build error occurred' : null;
     }
 
-    if (currentError && currentError !== lastErrorRef.current) {
-      lastErrorRef.current = currentError;
-      // Create a completely NEW string for reporting - never pass the original
-      const safeErrorMessage = '' + currentError;
-      onErrorRef.current?.(safeErrorMessage);
+    // Only report if this is a NEW error (not the same as last time)
+    if (safeMessage && safeMessage !== lastErrorRef.current) {
+      lastErrorRef.current = safeMessage;
+      // Pass brand new string up to parent
+      onErrorRef.current?.(safeMessage);
     }
 
-    if (!currentError && lastErrorRef.current) {
+    // Clear ref when error is resolved
+    if (!safeMessage && lastErrorRef.current) {
       lastErrorRef.current = null;
     }
-  }, [sandpack.error]); // Only depend on the error object, NOT onError
+  }, [sandpack.error]);
 
   // DO NOT render any overlay here - parent handles display via FixErrorToast only
   return null;
@@ -305,8 +309,9 @@ root.render(<App />);`,
         }}
       >
         <div className="h-full w-full flex-1 flex flex-col relative" style={{ height: '100%' }}>
-          <ErrorDetector onError={onError} />
-          <ReadyDetector onReady={onReady} />
+          {/* Wrap detectors in divs to silence "cannot be given refs" warnings */}
+          <div style={{ display: 'contents' }}><ErrorDetector onError={onError} /></div>
+          <div style={{ display: 'contents' }}><ReadyDetector onReady={onReady} /></div>
           <div className="h-full w-full flex-1 flex flex-col" style={{ height: '100%' }}>
             {viewMode === 'preview' || viewMode === 'image' || viewMode === 'video' ? (
               <SandpackPreviewComponent 
@@ -361,7 +366,8 @@ export function VibecoderPreview({
       <style>{SANDPACK_HEIGHT_FIX}</style>
 
       {/* Premium Loading Overlay - visible while streaming OR until bundler is ready */}
-      {isOverlayVisible && <LoadingOverlay currentStep={loadingStep} />}
+      {/* Wrap in div to prevent ref warnings from framer-motion */}
+      {isOverlayVisible && <div style={{ display: 'contents' }}><LoadingOverlay currentStep={loadingStep} /></div>}
 
       {/* Sandpack preview/code - Always rendered, but hidden behind overlay during build */}
       <div className="h-full w-full flex-1 min-h-0">
