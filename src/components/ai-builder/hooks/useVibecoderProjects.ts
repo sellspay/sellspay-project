@@ -25,7 +25,11 @@ export interface VibecoderMessage {
 export function useVibecoderProjects() {
   const { user } = useAuth();
   const [projects, setProjects] = useState<VibecoderProject[]>([]);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(() => {
+    // Initialize from URL on mount
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('project');
+  });
   const [messages, setMessages] = useState<VibecoderMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
@@ -46,8 +50,17 @@ export function useVibecoderProjects() {
       } else {
         setProjects(data as VibecoderProject[]);
         
-        // Auto-select most recent project if none selected
-        if (data && data.length > 0 && !activeProjectId) {
+        // Read project ID from URL 
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlProjectId = urlParams.get('project');
+        
+        // If URL has a valid project ID that exists in user's projects, use it
+        if (urlProjectId && data.some(p => p.id === urlProjectId)) {
+          if (activeProjectId !== urlProjectId) {
+            setActiveProjectId(urlProjectId);
+          }
+        } else if (data && data.length > 0 && !activeProjectId) {
+          // Otherwise auto-select most recent project
           setActiveProjectId(data[0].id);
         }
       }
@@ -55,7 +68,7 @@ export function useVibecoderProjects() {
     };
 
     loadProjects();
-  }, [user, activeProjectId]);
+  }, [user]);
 
   // Load messages when active project changes
   useEffect(() => {
