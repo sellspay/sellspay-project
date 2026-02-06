@@ -369,12 +369,25 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // =============== SCORCHED EARTH ORCHESTRATOR ===============
   // We use useLayoutEffect to ensure this runs synchronously before paint.
   // This prevents any flash of stale content when switching projects.
+  // 
+  // CRITICAL: This effect ONLY runs when activeProjectId changes, NOT on every message update.
+  // Having `messages` in the dependency array caused a catastrophic bug where every new message
+  // would trigger unmount/remount, aborting in-flight AI generations.
   const previousProjectIdRef = useRef<string | null>(null);
+  
+  // Memoize stable references to avoid re-runs
+  const getLastCodeSnapshotRef = useRef(getLastCodeSnapshot);
+  getLastCodeSnapshotRef.current = getLastCodeSnapshot;
   
   useLayoutEffect(() => {
     let isMounted = true;
 
     async function loadRoute() {
+      // Skip if project ID hasn't actually changed (prevents re-runs from other deps)
+      if (previousProjectIdRef.current === activeProjectId && previousProjectIdRef.current !== null) {
+        return;
+      }
+      
       // 1. IMMEDIATE UNMOUNT: Wipe React State FIRST (before any async operations)
       unmountAgentProject();
       
@@ -467,7 +480,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         mountAgentProject(activeProjectId);
         
         // Source of truth: last assistant code_snapshot in message history (project-scoped).
-        const lastSnapshot = getLastCodeSnapshot();
+        // Use the ref to get latest snapshot without adding `messages` to deps
+        const lastSnapshot = getLastCodeSnapshotRef.current();
         if (lastSnapshot) {
           setCode(lastSnapshot);
         } else {
@@ -491,7 +505,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       isMounted = false;
       unmountAgentProject(); // Final safety wipe on exit
     };
-  }, [activeProjectId, messages, getLastCodeSnapshot, profileId, setCode, resetCode, resetAgent, cancelStream, cancelAgent, forceResetStreaming, mountAgentProject, unmountAgentProject]);
+  // CRITICAL: Only depend on activeProjectId - NOT messages or other frequently changing values
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProjectId]);
 
   // NOTE: Draft code is NOT persisted to the public/live slot.
   // Publishing explicitly writes the current code to a dedicated published file.
