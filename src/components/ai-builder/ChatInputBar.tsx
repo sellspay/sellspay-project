@@ -62,8 +62,8 @@ declare global {
 // Updated Fair Pricing: 8x reduction to match actual API costs
 export const AI_MODELS = {
   code: [
-    { id: "vibecoder-pro", name: "Vibecoder Pro", desc: "Best for complex layouts", cost: 3, icon: Sparkles, category: "code" },
-    { id: "vibecoder-flash", name: "Vibecoder Flash", desc: "Fast, for small edits", cost: 0, icon: Zap, category: "code" },
+    { id: "vibecoder-pro", name: "Gemini 3 Pro", desc: "Best for complex layouts", cost: 3, icon: Sparkles, category: "code" },
+    { id: "vibecoder-flash", name: "Gemini Flash", desc: "Fast, for small edits", cost: 0, icon: Zap, category: "code" },
   ],
   image: [
     { id: "nano-banana", name: "Nano Banana", desc: "Gemini Image Gen", cost: 10, icon: ImageIcon, category: "image" },
@@ -195,31 +195,33 @@ function ModelOption({
 // Waveform keyframe animation styles
 const waveformStyles = `
 @keyframes waveform {
-  0% { transform: scaleY(0.3); }
+  0% { transform: scaleY(0.4); }
   100% { transform: scaleY(1); }
 }
 `;
 
-// Waveform Icon for Speech-to-Text - Compact animated version
+// Waveform Icon for Speech-to-Text - Matches reference design
 function WaveformIcon({ isActive, className }: { isActive: boolean; className?: string }) {
+  // Heights match reference: short-medium-tall-medium-short pattern
+  const barHeights = [4, 8, 12, 8, 4];
+  
   return (
     <>
       <style>{waveformStyles}</style>
-      <div className={cn("flex items-center justify-center gap-[1.5px] h-3 w-4", className)}>
-        {[0.4, 0.7, 1, 0.7, 0.4].map((scale, i) => (
+      <div className={cn("flex items-center justify-center gap-[2px] h-4 w-5", className)}>
+        {barHeights.map((h, i) => (
           <div 
             key={i}
             className={cn(
-              "w-[1.5px] rounded-full transition-all duration-200",
+              "w-[2px] rounded-full transition-colors duration-200",
               isActive 
                 ? "bg-red-400" 
                 : "bg-current"
             )}
             style={{ 
-              height: isActive ? '100%' : '3px',
-              transform: isActive ? `scaleY(${scale})` : 'scaleY(1)',
+              height: `${h}px`,
               animation: isActive 
-                ? `waveform 0.6s ease-in-out ${i * 0.08}s infinite alternate` 
+                ? `waveform 0.5s ease-in-out ${i * 0.1}s infinite alternate` 
                 : 'none',
             }}
           />
@@ -633,8 +635,9 @@ export function ChatInputBar({
               onClick={toggleModelMenu}
               className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors"
             >
-              <selectedModel.icon size={12} className="text-violet-400" />
-              <span>{selectedModel.name}</span>
+              <Bot size={12} className="text-violet-400" />
+              <span>Model</span>
+              <ChevronDown size={10} className="opacity-50" />
             </button>
           </div>
           
