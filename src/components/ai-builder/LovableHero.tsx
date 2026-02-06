@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Plus, ArrowLeft, AudioLines, Loader2, Zap, CreditCard } from "lucide-react";
+import { ArrowRight, Plus, ArrowLeft, Mic, Zap, CreditCard } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -24,21 +24,23 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
 
   // Initialize speech recognition
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
-      recognition.interimResults = true;
+      recognition.interimResults = false; // Only get final results to avoid duplicates
       recognition.lang = 'en-US';
 
-      recognition.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .map(result => result[0].transcript)
-          .join('');
-        setPrompt(prev => prev + transcript);
+      recognition.onresult = (event: any) => {
+        // Get the final transcript from the last result
+        const lastResult = event.results[event.results.length - 1];
+        if (lastResult.isFinal) {
+          const transcript = lastResult[0].transcript;
+          setPrompt(prev => prev ? `${prev} ${transcript}` : transcript);
+        }
       };
 
-      recognition.onerror = (event) => {
+      recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
       };
@@ -67,7 +69,7 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
-      setPrompt(''); // Clear for fresh dictation
+      // Don't clear - append to existing text
       recognitionRef.current.start();
       setIsListening(true);
     }
@@ -168,18 +170,18 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
 
             {/* Action Icons */}
             <div className="flex items-center gap-1 pl-2">
-              {/* Soundwave / Voice Button */}
+              {/* Microphone / Voice Button */}
               <button 
                 type="button" 
                 onClick={toggleListening}
-                className={`p-2 transition-colors rounded-lg ${
+                className={`p-2 transition-all rounded-lg ${
                   isListening 
-                    ? 'text-red-400 bg-red-500/10 animate-pulse' 
-                    : 'text-zinc-500 hover:text-white'
+                    ? 'text-red-400 bg-red-500/20 animate-pulse' 
+                    : 'text-zinc-500 hover:text-white hover:bg-white/5'
                 }`}
-                title={isListening ? "Stop listening" : "Voice input"}
+                title={isListening ? "Tap to stop" : "Voice input"}
               >
-                {isListening ? <Loader2 size={20} className="animate-spin" /> : <AudioLines size={20} />}
+                <Mic size={20} />
               </button>
               
               {/* Plan Toggle */}
