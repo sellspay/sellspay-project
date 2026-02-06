@@ -37,6 +37,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
   
+  // LIFTED STATE: Active model from ChatInputBar
+  const [activeModel, setActiveModel] = useState<AIModel>(AI_MODELS.code[0]);
+  
   // Generation state for Creative Studio (Image & Video tabs)
   const [currentImageAsset, setCurrentImageAsset] = useState<GeneratedAsset | null>(null);
   const [currentVideoAsset, setCurrentVideoAsset] = useState<GeneratedAsset | null>(null);
@@ -48,6 +51,17 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   
   // Hard refresh state for fixing white screen of death
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Handle model change with auto-tab switching
+  const handleModelChange = useCallback((model: AIModel) => {
+    setActiveModel(model);
+    
+    // Auto-switch to the appropriate tab when selecting a model
+    if (model.category === 'image') setViewMode('image');
+    else if (model.category === 'video') setViewMode('video');
+    // For code models, switch to preview if currently on image/video tab
+    else if (viewMode === 'image' || viewMode === 'video') setViewMode('preview');
+  }, [viewMode]);
   
   // Resizable sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(400);
@@ -530,6 +544,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               onRetry={handleRetryAsset}
               onUseInCanvas={() => setShowPlacementModal(true)}
               onFeedback={handleAssetFeedback}
+              activeModel={activeModel}
             />
           ) : (
             <div className={`flex-1 min-h-0 ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-zinc-900' : ''}`}>
@@ -586,6 +601,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             onRestoreToVersion={handleRestoreCode}
             projectName={activeProject?.name}
             liveSteps={liveSteps}
+            activeModel={activeModel}
+            onModelChange={handleModelChange}
           />
         </div>
       </div>
