@@ -40,12 +40,19 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   
   // Minimum loading time state - ensures smooth loading animation
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
-  
+
+  // Once the app is "booted", never show the full-screen loading screen again.
+  // This prevents random re-appearance during background refetches (messages/projects).
+  const [hasBooted, setHasBooted] = useState(false);
+
   // Reset key to force component re-mount on project deletion
   const [resetKey, setResetKey] = useState(0);
-  
+
   // STRICT LOADING: Verify project exists before rendering preview
   const [isVerifyingProject, setIsVerifyingProject] = useState(false);
+
+  // Prevent Sandpack's brief bundling/error flash after streaming completes
+  const [isAwaitingPreviewReady, setIsAwaitingPreviewReady] = useState(false);
 
   // View mode state (Preview vs Code vs Image vs Video)
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
@@ -188,6 +195,18 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   });
 
+  // Safety: if Sandpack never reports "ready" (rare), don't keep the overlay forever.
+  useEffect(() => {
+    if (!isAwaitingPreviewReady) return;
+    if (isStreaming) return;
+
+    const timeout = window.setTimeout(() => {
+      setIsAwaitingPreviewReady(false);
+    }, 8000);
+
+    return () => window.clearTimeout(timeout);
+  }, [isAwaitingPreviewReady, isStreaming]);
+
   // Agent loop for premium multi-step experience
   const {
     agentStep,
@@ -222,16 +241,19 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // AUTO-START: Pick up initial prompt from navigation state (passed from Hero)
   useEffect(() => {
     const initialPrompt = (location.state as { initialPrompt?: string })?.initialPrompt;
-    
+
     // Check if we just arrived with a prompt to auto-start
     if (activeProjectId && initialPrompt && !hasStartedInitialRef.current && !projectsLoading) {
       console.log('🚀 Picking up initial prompt from navigation:', initialPrompt);
-      
+
       hasStartedInitialRef.current = true;
-      
+
+      // Any new generation should cover Sandpack until bundling finishes
+      setIsAwaitingPreviewReady(true);
+
       // Trigger the agent immediately
       startAgent(initialPrompt, undefined);
-      
+
       // Clear the state so it doesn't re-fire on refresh
       window.history.replaceState({}, document.title);
     }
@@ -461,7 +483,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Implements the "Chat-to-Create" flow: first message creates project automatically
   const handleSendMessage = async (prompt: string) => {
     const isFreshStart = !activeProjectId;
-    
+
+    // Cover Sandpack until bundling finishes (prevents brief error flash after generation)
+    setIsAwaitingPreviewReady(true);
+
     // Generate a smart project name from the first prompt
     // Extract first 4-5 meaningful words as the project name
     let projectName: string | undefined;
@@ -469,11 +494,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       const words = prompt
         .replace(/[^\w\s]/g, '') // Remove punctuation
         .split(/\s+/)
-        .filter(w => w.length > 2) // Skip tiny words
+        .filter((w) => w.length > 2) // Skip tiny words
         .slice(0, 5);
       projectName = words.length > 0 ? words.join(' ') : undefined;
     }
-    
+
     // Auto-create project if we don't have one yet (with smart name)
     const projectId = await ensureProject(projectName);
     if (!projectId) {
@@ -483,7 +508,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
     // Add user message to history
     await addMessage('user', prompt);
-    
+
     // Start the agent loop (which internally calls streamCode)
     startAgent(prompt, code !== DEFAULT_CODE ? code : undefined);
   };
@@ -699,16 +724,25 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   }, [viewMode, currentVideoAsset, currentImageAsset]);
 
 
-  // Show premium loading screen until BOTH conditions are met:
-  // 1. Data is loaded (projects, messages, verification)
-  // 2. Minimum loading animation has completed (4 seconds for smooth UX)
+  // Show premium loading screen ONLY during initial boot.
+  // After boot, background refetches (messages/projects) should never trigger a full-screen overlay.
   const isDataLoading = loading || projectsLoading || isVerifyingProject || messagesLoading;
-  const shouldShowLoading = isDataLoading || !minLoadingComplete;
-  
+  const shouldShowLoading = !hasBooted && (isDataLoading || !minLoadingComplete);
+
+  // Mark boot complete as soon as both conditions are satisfied.
+  useEffect(() => {
+    if (!hasBooted && minLoadingComplete && !isDataLoading) {
+      setHasBooted(true);
+    }
+  }, [hasBooted, minLoadingComplete, isDataLoading]);
+
   if (shouldShowLoading) {
     return (
-      <PremiumLoadingScreen 
-        onComplete={() => setMinLoadingComplete(true)}
+      <PremiumLoadingScreen
+        onComplete={() => {
+          setMinLoadingComplete(true);
+          // hasBooted is set by the effect once data is also ready
+        }}
       />
     );
   }
@@ -903,12 +937,17 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 >
                   <PreviewErrorBoundary
                     onAutoFix={handleAutoFix}
-                    onReset={resetCode}
+                    onReset={() => {
+                      setIsAwaitingPreviewReady(false);
+                      resetCode();
+                    }}
                   >
                     <VibecoderPreview
                       key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
                       code={code}
                       isStreaming={isStreaming}
+                      showLoadingOverlay={isStreaming || isAwaitingPreviewReady}
+                      onReady={() => setIsAwaitingPreviewReady(false)}
                       viewMode={viewMode}
                     />
                   </PreviewErrorBoundary>
