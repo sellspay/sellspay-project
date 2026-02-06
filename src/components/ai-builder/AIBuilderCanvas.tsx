@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
@@ -16,7 +16,7 @@ import { AI_MODELS, type AIModel } from './ChatInputBar';
 import type { GeneratedAsset, ViewMode } from './types/generation';
 import { parseRoutesFromCode, type SitePage } from '@/utils/routeParser';
 import { toast } from 'sonner';
-import { clearProjectCache, clearAllVibecoderCache } from './utils/projectCache';
+import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke';
 import { LovableHero } from './LovableHero';
 import { PremiumLoadingScreen } from './PremiumLoadingScreen';
 import { FixErrorToast } from './FixErrorToast';
@@ -266,6 +266,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     onStreamingError,
     triggerSelfCorrection,
     lockedProjectId,
+    mountProject: mountAgentProject,
+    unmountProject: unmountAgentProject,
   } = useAgentLoop({
     onStreamCode: streamCode,
     onComplete: () => {
@@ -362,19 +364,44 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     navigate('/login');
   };
 
-  // SCORCHED EARTH: Verify project exists on switch & force reset if zombie detected
-  // 🛑 RACE CONDITION GUARD: Abort any in-flight generation for a DIFFERENT project
-  useEffect(() => {
-    async function verifyAndLoadProject() {
+  // =============== SCORCHED EARTH ORCHESTRATOR ===============
+  // We use useLayoutEffect to ensure this runs synchronously before paint.
+  // This prevents any flash of stale content when switching projects.
+  const previousProjectIdRef = useRef<string | null>(null);
+  
+  useLayoutEffect(() => {
+    let isMounted = true;
+
+    async function loadRoute() {
+      // 1. IMMEDIATE UNMOUNT: Wipe React State FIRST (before any async operations)
+      unmountAgentProject();
+      
       // If there's an active generation for a DIFFERENT project, abort it
       if (generationLockRef.current && generationLockRef.current !== activeProjectId) {
         console.warn(`🛑 Aborting generation for ${generationLockRef.current} (switched to ${activeProjectId})`);
-        cancelStream(); // Stop the HTTP stream
-        cancelAgent();  // Reset agent state
+        cancelStream();
+        cancelAgent();
         generationLockRef.current = null;
       }
+
+      // 2. DETECT PROJECT SWITCH: If switching to a different project, nuke the cache
+      const isProjectSwitch = previousProjectIdRef.current !== null && 
+                               previousProjectIdRef.current !== activeProjectId;
       
-      // No project selected - force a true blank slate (prevents zombie UI from sticking around)
+      if (isProjectSwitch) {
+        console.log(`🔄 Project switch detected: ${previousProjectIdRef.current} → ${activeProjectId}`);
+        // Clear storage for the OLD project
+        if (previousProjectIdRef.current) {
+          clearProjectLocalStorage(previousProjectIdRef.current);
+        }
+        // Nuclear option: Clear Sandpack IndexedDB
+        await nukeSandpackCache();
+      }
+      
+      // Update the ref for next comparison
+      previousProjectIdRef.current = activeProjectId;
+
+      // 3. NO PROJECT: Show Hero screen with blank slate
       if (!activeProjectId) {
         // Reset code + force Sandpack remount
         resetCode();
@@ -396,28 +423,32 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
       setIsVerifyingProject(true);
 
-      // Check if project actually exists in DB
+      console.log(`🚀 Loading fresh context for: ${activeProjectId}`);
+
+      // 4. FETCH SOURCE OF TRUTH FROM DB
       const { data, error } = await supabase
         .from('vibecoder_projects')
         .select('id')
         .eq('id', activeProjectId)
         .maybeSingle();
 
+      if (!isMounted) return;
+
       if (error || !data) {
         // === ZOMBIE DETECTED! ===
         console.warn('[AIBuilderCanvas] Zombie project detected. Performing scorched earth reset.');
 
-        // 1. Wipe all cached data for this project
-        await clearProjectCache(activeProjectId);
+        // Nuke all caches
+        await nukeSandpackCache();
 
-        // 2. Reset code to blank slate
+        // Reset code to blank slate
         resetCode();
 
-        // 3. Force React to destroy and remount preview/chat components
+        // Force React to destroy and remount preview/chat components
         setResetKey(prev => prev + 1);
         setRefreshKey(prev => prev + 1);
 
-        // 4. Clear all transient state
+        // Clear all transient state
         setChatResponse(null);
         setLiveSteps([]);
         resetAgent();
@@ -429,6 +460,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         toast.info('Previous project was deleted. Starting fresh.');
       } else {
         // Project verified - load code.
+        console.log("✅ DB Data received. Mounting.");
+        
+        // Mount the agent with this project ID (sets the lock)
+        mountAgentProject(activeProjectId);
+        
         // Source of truth: last assistant code_snapshot in message history (project-scoped).
         const lastSnapshot = getLastCodeSnapshot();
         if (lastSnapshot) {
@@ -442,8 +478,14 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       setIsVerifyingProject(false);
     }
 
-    verifyAndLoadProject();
-  }, [activeProjectId, messages, getLastCodeSnapshot, profileId, setCode, resetCode, resetAgent, cancelStream, cancelAgent]);
+    loadRoute();
+
+    // Cleanup function runs when URL changes or component unmounts
+    return () => {
+      isMounted = false;
+      unmountAgentProject(); // Final safety wipe on exit
+    };
+  }, [activeProjectId, messages, getLastCodeSnapshot, profileId, setCode, resetCode, resetAgent, cancelStream, cancelAgent, mountAgentProject, unmountAgentProject]);
 
   // NOTE: Draft code is NOT persisted to the public/live slot.
   // Publishing explicitly writes the current code to a dedicated published file.
@@ -593,9 +635,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // 4. Let the user type a new prompt on the Hero which creates the new project
   const handleCreateProject = async () => {
     // 1. Nuclear cache clear to prevent any stale code from persisting
-    await clearAllVibecoderCache();
+    await nukeSandpackCache();
     
-    // 2. Reset ALL local state to blank slate
+    // 2. Unmount agent state
+    unmountAgentProject();
+    
+    // 3. Reset ALL local state to blank slate
     resetCode();                    // Code → DEFAULT_CODE
     resetAgent();                   // Agent state → idle
     setChatResponse(null);          // Pending response → null
@@ -604,11 +649,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     setCurrentImageAsset(null);     // Clear any generated assets
     setCurrentVideoAsset(null);
     
-    // 3. Force increment reset key to remount components
+    // 4. Force increment reset key to remount components
     setResetKey(prev => prev + 1);
     setRefreshKey(prev => prev + 1);
     
-    // 4. Clear active project (this also clears messages and URL) → shows Hero screen
+    // 5. Clear active project (this also clears messages and URL) → shows Hero screen
     clearActiveProject();
     
     toast.success('Starting fresh - describe your vision!');
@@ -622,6 +667,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     const success = await deleteProject(projectIdToDelete);
 
     if (success) {
+      // SCORCHED EARTH: Nuke all caches for the deleted project
+      clearProjectLocalStorage(projectIdToDelete);
+      await nukeSandpackCache();
+      
       // If that was the LAST project, also wipe the profile-scoped code slot.
       // Otherwise a hard refresh can reload old code from project_files and look like a "zombie".
       if (remainingAfterDelete.length === 0) {
@@ -639,25 +688,28 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
       // If we deleted the active project, force a COMPLETE nuclear reset
       if (isActiveProject) {
-        // 1. Reset code to blank slate
+        // Unmount agent first
+        unmountAgentProject();
+        
+        // Reset code to blank slate
         resetCode();
 
-        // 2. Clear chat response state
+        // Clear chat response state
         setChatResponse(null);
 
-        // 3. Clear agent/streaming state
+        // Clear agent/streaming state
         setLiveSteps([]);
         resetAgent();
 
-        // 4. Reset view mode to default
+        // Reset view mode to default
         setViewMode('preview');
         setPreviewPath('/');
 
-        // 5. Clear any generated assets
+        // Clear any generated assets
         setCurrentImageAsset(null);
         setCurrentVideoAsset(null);
 
-        // 6. Increment resetKey to force React to DESTROY and re-mount all preview/chat components
+        // Increment resetKey to force React to DESTROY and re-mount all preview/chat components
         // This ensures no stale state survives in child components
         setResetKey(prev => prev + 1);
         setRefreshKey(prev => prev + 1);

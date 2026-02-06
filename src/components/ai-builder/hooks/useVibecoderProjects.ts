@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
-import { clearProjectCache } from '../utils/projectCache';
+import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke';
 
 export interface VibecoderProject {
   id: string;
@@ -155,7 +155,8 @@ export function useVibecoderProjects() {
       }
 
       // 2. SCORCHED EARTH: Clear all browser caches for this project
-      await clearProjectCache(projectId);
+      clearProjectLocalStorage(projectId);
+      await nukeSandpackCache();
 
       // 3. Update local state
       setProjects(prev => prev.filter(p => p.id !== projectId));
