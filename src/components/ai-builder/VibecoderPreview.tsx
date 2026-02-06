@@ -1,4 +1,4 @@
-import { useMemo, memo, useState, useEffect, useRef } from 'react';
+import { useMemo, memo, useState, useEffect, useRef, forwardRef } from 'react';
 import { 
   SandpackTheme, 
   useSandpack, 
@@ -67,81 +67,85 @@ const LOADING_STEPS = [
 ];
 
 // Premium Loading Overlay - matches PremiumLoadingScreen aesthetic
-function LoadingOverlay({ currentStep }: { currentStep: number }) {
-  const stepLabel = LOADING_STEPS[currentStep % LOADING_STEPS.length];
-  const progress = ((currentStep % LOADING_STEPS.length) + 1) / LOADING_STEPS.length * 100;
+const LoadingOverlay = forwardRef<HTMLDivElement, { currentStep: number }>(
+  function LoadingOverlay({ currentStep }, ref) {
+    const stepLabel = LOADING_STEPS[currentStep % LOADING_STEPS.length];
+    const progress =
+      (((currentStep % LOADING_STEPS.length) + 1) / LOADING_STEPS.length) * 100;
 
-  return (
-    <div className="absolute inset-0 z-20 bg-black flex flex-col items-center justify-center overflow-hidden">
-      {/* Background Image - Same as PremiumLoadingScreen */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${heroBg})` }}
-      />
-      
-      {/* Subtle overlay for depth */}
-      <div className="absolute inset-0 bg-black/40" />
+    return (
+      <div
+        ref={ref}
+        className="absolute inset-0 z-20 bg-black flex flex-col items-center justify-center overflow-hidden"
+      >
+        {/* Background Image - Same as PremiumLoadingScreen */}
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${heroBg})` }}
+        />
 
-      {/* Animated ambient glow orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-violet-600/10 rounded-full blur-[120px] animate-pulse-slow" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-fuchsia-600/10 rounded-full blur-[120px] animate-pulse-slow [animation-delay:1000ms]" />
-      </div>
-      
-      {/* MAIN CONTENT */}
-      <div className="relative z-10 flex flex-col items-center">
-        
-        {/* Pulsing Logo Container */}
-        <div className="mb-8 relative">
-          {/* Subtle glow behind logo */}
-          <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full animate-pulse-slow scale-150" />
-          
-          <div className="relative bg-zinc-900/80 backdrop-blur-md border border-white/10 p-5 rounded-2xl shadow-2xl shadow-orange-500/10 animate-pulse">
-            <img 
-              src={sellspayLogo} 
-              alt="SellsPay" 
-              className="w-12 h-12 object-contain"
+        {/* Subtle overlay for depth */}
+        <div className="absolute inset-0 bg-black/40" />
+
+        {/* Animated ambient glow orbs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-violet-600/10 rounded-full blur-[120px] animate-pulse-slow" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-fuchsia-600/10 rounded-full blur-[120px] animate-pulse-slow [animation-delay:1000ms]" />
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div className="relative z-10 flex flex-col items-center">
+          {/* Pulsing Logo Container */}
+          <div className="mb-8 relative">
+            {/* Subtle glow behind logo */}
+            <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full animate-pulse-slow scale-150" />
+
+            <div className="relative bg-zinc-900/80 backdrop-blur-md border border-white/10 p-5 rounded-2xl shadow-2xl shadow-orange-500/10 animate-pulse">
+              <img
+                src={sellspayLogo}
+                alt="SellsPay"
+                className="w-12 h-12 object-contain"
+              />
+            </div>
+          </div>
+
+          {/* Dynamic Status Text */}
+          <motion.h2
+            key={stepLabel}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight text-center"
+          >
+            {stepLabel}
+          </motion.h2>
+
+          {/* Subtext */}
+          <p className="text-zinc-400 text-sm mb-8">Building your storefront</p>
+
+          {/* PROGRESS BAR - Same style as PremiumLoadingScreen */}
+          <div className="w-64 h-1 bg-zinc-800/50 rounded-full overflow-hidden relative">
+            {/* Animated Gradient Bar */}
+            <motion.div
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-500 via-rose-500 to-orange-500 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
             />
           </div>
-        </div>
 
-        {/* Dynamic Status Text */}
-        <motion.h2 
-          key={stepLabel}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight text-center"
-        >
-          {stepLabel}
-        </motion.h2>
-        
-        {/* Subtext */}
-        <p className="text-zinc-400 text-sm mb-8">
-          Building your storefront
-        </p>
-
-        {/* PROGRESS BAR - Same style as PremiumLoadingScreen */}
-        <div className="w-64 h-1 bg-zinc-800/50 rounded-full overflow-hidden relative">
-          {/* Animated Gradient Bar */}
-          <motion.div 
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-500 via-rose-500 to-orange-500 rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          />
-        </div>
-
-        {/* Subtle status indicator */}
-        <div className="flex items-center gap-2 mt-6 text-xs text-zinc-500">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-          <span>VibeCoder generating</span>
+          {/* Subtle status indicator */}
+          <div className="flex items-center gap-2 mt-6 text-xs text-zinc-500">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span>VibeCoder generating</span>
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+);
+LoadingOverlay.displayName = 'LoadingOverlay';
 
 // Custom dark theme matching our app
 const customTheme: SandpackTheme = {
@@ -179,75 +183,77 @@ const customTheme: SandpackTheme = {
 // Error detector component that monitors Sandpack state
 // ONLY notifies parent of errors - does NOT render any UI overlay.
 // The parent (AIBuilderCanvas) shows the FixErrorToast at the bottom.
-function ErrorDetector({
-  onError,
-}: {
-  onError?: (error: string) => void;
-}) {
-  const { sandpack } = useSandpack();
-  const lastErrorRef = useRef<string | null>(null);
-  const onErrorRef = useRef(onError);
-  
-  // Keep ref in sync to avoid stale closures without causing re-renders
-  useEffect(() => {
-    onErrorRef.current = onError;
-  }, [onError]);
+const ErrorDetector = forwardRef<HTMLDivElement, { onError?: (error: string) => void }>(
+  function ErrorDetector({ onError }, ref) {
+    const { sandpack } = useSandpack();
+    const lastErrorRef = useRef<string | null>(null);
+    const onErrorRef = useRef(onError);
 
-  // Safely extract error message - never mutate the original error object
-  // Some browsers lock error objects as read-only
-  // CRITICAL: Do this inside the effect to avoid issues with frozen objects
-  useEffect(() => {
-    // CRITICAL: Never touch or mutate sandpack.error - it may be frozen/read-only.
-    // Extract message into a brand new string immediately.
-    let safeMessage: string | null = null;
+    // Keep ref in sync to avoid stale closures without causing re-renders
+    useEffect(() => {
+      onErrorRef.current = onError;
+    }, [onError]);
 
-    try {
-      if (sandpack.error && typeof sandpack.error === 'object') {
-        // Read into local variable - DO NOT assign back to error object
-        const rawMsg = sandpack.error.message;
-        if (typeof rawMsg === 'string' && rawMsg.length > 0) {
-          // Create a completely NEW string - never pass the original reference
-          safeMessage = String(rawMsg);
+    // Safely extract error message - never mutate the original error object
+    // Some browsers lock error objects as read-only
+    // CRITICAL: Do this inside the effect to avoid issues with frozen objects
+    useEffect(() => {
+      // CRITICAL: Never touch or mutate sandpack.error - it may be frozen/read-only.
+      // Extract message into a brand new string immediately.
+      let safeMessage: string | null = null;
+
+      try {
+        if (sandpack.error && typeof sandpack.error === 'object') {
+          // Read into local variable - DO NOT assign back to error object
+          const rawMsg = sandpack.error.message;
+          if (typeof rawMsg === 'string' && rawMsg.length > 0) {
+            // Create a completely NEW string - never pass the original reference
+            safeMessage = String(rawMsg);
+          }
         }
+      } catch {
+        // If reading throws (frozen object edge case), use a generic fallback
+        safeMessage = sandpack.error ? 'Build error occurred' : null;
       }
-    } catch {
-      // If reading throws (frozen object edge case), use a generic fallback
-      safeMessage = sandpack.error ? 'Build error occurred' : null;
-    }
 
-    // Only report if this is a NEW error (not the same as last time)
-    if (safeMessage && safeMessage !== lastErrorRef.current) {
-      lastErrorRef.current = safeMessage;
-      // Pass brand new string up to parent
-      onErrorRef.current?.(safeMessage);
-    }
+      // Only report if this is a NEW error (not the same as last time)
+      if (safeMessage && safeMessage !== lastErrorRef.current) {
+        lastErrorRef.current = safeMessage;
+        // Pass brand new string up to parent
+        onErrorRef.current?.(safeMessage);
+      }
 
-    // Clear ref when error is resolved
-    if (!safeMessage && lastErrorRef.current) {
-      lastErrorRef.current = null;
-    }
-  }, [sandpack.error]);
+      // Clear ref when error is resolved
+      if (!safeMessage && lastErrorRef.current) {
+        lastErrorRef.current = null;
+      }
+    }, [sandpack.error]);
 
-  // DO NOT render any overlay here - parent handles display via FixErrorToast only
-  return null;
-}
+    // Render a tiny node so any injected refs are safe (prevents ref warnings)
+    return <div ref={ref} style={{ display: 'none' }} aria-hidden="true" />;
+  }
+);
+ErrorDetector.displayName = 'ErrorDetector';
 
 // Ready detector - fires onReady when Sandpack finishes bundling
-function ReadyDetector({ onReady }: { onReady?: () => void }) {
-  const { sandpack } = useSandpack();
-  const hasCalledReady = useRef(false);
-  
-  useEffect(() => {
-    // Sandpack status: 'initial' | 'idle' | 'running'
-    // 'idle' means bundling is complete
-    if (sandpack.status === 'idle' && !hasCalledReady.current) {
-      hasCalledReady.current = true;
-      onReady?.();
-    }
-  }, [sandpack.status, onReady]);
-  
-  return null;
-}
+const ReadyDetector = forwardRef<HTMLDivElement, { onReady?: () => void }>(
+  function ReadyDetector({ onReady }, ref) {
+    const { sandpack } = useSandpack();
+    const hasCalledReady = useRef(false);
+
+    useEffect(() => {
+      // Sandpack status: 'initial' | 'idle' | 'running'
+      // 'idle' means bundling is complete
+      if (sandpack.status === 'idle' && !hasCalledReady.current) {
+        hasCalledReady.current = true;
+        onReady?.();
+      }
+    }, [sandpack.status, onReady]);
+
+    return <div ref={ref} style={{ display: 'none' }} aria-hidden="true" />;
+  }
+);
+ReadyDetector.displayName = 'ReadyDetector';
 
 // Memoized Sandpack component to prevent unnecessary re-renders during streaming
 const SandpackRenderer = memo(function SandpackRenderer({ 
@@ -309,18 +315,17 @@ root.render(<App />);`,
         }}
       >
         <div className="h-full w-full flex-1 flex flex-col relative" style={{ height: '100%' }}>
-          {/* Wrap detectors in divs to silence "cannot be given refs" warnings */}
-          <div style={{ display: 'contents' }}><ErrorDetector onError={onError} /></div>
-          <div style={{ display: 'contents' }}><ReadyDetector onReady={onReady} /></div>
+          <ErrorDetector onError={onError} />
+          <ReadyDetector onReady={onReady} />
           <div className="h-full w-full flex-1 flex flex-col" style={{ height: '100%' }}>
             {viewMode === 'preview' || viewMode === 'image' || viewMode === 'video' ? (
-              <SandpackPreviewComponent 
+              <SandpackPreviewComponent
                 showOpenInCodeSandbox={false}
                 showRefreshButton={true}
                 style={{ height: '100%', flex: 1 }}
               />
             ) : (
-              <SandpackCodeEditor 
+              <SandpackCodeEditor
                 showTabs={true}
                 showLineNumbers={true}
                 showInlineErrors={true}
@@ -366,8 +371,7 @@ export function VibecoderPreview({
       <style>{SANDPACK_HEIGHT_FIX}</style>
 
       {/* Premium Loading Overlay - visible while streaming OR until bundler is ready */}
-      {/* Wrap in div to prevent ref warnings from framer-motion */}
-      {isOverlayVisible && <div style={{ display: 'contents' }}><LoadingOverlay currentStep={loadingStep} /></div>}
+      {isOverlayVisible && <LoadingOverlay currentStep={loadingStep} />}
 
       {/* Sandpack preview/code - Always rendered, but hidden behind overlay during build */}
       <div className="h-full w-full flex-1 min-h-0">
