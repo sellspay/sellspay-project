@@ -46,10 +46,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   
   // STRICT LOADING: Verify project exists before rendering preview
   const [isVerifyingProject, setIsVerifyingProject] = useState(false);
-  
-  // Canvas ready state - waits for Sandpack to finish initial bundle
-  const [isCanvasReady, setIsCanvasReady] = useState(false);
-  const [sandpackError, setSandpackError] = useState<string | null>(null);
 
   // View mode state (Preview vs Code vs Image vs Video)
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
@@ -292,30 +288,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     await supabase.auth.signOut();
     navigate('/login');
   };
-
-  // Reset canvas-ready whenever the preview instance is expected to change.
-  // IMPORTANT: Do NOT tie this to `messages` loading, otherwise we can get stuck in
-  // "Loading canvas..." if Sandpack already fired `onReady` before messages arrive.
-  useEffect(() => {
-    setIsCanvasReady(false);
-    setSandpackError(null);
-  }, [activeProjectId, resetKey, refreshKey, viewMode]);
-
-  // Failsafe: never block the UI forever on "Loading canvas..."
-  // If bundling is slow or the ready event is missed, we still let the preview render
-  // so Sandpack can show its own error/compile output.
-  useEffect(() => {
-    if (viewMode === 'image' || viewMode === 'video') return;
-    if (isCanvasReady || sandpackError) return;
-
-    const timeout = window.setTimeout(() => {
-      console.warn('[AIBuilderCanvas] Canvas ready timeout — unblocking preview overlay');
-      setIsCanvasReady(true);
-      toast.info('Canvas is taking longer than expected. Try Hard Refresh (↻) if needed.');
-    }, 20000);
-
-    return () => window.clearTimeout(timeout);
-  }, [activeProjectId, resetKey, refreshKey, viewMode, isCanvasReady, sandpackError]);
 
   // SCORCHED EARTH: Verify project exists on switch & force reset if zombie detected
   useEffect(() => {
@@ -759,40 +731,101 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   const canUndo = messages.filter(m => m.code_snapshot).length > 1;
   const hasActiveProject = Boolean(activeProjectId);
 
-  // === FRESH USER: Show full-screen hero with no panels ===
-  // The hero is the ONLY thing on screen until they type their first prompt
-  if (projects.length === 0) {
+  const heroOnStart = async (prompt: string, isPlanMode?: boolean) => {
+    // 1. Extract smart project name from first 5 words
+    const projectName = prompt.split(/\s+/).slice(0, 5).join(' ');
+
+    // 2. Create the project (this also navigates via URL update)
+    const newProjectId = await ensureProject(projectName);
+    if (!newProjectId) {
+      toast.error('Failed to create project');
+      return;
+    }
+
+    // 3. Prepare the prompt (inject plan mode instruction if needed)
+    let finalPrompt = prompt;
+    if (isPlanMode) {
+      finalPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${prompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
+    }
+
+    // 4. IMPORTANT: Save the FIRST user message to DB so history persists
+    await addMessage('user', prompt);
+
+    // 5. Navigate to the project URL with initialPrompt in state
+    // The useEffect above will pick this up and start the agent
+    navigate(`/ai-builder?project=${newProjectId}`, {
+      state: { initialPrompt: finalPrompt },
+      replace: true,
+    });
+  };
+
+  // === DOORWAY: If no active project, show the magical prompt-first screen ===
+  // - Fresh users: full-screen doorway (no sidebar)
+  // - Existing users clicking "New project": doorway inside the editor frame
+  if (!activeProjectId) {
+    if (projects.length === 0) {
+      return (
+        <LovableHero
+          onStart={heroOnStart}
+          userName={username ?? 'Creator'}
+          variant="fullscreen"
+        />
+      );
+    }
+
     return (
-      <LovableHero
-        onStart={async (prompt, isPlanMode) => {
-          // 1. Extract smart project name from first 5 words
-          const projectName = prompt.split(/\s+/).slice(0, 5).join(' ');
-          
-          // 2. Create the project (this also navigates via URL update)
-          const newProjectId = await ensureProject(projectName);
-          if (!newProjectId) {
-            toast.error('Failed to create project');
-            return;
-          }
-          
-          // 3. Prepare the prompt (inject plan mode instruction if needed)
-          let finalPrompt = prompt;
-          if (isPlanMode) {
-            finalPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${prompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
-          }
-          
-          // 4. IMPORTANT: Save the FIRST user message to DB so history persists
-          await addMessage('user', prompt);
-          
-          // 5. Navigate to the project URL with initialPrompt in state
-          // The useEffect above will pick this up and start the agent
-          navigate(`/ai-builder?project=${newProjectId}`, { 
-            state: { initialPrompt: finalPrompt },
-            replace: true, // Replace current URL so back button works correctly
-          });
-        }}
-        userName={username ?? 'Creator'}
-      />
+      <div className="h-screen w-full bg-background flex overflow-hidden p-2">
+        <ProjectSidebar
+          projects={projects}
+          activeProjectId={activeProjectId}
+          loading={projectsLoading}
+          onSelectProject={selectProject}
+          onCreateProject={handleCreateProject}
+          onDeleteProject={handleDeleteProject}
+          onRenameProject={handleRenameProject}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+
+        <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border overflow-hidden bg-background">
+          <VibecoderHeader
+            projectName={undefined}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            deviceMode={deviceMode}
+            setDeviceMode={setDeviceMode}
+            onRefresh={handleRefresh}
+            onPublish={handlePublish}
+            isPublished={isPublished}
+            isPublishing={publishing}
+            isEmpty={true}
+            username={username}
+            currentPath={previewPath}
+            onNavigate={setPreviewPath}
+            pages={detectedPages}
+            onRegenerate={(tweak) => {
+              handleSendMessage(`Refine the current design: ${tweak}`);
+            }}
+            isGenerating={isStreaming}
+            avatarUrl={userAvatarUrl}
+            userCredits={userCredits}
+            subscriptionTier={subscriptionTier}
+            onSignOut={handleSignOut}
+          />
+
+          <div className="flex-1 min-h-0">
+            <LovableHero
+              onStart={heroOnStart}
+              userName={username ?? 'Creator'}
+              variant="embedded"
+              onBack={() => {
+                // Return to the most recently edited project (first in list)
+                if (projects[0]) selectProject(projects[0].id);
+              }}
+            />
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -877,60 +910,9 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       code={code}
                       isStreaming={isStreaming}
                       viewMode={viewMode}
-                      onReady={() => setIsCanvasReady(true)}
-                      onError={(error) => {
-                        console.warn('[VibecoderPreview] Sandpack error detected:', error);
-                        setSandpackError(error);
-                        setIsCanvasReady(true); // unblock overlay so the user can see the error UI
-                      }}
                     />
                   </PreviewErrorBoundary>
                 </div>
-
-                {/* Canvas loading overlay - shows until Sandpack is ready */}
-                {!isCanvasReady && !sandpackError && (
-                  <div className="absolute inset-0 z-30 bg-background flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      <span className="text-sm text-muted-foreground">Loading canvas...</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* If Sandpack errors, show a recovery panel (and keep preview behind it) */}
-                {sandpackError && (
-                  <div className="absolute inset-0 z-30 bg-background flex items-center justify-center p-6">
-                    <div className="w-full max-w-xl rounded-2xl border border-border bg-card p-6 shadow-lg">
-                      <h3 className="text-base font-semibold text-foreground">Preview failed to load</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Sandboxed preview reported an error while bundling.
-                      </p>
-                      <pre className="mt-4 max-h-48 overflow-auto rounded-lg bg-muted p-3 text-xs text-foreground whitespace-pre-wrap break-words">
-                        {sandpackError}
-                      </pre>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={handleRefresh}
-                          className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-                        >
-                          Hard Refresh (↻)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSandpackError(null);
-                            setIsCanvasReady(false);
-                            setRefreshKey((p) => p + 1);
-                          }}
-                          className="inline-flex items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground"
-                        >
-                          Retry
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 

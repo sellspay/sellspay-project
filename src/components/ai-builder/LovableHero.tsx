@@ -9,9 +9,16 @@ import heroBg from "@/assets/hero-aurora-bg.jpg";
 interface LovableHeroProps {
   onStart: (prompt: string, isPlanMode?: boolean) => void;
   userName?: string;
+  variant?: 'fullscreen' | 'embedded';
+  onBack?: () => void;
 }
 
-export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps) {
+export function LovableHero({
+  onStart,
+  userName = "Creator",
+  variant = 'fullscreen',
+  onBack,
+}: LovableHeroProps) {
   const [prompt, setPrompt] = useState("");
   const [isPlanMode, setIsPlanMode] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -134,7 +141,10 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
   };
 
   return (
-    <div className="h-screen w-full relative overflow-hidden bg-black flex flex-col items-center justify-center p-4">
+    <div className={(variant === 'embedded'
+      ? "h-full"
+      : "h-screen") + " w-full relative overflow-hidden bg-black flex flex-col items-center justify-center p-4"}
+    >
       
       {/* Background Image - Full opacity for 4K quality */}
       <div 
@@ -146,16 +156,26 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
       <div className="absolute inset-0 bg-black/30" />
 
       {/* Back Button */}
-      <button
-        onClick={() => {
-          // Always navigate to home - more reliable than history.back()
-          navigate('/');
-        }}
-        className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
-      >
-        <ArrowLeft size={16} />
-        <span>Home</span>
-      </button>
+      {variant === 'fullscreen' ? (
+        <button
+          onClick={() => {
+            // Always navigate to home - more reliable than history.back()
+            navigate('/');
+          }}
+          className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
+        >
+          <ArrowLeft size={16} />
+          <span>Home</span>
+        </button>
+      ) : onBack ? (
+        <button
+          onClick={onBack}
+          className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
+        >
+          <ArrowLeft size={16} />
+          <span>Back</span>
+        </button>
+      ) : null}
 
       <div className="relative z-10 w-full max-w-2xl flex flex-col items-center text-center">
         
