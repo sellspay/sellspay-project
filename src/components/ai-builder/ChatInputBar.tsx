@@ -4,9 +4,10 @@ import {
   Plus, Send, Image as ImageIcon, 
   History, Settings, X, Square,
   Sparkles, ChevronDown, Bot, Zap, BrainCircuit, FileText, ArrowUp,
-  Paperclip, Film, Video, Coins, Mic, Lock
+  Paperclip, Film, Video, Coins, Mic, Lock, Palette
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { STYLE_PROFILES, type StyleProfile } from '@/lib/vibecoder-style-profiles';
 
 // Speech Recognition type declarations
 interface SpeechRecognitionEvent extends Event {
@@ -85,6 +86,7 @@ interface ChatInputBarProps {
     isPlanMode: boolean; 
     model: AIModel; 
     attachments: File[];
+    styleProfile?: string;
   }) => void;
   isGenerating: boolean;
   onCancel: () => void;
@@ -96,6 +98,9 @@ interface ChatInputBarProps {
   // Controlled model state (lifted from parent)
   activeModel?: AIModel;
   onModelChange?: (model: AIModel) => void;
+  // Style profile state
+  activeStyleProfile?: string;
+  onStyleProfileChange?: (profileId: string) => void;
   // Paywall callback
   onOpenBilling?: () => void;
 }
@@ -244,14 +249,19 @@ export function ChatInputBar({
   onOpenSettings,
   activeModel,
   onModelChange,
+  activeStyleProfile,
+  onStyleProfileChange,
   onOpenBilling,
 }: ChatInputBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
+  const [showStyleMenu, setShowStyleMenu] = useState(false);
   const [isPlanMode, setIsPlanMode] = useState(false);
   // Use controlled model if provided, otherwise use local state
   const [internalModel, setInternalModel] = useState<AIModel>(AI_MODELS.code[0]);
   const selectedModel = activeModel ?? internalModel;
+  const [internalStyleProfile, setInternalStyleProfile] = useState<string>('luxury-minimal');
+  const selectedStyleProfile = activeStyleProfile ?? internalStyleProfile;
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState(""); // Live speech text (popup only)
@@ -260,12 +270,14 @@ export function ChatInputBar({
   // Portal positioning state
   const [modelMenuCoords, setModelMenuCoords] = useState({ top: 0, left: 0 });
   const [plusMenuCoords, setPlusMenuCoords] = useState({ top: 0, left: 0 });
+  const [styleMenuCoords, setStyleMenuCoords] = useState({ top: 0, left: 0 });
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const modelButtonRef = useRef<HTMLButtonElement>(null);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
+  const styleButtonRef = useRef<HTMLButtonElement>(null);
 
   // Ref to remember text before speech started (for appending)
   const promptBeforeSpeechRef = useRef("");
@@ -406,10 +418,37 @@ export function ChatInputBar({
     onSubmit({ 
       isPlanMode, 
       model: selectedModel,
-      attachments 
+      attachments,
+      styleProfile: selectedStyleProfile,
     });
     setAttachments([]);
   };
+
+  const handleStyleSelect = (profileId: string) => {
+    if (onStyleProfileChange) {
+      onStyleProfileChange(profileId);
+    } else {
+      setInternalStyleProfile(profileId);
+    }
+    setShowStyleMenu(false);
+  };
+
+  // Toggle style menu with position calculation
+  const toggleStyleMenu = () => {
+    if (!showStyleMenu && styleButtonRef.current) {
+      const rect = styleButtonRef.current.getBoundingClientRect();
+      setStyleMenuCoords({
+        left: rect.left,
+        top: rect.top,
+      });
+    }
+    setShowStyleMenu(!showStyleMenu);
+    setShowModelMenu(false);
+    setShowMenu(false);
+  };
+
+  // Get current style profile
+  const currentProfile = STYLE_PROFILES.find(p => p.id === selectedStyleProfile) || STYLE_PROFILES[0];
 
   const handleModelSelect = (model: AIModel) => {
     // Notify parent if controlled, otherwise update internal state
@@ -537,6 +576,65 @@ export function ChatInputBar({
         </Portal>
       )}
 
+      {/* Portal-based Style Profile Menu */}
+      {showStyleMenu && (
+        <Portal>
+          <div 
+            className="fixed inset-0 z-[9998]" 
+            onClick={() => setShowStyleMenu(false)} 
+          />
+          <div 
+            className="fixed z-[9999] w-64 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
+            style={{ 
+              left: styleMenuCoords.left,
+              bottom: typeof window !== 'undefined' ? window.innerHeight - styleMenuCoords.top + 8 : 0,
+            }}
+          >
+            <div className="px-3 py-2 border-b border-zinc-800">
+              <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium">Style Profile</span>
+            </div>
+            <div className="p-1.5 max-h-[280px] overflow-y-auto">
+              {STYLE_PROFILES.map(profile => (
+                <button
+                  key={profile.id}
+                  onClick={() => handleStyleSelect(profile.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-2.5 py-2 rounded-lg text-left transition-colors",
+                    selectedStyleProfile === profile.id ? "bg-zinc-800" : "hover:bg-zinc-800/60"
+                  )}
+                >
+                  {/* Color preview swatches */}
+                  <div className="flex gap-0.5 shrink-0">
+                    <div 
+                      className="w-3 h-3 rounded-sm" 
+                      style={{ backgroundColor: profile.colorPalette.primary }}
+                    />
+                    <div 
+                      className="w-3 h-3 rounded-sm" 
+                      style={{ backgroundColor: profile.colorPalette.accent }}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={cn(
+                      "text-xs font-medium truncate",
+                      selectedStyleProfile === profile.id ? "text-white" : "text-zinc-300"
+                    )}>
+                      {profile.name}
+                    </div>
+                    <div className="text-[10px] text-zinc-500 truncate">
+                      {profile.typography.heading}
+                    </div>
+                  </div>
+                  {selectedStyleProfile === profile.id && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </Portal>
+      )}
+
       {/* Portal-based Plus Menu */}
       {showMenu && (
         <Portal>
@@ -639,6 +737,23 @@ export function ChatInputBar({
               <span>Model</span>
               <ChevronDown size={10} className="opacity-50" />
             </button>
+            
+            {/* Style Profile selector chip - only for code models */}
+            {selectedModel.category === 'code' && (
+              <button
+                ref={styleButtonRef}
+                type="button"
+                onClick={toggleStyleMenu}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors",
+                  showStyleMenu && "bg-zinc-700 text-white"
+                )}
+              >
+                <Palette size={12} className="text-amber-400" />
+                <span className="max-w-[80px] truncate">{currentProfile.name}</span>
+                <ChevronDown size={10} className="opacity-50" />
+              </button>
+            )}
           </div>
           
           {/* Right side: Plan, Waveform/Mic, Stop/Send */}

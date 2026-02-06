@@ -10,7 +10,7 @@ import { LiveThought } from './LiveThought';
 import { type AgentStep } from './AgentProgress';
 
 interface VibecoderChatProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, styleProfile?: string) => void;
   onGenerateAsset?: (model: AIModel, prompt: string) => void;
   isStreaming: boolean;
   onCancel: () => void;
@@ -26,6 +26,9 @@ interface VibecoderChatProps {
   // Controlled model state
   activeModel?: AIModel;
   onModelChange?: (model: AIModel) => void;
+  // Style profile state
+  activeStyleProfile?: string;
+  onStyleProfileChange?: (profileId: string) => void;
   // Billing callback
   onOpenBilling?: () => void;
 }
@@ -122,6 +125,8 @@ export function VibecoderChat({
   isAgentMode = false,
   activeModel,
   onModelChange,
+  activeStyleProfile,
+  onStyleProfileChange,
   onOpenBilling,
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
@@ -150,6 +155,7 @@ export function VibecoderChat({
     isPlanMode: boolean; 
     model: AIModel; 
     attachments: File[];
+    styleProfile?: string;
   }) => {
     if (!input.trim() || isStreaming) return;
     
@@ -181,7 +187,8 @@ export function VibecoderChat({
       console.log('Attachments to process:', options.attachments.length);
     }
     
-    onSendMessage(finalPrompt);
+    // Pass style profile to parent
+    onSendMessage(finalPrompt, options.styleProfile);
     setInput('');
   };
 
@@ -284,6 +291,8 @@ export function VibecoderChat({
         userCredits={userCredits}
         activeModel={activeModel}
         onModelChange={onModelChange}
+        activeStyleProfile={activeStyleProfile}
+        onStyleProfileChange={onStyleProfileChange}
         onOpenBilling={onOpenBilling}
       />
     </div>
