@@ -17,6 +17,7 @@ import { AI_MODELS, type AIModel } from './ChatInputBar';
 import type { GeneratedAsset, ViewMode } from './types/generation';
 import { parseRoutesFromCode, type SitePage } from '@/utils/routeParser';
 import { toast } from 'sonner';
+import { clearProjectCache } from './utils/projectCache';
 
 interface AIBuilderCanvasProps {
   profileId: string;
@@ -37,6 +38,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   
   // Reset key to force component re-mount on project deletion
   const [resetKey, setResetKey] = useState(0);
+  
+  // STRICT LOADING: Verify project exists before rendering preview
+  const [isVerifyingProject, setIsVerifyingProject] = useState(false);
   
   // View mode state (Preview vs Code vs Image vs Video)
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
@@ -265,15 +269,63 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     navigate('/login');
   };
 
-  // Load code from last message when switching projects
+  // SCORCHED EARTH: Verify project exists on switch & force reset if zombie detected
   useEffect(() => {
-    if (messages.length > 0) {
-      const lastSnapshot = getLastCodeSnapshot();
-      if (lastSnapshot) {
-        setCode(lastSnapshot);
+    async function verifyAndLoadProject() {
+      // No project selected - show blank slate
+      if (!activeProjectId) {
+        setIsVerifyingProject(false);
+        return;
       }
+
+      setIsVerifyingProject(true);
+
+      // Check if project actually exists in DB
+      const { data, error } = await supabase
+        .from('vibecoder_projects')
+        .select('id')
+        .eq('id', activeProjectId)
+        .maybeSingle();
+
+      if (error || !data) {
+        // === ZOMBIE DETECTED! ===
+        console.warn('[AIBuilderCanvas] Zombie project detected. Performing scorched earth reset.');
+        
+        // 1. Wipe all cached data for this project
+        await clearProjectCache(activeProjectId);
+        
+        // 2. Reset code to blank slate
+        resetCode();
+        
+        // 3. Force React to destroy and remount preview/chat components
+        setResetKey(prev => prev + 1);
+        setRefreshKey(prev => prev + 1);
+        
+        // 4. Clear all transient state
+        setChatResponse(null);
+        setLiveSteps([]);
+        resetAgent();
+        setViewMode('preview');
+        setPreviewPath('/');
+        setCurrentImageAsset(null);
+        setCurrentVideoAsset(null);
+        
+        toast.info('Previous project was deleted. Starting fresh.');
+      } else {
+        // Project verified - load code from last message
+        if (messages.length > 0) {
+          const lastSnapshot = getLastCodeSnapshot();
+          if (lastSnapshot) {
+            setCode(lastSnapshot);
+          }
+        }
+      }
+
+      setIsVerifyingProject(false);
     }
-  }, [activeProjectId, messages, getLastCodeSnapshot, setCode]);
+
+    verifyAndLoadProject();
+  }, [activeProjectId, messages, getLastCodeSnapshot, setCode, resetCode, resetAgent]);
 
   // Save vibecoder code to project_files
   const saveVibecoderCode = async (codeContent: string) => {
@@ -551,10 +603,14 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   }, [viewMode, currentVideoAsset, currentImageAsset]);
 
 
-  if (loading || projectsLoading) {
+  // Show loading while verifying project OR initial data load
+  if (loading || projectsLoading || isVerifyingProject) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+        {isVerifyingProject && (
+          <p className="text-sm text-zinc-500">Verifying project...</p>
+        )}
       </div>
     );
   }
