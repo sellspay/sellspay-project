@@ -1,173 +1,178 @@
 
-# Agentic AI Builder Upgrade: From Chatbot to Agent
+# Seamless Single-Container Editor Overhaul
 
 ## Overview
 
-This is a major architectural upgrade to transform Vibecoder from a simple "Chatbot" (Input → Output) to a true "Agent" (Input → Plan → Execute → Verify → Self-Correct).
+Transform the AI Builder from a blocky, multi-container layout into a single, seamless window where the Preview and Chat panels feel unified within one elegant container.
 
 **Current State:**
-- Single-shot streaming: user sends prompt, AI streams code
-- Basic `[LOG:]` tags for real-time transparency
-- `LiveBuildingCard` shows simple checklist during streaming
+- Separate border treatments creating visual fragmentation
+- `border-r border-zinc-800` between preview and chat creating a "line" separator
+- Header has `border-b border-zinc-800` making it feel detached
+- Project sidebar has `border-r border-border/30` adding another separation line
+- Overall feels like 3+ separate boxes stitched together
 
 **Target State:**
-- Multi-step agent loop: Planning → Reading → Writing → Installing → Verifying → Done/Error
-- Premium terminal-style progress UI with timestamps and live logs
-- Self-healing capability: detects Sandpack errors and auto-fixes
-- Visual "thinking" that justifies the premium credit cost
+- One main rounded container with a single cohesive border
+- Preview (left) and Chat (right) as seamless halves of the same whole
+- Header integrated as the "title bar" of the unified container
+- Subtle internal separation via background color contrast, not borders
+- Premium, polished aesthetic matching modern design tools
 
 ---
 
-## Part 1: Create the Agent Progress UI
+## Part 1: Restructure AIBuilderCanvas Layout
 
-### New Component: `AgentProgress.tsx`
+### Changes to `src/components/ai-builder/AIBuilderCanvas.tsx`
 
-A premium, terminal-style thinking indicator that replaces the simple loading spinner with detailed status logs.
-
-**File:** `src/components/ai-builder/AgentProgress.tsx`
-
-**Features:**
-- Header bar with current step status and animated indicators (3 pulsing dots)
-- Real-time log stream with timestamps (`[10:00:01] Reading App.tsx...`)
-- Progress bar that fills as steps complete
-- Step-specific icons (BrainCircuit for planning, FileCode for writing, etc.)
-- Blinking cursor at end of log stream
-- Color-coded status (violet for running, green for done, red for error)
-
-**Step Types:**
+**Current Structure:**
 ```text
-planning   → "Architecting Solution..." (15%)
-reading    → "Analyzing Context..." (30%)
-writing    → "Generating Code..." (60%)
-installing → "Updating Dependencies..." (80%)
-verifying  → "Running Tests..." (95%)
-done       → "Complete" (100%)
-error      → "Process Failed"
+┌──────────────────────────────────────────────────────┐
+│ Header (border-b)                                    │
+├────────┬───────────────────────────────┬─────────────┤
+│Sidebar │ Preview (border-r)            │ Chat Panel  │
+│(border-r)                              │             │
+└────────┴───────────────────────────────┴─────────────┘
 ```
 
-**Visual Design:**
-- Dark terminal aesthetic (`bg-zinc-950/80`, `font-mono`)
-- Header with status label + animated glow ring
-- Scrollable log area with max height
-- Gradient progress bar (violet → blue)
-- Timestamps in muted color, commands in white
-
----
-
-## Part 2: Create the Agent Logic Hook
-
-### New Hook: `useAgentLoop.ts`
-
-A state machine that orchestrates the multi-step agent workflow.
-
-**File:** `src/hooks/useAgentLoop.ts`
-
-**State Interface:**
-```typescript
-type AgentStep = 'idle' | 'planning' | 'reading' | 'writing' | 'installing' | 'verifying' | 'done' | 'error';
-
-interface AgentState {
-  step: AgentStep;
-  logs: string[];
-  isRunning: boolean;
-  error?: string;
-}
-```
-
-**Core Logic:**
-1. **Planning Phase**: Parse the prompt, identify required components
-2. **Reading Phase**: Analyze current code context (passed from canvas)
-3. **Writing Phase**: Stream code generation (delegates to existing `useStreamingCode`)
-4. **Installing Phase**: Check for new dependencies in generated code
-5. **Verifying Phase**: Monitor Sandpack for errors
-6. **Done/Error**: Complete or trigger self-correction loop
-
-**Key Methods:**
-- `startAgent(prompt, currentCode)` - Begins the agent loop
-- `addLog(message)` - Appends to the log stream
-- `setStep(step)` - Transitions the state machine
-- `triggerSelfCorrection(error)` - Initiates fix loop on error
-
-**Integration with Existing Code:**
-- Wraps the existing `useStreamingCode` hook
-- Enhances the `[LOG:]` tag extraction with structured step transitions
-- Adds timing metadata for premium feel
-
----
-
-## Part 3: Integration into VibecoderChat
-
-### Modify: `VibecoderChat.tsx`
-
-Replace the simple `LiveBuildingCard` with the new `AgentProgress` component when streaming.
-
-**Changes:**
-1. Import `AgentProgress` component
-2. Pass `agentStep` and `agentLogs` as new props
-3. Conditionally render `AgentProgress` instead of `LiveBuildingCard` when agent is running
-4. Keep `LiveBuildingCard` as fallback for simple streaming (non-agent mode)
-
-**Updated Props Interface:**
-```typescript
-interface VibecoderChatProps {
-  // ... existing props
-  agentStep?: AgentStep;      // Current agent phase
-  agentLogs?: string[];       // Agent log stream
-  isAgentMode?: boolean;      // Toggle for premium agent UI
-}
-```
-
----
-
-## Part 4: Canvas Integration
-
-### Modify: `AIBuilderCanvas.tsx`
-
-Wire up the agent hook and pass state down to chat.
-
-**Changes:**
-1. Import `useAgentLoop` hook
-2. Initialize agent state alongside existing streaming code hook
-3. Update `handleSendMessage` to use agent loop instead of direct `streamCode`
-4. Pass agent state props to `VibecoderChat`
-5. Connect Sandpack error callback to agent's self-correction
-
-**New Flow:**
+**New Structure:**
 ```text
-User submits prompt
-      ↓
-handleSendMessage calls startAgent(prompt, currentCode)
-      ↓
-Agent transitions: idle → planning → reading → writing
-      ↓
-useStreamingCode handles actual code generation
-      ↓
-Agent continues: writing → installing → verifying → done
-      ↓
-If Sandpack error detected → agent → fixing → re-writes → verifying
+┌──────────────────────────────────────────────────────┐
+│                Full-Screen Container                 │
+│  ┌────────────────────────────────────────────────┐  │
+│  │ Header (integrated, no bottom border)          │  │
+│  ├────────────────────────────────────────────────┤  │
+│  │ ┌──────────────────────┬─────────────────────┐ │  │
+│  │ │ Preview Panel        │ Chat Panel          │ │  │
+│  │ │ (bg-black)           │ (bg-zinc-900)       │ │  │
+│  │ │                      │                     │ │  │
+│  │ └──────────────────────┴─────────────────────┘ │  │
+│  └────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────┘
+```
+
+**Key Changes:**
+1. Add outer container with small padding (`p-2`) to create "floating window" effect
+2. Create main inner container with `rounded-2xl border border-zinc-800 overflow-hidden`
+3. Remove `border-r border-zinc-800` from preview panel
+4. Remove `border-b border-zinc-800` from header (move to integrated style)
+5. Use subtle background color difference (`bg-black` vs `bg-zinc-900/50`) for panel separation
+6. Add optional subtle divider line (1px, 50% opacity) that feels like part of the design rather than a "border"
+
+---
+
+## Part 2: Update VibecoderHeader for Integrated Feel
+
+### Changes to `src/components/ai-builder/VibecoderHeader.tsx`
+
+**Remove:**
+- `border-b border-zinc-800` from the header
+
+**Add:**
+- Subtle backdrop blur for premium feel
+- Very subtle bottom separator using a gradient line instead of hard border
+- Slightly refined padding for tighter integration
+
+**Updated className:**
+```tsx
+// FROM:
+<header className="h-14 w-full bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
+
+// TO:
+<header className="h-14 w-full bg-zinc-950/80 backdrop-blur-sm flex items-center justify-between px-4 shrink-0 relative">
+  {/* Subtle gradient separator instead of hard border */}
+  <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-700/50 to-transparent" />
 ```
 
 ---
 
-## Part 5: Self-Healing Enhancement
+## Part 3: Refine Panel Separation
 
-### Modify: `PreviewErrorBoundary.tsx`
+### Preview Panel Changes
 
-Enhance the error boundary to work with the agent loop.
+**Remove:**
+- `border-r border-zinc-800` - the hard line separator
 
-**Current Behavior:** Shows error UI with "Auto Fix" button
+**Add:**
+- Subtle shadow cast onto the chat panel for depth
+- The background contrast (`bg-black`) naturally creates visual separation
 
-**Enhanced Behavior:**
-- Automatically trigger agent self-correction when error detected
-- Pass error details to agent for intelligent repair
-- Show agent progress UI while fixing
+**Updated className:**
+```tsx
+// FROM:
+<div className="flex-1 min-w-0 border-r border-zinc-800 bg-black overflow-hidden relative flex flex-col">
 
-**Integration:**
-```typescript
-const handleAutoFix = (errorMsg: string) => {
-  // Agent receives error context and attempts fix
-  startAgent(`[CRITICAL_ERROR_REPORT]\nError: ${errorMsg}\nFix the code.`, currentCode);
-};
+// TO:
+<div className="flex-1 min-w-0 bg-black overflow-hidden relative flex flex-col shadow-[4px_0_24px_-8px_rgba(0,0,0,0.8)]">
+```
+
+### Chat Panel Changes
+
+**Update:**
+- Slightly lighter background to create contrast with preview
+- No border needed - the shadow from preview provides separation
+
+**Updated className:**
+```tsx
+// FROM:
+<div style={{ width: sidebarWidth }} className="shrink-0 flex flex-col bg-background overflow-hidden relative">
+
+// TO:
+<div style={{ width: sidebarWidth }} className="shrink-0 flex flex-col bg-zinc-900/50 overflow-hidden relative">
+```
+
+---
+
+## Part 4: Project Sidebar Integration
+
+### Changes to `src/components/ai-builder/ProjectSidebar.tsx`
+
+**Option A (Keep Outside):** Keep sidebar outside the main container as a utility panel
+- Remove `border-r border-border/30`
+- Add subtle shadow instead: `shadow-[2px_0_16px_-4px_rgba(0,0,0,0.5)]`
+
+**Option B (Collapse by Default):** Start collapsed, floating over the main container
+- Less visual clutter
+- Sidebar becomes an overlay when expanded
+
+For this implementation, we'll use **Option A** - keep it outside but with refined styling:
+
+```tsx
+// FROM:
+<div className="w-64 bg-background border-r border-border/30 flex flex-col h-full">
+
+// TO:
+<div className="w-64 bg-zinc-950/80 flex flex-col h-full shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)]">
+```
+
+---
+
+## Part 5: Resize Handle Refinement
+
+The current resize handle between preview and chat needs to be subtle but functional:
+
+**Current:** Hard visible handle on hover
+
+**Updated:** Nearly invisible until interaction, then glows subtly
+
+```tsx
+// FROM:
+<div
+  onMouseDown={startResizing}
+  className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-50 transition-colors ${
+    isDragging ? 'bg-violet-500' : 'bg-transparent hover:bg-violet-500/50'
+  }`}
+/>
+
+// TO:
+<div
+  onMouseDown={startResizing}
+  className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 transition-all ${
+    isDragging 
+      ? 'bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.5)]' 
+      : 'bg-transparent hover:bg-zinc-600/30'
+  }`}
+/>
 ```
 
 ---
@@ -176,90 +181,75 @@ const handleAutoFix = (errorMsg: string) => {
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/components/ai-builder/AgentProgress.tsx` | **CREATE** | Premium terminal-style progress UI |
-| `src/hooks/useAgentLoop.ts` | **CREATE** | Agent state machine and orchestration logic |
-| `src/components/ai-builder/VibecoderChat.tsx` | **MODIFY** | Integrate AgentProgress, add agent props |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | **MODIFY** | Wire up useAgentLoop, connect to error boundary |
-| `src/components/ai-builder/types/chat.ts` | **MODIFY** | Export AgentStep type |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | **MODIFY** | Restructure to single container, remove hard borders, add shadow separation |
+| `src/components/ai-builder/VibecoderHeader.tsx` | **MODIFY** | Remove border-b, add gradient separator, add backdrop blur |
+| `src/components/ai-builder/ProjectSidebar.tsx` | **MODIFY** | Replace border with subtle inset shadow |
+
+---
+
+## Visual Comparison
+
+### Before
+```text
+┌────────────────────────────────────────────────────┐
+│ HEADER ════════════════════════════════════════════│ ← Hard border
+├────────┼───────────────────────────┼───────────────┤
+│        │                           │               │
+│SIDEBAR ║       PREVIEW             ║    CHAT       │ ← Hard vertical borders
+│        │                           │               │
+│        │                           │               │
+└────────┴───────────────────────────┴───────────────┘
+```
+
+### After
+```text
+  ┌────────────────────────────────────────────────┐
+┌─┤ HEADER ···gradient fade···                     │
+│ ├────────────────────────────────────────────────┤
+│ │                               ░░░              │
+│ │      PREVIEW                  ░░░    CHAT      │ ← Soft shadow transition
+│ │      (bg-black)               ░░░  (bg-zinc)   │
+│ │                               ░░░              │
+│ └────────────────────────────────────────────────┘
+└─ Sidebar (subtle, outside main container)
+```
 
 ---
 
 ## Technical Details
 
-### AgentProgress Component Structure
+### Shadow-Based Separation
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  🧠 Architecting Solution...        ● ● ●           │  ← Header with status
-├─────────────────────────────────────────────────────┤
-│  [10:00:01] > Received prompt: "Create a..."        │
-│  [10:00:02] Analyzing request complexity...         │
-│  [10:00:03] Identified components: Header, Hero     │
-│  [10:00:04] Reading src/App.tsx...                  │
-│  [10:00:05] > Generating code for Hero.tsx...       │  ← Scrollable log area
-│  _                                                  │  ← Blinking cursor
-├─────────────────────────────────────────────────────┤
-│  ████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │  ← Progress bar (60%)
-└─────────────────────────────────────────────────────┘
+Using `box-shadow` instead of `border` creates a softer, more premium feel:
+
+```css
+/* Preview panel casts shadow onto chat */
+shadow-[4px_0_24px_-8px_rgba(0,0,0,0.8)]
+
+/* Creates:
+   - 4px horizontal offset (shadow goes right)
+   - 0px vertical offset
+   - 24px blur radius (soft edge)
+   - -8px spread (contained, not bloated)
+   - 80% black opacity
+*/
 ```
 
-### State Machine Flow
+### Gradient Separator for Header
 
-```text
-                ┌─────────┐
-                │  idle   │
-                └────┬────┘
-                     │ startAgent()
-                     ▼
-              ┌──────────────┐
-              │   planning   │ (15%)
-              └──────┬───────┘
-                     │
-                     ▼
-              ┌──────────────┐
-              │   reading    │ (30%)
-              └──────┬───────┘
-                     │
-                     ▼
-              ┌──────────────┐
-              │   writing    │ (60%) ← streamCode() executes here
-              └──────┬───────┘
-                     │
-                     ▼
-              ┌──────────────┐
-              │  installing  │ (80%)
-              └──────┬───────┘
-                     │
-                     ▼
-              ┌──────────────┐
-              │  verifying   │ (95%)
-              └──────┬───────┘
-            ┌────────┴────────┐
-            │                 │
-    ┌───────▼───────┐  ┌──────▼──────┐
-    │     done      │  │    error    │
-    │  (Complete)   │  │  (Failed)   │
-    └───────────────┘  └──────┬──────┘
-                              │
-                              ▼
-                       ┌─────────────┐
-                       │   fixing    │ ← Self-correction loop
-                       └──────┬──────┘
-                              │
-                              ▼
-                       (back to writing)
+Instead of a hard 1px border, a gradient creates visual separation without the "line":
+
+```tsx
+<div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-700/50 to-transparent" />
 ```
+
+This fades in from edges, strongest in center, creating a subtle divider that doesn't feel like a "box".
 
 ---
 
 ## Expected Results
 
-1. **Premium "Thinking" Experience**: Users see exactly what the AI is doing at each step, justifying the credit cost
-
-2. **Transparency**: Real-time logs show file reading, component generation, and verification
-
-3. **Self-Healing**: Sandpack errors trigger automatic fix loops without user intervention
-
-4. **Future-Ready**: Architecture supports adding more agent capabilities (Vision, WebContainers, etc.)
-
-5. **Progressive Enhancement**: Existing streaming code hook remains functional; agent layer wraps it
+1. **Unified Feel**: The entire editor feels like one cohesive application window
+2. **Premium Polish**: Shadow-based separation feels modern and refined
+3. **Reduced Visual Noise**: Fewer hard lines mean the eye focuses on content
+4. **Consistent with Design Language**: Matches the rounded, dark, glassmorphic aesthetic used elsewhere in the project
