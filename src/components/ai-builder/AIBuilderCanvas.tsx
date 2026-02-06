@@ -18,6 +18,7 @@ import type { GeneratedAsset, ViewMode } from './types/generation';
 import { parseRoutesFromCode, type SitePage } from '@/utils/routeParser';
 import { toast } from 'sonner';
 import { clearProjectCache } from './utils/projectCache';
+import { LovableHero } from './LovableHero';
 
 interface AIBuilderCanvasProps {
   profileId: string;
@@ -671,6 +672,34 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   const canUndo = messages.filter(m => m.code_snapshot).length > 1;
   const hasActiveProject = Boolean(activeProjectId);
 
+  // === FRESH USER: Show full-screen hero with no panels ===
+  // The hero is the ONLY thing on screen until they type their first prompt
+  if (projects.length === 0) {
+    return (
+      <LovableHero
+        onStart={async (prompt) => {
+          // 1. Extract smart project name from first 5 words
+          const projectName = prompt.split(/\s+/).slice(0, 5).join(' ');
+          
+          // 2. Create the project
+          const projectId = await ensureProject(projectName);
+          if (!projectId) {
+            toast.error('Failed to create project');
+            return;
+          }
+          
+          // 3. Add user message to chat history
+          await addMessage('user', prompt);
+          
+          // 4. Start the agent with the initial prompt
+          startAgent(prompt, undefined);
+        }}
+        userName={username ?? 'Creator'}
+      />
+    );
+  }
+
+  // === EXISTING USER: Show the full editor interface ===
   return (
     <div className="h-screen w-full bg-background flex overflow-hidden p-2">
       {/* Project sidebar - outside main container */}
