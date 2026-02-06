@@ -173,6 +173,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     cancelStream, 
     resetCode,
     setCode,
+    forceResetStreaming,
     DEFAULT_CODE 
   } = useStreamingCode({
     // 🛑 RACE CONDITION GUARD: Check if generation should be discarded
@@ -376,13 +377,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       // 1. IMMEDIATE UNMOUNT: Wipe React State FIRST (before any async operations)
       unmountAgentProject();
       
-      // If there's an active generation for a DIFFERENT project, abort it
-      if (generationLockRef.current && generationLockRef.current !== activeProjectId) {
-        console.warn(`🛑 Aborting generation for ${generationLockRef.current} (switched to ${activeProjectId})`);
-        cancelStream();
-        cancelAgent();
-        generationLockRef.current = null;
-      }
+      // ALWAYS cancel any in-progress streams/agent when switching projects
+      // This ensures isStreaming and isAgentRunning reset to false
+      cancelStream();
+      cancelAgent();
+      forceResetStreaming(); // Safety valve to ensure isStreaming is definitely false
+      generationLockRef.current = null;
 
       // 2. DETECT PROJECT SWITCH: If switching to a different project, nuke the cache
       const isProjectSwitch = previousProjectIdRef.current !== null && 
@@ -473,6 +473,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           // Brand new project (no generations yet) → show blank template.
           resetCode();
         }
+        
+        // SAFETY: After loading, ensure we're not stuck in a generating state
+        // This catches edge cases where the previous generation didn't clean up
+        setLiveSteps([]);
+        setChatResponse(null);
       }
 
       setIsVerifyingProject(false);
@@ -485,7 +490,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       isMounted = false;
       unmountAgentProject(); // Final safety wipe on exit
     };
-  }, [activeProjectId, messages, getLastCodeSnapshot, profileId, setCode, resetCode, resetAgent, cancelStream, cancelAgent, mountAgentProject, unmountAgentProject]);
+  }, [activeProjectId, messages, getLastCodeSnapshot, profileId, setCode, resetCode, resetAgent, cancelStream, cancelAgent, forceResetStreaming, mountAgentProject, unmountAgentProject]);
 
   // NOTE: Draft code is NOT persisted to the public/live slot.
   // Publishing explicitly writes the current code to a dedicated published file.
