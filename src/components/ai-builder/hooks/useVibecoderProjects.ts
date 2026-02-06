@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
+import { clearProjectCache } from '../utils/projectCache';
 
 export interface VibecoderProject {
   id: string;
@@ -126,25 +127,44 @@ export function useVibecoderProjects() {
 
   // Delete project using the "Total Deletion" RPC
   // This also clears the live store if this project was active
-  const deleteProject = useCallback(async (projectId: string) => {
-    const { error } = await supabase.rpc('delete_project_fully', {
-      p_project_id: projectId
-    });
+  // SCORCHED EARTH: Also clears all browser caches to prevent zombie projects
+  const deleteProject = useCallback(async (projectId: string): Promise<boolean> => {
+    try {
+      // 1. Delete from database via RPC
+      const { error } = await supabase.rpc('delete_project_fully', {
+        p_project_id: projectId
+      });
 
-    if (error) {
-      console.error('Failed to delete project:', error);
+      if (error) {
+        console.error('Failed to delete project:', error);
+        return false;
+      }
+
+      // 2. SCORCHED EARTH: Clear all browser caches for this project
+      await clearProjectCache(projectId);
+
+      // 3. Update local state
+      setProjects(prev => prev.filter(p => p.id !== projectId));
+      
+      // 4. If deleted project was active, select another or clear
+      if (activeProjectId === projectId) {
+        const remaining = projects.filter(p => p.id !== projectId);
+        setActiveProjectId(remaining.length > 0 ? remaining[0].id : null);
+        setMessages([]); // Clear messages since project is gone
+        
+        // 5. Clear URL parameter if it referenced the deleted project
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('project') === projectId) {
+          url.searchParams.delete('project');
+          window.history.replaceState(null, '', url.toString());
+        }
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Failed to delete project:', err);
       return false;
     }
-
-    setProjects(prev => prev.filter(p => p.id !== projectId));
-    
-    // If deleted project was active, select another or clear
-    if (activeProjectId === projectId) {
-      const remaining = projects.filter(p => p.id !== projectId);
-      setActiveProjectId(remaining.length > 0 ? remaining[0].id : null);
-      setMessages([]); // Clear messages since project is gone
-    }
-    return true;
   }, [activeProjectId, projects]);
 
   // Rename project

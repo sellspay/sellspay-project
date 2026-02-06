@@ -385,18 +385,36 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   };
 
-  // Handle project deletion (uses the "Total Deletion" RPC)
-  const handleDeleteProject = async (projectId: string) => {
-    const isActiveProject = activeProjectId === projectId;
-    const success = await deleteProject(projectId);
+  // Handle project deletion (uses the "Total Deletion" RPC + Scorched Earth cache clear)
+  const handleDeleteProject = async (projectIdToDelete: string) => {
+    const isActiveProject = activeProjectId === projectIdToDelete;
+    const success = await deleteProject(projectIdToDelete);
     
     if (success) {
-      // If we deleted the active project, force a complete reset
+      // If we deleted the active project, force a COMPLETE nuclear reset
       if (isActiveProject) {
+        // 1. Reset code to blank slate
         resetCode();
+        
+        // 2. Clear chat response state
         setChatResponse(null);
-        // Increment resetKey to force React to destroy and re-mount components
+        
+        // 3. Clear agent/streaming state
+        setLiveSteps([]);
+        resetAgent();
+        
+        // 4. Reset view mode to default
+        setViewMode('preview');
+        setPreviewPath('/');
+        
+        // 5. Clear any generated assets
+        setCurrentImageAsset(null);
+        setCurrentVideoAsset(null);
+        
+        // 6. Increment resetKey to force React to DESTROY and re-mount all preview/chat components
+        // This ensures no stale state survives in child components
         setResetKey(prev => prev + 1);
+        setRefreshKey(prev => prev + 1);
       }
       toast.success('Project deleted');
     } else {
