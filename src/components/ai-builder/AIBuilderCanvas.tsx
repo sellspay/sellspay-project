@@ -272,8 +272,22 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // SCORCHED EARTH: Verify project exists on switch & force reset if zombie detected
   useEffect(() => {
     async function verifyAndLoadProject() {
-      // No project selected - show blank slate
+      // No project selected - force a true blank slate (prevents zombie UI from sticking around)
       if (!activeProjectId) {
+        // Reset code + force Sandpack remount
+        resetCode();
+        setResetKey(prev => prev + 1);
+        setRefreshKey(prev => prev + 1);
+
+        // Clear transient state
+        setChatResponse(null);
+        setLiveSteps([]);
+        resetAgent();
+        setViewMode('preview');
+        setPreviewPath('/');
+        setCurrentImageAsset(null);
+        setCurrentVideoAsset(null);
+
         setIsVerifyingProject(false);
         return;
       }
@@ -290,17 +304,17 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       if (error || !data) {
         // === ZOMBIE DETECTED! ===
         console.warn('[AIBuilderCanvas] Zombie project detected. Performing scorched earth reset.');
-        
+
         // 1. Wipe all cached data for this project
         await clearProjectCache(activeProjectId);
-        
+
         // 2. Reset code to blank slate
         resetCode();
-        
+
         // 3. Force React to destroy and remount preview/chat components
         setResetKey(prev => prev + 1);
         setRefreshKey(prev => prev + 1);
-        
+
         // 4. Clear all transient state
         setChatResponse(null);
         setLiveSteps([]);
@@ -309,7 +323,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         setPreviewPath('/');
         setCurrentImageAsset(null);
         setCurrentVideoAsset(null);
-        
+
         toast.info('Previous project was deleted. Starting fresh.');
       } else {
         // Project verified - load code from last message
