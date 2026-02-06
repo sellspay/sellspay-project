@@ -1,13 +1,13 @@
 import { 
-  ArrowLeft, ChevronDown, Eye, Code2, 
-  Monitor, Smartphone, RefreshCw, ExternalLink, Loader2,
+  ArrowLeft, Eye, Code2, 
+  Monitor, Smartphone, ExternalLink, Loader2,
   Image as ImageIcon, Film
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
 import type { ViewMode } from "./types/generation";
 import { ProfileMenu } from "./ProfileMenu";
+import { PageNavigator } from "./PageNavigator";
 
 interface VibecoderHeaderProps {
   projectName?: string;
@@ -81,8 +81,8 @@ export function VibecoderHeader({
   return (
     <header className="h-14 w-full bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
       
-      {/* LEFT: Exit & Project Identity */}
-      <div className="flex items-center gap-4">
+      {/* LEFT: Exit Button Only */}
+      <div className="flex items-center">
         <Button 
           variant="ghost" 
           size="sm" 
@@ -92,25 +92,6 @@ export function VibecoderHeader({
           <ArrowLeft className="w-4 h-4" />
           Exit
         </Button>
-        
-        <div className="w-px h-5 bg-zinc-800" />
-        
-        {/* Project Selector */}
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition-colors">
-          <div className="w-5 h-5 rounded bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center">
-            <img src={sellspayLogo} alt="" className="w-3.5 h-3.5 object-contain" />
-          </div>
-          <span className="text-sm font-medium text-zinc-200 max-w-[140px] truncate">
-            {projectName}
-          </span>
-          <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
-        </button>
-
-        {isPublished && (
-          <span className="text-xs px-2 py-0.5 bg-green-500/10 text-green-400 rounded-full border border-green-500/20">
-            Live
-          </span>
-        )}
       </div>
 
       {/* CENTER: 4-Mode View Switcher */}
@@ -188,19 +169,11 @@ export function VibecoderHeader({
         )}
       </div>
 
-      {/* RIGHT: Address Bar & Actions */}
+      {/* RIGHT: Page Navigator & Actions */}
       <div className="flex items-center gap-3">
-        {/* Address Bar with Refresh */}
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 w-48">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-xs text-zinc-500 font-mono">/ai-builder</span>
-          <button 
-            onClick={onRefresh}
-            className="ml-auto p-1 rounded-md text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all active:rotate-180"
-            title="Force Refresh Preview"
-          >
-            <RefreshCw className="w-3 h-3" />
-          </button>
+        {/* Page Navigator */}
+        <div className="hidden lg:block">
+          <PageNavigator onRefresh={onRefresh} />
         </div>
 
         {/* View Live Button */}

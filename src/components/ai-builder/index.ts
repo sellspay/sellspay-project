@@ -22,3 +22,4 @@ export type { GeneratedAsset, ViewMode } from './types/generation';
 export { ChatInputBar } from './ChatInputBar';
 export { PlanApprovalCard } from './PlanApprovalCard';
 export { ProfileMenu } from './ProfileMenu';
+export { PageNavigator } from './PageNavigator';
