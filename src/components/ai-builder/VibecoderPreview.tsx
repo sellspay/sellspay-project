@@ -18,6 +18,37 @@ interface VibecoderPreviewProps {
   viewMode?: 'preview' | 'code';
 }
 
+// Nuclear CSS fix - forces all Sandpack internal wrappers to fill height
+const SANDPACK_HEIGHT_FIX = `
+  .sp-wrapper, 
+  .sp-layout, 
+  .sp-stack { 
+    height: 100% !important; 
+    width: 100% !important; 
+    display: flex !important; 
+    flex-direction: column !important; 
+    background: transparent !important;
+  }
+  .sp-preview-container {
+    flex: 1 !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .sp-preview-iframe {
+    flex: 1 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+  .sp-code-editor {
+    flex: 1 !important;
+    height: 100% !important;
+  }
+  .cm-editor {
+    height: 100% !important;
+  }
+`;
+
 // Premium loading steps with icons
 const LOADING_STEPS = [
   { id: 1, label: "Analyzing your vision...", icon: "🧠" },
@@ -264,11 +295,14 @@ export function VibecoderPreview({ code, isStreaming, onError, viewMode = 'previ
 
   return (
     <div className="h-full w-full relative bg-zinc-950 flex flex-col">
+      {/* Nuclear CSS Fix - Inject global styles to force Sandpack height */}
+      <style>{SANDPACK_HEIGHT_FIX}</style>
+
       {/* Premium Loading Overlay - Only visible when streaming */}
       {isStreaming && <LoadingOverlay currentStep={loadingStep} />}
 
       {/* Sandpack preview/code - Always rendered, but hidden behind overlay during build */}
-      <div className="h-full w-full flex-1">
+      <div className="h-full w-full flex-1 min-h-0">
         <SandpackRenderer code={code} onError={onError} viewMode={viewMode} />
       </div>
     </div>
