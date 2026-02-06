@@ -509,6 +509,41 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProjectId]);
 
+  // =============== CODE RESTORATION FROM MESSAGES ===============
+  // This effect runs AFTER messages load from the database.
+  // It restores the last code snapshot once messages are available.
+  // Separated from the main orchestrator to avoid the infinite loop bug.
+  const hasRestoredCodeRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    // Skip if messages are still loading
+    if (messagesLoading) return;
+    
+    // Skip if no active project
+    if (!activeProjectId) return;
+    
+    // Skip if we already restored code for this project
+    if (hasRestoredCodeRef.current === activeProjectId) return;
+    
+    // Skip if we're in the middle of a generation (don't overwrite streaming code)
+    if (isStreaming) return;
+    
+    const lastSnapshot = getLastCodeSnapshot();
+    if (lastSnapshot) {
+      console.log('📦 Restoring code from message history for project:', activeProjectId);
+      setCode(lastSnapshot);
+      hasRestoredCodeRef.current = activeProjectId;
+    } else if (messages.length === 0) {
+      // Brand new project with no messages - mark as restored to avoid re-running
+      hasRestoredCodeRef.current = activeProjectId;
+    }
+  }, [activeProjectId, messagesLoading, messages.length, getLastCodeSnapshot, setCode, isStreaming]);
+
+  // Reset restoration tracker when project changes
+  useEffect(() => {
+    hasRestoredCodeRef.current = null;
+  }, [activeProjectId]);
+
   // NOTE: Draft code is NOT persisted to the public/live slot.
   // Publishing explicitly writes the current code to a dedicated published file.
   const savePublishedVibecoderCode = async (codeContent: string) => {
