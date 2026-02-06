@@ -23,6 +23,13 @@ const INITIAL_STATE: AgentState = {
 };
 
 /**
+ * Create a fresh initial state - used for Scorched Earth reset
+ */
+function createFreshState(): AgentState {
+  return { ...INITIAL_STATE };
+}
+
+/**
  * Agent orchestration hook that manages the multi-step workflow:
  * Planning → Reading → Writing → Installing → Verifying → Done/Error
  * 
@@ -205,7 +212,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
    */
   const cancelAgent = useCallback(() => {
     abortRef.current = true;
-    setState(INITIAL_STATE);
+    setState(createFreshState());
   }, []);
 
   /**
@@ -213,7 +220,36 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
    */
   const resetAgent = useCallback(() => {
     abortRef.current = true;
-    setState(INITIAL_STATE);
+    setState(createFreshState());
+  }, []);
+
+  // --- SCORCHED EARTH: Mount/Unmount pattern for strict project isolation ---
+  
+  /**
+   * Unmount the current project - wipes ALL hook memory
+   * Call this BEFORE loading a new project to prevent cross-contamination
+   */
+  const unmountProject = useCallback(() => {
+    console.log("🧹 [AgentLoop] Unmounting Project. Wiping hook memory.");
+    abortRef.current = true;
+    streamStartedRef.current = false;
+    setState(createFreshState());
+  }, []);
+
+  /**
+   * Mount a specific project with explicit ID lock
+   * Call this AFTER fetching fresh data from DB
+   */
+  const mountProject = useCallback((projectId: string) => {
+    console.log(`🔒 [AgentLoop] Mounting hook to Project ID: ${projectId}`);
+    // Reset abort flag for new project
+    abortRef.current = false;
+    streamStartedRef.current = false;
+    // Set the lock explicitly
+    setState(prev => ({
+      ...createFreshState(),
+      lockedProjectId: projectId,
+    }));
   }, []);
 
   return {
@@ -226,6 +262,9 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
     onStreamingComplete,
     onStreamingError,
     triggerSelfCorrection,
+    // Scorched Earth pattern
+    mountProject,
+    unmountProject,
     // Expose individual pieces for convenience
     agentStep: state.step,
     agentLogs: state.logs,
