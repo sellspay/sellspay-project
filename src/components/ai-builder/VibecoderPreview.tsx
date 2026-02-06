@@ -1,5 +1,5 @@
-import { useMemo, memo, useState, useEffect } from 'react';
-import { Sandpack, SandpackTheme } from '@codesandbox/sandpack-react';
+import { useMemo, memo, useState, useEffect, useRef } from 'react';
+import { Sandpack, SandpackTheme, useSandpack, SandpackProvider, SandpackPreview as SandpackPreviewComponent } from '@codesandbox/sandpack-react';
 import { Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
@@ -8,6 +8,7 @@ import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
 interface VibecoderPreviewProps {
   code: string;
   isStreaming?: boolean;
+  onError?: (error: string) => void;
 }
 
 // Premium loading steps with icons
@@ -138,8 +139,34 @@ const customTheme: SandpackTheme = {
   },
 };
 
+// Error detector component that monitors Sandpack state
+function ErrorDetector({ onError }: { onError?: (error: string) => void }) {
+  const { sandpack } = useSandpack();
+  const lastErrorRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    // Check for bundler errors
+    const bundlerError = sandpack.error?.message;
+    
+    if (bundlerError && bundlerError !== lastErrorRef.current) {
+      lastErrorRef.current = bundlerError;
+      onError?.(bundlerError);
+    } else if (!bundlerError) {
+      lastErrorRef.current = null;
+    }
+  }, [sandpack.error, onError]);
+  
+  return null;
+}
+
 // Memoized Sandpack component to prevent unnecessary re-renders during streaming
-const SandpackRenderer = memo(function SandpackRenderer({ code }: { code: string }) {
+const SandpackRenderer = memo(function SandpackRenderer({ 
+  code, 
+  onError 
+}: { 
+  code: string; 
+  onError?: (error: string) => void;
+}) {
   // Wrap the code in proper structure, including the standard library
   const files = useMemo(() => ({
     // Standard library (hooks, utils) - always available to prevent crashes
@@ -166,7 +193,7 @@ root.render(<App />);`,
   }), [code]);
 
   return (
-    <Sandpack
+    <SandpackProvider
       template="react-ts"
       theme={customTheme}
       files={files}
@@ -174,21 +201,8 @@ root.render(<App />);`,
         externalResources: [
           'https://cdn.tailwindcss.com',
         ],
-        showNavigator: false,
-        showLineNumbers: true,
-        showTabs: false,
-        editorHeight: '100%',
-        classes: {
-          'sp-wrapper': 'h-full !rounded-none !border-0',
-          'sp-layout': 'h-full !rounded-none !border-0 !bg-transparent',
-          'sp-stack': 'h-full',
-          'sp-editor': 'h-full',
-          'sp-preview': 'h-full !bg-zinc-950',
-          'sp-preview-container': 'h-full',
-          'sp-preview-iframe': 'h-full',
-        },
-        // Only show preview, hide editor
-        editorWidthPercentage: 0,
+        recompileMode: 'delayed',
+        recompileDelay: 500,
       }}
       customSetup={{
         dependencies: {
@@ -198,11 +212,46 @@ root.render(<App />);`,
           'tailwind-merge': 'latest',
         },
       }}
-    />
+    >
+      <ErrorDetector onError={onError} />
+      <Sandpack
+        template="react-ts"
+        theme={customTheme}
+        files={files}
+        options={{
+          externalResources: [
+            'https://cdn.tailwindcss.com',
+          ],
+          showNavigator: false,
+          showLineNumbers: true,
+          showTabs: false,
+          editorHeight: '100%',
+          classes: {
+            'sp-wrapper': 'h-full !rounded-none !border-0',
+            'sp-layout': 'h-full !rounded-none !border-0 !bg-transparent',
+            'sp-stack': 'h-full',
+            'sp-editor': 'h-full',
+            'sp-preview': 'h-full !bg-zinc-950',
+            'sp-preview-container': 'h-full',
+            'sp-preview-iframe': 'h-full',
+          },
+          // Only show preview, hide editor
+          editorWidthPercentage: 0,
+        }}
+        customSetup={{
+          dependencies: {
+            'lucide-react': 'latest',
+            'framer-motion': '^11.0.0',
+            'clsx': 'latest',
+            'tailwind-merge': 'latest',
+          },
+        }}
+      />
+    </SandpackProvider>
   );
 });
 
-export function VibecoderPreview({ code, isStreaming }: VibecoderPreviewProps) {
+export function VibecoderPreview({ code, isStreaming, onError }: VibecoderPreviewProps) {
   const [loadingStep, setLoadingStep] = useState(0);
 
   // Cycle through the premium build steps while streaming
@@ -224,7 +273,7 @@ export function VibecoderPreview({ code, isStreaming }: VibecoderPreviewProps) {
 
       {/* Sandpack preview - Always rendered, but hidden behind overlay during build */}
       <div className="h-full w-full">
-        <SandpackRenderer code={code} />
+        <SandpackRenderer code={code} onError={onError} />
       </div>
     </div>
   );
