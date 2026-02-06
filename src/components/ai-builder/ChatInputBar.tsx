@@ -595,15 +595,15 @@ export function ChatInputBar({
 
       {/* MAGICAL DOORWAY STYLE INPUT */}
       <div className="relative group">
-        {/* Hover glow effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-500" />
+        {/* Hover glow effect - ORANGE THEME */}
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-amber-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-500" />
         
         {/* Main container - matching LovableHero style */}
         <div className={cn(
           "relative bg-zinc-900/80 backdrop-blur-xl border rounded-3xl shadow-2xl transition-all overflow-hidden",
           isPlanMode 
             ? "border-blue-500/30 ring-1 ring-blue-500/20" 
-            : "border-white/10 focus-within:border-violet-500/30 focus-within:bg-zinc-900/90"
+            : "border-white/10 focus-within:border-orange-500/30 focus-within:bg-zinc-900/90"
         )}>
           
           {/* TEXTAREA - pb-14 reserves bottom space for buttons */}
@@ -670,7 +670,7 @@ export function ChatInputBar({
                 <selectedModel.icon size={12} className={cn(
                   selectedModel.category === 'video' ? "text-pink-400" :
                   selectedModel.category === 'image' ? "text-amber-400" :
-                  isPlanMode ? "text-blue-400" : "text-violet-400"
+                  isPlanMode ? "text-blue-400" : "text-orange-400"
                 )} />
                 <span className="hidden sm:inline">{selectedModel.name}</span>
                 <ChevronDown size={10} className={cn("transition-transform", showModelMenu && "rotate-180")} />
@@ -735,7 +735,7 @@ export function ChatInputBar({
                           ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-400 hover:to-orange-400 shadow-lg shadow-amber-500/20"
                           : isPlanMode
                             ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-400 hover:to-cyan-400 shadow-lg shadow-blue-500/20"
-                            : "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white hover:from-violet-400 hover:to-fuchsia-400 shadow-lg shadow-violet-500/20"
+                            : "bg-gradient-to-r from-[#FF5533] to-[#E0482B] text-white hover:from-[#FF6644] hover:to-[#F05535] shadow-lg shadow-orange-500/20"
                       : "bg-zinc-700/50 text-zinc-500 cursor-not-allowed"
                 )}
               >
