@@ -1,12 +1,12 @@
 import { useRef, useEffect } from 'react';
-import { Sparkles, ThumbsUp, ThumbsDown, Copy, Undo2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Copy, Undo2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import type { BuildStep } from './types/chat';
-
+import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 // Extended message type with steps
 export interface MessageWithSteps extends VibecoderMessage {
   steps?: BuildStep[];
@@ -51,10 +51,10 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
       animate={{ opacity: 1, x: 0 }}
       className="flex gap-3 mb-6 group w-full"
     >
-      {/* AI Avatar */}
+      {/* AI Avatar - Brand Logo */}
       <div className="shrink-0 mt-1">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
-          <Sparkles size={14} className="text-white" />
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF5533] to-[#E0482B] flex items-center justify-center shadow-lg shadow-orange-500/20 p-1.5">
+          <img src={sellspayLogo} alt="AI" className="w-full h-full object-contain" />
         </div>
       </div>
 
@@ -199,8 +199,8 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
 function EmptyState() {
   return (
     <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-50">
-      <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center mb-4 border border-zinc-800">
-        <Sparkles size={20} className="text-zinc-500" />
+      <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center mb-4 border border-zinc-800 p-2.5">
+        <img src={sellspayLogo} alt="" className="w-full h-full object-contain opacity-50" />
       </div>
       <p className="text-sm text-zinc-500">History is empty. Start building.</p>
     </div>

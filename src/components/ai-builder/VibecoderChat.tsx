@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Code2, Sparkles, CheckCircle2 } from 'lucide-react';
-import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
+import { Loader2, Code2, CheckCircle2 } from 'lucide-react';
 import { ChatInterface } from './VibecoderMessageBubble';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import { motion } from 'framer-motion';
@@ -197,24 +196,20 @@ export function VibecoderChat({
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background rounded-r-2xl">
-      {/* Header */}
+      {/* Header - Clean project name only */}
       <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-border/30">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <img src={sellspayLogo} alt="" className="w-6 h-6 object-contain" />
-            <Sparkles className="w-3 h-3 text-violet-400 absolute -top-1 -right-1" />
-          </div>
+        <div className="flex items-center gap-3">
           <div className="flex flex-col">
             <span className="font-medium text-sm">{projectName || 'Vibecoder'}</span>
             <span className="text-[10px] text-muted-foreground">
               {messages.length} messages
             </span>
           </div>
-          <span className="text-[10px] px-1.5 py-0.5 bg-violet-500/20 text-violet-400 rounded border border-violet-500/30 font-medium">
+          <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded border border-orange-500/30 font-medium">
             BETA
           </span>
           {isStreaming && (
-            <span className="text-xs text-violet-400 animate-pulse flex items-center gap-1.5 ml-2">
+            <span className="text-xs text-orange-400 animate-pulse flex items-center gap-1.5 ml-2">
               <Loader2 className="w-3 h-3 animate-spin" />
               Streaming...
             </span>
