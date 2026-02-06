@@ -741,22 +741,14 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     handleSendMessage(errorMsg);
   }, [triggerSelfCorrection, handleSendMessage]);
 
-  // When Sandpack reports an error, mirror it into chat + show one-click fix toast
-  const handlePreviewError = useCallback(async (errorMsg: string) => {
+  // When Sandpack reports an error, show one-click fix toast (NO chat injection)
+  const handlePreviewError = useCallback((errorMsg: string) => {
     setPreviewError(errorMsg);
     setShowFixToast(true);
+    // Trigger self-correction state in agent for UI feedback
     triggerSelfCorrection(errorMsg);
-
-    if (lastPreviewErrorRef.current !== errorMsg) {
-      lastPreviewErrorRef.current = errorMsg;
-      await addMessage(
-        'assistant',
-        `**Build error detected**\n\n\`${errorMsg}\`\n\nClick **Fix error** below to auto-repair.`,
-        undefined,
-        activeProjectId || undefined
-      );
-    }
-  }, [addMessage, activeProjectId, triggerSelfCorrection]);
+    // DO NOT add error messages to chat - keep chat clean!
+  }, [triggerSelfCorrection]);
 
   // ===== CREATIVE STUDIO: Asset Generation Handlers =====
   

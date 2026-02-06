@@ -177,12 +177,12 @@ const customTheme: SandpackTheme = {
 };
 
 // Error detector component that monitors Sandpack state
+// ONLY notifies parent of errors - does NOT render any UI overlay.
+// The parent (AIBuilderCanvas) shows the FixErrorToast at the bottom.
 function ErrorDetector({
   onError,
-  onErrorChange,
 }: {
   onError?: (error: string) => void;
-  onErrorChange?: (error: string | null) => void;
 }) {
   const { sandpack } = useSandpack();
   const lastErrorRef = useRef<string | null>(null);
@@ -193,29 +193,15 @@ function ErrorDetector({
     if (currentError && currentError !== lastErrorRef.current) {
       lastErrorRef.current = currentError;
       onError?.(currentError);
-      onErrorChange?.(currentError);
     }
 
     if (!currentError && lastErrorRef.current) {
       lastErrorRef.current = null;
-      onErrorChange?.(null);
     }
-  }, [currentError, onError, onErrorChange]);
+  }, [currentError, onError]);
 
-  if (!currentError) return null;
-
-  // Cover Sandpack's own red error screen so the canvas never flashes full red.
-  return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center p-8 bg-background/90 backdrop-blur-xl">
-      <div className="w-full max-w-xl rounded-2xl border border-border bg-background/80 shadow-2xl p-6">
-        <p className="text-sm font-medium text-foreground">Something went wrong</p>
-        <p className="text-xs text-muted-foreground mt-1">The error has been sent to chat. Use “Fix error” to repair.</p>
-        <pre className="mt-4 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted/60 border border-border px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
-          {currentError}
-        </pre>
-      </div>
-    </div>
-  );
+  // DO NOT render any overlay here - parent handles display via FixErrorToast only
+  return null;
 }
 
 // Ready detector - fires onReady when Sandpack finishes bundling
