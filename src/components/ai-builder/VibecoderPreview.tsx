@@ -15,6 +15,11 @@ import type { ViewMode } from './types/generation';
 interface VibecoderPreviewProps {
   code: string;
   isStreaming?: boolean;
+  /**
+   * When true, forces the premium loading overlay to remain visible.
+   * Use this to cover Sandpack's short bundling phase after streaming ends.
+   */
+  showLoadingOverlay?: boolean;
   onError?: (error: string) => void;
   viewMode?: ViewMode;
   onReady?: () => void; // Called when Sandpack finishes initial bundle
@@ -292,28 +297,37 @@ root.render(<App />);`,
   );
 });
 
-export function VibecoderPreview({ code, isStreaming, onError, onReady, viewMode = 'preview' }: VibecoderPreviewProps) {
+export function VibecoderPreview({
+  code,
+  isStreaming,
+  showLoadingOverlay,
+  onError,
+  onReady,
+  viewMode = 'preview',
+}: VibecoderPreviewProps) {
   const [loadingStep, setLoadingStep] = useState(0);
 
-  // Cycle through the premium build steps while streaming
+  const isOverlayVisible = Boolean(showLoadingOverlay ?? isStreaming);
+
+  // Cycle through the premium build steps while streaming / bundling
   useEffect(() => {
-    if (!isStreaming) {
+    if (!isOverlayVisible) {
       setLoadingStep(0);
       return;
     }
     const interval = setInterval(() => {
-      setLoadingStep(prev => prev + 1);
+      setLoadingStep((prev) => prev + 1);
     }, 2000); // Change step every 2 seconds for smoother animation
     return () => clearInterval(interval);
-  }, [isStreaming]);
+  }, [isOverlayVisible]);
 
   return (
     <div className="h-full w-full relative bg-zinc-950 flex flex-col">
       {/* Nuclear CSS Fix - Inject global styles to force Sandpack height */}
       <style>{SANDPACK_HEIGHT_FIX}</style>
 
-      {/* Premium Loading Overlay - Only visible when streaming */}
-      {isStreaming && <LoadingOverlay currentStep={loadingStep} />}
+      {/* Premium Loading Overlay - visible while streaming OR until bundler is ready */}
+      {isOverlayVisible && <LoadingOverlay currentStep={loadingStep} />}
 
       {/* Sandpack preview/code - Always rendered, but hidden behind overlay during build */}
       <div className="h-full w-full flex-1 min-h-0">
