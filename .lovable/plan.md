@@ -1,53 +1,188 @@
 
-# Race Condition Fix: Strict Project ID Locking
+# Fix: Replace Hardcoded AI Responses with Real Dynamic Text
 
-## ✅ IMPLEMENTED
+## Problem Summary
 
-This fix prevents AI generations from leaking across projects when users switch mid-generation.
+The AI Builder throws away the AI's intelligent, context-aware response and replaces it with a generic hardcoded message like `"I've drafted a premium layout based on your request. Check the preview!"`. This makes the AI feel robotic and fake.
 
-## Problem Analysis
+**Current Flow:**
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ AI Generates:                                                               │
+│   [LOG: Designing responsive grid...]                                       │
+│   "Building your anime storefront. Injecting neon accents and..."           │
+│   /// TYPE: CODE ///                                                        │
+│   export default function App() { ... }                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ useStreamingCode.ts:                                                        │
+│   ✓ Extracts LOG tags (for progress steps)                                  │
+│   ✓ Extracts code (for preview)                                             │
+│   ✗ DISCARDS the AI's natural language response                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ AIBuilderCanvas.tsx (onComplete):                                           │
+│   → Saves: "Generated your storefront design." (HARDCODED)                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ VibecoderMessageBubble.tsx:                                                 │
+│   → Replaces with: "I've drafted a premium layout..." (DOUBLE HARDCODED)    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
-The race condition occurred because:
+**Target Flow:**
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ AI Generates:                                                               │
+│   [LOG: Designing responsive grid...]                                       │
+│   "Building your anime storefront. Injecting neon accents and..."           │
+│   /// TYPE: CODE ///                                                        │
+│   export default function App() { ... }                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ useStreamingCode.ts:                                                        │
+│   ✓ Extracts LOG tags (for progress steps)                                  │
+│   ✓ Extracts code (for preview)                                             │
+│   ✓ NEW: Extracts the AI summary text and calls onSummary()                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ AIBuilderCanvas.tsx (onComplete):                                           │
+│   → Saves the REAL AI summary as the assistant message                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ VibecoderMessageBubble.tsx:                                                 │
+│   → Displays the REAL AI text (no replacement)                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
-1. **User starts "New Project"** → AI begins generating code in the background
-2. **User switches to "Old Project"** before generation completes
-3. **AI finishes** and writes the result to the current canvas state
-4. The canvas blindly applied the new code to whatever project was currently active, **overwriting the old project**
+---
 
-## Solution: Strict ID Locking
+## Implementation Plan
 
-Implemented a **generation lock** that captures the project ID when generation starts and verifies it before any writes.
+### Step 1: Modify `useStreamingCode.ts` to Extract the AI Summary
 
-### Implementation Details
+The stream comes in this format:
+```
+[LOG: Action 1...]
+[LOG: Action 2...]
+Building your storefront with neon accents and anime vibes...
+/// TYPE: CODE ///
+export default function App() { ... }
+```
 
-#### 1. `generationLockRef` in `AIBuilderCanvas.tsx`
-- Ref that stores the project ID when a generation starts
-- Set immediately in `handleSendMessage()` BEFORE starting the agent
-- Checked in all completion callbacks before writes
-- Cleared after successful writes or on error
+Extract the text between the last LOG tag and `/// TYPE: CODE ///`:
 
-#### 2. `shouldAbort` callback in `useStreamingCode.ts`
-- New option that checks if the generation should be discarded
-- Called just before `onComplete` fires
-- Returns `true` if project ID mismatch detected
+**Changes:**
+- Add new state to track the accumulated summary text
+- Add new callback `onSummary?: (summary: string) => void` to options
+- Parse the pre-code text (strip LOG tags, trim whitespace)
+- Call `onSummary()` with the real AI text when streaming completes
 
-#### 3. `forProjectId` parameter in `addMessage()` (useVibecoderProjects.ts)
-- Optional explicit project ID to prevent writes to wrong project
-- Only updates local state if target matches currently active project
+### Step 2: Update `AIBuilderCanvas.tsx` to Use the Real Summary
 
-#### 4. Project ID tracking in `useAgentLoop.ts`
-- Added `lockedProjectId` to agent state
-- `startAgent()` now accepts projectId parameter
-- `onStreamingComplete()` checks lock before proceeding
+**Changes:**
+- Add a `pendingSummaryRef` to capture the AI's response during streaming
+- Wire up the new `onSummary` callback to store the text
+- In `onComplete`, use the real summary instead of `"Generated your storefront design."`
+- Fallback to a generic message only if the AI produced no summary
 
-#### 5. Abort on project switch in `verifyAndLoadProject` effect
-- If user switches projects while generation is running, the stream is cancelled
-- Generation lock is cleared
+### Step 3: Remove Hardcoded Replacement in `VibecoderMessageBubble.tsx`
 
-### Edge Cases Handled
+**Changes:**
+- Delete the conditional that replaces `"Generated your storefront design."` with fake text
+- The `displayContent` variable should just use `message.content` directly
 
-1. ✅ User switches projects mid-generation → Generation aborted, no data written
-2. ✅ User deletes the generating project → Lock becomes orphaned, writes blocked
-3. ✅ User creates new project while old is generating → Old generation aborted
-4. ✅ User refreshes mid-generation → Lock is lost, generation result discarded
-5. ✅ Complete generation without switching → Works normally
+### Step 4: Update System Prompt for Clearer Summary Format (Optional Enhancement)
+
+The system prompt in `vibecoder-v2/index.ts` already has good "MIRRORING" rules. We can optionally add a clearer instruction to emit the summary on a dedicated line before the code block.
+
+---
+
+## Technical Details
+
+### File: `src/components/ai-builder/useStreamingCode.ts`
+
+Add summary extraction logic:
+
+```typescript
+interface UseStreamingCodeOptions {
+  // ... existing options
+  onSummary?: (summary: string) => void; // NEW: AI's natural language response
+}
+
+// Inside the streaming loop, after processing is done:
+// Extract text between LOG tags and TYPE: CODE marker
+function extractSummary(rawStream: string): string {
+  // Remove LOG tags
+  let cleaned = rawStream.replace(LOG_PATTERN, '').trim();
+  
+  // Find the position of TYPE: CODE
+  const codeMarker = '/// TYPE: CODE ///';
+  const codeIndex = cleaned.indexOf(codeMarker);
+  
+  if (codeIndex > 0) {
+    // Everything before the code marker is the summary
+    return cleaned.substring(0, codeIndex).trim();
+  }
+  
+  return ''; // No summary found
+}
+
+// Call at the end of successful code streaming:
+const summary = extractSummary(fullAccumulated);
+if (summary) {
+  options.onSummary?.(summary);
+}
+```
+
+### File: `src/components/ai-builder/AIBuilderCanvas.tsx`
+
+Use the real summary:
+
+```typescript
+// New ref to capture the AI's response during streaming
+const pendingSummaryRef = useRef<string>('');
+
+// In useStreamingCode options:
+onSummary: (summary: string) => {
+  pendingSummaryRef.current = summary;
+},
+onComplete: async (finalCode) => {
+  // Use the real summary, or fallback if empty
+  const aiResponse = pendingSummaryRef.current || 'Applied your changes.';
+  pendingSummaryRef.current = ''; // Reset for next generation
+  
+  await addMessage('assistant', aiResponse, finalCode, generationLockRef.current || undefined);
+  // ... rest of completion logic
+}
+```
+
+### File: `src/components/ai-builder/VibecoderMessageBubble.tsx`
+
+Remove the fake replacement:
+
+```typescript
+// BEFORE (fake text):
+const displayContent = message.content === "Generated your storefront design." 
+  ? "I've drafted a premium layout based on your request. Check the preview!" 
+  : message.content;
+
+// AFTER (real text):
+const displayContent = message.content;
+```
+
+---
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/ai-builder/useStreamingCode.ts` | Add `onSummary` callback, extract pre-code text |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | Wire `onSummary`, use real summary in `addMessage` |
+| `src/components/ai-builder/VibecoderMessageBubble.tsx` | Remove hardcoded text replacement |
+
+---
+
+## Expected Result
+
+**Before:**
+> "I've drafted a premium layout based on your request. Check the preview!"
+
+**After:**
+> "Building your anime storefront. Injecting neon accents and adding glassmorphism cards with violet gradients. Updated the hero section with dynamic character imagery and ensured mobile responsiveness."
+
+The AI will now feel like a **Senior Engineer** explaining exactly what it built, not a script reading from a template.
