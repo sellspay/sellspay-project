@@ -8,6 +8,7 @@ import { VibecoderChat } from './VibecoderChat';
 import { ProjectSidebar } from './ProjectSidebar';
 import { PreviewErrorBoundary } from './PreviewErrorBoundary';
 import { VibecoderHeader } from './VibecoderHeader';
+import { EmptyCanvasState } from './EmptyCanvasState';
 import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects } from './hooks/useVibecoderProjects';
 import { useAgentLoop } from '@/hooks/useAgentLoop';
@@ -693,23 +694,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
         {/* Split View Content */}
         {!hasActiveProject ? (
-          <div className="flex-1 min-h-0 grid place-items-center">
-            <div className="max-w-md px-6 text-center">
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                Create a new storefront
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Your canvas is empty because there’s no active project selected.
-              </p>
-              <button
-                type="button"
-                onClick={handleCreateProject}
-                className="mt-6 inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition"
-              >
-                New project
-              </button>
-            </div>
-          </div>
+          <EmptyCanvasState onCreateProject={handleCreateProject} />
         ) : (
           <div className="flex-1 flex min-h-0 overflow-hidden">
             {/* Preview panel - PURE CANVAS (no border, shadow separation) */}
