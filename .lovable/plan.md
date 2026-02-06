@@ -1,182 +1,147 @@
 
-# Implementation Plan: Silent Enforcer Prompt + Full Message Display + Sandpack Standard Library
 
-This plan addresses three distinct issues:
+# Implementation Plan: Self-Healing AI & Dynamic Personality
 
-1. **Silent Enforcer** - Stop the AI from announcing "Integrating payment gateway" on every build
-2. **Full Message Display** - Remove "View More" truncation so messages display fully
-3. **Standard Library Injection** - Prevent "Red Screen of Death" crashes from missing checkout hooks
+This plan implements three major improvements to make the Vibecoder AI "smart" and resilient:
+
+1. **Auto-Fix Error Boundary** - Capture Sandpack errors and send them to the AI for self-healing
+2. **Dynamic Personality Prompt** - Make the AI mirror user intent instead of robotic templates
+3. **Enhanced Standard Library** - Add path alias mappings to prevent module crashes
 
 ---
 
-## Part 1: Silent Enforcer (System Prompt Refinement)
+## Part 1: Auto-Fix Error Boundary
 
 ### Problem
-The AI is too eager to show compliance by logging "Integrating secure payment gateway..." even when the user only asked for visual changes like "Change images to anime."
+When the Sandpack preview crashes (e.g., "Module not found"), users see a scary red error screen with no way to recover. The AI doesn't know something broke.
 
 ### Solution
-Update the system prompt in `supabase/functions/vibecoder-v2/index.ts` to add an "Infrastructure Awareness" section that tells the AI:
-- The checkout system is **pre-installed** (not something to "integrate")
-- Only log actions that **directly relate to the user's request**
-- Never log boilerplate like "Setting up React" or "Integrating payments"
+Create a `PreviewErrorBoundary` component that:
+1. Catches runtime errors from the Sandpack preview
+2. Displays a premium "Build Failed" UI with the exact error message
+3. Provides an "Auto-Fix with AI" button that sends the error to the AI for automatic repair
 
-### Changes to System Prompt
-
-Add this new section after the existing REAL-TIME LOGGING PROTOCOL:
+### New File: `src/components/ai-builder/PreviewErrorBoundary.tsx`
 
 ```text
-INFRASTRUCTURE AWARENESS (CORE ASSUMPTIONS):
-1. **SellsPay Checkout is PRE-INSTALLED:** You do NOT need to "integrate," "setup," or "install" the checkout protocol. It is already part of the environment. The 'useSellsPayCheckout' hook is always available.
-2. **Implicit Usage:** When you render a product card, just USE the hook silently. Do not list it as a "step" in your build logs unless the user explicitly asked about payments.
-3. **Log Relevance:** Your [LOG: ...] outputs must ONLY reflect the specific changes requested.
-   - If User asks: "Change images to anime"
-   - BAD Log: "[LOG: Integrating secure payment gateway...]" (Redundant)
-   - GOOD Log: "[LOG: Updating product asset URLs...]"
-4. **No Boilerplate Logs:** Never output logs for "Initializing React," "Setting up Tailwind," "Integrating Payments," or "Configuring checkout" if you are just editing an existing component.
++----------------------------------------------------+
+|  🔺  Build Failed                                  |
+|                                                    |
+|  ┌──────────────────────────────────────────────┐  |
+|  │ Module not found: @/hooks/useSellsPayCheckout │  |
+|  └──────────────────────────────────────────────┘  |
+|                                                    |
+|      [ ✨ Auto-Fix with AI ]                       |
+|                                                    |
+|  The AI will analyze the error and rewrite code.  |
++----------------------------------------------------+
 ```
 
-Also refine the RULES section of the logging protocol:
+**Key Features:**
+- Class-based React ErrorBoundary to catch component errors
+- `onAutoFix` callback prop that sends the error message to the parent
+- Premium dark red styling with subtle pulse animation
+- Error message displayed in a monospace code block
+
+### File Updates: `src/components/ai-builder/AIBuilderCanvas.tsx`
+
+1. Import the new `PreviewErrorBoundary` component
+2. Create a `handleAutoFix` callback that:
+   - Prefixes the error with `CRITICAL_ERROR_REPORT: The preview crashed...`
+   - Calls `handleVibecoderMessage()` to trigger AI regeneration
+3. Wrap `<VibecoderPreview>` in `<PreviewErrorBoundary onAutoFix={handleAutoFix}>`
+
+### File Updates: `src/components/ai-builder/VibecoderPreview.tsx`
+
+Since Sandpack handles its own errors internally, we need to listen to Sandpack's error state. We'll add a callback prop:
+- `onError?: (error: string) => void`
+
+When Sandpack reports an error, we'll call this callback which can then trigger the auto-fix flow.
+
+---
+
+## Part 2: Dynamic Personality (System Prompt Updates)
+
+### Problem
+The AI gives robotic responses like "I have drafted a premium layout" instead of engaging with the user's specific request.
+
+### Solution
+Update the system prompt in `supabase/functions/vibecoder-v2/index.ts` to add:
+
+1. **Personality Protocol** - Force the AI to mirror user intent in its opening line
+2. **Emergency Debug Protocol** - Handle error reports with technical precision
+3. **Image Asset Protocol** - Force external URLs to prevent 404s
+
+### New System Prompt Sections
 
 ```text
-RULES:
-- Emit 3-6 LOG tags per generation (not too many, not too few)
-- Each LOG should be a short, user-friendly description (5-10 words)
-- LOG tags appear BEFORE the "/// TYPE: CODE ///" flag
-- Do NOT use LOG tags in CHAT mode (questions/refusals)
-- **Context-Aware Logging:** Only log actions that directly change the code based on the CURRENT prompt
-- **Never log infrastructure that's already present:** payments, React setup, Tailwind, etc.
+PERSONALITY & REFLECTION (Dynamic Responses):
+You must NOT use generic templates like "I have generated..." or "Here is the layout...".
+Instead, **MIRROR** the user's specific request in your opening line.
+
+Examples:
+- User: "Make it anime styled."
+  You: "Injecting anime aesthetics. Adding vibrant character art and neon accents."
+
+- User: "Add a dark hero section."
+  You: "Building a cinematic dark hero. Full-bleed gradient with bold typography."
+
+- User: "Change the button to blue."
+  You: "Done. Primary buttons are now Electric Blue."
+
+EMERGENCY & DEBUG PROTOCOL:
+If the user sends a "CRITICAL_ERROR_REPORT" or mentions "crash", "red screen", or "broke":
+1. **DROP THE PERSONA:** Stop being enthusiastic. Become the Lead Engineer.
+2. **ACKNOWLEDGE:** "I detected a crash. Diagnosing..."
+3. **ANALYZE:** Parse the error message:
+   - "Module not found": Remove the broken import or fix the path.
+   - "undefined": Add optional chaining (?.) or null checks.
+   - "render error": Fix JSX syntax or missing keys.
+4. **OUTPUT:** Fix the code immediately. No chat-only response.
+
+IMAGE ASSET PROTOCOL:
+1. **NO LOCAL PATHS:** Never use src="./img.png" or src="/assets/...". These do not exist in Sandpack.
+2. **USE EXTERNAL URLs:** Always use high-quality placeholder URLs:
+   - Unsplash: "https://images.unsplash.com/photo-..."
+   - Picsum: "https://picsum.photos/800/600"
+3. **Category Examples:**
+   - Anime/Gaming: picsum.photos with grayscale or Unsplash abstract
+   - Fashion: Unsplash fashion collection
+   - Tech: Unsplash technology collection
 ```
 
 ---
 
-## Part 2: Full Message Display (Remove Collapsible Logic)
+## Part 3: Enhanced Standard Library
 
 ### Problem
-The "View More" button with 400-character truncation is considered annoying. Users want to see the full AI response immediately and scroll naturally within the chat history.
+The AI sometimes imports from `@/hooks/useSellsPayCheckout` but the path in Sandpack is `/hooks/useSellsPayCheckout.ts`. The `@/` alias doesn't work in the Sandpack virtual filesystem.
 
 ### Solution
-Remove the `CollapsibleMessage` wrapper and render the message content directly with the safe CSS classes (to prevent layout breaking from long URLs).
+Update `src/lib/vibecoder-stdlib.ts` to:
+1. Add multiple path aliases for the checkout hook
+2. Add a default export for compatibility
+3. Include common utility files the AI might expect
 
-### File: `src/components/ai-builder/VibecoderMessageBubble.tsx`
-
-**Changes:**
-1. Remove the `CollapsibleMessage` import
-2. In `UserBubble`: Replace `<CollapsibleMessage content={content} isUser={true} />` with a direct `<div>` containing the text
-3. In `AssistantCard`: Replace `<CollapsibleMessage content={displayContent} isUser={false} />` with a direct `<div>` containing the text
-4. Keep the safety CSS classes: `break-words break-all whitespace-pre-wrap prose prose-sm prose-invert`
-
-**Before:**
-```tsx
-<CollapsibleMessage content={content} isUser={true} />
-```
-
-**After:**
-```tsx
-<div className="prose prose-sm prose-invert max-w-none leading-relaxed break-words break-all whitespace-pre-wrap">
-  {content}
-</div>
-```
-
-### File: `src/components/ai-builder/CollapsibleMessage.tsx`
-- This file can be deleted OR kept for potential future use. We'll keep it for now but remove its usage.
-
----
-
-## Part 3: Sandpack Standard Library (Crash Prevention)
-
-### Problem
-When the AI generates code that imports `useSellsPayCheckout`, the Sandpack preview crashes with "Red Screen of Death" because the file doesn't exist in the virtual file system.
-
-### Solution
-Create a "Standard Library" that gets automatically injected into every Sandpack preview. This ensures the marketplace hooks are always available.
-
-### New File: `src/lib/vibecoder-stdlib.ts`
+### Updated Standard Library
 
 ```typescript
-/**
- * Standard Library for Vibecoder Sandpack Previews
- * These files are automatically injected into every preview environment
- * to prevent crashes when AI-generated code imports platform hooks.
- */
-export const VIBECODER_STDLIB = {
-  // The SellsPay Checkout Hook (mocked for preview)
-  '/hooks/useSellsPayCheckout.ts': `import { useState } from 'react';
-
-/**
- * SellsPay Unified Checkout Hook
- * This is a preview mock. In production, this triggers the real checkout.
- */
-export function useSellsPayCheckout() {
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const buyProduct = async (productId: string) => {
-    setIsProcessing(true);
-    console.log('[SellsPay Preview] Checkout triggered for:', productId);
-    
-    // Simulate checkout delay
-    setTimeout(() => {
-      setIsProcessing(false);
-      alert('SellsPay Checkout: Redirecting to secure gateway... (Preview Mode)');
-    }, 1000);
-  };
-
-  return { buyProduct, isProcessing };
-}
-
-// Alias for backwards compatibility
-export const useMarketplace = useSellsPayCheckout;
-`,
-
-  // Common utilities (prevents missing cn() crashes)
-  '/lib/utils.ts': `import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-`,
+export const VIBECODER_STDLIB: Record<string, string> = {
+  // Primary checkout hook
+  '/hooks/useSellsPayCheckout.ts': `...mocked hook...`,
+  
+  // Path aliases (catching AI import variations)
+  '/hooks/useMarketplace.ts': `export * from './useSellsPayCheckout';`,
+  '/useSellsPayCheckout.ts': `export * from './hooks/useSellsPayCheckout';`,
+  
+  // Utility file
+  '/lib/utils.ts': `...cn function...`,
 };
 ```
 
-### File: `src/components/ai-builder/VibecoderPreview.tsx`
+### File Updates: `src/components/ai-builder/VibecoderPreview.tsx`
 
-**Changes:**
-1. Import the new `VIBECODER_STDLIB` constant
-2. Merge it into the Sandpack `files` object so the hooks are always available
-3. Add `clsx` and `tailwind-merge` to the `customSetup.dependencies`
-
-**Updated files object:**
-```typescript
-import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
-
-// Inside SandpackRenderer:
-const files = useMemo(() => ({
-  // Standard library (hooks, utils) - always available
-  ...VIBECODER_STDLIB,
-  
-  // The AI-generated code
-  '/App.tsx': {
-    code,
-    active: true,
-  },
-  '/index.tsx': {
-    code: `...`, // existing entry point
-    hidden: true,
-  },
-}), [code]);
-```
-
-**Updated dependencies:**
-```typescript
-customSetup={{
-  dependencies: {
-    'lucide-react': 'latest',
-    'framer-motion': '^11.0.0',
-    'clsx': 'latest',
-    'tailwind-merge': 'latest',
-  },
-}}
-```
+Ensure the stdlib files are injected at proper paths. The current implementation already does this correctly, but we'll verify the hidden flag is set properly so these files don't clutter the Sandpack file tree.
 
 ---
 
@@ -184,26 +149,44 @@ customSetup={{
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/vibecoder-v2/index.ts` | Add "Infrastructure Awareness" section + refine logging rules |
-| `src/components/ai-builder/VibecoderMessageBubble.tsx` | Remove `CollapsibleMessage` usage, render text directly |
-| `src/lib/vibecoder-stdlib.ts` | **New file** - Standard library with checkout hook mock |
-| `src/components/ai-builder/VibecoderPreview.tsx` | Inject STDLIB into Sandpack files, add clsx/tailwind-merge deps |
+| `src/components/ai-builder/PreviewErrorBoundary.tsx` | **New file** - Error boundary with Auto-Fix button |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | Add `handleAutoFix` callback, wrap preview in error boundary |
+| `src/components/ai-builder/VibecoderPreview.tsx` | Add error detection from Sandpack state |
+| `supabase/functions/vibecoder-v2/index.ts` | Add Personality, Emergency, and Image protocols to prompt |
+| `src/lib/vibecoder-stdlib.ts` | Add path aliases and default export |
 
 ---
 
-## Expected Results
+## Expected User Experience
 
-### After Part 1 (Silent Enforcer):
-- User: "Change images to anime"
-- AI Logs: `[✓] Updating product asset URLs...` `[✓] Applying changes...`
-- (No more "Integrating payment gateway" spam)
+### Crash Recovery Flow
+1. **Error occurs**: Sandpack fails to compile (e.g., missing module)
+2. **Beautiful error UI**: Red overlay with exact error message
+3. **One-click fix**: User clicks "Auto-Fix with AI"
+4. **AI diagnoses**: "I detected a crash: Module not found. Fixing the import path..."
+5. **Code regenerates**: Preview comes back online automatically
 
-### After Part 2 (Full Display):
-- Long AI responses show completely without "View More" button
-- Users scroll the chat panel naturally to read everything
-- Long URLs/code still break correctly without widening the layout
+### Dynamic Personality Flow
+- User: "Make it anime themed"
+- Old AI: "I have drafted a premium layout with anime aesthetics."
+- New AI: "Injecting anime aesthetics. Bold character art and neon speed-lines incoming."
 
-### After Part 3 (Standard Library):
-- No more "Red Screen of Death" when AI uses `useSellsPayCheckout()`
-- The hook is mocked in preview (shows alert with "Preview Mode")
-- The `cn()` utility is also available, preventing common crashes
+### Image Safety Flow
+- AI no longer generates `src="/images/product.png"` (would 404)
+- AI generates `src="https://images.unsplash.com/..."` (always works)
+
+---
+
+## Implementation Notes
+
+1. **Sandpack Error Detection**: Sandpack provides error state through its internal hooks. We may need to use `useSandpack()` hook to access `sandpack.error` state and trigger the callback.
+
+2. **Error Boundary Scope**: The error boundary catches React rendering errors but may not catch Sandpack compilation errors. We'll need to handle both:
+   - React ErrorBoundary for runtime crashes
+   - Sandpack's built-in error state for compilation errors
+
+3. **Auto-Fix Message Format**: The error message sent to the AI should include:
+   - The literal error text
+   - The current code (if available)
+   - Clear instruction to fix, not discuss
+
