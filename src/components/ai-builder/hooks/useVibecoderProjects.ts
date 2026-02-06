@@ -321,6 +321,17 @@ export function useVibecoderProjects() {
     setActiveProjectId(projectId);
   }, []);
 
+  // Clear active project - used for "Fresh Start" flow
+  const clearActiveProject = useCallback(() => {
+    setActiveProjectId(null);
+    setMessages([]);
+    
+    // Clear URL parameter
+    const url = new URL(window.location.href);
+    url.searchParams.delete('project');
+    window.history.replaceState(null, '', url.toString());
+  }, []);
+
   return {
     projects,
     activeProjectId,
@@ -333,6 +344,7 @@ export function useVibecoderProjects() {
     deleteProject,
     renameProject,
     selectProject,
+    clearActiveProject,
     addMessage,
     rateMessage,
     getLastCodeSnapshot,

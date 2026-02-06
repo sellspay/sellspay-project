@@ -16,7 +16,7 @@ import { AI_MODELS, type AIModel } from './ChatInputBar';
 import type { GeneratedAsset, ViewMode } from './types/generation';
 import { parseRoutesFromCode, type SitePage } from '@/utils/routeParser';
 import { toast } from 'sonner';
-import { clearProjectCache } from './utils/projectCache';
+import { clearProjectCache, clearAllVibecoderCache } from './utils/projectCache';
 import { LovableHero } from './LovableHero';
 import { PremiumLoadingScreen } from './PremiumLoadingScreen';
 
@@ -134,6 +134,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     deleteProject,
     renameProject,
     selectProject,
+    clearActiveProject,
     addMessage,
     rateMessage,
     getLastCodeSnapshot,
@@ -492,13 +493,32 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     startAgent(prompt, code !== DEFAULT_CODE ? code : undefined);
   };
 
-  // Handle new project creation
+  // Handle new project creation - FRESH START PROTOCOL
+  // 1. Clear all caches FIRST
+  // 2. Reset local state to blank template
+  // 3. Clear the active project (go to Hero screen)
+  // 4. Let the user type a new prompt on the Hero which creates the new project
   const handleCreateProject = async () => {
-    const project = await createProject('New Storefront');
-    if (project) {
-      resetCode();
-      toast.success('New project created');
-    }
+    // 1. Nuclear cache clear to prevent any stale code from persisting
+    await clearAllVibecoderCache();
+    
+    // 2. Reset ALL local state to blank slate
+    resetCode();                    // Code → DEFAULT_CODE
+    resetAgent();                   // Agent state → idle
+    setChatResponse(null);          // Pending response → null
+    setLiveSteps([]);               // Progress steps → empty
+    setViewMode('preview');         // View → preview (not code/image/video)
+    setCurrentImageAsset(null);     // Clear any generated assets
+    setCurrentVideoAsset(null);
+    
+    // 3. Force increment reset key to remount components
+    setResetKey(prev => prev + 1);
+    setRefreshKey(prev => prev + 1);
+    
+    // 4. Clear active project (this also clears messages and URL) → shows Hero screen
+    clearActiveProject();
+    
+    toast.success('Starting fresh - describe your vision!');
   };
 
   // Handle project deletion (uses the "Total Deletion" RPC + Scorched Earth cache clear)
