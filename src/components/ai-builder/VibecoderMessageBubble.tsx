@@ -198,7 +198,7 @@ export function VibecoderMessageBubble({
   isStreaming = false,
 }: VibecoderMessageBubbleProps) {
   if (message.role === 'user') {
-    return <UserBubble content={message.content} />;
+    return <UserBubble content={message.content ?? ''} />;
   }
   
   return (
