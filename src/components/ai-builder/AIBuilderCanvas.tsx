@@ -620,10 +620,10 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   // Show loading while verifying project OR initial data load
   if (loading || projectsLoading || isVerifyingProject) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
         {isVerifyingProject && (
-          <p className="text-sm text-zinc-500">Verifying project...</p>
+          <p className="text-sm text-muted-foreground">Verifying project...</p>
         )}
       </div>
     );
@@ -645,9 +645,10 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
   const isEmpty = code === DEFAULT_CODE;
   const canUndo = messages.filter(m => m.code_snapshot).length > 1;
+  const hasActiveProject = Boolean(activeProjectId);
 
   return (
-    <div className="h-screen w-full bg-zinc-950 flex overflow-hidden p-2">
+    <div className="h-screen w-full bg-background flex overflow-hidden p-2">
       {/* Project sidebar - outside main container */}
       <ProjectSidebar
         projects={projects}
@@ -662,7 +663,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
       />
 
       {/* MAIN SEAMLESS CONTAINER */}
-      <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-zinc-800 overflow-hidden bg-zinc-950">
+      <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border overflow-hidden bg-background">
         {/* Integrated Header */}
         <VibecoderHeader
           projectName={activeProject?.name}
@@ -691,88 +692,108 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         />
 
         {/* Split View Content */}
-        <div className="flex-1 flex min-h-0 overflow-hidden">
-          {/* Preview panel - PURE CANVAS (no border, shadow separation) */}
-          <div 
-            className="flex-1 min-w-0 bg-black overflow-hidden relative flex flex-col shadow-[4px_0_24px_-8px_rgba(0,0,0,0.8)]"
-            style={{ isolation: 'isolate', contain: 'strict' }}
-          >
-          {/* Conditional Content: Image Studio / Video Studio / Preview / Code */}
-          {(viewMode === 'image' || viewMode === 'video') ? (
-            <GenerationCanvas
-              mode={viewMode}
-              asset={currentAsset}
-              isLoading={isCurrentlyGenerating}
-              onRetry={handleRetryAsset}
-              onUseInCanvas={() => setShowPlacementModal(true)}
-              onFeedback={handleAssetFeedback}
-              activeModel={activeModel}
-            />
-          ) : (
-            <div className={`flex-1 min-h-0 ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-zinc-900' : ''}`}>
-              <div 
-                className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-700 shadow-2xl' : 'w-full'}`}
+        {!hasActiveProject ? (
+          <div className="flex-1 min-h-0 grid place-items-center">
+            <div className="max-w-md px-6 text-center">
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                Create a new storefront
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Your canvas is empty because there’s no active project selected.
+              </p>
+              <button
+                type="button"
+                onClick={handleCreateProject}
+                className="mt-6 inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition"
               >
-                <PreviewErrorBoundary 
-                  onAutoFix={handleAutoFix} 
-                  onReset={resetCode}
-                >
-                  <VibecoderPreview 
-                    key={`preview-${activeProjectId}-${resetKey}-${refreshKey}`}
-                    code={code} 
-                    isStreaming={isStreaming}
-                    viewMode={viewMode}
-                    onError={(error) => {
-                      console.warn('[VibecoderPreview] Sandpack error detected:', error);
-                    }}
-                  />
-                </PreviewErrorBoundary>
-              </div>
+                New project
+              </button>
             </div>
-          )}
-          
-          {/* Overlay while dragging */}
-          {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
-        </div>
-
-          {/* Chat panel - seamless with contrast bg */}
-          <div 
-            style={{ width: sidebarWidth }} 
-            className="shrink-0 flex flex-col bg-zinc-900/50 overflow-hidden relative"
-          >
-            {/* Refined drag handle - subtle until interaction */}
-            <div
-              onMouseDown={startResizing}
-              className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 transition-all ${
-                isDragging 
-                  ? 'bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.5)]' 
-                  : 'bg-transparent hover:bg-zinc-600/30'
-              }`}
-            />
-            
-            <VibecoderChat
-              key={`chat-${activeProjectId}-${resetKey}`}
-              onSendMessage={handleSendMessage}
-              onGenerateAsset={handleGenerateAsset}
-              isStreaming={isStreaming || isAgentRunning}
-              onCancel={() => {
-                cancelStream();
-                cancelAgent();
-              }}
-              messages={messages}
-              onRateMessage={rateMessage}
-              onRestoreToVersion={handleRestoreCode}
-              projectName={activeProject?.name}
-              liveSteps={liveSteps}
-              agentStep={agentStep}
-              agentLogs={agentLogs}
-              isAgentMode={isAgentRunning}
-              activeModel={activeModel}
-              onOpenBilling={() => window.open('/pricing', '_blank')}
-              onModelChange={handleModelChange}
-            />
           </div>
-        </div>
+        ) : (
+          <div className="flex-1 flex min-h-0 overflow-hidden">
+            {/* Preview panel - PURE CANVAS (no border, shadow separation) */}
+            <div
+              className="flex-1 min-w-0 bg-background overflow-hidden relative flex flex-col"
+              style={{ isolation: 'isolate', contain: 'strict' }}
+            >
+              {/* Conditional Content: Image Studio / Video Studio / Preview / Code */}
+              {(viewMode === 'image' || viewMode === 'video') ? (
+                <GenerationCanvas
+                  mode={viewMode}
+                  asset={currentAsset}
+                  isLoading={isCurrentlyGenerating}
+                  onRetry={handleRetryAsset}
+                  onUseInCanvas={() => setShowPlacementModal(true)}
+                  onFeedback={handleAssetFeedback}
+                  activeModel={activeModel}
+                />
+              ) : (
+                <div className={`flex-1 min-h-0 ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}>
+                  <div
+                    className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'}`}
+                  >
+                    <PreviewErrorBoundary
+                      onAutoFix={handleAutoFix}
+                      onReset={resetCode}
+                    >
+                      <VibecoderPreview
+                        key={`preview-${activeProjectId}-${resetKey}-${refreshKey}`}
+                        code={code}
+                        isStreaming={isStreaming}
+                        viewMode={viewMode}
+                        onError={(error) => {
+                          console.warn('[VibecoderPreview] Sandpack error detected:', error);
+                        }}
+                      />
+                    </PreviewErrorBoundary>
+                  </div>
+                </div>
+              )}
+
+              {/* Overlay while dragging */}
+              {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
+            </div>
+
+            {/* Chat panel - only when an active project exists */}
+            <div
+              style={{ width: sidebarWidth }}
+              className="shrink-0 flex flex-col bg-muted/50 overflow-hidden relative"
+            >
+              {/* Refined drag handle - subtle until interaction */}
+              <div
+                onMouseDown={startResizing}
+                className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 transition-all ${
+                  isDragging
+                    ? 'bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.35)]'
+                    : 'bg-transparent hover:bg-border'
+                }`}
+              />
+
+              <VibecoderChat
+                key={`chat-${activeProjectId}-${resetKey}`}
+                onSendMessage={handleSendMessage}
+                onGenerateAsset={handleGenerateAsset}
+                isStreaming={isStreaming || isAgentRunning}
+                onCancel={() => {
+                  cancelStream();
+                  cancelAgent();
+                }}
+                messages={messages}
+                onRateMessage={rateMessage}
+                onRestoreToVersion={handleRestoreCode}
+                projectName={activeProject?.name}
+                liveSteps={liveSteps}
+                agentStep={agentStep}
+                agentLogs={agentLogs}
+                isAgentMode={isAgentRunning}
+                activeModel={activeModel}
+                onOpenBilling={() => window.open('/pricing', '_blank')}
+                onModelChange={handleModelChange}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Placement Prompt Modal */}
