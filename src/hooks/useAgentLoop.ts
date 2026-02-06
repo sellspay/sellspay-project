@@ -160,35 +160,86 @@ export function useAgentLoop({
         throw new Error('No response stream');
       }
       
-      // Process SSE stream
+      // Process SSE stream (robust against chunk-splitting)
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      
+
+      let buffer = '';
+      let receivedAnyEvent = false;
+      let receivedTerminalEvent = false; // code|error|complete
+
       while (true) {
         if (abortRef.current) {
-          reader.cancel();
+          await reader.cancel();
           break;
         }
-        
+
         const { done, value } = await reader.read();
         if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
+
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
           if (!line.startsWith('data: ')) continue;
-          
-          const jsonStr = line.slice(6);
-          if (jsonStr === '[DONE]') continue;
-          
+
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+
           try {
-            const event = JSON.parse(jsonStr);
+            const event = JSON.parse(jsonStr) as { type?: string };
+            receivedAnyEvent = true;
+            if (event.type === 'code' || event.type === 'error' || event.type === 'complete') {
+              receivedTerminalEvent = true;
+            }
+            // @ts-expect-error - runtime event typing is handled in the callback
             handleOrchestratorEvent(event);
           } catch {
-            // Skip invalid JSON
+            // If JSON was cut mid-chunk, put it back and wait for more data
+            buffer = `data: ${jsonStr}\n` + buffer;
+            break;
           }
         }
+      }
+
+      // Flush remaining buffer at end (best-effort)
+      if (!abortRef.current && buffer.trim()) {
+        for (const raw of buffer.split('\n')) {
+          const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+          try {
+            const event = JSON.parse(jsonStr) as { type?: string };
+            receivedAnyEvent = true;
+            if (event.type === 'code' || event.type === 'error' || event.type === 'complete') {
+              receivedTerminalEvent = true;
+            }
+            // @ts-expect-error - runtime event typing is handled in the callback
+            handleOrchestratorEvent(event);
+          } catch {
+            // ignore partial
+          }
+        }
+      }
+
+      // Fail-safe: stream ended without any terminal event -> surface explicit error
+      if (!abortRef.current && receivedAnyEvent && !receivedTerminalEvent) {
+        const msg = 'Generation ended unexpectedly (connection dropped). Please retry.';
+        console.warn('[AgentLoop] ' + msg);
+        setState(prev => ({
+          ...prev,
+          step: 'error',
+          error: msg,
+          errorType: 'api',
+          errorDetails: { message: msg },
+          isRunning: false,
+        }));
+        addLog(`! Error: ${msg}`);
       }
       
     } catch (err) {
