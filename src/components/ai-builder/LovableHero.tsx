@@ -112,7 +112,13 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
 
       {/* Back Button */}
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => {
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else {
+            navigate('/');
+          }
+        }}
         className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
       >
         <ArrowLeft size={16} />
