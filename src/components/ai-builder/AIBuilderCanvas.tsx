@@ -972,12 +972,14 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   // Core rule: NEVER render the workspace with files/messages that belong to a different project.
   // We gate on `contentProjectId` (the project whose content is actually mounted) instead of
   // only async flags, so we also cover the 1-frame gap right after the URL/activeProjectId flips.
+  // 
+  // CRITICAL: The PRIMARY check is contentProjectId !== activeProjectId.
+  // This is the ONLY reliable way to know if the correct content is mounted.
   const isProjectTransitioning = Boolean(
     activeProjectId && (
       contentProjectId !== activeProjectId ||
       isVerifyingProject ||
-      (lockedProjectId && lockedProjectId !== activeProjectId) ||
-      (messagesLoading && hasBooted)
+      (lockedProjectId && lockedProjectId !== activeProjectId)
     )
   );
 
@@ -1159,10 +1161,13 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         {/* Split View Content - Chat + Preview always visible */}
         {/* 🛑 GATEKEEPER MOVED HERE: Show loader INSIDE content area, not full screen */}
         {isProjectTransitioning ? (
-          <div className="flex-1 flex items-center justify-center bg-muted/30">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-muted-foreground">Loading project...</p>
+          <div className="flex-1 flex items-center justify-center bg-background">
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                <div className="w-10 h-10 border-2 border-primary/30 rounded-full" />
+                <div className="absolute inset-0 w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+              <p className="text-sm text-muted-foreground animate-pulse">Loading project...</p>
             </div>
           </div>
         ) : (
