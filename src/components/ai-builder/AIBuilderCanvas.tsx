@@ -559,54 +559,56 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   const canUndo = messages.filter(m => m.code_snapshot).length > 1;
 
   return (
-    <div className="h-screen w-full bg-zinc-950 flex flex-col overflow-hidden">
-      {/* Unified Header with Controls */}
-      <VibecoderHeader
-        projectName={activeProject?.name}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        deviceMode={deviceMode}
-        setDeviceMode={setDeviceMode}
-        onRefresh={handleRefresh}
-        onPublish={handlePublish}
-        isPublished={isPublished}
-        isPublishing={publishing}
-        isEmpty={isEmpty}
-        username={username}
-        currentPath={previewPath}
-        onNavigate={setPreviewPath}
-        pages={detectedPages}
-        onRegenerate={(tweak) => {
-          // Send tweak as a new message to refine the current design
-          handleSendMessage(`Refine the current design: ${tweak}`);
-        }}
-        isGenerating={isStreaming}
-        avatarUrl={userAvatarUrl}
-        userCredits={userCredits}
-        subscriptionTier={subscriptionTier}
-        onSignOut={handleSignOut}
+    <div className="h-screen w-full bg-zinc-950 flex overflow-hidden p-2">
+      {/* Project sidebar - outside main container */}
+      <ProjectSidebar
+        projects={projects}
+        activeProjectId={activeProjectId}
+        loading={projectsLoading}
+        onSelectProject={selectProject}
+        onCreateProject={handleCreateProject}
+        onDeleteProject={handleDeleteProject}
+        onRenameProject={handleRenameProject}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
-      {/* Main content - split view */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Project sidebar */}
-        <ProjectSidebar
-          projects={projects}
-          activeProjectId={activeProjectId}
-          loading={projectsLoading}
-          onSelectProject={selectProject}
-          onCreateProject={handleCreateProject}
-          onDeleteProject={handleDeleteProject}
-          onRenameProject={handleRenameProject}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      {/* MAIN SEAMLESS CONTAINER */}
+      <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-zinc-800 overflow-hidden bg-zinc-950">
+        {/* Integrated Header */}
+        <VibecoderHeader
+          projectName={activeProject?.name}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          deviceMode={deviceMode}
+          setDeviceMode={setDeviceMode}
+          onRefresh={handleRefresh}
+          onPublish={handlePublish}
+          isPublished={isPublished}
+          isPublishing={publishing}
+          isEmpty={isEmpty}
+          username={username}
+          currentPath={previewPath}
+          onNavigate={setPreviewPath}
+          pages={detectedPages}
+          onRegenerate={(tweak) => {
+            // Send tweak as a new message to refine the current design
+            handleSendMessage(`Refine the current design: ${tweak}`);
+          }}
+          isGenerating={isStreaming}
+          avatarUrl={userAvatarUrl}
+          userCredits={userCredits}
+          subscriptionTier={subscriptionTier}
+          onSignOut={handleSignOut}
         />
 
-        {/* Preview panel - PURE CANVAS (no toolbar) */}
-        <div 
-          className="flex-1 min-w-0 border-r border-zinc-800 bg-black overflow-hidden relative flex flex-col"
-          style={{ isolation: 'isolate', contain: 'strict' }}
-        >
+        {/* Split View Content */}
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          {/* Preview panel - PURE CANVAS (no border, shadow separation) */}
+          <div 
+            className="flex-1 min-w-0 bg-black overflow-hidden relative flex flex-col shadow-[4px_0_24px_-8px_rgba(0,0,0,0.8)]"
+            style={{ isolation: 'isolate', contain: 'strict' }}
+          >
           {/* Conditional Content: Image Studio / Video Studio / Preview / Code */}
           {(viewMode === 'image' || viewMode === 'video') ? (
             <GenerationCanvas
@@ -645,40 +647,43 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
         </div>
 
-        {/* Chat panel */}
-        <div 
-          style={{ width: sidebarWidth }} 
-          className="shrink-0 flex flex-col bg-background overflow-hidden relative"
-        >
-          {/* THE DRAG HANDLE */}
-          <div
-            onMouseDown={startResizing}
-            className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-50 transition-colors ${
-              isDragging ? 'bg-violet-500' : 'bg-transparent hover:bg-violet-500/50'
-            }`}
-          />
-          
-          <VibecoderChat
-            key={`chat-${activeProjectId}-${resetKey}`}
-            onSendMessage={handleSendMessage}
-            onGenerateAsset={handleGenerateAsset}
-            isStreaming={isStreaming || isAgentRunning}
-            onCancel={() => {
-              cancelStream();
-              cancelAgent();
-            }}
-            messages={messages}
-            onRateMessage={rateMessage}
-            onRestoreToVersion={handleRestoreCode}
-            projectName={activeProject?.name}
-            liveSteps={liveSteps}
-            agentStep={agentStep}
-            agentLogs={agentLogs}
-            isAgentMode={isAgentRunning}
-            activeModel={activeModel}
-            onOpenBilling={() => window.open('/pricing', '_blank')}
-            onModelChange={handleModelChange}
-          />
+          {/* Chat panel - seamless with contrast bg */}
+          <div 
+            style={{ width: sidebarWidth }} 
+            className="shrink-0 flex flex-col bg-zinc-900/50 overflow-hidden relative"
+          >
+            {/* Refined drag handle - subtle until interaction */}
+            <div
+              onMouseDown={startResizing}
+              className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 transition-all ${
+                isDragging 
+                  ? 'bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.5)]' 
+                  : 'bg-transparent hover:bg-zinc-600/30'
+              }`}
+            />
+            
+            <VibecoderChat
+              key={`chat-${activeProjectId}-${resetKey}`}
+              onSendMessage={handleSendMessage}
+              onGenerateAsset={handleGenerateAsset}
+              isStreaming={isStreaming || isAgentRunning}
+              onCancel={() => {
+                cancelStream();
+                cancelAgent();
+              }}
+              messages={messages}
+              onRateMessage={rateMessage}
+              onRestoreToVersion={handleRestoreCode}
+              projectName={activeProject?.name}
+              liveSteps={liveSteps}
+              agentStep={agentStep}
+              agentLogs={agentLogs}
+              isAgentMode={isAgentRunning}
+              activeModel={activeModel}
+              onOpenBilling={() => window.open('/pricing', '_blank')}
+              onModelChange={handleModelChange}
+            />
+          </div>
         </div>
       </div>
 

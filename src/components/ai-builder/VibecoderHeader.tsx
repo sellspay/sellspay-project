@@ -98,7 +98,9 @@ export function VibecoderHeader({
     onRegenerate?.(tweak);
   };
   return (
-    <header className="h-14 w-full bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
+    <header className="h-14 w-full bg-zinc-950/80 backdrop-blur-sm flex items-center justify-between px-4 shrink-0 relative">
+      {/* Subtle gradient separator instead of hard border */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-700/50 to-transparent" />
       
       {/* LEFT: Exit Button Only */}
       <div className="flex items-center">
