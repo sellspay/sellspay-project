@@ -1,15 +1,16 @@
 import { 
   ArrowLeft, ChevronDown, Eye, Code2, 
-  Monitor, Smartphone, RefreshCw, ExternalLink, Loader2
+  Monitor, Smartphone, RefreshCw, ExternalLink, Loader2, Palette
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
+import type { ViewMode } from "./types/generation";
 
 interface VibecoderHeaderProps {
   projectName?: string;
-  viewMode: 'preview' | 'code';
-  setViewMode: (mode: 'preview' | 'code') => void;
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
   deviceMode: 'desktop' | 'mobile';
   setDeviceMode: (mode: 'desktop' | 'mobile') => void;
   onRefresh: () => void;
@@ -72,7 +73,7 @@ export function VibecoderHeader({
 
       {/* CENTER: View Switcher + Device Toggles */}
       <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
-        {/* Preview/Code Pill */}
+        {/* Preview/Code/Studio Pill */}
         <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-900 border border-zinc-800">
           <button
             onClick={() => setViewMode('preview')}
@@ -96,6 +97,18 @@ export function VibecoderHeader({
           >
             <Code2 className="w-3.5 h-3.5" />
             Code
+          </button>
+
+          <button
+            onClick={() => setViewMode('generation')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'generation' 
+                ? "bg-amber-600 text-white shadow-lg shadow-amber-900/20" 
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800"
+            }`}
+          >
+            <Palette className="w-3.5 h-3.5" />
+            Studio
           </button>
         </div>
 

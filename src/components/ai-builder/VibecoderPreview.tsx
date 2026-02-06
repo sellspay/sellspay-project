@@ -10,12 +10,13 @@ import { Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
+import type { ViewMode } from './types/generation';
 
 interface VibecoderPreviewProps {
   code: string;
   isStreaming?: boolean;
   onError?: (error: string) => void;
-  viewMode?: 'preview' | 'code';
+  viewMode?: ViewMode;
 }
 
 // Nuclear CSS fix - forces all Sandpack internal wrappers to fill height
@@ -205,7 +206,7 @@ const SandpackRenderer = memo(function SandpackRenderer({
 }: { 
   code: string; 
   onError?: (error: string) => void;
-  viewMode?: 'preview' | 'code';
+  viewMode?: ViewMode;
 }) {
   // Wrap the code in proper structure, including the standard library
   const files = useMemo(() => ({
@@ -256,7 +257,7 @@ root.render(<App />);`,
       >
         <ErrorDetector onError={onError} />
         <div className="h-full w-full flex-1 flex flex-col" style={{ height: '100%' }}>
-          {viewMode === 'preview' ? (
+          {viewMode === 'preview' || viewMode === 'generation' ? (
             <SandpackPreviewComponent 
               showOpenInCodeSandbox={false}
               showRefreshButton={true}

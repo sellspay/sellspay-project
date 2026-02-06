@@ -10,6 +10,10 @@ import { PreviewErrorBoundary } from './PreviewErrorBoundary';
 import { VibecoderHeader } from './VibecoderHeader';
 import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects } from './hooks/useVibecoderProjects';
+import { GenerationCanvas } from './GenerationCanvas';
+import { PlacementPromptModal } from './PlacementPromptModal';
+import { AI_MODELS, type AIModel } from './ChatInputBar';
+import type { GeneratedAsset, ViewMode } from './types/generation';
 import { toast } from 'sonner';
 
 interface AIBuilderCanvasProps {
@@ -29,9 +33,16 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Reset key to force component re-mount on project deletion
   const [resetKey, setResetKey] = useState(0);
   
-  // View mode state (Preview vs Code)
-  const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
+  // View mode state (Preview vs Code vs Generation)
+  const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
+  
+  // Generation state for Creative Studio
+  const [currentAsset, setCurrentAsset] = useState<GeneratedAsset | null>(null);
+  const [isAssetGenerating, setIsAssetGenerating] = useState(false);
+  const [showPlacementModal, setShowPlacementModal] = useState(false);
+  const [lastAssetPrompt, setLastAssetPrompt] = useState<string>('');
+  const [lastAssetModel, setLastAssetModel] = useState<AIModel | null>(null);
   
   // Hard refresh state for fixing white screen of death
   const [refreshKey, setRefreshKey] = useState(0);
@@ -333,6 +344,88 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     handleSendMessage(errorMsg);
   }, []);
 
+  // ===== CREATIVE STUDIO: Asset Generation Handlers =====
+  
+  // Generate asset from image/video model
+  const handleGenerateAsset = useCallback(async (model: AIModel, prompt: string) => {
+    // Switch to generation view immediately
+    setViewMode('generation');
+    setIsAssetGenerating(true);
+    setCurrentAsset(null);
+    setLastAssetPrompt(prompt);
+    setLastAssetModel(model);
+
+    try {
+      // Call the backend to generate the asset
+      const { data, error } = await supabase.functions.invoke('storefront-generate-asset', {
+        body: { 
+          prompt, 
+          modelId: model.id,
+          type: model.category === 'video' ? 'video' : 'image',
+        },
+      });
+
+      if (error) throw error;
+
+      // Set the generated asset
+      setCurrentAsset({
+        id: crypto.randomUUID(),
+        type: model.category === 'video' ? 'video' : 'image',
+        url: data.url || data.imageUrl,
+        prompt,
+        modelId: model.id,
+        createdAt: new Date(),
+      });
+    } catch (error) {
+      console.error('Asset generation failed:', error);
+      toast.error('Failed to generate asset. Please try again.');
+    } finally {
+      setIsAssetGenerating(false);
+    }
+  }, []);
+
+  // Retry asset generation with same prompt
+  const handleRetryAsset = useCallback(() => {
+    if (lastAssetModel && lastAssetPrompt) {
+      handleGenerateAsset(lastAssetModel, lastAssetPrompt);
+    }
+  }, [lastAssetModel, lastAssetPrompt, handleGenerateAsset]);
+
+  // Apply generated asset to canvas via code injection
+  const handleApplyAssetToCanvas = useCallback((instructions: string) => {
+    if (!currentAsset) return;
+
+    setShowPlacementModal(false);
+    setViewMode('preview');
+
+    // Construct a specialized prompt for the AI to inject the asset
+    const injectionPrompt = `
+[ASSET_INJECTION_REQUEST]
+Asset Type: ${currentAsset.type}
+Asset URL: ${currentAsset.url}
+User Instructions: ${instructions}
+
+TASK: Modify the existing storefront code to place this ${currentAsset.type} asset as specified by the user. 
+- Use an <img> tag for images or <video> tag for videos
+- Apply appropriate styling (object-fit, width, height) based on the placement
+- Ensure the asset is responsive and fits the design
+`;
+
+    // Send to the code generator
+    handleSendMessage(injectionPrompt);
+    
+    // Clear the current asset
+    setCurrentAsset(null);
+  }, [currentAsset, handleSendMessage]);
+
+  // Asset feedback handler
+  const handleAssetFeedback = useCallback((rating: 'positive' | 'negative') => {
+    // TODO: Log feedback for model improvement
+    console.log('Asset feedback:', rating, currentAsset?.id);
+    toast.success(rating === 'positive' ? 'Thanks for the feedback!' : 'Noted! Try regenerating.');
+  }, [currentAsset]);
+
+
   if (loading || projectsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -395,27 +488,37 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           className="flex-1 min-w-0 border-r border-zinc-800 bg-black overflow-hidden relative flex flex-col"
           style={{ isolation: 'isolate', contain: 'strict' }}
         >
-          {/* Preview/Code Content - Full height now */}
-          <div className={`flex-1 min-h-0 ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-zinc-900' : ''}`}>
-            <div 
-              className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-700 shadow-2xl' : 'w-full'}`}
-            >
-              <PreviewErrorBoundary 
-                onAutoFix={handleAutoFix} 
-                onReset={resetCode}
+          {/* Conditional Content: Generation Canvas vs Preview/Code */}
+          {viewMode === 'generation' ? (
+            <GenerationCanvas
+              asset={currentAsset}
+              isLoading={isAssetGenerating}
+              onRetry={handleRetryAsset}
+              onUseInCanvas={() => setShowPlacementModal(true)}
+              onFeedback={handleAssetFeedback}
+            />
+          ) : (
+            <div className={`flex-1 min-h-0 ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-zinc-900' : ''}`}>
+              <div 
+                className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-700 shadow-2xl' : 'w-full'}`}
               >
-                <VibecoderPreview 
-                  key={`preview-${activeProjectId}-${resetKey}-${refreshKey}`}
-                  code={code} 
-                  isStreaming={isStreaming}
-                  viewMode={viewMode}
-                  onError={(error) => {
-                    console.warn('[VibecoderPreview] Sandpack error detected:', error);
-                  }}
-                />
-              </PreviewErrorBoundary>
+                <PreviewErrorBoundary 
+                  onAutoFix={handleAutoFix} 
+                  onReset={resetCode}
+                >
+                  <VibecoderPreview 
+                    key={`preview-${activeProjectId}-${resetKey}-${refreshKey}`}
+                    code={code} 
+                    isStreaming={isStreaming}
+                    viewMode={viewMode}
+                    onError={(error) => {
+                      console.warn('[VibecoderPreview] Sandpack error detected:', error);
+                    }}
+                  />
+                </PreviewErrorBoundary>
+              </div>
             </div>
-          </div>
+          )}
           
           {/* Overlay while dragging */}
           {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
@@ -437,6 +540,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           <VibecoderChat
             key={`chat-${activeProjectId}-${resetKey}`}
             onSendMessage={handleSendMessage}
+            onGenerateAsset={handleGenerateAsset}
             isStreaming={isStreaming}
             onCancel={cancelStream}
             onReset={resetCode}
@@ -451,6 +555,14 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           />
         </div>
       </div>
+
+      {/* Placement Prompt Modal */}
+      <PlacementPromptModal
+        isOpen={showPlacementModal}
+        onClose={() => setShowPlacementModal(false)}
+        onSubmit={handleApplyAssetToCanvas}
+        asset={currentAsset}
+      />
     </div>
   );
 }

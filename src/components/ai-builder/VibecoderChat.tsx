@@ -7,8 +7,10 @@ import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import { motion } from 'framer-motion';
 import { ChatInputBar, type AIModel } from './ChatInputBar';
 import { useUserCredits } from '@/hooks/useUserCredits';
+
 interface VibecoderChatProps {
   onSendMessage: (message: string) => void;
+  onGenerateAsset?: (model: AIModel, prompt: string) => void;
   isStreaming: boolean;
   onCancel: () => void;
   onReset: () => void;
@@ -101,6 +103,7 @@ const PLACEHOLDER_EXAMPLES = [
 
 export function VibecoderChat({ 
   onSendMessage, 
+  onGenerateAsset,
   isStreaming, 
   onCancel, 
   onReset,
@@ -142,6 +145,16 @@ export function VibecoderChat({
   }) => {
     if (!input.trim() || isStreaming) return;
     
+    // Check if this is an image/video model - route to asset generation
+    const isAssetModel = options.model.category === 'image' || options.model.category === 'video';
+    
+    if (isAssetModel && onGenerateAsset) {
+      onGenerateAsset(options.model, input.trim());
+      setInput('');
+      return;
+    }
+    
+    // Otherwise, continue with code generation
     let finalPrompt = input.trim();
     
     // PLAN MODE: Inject the Architect instruction so AI returns a plan instead of code
