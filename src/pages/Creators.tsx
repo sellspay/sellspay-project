@@ -1,13 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Users, Package, UserPlus } from 'lucide-react';
+import { 
+  Search, Package, Star, Flame,
+  Zap, Code2, TrendingUp, Briefcase, PenTool, 
+  Video, BookOpen, Layers, Music, Gamepad2, Smile, Box
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
-import { useAuth, checkUserRole } from '@/lib/auth';
+import { TooltipProvider } from '@/components/ui/tooltip';
+
+// --- CATEGORY CONFIGURATION ---
+const CREATOR_CATEGORIES = [
+  { id: "all", label: "All Creators", icon: Zap },
+  { id: "software", label: "Software & SaaS", icon: Code2 },
+  { id: "finance", label: "Trading & Finance", icon: TrendingUp },
+  { id: "business", label: "E-commerce & Biz", icon: Briefcase },
+  { id: "design", label: "Design & Art", icon: PenTool },
+  { id: "3d", label: "3D & VFX", icon: Box },
+  { id: "video", label: "Video & LUTs", icon: Video },
+  { id: "education", label: "Courses & Tutorials", icon: BookOpen },
+  { id: "productivity", label: "Notion & Templates", icon: Layers },
+  { id: "audio", label: "Audio & Music", icon: Music },
+  { id: "gaming", label: "Gaming & Mods", icon: Gamepad2 },
+  { id: "lifestyle", label: "Fitness & Lifestyle", icon: Smile },
+];
+
+// Map product types to categories for fallback
+const PRODUCT_TYPE_TO_CATEGORY: Record<string, string> = {
+  'preset': 'video',
+  'lut': 'video',
+  'sfx': 'audio',
+  'music': 'audio',
+  'template': 'productivity',
+  'overlay': 'video',
+  'tutorial': 'education',
+  'project_file': 'video',
+  'digital_art': 'design',
+  '3d_model': '3d',
+  'plugin': 'software',
+  'script': 'software',
+};
 
 interface Creator {
   id: string;
@@ -15,37 +49,30 @@ interface Creator {
   username: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  banner_url: string | null;
   bio: string | null;
-  is_creator: boolean | null;
   verified: boolean | null;
-  productCount?: number;
-  followersCount?: number;
-  followingCount?: number;
-  isOwner?: boolean;
+  isOwner: boolean;
+  creator_tags: string[];
+  niche: string;
+  stats: {
+    productCount: number;
+    salesCount: string;
+  };
 }
 
 export default function Creators() {
-  const { user } = useAuth();
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    // Check if current user is admin via database
-    if (user) {
-      checkUserRole('admin').then(setIsAdmin);
-    } else {
-      setIsAdmin(false);
-    }
-  }, [user]);
+  const [activeCategory, setActiveCategory] = useState('all');
 
   useEffect(() => {
     async function fetchCreators() {
-      // Use public_profiles view for public access - includes is_owner computed field
+      // Fetch creators from public_profiles view
       const { data, error } = await supabase
         .from('public_profiles')
-        .select('id, user_id, username, full_name, avatar_url, bio, is_creator, verified, is_owner')
+        .select('id, user_id, username, full_name, avatar_url, banner_url, bio, is_creator, verified, creator_tags, is_owner')
         .eq('is_creator', true)
         .order('created_at', { ascending: false });
 
@@ -56,8 +83,8 @@ export default function Creators() {
         return;
       }
 
-      // Fetch counts for each creator
-      const creatorsWithCounts = await Promise.all(
+      // Fetch counts and derive tags for each creator
+      const creatorsWithData = await Promise.all(
         (data || []).map(async (creator) => {
           // Get product count
           const { count: productCount } = await supabase
@@ -66,206 +93,295 @@ export default function Creators() {
             .eq('creator_id', creator.id)
             .eq('status', 'published');
 
-          // Get followers count
-          const { count: followersCount } = await supabase
-            .from('followers')
+          // Get total sales count
+          const { count: salesCount } = await supabase
+            .from('purchases')
             .select('*', { count: 'exact', head: true })
-            .eq('following_id', creator.id);
+            .eq('status', 'completed')
+            .in('product_id', 
+              await supabase
+                .from('products')
+                .select('id')
+                .eq('creator_id', creator.id)
+                .then(res => res.data?.map(p => p.id) || [])
+            );
 
-          // Get following count
-          const { count: followingCount } = await supabase
-            .from('followers')
-            .select('*', { count: 'exact', head: true })
-            .eq('follower_id', creator.id);
+          // Use creator_tags or derive from products
+          let tags: string[] = (creator as any).creator_tags || [];
+          
+          if (tags.length === 0) {
+            // Derive from product types
+            const { data: products } = await supabase
+              .from('products')
+              .select('product_type')
+              .eq('creator_id', creator.id)
+              .eq('status', 'published')
+              .limit(10);
+            
+            const derivedTags = [...new Set(
+              products?.map(p => PRODUCT_TYPE_TO_CATEGORY[p.product_type || ''] || 'design')
+                .filter(Boolean)
+            )].slice(0, 3);
+            tags = derivedTags;
+          }
+
+          // Derive niche from first tag
+          const primaryTag = tags[0];
+          const niche = primaryTag 
+            ? CREATOR_CATEGORIES.find(c => c.id === primaryTag)?.label || 'Creator'
+            : 'Creator';
 
           return {
-            ...creator,
-            productCount: productCount || 0,
-            followersCount: followersCount || 0,
-            followingCount: followingCount || 0,
+            id: creator.id,
+            user_id: creator.user_id,
+            username: creator.username,
+            full_name: creator.full_name,
+            avatar_url: creator.avatar_url,
+            banner_url: creator.banner_url,
+            bio: creator.bio,
+            verified: creator.verified,
             isOwner: (creator as any).is_owner === true,
+            creator_tags: tags,
+            niche,
+            stats: {
+              productCount: productCount || 0,
+              salesCount: salesCount ? (salesCount > 1000 ? `${(salesCount / 1000).toFixed(1)}k` : String(salesCount)) : '0',
+            },
           };
         })
       );
 
-      setCreators(creatorsWithCounts);
+      setCreators(creatorsWithData);
       setLoading(false);
     }
 
     fetchCreators();
   }, []);
 
-  const filteredCreators = creators.filter((creator) => {
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      creator.username?.toLowerCase().includes(searchLower) ||
-      creator.full_name?.toLowerCase().includes(searchLower) ||
-      creator.bio?.toLowerCase().includes(searchLower)
-    );
+  // Filter logic
+  const filteredCreators = creators.filter(creator => {
+    const matchesCategory = activeCategory === "all" || 
+      creator.creator_tags.includes(activeCategory);
+    
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !searchQuery || 
+      creator.full_name?.toLowerCase().includes(q) ||
+      creator.username?.toLowerCase().includes(q) ||
+      creator.bio?.toLowerCase().includes(q) ||
+      creator.niche?.toLowerCase().includes(q);
+    
+    return matchesCategory && matchesSearch;
   });
-
 
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background">
-        {/* Hero Header */}
+        {/* --- HERO SECTION --- */}
         <div className="relative overflow-hidden border-b border-border/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5" />
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-16 lg:py-20">
-            <div className="max-w-2xl">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-3 sm:mb-4">
-                Creators
-              </h1>
-              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
-                Discover and follow talented creators in our community. Explore their work, connect, and get inspired.
-              </p>
+          {/* Background Effects */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5" />
+          <div className="absolute top-20 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl" />
+          
+          <div className="relative max-w-4xl mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-4">
+              Find your favorite{' '}
+              <span className="bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">
+                Creator
+              </span>
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+              From Day Traders to 3D Artists—discover the pros powering the digital economy.
+            </p>
+
+            {/* Search Bar */}
+            <div className="relative max-w-md mx-auto">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <Search size={18} />
+              </div>
+              <Input
+                placeholder="Search by name, niche, or handle..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-11 h-12 bg-card/50 backdrop-blur-sm border-border/50 focus:border-primary/50 rounded-xl shadow-xl"
+              />
             </div>
           </div>
         </div>
 
-        {/* Content Section */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-          {/* Search & Stats Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-8 sm:mb-10">
-            <div className="relative w-full sm:max-w-sm">
-              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search creators..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 sm:pl-11 h-10 sm:h-11 bg-card border-border/50 text-sm"
-              />
+        {/* --- CATEGORY NAV (STICKY) --- */}
+        <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+            <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+              {CREATOR_CATEGORIES.map(cat => {
+                const Icon = cat.icon;
+                const isActive = activeCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={`
+                      flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0
+                      ${isActive 
+                        ? "bg-foreground text-background border-foreground shadow-lg scale-105" 
+                        : "bg-card text-muted-foreground border-border hover:border-border/80 hover:text-foreground"
+                      }
+                    `}
+                  >
+                    <Icon size={14} />
+                    {cat.label}
+                  </button>
+                );
+              })}
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              {filteredCreators.length} {filteredCreators.length === 1 ? 'creator' : 'creators'} found
-            </p>
+          </div>
+        </div>
+
+        {/* --- CREATOR GRID --- */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          {/* Results Header */}
+          <div className="flex items-center gap-2 mb-8">
+            <span className="text-sm text-muted-foreground">
+              Showing {filteredCreators.length} results for
+            </span>
+            <span className="text-sm font-semibold text-foreground">
+              {CREATOR_CATEGORIES.find(c => c.id === activeCategory)?.label}
+            </span>
           </div>
 
-          {/* Creators Grid */}
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 sm:py-24">
-              <div className="h-8 w-8 sm:h-10 sm:w-10 animate-spin rounded-full border-4 border-primary border-t-transparent mb-3 sm:mb-4" />
+            <div className="flex flex-col items-center justify-center py-24">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent mb-4" />
               <p className="text-sm text-muted-foreground">Loading creators...</p>
             </div>
           ) : filteredCreators.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4 sm:mb-6">
-                <Users className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-6">
+                <Search className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-base sm:text-lg font-medium text-foreground mb-2">No creators found</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">No creators found</h3>
               <p className="text-sm text-muted-foreground max-w-sm">
-                {searchQuery ? 'Try adjusting your search terms' : 'Be the first to become a creator!'}
+                Try adjusting your search or category filter.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-              {filteredCreators.map((creator) => (
-                <Link
-                  key={creator.id}
-                  to={`/@${creator.username || creator.id}`}
-                  className="group relative overflow-hidden rounded-xl sm:rounded-2xl transition-all duration-500 hover:scale-[1.02]"
-                >
-                  {/* Glossy gradient border */}
-                  <div className="absolute inset-0 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary/40 via-violet-500/30 to-fuchsia-500/40 p-[1px]">
-                    <div className="absolute inset-[1px] rounded-xl sm:rounded-2xl bg-card" />
-                  </div>
-                  
-                  {/* Glossy shine overlay */}
-                  <div className="absolute inset-0 rounded-xl sm:rounded-2xl bg-gradient-to-br from-white/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                  
-                  {/* Glass reflection stripe */}
-                  <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/5 to-transparent rounded-t-xl sm:rounded-t-2xl pointer-events-none" />
-                  
-                  {/* Content */}
-                  <div className="relative p-4 sm:p-6 backdrop-blur-sm">
-                    <div className="flex flex-col items-center text-center">
-                      {/* Avatar with glow */}
-                      <div className="relative mb-3 sm:mb-4">
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/50 to-violet-500/50 blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-500 scale-150" />
-                        <Avatar className="relative w-14 h-14 sm:w-20 sm:h-20 ring-2 ring-white/10 group-hover:ring-primary/50 transition-all duration-300 shadow-lg shadow-black/20">
-                          <AvatarImage src={creator.avatar_url || undefined} className="object-cover" />
-                          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-violet-500/20 text-primary text-base sm:text-xl font-medium">
-                            {(creator.username || 'C').charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                      
-                      {/* Name with verified badge */}
-                      <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5">
-                        <h3 className="font-semibold text-sm sm:text-base text-foreground group-hover:text-primary transition-colors duration-300 line-clamp-1">
-                          {creator.full_name || creator.username || 'Creator'}
-                        </h3>
-                        {creator.verified && (
-                          <VerifiedBadge isOwner={creator.isOwner} size="sm" />
-                        )}
-                      </div>
-                      
-                      {/* Username */}
-                      <p className="text-xs sm:text-sm bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent font-medium mb-1.5 sm:mb-2">
-                        @{creator.username || 'creator'}
-                      </p>
-                      
-                      {/* Bio/Description - hidden on very small screens */}
-                      {creator.bio && (
-                        <p className="hidden sm:block text-xs text-muted-foreground line-clamp-2 mb-3 sm:mb-4 min-h-[2rem]">
-                          {creator.bio}
-                        </p>
-                      )}
-                      {!creator.bio && <div className="hidden sm:block mb-3 sm:mb-4 min-h-[2rem]" />}
-                      
-                      {/* Stats row with glass effect */}
-                      <div className="flex items-center justify-center gap-2 sm:gap-4 text-[10px] sm:text-xs w-full py-2 sm:py-3 px-2 sm:px-4 rounded-lg sm:rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1 sm:gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors">
-                              <Package className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                              <span className="font-semibold">{creator.productCount}</span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Products</p></TooltipContent>
-                        </Tooltip>
-                        
-                        <div className="w-px h-2 sm:h-3 bg-white/10" />
-                        
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1 sm:gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors">
-                              <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                              <span className="font-semibold">{creator.followersCount}</span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Followers</p></TooltipContent>
-                        </Tooltip>
-                        
-                        <div className="w-px h-2 sm:h-3 bg-white/10" />
-                        
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center gap-1 sm:gap-1.5 text-muted-foreground group-hover:text-foreground transition-colors">
-                              <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                              <span className="font-semibold">{creator.followingCount}</span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Following</p></TooltipContent>
-                        </Tooltip>
-                      </div>
-                      
-                      {/* Owner badge - premium style */}
-                      {creator.isOwner && (
-                        <div className="mt-3 px-3 py-1 rounded-full bg-gradient-to-r from-primary/20 to-violet-500/20 border border-primary/30">
-                          <span className="text-xs font-medium bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">
-                            Owner
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredCreators.map(creator => (
+                <CreatorCard key={creator.id} creator={creator} />
               ))}
             </div>
           )}
         </div>
       </div>
     </TooltipProvider>
+  );
+}
+
+// --- CREATOR CARD COMPONENT ---
+function CreatorCard({ creator }: { creator: Creator }) {
+  return (
+    <Link
+      to={`/@${creator.username || creator.id}`}
+      className="group relative overflow-hidden rounded-2xl bg-card border border-border/50 hover:border-primary/30 transition-all duration-500 hover:shadow-xl hover:shadow-primary/5"
+    >
+      {/* Cover Banner */}
+      <div className="relative h-24 overflow-hidden">
+        {creator.banner_url ? (
+          <img 
+            src={creator.banner_url} 
+            alt="" 
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-primary/20 via-violet-500/20 to-fuchsia-500/20" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+      </div>
+
+      {/* Profile Content */}
+      <div className="relative px-5 pb-5 -mt-10">
+        {/* Avatar Row */}
+        <div className="flex items-end justify-between mb-3">
+          <div className="relative">
+            <Avatar className="w-16 h-16 ring-4 ring-card shadow-lg">
+              <AvatarImage src={creator.avatar_url || undefined} className="object-cover" />
+              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-violet-500/20 text-primary text-xl font-medium">
+                {(creator.username || 'C').charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            {creator.verified && (
+              <div className="absolute -bottom-1 -right-1">
+                <VerifiedBadge isOwner={creator.isOwner} size="sm" />
+              </div>
+            )}
+          </div>
+          
+          <button className="px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary rounded-full hover:bg-primary hover:text-primary-foreground transition-colors">
+            View Shop
+          </button>
+        </div>
+        
+        {/* Name & Badges */}
+        <div className="flex items-center gap-2 mb-0.5">
+          <h3 className="font-semibold text-foreground truncate">
+            {creator.full_name || creator.username || 'Creator'}
+          </h3>
+          {creator.isOwner && (
+            <span className="px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full">
+              Admin
+            </span>
+          )}
+        </div>
+        
+        {/* Niche */}
+        <p className="text-xs text-muted-foreground mb-0.5">{creator.niche}</p>
+        
+        {/* Handle */}
+        <p className="text-xs bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent font-medium mb-2">
+          @{creator.username || 'creator'}
+        </p>
+        
+        {/* Bio */}
+        {creator.bio && (
+          <p className="text-xs text-muted-foreground line-clamp-2 mb-3 min-h-[2rem]">
+            {creator.bio}
+          </p>
+        )}
+        {!creator.bio && <div className="mb-3 min-h-[2rem]" />}
+
+        {/* Tags */}
+        {creator.creator_tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {creator.creator_tags.slice(0, 3).map(tag => {
+              const cat = CREATOR_CATEGORIES.find(c => c.id === tag);
+              const Icon = cat?.icon;
+              return (
+                <span
+                  key={tag}
+                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium bg-muted/50 text-muted-foreground rounded-full"
+                >
+                  {Icon && <Icon size={10} />}
+                  {tag}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Stats Footer */}
+        <div className="flex items-center gap-4 pt-3 border-t border-border/50">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Package size={12} />
+            <span className="font-medium">{creator.stats.productCount}</span>
+            <span className="hidden sm:inline">Products</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Flame size={12} />
+            <span className="font-medium">{creator.stats.salesCount}</span>
+            <span className="hidden sm:inline">Sales</span>
+          </div>
+        </div>
+      </div>
+    </Link>
   );
 }
