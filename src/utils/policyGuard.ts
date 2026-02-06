@@ -31,7 +31,7 @@ export const POLICY_RULES: PolicyRule[] = [
       'edit profile page', 'profile management', 'change email', 'update email',
       'billing page', 'payment settings', 'subscription settings', 'account management',
       'user preferences', 'notification settings', 'privacy settings',
-      'manage account', 'delete account',
+      'manage account', 'delete account', 'security settings',
     ],
     message: "User settings, billing, and account management are handled by the SellsPay platform. Your storefront should focus on showcasing your products and converting visitors. I can help you build beautiful product galleries, hero sections, or about pages instead!",
   },
