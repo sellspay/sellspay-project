@@ -1204,8 +1204,15 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               /* Live Preview: Sandpack iframe - always rendered with DEFAULT_CODE when no project */
               <div className={`flex-1 min-h-0 relative ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-muted' : ''}`}>
                 <div
-                  className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'} relative transition-opacity duration-200 ${isProjectTransitioning ? 'opacity-0' : 'opacity-100'}`}
+                  className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-border shadow-2xl' : 'w-full'} relative`}
                 >
+                  {/* Transition mask: cover Sandpack while switching projects to prevent white flash */}
+                  <div
+                    className={`pointer-events-none absolute inset-0 z-30 transition-opacity duration-150 ${
+                      isProjectTransitioning ? 'opacity-100' : 'opacity-0'
+                    } ${deviceMode === 'mobile' ? 'bg-muted' : 'bg-background'}`}
+                  />
+
                   <PreviewErrorBoundary
                     onAutoFix={handleAutoFix}
                     onReset={() => {
