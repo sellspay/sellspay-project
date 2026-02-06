@@ -9,6 +9,8 @@ interface AgentState {
   error?: string;
   lockedProjectId: string | null;
   architectPlan?: Record<string, unknown>;
+  lastGeneratedCode?: string; // Track last code for healing
+  styleProfile?: string; // Track style for healing
 }
 
 interface UseAgentLoopOptions {
@@ -32,13 +34,19 @@ function createFreshState(): AgentState {
 }
 
 /**
- * VibeCoder 2.0 Agent Loop - Multi-Agent Orchestration
+ * VibeCoder 2.1 Agent Loop - Multi-Agent Orchestration
+ * 
+ * IMPROVEMENTS in v2.1:
+ * - healCode() method for runtime error recovery
+ * - Tracks lastGeneratedCode for healing context
+ * - Direct connection to vibecoder-heal endpoint
  * 
  * Connects to the vibecoder-orchestrator edge function which chains:
  * 1. Architect Agent → Creates blueprint
  * 2. Builder Agent → Generates code
- * 3. Linter Agent → Validates code
- * 4. Self-Heal Loop → Auto-fixes errors
+ * 3. Shadow Render → Transpilation check
+ * 4. Linter Agent → Validates code
+ * 5. Self-Heal Loop → Auto-fixes errors
  */
 export function useAgentLoop({ 
   onStreamCode, 
@@ -94,9 +102,10 @@ export function useAgentLoop({
     
     setState({ 
       step: skipArchitect ? 'building' : 'architect', 
-      logs: ['> Initializing VibeCoder 2.0...'], 
+      logs: ['> Initializing VibeCoder 2.1...'], 
       isRunning: true,
       lockedProjectId: lockedId,
+      styleProfile: styleProfile || undefined,
     });
 
     try {
@@ -231,6 +240,8 @@ export function useAgentLoop({
         const codeData = event.data as { code: string; summary?: string };
         setStep('verifying');
         addLog('> Code delivered');
+        // Track last generated code for healing
+        setState(prev => ({ ...prev, lastGeneratedCode: codeData.code }));
         onCodeGenerated?.(codeData.code, codeData.summary || 'Storefront generated.');
         break;
       }
@@ -312,13 +323,154 @@ export function useAgentLoop({
   }, [addLog]);
 
   /**
-   * Trigger self-correction feedback
+   * Trigger self-correction feedback (UI only)
    */
   const triggerSelfCorrection = useCallback(async (errorMsg: string) => {
     setStep('healing');
     addLog(`! Runtime error detected: ${errorMsg.slice(0, 100)}`);
     addLog('> Triggering self-correction...');
   }, [setStep, addLog]);
+
+  /**
+   * VibeCoder 2.1: Direct healing with runtime error context
+   * 
+   * Called when Sandpack crashes with a runtime error.
+   * Goes directly to vibecoder-heal endpoint (skips Architect).
+   * 
+   * @param runtimeError - The actual error message from Sandpack
+   * @param failedCode - The current code that crashed
+   */
+  const healCode = useCallback(async (runtimeError: string, failedCode: string) => {
+    const userId = getUserId?.();
+    const projectId = getActiveProjectId?.();
+    
+    if (!userId) {
+      console.error('[AgentLoop] No user ID for healing');
+      return;
+    }
+    
+    abortRef.current = false;
+    abortControllerRef.current = new AbortController();
+    
+    setState(prev => ({
+      ...prev,
+      step: 'healing',
+      logs: [...prev.logs, '> Runtime error detected', '> Calling healing agent...'],
+      isRunning: true,
+      lockedProjectId: projectId || prev.lockedProjectId,
+    }));
+    
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const healUrl = `${supabaseUrl}/functions/v1/vibecoder-heal`;
+      
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+      
+      if (!authToken) {
+        throw new Error('Not authenticated');
+      }
+      
+      addLog('Sending to healing agent...');
+      
+      const response = await fetch(healUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          runtimeError,
+          failedCode,
+          styleProfile: state.styleProfile,
+          architectPlan: state.architectPlan,
+          userId,
+        }),
+        signal: abortControllerRef.current.signal,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Heal error: ${errorText}`);
+      }
+      
+      if (!response.body) {
+        throw new Error('No response stream');
+      }
+      
+      // Process SSE stream from healing agent
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      
+      while (true) {
+        if (abortRef.current) {
+          reader.cancel();
+          break;
+        }
+        
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6);
+          if (jsonStr === '[DONE]') continue;
+          
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) fullContent += content;
+          } catch {
+            // Skip invalid JSON
+          }
+        }
+      }
+      
+      // Extract code from response
+      const beginIdx = fullContent.indexOf('/// BEGIN_CODE ///');
+      let fixedCode = '';
+      
+      if (beginIdx >= 0) {
+        fixedCode = fullContent.substring(beginIdx + '/// BEGIN_CODE ///'.length)
+          .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
+          .replace(/\n?```\s*$/i, '')
+          .trim();
+      } else {
+        // Try to extract any code block
+        const codeMatch = fullContent.match(/```(?:tsx?|jsx?)?\n([\s\S]+?)```/);
+        fixedCode = codeMatch ? codeMatch[1].trim() : fullContent;
+      }
+      
+      if (fixedCode && fixedCode.length > 50) {
+        addLog('> Fix applied successfully');
+        setState(prev => ({ ...prev, lastGeneratedCode: fixedCode }));
+        onCodeGenerated?.(fixedCode, 'Applied runtime error fix.');
+        setStep('done');
+        setState(prev => ({ ...prev, isRunning: false }));
+        onComplete?.();
+      } else {
+        throw new Error('Healing agent returned invalid code');
+      }
+      
+    } catch (err) {
+      if (abortRef.current) return;
+      
+      const message = err instanceof Error ? err.message : 'Healing failed';
+      console.error('[AgentLoop] Heal error:', err);
+      setState(prev => ({
+        ...prev,
+        step: 'error',
+        error: message,
+        isRunning: false,
+      }));
+      addLog(`! Healing failed: ${message}`);
+    }
+  }, [addLog, setStep, getUserId, getActiveProjectId, state.styleProfile, state.architectPlan, onCodeGenerated, onComplete]);
 
   /**
    * Cancel the current agent operation
@@ -368,6 +520,7 @@ export function useAgentLoop({
     startAgent,
     cancelAgent,
     resetAgent,
+    healCode, // VibeCoder 2.1: Direct healing with runtime errors
     onStreamingStart,
     onStreamLog,
     onStreamingComplete,
@@ -381,5 +534,6 @@ export function useAgentLoop({
     isAgentRunning: state.isRunning,
     lockedProjectId: state.lockedProjectId,
     architectPlan: state.architectPlan,
+    lastGeneratedCode: state.lastGeneratedCode, // VibeCoder 2.1: Track for healing
   };
 }
