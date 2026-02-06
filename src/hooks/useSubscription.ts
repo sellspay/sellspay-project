@@ -300,6 +300,23 @@ export function useSubscription() {
     }
   }, [user?.id]);
 
+  // Admin/Owner privilege sync - update state when roles load
+  useEffect(() => {
+    if (isPrivileged) {
+      const privilegedState: SubscriptionState = {
+        plan: 'agency',
+        credits: 999999,
+        capabilities: { vibecoder: true, imageGen: true, videoGen: true },
+        sellerFee: 0,
+        badge: 'gold',
+        expiresAt: null,
+        stripeSubscriptionId: null,
+      };
+      setState(privilegedState);
+      setLoading(false);
+    }
+  }, [isPrivileged]);
+
   // Keep all hook instances in sync
   useEffect(() => {
     if (!user) return;
