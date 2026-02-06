@@ -1,169 +1,185 @@
 
-# Implementation Plan: Menu Fix, Speech-to-Text, and Fair Pricing Economy
+# Portal-Based Menu Fix & Backend Model Routing
 
-## Overview
+## Problem Analysis
 
-This plan addresses three critical issues:
-1. **CSS Z-Index & Transparency Issues**: Menus are see-through and feel unclickable due to opacity and stacking problems
-2. **Speech-to-Text Microphone Button**: Add a waveform-style microphone button for voice input
-3. **Fair Pricing Economy**: Current credit costs are 8x more expensive than competitors—need price restructuring
+The menus in `ChatInputBar.tsx` are rendered inside a parent container (`AIBuilderCanvas.tsx` line 427) that uses `overflow-hidden`. This CSS property clips any child element that extends beyond the container's boundaries, making the dropdown menus:
 
----
+1. **Clipped/Cut Off**: Menus can't extend outside the chat panel
+2. **Unclickable in Clipped Regions**: Events don't register on invisible parts
+3. **Z-Index Irrelevant**: No amount of z-index can escape `overflow-hidden`
 
-## Part 1: Fix Menu Transparency & Clickability
-
-### Problem Analysis
-- Menus use `bg-zinc-900/98` which can still show transparency artifacts
-- Click events may be getting lost due to z-index conflicts
-- Need solid background with proper layering
-
-### Changes to `src/components/ai-builder/ChatInputBar.tsx`
-
-**Menu Styling Updates:**
-- Change menu background from `bg-zinc-900/98` to solid `bg-zinc-950` with `ring-1 ring-white/5`
-- Increase z-index from `z-50` to `z-[100]`
-- Add `e.stopPropagation()` to button clicks to prevent event bubbling
-- Add explicit click-outside overlay with higher z-index stacking
-
-**Visual Improvements:**
-- Solid opaque background for all dropdowns
-- Enhanced shadow: `shadow-2xl shadow-black/60`
-- Border styling: `border border-zinc-800`
-
----
-
-## Part 2: Add Microphone/Waveform Speech-to-Text Button
-
-### Feature Details
-- Add animated waveform icon next to the textarea
-- When clicked, initiates speech recognition
-- Visual feedback: pulsing waveform animation while listening
-- Transcribed text appends to the input field
-
-### Implementation
-1. **New Icon Component**: Create animated waveform SVG with bars
-2. **Speech Recognition Hook**: Use browser's `SpeechRecognition` API (Web Speech API)
-3. **UI States**: 
-   - Idle: Static waveform icon
-   - Listening: Pulsing red waveform with animation
-   - Processing: Brief loading state
-
-### New State Variables:
-```typescript
-const [isListening, setIsListening] = useState(false);
-const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
-```
-
-### Waveform Animation (CSS/Tailwind):
+The current menu implementation:
 ```tsx
-<button className="group relative p-2 rounded-xl transition-all">
-  <div className="flex items-end gap-0.5 h-4">
-    {[1, 2, 3, 2, 1].map((h, i) => (
-      <div 
-        key={i}
-        className={cn(
-          "w-0.5 bg-current rounded-full transition-all",
-          isListening && "animate-pulse"
-        )}
-        style={{ 
-          height: isListening ? `${h * 4}px` : '4px',
-          animationDelay: `${i * 0.1}s`
-        }}
-      />
-    ))}
-  </div>
-</button>
+// Current (broken) - trapped by parent overflow
+<div className="relative">
+  <button onClick={() => setShowModelMenu(!showModelMenu)}>...</button>
+  {showModelMenu && (
+    <div className="absolute bottom-full mb-2 ...">  {/* Clipped! */}
+      ...menu content...
+    </div>
+  )}
+</div>
 ```
 
 ---
 
-## Part 3: Fair Pricing Economy Restructure
+## Solution: React Portal Implementation
 
-### Current vs. New Pricing
+### Part 1: Create Portal Component
 
-| Action | Current Cost | New Cost | Justification |
-|--------|-------------|----------|---------------|
-| Vibecoder Pro | 25c | 3c | Premium coding model |
-| Vibecoder Flash | 0c | 0c | Free for small edits |
-| Image Gen (Flux/Recraft) | 100c | 10c | ~$0.04 API cost × 2.5 margin |
-| Video Gen (Kling/Luma) | 500c | 50c | ~$0.50 API cost × 1.25 margin |
+Add a simple Portal utility inside `ChatInputBar.tsx`:
 
-### User Impact
-- **Before**: 2,500 credits = 25 videos OR 100 chat messages
-- **After**: 2,500 credits = 50 videos OR 833 chat messages
+```tsx
+import { createPortal } from "react-dom";
 
-### Files to Update
-
-**1. Frontend: `src/components/ai-builder/ChatInputBar.tsx`**
-```typescript
-export const AI_MODELS = {
-  code: [
-    { id: "vibecoder-pro", name: "Vibecoder Pro", cost: 3, ... },
-    { id: "vibecoder-flash", name: "Vibecoder Flash", cost: 0, ... },
-  ],
-  image: [
-    { id: "nano-banana", name: "Nano Banana", cost: 10, ... },
-    { id: "flux-pro", name: "Flux 1.1 Pro", cost: 10, ... },
-    { id: "recraft-v3", name: "Recraft V3", cost: 10, ... },
-  ],
-  video: [
-    { id: "luma-ray-2", name: "Luma Ray 2", cost: 50, ... },
-    { id: "kling-video", name: "Kling Video", cost: 50, ... },
-  ],
+const Portal = ({ children }: { children: React.ReactNode }) => {
+  if (typeof window === "undefined") return null;
+  return createPortal(children, document.body);
 };
 ```
 
-**2. Backend: `supabase/functions/deduct-ai-credits/index.ts`**
-```typescript
-const CREDIT_COSTS: Record<string, number> = {
-  vibecoder_gen: 3,      // Was 25
-  vibecoder_flash: 0,    // Free tier
-  image_gen: 10,         // Was 100
-  video_gen: 50,         // Was 500
-  sfx_gen: 5,            // Adjusted
-  voice_isolator: 5,
-  sfx_isolator: 5,
-  music_splitter: 5,
+### Part 2: Add Position Tracking State
+
+Track the button's screen coordinates to position the portal menu:
+
+```tsx
+const [modelMenuCoords, setModelMenuCoords] = useState({ top: 0, left: 0 });
+const [plusMenuCoords, setPlusMenuCoords] = useState({ top: 0, left: 0 });
+const modelButtonRef = useRef<HTMLButtonElement>(null);
+const plusButtonRef = useRef<HTMLButtonElement>(null);
+```
+
+### Part 3: Update Model Menu to Use Portal
+
+**Before (clipped by parent):**
+```tsx
+{showModelMenu && (
+  <div className="absolute bottom-full mb-2 left-0 w-64 bg-zinc-950 ...">
+    ...menu content...
+  </div>
+)}
+```
+
+**After (portaled to body):**
+```tsx
+{showModelMenu && (
+  <Portal>
+    {/* Invisible backdrop to catch outside clicks */}
+    <div 
+      className="fixed inset-0 z-[9998]" 
+      onClick={() => setShowModelMenu(false)} 
+    />
+    {/* Menu positioned using fixed coordinates */}
+    <div 
+      className="fixed z-[9999] w-64 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl shadow-black/60"
+      style={{ 
+        left: modelMenuCoords.left,
+        bottom: window.innerHeight - modelMenuCoords.top + 8,
+      }}
+    >
+      ...menu content...
+    </div>
+  </Portal>
+)}
+```
+
+### Part 4: Calculate Position on Toggle
+
+```tsx
+const toggleModelMenu = () => {
+  if (!showModelMenu && modelButtonRef.current) {
+    const rect = modelButtonRef.current.getBoundingClientRect();
+    setModelMenuCoords({
+      left: rect.left,
+      top: rect.top,
+    });
+  }
+  setShowModelMenu(!showModelMenu);
+  setShowMenu(false); // Close other menu
+};
+
+const togglePlusMenu = () => {
+  if (!showMenu && plusButtonRef.current) {
+    const rect = plusButtonRef.current.getBoundingClientRect();
+    setPlusMenuCoords({
+      left: rect.left,
+      top: rect.top,
+    });
+  }
+  setShowMenu(!showMenu);
+  setShowModelMenu(false); // Close other menu
 };
 ```
 
-**3. Backend: `supabase/functions/storefront-generate-asset/index.ts`**
+### Part 5: Apply Same Pattern to Plus (Attachment) Menu
+
+Both menus will be portaled with the same technique.
+
+---
+
+## Part 2: Backend Model Routing
+
+Currently, `vibecoder-v2/index.ts` accepts a `model` parameter but only uses it for credit calculation. We need to route to different AI backends based on the selected model.
+
+### Update Edge Function Model Router
+
+In `supabase/functions/vibecoder-v2/index.ts`, add model-specific configuration:
+
 ```typescript
-const MODEL_COSTS: Record<string, number> = {
-  'nano-banana': 10,     // Was 100
-  'flux-pro': 10,        // Was 100
-  'recraft-v3': 10,      // Was 100
-  'luma-ray-2': 50,      // Was 500
-  'kling-video': 50,     // Was 500
+// Model Configuration Mapping
+const MODEL_CONFIG: Record<string, { endpoint: string; modelId: string }> = {
+  'vibecoder-pro': { 
+    endpoint: LOVABLE_AI_URL, 
+    modelId: 'google/gemini-3-flash-preview' 
+  },
+  'vibecoder-flash': { 
+    endpoint: LOVABLE_AI_URL, 
+    modelId: 'google/gemini-2.5-flash-lite' 
+  },
+  'reasoning-o1': { 
+    endpoint: LOVABLE_AI_URL, 
+    modelId: 'openai/gpt-5.2' 
+  },
 };
 ```
+
+Then use it when calling the AI:
+```typescript
+const config = MODEL_CONFIG[model] || MODEL_CONFIG['vibecoder-pro'];
+
+const response = await fetch(config.endpoint, {
+  method: "POST",
+  headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, ... },
+  body: JSON.stringify({
+    model: config.modelId,  // Dynamic model selection
+    messages: [...],
+    stream: true,
+  }),
+});
+```
+
+---
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/ai-builder/ChatInputBar.tsx` | Add Portal component, position tracking refs/state, update both menus to use portals |
+| `supabase/functions/vibecoder-v2/index.ts` | Add MODEL_CONFIG routing table, use dynamic model ID in API calls |
 
 ---
 
 ## Technical Summary
 
-| File | Type | Changes |
-|------|------|---------|
-| `src/components/ai-builder/ChatInputBar.tsx` | Frontend | Fix menu z-index/opacity, add microphone button, update pricing |
-| `supabase/functions/deduct-ai-credits/index.ts` | Backend | Update CREDIT_COSTS map with new values |
-| `supabase/functions/storefront-generate-asset/index.ts` | Backend | Update MODEL_COSTS map with new values |
+### Portal Benefits
+- **Escapes `overflow-hidden`**: Renders directly on `document.body`
+- **Proper z-index stacking**: Uses `z-[9999]` on body layer
+- **Accurate positioning**: Uses `getBoundingClientRect()` for pixel-perfect placement
+- **Click-outside handling**: Invisible backdrop catches all outside clicks
 
----
-
-## Expected Results
-
-**After Part 1 (Menu Fix)**:
-- Solid opaque dropdown backgrounds
-- All menu items clickable without event leakage
-- Proper z-index stacking above all content
-
-**After Part 2 (Speech-to-Text)**:
-- Animated waveform microphone button
-- Click to start voice input
-- Transcribed text appears in input field
-- Visual feedback during listening
-
-**After Part 3 (Fair Pricing)**:
-- 8x reduction in perceived cost
-- Users feel credits are valuable and generous
-- Healthier profit margins aligned with API costs
+### Expected Results
+1. Model dropdown menu will render above all content, fully visible
+2. Plus (attachment) menu will render above all content, fully visible
+3. Both menus will be scrollable if content exceeds max-height
+4. Selecting a model will route to the appropriate AI backend (Gemini Flash for cheap, GPT-5.2 for reasoning)
