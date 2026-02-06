@@ -903,30 +903,48 @@ export type Database = {
           category: string
           content: string
           created_at: string | null
+          discord_sent: boolean | null
+          feature_tags: string[] | null
           id: string
           is_pinned: boolean | null
+          media_type: string | null
+          media_url: string | null
           title: string
           updated_at: string | null
+          version_number: string | null
+          version_type: string | null
         }
         Insert: {
           author_id: string
           category?: string
           content: string
           created_at?: string | null
+          discord_sent?: boolean | null
+          feature_tags?: string[] | null
           id?: string
           is_pinned?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           title: string
           updated_at?: string | null
+          version_number?: string | null
+          version_type?: string | null
         }
         Update: {
           author_id?: string
           category?: string
           content?: string
           created_at?: string | null
+          discord_sent?: boolean | null
+          feature_tags?: string[] | null
           id?: string
           is_pinned?: boolean | null
+          media_type?: string | null
+          media_url?: string | null
           title?: string
           updated_at?: string | null
+          version_number?: string | null
+          version_type?: string | null
         }
         Relationships: [
           {
@@ -2367,6 +2385,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vibecoder_heal_logs: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          error_message: string | null
+          error_type: string
+          healing_source: string | null
+          id: string
+          project_id: string | null
+          success: boolean | null
+          user_id: string
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          error_type: string
+          healing_source?: string | null
+          id?: string
+          project_id?: string | null
+          success?: boolean | null
+          user_id: string
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          error_type?: string
+          healing_source?: string | null
+          id?: string
+          project_id?: string | null
+          success?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vibecoder_heal_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "vibecoder_projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vibecoder_messages: {
         Row: {

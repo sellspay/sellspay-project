@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,6 +23,7 @@ const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
  * 2. Has the COMPLETE failed code (not truncated)
  * 3. Doesn't restart the full pipeline
  * 4. Uses same model as Builder for consistency
+ * 5. Logs healing stats for "AI squashing bugs" metrics
  */
 
 interface HealRequest {
@@ -30,6 +32,7 @@ interface HealRequest {
   styleProfile?: string;
   architectPlan?: Record<string, unknown>;
   userId: string;
+  projectId?: string;
 }
 
 const HEALING_SYSTEM_PROMPT = `You are the SellsPay Emergency Code Doctor.
@@ -70,6 +73,11 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Initialize Supabase client for logging
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
   try {
     const { 
       runtimeError, 
@@ -77,7 +85,15 @@ serve(async (req: Request) => {
       styleProfile,
       architectPlan,
       userId,
+      projectId,
     } = await req.json() as HealRequest;
+
+    if (!runtimeError || !failedCode) {
+      return new Response(
+        JSON.stringify({ error: "Missing runtimeError or failedCode" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!runtimeError || !failedCode) {
       return new Response(
@@ -142,6 +158,29 @@ ${styleProfile ? `Style Profile: ${styleProfile} (preserve this aesthetic)` : ''
       }
       
       throw new Error(`AI gateway error: ${response.status}`);
+    }
+
+    // Log successful healing attempt initiation
+    const errorType = runtimeError.includes("Cannot read") ? "undefined_access" :
+                     runtimeError.includes("is not defined") ? "missing_import" :
+                     runtimeError.includes("hook") ? "hook_violation" :
+                     runtimeError.includes("key") ? "missing_key" :
+                     "syntax_error";
+
+    // Log the healing attempt
+    try {
+      await supabase.from("vibecoder_heal_logs").insert({
+        project_id: projectId || null,
+        user_id: userId,
+        error_type: errorType,
+        error_message: runtimeError.substring(0, 500),
+        healing_source: "frontend",
+        success: true, // Will be updated by frontend if it fails
+        attempts: 1,
+      });
+    } catch (logError) {
+      console.error("Failed to log healing stat:", logError);
+      // Don't fail the request if logging fails
     }
 
     // Stream the response back to the client
