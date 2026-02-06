@@ -1,172 +1,235 @@
 
-# Three-Step UI Enhancement Plan
+# Creators Discovery Hub - Complete Rebuild
 
 ## Overview
 
-This plan implements three key improvements to the AI Builder:
+Transform the basic Creators listing into a premium **Discovery Hub** that helps buyers find creators by niche (Day Traders, 3D Artists, Notion Architects, etc.). This includes:
 
-1. **PageNavigator Component** - Replace the static URL bar with a functional page selector dropdown
-2. **TextArea Max Height Fix** - Enforce a strict 6-line limit (~160px) with proper scroll behavior  
-3. **Real-Time Speech Transcription** - Add `interimResults` to show text while speaking (instead of waiting for silence)
+1. **Hero Search Section** - Bold header with "Find your favorite Creator" and centered search bar
+2. **Category Navigation Bar** - 12 industry-standard categories that are sticky and horizontally scrollable
+3. **Redesigned Creator Cards** - Cover banners, self-labeled tags, niche labels, and stats footer
+4. **Database Schema Update** - Add `creator_tags` column for self-labeling
 
 ---
 
-## Step 1: PageNavigator Component
+## Database Changes
 
-### New File: `src/components/ai-builder/PageNavigator.tsx`
+### Add `creator_tags` Column to Profiles
 
-Create a dropdown component that replaces the static `/ai-builder` URL pill:
+A new `text[]` column to store creator-selected categories:
 
-**Features:**
-- Green "Live" indicator dot
-- Shows current page path (e.g., "Home", "/products")
-- Dropdown with all site pages (Home, Products, Login, Contact)
-- "Create New Page" quick action at bottom
-- Click-outside to close behavior
+```sql
+ALTER TABLE profiles ADD COLUMN creator_tags text[] DEFAULT '{}';
 
-**Props:**
+-- Update the public_profiles view to include creator_tags
+CREATE OR REPLACE VIEW public_profiles AS
+SELECT 
+  -- existing columns...
+  p.creator_tags,
+  EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = p.user_id AND ur.role = 'owner') as is_owner
+FROM profiles p;
+```
+
+**Categories to support:**
+- `software` - Software & SaaS
+- `finance` - Trading & Finance
+- `business` - E-commerce & Biz
+- `design` - Design & Art
+- `3d` - 3D & VFX
+- `video` - Video & LUTs
+- `education` - Courses & Tutorials
+- `productivity` - Notion & Templates
+- `audio` - Audio & Music
+- `gaming` - Gaming & Mods
+- `lifestyle` - Fitness & Lifestyle
+
+---
+
+## Component Architecture
+
+### Category Configuration (Shared)
+
 ```typescript
-interface PageNavigatorProps {
-  activePage?: string;
-  onPageChange?: (pageId: string) => void;
+const CREATOR_CATEGORIES = [
+  { id: "all", label: "All Creators", icon: Zap },
+  { id: "software", label: "Software & SaaS", icon: Code2 },
+  { id: "finance", label: "Trading & Finance", icon: TrendingUp },
+  { id: "business", label: "E-commerce & Biz", icon: Briefcase },
+  { id: "design", label: "Design & Art", icon: PenTool },
+  { id: "3d", label: "3D & VFX", icon: Box },
+  { id: "video", label: "Video & LUTs", icon: Video },
+  { id: "education", label: "Courses & Tutorials", icon: BookOpen },
+  { id: "productivity", label: "Notion & Templates", icon: Layers },
+  { id: "audio", label: "Audio & Music", icon: Music },
+  { id: "gaming", label: "Gaming & Mods", icon: Gamepad2 },
+  { id: "lifestyle", label: "Fitness & Lifestyle", icon: Smile },
+];
+```
+
+---
+
+## Page Layout
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│                                                                     │
+│                    ✦ Find your favorite Creator                     │
+│                                                                     │
+│      From Day Traders to 3D Artists—discover the pros powering      │
+│                      the digital economy.                           │
+│                                                                     │
+│               ┌──────────────────────────────────────┐              │
+│               │ 🔍 Search by name, niche, or handle  │              │
+│               └──────────────────────────────────────┘              │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│  [All] [Software] [Trading] [E-comm] [Design] [3D] [Video] [→ More] │  ← Sticky/Scrollable
+└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                                                                     │
+│  Showing 5 results for "All Creators"                               │
+│                                                                     │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
+│  │ [Cover Img] │  │ [Cover Img] │  │ [Cover Img] │  │ [Cover Img] │ │
+│  │ ┌───────┐   │  │ ┌───────┐   │  │ ┌───────┐   │  │ ┌───────┐   │ │
+│  │ │Avatar │ ✓ │  │ │Avatar │ ✓ │  │ │Avatar │   │  │ │Avatar │ ✓ │ │
+│  │ └───────┘   │  │ └───────┘   │  │ └───────┘   │  │ └───────┘   │ │
+│  │ Name [Owner]│  │ Name        │  │ Name        │  │ Name        │ │
+│  │ Day Trading │  │ VFX Artist  │  │ Productivity│  │ Fitness     │ │
+│  │ @handle     │  │ @handle     │  │ @handle     │  │ @handle     │ │
+│  │             │  │             │  │             │  │             │ │
+│  │ Bio text... │  │ Bio text... │  │ Bio text... │  │ Bio text... │ │
+│  │             │  │             │  │             │  │             │ │
+│  │ [finance]   │  │ [3d][video] │  │ [productivity│ │ [lifestyle] │ │
+│  │ [software]  │  │ [design]    │  │ [design]    │  │ [education] │ │
+│  │             │  │             │  │             │  │             │ │
+│  │ 5p  12k  4.9│  │ 24p 1.2k 4.9│  │ 115p 8.5k 4.7│ │ 3p  900 5.0 │ │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘ │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## CreatorCard Component Details
+
+### Card Structure
+
+```text
+┌──────────────────────────────────────┐
+│ ████████ COVER BANNER ████████████   │  ← h-24, gradient overlay
+│ ██████████████████████████████████   │
+├──────────────────────────────────────┤
+│  ┌────┐                              │
+│  │ AV │ ✓                [View Shop] │  ← Avatar + Verified + CTA
+│  └────┘                              │
+│                                      │
+│  **Creator Name** [Owner Badge]      │  ← Name + optional owner badge
+│  Day Trading                         │  ← Niche subtitle
+│  @handle                             │  ← Username in gradient text
+│                                      │
+│  "Full-time Day Trader. Selling..."  │  ← Bio (2 lines max)
+│                                      │
+│  ┌─────────┐ ┌─────────┐             │
+│  │ 📈 finance│ │ 💻 software│          │  ← Self-labeled tags
+│  └─────────┘ └─────────┘             │
+│                                      │
+├──────────────────────────────────────┤
+│  📦 5 Prods   |   🔥 12k Sales   |   ⭐ 4.9  │  ← Stats footer
+└──────────────────────────────────────┘
+```
+
+### Visual Styling
+
+- **Cover Banner**: Gradient overlay (from-black/60 to-transparent) for text readability
+- **Avatar**: w-16 h-16 with ring-4 ring-zinc-900, positioned to overlap the banner
+- **Verified Badge**: Blue checkmark, rainbow animated for owner role
+- **Owner Badge**: Orange gradient pill "Admin" 
+- **Tag Pills**: Zinc-800 with category icon and lowercase text
+- **Stats Footer**: Zinc-800/50 background with Package/Flame/Star icons
+
+---
+
+## Data Fetching Strategy
+
+### Enhanced Creator Interface
+
+```typescript
+interface Creator {
+  id: string;
+  user_id: string | null;
+  username: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  bio: string | null;
+  verified: boolean | null;
+  isOwner: boolean;
+  // NEW FIELDS
+  creator_tags: string[];
+  niche: string; // Derived from primary tag or product types
+  stats: {
+    productCount: number;
+    salesCount: string;
+    avgRating: number;
+  };
 }
 ```
 
-**Mock Pages (for UI demo):**
-```text
-┌──────────────────────────────────────┐
-│  ● Home                        ▼     │  ← Trigger
-└──────────────────────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────┐
-│  Site Pages                          │
-├──────────────────────────────────────┤
-│  🏠 Home                         ✓   │
-│  🛍️ Products                         │
-│  👤 Login                            │
-│  ✉️ Contact                          │
-├──────────────────────────────────────┤
-│  + Create New Page                   │
-└──────────────────────────────────────┘
-```
+### Fallback for Missing Tags
 
-### Modify: `src/components/ai-builder/VibecoderHeader.tsx`
+Until creators self-label, derive categories from their product types:
 
-**Changes to LEFT section:**
-- Remove the project selector button (lines 98-107)
-- Remove the separator line (line 96)
-- Keep only the "Exit" button
-
-**Changes to RIGHT section:**
-- Replace the static Address Bar (lines 194-204) with `<PageNavigator />`
-- Keep the Refresh button functionality within PageNavigator
-
-**Before:**
-```text
-[ ← Exit ] | [ 🟣 Anime Store ▼ ] [Live]     [Preview|Code|Image|Video]     [●/ai-builder ↻] [Publish] | [👤]
-```
-
-**After:**
-```text
-[ ← Exit ]                                   [Preview|Code|Image|Video]     [● Home ▼ ↻] [Publish] | [👤]
-```
-
----
-
-## Step 2: TextArea Max Height Fix
-
-### Modify: `src/components/ai-builder/ChatInputBar.tsx`
-
-**Current Issue:** 
-The textarea auto-resize logic caps at 200px but doesn't enforce scrollbar behavior precisely.
-
-**Solution:**
-Update the `useEffect` resize handler (lines 317-323) to:
-
-1. Set `maxHeight` constant to `160px` (~6 lines)
-2. Dynamically toggle `overflowY` between `hidden` and `auto` based on content
-3. Ensure `minHeight` stays at 36-44px for single-line appearance
-
-**Updated Logic:**
 ```typescript
-useEffect(() => {
-  const textarea = textareaRef.current;
-  if (textarea) {
-    // Reset to measure true scrollHeight
-    textarea.style.height = 'auto';
-    
-    const MAX_HEIGHT = 160; // ~6 lines
-    const newHeight = Math.min(textarea.scrollHeight, MAX_HEIGHT);
-    textarea.style.height = `${newHeight}px`;
-    
-    // Enable scroll only when hitting the limit
-    textarea.style.overflowY = textarea.scrollHeight > MAX_HEIGHT ? 'auto' : 'hidden';
-  }
-}, [value]);
-```
-
-**CSS Changes to textarea (line 625-630):**
-- Change `max-h-[200px]` to `max-h-[160px]`
-- Add `scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent`
-
----
-
-## Step 3: Real-Time Speech Transcription
-
-### Modify: `src/components/ai-builder/ChatInputBar.tsx`
-
-**Current Issue:**
-The speech recognition already has `interimResults: true` (line 272), but the `onresult` handler only appends `finalTranscript` (lines 289-291). It ignores `interimTranscript`, causing the delay.
-
-**Solution:**
-Track interim text separately and show it live in the input while speaking:
-
-1. Add `promptBeforeSpeech` ref to remember text before mic started
-2. Track both `finalTranscript` and `interimTranscript` in `onresult`
-3. Update the input value with: `baseText + finalTranscript + interimTranscript`
-
-**Updated `onresult` Handler:**
-```typescript
-// Add ref before toggleSpeechRecognition
-const promptBeforeSpeechRef = useRef("");
-
-const toggleSpeechRecognition = useCallback(() => {
-  // ... existing SpeechRecognition checks ...
-
-  // Save current text before starting
-  promptBeforeSpeechRef.current = value;
-
-  recognition.onresult = (event: SpeechRecognitionEvent) => {
-    let finalTranscript = '';
-    let interimTranscript = '';
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript;
-      if (event.results[i].isFinal) {
-        finalTranscript += transcript;
-      } else {
-        interimTranscript += transcript;
-      }
-    }
-
-    // UPDATE IMMEDIATELY with both final AND interim text
-    const spacing = promptBeforeSpeechRef.current ? ' ' : '';
-    onChange(promptBeforeSpeechRef.current + spacing + finalTranscript + interimTranscript);
-    
-    // Update base text when final transcript is confirmed
-    if (finalTranscript) {
-      promptBeforeSpeechRef.current += spacing + finalTranscript;
-    }
+// Derive niche from products if no creator_tags
+const deriveTags = async (creatorId: string): Promise<string[]> => {
+  const { data: products } = await supabase
+    .from('products')
+    .select('product_type')
+    .eq('creator_id', creatorId)
+    .eq('status', 'published');
+  
+  // Map product_type to category
+  const mapping: Record<string, string> = {
+    'preset': 'video',
+    'lut': 'video',
+    'sfx': 'audio',
+    'music': 'audio',
+    'template': 'productivity',
+    'overlay': 'video',
+    'tutorial': 'education',
+    'project_file': 'video',
+    'digital_art': 'design',
+    '3d_artist': '3d',
   };
-
-  // ... rest of recognition setup ...
-}, [isListening, value, onChange]);
+  
+  const tags = [...new Set(products?.map(p => mapping[p.product_type] || 'design'))];
+  return tags.slice(0, 3);
+};
 ```
 
-**Visual Feedback Enhancements:**
-- Placeholder changes to "Listening..." with pulse animation when active
-- Input text styled with subtle violet tint during transcription
+---
+
+## Filter & Search Logic
+
+```typescript
+const filteredCreators = creators.filter(creator => {
+  // 1. Category match
+  const matchesCategory = activeCategory === "all" || 
+    creator.creator_tags.includes(activeCategory);
+  
+  // 2. Search match (name, handle, bio, niche)
+  const q = searchQuery.toLowerCase();
+  const matchesSearch = !searchQuery || 
+    creator.full_name?.toLowerCase().includes(q) ||
+    creator.username?.toLowerCase().includes(q) ||
+    creator.bio?.toLowerCase().includes(q) ||
+    creator.niche?.toLowerCase().includes(q);
+  
+  return matchesCategory && matchesSearch;
+});
+```
 
 ---
 
@@ -174,27 +237,43 @@ const toggleSpeechRecognition = useCallback(() => {
 
 | File | Action | Changes |
 |------|--------|---------|
-| `src/components/ai-builder/PageNavigator.tsx` | CREATE | New page selector dropdown component |
-| `src/components/ai-builder/VibecoderHeader.tsx` | MODIFY | Remove project selector from left, add PageNavigator to right |
-| `src/components/ai-builder/ChatInputBar.tsx` | MODIFY | Fix 6-line max height, add real-time speech transcription |
-| `src/components/ai-builder/index.ts` | MODIFY | Export PageNavigator |
+| `src/pages/Creators.tsx` | REWRITE | Complete rebuild with Hero, Category Nav, and CreatorCard |
+| Database Migration | CREATE | Add `creator_tags` column to profiles table |
 
 ---
 
-## Expected Results
+## Key Features
 
-### Step 1 - PageNavigator:
-- Clean left side with just "Exit" button
-- Functional page dropdown on the right showing "Home" with green dot
-- Clicking reveals page list with checkmark on active page
-- Refresh button integrated into the navigator
+### 1. Hero Search Section
+- Large headline: "Find your favorite Creator"
+- Subtext with industry examples
+- Centered search bar with glass effect
+- Animated background orbs (matching Products page)
 
-### Step 2 - TextArea Fix:
-- Textarea grows smoothly for lines 1-6
-- At line 7+, scrollbar appears and height locks at 160px
-- No layout jumping or jittering
+### 2. Sticky Category Navigation
+- Horizontally scrollable on mobile
+- 12 industry categories with icons
+- Active state: white bg, black text, glow effect
+- Sticks to top on scroll (sticky top-16)
 
-### Step 3 - Real-Time Speech:
-- Words appear INSTANTLY as you speak (no waiting for pauses)
-- If you typed "Create a button and " then click mic and say "make it blue", result is "Create a button and make it blue"
-- Mic icon pulses red with waveform animation while active
+### 3. Rich Creator Cards
+- Cover banner with gradient overlay
+- Avatar overlapping banner edge
+- Verified + Owner badges
+- Niche label (primary category)
+- Self-labeled tag pills with icons
+- Stats footer: Products, Sales, Rating
+
+### 4. Smart Fallbacks
+- Derive categories from product types if no self-labels
+- Show "Creator" as default niche
+- Use banner_url or gradient placeholder for covers
+
+---
+
+## Future Enhancements (Not in This Plan)
+
+- Settings page for creators to self-select categories
+- "Top Creators" featured section at the top
+- Sorting options (by sales, by followers, by rating)
+- "Following" filter for logged-in users
