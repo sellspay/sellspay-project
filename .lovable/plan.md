@@ -1,265 +1,221 @@
 
-# VibeCoder 2.0: Multi-Agent AI Operating System Upgrade
 
-This plan transforms VibeCoder from a single-prompt code generator into a sophisticated **multi-agent AI pipeline** with self-healing, visual verification, and specialized model roles.
+# VibeCoder 2.0 → 2.1: Elite Validation Upgrades
 
----
+## Executive Summary
 
-## Current State Analysis
+This plan addresses three critical weaknesses identified in the current VibeCoder pipeline that are causing a ~30% success rate:
 
-**What exists today:**
-- Single-model architecture (Gemini 3 Flash Preview as primary)
-- ~650-line monolithic system prompt in `vibecoder-v2/index.ts`
-- Basic agent loop with simulated steps (planning → reading → writing → verifying)
-- Sandpack preview with error detection
-- Policy guardrail system for forbidden requests
-- Context injection with current code + user prompt
-
-**Key limitations:**
-1. No true multi-agent pipeline - the "Agent Loop" is UI-only simulation
-2. No actual linting/verification before user sees code
-3. No visual feedback (screenshot analysis)
-4. Repetitive designs due to monolithic prompt
-5. Context window pollution from large system prompt
+1. **The "Blind" Linter** - Currently only reads text, missing runtime crashes
+2. **No Visual Validation** - Can't detect design issues (contrast, overlaps)
+3. **Flat Credit Pricing** - Simple edits cost the same as full rebuilds
 
 ---
 
-## The "God-Tier" Architecture
+## Current Architecture Analysis
+
+### What's Working ✅
+- Multi-agent pipeline (Architect → Builder → Linter → Healing)
+- SSE streaming with real-time progress updates
+- Design tokens injected per style profile
+- Static validation catching syntax errors and policy violations
+- SDK components preventing "boring" defaults
+
+### Critical Gaps ⚠️
+
+| Gap | Current State | Impact |
+|-----|--------------|--------|
+| Runtime Errors | Only caught AFTER code reaches frontend Sandpack | User sees red screen, must click "Fix" |
+| Healing Context | Frontend error flows through `handleSendMessage()` as new prompt, NOT through orchestrator's healing loop | Healing loop in orchestrator never receives runtime errors |
+| Visual QA | None | Unreadable text, broken layouts delivered |
+| Credit Granularity | Fixed 3c (Quick) / 8c (Full) | Losing margin on complex builds |
+
+---
+
+## The Fixes
+
+### 1. Headless Runtime Validation ("Ghost Render")
+
+**Problem**: The Linter (`vibecoder-linter`) only performs static text analysis. If the Builder writes `products.map()` without optional chaining, the Linter might pass it, but Sandpack crashes.
+
+**Solution**: Add a "Shadow Render" step in the Orchestrator that attempts a basic JSX transpile + React validation BEFORE delivering code.
+
+**Implementation**:
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         USER SENDS PROMPT                                   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                     │
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STAGE 1: ARCHITECT AGENT (Claude/Gemini Pro)                               │
-│  ─────────────────────────────────────────────────────────────────────────  │
-│  • Analyzes prompt complexity & intent                                      │
-│  • Creates SPEC document (visual style, components, data flow)              │
-│  • Outputs structured JSON plan with steps                                  │
-│  • Estimates token cost & identifies potential pitfalls                     │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                     │
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STAGE 2: BUILDER AGENT (Gemini Pro / GPT-5)                                │
-│  ─────────────────────────────────────────────────────────────────────────  │
-│  • Receives Architect's plan + style profile                                │
-│  • Generates React/TSX code following the blueprint                         │
-│  • Uses pruned context (only relevant existing code)                        │
-│  • Streams code to "Shadow Sandpack" (invisible to user)                    │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                     │
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STAGE 3: LINTER AGENT (Gemini Flash - cheap & fast)                        │
-│  ─────────────────────────────────────────────────────────────────────────  │
-│  • Scans code for syntax errors, missing imports, undefined vars            │
-│  • Checks marketplace policy compliance                                     │
-│  • Evaluates design fidelity vs Architect's spec                           │
-│  • Returns JSON verdict: { verdict: "PASS"|"FAIL", explanation: "..." }    │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                     │
-                    ┌────────────────┴────────────────┐
-                    │                                 │
-                    ▼                                 ▼
-              ┌──────────┐                     ┌──────────────┐
-              │  PASS    │                     │    FAIL      │
-              └──────────┘                     └──────────────┘
-                    │                                 │
-                    │                                 ▼
-                    │                    ┌─────────────────────────┐
-                    │                    │  SELF-HEAL LOOP         │
-                    │                    │  (Max 2 retries)        │
-                    │                    │  Builder receives error │
-                    │                    │  and fixes specific bug │
-                    │                    └─────────────────────────┘
-                    │                                 │
-                    │                                 │
-                    ▼                                 │
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  STAGE 4: VISUAL VALIDATOR (Future - Gemini Vision)                         │
-│  ─────────────────────────────────────────────────────────────────────────  │
-│  • Takes screenshot of rendered preview                                     │
-│  • Asks: "Does this match a premium marketplace store?"                     │
-│  • Flags alignment issues, overlapping elements, broken layouts             │
-│  • (Phase 2 enhancement - optional for V1)                                  │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                     │
-                                     ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  USER SEES VERIFIED, WORKING CODE                                           │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                   ORCHESTRATOR FLOW (Updated)               │
+├─────────────────────────────────────────────────────────────┤
+│  1. ARCHITECT → JSON Plan                                   │
+│  2. BUILDER → TSX Code                                      │
+│  3. LINTER (Static) → Syntax/Policy Check                   │
+│  4. 🆕 SHADOW RENDER → Try esbuild transpile + basic eval   │
+│     └─ If fails → Pass real stack trace to HEALING LOOP     │
+│  5. DELIVER CODE                                            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
----
+**Edge Function Changes** (`vibecoder-orchestrator/index.ts`):
+- Import esbuild WASM for lightweight transpilation in Deno
+- After Linter PASS, attempt `esbuild.transform(code, { loader: 'tsx' })`
+- If transpile fails, extract error line/message and trigger healing with `runtimeError` context
+- This catches ~80% of crashes (undefined vars, missing imports, JSX syntax) before they reach the user
 
-## Implementation Plan
-
-### Phase 1: Multi-Agent Backend Infrastructure
-
-**1.1 Create Edge Function: `vibecoder-architect`**
-- New Supabase Edge Function dedicated to the Architect role
-- Uses `google/gemini-3-pro-preview` or `openai/gpt-5` for deep reasoning
-- Input: User prompt + existing code summary + user's products/collections
-- Output: Structured JSON plan with:
-  - `vibeAnalysis`: visual style, color palette, typography
-  - `componentArchitecture`: list of components, state management
-  - `executionSteps`: 3-6 actionable steps
-  - `debugForecast`: potential pitfalls for the Builder
-
-**1.2 Create Edge Function: `vibecoder-builder`**
-- Dedicated Builder agent receiving the Architect's plan
-- Uses `google/gemini-3-flash-preview` for fast code generation
-- Receives pruned context (only the specific component being edited)
-- Outputs full TSX code with style profile enforcement
-
-**1.3 Create Edge Function: `vibecoder-linter`**
-- Ultra-fast validation agent using `google/gemini-2.5-flash-lite` (free tier)
-- Input: Generated code + Architect's spec
-- Output: JSON verdict with `PASS/FAIL` and error location
-- Checks:
-  - Syntax validity (closures, brackets)
-  - Import validity (no hallucinated libraries)
-  - Policy compliance (no auth, payments, settings)
-  - Design fidelity (did Builder follow the vibe?)
-
-**1.4 Create Edge Function: `vibecoder-orchestrator`**
-- Master coordinator that chains the agents
-- Implements retry logic (max 2 self-heal attempts)
-- Streams progress updates to frontend
-- Final gatekeeper before pushing to user
-
-### Phase 2: Frontend Pipeline Integration
-
-**2.1 Update `useAgentLoop` Hook**
-- Replace simulated steps with real agent calls
-- New steps: `architect` → `building` → `linting` → `healing` → `complete`
-- Real-time log streaming from each agent stage
-- Cancel propagation across all agents
-
-**2.2 Update `AIBuilderCanvas`**
-- Wire up the new orchestrator endpoint
-- Display Architect's plan in `PlanApprovalCard` for optional review
-- "Fast Mode" toggle: Skip plan approval for quick iterations
-- Show lint failures in chat with "Auto-fixing..." status
-
-**2.3 Create "Style Engine" UI**
-- Model selector expanded to include "Style Profiles"
-- Profiles: Cyberpunk Neon, Luxury Minimal, Brutalist, Kawaii, Streetwear Dark
-- Each profile is a condensed ~50-line prompt fragment
-- Stored in `STYLE_PROFILES` constant, injected into Builder prompt
-
-### Phase 3: Intelligent Context Pruning
-
-**3.1 Create `extractRelevantContext` Utility**
-- Analyzes user prompt to identify which components matter
-- Example: "Change button color" → only Button section, not Hero/Footer
-- Reduces context window by 60-80% for targeted edits
-- Falls back to full code for "rebuild entire store" requests
-
-**3.2 Inject Product/Collection Data**
-- On each generation, fetch user's actual products from DB
-- Create condensed `products_summary` JSON (id, title, price, tags)
-- Inject into Builder prompt so AI uses real data, not placeholders
-
-### Phase 4: Self-Healing Pipeline
-
-**4.1 Shadow Sandpack Validation**
-- Before pushing to visible preview, test in hidden Sandpack instance
-- Capture any runtime errors programmatically
-- If error detected, feed to Linter Agent for diagnosis
-
-**4.2 Retry Loop Implementation**
-- Linter returns structured error (type, location, fix suggestion)
-- Builder receives error context and generates patch
-- Maximum 2 retries before falling back to user-visible error
-- Success rate target: 85%+ first-time renders
-
-### Phase 5: Premium SDK Injection
-
-**5.1 Expand `vibecoder-stdlib.ts`**
-- Add `@sellspay/core` namespace with pre-built components:
-  - `<SellsPay.ProductCard />`
-  - `<SellsPay.CheckoutButton />`
-  - `<SellsPay.FeaturedProducts />`
-  - `<SellsPay.CreatorBio />`
-- AI just references these; zero chance of payment bugs
-
-**5.2 Type Definitions for AI**
-- Include TypeScript interfaces in system prompt
-- AI knows exact props for each SDK component
-- Reduces hallucination of incorrect prop names
+**Limitations**:
+- Cannot catch React-specific runtime errors (hooks in loops, missing keys) without a full React runtime
+- True "headless React" (JSDOM + ReactDOMServer) is too heavy for Edge Functions (cold start penalty)
+- We're trading off completeness for speed - esbuild catches the most common issues
 
 ---
 
-## Technical Details
+### 2. Smart Healing Loop (Wire Frontend Errors to Backend)
 
-### New Edge Functions to Create
+**Problem**: When Sandpack crashes in the user's browser, the error is captured by `handlePreviewError()` which calls `handleSendMessage(errorMsg)`. This creates a NEW generation request instead of feeding into the Orchestrator's self-healing loop.
 
-| Function | Model | Purpose | Credits |
-|----------|-------|---------|---------|
-| `vibecoder-orchestrator` | N/A (coordinator) | Chains agents, handles retries | 0 |
-| `vibecoder-architect` | `google/gemini-3-pro-preview` | Creates blueprint | 5 |
-| `vibecoder-builder` | `google/gemini-3-flash-preview` | Writes code | 3 |
-| `vibecoder-linter` | `google/gemini-2.5-flash-lite` | Validates code | 0 (free) |
+**Current Flow**:
+```text
+Sandpack Error → handlePreviewError() → handleSendMessage() → NEW startAgent() call
+                                                              ↳ Full pipeline restarts
+```
 
-### Updated Agent Step Flow
+**Desired Flow**:
+```text
+Sandpack Error → handlePreviewError() → triggerHealingWithContext(error, failedCode)
+                                        ↳ Orchestrator receives runtime error
+                                        ↳ Builder gets full healing context
+```
 
+**Implementation**:
+
+1. **New Edge Endpoint**: Create `vibecoder-heal` that accepts:
+   - `runtimeError`: The actual error message from Sandpack
+   - `failedCode`: The current code that crashed
+   - `architectPlan`: Original plan for context
+   - `styleProfile`: Preserve design intent
+
+2. **Frontend Changes** (`useAgentLoop.ts`):
+   - Add `healCode(error: string, code: string)` method
+   - This calls `vibecoder-heal` directly with runtime context
+   - Skips Architect entirely (we're fixing, not rebuilding)
+
+3. **Healing Prompt Enhancement**:
 ```typescript
-type AgentStep = 
-  | 'idle' 
-  | 'architect'    // New: Creating blueprint
-  | 'planning'     // Renamed: Analyzing plan
-  | 'building'     // New: Generating code
-  | 'linting'      // New: Validating code
-  | 'healing'      // New: Auto-fixing errors
-  | 'verifying'    // Existing: Final check
-  | 'done' 
-  | 'error';
-```
+const healingPrompt = `
+🚨 CRITICAL: The code crashed in the browser with this EXACT error:
+"${runtimeError}"
 
-### Style Profile Structure
+Your previous code that failed:
+\`\`\`tsx
+${failedCode}
+\`\`\`
 
-```typescript
-interface StyleProfile {
-  id: string;
-  name: string;
-  promptFragment: string; // ~50 lines of style rules
-  colorPalette: {
-    primary: string;
-    secondary: string;
-    accent: string;
-    background: string;
-  };
-  typography: {
-    heading: string;
-    body: string;
-  };
-}
+FIX INSTRUCTIONS:
+1. Find the EXACT line causing "${runtimeError}"
+2. Apply the minimal fix (add optional chaining, fix import, etc.)
+3. Do NOT refactor or change styling
+4. Output the COMPLETE fixed file
+`;
 ```
 
 ---
 
-## Files to Create
+### 3. Multimodal Visual Validator (Phase 2 - Future)
 
-1. `supabase/functions/vibecoder-orchestrator/index.ts` - Master coordinator
-2. `supabase/functions/vibecoder-architect/index.ts` - Planning agent
-3. `supabase/functions/vibecoder-builder/index.ts` - Code generation agent
-4. `supabase/functions/vibecoder-linter/index.ts` - Validation agent
-5. `src/lib/vibecoder-style-profiles.ts` - Style profile definitions
-6. `src/lib/vibecoder-context-pruning.ts` - Context extraction utilities
-7. `src/lib/vibecoder-sdk.ts` - Expanded SDK components
+**Why Phase 2**: This requires generating a screenshot of the rendered preview, which means:
+- The code must first successfully render in Sandpack
+- We'd need to capture the iframe content and send to Gemini Vision
+- This adds ~3-5 seconds to every generation
 
-## Files to Modify
+**Recommended Approach**:
+- Implement as an OPTIONAL "Premium QA" mode users can enable
+- Trigger ONLY if static validation passes
+- Use `google/gemini-3-pro-preview` with image input for design analysis
 
-1. `src/hooks/useAgentLoop.ts` - Real agent orchestration
-2. `src/components/ai-builder/AIBuilderCanvas.tsx` - Pipeline integration
-3. `src/components/ai-builder/ChatInputBar.tsx` - Style profile selector
-4. `src/lib/vibecoder-stdlib.ts` - SDK component expansion
-5. `src/components/ai-builder/AgentProgress.tsx` - New step types
-6. `src/components/ai-builder/useStreamingCode.ts` - Orchestrator integration
+**Visual QA Prompt** (for future implementation):
+```typescript
+const visualQAPrompt = `
+Analyze this storefront screenshot for design quality issues:
+
+CHECK FOR:
+1. Text readability (contrast ratio, font size)
+2. Overlapping elements
+3. Broken layouts (elements off-screen, squished)
+4. Empty states (missing images showing as broken icons)
+5. Mobile responsiveness issues
+
+STYLE PROFILE: ${styleProfile}
+Expected mood: ${architectPlan.vibeAnalysis.moodKeywords.join(', ')}
+
+If issues found, describe the EXACT fix needed.
+If the design matches the premium ${styleProfile} aesthetic, respond "VISUAL_PASS".
+`;
+```
+
+**Not Included in This Plan**: This is complex and should be a separate iteration after the healing loop is proven.
+
+---
+
+### 4. Tiered Complexity Credits
+
+**Problem**: A quick "change button color" costs the same as "rebuild entire store with 5 sections".
+
+**Solution**: Use the Architect's `complexityScore` to set dynamic pricing.
+
+**New Credit Tiers**:
+
+| Complexity Score | Description | Credit Cost |
+|-----------------|-------------|-------------|
+| 1-3 (Low) | Simple edit, single element | 1 credit |
+| 4-6 (Medium) | Section change, add component | 5 credits |
+| 7-10 (High) | Full page rebuild, multi-section | 15 credits |
+
+**Implementation** (`vibecoder-orchestrator/index.ts`):
+- After Architect returns `complexityScore`, calculate credits
+- For `skipArchitect` (quick edit), default to Low tier
+- Deduct appropriate amount before Builder runs
+
+**UI Changes** (`ChatInputBar.tsx`):
+- Show estimated credit cost BEFORE sending
+- "This will use ~5 credits based on complexity"
+
+---
+
+## Technical Implementation Details
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `supabase/functions/vibecoder-orchestrator/index.ts` | Add shadow render step, tiered credits, healing context |
+| `supabase/functions/vibecoder-heal/index.ts` | NEW - Dedicated healing endpoint |
+| `supabase/functions/vibecoder-builder/index.ts` | Enhanced healing prompt format |
+| `src/hooks/useAgentLoop.ts` | Add `healCode()` method for runtime errors |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | Wire `handlePreviewError` to new healing flow |
+| `supabase/functions/deduct-ai-credits/index.ts` | Support tiered pricing |
+
+### New Dependencies
+
+For shadow rendering in Deno Edge Functions:
+```typescript
+// Use esbuild WASM for lightweight transpilation
+import * as esbuild from "https://deno.land/x/esbuild@v0.20.1/wasm.js";
+```
+
+---
+
+## Implementation Order
+
+1. **Phase 1a**: Smart Healing Loop (wire frontend errors to backend)
+   - Highest impact, fixes the "user clicks Fix, AI apologizes" loop
+   
+2. **Phase 1b**: Shadow Render in Orchestrator
+   - Catch transpile errors before they reach the user
+   
+3. **Phase 1c**: Tiered Credit Pricing
+   - Protect margins on expensive generations
+
+4. **Phase 2** (Future): Visual Validator
+   - Premium feature, requires more infrastructure
 
 ---
 
@@ -267,20 +223,18 @@ interface StyleProfile {
 
 | Metric | Current | Target |
 |--------|---------|--------|
-| First-render success | ~30% | 85%+ |
-| Design repetition | High | Low (via style profiles) |
-| Context efficiency | 100% code sent | 20-40% (pruned) |
-| Self-heal rate | 0% | 70%+ (of failures) |
-| Time to first render | ~8s | ~12s (more stages, higher quality) |
+| First-attempt success rate | ~30% | 70%+ |
+| Healing loop effectiveness | ~10% (AI apologizes) | 80%+ (actually fixes) |
+| Average attempts per generation | 2.5 | 1.3 |
+| Credit margin on complex builds | Negative | Positive |
 
 ---
 
-## Rollout Strategy
+## Risks & Mitigations
 
-1. **Week 1**: Build orchestrator + architect + builder functions
-2. **Week 2**: Implement linter + self-heal loop
-3. **Week 3**: Frontend integration + style profiles
-4. **Week 4**: Shadow validation + SDK expansion
-5. **Week 5**: Visual validator (optional Phase 2)
+| Risk | Mitigation |
+|------|------------|
+| esbuild WASM cold start in Edge Functions | Lazy-load only when needed, cache initialization |
+| Healing loop infinite retry | Hard cap at 2 retries (already implemented) |
+| Tiered pricing confuses users | Show estimate before send, clear breakdown after |
 
-This transforms VibeCoder from a "chat that writes code" into a true **AI Operating System** with specialized agents, quality gates, and self-healing capabilities.
