@@ -92,6 +92,7 @@ interface ChatInputBarProps {
   onCancel: () => void;
   placeholder?: string;
   userCredits?: number;
+  isPrivileged?: boolean;
   onGenerateAsset?: () => void;
   onOpenHistory?: () => void;
   onOpenSettings?: () => void;
@@ -244,6 +245,7 @@ export function ChatInputBar({
   onCancel,
   placeholder = "Describe your vision...",
   userCredits = 0,
+  isPrivileged = false,
   onGenerateAsset,
   onOpenHistory,
   onOpenSettings,
@@ -397,7 +399,7 @@ export function ChatInputBar({
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const canAfford = (model: AIModel) => model.cost === 0 || userCredits >= model.cost;
+  const canAfford = (model: AIModel) => isPrivileged || model.cost === 0 || userCredits >= model.cost;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -409,8 +411,8 @@ export function ChatInputBar({
   const handleSubmit = () => {
     if ((!value.trim() && attachments.length === 0) || isGenerating) return;
     
-    // Intercept: If they can't afford it, show credits dialog first
-    if (!canAfford(selectedModel)) {
+    // Intercept: If they can't afford it, show credits dialog first (non-privileged only)
+    if (!isPrivileged && !canAfford(selectedModel)) {
       setShowCreditsDialog(true);
       return;
     }
@@ -842,7 +844,7 @@ export function ChatInputBar({
       )}
 
       {/* Insufficient Credits Dialog */}
-      {showCreditsDialog && (
+      {!isPrivileged && showCreditsDialog && (
         <Portal>
           <div 
             className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 

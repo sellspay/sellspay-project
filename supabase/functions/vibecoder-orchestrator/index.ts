@@ -210,19 +210,32 @@ serve(async (req: Request) => {
 
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
         
-        // Check user credits
+        // Owner/Admin bypass: never block or deduct credits for privileged roles
+        const { data: roleRows, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .in('role', ['admin', 'owner']);
+
+        if (rolesError) {
+          console.log('[Orchestrator] Role lookup failed:', rolesError.message);
+        }
+
+        const isPrivileged = (roleRows?.length ?? 0) > 0;
+
+        // Check user credits (non-privileged only)
         const { data: wallet } = await supabase
           .from('user_wallets')
           .select('balance')
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
         
-        const credits = wallet?.balance ?? 0;
+        const credits = isPrivileged ? Number.POSITIVE_INFINITY : (wallet?.balance ?? 0);
         
         // Default credits (will be refined after Architect returns complexityScore)
         let estimatedCredits = skipArchitect ? 1 : 8;
         
-        if (credits < estimatedCredits) {
+        if (!isPrivileged && credits < estimatedCredits) {
           sendEvent(controller, { 
             type: 'error', 
             data: { message: `Insufficient credits. Need ~${estimatedCredits}, have ${credits}.` } 
@@ -275,7 +288,7 @@ serve(async (req: Request) => {
         // ═══════════════════════════════════════════════════════════════
         const actualCredits = calculateCredits(complexityScore, !!skipArchitect);
         
-        if (credits < actualCredits) {
+        if (!isPrivileged && credits < actualCredits) {
           sendEvent(controller, { 
             type: 'error', 
             data: { message: `Insufficient credits. This request costs ${actualCredits} credits, you have ${credits}.` } 
@@ -284,24 +297,26 @@ serve(async (req: Request) => {
           return;
         }
         
-        // Deduct credits upfront
-        const { error: deductError } = await supabase.rpc('deduct_credits', { 
-          p_user_id: userId, 
-          p_amount: actualCredits,
-          p_action: skipArchitect ? 'vibecoder_flash' : 'vibecoder_gen'
-        });
-        
-        if (deductError) {
-          console.error("Failed to deduct credits:", deductError);
-          sendEvent(controller, { 
-            type: 'error', 
-            data: { message: "Failed to process credits" } 
+        // Deduct credits upfront (non-privileged only)
+        if (!isPrivileged) {
+          const { error: deductError } = await supabase.rpc('deduct_credits', { 
+            p_user_id: userId, 
+            p_amount: actualCredits,
+            p_action: skipArchitect ? 'vibecoder_flash' : 'vibecoder_gen'
           });
-          controller.close();
-          return;
+          
+          if (deductError) {
+            console.error("Failed to deduct credits:", deductError);
+            sendEvent(controller, { 
+              type: 'error', 
+              data: { message: "Failed to process credits" } 
+            });
+            controller.close();
+            return;
+          }
         }
         
-        sendEvent(controller, { type: 'log', data: `Credits used: ${actualCredits}` });
+        sendEvent(controller, { type: 'log', data: isPrivileged ? 'Credits used: 0 (owner/admin bypass)' : `Credits used: ${actualCredits}` });
 
         // ═══════════════════════════════════════════════════════════════
         // STAGE 2, 3, 4: BUILD + SHADOW RENDER + LINT LOOP (with self-healing)
