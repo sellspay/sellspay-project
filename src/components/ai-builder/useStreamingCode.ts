@@ -130,17 +130,51 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       const extractSummaryFromRaw = (raw: string): string => {
         const typeIdx = raw.indexOf('/// TYPE: CODE ///');
-        if (typeIdx < 0) return '';
+        if (typeIdx < 0) {
+          console.log('[extractSummary] No TYPE: CODE marker found');
+          return '';
+        }
 
-        const beginIdx = raw.indexOf(BEGIN_CODE_MARKER);
-        if (beginIdx < 0) return '';
+        // Try explicit BEGIN_CODE marker first
+        let endIdx = raw.indexOf(BEGIN_CODE_MARKER);
+        console.log('[extractSummary] BEGIN_CODE marker at:', endIdx);
+        
+        // Fallback: find where actual TSX code starts (export/function/const/import at line start)
+        if (endIdx < 0) {
+          // Look for the first line that starts with common code patterns
+          const codePatterns = [
+            /\n(export\s+default\s+function)/,
+            /\n(export\s+function)/,
+            /\n(function\s+\w+)/,
+            /\n(const\s+\w+\s*=\s*\()/,
+            /\nimport\s+/,
+          ];
+          
+          const afterType = raw.substring(typeIdx + '/// TYPE: CODE ///'.length);
+          for (const pattern of codePatterns) {
+            const match = afterType.match(pattern);
+            if (match && match.index !== undefined) {
+              endIdx = typeIdx + '/// TYPE: CODE ///'.length + match.index;
+              console.log('[extractSummary] Found code start via pattern at:', endIdx);
+              break;
+            }
+          }
+        }
 
-        // Everything between TYPE marker and BEGIN_CODE is the markdown explanation
-        const afterType = raw.substring(typeIdx + '/// TYPE: CODE ///'.length, beginIdx);
-        return afterType
+        // If still no end found, just strip logs and return everything after TYPE marker
+        const summaryEnd = endIdx > typeIdx ? endIdx : raw.length;
+        const afterType = raw.substring(typeIdx + '/// TYPE: CODE ///'.length, summaryEnd);
+        
+        const cleaned = afterType
           .replace(LOG_PATTERN, '')
+          .replace(/```[\s\S]*$/m, '') // Remove any trailing code blocks
           .replace(/\n{3,}/g, '\n\n')
           .trim();
+        
+        console.log('[extractSummary] Extracted summary length:', cleaned.length, 'chars');
+        console.log('[extractSummary] First 200 chars:', cleaned.substring(0, 200));
+        
+        return cleaned;
       };
 
       while (true) {

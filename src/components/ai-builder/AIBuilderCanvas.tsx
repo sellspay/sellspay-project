@@ -186,6 +186,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     },
     onSummary: (summary: string) => {
       // Capture the AI's natural language response during streaming
+      console.log('[Vibecoder] 📝 AI Summary received:', summary?.substring(0, 100));
       pendingSummaryRef.current = summary;
     },
     onComplete: async (finalCode) => {
@@ -202,7 +203,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       }
 
       // Use the REAL AI summary, or fallback if empty
-      const aiResponse = pendingSummaryRef.current || 'Applied your changes to the storefront.';
+      const capturedSummary = pendingSummaryRef.current;
+      console.log('[Vibecoder] 💬 Final summary for message:', capturedSummary?.substring(0, 150) || '(empty - using fallback)');
+      
+      const aiResponse = capturedSummary || 'Updated the storefront based on your request.';
       pendingSummaryRef.current = ''; // Reset for next generation
 
       // Add assistant message with code snapshot (project-scoped)
