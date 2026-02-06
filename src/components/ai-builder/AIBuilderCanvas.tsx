@@ -8,6 +8,7 @@ import { VibecoderPreview } from './VibecoderPreview';
 import { VibecoderChat } from './VibecoderChat';
 import { ProjectSidebar } from './ProjectSidebar';
 import { PreviewErrorBoundary } from './PreviewErrorBoundary';
+import { CanvasToolbar } from './CanvasToolbar';
 import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects } from './hooks/useVibecoderProjects';
 import { toast } from 'sonner';
@@ -29,6 +30,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   
   // Reset key to force component re-mount on project deletion
   const [resetKey, setResetKey] = useState(0);
+  
+  // View mode state (Preview vs Code)
+  const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
+  const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
   
   // Resizable sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(400);
@@ -417,23 +422,43 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
         {/* Preview panel */}
         <div 
-          className="flex-1 min-w-0 border-r border-border/30 bg-muted/20 overflow-hidden relative"
+          className="flex-1 min-w-0 border-r border-border/30 bg-muted/20 overflow-hidden relative flex flex-col"
           style={{ isolation: 'isolate', contain: 'strict' }}
         >
-          <PreviewErrorBoundary 
-            onAutoFix={handleAutoFix} 
-            onReset={resetCode}
-          >
-            <VibecoderPreview 
-              key={`preview-${activeProjectId}-${resetKey}`}
-              code={code} 
-              isStreaming={isStreaming}
-              onError={(error) => {
-                // Log the error but don't auto-trigger fix (let user click button)
-                console.warn('[VibecoderPreview] Sandpack error detected:', error);
-              }}
-            />
-          </PreviewErrorBoundary>
+          {/* Canvas Toolbar */}
+          <CanvasToolbar
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            projectName={activeProject?.name}
+            onUndo={handleUndo}
+            canUndo={canUndo}
+            deviceMode={deviceMode}
+            setDeviceMode={setDeviceMode}
+          />
+          
+          {/* Preview/Code Content */}
+          <div className={`flex-1 min-h-0 ${deviceMode === 'mobile' ? 'flex items-center justify-center bg-zinc-900' : ''}`}>
+            <div 
+              className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-700 shadow-2xl' : 'w-full'}`}
+            >
+              <PreviewErrorBoundary 
+                onAutoFix={handleAutoFix} 
+                onReset={resetCode}
+              >
+                <VibecoderPreview 
+                  key={`preview-${activeProjectId}-${resetKey}`}
+                  code={code} 
+                  isStreaming={isStreaming}
+                  viewMode={viewMode}
+                  onError={(error) => {
+                    // Log the error but don't auto-trigger fix (let user click button)
+                    console.warn('[VibecoderPreview] Sandpack error detected:', error);
+                  }}
+                />
+              </PreviewErrorBoundary>
+            </div>
+          </div>
+          
           {/* Overlay while dragging (prevents iframe stealing mouse events) */}
           {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
         </div>

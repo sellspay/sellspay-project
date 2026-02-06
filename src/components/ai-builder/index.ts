@@ -7,6 +7,7 @@ export { LAYOUT_PATTERNS, getPatternRegistrySummary } from './layoutPatterns';
 // Vibecoder (Generative Runtime) exports
 export { VibecoderPreview } from './VibecoderPreview';
 export { VibecoderChat } from './VibecoderChat';
+export { CanvasToolbar } from './CanvasToolbar';
 export { useStreamingCode } from './useStreamingCode';
 export { ProjectSidebar } from './ProjectSidebar';
 export { VibecoderMessageBubble } from './VibecoderMessageBubble';
