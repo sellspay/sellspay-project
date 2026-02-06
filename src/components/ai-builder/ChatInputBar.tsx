@@ -437,7 +437,7 @@ export function ChatInputBar({
   return (
     <div className="flex-shrink-0 p-4 bg-background relative">
       
-      {/* SPEECH POPUP BUBBLE (Floats ABOVE input - prevents layout collision) */}
+      {/* SPEECH POPUP BUBBLE (Floats ABOVE input) */}
       {isListening && (
         <div className="absolute bottom-full left-4 right-4 mb-2 z-20 animate-in slide-in-from-bottom-2 fade-in duration-200">
           <div className="bg-zinc-800/95 border border-zinc-700 p-4 rounded-2xl shadow-2xl flex items-start gap-4 backdrop-blur-md">
@@ -472,12 +472,10 @@ export function ChatInputBar({
       {/* Portal-based Model Menu */}
       {showModelMenu && (
         <Portal>
-          {/* Backdrop */}
           <div 
             className="fixed inset-0 z-[9998]" 
             onClick={() => setShowModelMenu(false)} 
           />
-          {/* Menu */}
           <div 
             className="fixed z-[9999] w-64 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 overflow-hidden ring-1 ring-white/5 animate-in fade-in-0 zoom-in-95 duration-150"
             style={{ 
@@ -486,11 +484,8 @@ export function ChatInputBar({
             }}
           >
             <div className="p-2 max-h-[400px] overflow-y-auto">
-              {/* Coding Models */}
               <div className="px-2 py-1.5 mb-1">
-                <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold">
-                  Coding
-                </span>
+                <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold">Coding</span>
               </div>
               {AI_MODELS.code.map(model => (
                 <ModelOption 
@@ -502,11 +497,8 @@ export function ChatInputBar({
                 />
               ))}
               
-              {/* Image Models */}
               <div className="px-2 py-1.5 mt-3 mb-1">
-                <span className="text-[10px] uppercase tracking-widest text-amber-400/70 font-semibold">
-                  Image Generation
-                </span>
+                <span className="text-[10px] uppercase tracking-widest text-amber-400/70 font-semibold">Image Generation</span>
               </div>
               {AI_MODELS.image.map(model => (
                 <ModelOption 
@@ -518,11 +510,8 @@ export function ChatInputBar({
                 />
               ))}
               
-              {/* Video Models */}
               <div className="px-2 py-1.5 mt-3 mb-1">
-                <span className="text-[10px] uppercase tracking-widest text-pink-400/70 font-semibold">
-                  Video Generation
-                </span>
+                <span className="text-[10px] uppercase tracking-widest text-pink-400/70 font-semibold">Video Generation</span>
               </div>
               {AI_MODELS.video.map(model => (
                 <ModelOption 
@@ -541,12 +530,10 @@ export function ChatInputBar({
       {/* Portal-based Plus Menu */}
       {showMenu && (
         <Portal>
-          {/* Backdrop */}
           <div 
             className="fixed inset-0 z-[9998]" 
             onClick={() => setShowMenu(false)} 
           />
-          {/* Menu */}
           <div 
             className="fixed z-[9999] w-56 bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl shadow-black/60 ring-1 ring-white/5 p-1.5 animate-in fade-in-0 zoom-in-95 duration-150"
             style={{ 
@@ -555,9 +542,7 @@ export function ChatInputBar({
             }}
           >
             <div className="px-2 py-1.5 mb-1">
-              <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium">
-                Attachments
-              </span>
+              <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium">Attachments</span>
             </div>
             <MenuItem 
               icon={ImageIcon} 
@@ -586,9 +571,7 @@ export function ChatInputBar({
                 onGenerateAsset?.();
               }}
             />
-            
             <div className="h-px bg-zinc-800 my-1.5" />
-            
             <MenuItem 
               icon={History} 
               label="History" 
@@ -610,53 +593,20 @@ export function ChatInputBar({
         </Portal>
       )}
 
-      {/* The floating input container (Clean - No Red Borders) */}
-      <div className={cn(
-        "relative bg-zinc-900/80 backdrop-blur-xl border rounded-2xl shadow-2xl shadow-black/20 transition-all duration-300",
-        isPlanMode 
-          ? "border-blue-500/30 ring-1 ring-blue-500/20" 
-          : "border-zinc-800 focus-within:ring-1 focus-within:ring-violet-500/50 focus-within:border-violet-500/50"
-      )}>
+      {/* MAGICAL DOORWAY STYLE INPUT */}
+      <div className="relative group">
+        {/* Hover glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-500" />
         
-        {/* TOP BAR: MODEL SELECTOR & CREDITS */}
-        <div className="flex items-center justify-between px-3 pt-2.5 pb-0">
-          <button 
-            ref={modelButtonRef}
-            onClick={toggleModelMenu}
-            className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1 rounded-md hover:bg-zinc-700/50"
-          >
-            <selectedModel.icon size={12} className={cn(
-              selectedModel.category === 'video' ? "text-pink-400" :
-              selectedModel.category === 'image' ? "text-amber-400" :
-              isPlanMode ? "text-blue-400" : "text-violet-400"
-            )} />
-            <span>{selectedModel.name}</span>
-            {selectedModel.cost > 0 && (
-              <span className="text-[10px] text-zinc-500">({selectedModel.cost}c)</span>
-            )}
-            <ChevronDown size={10} className={cn("transition-transform", showModelMenu && "rotate-180")} />
-          </button>
-
-        </div>
-
-        <div className="flex items-end gap-2 p-2">
+        {/* Main container - matching LovableHero style */}
+        <div className={cn(
+          "relative bg-zinc-900/80 backdrop-blur-xl border rounded-3xl shadow-2xl transition-all overflow-hidden",
+          isPlanMode 
+            ? "border-blue-500/30 ring-1 ring-blue-500/20" 
+            : "border-white/10 focus-within:border-violet-500/30 focus-within:bg-zinc-900/90"
+        )}>
           
-          {/* Plus menu button */}
-          <button
-            ref={plusButtonRef}
-            type="button"
-            onClick={togglePlusMenu}
-            className={cn(
-              "p-2 rounded-xl transition-all",
-              showMenu 
-                ? "bg-zinc-700 text-white" 
-                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/50"
-            )}
-          >
-            <Plus size={18} className={cn("transition-transform", showMenu && "rotate-45")} />
-          </button>
-
-          {/* Textarea */}
+          {/* TEXTAREA - pb-14 reserves bottom space for buttons */}
           <textarea
             ref={textareaRef}
             value={value}
@@ -676,119 +626,169 @@ export function ChatInputBar({
             disabled={isGenerating}
             rows={1}
             className={cn(
-              "flex-1 bg-transparent text-sm text-zinc-100 resize-none outline-none py-2 pr-2",
-              "min-h-[36px] max-h-[160px]",
-              "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+              "w-full bg-transparent border-none text-base text-white resize-none outline-none",
+              "px-5 pt-4 pb-14 min-h-[80px] max-h-[300px]",
+              "scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent",
+              "leading-relaxed font-medium focus:ring-0",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               isListening 
                 ? "placeholder:text-violet-400 placeholder:animate-pulse" 
-                : "placeholder-zinc-500"
+                : "placeholder:text-zinc-500"
             )}
           />
 
-          <div className="flex items-center gap-2 pb-0.5">
-            
-            {/* SPEECH-TO-TEXT MICROPHONE BUTTON */}
-            <button
-              type="button"
-              onClick={toggleSpeechRecognition}
+          {/* BUTTON LAYER (Absolute Positioned at Bottom) */}
+          
+          {/* Left: Plus Button */}
+          <div className="absolute bottom-3 left-3 z-10">
+            <button 
+              ref={plusButtonRef}
+              type="button" 
+              onClick={togglePlusMenu}
               className={cn(
-                "p-2 rounded-xl transition-all",
-                isListening 
-                  ? "bg-red-500/20 text-red-400 shadow-lg shadow-red-900/20 ring-2 ring-red-500/30" 
-                  : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/50"
+                "p-2.5 rounded-xl transition-all",
+                showMenu 
+                  ? "text-white bg-white/10" 
+                  : "text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10"
               )}
-              title={isListening ? "Stop listening" : "Voice input (Speech-to-Text)"}
             >
-              {isListening ? (
-                <WaveformIcon isActive={true} />
-              ) : (
-                <Mic size={16} />
-              )}
+              <Plus size={20} className={cn("transition-transform", showMenu && "rotate-45")} />
             </button>
+          </div>
 
-            {/* THE PLAN TOGGLE BUTTON (only show for code models) */}
-            {selectedModel.category === 'code' && (
-              <button
+          {/* Right: Actions (Model, Mic, Plan, Send) */}
+          <div className="absolute bottom-3 right-3 z-10 flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-zinc-900/50 rounded-xl p-1 backdrop-blur-md border border-white/5">
+              
+              {/* Model Selector Button */}
+              <button 
+                ref={modelButtonRef}
                 type="button"
-                onClick={() => setIsPlanMode(!isPlanMode)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all select-none",
-                  isPlanMode 
-                    ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" 
-                    : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/30"
-                )}
-                title="Plan Mode: Creates a blueprint before coding"
+                onClick={toggleModelMenu}
+                className="flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-medium text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
               >
-                <FileText size={13} />
-                <span>Plan</span>
+                <selectedModel.icon size={12} className={cn(
+                  selectedModel.category === 'video' ? "text-pink-400" :
+                  selectedModel.category === 'image' ? "text-amber-400" :
+                  isPlanMode ? "text-blue-400" : "text-violet-400"
+                )} />
+                <span className="hidden sm:inline">{selectedModel.name}</span>
+                <ChevronDown size={10} className={cn("transition-transform", showModelMenu && "rotate-180")} />
               </button>
-            )}
 
-            {/* Send/Stop button (Always Standard - Click intercepts to billing if needed) */}
-            <button
-              type="button"
-              onClick={isGenerating ? onCancel : handleSubmit}
-              disabled={(!value.trim() && attachments.length === 0) && !isGenerating}
-              className={cn(
-                "p-2 rounded-xl shrink-0 transition-all",
-                isGenerating
-                  ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                  : (value.trim() || attachments.length > 0)
-                    ? selectedModel.category === 'video'
-                      ? "bg-pink-600 text-white hover:bg-pink-500 shadow-lg shadow-pink-900/20"
-                      : selectedModel.category === 'image'
-                        ? "bg-amber-600 text-white hover:bg-amber-500 shadow-lg shadow-amber-900/20"
-                        : isPlanMode
-                          ? "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-900/20"
-                          : "bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-900/20"
-                    : "bg-zinc-700/50 text-zinc-500 cursor-not-allowed"
+              <div className="w-px h-4 bg-white/10 mx-0.5" />
+              
+              {/* Microphone Button */}
+              <button 
+                type="button" 
+                onClick={toggleSpeechRecognition}
+                className={cn(
+                  "p-2 transition-all rounded-lg",
+                  isListening 
+                    ? "text-red-400 bg-red-500/20 animate-pulse" 
+                    : "text-zinc-500 hover:text-white hover:bg-white/5"
+                )}
+                title={isListening ? "Tap to stop" : "Voice input"}
+              >
+                {isListening ? (
+                  <WaveformIcon isActive={true} />
+                ) : (
+                  <Mic size={18} />
+                )}
+              </button>
+              
+              {/* Plan Toggle (only for code models) */}
+              {selectedModel.category === 'code' && (
+                <>
+                  <div className="w-px h-4 bg-white/10 mx-0.5" />
+                  <button 
+                    type="button"
+                    onClick={() => setIsPlanMode(!isPlanMode)}
+                    className={cn(
+                      "px-2 py-1.5 text-[11px] font-light tracking-wide transition-colors rounded-lg",
+                      isPlanMode 
+                        ? "text-blue-400 bg-blue-500/10" 
+                        : "text-zinc-500 hover:text-blue-400"
+                    )}
+                    title="Toggle plan mode"
+                  >
+                    Plan
+                  </button>
+                </>
               )}
-            >
-              {isGenerating ? (
-                <Square size={16} className="fill-current" />
-              ) : (
-                <ArrowUp size={16} strokeWidth={2.5} />
-              )}
-            </button>
+              
+              <div className="w-px h-4 bg-white/10 mx-0.5" />
+              
+              {/* Submit Button */}
+              <button 
+                type="button"
+                onClick={isGenerating ? onCancel : handleSubmit}
+                disabled={(!value.trim() && attachments.length === 0) && !isGenerating}
+                className={cn(
+                  "p-2 rounded-lg transition-all",
+                  isGenerating
+                    ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                    : (value.trim() || attachments.length > 0)
+                      ? selectedModel.category === 'video'
+                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white hover:from-pink-400 hover:to-rose-400 shadow-lg shadow-pink-500/20"
+                        : selectedModel.category === 'image'
+                          ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-400 hover:to-orange-400 shadow-lg shadow-amber-500/20"
+                          : isPlanMode
+                            ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-400 hover:to-cyan-400 shadow-lg shadow-blue-500/20"
+                            : "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white hover:from-violet-400 hover:to-fuchsia-400 shadow-lg shadow-violet-500/20"
+                      : "bg-zinc-700/50 text-zinc-500 cursor-not-allowed"
+                )}
+              >
+                {isGenerating ? (
+                  <Square size={18} className="fill-current" />
+                ) : (
+                  <ArrowUp size={18} strokeWidth={2.5} />
+                )}
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* Attachment Previews */}
-        {attachments.length > 0 && (
-          <div className="px-3 pb-3 flex gap-2 overflow-x-auto">
-            {attachments.map((file, i) => (
-              <div key={i} className="relative group shrink-0">
-                <div className="w-16 h-16 bg-zinc-800 rounded-lg border border-zinc-700 flex items-center justify-center overflow-hidden">
-                  {file.type.startsWith('image') ? (
-                    <img 
-                      src={URL.createObjectURL(file)} 
-                      alt={file.name}
-                      className="w-full h-full object-cover" 
-                    />
-                  ) : file.type.startsWith('video') ? (
-                    <Video size={20} className="text-pink-400" />
-                  ) : (
-                    <Paperclip size={20} className="text-zinc-400" />
-                  )}
-                </div>
-                <button 
-                  onClick={() => removeAttachment(i)}
-                  className="absolute -top-2 -right-2 bg-zinc-900 text-zinc-400 hover:text-red-400 rounded-full p-0.5 border border-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X size={12} />
-                </button>
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 rounded-b-lg">
-                  <p className="text-[8px] text-zinc-300 truncate">{file.name}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        
+        {/* Helper text */}
+        <div className="absolute -bottom-5 right-4 text-[10px] text-zinc-600 font-medium opacity-0 group-focus-within:opacity-100 transition-opacity">
+          Press Enter to send, Shift+Enter for new line
+        </div>
       </div>
 
+      {/* Attachment Previews */}
+      {attachments.length > 0 && (
+        <div className="px-3 pt-3 flex gap-2 overflow-x-auto">
+          {attachments.map((file, i) => (
+            <div key={i} className="relative group shrink-0">
+              <div className="w-16 h-16 bg-zinc-800 rounded-lg border border-zinc-700 flex items-center justify-center overflow-hidden">
+                {file.type.startsWith('image') ? (
+                  <img 
+                    src={URL.createObjectURL(file)} 
+                    alt={file.name}
+                    className="w-full h-full object-cover" 
+                  />
+                ) : file.type.startsWith('video') ? (
+                  <Video size={20} className="text-pink-400" />
+                ) : (
+                  <Paperclip size={20} className="text-zinc-400" />
+                )}
+              </div>
+              <button 
+                onClick={() => removeAttachment(i)}
+                className="absolute -top-2 -right-2 bg-zinc-900 text-zinc-400 hover:text-red-400 rounded-full p-0.5 border border-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X size={12} />
+              </button>
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 rounded-b-lg">
+                <p className="text-[8px] text-zinc-300 truncate">{file.name}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Footer disclaimer */}
-      <div className="text-center mt-3">
+      <div className="text-center mt-6">
         <p className="text-[10px] text-zinc-600">
           Vibecoder can make mistakes. Review generated code.
         </p>
@@ -797,22 +797,17 @@ export function ChatInputBar({
       {/* Insufficient Credits Dialog */}
       {showCreditsDialog && (
         <Portal>
-          {/* Backdrop */}
           <div 
             className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
             onClick={() => setShowCreditsDialog(false)} 
           />
-          {/* Dialog */}
           <div className="fixed z-[9999] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm animate-in zoom-in-95 fade-in duration-200">
             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-6 mx-4">
-              {/* Icon */}
               <div className="flex justify-center mb-4">
                 <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center">
                   <Coins className="w-7 h-7 text-amber-500" />
                 </div>
               </div>
-              
-              {/* Message */}
               <h3 className="text-lg font-semibold text-white text-center mb-2">
                 Not Enough Credits
               </h3>
@@ -820,14 +815,10 @@ export function ChatInputBar({
                 You need {selectedModel.cost}c to use {selectedModel.name}. 
                 Top up your credits or upgrade your plan to continue.
               </p>
-              
-              {/* Balance Display */}
               <div className="flex items-center justify-between px-4 py-3 bg-zinc-800/50 rounded-xl mb-6">
                 <span className="text-sm text-zinc-400">Your balance</span>
                 <span className="text-sm font-semibold text-white">{userCredits}c</span>
               </div>
-              
-              {/* Buttons */}
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowCreditsDialog(false)}
