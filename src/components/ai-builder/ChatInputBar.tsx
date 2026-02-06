@@ -242,6 +242,7 @@ export function ChatInputBar({
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState(""); // Live speech text (popup only)
+  const [showCreditsDialog, setShowCreditsDialog] = useState(false);
   
   // Portal positioning state
   const [modelMenuCoords, setModelMenuCoords] = useState({ top: 0, left: 0 });
@@ -383,9 +384,9 @@ export function ChatInputBar({
   const handleSubmit = () => {
     if ((!value.trim() && attachments.length === 0) || isGenerating) return;
     
-    // Intercept: If they can't afford it, open billing instead
+    // Intercept: If they can't afford it, show credits dialog first
     if (!canAfford(selectedModel)) {
-      onOpenBilling?.();
+      setShowCreditsDialog(true);
       return;
     }
 
@@ -801,6 +802,62 @@ export function ChatInputBar({
           Vibecoder can make mistakes. Review generated code.
         </p>
       </div>
+
+      {/* Insufficient Credits Dialog */}
+      {showCreditsDialog && (
+        <Portal>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
+            onClick={() => setShowCreditsDialog(false)} 
+          />
+          {/* Dialog */}
+          <div className="fixed z-[9999] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm animate-in zoom-in-95 fade-in duration-200">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-6 mx-4">
+              {/* Icon */}
+              <div className="flex justify-center mb-4">
+                <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center">
+                  <Coins className="w-7 h-7 text-amber-500" />
+                </div>
+              </div>
+              
+              {/* Message */}
+              <h3 className="text-lg font-semibold text-white text-center mb-2">
+                Not Enough Credits
+              </h3>
+              <p className="text-sm text-zinc-400 text-center mb-6">
+                You need {selectedModel.cost}c to use {selectedModel.name}. 
+                Top up your credits or upgrade your plan to continue.
+              </p>
+              
+              {/* Balance Display */}
+              <div className="flex items-center justify-between px-4 py-3 bg-zinc-800/50 rounded-xl mb-6">
+                <span className="text-sm text-zinc-400">Your balance</span>
+                <span className="text-sm font-semibold text-white">{userCredits}c</span>
+              </div>
+              
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCreditsDialog(false)}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCreditsDialog(false);
+                    onOpenBilling?.();
+                  }}
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 rounded-xl transition-all shadow-lg shadow-violet-900/30"
+                >
+                  Top Up / Upgrade
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
     </div>
   );
 }
