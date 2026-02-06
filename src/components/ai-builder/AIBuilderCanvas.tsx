@@ -79,6 +79,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Flag to prevent double-firing agent on mount with location state
   const hasStartedInitialRef = useRef(false);
   
+  // 🔒 GENERATION LOCK: Captures the project ID when generation starts
+  // Prevents race condition where AI writes to wrong project if user switches mid-generation
+  const generationLockRef = useRef<string | null>(null);
+  
   // Handle model change with auto-tab switching
   const handleModelChange = useCallback((model: AIModel) => {
     setActiveModel(model);
@@ -163,6 +167,14 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     setCode,
     DEFAULT_CODE 
   } = useStreamingCode({
+    // 🛑 RACE CONDITION GUARD: Check if generation should be discarded
+    shouldAbort: () => {
+      if (generationLockRef.current && generationLockRef.current !== activeProjectId) {
+        console.warn(`🛑 BLOCKED: Generation for ${generationLockRef.current} but viewing ${activeProjectId}`);
+        return true;
+      }
+      return false;
+    },
     onLogUpdate: (logs) => {
       // Update live steps in real-time as they stream in
       setLiveSteps(logs);
@@ -173,11 +185,20 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       // Clear live steps
       setLiveSteps([]);
 
-      // IMPORTANT: Do NOT persist drafts into the published/live code slot.
-      // Drafts are stored per-project via message code snapshots.
+      // 🛑 DOUBLE-CHECK: Verify lock before saving (belt + suspenders)
+      if (generationLockRef.current && generationLockRef.current !== activeProjectId) {
+        console.warn('🛑 Discarded code: Project mismatch on completion');
+        generationLockRef.current = null;
+        resetAgent();
+        return;
+      }
 
       // Add assistant message with code snapshot (project-scoped)
-      await addMessage('assistant', 'Generated your storefront design.', finalCode);
+      // Pass the locked project ID explicitly for safety
+      await addMessage('assistant', 'Generated your storefront design.', finalCode, generationLockRef.current || undefined);
+
+      // Release the lock
+      generationLockRef.current = null;
 
       // Notify agent loop that streaming is complete
       onStreamingComplete();
@@ -186,12 +207,14 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       // AI responded with a chat message instead of code
       setLiveSteps([]);
       setChatResponse(text);
-      await addMessage('assistant', text);
+      await addMessage('assistant', text, undefined, generationLockRef.current || undefined);
+      generationLockRef.current = null; // Release lock
       // Reset agent on chat response (no code generated)
       resetAgent();
     },
     onError: (err) => {
       setLiveSteps([]);
+      generationLockRef.current = null; // Release lock on error
       toast.error(err.message);
       onStreamingError(err.message);
     }
@@ -221,11 +244,13 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     onStreamingComplete,
     onStreamingError,
     triggerSelfCorrection,
+    lockedProjectId,
   } = useAgentLoop({
     onStreamCode: streamCode,
     onComplete: () => {
       console.log('[AgentLoop] Complete');
     },
+    getActiveProjectId: () => activeProjectId,
   });
 
   // Dynamically detected pages from generated code
@@ -250,11 +275,14 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
       hasStartedInitialRef.current = true;
 
+      // 🔒 LOCK: Set generation lock to this project
+      generationLockRef.current = activeProjectId;
+
       // Any new generation should cover Sandpack until bundling finishes
       setIsAwaitingPreviewReady(true);
 
-      // Trigger the agent immediately
-      startAgent(initialPrompt, undefined);
+      // Trigger the agent immediately (with project ID lock)
+      startAgent(initialPrompt, undefined, activeProjectId);
 
       // Clear the state so it doesn't re-fire on refresh
       window.history.replaceState({}, document.title);
@@ -314,8 +342,17 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   };
 
   // SCORCHED EARTH: Verify project exists on switch & force reset if zombie detected
+  // 🛑 RACE CONDITION GUARD: Abort any in-flight generation for a DIFFERENT project
   useEffect(() => {
     async function verifyAndLoadProject() {
+      // If there's an active generation for a DIFFERENT project, abort it
+      if (generationLockRef.current && generationLockRef.current !== activeProjectId) {
+        console.warn(`🛑 Aborting generation for ${generationLockRef.current} (switched to ${activeProjectId})`);
+        cancelStream(); // Stop the HTTP stream
+        cancelAgent();  // Reset agent state
+        generationLockRef.current = null;
+      }
+      
       // No project selected - force a true blank slate (prevents zombie UI from sticking around)
       if (!activeProjectId) {
         // Reset code + force Sandpack remount
@@ -385,7 +422,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
 
     verifyAndLoadProject();
-  }, [activeProjectId, messages, getLastCodeSnapshot, profileId, setCode, resetCode, resetAgent]);
+  }, [activeProjectId, messages, getLastCodeSnapshot, profileId, setCode, resetCode, resetAgent, cancelStream, cancelAgent]);
 
   // NOTE: Draft code is NOT persisted to the public/live slot.
   // Publishing explicitly writes the current code to a dedicated published file.
@@ -517,11 +554,15 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       return;
     }
 
-    // Add user message to history
-    await addMessage('user', prompt);
+    // 🔒 LOCK: Capture which project this generation belongs to BEFORE starting
+    generationLockRef.current = projectId;
+
+    // Add user message to history (with explicit project ID for safety)
+    await addMessage('user', prompt, undefined, projectId);
 
     // Start the agent loop (which internally calls streamCode)
-    startAgent(prompt, code !== DEFAULT_CODE ? code : undefined);
+    // Pass the project ID to lock the agent to this specific project
+    startAgent(prompt, code !== DEFAULT_CODE ? code : undefined, projectId);
   };
 
   // Handle new project creation - FRESH START PROTOCOL
