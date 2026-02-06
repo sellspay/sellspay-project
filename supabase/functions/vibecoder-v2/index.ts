@@ -1,9 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+// Fair Pricing Economy (8x reduction from original)
+const CREDIT_COSTS: Record<string, number> = {
+  'vibecoder-pro': 3,     // Premium model
+  'vibecoder-flash': 0,   // Free tier for small edits
+  'reasoning-o1': 5,      // Deep reasoning (expensive)
 };
 
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
@@ -342,11 +350,98 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, currentCode, profileId } = await req.json();
+    const { prompt, currentCode, profileId, model = 'vibecoder-pro' } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
+    }
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Supabase configuration missing");
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // ============================================
+    // CREDIT ENFORCEMENT: Check and deduct credits
+    // ============================================
+    
+    // Get user from auth header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !userData.user) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = userData.user.id;
+    const cost = CREDIT_COSTS[model] ?? 3; // Default to pro cost
+
+    // Only deduct if cost > 0 (flash is free)
+    if (cost > 0) {
+      // Get current balance
+      const { data: wallet, error: walletError } = await supabase
+        .from('user_wallets')
+        .select('balance')
+        .eq('user_id', userId)
+        .single();
+
+      if (walletError && walletError.code !== 'PGRST116') {
+        console.error("Wallet fetch error:", walletError);
+        throw new Error("Failed to check credit balance");
+      }
+
+      const currentBalance = wallet?.balance ?? 0;
+
+      if (currentBalance < cost) {
+        return new Response(JSON.stringify({ 
+          error: "INSUFFICIENT_CREDITS",
+          message: `Insufficient credits. You have ${currentBalance}, but this costs ${cost}.`,
+          required: cost,
+          available: currentBalance
+        }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Deduct credits using the secure RPC function
+      const { data: deductSuccess, error: deductError } = await supabase
+        .rpc('deduct_credits', {
+          p_user_id: userId,
+          p_amount: cost,
+          p_action: 'vibecoder_gen'
+        });
+
+      if (deductError) {
+        console.error("Credit deduction error:", deductError);
+        throw new Error("Failed to deduct credits");
+      }
+
+      if (!deductSuccess) {
+        return new Response(JSON.stringify({ 
+          error: "INSUFFICIENT_CREDITS",
+          message: "Insufficient credits for this generation."
+        }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log(`Deducted ${cost} credits from user ${userId} for model ${model}`);
     }
 
     // Build the messages array
