@@ -61,6 +61,65 @@ function calculateCredits(complexityScore: number, skipArchitect: boolean): numb
 }
 
 // ═══════════════════════════════════════════════════════════════
+// STRUCTURAL CODE GUARD - VibeCoder 2.2
+// ═══════════════════════════════════════════════════════════════
+// Validates code structure BEFORE delivery to prevent build crashes.
+// This catches the "hooks inside arrays" and "missing export wrapper" bugs.
+function validateCodeStructure(code: string): { valid: boolean; error?: string } {
+  // Check 1: Must have the component wrapper
+  if (!code.includes('export default function App')) {
+    return { valid: false, error: 'Missing "export default function App" wrapper' };
+  }
+  
+  // Check 2: Hooks cannot appear before the component declaration
+  const appIndex = code.indexOf('export default function App');
+  const hookPatterns = ['useEffect(', 'useState(', 'useCallback(', 'useMemo(', 'useSellsPayCheckout(', 'useRef('];
+  
+  for (const hook of hookPatterns) {
+    const hookIndex = code.indexOf(hook);
+    if (hookIndex >= 0 && hookIndex < appIndex) {
+      return { valid: false, error: `Hook "${hook.replace('(', '')}" called outside component boundary` };
+    }
+  }
+  
+  // Check 3: Basic bracket balance (catches obvious structural collapse)
+  const openBraces = (code.match(/{/g) || []).length;
+  const closeBraces = (code.match(/}/g) || []).length;
+  if (Math.abs(openBraces - closeBraces) > 3) {
+    return { valid: false, error: 'Severely unbalanced braces - likely syntax error' };
+  }
+  
+  // Check 4: Array declarations must be closed before the App component
+  // Look for patterns like "const SOMETHING = [" that aren't closed before "export default"
+  const arrayDeclPattern = /const\s+[A-Z_]+\s*=\s*\[/g;
+  let match;
+  while ((match = arrayDeclPattern.exec(code)) !== null) {
+    const declStart = match.index;
+    // Only check arrays declared before the App component
+    if (declStart < appIndex) {
+      // Find the closing bracket for this array
+      let depth = 0;
+      let foundClosing = false;
+      for (let i = declStart; i < appIndex; i++) {
+        if (code[i] === '[') depth++;
+        if (code[i] === ']') {
+          depth--;
+          if (depth === 0) {
+            foundClosing = true;
+            break;
+          }
+        }
+      }
+      if (!foundClosing) {
+        return { valid: false, error: 'Data array not properly closed before component declaration' };
+      }
+    }
+  }
+  
+  return { valid: true };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SHADOW RENDER - DISABLED (esbuild WASM not supported in Deno Edge)
 // ═══════════════════════════════════════════════════════════════
 // NOTE: esbuild WASM requires Web Workers which aren't available in Deno.
@@ -431,6 +490,41 @@ serve(async (req: Request) => {
           if (builderSummary) finalSummary = builderSummary;
 
           sendEvent(controller, { type: 'log', data: `Generated ${generatedCode.split('\n').length} lines of code` }, streamState);
+
+          // ───────────────────────────────────────────────────────────
+          // STRUCTURAL VALIDATION STAGE (VibeCoder 2.2)
+          // ───────────────────────────────────────────────────────────
+          const structureResult = validateCodeStructure(generatedCode);
+          
+          if (!structureResult.valid) {
+            sendEvent(controller, {
+              type: 'log',
+              data: `⚠️ Structural error: ${structureResult.error}`,
+            }, streamState);
+
+            if (attempts >= maxAttempts) {
+              // Max retries reached, deliver anyway with warning
+              sendEvent(controller, {
+                type: 'log',
+                data: "Max retries reached - delivering code with known structural issues",
+              }, streamState);
+              finalCode = generatedCode;
+              break;
+            }
+
+            // Prepare healing context for next attempt
+            healingContext = {
+              errorType: 'STRUCTURAL_ERROR',
+              errorMessage: structureResult.error || 'Unknown structural error',
+              failedCode: generatedCode,
+              fixSuggestion: 'Fix the structural error: 1) Ensure "export default function App()" wrapper exists, 2) Move all hooks INSIDE the App function, 3) Close all data arrays with ]; before the component declaration.',
+            };
+
+            sendEvent(controller, { type: 'log', data: "Triggering self-correction for structural issues..." }, streamState);
+            continue; // Retry with healing context
+          }
+
+          sendEvent(controller, { type: 'log', data: "✓ Structural validation passed" }, streamState);
 
           // ───────────────────────────────────────────────────────────
           // SHADOW RENDER STAGE (New in v2.1)

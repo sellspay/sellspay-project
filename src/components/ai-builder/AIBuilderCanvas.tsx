@@ -935,18 +935,40 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   }, [triggerSelfCorrection, handleSendMessage]);
 
   // When Sandpack reports an error, show one-click fix toast (NO chat injection)
-  // VibeCoder 2.1: When Sandpack reports an error, trigger the healing agent
+  // VibeCoder 2.2: When Sandpack reports a STRUCTURAL error, AUTO-HEAL immediately
   const handlePreviewError = useCallback((errorMsg: string) => {
+    // Prevent duplicate healing for the same error
+    if (lastPreviewErrorRef.current === errorMsg) return;
+    lastPreviewErrorRef.current = errorMsg;
+    
     setPreviewError(errorMsg);
     setShowFixToast(true);
     
     // Trigger self-correction state in agent for UI feedback
     triggerSelfCorrection(errorMsg);
     
-    // VibeCoder 2.1: We now have direct healing capability
-    // The FixErrorToast will call handleFixError which uses healCode
-    // DO NOT add error messages to chat - keep chat clean!
-  }, [triggerSelfCorrection]);
+    // VibeCoder 2.2: AUTO-HEAL on structural errors (no user click needed)
+    // Detect structural/syntax errors that will NEVER self-resolve
+    const isStructuralError = 
+      errorMsg.includes('Unexpected token') ||
+      errorMsg.includes('SyntaxError') ||
+      errorMsg.includes('is not defined') ||
+      errorMsg.includes('Cannot use import') ||
+      errorMsg.includes('export') ||
+      errorMsg.includes('Unterminated') ||
+      errorMsg.includes('Invalid or unexpected') ||
+      errorMsg.includes('missing )') ||
+      errorMsg.includes('missing }');
+    
+    // Auto-heal structural errors immediately (no user click needed)
+    if (isStructuralError && !isAgentRunning) {
+      console.log('[VibeCoder 2.2] Auto-triggering heal for structural error:', errorMsg);
+      const codeToHeal = lastGeneratedCode || code;
+      healCode(errorMsg, codeToHeal);
+      setShowFixToast(false); // Hide toast since we're auto-healing
+    }
+    // Non-structural errors (runtime logic bugs) still show the FixErrorToast for manual trigger
+  }, [triggerSelfCorrection, isAgentRunning, healCode, lastGeneratedCode, code]);
 
   // ===== CREATIVE STUDIO: Asset Generation Handlers =====
   
