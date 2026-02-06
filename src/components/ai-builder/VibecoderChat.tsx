@@ -208,12 +208,6 @@ export function VibecoderChat({
           <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded border border-orange-500/30 font-medium">
             BETA
           </span>
-          {isStreaming && (
-            <span className="text-xs text-orange-400 animate-pulse flex items-center gap-1.5 ml-2">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Streaming...
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-2" />
       </div>
