@@ -1,164 +1,120 @@
 
-# SellsPay Policy Guardrail System
+
+# Orange Glow + Animated Waveform Microphone
 
 ## Overview
-This implementation creates a three-layer defense system that prevents the AI from generating authentication, settings, backend, or any platform-managed functionality. The system stops forbidden requests instantly on the client side, saving API costs and preventing scope creep.
+This plan adds the signature orange glow outline back to the chat input and transforms the microphone into a smaller, more elegant animated waveform that pulses when active.
 
-## Problem
-The AI is "over-helping" by building full-stack features (Login, Settings, Profiles, Authentication) that:
-1. Conflict with SellsPay's core infrastructure
-2. Create security vulnerabilities with mock authentication
-3. Waste API tokens on code that gets discarded
-4. Confuse users about what they can actually build
+## Changes
 
-## Solution Architecture
+### 1. Add Orange Glow to Chat Container
+**File**: `src/components/ai-builder/ChatInputBar.tsx` (line 580)
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                     USER PROMPT INPUT                            │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              LAYER 1: POLICY GUARD (Client-Side)                │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │ checkPolicyViolation(prompt)                               │  │
-│  │   - Scans for forbidden keywords                           │  │
-│  │   - Returns violation rule if matched                      │  │
-│  │   - Blocks request BEFORE hitting AI API                   │  │
-│  └───────────────────────────────────────────────────────────┘  │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-           ┌─────────────────┴─────────────────┐
-           │                                   │
-     ✅ ALLOWED                         🛑 BLOCKED
-           │                                   │
-           ▼                                   ▼
-┌─────────────────────┐           ┌─────────────────────────────┐
-│   Continue to AI    │           │   Display Policy Card       │
-│   Generation        │           │   (No API call made)        │
-└─────────────────────┘           └─────────────────────────────┘
+Current:
+```tsx
+<div className="bg-zinc-800/90 backdrop-blur-sm border border-zinc-700 rounded-2xl overflow-hidden">
 ```
 
-## Policy Categories
+Updated:
+```tsx
+<div className="bg-zinc-800/90 backdrop-blur-sm border border-orange-500/30 rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(249,115,22,0.15)] hover:shadow-[0_0_30px_rgba(249,115,22,0.25)] transition-shadow duration-300">
+```
 
-| Category | Description | Keywords |
-|----------|-------------|----------|
-| **Security Policy** | Authentication is handled by SellsPay | login, signup, sign in, password, 2fa, otp, auth, logout |
-| **Platform Scope** | User management is platform-level | settings page, profile edit, billing, change email, subscription settings |
-| **Architecture Limit** | VibeCoder is frontend-only | create database, backend api, admin panel, server setup |
-| **Payment Policy** | All payments via SellsPay | stripe key, paypal client, custom checkout, payment gateway |
+This adds:
+- Orange-tinted border (`border-orange-500/30`)
+- Soft ambient glow via box-shadow
+- Subtle hover intensification
 
-## Implementation Steps
+---
 
-### Part 1: Create Policy Engine
-**File**: `src/utils/policyGuard.ts`
+### 2. Redesign WaveformIcon Component
+**File**: `src/components/ai-builder/ChatInputBar.tsx` (lines 196-218)
 
-Create a dedicated module containing:
-- `POLICY_RULES` array with structured violation definitions
-- `checkPolicyViolation(prompt)` function that scans user input
-- Each rule has: `id`, `category`, `keywords[]`, `message`
+Replace the current WaveformIcon with a smaller, more refined waveform visualization:
+- Reduce overall size from `h-4` to `h-3` (12px)
+- Use 5 bars instead of 7 for compactness
+- Add proper CSS keyframe animation when active
+- Staggered animation delays for natural wave effect
+- Smooth transition between idle and active states
 
-### Part 2: Integrate Guardrail into Message Handler
-**File**: `src/components/ai-builder/AIBuilderCanvas.tsx`
-
-Modify `handleSendMessage`:
-1. Import `checkPolicyViolation` from policy guard
-2. Check prompt against policy BEFORE any other logic
-3. If violation detected:
-   - Add user message to chat (so they see what they typed)
-   - Add policy violation response with special metadata
-   - Return early (do NOT call AI API)
-
-### Part 3: Update Message Types
-**File**: `src/components/ai-builder/hooks/useVibecoderProjects.ts`
-
-Extend `VibecoderMessage` interface to support metadata:
-- Add optional `meta_data?: { type?: string; category?: string }` field
-- This is a local-only extension (no DB changes needed since we're not persisting policy violations)
-
-### Part 4: Create Policy Card UI Component
-**File**: `src/components/ai-builder/PolicyViolationCard.tsx`
-
-A distinct, authoritative UI card that:
-- Shows a Shield icon with the violation category
-- Displays the polite refusal message
-- Has a subtle "SellsPay Content Guidelines" footer
-- Uses amber/yellow warning styling (not aggressive red)
-
-### Part 5: Render Policy Cards in Chat
-**File**: `src/components/ai-builder/VibecoderMessageBubble.tsx`
-
-Update the message rendering logic:
-1. Import `PolicyViolationCard`
-2. Check for `meta_data?.type === 'policy_violation'`
-3. Render the policy card instead of standard assistant bubble
-
-## Technical Details
-
-### Policy Guard Utility
-```typescript
-// src/utils/policyGuard.ts
-
-export interface PolicyRule {
-  id: string;
-  category: string;
-  keywords: string[];
-  message: string;
-}
-
-export const POLICY_RULES: PolicyRule[] = [
-  {
-    id: 'auth_restriction',
-    category: 'Security Policy',
-    keywords: ['login', 'sign in', 'signin', 'signup', 'register', 'password', '2fa', 'logout', 'authentication'],
-    message: 'Authentication features are securely managed by the SellsPay platform...'
-  },
-  // Additional rules...
-];
-
-export function checkPolicyViolation(prompt: string): PolicyRule | null {
-  const lowerPrompt = prompt.toLowerCase();
-  return POLICY_RULES.find(rule => 
-    rule.keywords.some(kw => lowerPrompt.includes(kw))
-  ) ?? null;
+```tsx
+function WaveformIcon({ isActive, className }: { isActive: boolean; className?: string }) {
+  return (
+    <div className={cn("flex items-center justify-center gap-[1.5px] h-3 w-4", className)}>
+      {[0.4, 0.7, 1, 0.7, 0.4].map((scale, i) => (
+        <div 
+          key={i}
+          className={cn(
+            "w-[1.5px] rounded-full transition-all",
+            isActive 
+              ? "bg-red-400" 
+              : "bg-current"
+          )}
+          style={{ 
+            height: isActive ? '100%' : '3px',
+            transform: isActive ? `scaleY(${scale})` : 'scaleY(1)',
+            animation: isActive 
+              ? `waveform 0.6s ease-in-out ${i * 0.08}s infinite alternate` 
+              : 'none',
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 ```
 
-### Message Handler Integration
-```typescript
-// In handleSendMessage
-const violation = checkPolicyViolation(prompt);
-if (violation) {
-  // Show user's message
-  await addMessage('user', prompt, undefined, projectId);
-  
-  // Add policy response (local only, not saved to DB)
-  setMessages(prev => [...prev, {
-    id: `policy-${Date.now()}`,
-    role: 'assistant',
-    content: violation.message,
-    meta_data: { type: 'policy_violation', category: violation.category }
-  }]);
-  
-  return; // STOP - no AI call
+---
+
+### 3. Add Waveform Keyframe Animation
+**File**: `src/components/ai-builder/ChatInputBar.tsx`
+
+Add CSS keyframes at the top of the component or inject via style tag:
+
+```tsx
+// Add near the top of the file (after imports)
+const waveformStyles = `
+@keyframes waveform {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
 }
+`;
 ```
 
-## Benefits
+Then inject with a style tag in the component:
+```tsx
+<style>{waveformStyles}</style>
+```
 
-1. **Cost Savings**: Zero API tokens spent on forbidden requests
-2. **Instant Feedback**: User sees policy response immediately (no loading state)
-3. **Educational**: Explains WHY they can't do something and what they CAN do
-4. **Extensible**: Easy to add new policy rules as categories expand
-5. **Professional UX**: Distinct card design makes policies feel official, not like errors
+---
 
-## Files to Create/Modify
+### 4. Make Mic Button Smaller
+**File**: `src/components/ai-builder/ChatInputBar.tsx` (lines 648-664)
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/utils/policyGuard.ts` | CREATE | Policy rules and checker function |
-| `src/components/ai-builder/PolicyViolationCard.tsx` | CREATE | Styled policy violation UI |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | MODIFY | Add guardrail check to handleSendMessage |
-| `src/components/ai-builder/hooks/useVibecoderProjects.ts` | MODIFY | Extend VibecoderMessage type with meta_data |
-| `src/components/ai-builder/VibecoderMessageBubble.tsx` | MODIFY | Render PolicyViolationCard for violations |
+Reduce padding from `p-1.5` to `p-1` for a more compact button:
+
+```tsx
+<button 
+  type="button" 
+  onClick={toggleSpeechRecognition}
+  className={cn(
+    "p-1 transition-colors rounded-md",
+    isListening 
+      ? "text-red-400 bg-red-500/10" 
+      : "text-zinc-500 hover:text-white hover:bg-zinc-700/50"
+  )}
+>
+```
+
+---
+
+## Visual Result
+- **Idle State**: Tiny 5-bar waveform icon (3px tall), zinc color, very subtle
+- **Active State**: Bars animate in a smooth wave pattern with staggered timing, red color, subtle red background glow on button
+- **Container**: Warm orange ambient glow that intensifies slightly on hover
+
+## Files Modified
+| File | Changes |
+|------|---------|
+| `src/components/ai-builder/ChatInputBar.tsx` | Add orange glow to container, redesign WaveformIcon, add keyframe animation, reduce mic button size |
+
