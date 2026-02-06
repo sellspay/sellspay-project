@@ -38,6 +38,9 @@ interface ChatInputBarProps {
   onCancel: () => void;
   placeholder?: string;
   userCredits?: number;
+  onGenerateAsset?: () => void;  // Callback when user wants to generate an asset
+  onOpenHistory?: () => void;    // Callback to open conversation history
+  onOpenSettings?: () => void;   // Callback to open AI settings
 }
 
 function MenuItem({ 
@@ -130,7 +133,10 @@ export function ChatInputBar({
   isGenerating, 
   onCancel,
   placeholder = "Describe your vision...",
-  userCredits = 0
+  userCredits = 0,
+  onGenerateAsset,
+  onOpenHistory,
+  onOpenSettings
 }: ChatInputBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
@@ -356,16 +362,32 @@ export function ChatInputBar({
                   icon={Sparkles} 
                   label="Generate Asset" 
                   onClick={() => {
-                    // Switch to an image model
+                    // Switch to an image model and trigger callback
                     handleModelSelect(AI_MODELS.image[0]);
                     setShowMenu(false);
+                    onGenerateAsset?.();
                   }}
                 />
                 
                 <div className="h-px bg-zinc-800 my-1.5" />
                 
-                <MenuItem icon={History} label="History" shortcut="⌘H" />
-                <MenuItem icon={Settings} label="Settings" />
+                <MenuItem 
+                  icon={History} 
+                  label="History" 
+                  shortcut="⌘H"
+                  onClick={() => {
+                    setShowMenu(false);
+                    onOpenHistory?.();
+                  }}
+                />
+                <MenuItem 
+                  icon={Settings} 
+                  label="Settings"
+                  onClick={() => {
+                    setShowMenu(false);
+                    onOpenSettings?.();
+                  }}
+                />
               </div>
             )}
           </div>
