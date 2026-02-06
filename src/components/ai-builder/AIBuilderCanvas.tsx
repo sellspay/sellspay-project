@@ -83,6 +83,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Prevents race condition where AI writes to wrong project if user switches mid-generation
   const generationLockRef = useRef<string | null>(null);
   
+  // 📝 PENDING SUMMARY: Captures the AI's natural language response during streaming
+  const pendingSummaryRef = useRef<string>('');
+  
   // Handle model change with auto-tab switching
   const handleModelChange = useCallback((model: AIModel) => {
     setActiveModel(model);
@@ -181,6 +184,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       // Also forward to agent loop for logging
       logs.forEach(log => onStreamLog(log));
     },
+    onSummary: (summary: string) => {
+      // Capture the AI's natural language response during streaming
+      pendingSummaryRef.current = summary;
+    },
     onComplete: async (finalCode) => {
       // Clear live steps
       setLiveSteps([]);
@@ -189,13 +196,18 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       if (generationLockRef.current && generationLockRef.current !== activeProjectId) {
         console.warn('🛑 Discarded code: Project mismatch on completion');
         generationLockRef.current = null;
+        pendingSummaryRef.current = '';
         resetAgent();
         return;
       }
 
+      // Use the REAL AI summary, or fallback if empty
+      const aiResponse = pendingSummaryRef.current || 'Applied your changes to the storefront.';
+      pendingSummaryRef.current = ''; // Reset for next generation
+
       // Add assistant message with code snapshot (project-scoped)
       // Pass the locked project ID explicitly for safety
-      await addMessage('assistant', 'Generated your storefront design.', finalCode, generationLockRef.current || undefined);
+      await addMessage('assistant', aiResponse, finalCode, generationLockRef.current || undefined);
 
       // Release the lock
       generationLockRef.current = null;

@@ -55,10 +55,8 @@ function AssistantCard({ message, onRate, onRestoreCode, canRestore, isStreaming
   const hasCode = !!message.code_snapshot;
   const { label, icon: Icon } = getMessageMeta(message.content, hasCode);
 
-  // Friendly message if it's just a raw "Generated..." text
-  const displayContent = message.content === "Generated your storefront design." 
-    ? "I've drafted a premium layout based on your request. Check the preview!" 
-    : message.content;
+  // Display the AI's actual response - no hardcoded replacement
+  const displayContent = message.content;
 
   // Generate steps if not provided (for backwards compatibility)
   const steps = message.steps || (hasCode ? generateDefaultSteps(hasCode, message.content) : undefined);
