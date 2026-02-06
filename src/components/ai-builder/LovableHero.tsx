@@ -27,7 +27,7 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
-      recognition.continuous = false;
+      recognition.continuous = true; // Keep listening until manually stopped
       recognition.interimResults = false; // Only get final results to avoid duplicates
       recognition.lang = 'en-US';
 
@@ -45,12 +45,22 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
       };
 
       recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
+        // Only stop on actual errors, not on 'no-speech' or 'aborted'
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          console.error('Speech recognition error:', event.error);
+          setIsListening(false);
+        }
       };
 
       recognition.onend = () => {
-        setIsListening(false);
+        // Auto-restart if still supposed to be listening (toggle is on)
+        if (isListening && recognitionRef.current) {
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            // Already started, ignore
+          }
+        }
       };
 
       recognitionRef.current = recognition;
@@ -61,7 +71,7 @@ export function LovableHero({ onStart, userName = "Creator" }: LovableHeroProps)
         recognitionRef.current.abort();
       }
     };
-  }, []);
+  }, [isListening]);
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
