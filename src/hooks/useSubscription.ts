@@ -71,11 +71,25 @@ const DEFAULT_STATE: SubscriptionState = {
 };
 
 export function useSubscription() {
-  const { user } = useAuth();
+  const { user, isAdmin, isOwner } = useAuth();
   const navigate = useNavigate();
   const fetchedRef = useRef(false);
 
+  // Admin/Owner override - full access without subscription
+  const isPrivileged = isAdmin || isOwner;
+
   const [state, setState] = useState<SubscriptionState>(() => {
+    if (isPrivileged) {
+      return {
+        plan: 'agency',
+        credits: 999999,
+        capabilities: { vibecoder: true, imageGen: true, videoGen: true },
+        sellerFee: 0,
+        badge: 'gold',
+        expiresAt: null,
+        stripeSubscriptionId: null,
+      };
+    }
     if (user && isCacheValid(subscriptionCache, user.id)) {
       return subscriptionCache!.state;
     }
@@ -102,6 +116,12 @@ export function useSubscription() {
   const refreshSubscription = useCallback(async (forceRefresh = false) => {
     if (!user) {
       setState(DEFAULT_STATE);
+      setLoading(false);
+      return;
+    }
+
+    // Admin/Owner bypass - always have full access
+    if (isPrivileged) {
       setLoading(false);
       return;
     }
