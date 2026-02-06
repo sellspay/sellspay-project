@@ -59,6 +59,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [contentProjectId, setContentProjectId] = useState<string | null>(null);
   // Prevent Sandpack's brief bundling/error flash after streaming completes
   const [isAwaitingPreviewReady, setIsAwaitingPreviewReady] = useState(false);
+  
+  // 🤝 PREVIEW HANDSHAKE: Tracks if we're waiting for Sandpack to signal "ready" after project switch
+  // This keeps the loading screen visible until the preview is actually rendered, preventing blank frames
+  const [isWaitingForPreviewMount, setIsWaitingForPreviewMount] = useState(false);
 
   // View mode state (Preview vs Code vs Image vs Video)
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
@@ -564,6 +568,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // CONTENT GATE: Now it's safe to render - correct code/messages are mounted
     console.log('🚪 Opening content gate for project:', activeProjectId);
     setContentProjectId(activeProjectId);
+    
+    // 🤝 PREVIEW HANDSHAKE: Start waiting for Sandpack to signal it's ready
+    // This keeps the loader visible until the iframe is actually painted
+    setIsWaitingForPreviewMount(true);
   }, [activeProjectId, messagesLoading, isVerifyingProject, getLastCodeSnapshot, setCode, isStreaming]);
 
   // Reset restoration tracker when project changes
@@ -983,11 +991,13 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   // 
   // CRITICAL: The PRIMARY check is contentProjectId !== activeProjectId.
   // This is the ONLY reliable way to know if the correct content is mounted.
+  // 🤝 HANDSHAKE: Also wait for Sandpack to signal it's ready (isWaitingForPreviewMount)
   const isProjectTransitioning = Boolean(
     activeProjectId && (
       contentProjectId !== activeProjectId ||
       isVerifyingProject ||
       messagesLoading ||
+      isWaitingForPreviewMount || // Wait for Sandpack's onReady signal
       (lockedProjectId && lockedProjectId !== activeProjectId)
     )
   );
@@ -1231,6 +1241,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       isStreaming={isStreaming}
                       showLoadingOverlay={isStreaming || isAwaitingPreviewReady}
                       onReady={() => {
+                        // 🤝 HANDSHAKE COMPLETE: Sandpack is ready, release the transition lock
+                        setIsWaitingForPreviewMount(false);
                         setIsAwaitingPreviewReady(false);
                         // If the bundle becomes healthy again, clear the toast.
                         setPreviewError(null);
