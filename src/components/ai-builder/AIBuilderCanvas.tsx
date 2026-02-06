@@ -170,13 +170,15 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       logs.forEach(log => onStreamLog(log));
     },
     onComplete: async (finalCode) => {
-      // Clear live steps and save to project_files on completion
+      // Clear live steps
       setLiveSteps([]);
-      await saveVibecoderCode(finalCode);
-      
-      // Add assistant message with code snapshot
+
+      // IMPORTANT: Do NOT persist drafts into the published/live code slot.
+      // Drafts are stored per-project via message code snapshots.
+
+      // Add assistant message with code snapshot (project-scoped)
       await addMessage('assistant', 'Generated your storefront design.', finalCode);
-      
+
       // Notify agent loop that streaming is complete
       onStreamingComplete();
     },
@@ -369,22 +371,13 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         toast.info('Previous project was deleted. Starting fresh.');
       } else {
         // Project verified - load code.
-        // Primary source of truth: last assistant code_snapshot in message history.
-        // Fallback: profile-scoped /App.tsx persisted in project_files.
+        // Source of truth: last assistant code_snapshot in message history (project-scoped).
         const lastSnapshot = getLastCodeSnapshot();
         if (lastSnapshot) {
           setCode(lastSnapshot);
         } else {
-          const { data: fileRow, error: fileErr } = await supabase
-            .from('project_files')
-            .select('content')
-            .eq('profile_id', profileId)
-            .eq('file_path', '/App.tsx')
-            .maybeSingle();
-
-          if (!fileErr && fileRow?.content) {
-            setCode(fileRow.content);
-          }
+          // Brand new project (no generations yet) → show blank template.
+          resetCode();
         }
       }
 
@@ -394,21 +387,37 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     verifyAndLoadProject();
   }, [activeProjectId, messages, getLastCodeSnapshot, profileId, setCode, resetCode, resetAgent]);
 
-  // Save vibecoder code to project_files
-  const saveVibecoderCode = async (codeContent: string) => {
+  // NOTE: Draft code is NOT persisted to the public/live slot.
+  // Publishing explicitly writes the current code to a dedicated published file.
+  const savePublishedVibecoderCode = async (codeContent: string) => {
     try {
+      const nowIso = new Date().toISOString();
+
+      // New canonical published path
+      await supabase
+        .from('project_files')
+        .upsert({
+          profile_id: profileId,
+          file_path: '/App.published.tsx',
+          content: codeContent,
+          updated_at: nowIso,
+        }, {
+          onConflict: 'profile_id,file_path',
+        });
+
+      // Back-compat: keep legacy path updated on publish only
       await supabase
         .from('project_files')
         .upsert({
           profile_id: profileId,
           file_path: '/App.tsx',
           content: codeContent,
-          updated_at: new Date().toISOString(),
-        }, { 
+          updated_at: nowIso,
+        }, {
           onConflict: 'profile_id,file_path',
         });
     } catch (err) {
-      console.error('Failed to save vibecoder code:', err);
+      console.error('Failed to save published vibecoder code:', err);
     }
   };
 
@@ -417,7 +426,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     const previousSnapshot = getPreviousCodeSnapshot();
     if (previousSnapshot) {
       setCode(previousSnapshot);
-      saveVibecoderCode(previousSnapshot);
       toast.success('Reverted to previous version');
     }
   }, [getPreviousCodeSnapshot, setCode]);
@@ -433,10 +441,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
     try {
       const restoredCode = await restoreToVersion(messageId);
-      
+
       if (restoredCode) {
         setCode(restoredCode);
-        await saveVibecoderCode(restoredCode);
         toast.success('Restored to previous version');
       } else {
         toast.error('No code snapshot found for this version');
@@ -451,7 +458,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const handlePublish = async () => {
     setPublishing(true);
     try {
-      // Update layout to published
+      // 1) Persist the currently-open code as the published storefront
+      // (critical: prevents drafts/new projects from overwriting what’s live)
+      await savePublishedVibecoderCode(code);
+
+      // 2) Mark layout as published
       await supabase
         .from('ai_storefront_layouts')
         .upsert({
@@ -461,7 +472,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
           updated_at: new Date().toISOString(),
         }, { onConflict: 'profile_id' });
 
-      // Set profile to use AI mode AND link the active project
+      // 3) Set profile to use AI mode AND link the active project
       await supabase
         .from('profiles')
         .update({ 

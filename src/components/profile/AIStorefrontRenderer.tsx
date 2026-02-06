@@ -31,13 +31,25 @@ export function AIStorefrontRenderer({ profileId }: AIStorefrontRendererProps) {
     
     try {
       // Fetch the published Vibecoder code from project_files
+      // Prefer the dedicated published path, with legacy fallback.
       const [filesResp, layoutResp] = await Promise.all([
-        supabase
-          .from('project_files')
-          .select('content')
-          .eq('profile_id', profileId)
-          .eq('file_path', '/App.tsx')
-          .maybeSingle(),
+        (async () => {
+          const published = await supabase
+            .from('project_files')
+            .select('content')
+            .eq('profile_id', profileId)
+            .eq('file_path', '/App.published.tsx')
+            .maybeSingle();
+
+          if (published.data?.content) return published;
+
+          return supabase
+            .from('project_files')
+            .select('content')
+            .eq('profile_id', profileId)
+            .eq('file_path', '/App.tsx')
+            .maybeSingle();
+        })(),
         supabase
           .from('ai_storefront_layouts')
           .select('is_published, vibecoder_mode')
