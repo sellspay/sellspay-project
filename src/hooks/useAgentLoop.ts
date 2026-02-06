@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import type { AgentStep } from '@/components/ai-builder/AgentProgress';
 
 interface AgentState {
@@ -6,13 +7,17 @@ interface AgentState {
   logs: string[];
   isRunning: boolean;
   error?: string;
-  lockedProjectId: string | null; // Track which project owns this generation
+  lockedProjectId: string | null;
+  architectPlan?: Record<string, unknown>;
 }
 
 interface UseAgentLoopOptions {
   onStreamCode: (prompt: string, existingCode?: string) => void;
+  onCodeGenerated?: (code: string, summary: string) => void;
+  onPlanGenerated?: (plan: Record<string, unknown>) => void;
   onComplete?: () => void;
-  getActiveProjectId?: () => string | null; // For race condition checking
+  getActiveProjectId?: () => string | null;
+  getUserId?: () => string | null;
 }
 
 const INITIAL_STATE: AgentState = {
@@ -22,24 +27,30 @@ const INITIAL_STATE: AgentState = {
   lockedProjectId: null,
 };
 
-/**
- * Create a fresh initial state - used for Scorched Earth reset
- */
 function createFreshState(): AgentState {
   return { ...INITIAL_STATE };
 }
 
 /**
- * Agent orchestration hook that manages the multi-step workflow:
- * Planning → Reading → Writing → Installing → Verifying → Done/Error
+ * VibeCoder 2.0 Agent Loop - Multi-Agent Orchestration
  * 
- * This wraps the existing streamCode function with agent-like behavior,
- * providing real-time logs and step transitions for a premium UX.
+ * Connects to the vibecoder-orchestrator edge function which chains:
+ * 1. Architect Agent → Creates blueprint
+ * 2. Builder Agent → Generates code
+ * 3. Linter Agent → Validates code
+ * 4. Self-Heal Loop → Auto-fixes errors
  */
-export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: UseAgentLoopOptions) {
+export function useAgentLoop({ 
+  onStreamCode, 
+  onCodeGenerated,
+  onPlanGenerated,
+  onComplete, 
+  getActiveProjectId,
+  getUserId,
+}: UseAgentLoopOptions) {
   const [state, setState] = useState<AgentState>(INITIAL_STATE);
   const abortRef = useRef(false);
-  const streamStartedRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const addLog = useCallback((msg: string) => {
     setState(prev => ({ 
@@ -53,69 +64,119 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
   }, []);
 
   /**
-   * Starts the agent loop with the given prompt
-   * Now accepts projectId to lock the generation to a specific project
+   * Starts the multi-agent orchestration pipeline
    */
-  const startAgent = useCallback(async (prompt: string, existingCode?: string, projectId?: string) => {
+  const startAgent = useCallback(async (
+    prompt: string, 
+    existingCode?: string, 
+    projectId?: string,
+    styleProfile?: string,
+    skipArchitect?: boolean
+  ) => {
     abortRef.current = false;
-    streamStartedRef.current = false;
     
-    // 🔒 LOCK: Capture which project this generation belongs to
+    // Create new abort controller for this request
+    abortControllerRef.current = new AbortController();
+    
     const lockedId = projectId || getActiveProjectId?.() || null;
+    const userId = getUserId?.() || null;
+    
+    if (!userId) {
+      console.error('[AgentLoop] No user ID available');
+      setState(prev => ({
+        ...prev,
+        step: 'error',
+        error: 'User not authenticated',
+        isRunning: false,
+      }));
+      return;
+    }
     
     setState({ 
-      step: 'planning', 
-      logs: ['> Initializing agent...'], 
+      step: skipArchitect ? 'building' : 'architect', 
+      logs: ['> Initializing VibeCoder 2.0...'], 
       isRunning: true,
       lockedProjectId: lockedId,
     });
 
     try {
-      // STEP 1: PLANNING (200ms simulated think time)
-      addLog(`Received prompt: "${prompt.slice(0, 50)}${prompt.length > 50 ? '...' : ''}"`);
-      await delay(300);
+      // Get the orchestrator URL
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const orchestratorUrl = `${supabaseUrl}/functions/v1/vibecoder-orchestrator`;
       
-      if (abortRef.current) return;
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
       
-      addLog('Analyzing request complexity...');
-      await delay(400);
-      
-      if (abortRef.current) return;
-      
-      // Simulate identifying components
-      const components = inferComponents(prompt);
-      addLog(`> Identified components: ${components.join(', ')}`);
-      await delay(200);
-
-      // STEP 2: READING (Context awareness)
-      if (abortRef.current) return;
-      setStep('reading');
-      
-      if (existingCode) {
-        addLog('Reading existing storefront code...');
-        await delay(300);
-        addLog(`Analyzed ${existingCode.split('\n').length} lines of existing code`);
-      } else {
-        addLog('Starting fresh build (no existing code)');
+      if (!authToken) {
+        throw new Error('Not authenticated');
       }
-      await delay(200);
       
-      addLog('Checking design system compatibility...');
-      await delay(200);
-
-      // STEP 3: WRITING (Actual code generation)
-      if (abortRef.current) return;
-      setStep('writing');
-      addLog('> Generating React components...');
+      addLog('Connecting to orchestration pipeline...');
       
-      // Trigger the actual streaming code generation
-      streamStartedRef.current = true;
-      onStreamCode(prompt, existingCode);
+      // Start SSE connection to orchestrator
+      const response = await fetch(orchestratorUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          prompt,
+          currentCode: existingCode,
+          styleProfile,
+          userId,
+          projectId: lockedId,
+          skipArchitect,
+        }),
+        signal: abortControllerRef.current.signal,
+      });
       
-      // The rest of the steps will be triggered by external callbacks
-
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Orchestrator error: ${errorText}`);
+      }
+      
+      if (!response.body) {
+        throw new Error('No response stream');
+      }
+      
+      // Process SSE stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        if (abortRef.current) {
+          reader.cancel();
+          break;
+        }
+        
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          
+          const jsonStr = line.slice(6);
+          if (jsonStr === '[DONE]') continue;
+          
+          try {
+            const event = JSON.parse(jsonStr);
+            handleOrchestratorEvent(event);
+          } catch {
+            // Skip invalid JSON
+          }
+        }
+      }
+      
     } catch (err) {
+      if (abortRef.current) return; // Ignore abort errors
+      
       const message = err instanceof Error ? err.message : 'Agent crashed';
+      console.error('[AgentLoop] Error:', err);
       setState(prev => ({
         ...prev,
         step: 'error',
@@ -124,31 +185,105 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       }));
       addLog(`! Error: ${message}`);
     }
-  }, [addLog, setStep, onStreamCode]);
+  }, [addLog, getActiveProjectId, getUserId]);
+  
+  /**
+   * Handle events from the orchestrator SSE stream
+   */
+  const handleOrchestratorEvent = useCallback((event: {
+    type: 'status' | 'log' | 'plan' | 'code' | 'error' | 'complete';
+    step?: 'architect' | 'builder' | 'linter' | 'healing';
+    data: unknown;
+  }) => {
+    switch (event.type) {
+      case 'status': {
+        const stepMap: Record<string, AgentStep> = {
+          'architect': 'architect',
+          'builder': 'building',
+          'linter': 'linting',
+          'healing': 'healing',
+        };
+        const newStep = event.step ? stepMap[event.step] || 'planning' : 'planning';
+        setStep(newStep);
+        
+        const statusData = event.data as { message?: string };
+        if (statusData?.message) {
+          addLog(`> ${statusData.message}`);
+        }
+        break;
+      }
+      
+      case 'log': {
+        const logMsg = typeof event.data === 'string' ? event.data : String(event.data);
+        addLog(logMsg);
+        break;
+      }
+      
+      case 'plan': {
+        const plan = event.data as Record<string, unknown>;
+        setState(prev => ({ ...prev, architectPlan: plan }));
+        onPlanGenerated?.(plan);
+        addLog('> Blueprint created');
+        break;
+      }
+      
+      case 'code': {
+        const codeData = event.data as { code: string; summary?: string };
+        setStep('verifying');
+        addLog('> Code delivered');
+        onCodeGenerated?.(codeData.code, codeData.summary || 'Storefront generated.');
+        break;
+      }
+      
+      case 'error': {
+        const errorData = event.data as { message?: string };
+        const errorMsg = errorData?.message || 'Unknown error';
+        setState(prev => ({
+          ...prev,
+          step: 'error',
+          error: errorMsg,
+          isRunning: false,
+        }));
+        addLog(`! Error: ${errorMsg}`);
+        break;
+      }
+      
+      case 'complete': {
+        const completeData = event.data as { success: boolean; attempts?: number; creditsUsed?: number };
+        setStep('done');
+        addLog(`> Build complete (${completeData.attempts || 1} attempt${completeData.attempts !== 1 ? 's' : ''})`);
+        if (completeData.creditsUsed) {
+          addLog(`Credits used: ${completeData.creditsUsed}`);
+        }
+        setState(prev => ({ ...prev, isRunning: false, lockedProjectId: null }));
+        onComplete?.();
+        break;
+      }
+    }
+  }, [setStep, addLog, onPlanGenerated, onCodeGenerated, onComplete]);
 
   /**
-   * Called externally when streaming starts receiving tokens
+   * Legacy callback for streaming start (compatibility)
    */
   const onStreamingStart = useCallback(() => {
-    if (state.step === 'writing') {
+    if (state.step === 'building') {
       addLog('Code generation in progress...');
     }
   }, [state.step, addLog]);
 
   /**
-   * Called externally when a [LOG:] tag is parsed from the stream
+   * Legacy callback for log updates (compatibility)
    */
   const onStreamLog = useCallback((logMessage: string) => {
     addLog(logMessage);
   }, [addLog]);
 
   /**
-   * Called externally when streaming completes successfully
+   * Legacy callback for streaming complete (compatibility)
    */
   const onStreamingComplete = useCallback(async () => {
     if (abortRef.current) return;
     
-    // 🛑 RACE CONDITION CHECK: Verify project hasn't changed
     const currentProjectId = getActiveProjectId?.();
     if (state.lockedProjectId && currentProjectId !== state.lockedProjectId) {
       console.warn(`🛑 Agent completion blocked: was for ${state.lockedProjectId} but now viewing ${currentProjectId}`);
@@ -156,24 +291,6 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       return;
     }
     
-    // STEP 4: INSTALLING
-    setStep('installing');
-    addLog('Checking dependencies...');
-    await delay(400);
-    addLog('All dependencies resolved');
-    
-    // STEP 5: VERIFYING
-    if (abortRef.current) return;
-    setStep('verifying');
-    addLog('Running build verification...');
-    await delay(500);
-    addLog('Checking for syntax errors...');
-    await delay(300);
-    addLog('Validating component structure...');
-    await delay(200);
-    
-    // STEP 6: DONE
-    if (abortRef.current) return;
     setStep('done');
     addLog('> Build successful.');
     
@@ -182,7 +299,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
   }, [setStep, addLog, onComplete, getActiveProjectId, state.lockedProjectId]);
 
   /**
-   * Called externally when an error occurs during streaming
+   * Legacy callback for streaming error (compatibility)
    */
   const onStreamingError = useCallback((error: string) => {
     setState(prev => ({
@@ -195,16 +312,12 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
   }, [addLog]);
 
   /**
-   * Trigger self-correction when Sandpack reports an error
+   * Trigger self-correction feedback
    */
   const triggerSelfCorrection = useCallback(async (errorMsg: string) => {
-    setStep('verifying');
+    setStep('healing');
     addLog(`! Runtime error detected: ${errorMsg.slice(0, 100)}`);
-    await delay(300);
     addLog('> Triggering self-correction...');
-    
-    // The parent component should call startAgent with an error report
-    // This is just for UI feedback
   }, [setStep, addLog]);
 
   /**
@@ -212,6 +325,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
    */
   const cancelAgent = useCallback(() => {
     abortRef.current = true;
+    abortControllerRef.current?.abort();
     setState(createFreshState());
   }, []);
 
@@ -220,20 +334,17 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
    */
   const resetAgent = useCallback(() => {
     abortRef.current = true;
+    abortControllerRef.current?.abort();
     setState(createFreshState());
   }, []);
 
-  // --- SCORCHED EARTH: Mount/Unmount pattern for strict project isolation ---
-  
   /**
-   * Unmount the current project - wipes ALL hook memory
-   * Call this BEFORE loading a new project to prevent cross-contamination
+   * Unmount - wipes ALL hook memory
    */
   const unmountProject = useCallback(() => {
     console.log("🧹 [AgentLoop] Unmounting Project. Wiping hook memory.");
     abortRef.current = true;
-    streamStartedRef.current = false;
-    // Force isRunning to false to prevent UI getting stuck
+    abortControllerRef.current?.abort();
     setState({
       ...createFreshState(),
       isRunning: false,
@@ -241,15 +352,11 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
   }, []);
 
   /**
-   * Mount a specific project with explicit ID lock
-   * Call this AFTER fetching fresh data from DB
+   * Mount a specific project
    */
   const mountProject = useCallback((projectId: string) => {
     console.log(`🔒 [AgentLoop] Mounting hook to Project ID: ${projectId}`);
-    // Reset abort flag for new project
     abortRef.current = false;
-    streamStartedRef.current = false;
-    // Set the lock explicitly
     setState(prev => ({
       ...createFreshState(),
       lockedProjectId: projectId,
@@ -266,56 +373,13 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
     onStreamingComplete,
     onStreamingError,
     triggerSelfCorrection,
-    // Scorched Earth pattern
     mountProject,
     unmountProject,
-    // Expose individual pieces for convenience
+    // Expose individual pieces
     agentStep: state.step,
     agentLogs: state.logs,
     isAgentRunning: state.isRunning,
     lockedProjectId: state.lockedProjectId,
+    architectPlan: state.architectPlan,
   };
-}
-
-// --- HELPERS ---
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
- * Infer what components might be generated based on prompt keywords
- */
-function inferComponents(prompt: string): string[] {
-  const components: string[] = [];
-  const lower = prompt.toLowerCase();
-  
-  if (lower.includes('hero') || lower.includes('landing') || lower.includes('header')) {
-    components.push('Hero');
-  }
-  if (lower.includes('product') || lower.includes('store') || lower.includes('shop')) {
-    components.push('ProductGrid');
-  }
-  if (lower.includes('about') || lower.includes('bio') || lower.includes('creator')) {
-    components.push('AboutSection');
-  }
-  if (lower.includes('testimonial') || lower.includes('review')) {
-    components.push('Testimonials');
-  }
-  if (lower.includes('footer') || lower.includes('contact') || lower.includes('social')) {
-    components.push('Footer');
-  }
-  if (lower.includes('pricing') || lower.includes('plan')) {
-    components.push('PricingTable');
-  }
-  if (lower.includes('gallery') || lower.includes('portfolio') || lower.includes('work')) {
-    components.push('Gallery');
-  }
-  
-  // Default if nothing specific detected
-  if (components.length === 0) {
-    components.push('Hero', 'MainContent', 'Footer');
-  }
-  
-  return components;
 }
