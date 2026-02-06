@@ -1,26 +1,24 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, Layout, ShoppingBag, Mail, Check, RefreshCw } from "lucide-react";
+import { ChevronDown, FileText, Check, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { SitePage } from "@/utils/routeParser";
 
-// Storefront pages only (no auth/login pages)
-const SITE_PAGES = [
-  { id: "home", path: "/", label: "Home", icon: Layout },
-  { id: "products", path: "/products", label: "Products", icon: ShoppingBag },
-  { id: "contact", path: "/contact", label: "Contact", icon: Mail },
-];
+// Re-export the type for convenience
+export type { SitePage };
 
 interface PageNavigatorProps {
-  activePage?: string;
-  onNavigate?: (path: string) => void;
+  activePage: string;
+  pages: SitePage[];
+  onNavigate: (path: string) => void;
   onRefresh?: () => void;
 }
 
-export function PageNavigator({ activePage = "/", onNavigate, onRefresh }: PageNavigatorProps) {
+export function PageNavigator({ activePage, pages, onNavigate, onRefresh }: PageNavigatorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Find current page based on activePage prop
-  const currentPage = SITE_PAGES.find(p => p.path === activePage) || SITE_PAGES[0];
+  const currentPage = pages.find(p => p.path === activePage) || pages[0] || { label: "Home", path: "/" };
 
   // Close when clicking outside
   useEffect(() => {
@@ -33,9 +31,9 @@ export function PageNavigator({ activePage = "/", onNavigate, onRefresh }: PageN
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handlePageSelect = (page: typeof SITE_PAGES[0]) => {
+  const handlePageSelect = (page: SitePage) => {
     setIsOpen(false);
-    onNavigate?.(page.path);
+    onNavigate(page.path);
   };
 
   return (
@@ -80,15 +78,14 @@ export function PageNavigator({ activePage = "/", onNavigate, onRefresh }: PageN
           {/* Header */}
           <div className="px-3 py-2 border-b border-zinc-800">
             <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold">
-              Site Pages
+              Detected Pages
             </span>
           </div>
 
           {/* Page List */}
           <div className="p-1.5">
-            {SITE_PAGES.map((page) => {
+            {pages.map((page) => {
               const isActive = activePage === page.path;
-              const Icon = page.icon;
               return (
                 <button
                   key={page.id}
@@ -101,7 +98,7 @@ export function PageNavigator({ activePage = "/", onNavigate, onRefresh }: PageN
                   )}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon size={14} className={cn(
+                    <FileText size={14} className={cn(
                       isActive ? "text-violet-400" : "text-zinc-500 group-hover:text-zinc-300"
                     )} />
                     <span>{page.label}</span>

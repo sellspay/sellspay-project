@@ -8,8 +8,9 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type { ViewMode } from "./types/generation";
 import { ProfileMenu } from "./ProfileMenu";
-import { PageNavigator } from "./PageNavigator";
+import { PageNavigator, type SitePage } from "./PageNavigator";
 import { RegenerateModal } from "./RegenerateModal";
+
 interface VibecoderHeaderProps {
   projectName?: string;
   viewMode: ViewMode;
@@ -25,6 +26,7 @@ interface VibecoderHeaderProps {
   // Page navigation props
   currentPath?: string;
   onNavigate?: (path: string) => void;
+  pages?: SitePage[];
   // Regenerate props
   onRegenerate?: (tweak: string) => void;
   isGenerating?: boolean;
@@ -80,6 +82,7 @@ export function VibecoderHeader({
   username,
   currentPath = "/",
   onNavigate,
+  pages = [{ id: 'home', path: '/', label: 'Home' }],
   onRegenerate,
   isGenerating = false,
   avatarUrl,
@@ -191,7 +194,8 @@ export function VibecoderHeader({
         <div className="hidden lg:block">
           <PageNavigator 
             activePage={currentPath} 
-            onNavigate={onNavigate} 
+            pages={pages}
+            onNavigate={onNavigate || (() => {})} 
             onRefresh={onRefresh} 
           />
         </div>
