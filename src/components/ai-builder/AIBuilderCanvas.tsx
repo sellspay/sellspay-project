@@ -10,6 +10,7 @@ import { PreviewErrorBoundary } from './PreviewErrorBoundary';
 import { VibecoderHeader } from './VibecoderHeader';
 import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects } from './hooks/useVibecoderProjects';
+import { useAgentLoop } from '@/hooks/useAgentLoop';
 import { GenerationCanvas } from './GenerationCanvas';
 import { PlacementPromptModal } from './PlacementPromptModal';
 import { AI_MODELS, type AIModel } from './ChatInputBar';
@@ -128,7 +129,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // Chat response state for intent router
   const [chatResponse, setChatResponse] = useState<string | null>(null);
   
-  // Live steps state for real-time transparency
+  // Live steps state for real-time transparency (legacy fallback)
   const [liveSteps, setLiveSteps] = useState<string[]>([]);
   
   // Streaming code state
@@ -144,6 +145,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     onLogUpdate: (logs) => {
       // Update live steps in real-time as they stream in
       setLiveSteps(logs);
+      // Also forward to agent loop for logging
+      logs.forEach(log => onStreamLog(log));
     },
     onComplete: async (finalCode) => {
       // Clear live steps and save to project_files on completion
@@ -152,17 +155,42 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       
       // Add assistant message with code snapshot
       await addMessage('assistant', 'Generated your storefront design.', finalCode);
+      
+      // Notify agent loop that streaming is complete
+      onStreamingComplete();
     },
     onChatResponse: async (text) => {
       // AI responded with a chat message instead of code
       setLiveSteps([]);
       setChatResponse(text);
       await addMessage('assistant', text);
+      // Reset agent on chat response (no code generated)
+      resetAgent();
     },
     onError: (err) => {
       setLiveSteps([]);
       toast.error(err.message);
+      onStreamingError(err.message);
     }
+  });
+
+  // Agent loop for premium multi-step experience
+  const {
+    agentStep,
+    agentLogs,
+    isAgentRunning,
+    startAgent,
+    cancelAgent,
+    resetAgent,
+    onStreamLog,
+    onStreamingComplete,
+    onStreamingError,
+    triggerSelfCorrection,
+  } = useAgentLoop({
+    onStreamCode: streamCode,
+    onComplete: () => {
+      console.log('[AgentLoop] Complete');
+    },
   });
 
   // Dynamically detected pages from generated code
@@ -332,7 +360,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   };
 
-  // Send message handler (with auto-create)
+  // Send message handler (with auto-create) - NOW USES AGENT LOOP
   const handleSendMessage = async (prompt: string) => {
     // Auto-create project if we don't have one yet
     const projectId = await ensureProject();
@@ -344,8 +372,8 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // Add user message to history
     await addMessage('user', prompt);
     
-    // Stream the code generation
-    streamCode(prompt, code !== DEFAULT_CODE ? code : undefined);
+    // Start the agent loop (which internally calls streamCode)
+    startAgent(prompt, code !== DEFAULT_CODE ? code : undefined);
   };
 
   // Handle new project creation
@@ -386,9 +414,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
   // Handle auto-fix from error boundary (self-healing AI)
   const handleAutoFix = useCallback((errorMsg: string) => {
+    // Notify agent of the error for UI feedback
+    triggerSelfCorrection(errorMsg);
     // Send the error report to the AI for automatic repair
     handleSendMessage(errorMsg);
-  }, []);
+  }, [triggerSelfCorrection]);
 
   // ===== CREATIVE STUDIO: Asset Generation Handlers =====
   
@@ -632,13 +662,19 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             key={`chat-${activeProjectId}-${resetKey}`}
             onSendMessage={handleSendMessage}
             onGenerateAsset={handleGenerateAsset}
-            isStreaming={isStreaming}
-            onCancel={cancelStream}
+            isStreaming={isStreaming || isAgentRunning}
+            onCancel={() => {
+              cancelStream();
+              cancelAgent();
+            }}
             messages={messages}
             onRateMessage={rateMessage}
             onRestoreToVersion={handleRestoreCode}
             projectName={activeProject?.name}
             liveSteps={liveSteps}
+            agentStep={agentStep}
+            agentLogs={agentLogs}
+            isAgentMode={isAgentRunning}
             activeModel={activeModel}
             onOpenBilling={() => window.open('/pricing', '_blank')}
             onModelChange={handleModelChange}
