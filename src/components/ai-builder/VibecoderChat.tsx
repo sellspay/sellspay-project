@@ -6,9 +6,10 @@ import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import { motion } from 'framer-motion';
 import { ChatInputBar, type AIModel } from './ChatInputBar';
 import { useUserCredits } from '@/hooks/useUserCredits';
+import { useAuth } from '@/lib/auth';
 import { LiveThought } from './LiveThought';
 import { type AgentStep } from './AgentProgress';
-import { InsufficientCreditsCard, isCreditsError, parseCreditsError } from './InsufficientCreditsCard';
+import { InsufficientCreditsCard, parseCreditsError } from './InsufficientCreditsCard';
 interface VibecoderChatProps {
   onSendMessage: (message: string, styleProfile?: string) => void;
   onGenerateAsset?: (model: AIModel, prompt: string) => void;
@@ -157,6 +158,8 @@ export function VibecoderChat({
 
   // User credits hook
   const { credits: userCredits } = useUserCredits();
+  const { isAdmin, isOwner } = useAuth();
+  const isPrivileged = isAdmin || isOwner;
 
   const handleSubmit = (options: { 
     isPlanMode: boolean; 
@@ -285,7 +288,7 @@ export function VibecoderChat({
             )}
             
             {/* Credit Error Card - Shows when backend rejects due to insufficient credits */}
-            {agentStep === 'error' && agentErrorType === 'credits' && agentError && (
+            {!isPrivileged && agentStep === 'error' && agentErrorType === 'credits' && agentError && (
               <InsufficientCreditsCard
                 {...parseCreditsError(agentError)}
                 onUpgrade={() => onOpenBilling?.()}
@@ -304,6 +307,7 @@ export function VibecoderChat({
         onCancel={onCancel}
         placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
         userCredits={userCredits}
+        isPrivileged={isPrivileged}
         activeModel={activeModel}
         onModelChange={onModelChange}
         activeStyleProfile={activeStyleProfile}

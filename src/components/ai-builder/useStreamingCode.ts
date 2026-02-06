@@ -24,17 +24,7 @@ interface StreamingState {
 
 const DEFAULT_CODE = `export default function App() {
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-      <div className="text-center space-y-6">
-        <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-violet-500/20 to-blue-500/20 border border-violet-500/30 flex items-center justify-center">
-          <div className="w-8 h-8 rounded-lg bg-violet-500/50" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-white">Vibecoder Ready</h1>
-          <p className="text-zinc-400">Describe your vision to start building</p>
-        </div>
-      </div>
-    </div>
+    <div className="min-h-screen bg-zinc-950" />
   );
 }`;
 
