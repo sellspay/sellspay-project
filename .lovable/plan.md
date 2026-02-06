@@ -1,188 +1,164 @@
 
-# Fix: Replace Hardcoded AI Responses with Real Dynamic Text
+# SellsPay Policy Guardrail System
 
-## Problem Summary
+## Overview
+This implementation creates a three-layer defense system that prevents the AI from generating authentication, settings, backend, or any platform-managed functionality. The system stops forbidden requests instantly on the client side, saving API costs and preventing scope creep.
 
-The AI Builder throws away the AI's intelligent, context-aware response and replaces it with a generic hardcoded message like `"I've drafted a premium layout based on your request. Check the preview!"`. This makes the AI feel robotic and fake.
+## Problem
+The AI is "over-helping" by building full-stack features (Login, Settings, Profiles, Authentication) that:
+1. Conflict with SellsPay's core infrastructure
+2. Create security vulnerabilities with mock authentication
+3. Waste API tokens on code that gets discarded
+4. Confuse users about what they can actually build
 
-**Current Flow:**
+## Solution Architecture
+
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ AI Generates:                                                               │
-│   [LOG: Designing responsive grid...]                                       │
-│   "Building your anime storefront. Injecting neon accents and..."           │
-│   /// TYPE: CODE ///                                                        │
-│   export default function App() { ... }                                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ useStreamingCode.ts:                                                        │
-│   ✓ Extracts LOG tags (for progress steps)                                  │
-│   ✓ Extracts code (for preview)                                             │
-│   ✗ DISCARDS the AI's natural language response                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ AIBuilderCanvas.tsx (onComplete):                                           │
-│   → Saves: "Generated your storefront design." (HARDCODED)                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ VibecoderMessageBubble.tsx:                                                 │
-│   → Replaces with: "I've drafted a premium layout..." (DOUBLE HARDCODED)    │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     USER PROMPT INPUT                            │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              LAYER 1: POLICY GUARD (Client-Side)                │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ checkPolicyViolation(prompt)                               │  │
+│  │   - Scans for forbidden keywords                           │  │
+│  │   - Returns violation rule if matched                      │  │
+│  │   - Blocks request BEFORE hitting AI API                   │  │
+│  └───────────────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+           ┌─────────────────┴─────────────────┐
+           │                                   │
+     ✅ ALLOWED                         🛑 BLOCKED
+           │                                   │
+           ▼                                   ▼
+┌─────────────────────┐           ┌─────────────────────────────┐
+│   Continue to AI    │           │   Display Policy Card       │
+│   Generation        │           │   (No API call made)        │
+└─────────────────────┘           └─────────────────────────────┘
 ```
 
-**Target Flow:**
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ AI Generates:                                                               │
-│   [LOG: Designing responsive grid...]                                       │
-│   "Building your anime storefront. Injecting neon accents and..."           │
-│   /// TYPE: CODE ///                                                        │
-│   export default function App() { ... }                                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ useStreamingCode.ts:                                                        │
-│   ✓ Extracts LOG tags (for progress steps)                                  │
-│   ✓ Extracts code (for preview)                                             │
-│   ✓ NEW: Extracts the AI summary text and calls onSummary()                 │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ AIBuilderCanvas.tsx (onComplete):                                           │
-│   → Saves the REAL AI summary as the assistant message                      │
-├─────────────────────────────────────────────────────────────────────────────┤
-│ VibecoderMessageBubble.tsx:                                                 │
-│   → Displays the REAL AI text (no replacement)                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+## Policy Categories
 
----
+| Category | Description | Keywords |
+|----------|-------------|----------|
+| **Security Policy** | Authentication is handled by SellsPay | login, signup, sign in, password, 2fa, otp, auth, logout |
+| **Platform Scope** | User management is platform-level | settings page, profile edit, billing, change email, subscription settings |
+| **Architecture Limit** | VibeCoder is frontend-only | create database, backend api, admin panel, server setup |
+| **Payment Policy** | All payments via SellsPay | stripe key, paypal client, custom checkout, payment gateway |
 
-## Implementation Plan
+## Implementation Steps
 
-### Step 1: Modify `useStreamingCode.ts` to Extract the AI Summary
+### Part 1: Create Policy Engine
+**File**: `src/utils/policyGuard.ts`
 
-The stream comes in this format:
-```
-[LOG: Action 1...]
-[LOG: Action 2...]
-Building your storefront with neon accents and anime vibes...
-/// TYPE: CODE ///
-export default function App() { ... }
-```
+Create a dedicated module containing:
+- `POLICY_RULES` array with structured violation definitions
+- `checkPolicyViolation(prompt)` function that scans user input
+- Each rule has: `id`, `category`, `keywords[]`, `message`
 
-Extract the text between the last LOG tag and `/// TYPE: CODE ///`:
+### Part 2: Integrate Guardrail into Message Handler
+**File**: `src/components/ai-builder/AIBuilderCanvas.tsx`
 
-**Changes:**
-- Add new state to track the accumulated summary text
-- Add new callback `onSummary?: (summary: string) => void` to options
-- Parse the pre-code text (strip LOG tags, trim whitespace)
-- Call `onSummary()` with the real AI text when streaming completes
+Modify `handleSendMessage`:
+1. Import `checkPolicyViolation` from policy guard
+2. Check prompt against policy BEFORE any other logic
+3. If violation detected:
+   - Add user message to chat (so they see what they typed)
+   - Add policy violation response with special metadata
+   - Return early (do NOT call AI API)
 
-### Step 2: Update `AIBuilderCanvas.tsx` to Use the Real Summary
+### Part 3: Update Message Types
+**File**: `src/components/ai-builder/hooks/useVibecoderProjects.ts`
 
-**Changes:**
-- Add a `pendingSummaryRef` to capture the AI's response during streaming
-- Wire up the new `onSummary` callback to store the text
-- In `onComplete`, use the real summary instead of `"Generated your storefront design."`
-- Fallback to a generic message only if the AI produced no summary
+Extend `VibecoderMessage` interface to support metadata:
+- Add optional `meta_data?: { type?: string; category?: string }` field
+- This is a local-only extension (no DB changes needed since we're not persisting policy violations)
 
-### Step 3: Remove Hardcoded Replacement in `VibecoderMessageBubble.tsx`
+### Part 4: Create Policy Card UI Component
+**File**: `src/components/ai-builder/PolicyViolationCard.tsx`
 
-**Changes:**
-- Delete the conditional that replaces `"Generated your storefront design."` with fake text
-- The `displayContent` variable should just use `message.content` directly
+A distinct, authoritative UI card that:
+- Shows a Shield icon with the violation category
+- Displays the polite refusal message
+- Has a subtle "SellsPay Content Guidelines" footer
+- Uses amber/yellow warning styling (not aggressive red)
 
-### Step 4: Update System Prompt for Clearer Summary Format (Optional Enhancement)
+### Part 5: Render Policy Cards in Chat
+**File**: `src/components/ai-builder/VibecoderMessageBubble.tsx`
 
-The system prompt in `vibecoder-v2/index.ts` already has good "MIRRORING" rules. We can optionally add a clearer instruction to emit the summary on a dedicated line before the code block.
-
----
+Update the message rendering logic:
+1. Import `PolicyViolationCard`
+2. Check for `meta_data?.type === 'policy_violation'`
+3. Render the policy card instead of standard assistant bubble
 
 ## Technical Details
 
-### File: `src/components/ai-builder/useStreamingCode.ts`
-
-Add summary extraction logic:
-
+### Policy Guard Utility
 ```typescript
-interface UseStreamingCodeOptions {
-  // ... existing options
-  onSummary?: (summary: string) => void; // NEW: AI's natural language response
+// src/utils/policyGuard.ts
+
+export interface PolicyRule {
+  id: string;
+  category: string;
+  keywords: string[];
+  message: string;
 }
 
-// Inside the streaming loop, after processing is done:
-// Extract text between LOG tags and TYPE: CODE marker
-function extractSummary(rawStream: string): string {
-  // Remove LOG tags
-  let cleaned = rawStream.replace(LOG_PATTERN, '').trim();
-  
-  // Find the position of TYPE: CODE
-  const codeMarker = '/// TYPE: CODE ///';
-  const codeIndex = cleaned.indexOf(codeMarker);
-  
-  if (codeIndex > 0) {
-    // Everything before the code marker is the summary
-    return cleaned.substring(0, codeIndex).trim();
-  }
-  
-  return ''; // No summary found
-}
+export const POLICY_RULES: PolicyRule[] = [
+  {
+    id: 'auth_restriction',
+    category: 'Security Policy',
+    keywords: ['login', 'sign in', 'signin', 'signup', 'register', 'password', '2fa', 'logout', 'authentication'],
+    message: 'Authentication features are securely managed by the SellsPay platform...'
+  },
+  // Additional rules...
+];
 
-// Call at the end of successful code streaming:
-const summary = extractSummary(fullAccumulated);
-if (summary) {
-  options.onSummary?.(summary);
+export function checkPolicyViolation(prompt: string): PolicyRule | null {
+  const lowerPrompt = prompt.toLowerCase();
+  return POLICY_RULES.find(rule => 
+    rule.keywords.some(kw => lowerPrompt.includes(kw))
+  ) ?? null;
 }
 ```
 
-### File: `src/components/ai-builder/AIBuilderCanvas.tsx`
-
-Use the real summary:
-
+### Message Handler Integration
 ```typescript
-// New ref to capture the AI's response during streaming
-const pendingSummaryRef = useRef<string>('');
-
-// In useStreamingCode options:
-onSummary: (summary: string) => {
-  pendingSummaryRef.current = summary;
-},
-onComplete: async (finalCode) => {
-  // Use the real summary, or fallback if empty
-  const aiResponse = pendingSummaryRef.current || 'Applied your changes.';
-  pendingSummaryRef.current = ''; // Reset for next generation
+// In handleSendMessage
+const violation = checkPolicyViolation(prompt);
+if (violation) {
+  // Show user's message
+  await addMessage('user', prompt, undefined, projectId);
   
-  await addMessage('assistant', aiResponse, finalCode, generationLockRef.current || undefined);
-  // ... rest of completion logic
+  // Add policy response (local only, not saved to DB)
+  setMessages(prev => [...prev, {
+    id: `policy-${Date.now()}`,
+    role: 'assistant',
+    content: violation.message,
+    meta_data: { type: 'policy_violation', category: violation.category }
+  }]);
+  
+  return; // STOP - no AI call
 }
 ```
 
-### File: `src/components/ai-builder/VibecoderMessageBubble.tsx`
+## Benefits
 
-Remove the fake replacement:
+1. **Cost Savings**: Zero API tokens spent on forbidden requests
+2. **Instant Feedback**: User sees policy response immediately (no loading state)
+3. **Educational**: Explains WHY they can't do something and what they CAN do
+4. **Extensible**: Easy to add new policy rules as categories expand
+5. **Professional UX**: Distinct card design makes policies feel official, not like errors
 
-```typescript
-// BEFORE (fake text):
-const displayContent = message.content === "Generated your storefront design." 
-  ? "I've drafted a premium layout based on your request. Check the preview!" 
-  : message.content;
+## Files to Create/Modify
 
-// AFTER (real text):
-const displayContent = message.content;
-```
-
----
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/ai-builder/useStreamingCode.ts` | Add `onSummary` callback, extract pre-code text |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | Wire `onSummary`, use real summary in `addMessage` |
-| `src/components/ai-builder/VibecoderMessageBubble.tsx` | Remove hardcoded text replacement |
-
----
-
-## Expected Result
-
-**Before:**
-> "I've drafted a premium layout based on your request. Check the preview!"
-
-**After:**
-> "Building your anime storefront. Injecting neon accents and adding glassmorphism cards with violet gradients. Updated the hero section with dynamic character imagery and ensured mobile responsiveness."
-
-The AI will now feel like a **Senior Engineer** explaining exactly what it built, not a script reading from a template.
+| File | Action | Description |
+|------|--------|-------------|
+| `src/utils/policyGuard.ts` | CREATE | Policy rules and checker function |
+| `src/components/ai-builder/PolicyViolationCard.tsx` | CREATE | Styled policy violation UI |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | MODIFY | Add guardrail check to handleSendMessage |
+| `src/components/ai-builder/hooks/useVibecoderProjects.ts` | MODIFY | Extend VibecoderMessage type with meta_data |
+| `src/components/ai-builder/VibecoderMessageBubble.tsx` | MODIFY | Render PolicyViolationCard for violations |
