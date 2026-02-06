@@ -210,11 +210,22 @@ serve(async (req: Request) => {
 
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
         
+        // IMPORTANT: userId param is actually profileId - we need to get the auth user_id
+        // The profiles table has: id (profile ID) and user_id (auth user ID)
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        const authUserId = profileData?.user_id || userId;
+        console.log('[Orchestrator] Profile ID:', userId, '-> Auth User ID:', authUserId);
+        
         // Owner/Admin bypass: never block or deduct credits for privileged roles
         const { data: roleRows, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', userId)
+          .eq('user_id', authUserId)
           .in('role', ['admin', 'owner']);
 
         if (rolesError) {
@@ -222,6 +233,7 @@ serve(async (req: Request) => {
         }
 
         const isPrivileged = (roleRows?.length ?? 0) > 0;
+        console.log('[Orchestrator] Is privileged:', isPrivileged, 'roles found:', roleRows?.length ?? 0);
 
         // Check user credits (non-privileged only)
         const { data: wallet } = await supabase

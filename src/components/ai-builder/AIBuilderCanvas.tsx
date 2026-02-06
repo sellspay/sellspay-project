@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
+// REMOVED: AIBuilderOnboarding - friction removed per user request
 import { VibecoderPreview } from './VibecoderPreview';
 import { VibecoderChat } from './VibecoderChat';
 import { ProjectSidebar } from './ProjectSidebar';
@@ -41,8 +41,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
-  const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  // REMOVED: Onboarding logic - no longer needed
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // Credit preflight: Use the user credits hook for real-time balance
@@ -331,12 +330,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     return parseRoutesFromCode(code);
   }, [code]);
 
-  // Show onboarding on first visit
-  useEffect(() => {
-    if (!loading && needsOnboarding) {
-      setShowOnboarding(true);
-    }
-  }, [loading, needsOnboarding]);
+  // REMOVED: Onboarding useEffect - no longer needed
 
   // AUTO-START: Pick up initial prompt from navigation state (passed from Hero)
   useEffect(() => {
@@ -1098,19 +1092,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   // NOTE: isProjectTransitioning is now handled INSIDE the content area below,
   // NOT here. This ensures the sidebar stays visible during project switches.
 
-  // Show onboarding modal for first-time users
-  if (showOnboarding) {
-    return (
-      <AIBuilderOnboarding
-        profileId={profileId}
-        onConfirm={() => {
-          completeOnboarding();
-          setShowOnboarding(false);
-        }}
-        onCancel={() => navigate(-1)}
-      />
-    );
-  }
+  // REMOVED: Onboarding modal - friction eliminated
 
   const isEmpty = code === DEFAULT_CODE;
   const canUndo = messages.filter(m => m.code_snapshot).length > 1;
