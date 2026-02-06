@@ -7,7 +7,8 @@ import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import { motion } from 'framer-motion';
 import { ChatInputBar, type AIModel } from './ChatInputBar';
 import { useUserCredits } from '@/hooks/useUserCredits';
-import { AgentProgress, type AgentStep } from './AgentProgress';
+import { LiveThought } from './LiveThought';
+import { type AgentStep } from './AgentProgress';
 
 interface VibecoderChatProps {
   onSendMessage: (message: string) => void;
@@ -272,13 +273,12 @@ export function VibecoderChat({
                 onRestoreToVersion={onRestoreToVersion}
               />
             )}
-            {/* Show Agent Progress UI (premium) or fallback to LiveBuildingCard during streaming */}
+            {/* Live Thought Stream - Shows AI thinking in real-time */}
             {isStreaming && (
-              isAgentMode && agentStep && agentStep !== 'idle' ? (
-                <AgentProgress currentStep={agentStep} logs={agentLogs} />
-              ) : (
-                <LiveBuildingCard steps={liveSteps} />
-              )
+              <LiveThought 
+                logs={agentLogs.length > 0 ? agentLogs : liveSteps} 
+                isThinking={true} 
+              />
             )}
           </>
         )}
