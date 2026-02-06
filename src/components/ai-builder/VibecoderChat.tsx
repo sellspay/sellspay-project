@@ -141,9 +141,25 @@ export function VibecoderChat({
     attachments: File[];
   }) => {
     if (!input.trim() || isStreaming) return;
-    // TODO: Use isPlanMode, model, and attachments for enhanced generation
-    console.log('Submit with Plan Mode:', options.isPlanMode, 'Model:', options.model.name, 'Attachments:', options.attachments.length);
-    onSendMessage(input.trim());
+    
+    let finalPrompt = input.trim();
+    
+    // PLAN MODE: Inject the Architect instruction so AI returns a plan instead of code
+    if (options.isPlanMode) {
+      finalPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${finalPrompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
+    }
+    
+    // Prepend model context if using a non-default model
+    if (options.model.id !== 'vibecoder-pro') {
+      finalPrompt = `[MODEL: ${options.model.id}]\n${finalPrompt}`;
+    }
+    
+    // TODO: Handle attachments (upload to storage and include URLs in prompt)
+    if (options.attachments.length > 0) {
+      console.log('Attachments to process:', options.attachments.length);
+    }
+    
+    onSendMessage(finalPrompt);
     setInput('');
   };
 

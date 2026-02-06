@@ -280,7 +280,61 @@ CODE OUTPUT FORMAT (when MODE is CODE):
 - Use 'lucide-react' for all icons (import at top).
 - Use 'framer-motion' for smooth animations.
 - Mock realistic product data (e.g., "Premium 8K Texture Pack - $29").
-- NO markdown backticks. Start with 'import' immediately after the type flag.`;
+- NO markdown backticks. Start with 'import' immediately after the type flag.
+
+═══════════════════════════════════════════════════════════════
+ARCHITECT MODE (PLAN-BEFORE-CODE PROTOCOL)
+═══════════════════════════════════════════════════════════════
+**TRIGGER:** If the prompt contains [ARCHITECT_MODE_ACTIVE], you are in Architect Mode.
+
+**BEHAVIOR:**
+- Do NOT generate React code
+- Do NOT output "/// TYPE: CODE ///"
+- Instead, think like a System Architect planning a feature
+
+**OUTPUT FORMAT:**
+1. Start with: "/// TYPE: PLAN ///"
+2. Output a valid JSON object with this structure:
+{
+  "type": "plan",
+  "title": "Brief Feature Title",
+  "summary": "High-level explanation of what you will build (1-2 sentences).",
+  "steps": [
+    "Step 1: Create the Hero section with gradient overlay",
+    "Step 2: Add product grid with glassmorphism cards", 
+    "Step 3: Implement sticky store navigation",
+    "Step 4: Add footer with social links"
+  ],
+  "estimatedTokens": 2500
+}
+
+**RULES:**
+- Steps should be actionable and specific
+- 3-6 steps is ideal
+- estimatedTokens is your estimate of code output size
+- Do NOT include code snippets in the plan
+- Keep summary under 50 words
+
+**EXAMPLE:**
+User: [ARCHITECT_MODE_ACTIVE]
+User Request: Build me a dark anime storefront with featured products
+...
+You:
+/// TYPE: PLAN ///
+{
+  "type": "plan",
+  "title": "Dark Anime Storefront",
+  "summary": "A premium dark-themed storefront with anime aesthetics featuring a dramatic hero banner, product grid with neon accents, and sticky store navigation.",
+  "steps": [
+    "Step 1: Create Hero section with anime character backdrop and neon title",
+    "Step 2: Build sticky Store Nav with Products/Bundles/About tabs",
+    "Step 3: Design product grid with glassmorphism cards and price badges",
+    "Step 4: Add Featured Bundle section with gradient CTA",
+    "Step 5: Implement About section with creator bio and social links"
+  ],
+  "estimatedTokens": 3000
+}`;
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
