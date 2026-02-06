@@ -213,24 +213,24 @@ export default function Creators() {
         <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
             <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-              {CREATOR_CATEGORIES.map(cat => {
-                const Icon = cat.icon;
-                const isActive = activeCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setActiveCategory(cat.id)}
-                    className={`
-                      flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0
-                      ${isActive 
-                        ? "bg-foreground text-background border-foreground shadow-lg scale-105" 
-                        : "bg-card text-muted-foreground border-border hover:border-border/80 hover:text-foreground"
-                      }
-                    `}
-                  >
-                    <Icon size={14} />
-                    {cat.label}
-                  </button>
+        {CREATOR_CATEGORIES.map(cat => {
+          const Icon = cat.icon;
+          const isActive = activeCategory === cat.id;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`
+                flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all border shrink-0
+                ${isActive 
+                  ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
+                  : "bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                }
+              `}
+            >
+              <Icon size={14} />
+              {cat.label}
+            </button>
                 );
               })}
             </div>
@@ -326,8 +326,8 @@ function CreatorCard({ creator }: { creator: Creator }) {
           <h3 className="font-semibold text-foreground truncate">
             {creator.full_name || creator.username || 'Creator'}
           </h3>
-          {creator.isOwner && (
-            <span className="px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full">
+        {creator.isOwner && (
+            <span className="px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-primary to-violet-500 text-primary-foreground rounded-full">
               Admin
             </span>
           )}
