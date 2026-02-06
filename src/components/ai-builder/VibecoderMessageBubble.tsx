@@ -53,9 +53,7 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
     >
       {/* AI Avatar - Brand Logo */}
       <div className="shrink-0 mt-1">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF5533] to-[#E0482B] flex items-center justify-center shadow-lg shadow-orange-500/20 p-1.5">
-          <img src={sellspayLogo} alt="AI" className="w-full h-full object-contain" />
-        </div>
+        <img src={sellspayLogo} alt="AI" className="w-7 h-7 object-contain" />
       </div>
 
       {/* Message Content - Pure Markdown */}
