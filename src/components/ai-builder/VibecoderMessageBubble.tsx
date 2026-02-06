@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { StepList, StepListSkeleton } from './StepList';
 import { generateDefaultSteps, type BuildStep } from './types/chat';
-import { CollapsibleMessage } from './CollapsibleMessage';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 
 // Extended message type with steps
@@ -34,7 +33,10 @@ function UserBubble({ content }: { content: string }) {
       className="flex justify-end mb-6 w-full"
     >
       <div className="max-w-[85%] bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white px-5 py-3 rounded-2xl rounded-tr-sm shadow-lg shadow-orange-900/10 text-sm font-medium leading-relaxed">
-        <CollapsibleMessage content={content} isUser={true} />
+        {/* Full message display - no truncation, with safe word-break */}
+        <div className="prose prose-sm prose-invert max-w-none leading-relaxed break-words whitespace-pre-wrap">
+          {content}
+        </div>
       </div>
     </motion.div>
   );
@@ -83,8 +85,10 @@ function AssistantCard({ message, onRate, onRestoreCode, canRestore, isStreaming
         
         {/* 1. THE MESSAGE BUBBLE */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl rounded-tl-sm p-5 shadow-sm w-full">
-          {/* Main text content - using CollapsibleMessage for "View More" logic */}
-          <CollapsibleMessage content={displayContent} isUser={false} />
+          {/* Full message display - no truncation, with safe word-break */}
+          <div className="prose prose-sm prose-invert max-w-none text-zinc-300 leading-relaxed break-words whitespace-pre-wrap">
+            {displayContent}
+          </div>
 
           {/* 2. STEP-BY-STEP BREAKDOWN */}
           {isStreaming && !steps && <StepListSkeleton />}

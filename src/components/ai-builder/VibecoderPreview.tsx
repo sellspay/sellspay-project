@@ -3,6 +3,7 @@ import { Sandpack, SandpackTheme } from '@codesandbox/sandpack-react';
 import { Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
+import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
 
 interface VibecoderPreviewProps {
   code: string;
@@ -139,8 +140,16 @@ const customTheme: SandpackTheme = {
 
 // Memoized Sandpack component to prevent unnecessary re-renders during streaming
 const SandpackRenderer = memo(function SandpackRenderer({ code }: { code: string }) {
-  // Wrap the code in proper structure
+  // Wrap the code in proper structure, including the standard library
   const files = useMemo(() => ({
+    // Standard library (hooks, utils) - always available to prevent crashes
+    ...Object.fromEntries(
+      Object.entries(VIBECODER_STDLIB).map(([path, content]) => [
+        path,
+        { code: content, hidden: true }
+      ])
+    ),
+    // The AI-generated code
     '/App.tsx': {
       code,
       active: true,
@@ -185,6 +194,8 @@ root.render(<App />);`,
         dependencies: {
           'lucide-react': 'latest',
           'framer-motion': '^11.0.0',
+          'clsx': 'latest',
+          'tailwind-merge': 'latest',
         },
       }}
     />
