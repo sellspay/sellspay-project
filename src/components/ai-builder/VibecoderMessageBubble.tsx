@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import type { BuildStep } from './types/chat';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
+import { PolicyViolationCard } from './PolicyViolationCard';
 // Extended message type with steps
 export interface MessageWithSteps extends VibecoderMessage {
   steps?: BuildStep[];
@@ -223,6 +224,16 @@ export function VibecoderMessageBubble({
 }: VibecoderMessageBubbleProps) {
   if (message.role === 'user') {
     return <UserBubble content={message.content ?? ''} />;
+  }
+  
+  // Render policy violation card for blocked requests
+  if (message.meta_data?.type === 'policy_violation') {
+    return (
+      <PolicyViolationCard
+        category={message.meta_data.category || 'Policy Restriction'}
+        message={message.content || ''}
+      />
+    );
   }
   
   return (
