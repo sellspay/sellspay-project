@@ -9,6 +9,7 @@ export { VibecoderPreview } from './VibecoderPreview';
 export { VibecoderChat } from './VibecoderChat';
 export { CanvasToolbar } from './CanvasToolbar';
 export { useStreamingCode } from './useStreamingCode';
+export { useOrchestratorStream } from './useOrchestratorStream';
 export { ProjectSidebar } from './ProjectSidebar';
 export { VibecoderMessageBubble } from './VibecoderMessageBubble';
 export { useVibecoderProjects } from './hooks/useVibecoderProjects';
