@@ -187,12 +187,23 @@ function ErrorDetector({
   const { sandpack } = useSandpack();
   const lastErrorRef = useRef<string | null>(null);
 
-  const currentError = sandpack.error?.message ?? null;
+  // Safely extract error message - never mutate the original error object
+  // Some browsers lock error objects as read-only
+  let currentError: string | null = null;
+  try {
+    currentError = sandpack.error?.message ?? null;
+  } catch (e) {
+    // If error object is locked/frozen, create a safe fallback
+    console.error("Failed to read Sandpack error:", e);
+    currentError = sandpack.error ? "Build error occurred" : null;
+  }
 
   useEffect(() => {
     if (currentError && currentError !== lastErrorRef.current) {
       lastErrorRef.current = currentError;
-      onError?.(currentError);
+      // Create a NEW string for reporting - never modify the original error
+      const safeErrorMessage = String(currentError);
+      onError?.(safeErrorMessage);
     }
 
     if (!currentError && lastErrorRef.current) {
