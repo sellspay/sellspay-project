@@ -1,38 +1,27 @@
-// AI Builder exports - Cache-bust: 2026-02-07-v2
-export { AIBuilderCanvas } from './AIBuilderCanvas';
+// AI Builder exports - Rebuilt 2026-02-07 (Stable Architecture)
+
+// Main page component
+export { SimpleVibecoderPage } from './SimpleVibecoderPage';
+
+// Core components
+export { SimplePreview } from './SimplePreview';
+export { SimpleChat, type ChatMessage } from './SimpleChat';
+export { SimpleSidebar } from './SimpleSidebar';
+
+// Shared components (kept from old architecture)
+export { ChatInputBar, AI_MODELS, type AIModel } from './ChatInputBar';
+export { ProfileMenu } from './ProfileMenu';
 export { PremiumGate } from './PremiumGate';
+export { InsufficientCreditsCard, isCreditsError, parseCreditsError } from './InsufficientCreditsCard';
+
+// Onboarding
 export { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
 export { AIBuilderLockedButton, AIBuilderInlineUpsell, AIBuilderBannerUpsell } from './AIBuilderUpsell';
+
+// Layout patterns (for future use)
 export { LAYOUT_PATTERNS, getPatternRegistrySummary } from './layoutPatterns';
 
-// Vibecoder (Generative Runtime) exports
-export { VibecoderPreview } from './VibecoderPreview';
-export { VibecoderChat } from './VibecoderChat';
-export { CanvasToolbar } from './CanvasToolbar';
-export { useStreamingCode } from './useStreamingCode';
-export { useOrchestratorStream } from './useOrchestratorStream';
-export { ProjectSidebar } from './ProjectSidebar';
-export { VibecoderMessageBubble } from './VibecoderMessageBubble';
-export { useVibecoderProjects } from './hooks/useVibecoderProjects';
-
-// Agent UI exports (VibeCoder 2.0)
-export { AgentProgress } from './AgentProgress';
-export type { AgentStep } from './AgentProgress';
-export { LiveThought } from './LiveThought';
-export { DeleteConfirmationModal } from './DeleteConfirmationModal';
-
-// Creative Studio exports
-export { GenerationCanvas } from './GenerationCanvas';
-export { PlacementPromptModal } from './PlacementPromptModal';
-export type { GeneratedAsset, ViewMode } from './types/generation';
-
-// Chat UI components
-export { ChatInputBar } from './ChatInputBar';
-export { PlanApprovalCard } from './PlanApprovalCard';
-export { ProfileMenu } from './ProfileMenu';
-export { PageNavigator } from './PageNavigator';
-
-// Style Profiles (VibeCoder 2.0)
+// Style Profiles
 export { 
   STYLE_PROFILES, 
   getStyleProfile, 
@@ -41,7 +30,7 @@ export {
   type StyleProfile 
 } from '@/lib/vibecoder-style-profiles';
 
-// Context Pruning Utilities (VibeCoder 2.0)
+// Context Pruning Utilities
 export {
   analyzePromptIntent,
   extractRelevantContext,
