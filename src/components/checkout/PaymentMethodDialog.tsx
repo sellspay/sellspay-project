@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -32,6 +33,7 @@ export function PaymentMethodDialog({
 }: PaymentMethodDialogProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>("stripe");
   const [processing, setProcessing] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const formatPrice = (cents: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -174,12 +176,45 @@ export function PaymentMethodDialog({
             </button>
           </div>
 
+          {/* Terms Agreement Checkbox */}
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border">
+            <Checkbox
+              id="terms-agreement"
+              checked={termsAccepted}
+              onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+              className="mt-0.5"
+            />
+            <label 
+              htmlFor="terms-agreement" 
+              className="text-sm text-muted-foreground cursor-pointer leading-relaxed"
+            >
+              I agree to SellsPay's{" "}
+              <a 
+                href="/terms" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-medium"
+              >
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a 
+                href="/refunds" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-medium"
+              >
+                Refund Policy
+              </a>
+            </label>
+          </div>
+
           {/* Proceed Button */}
           <Button
             className="w-full"
             size="lg"
             onClick={handleProceed}
-            disabled={processing}
+            disabled={processing || !termsAccepted}
           >
             {processing ? (
               <>

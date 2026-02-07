@@ -33,11 +33,36 @@ export default function Refunds() {
           {/* Overview */}
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">Overview</h2>
+            <div className="bg-primary/5 p-4 rounded-lg border border-primary/20 mb-4">
+              <p className="text-muted-foreground">
+                <strong className="text-foreground">SellsPay is the Merchant of Record</strong> for all purchases. 
+                Refund requests are processed and approved by SellsPay, not individual sellers.
+              </p>
+            </div>
             <p className="text-muted-foreground">
-              SellsPay is a marketplace for digital products including presets, LUTs, templates, 
-              sound effects, and other creative assets. Due to the nature of digital goods, all sales 
-              are generally final once a product has been downloaded. However, we understand that issues 
-              can arise, and we're committed to resolving legitimate concerns.
+              Due to the nature of digital downloads, all sales made through SellsPay are generally 
+              final and non-refundable once the digital content has been accessed or downloaded. 
+              However, we understand that issues can arise, and we're committed to resolving 
+              legitimate concerns.
+            </p>
+          </section>
+
+          {/* Exceptions */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-semibold text-foreground">Exceptions</h2>
+            <p className="text-muted-foreground">
+              Refunds may be granted at the sole discretion of SellsPay if the digital file is 
+              proven to be corrupt, defective, or significantly misdescribed by the seller.
+            </p>
+          </section>
+
+          {/* Seller-Initiated Refunds */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-semibold text-foreground">Seller-Initiated Refunds</h2>
+            <p className="text-muted-foreground">
+              Sellers may authorize a refund for a customer at their own discretion by contacting 
+              SellsPay support. If a refund is issued, the customer's access to the digital product 
+              will be immediately revoked.
             </p>
           </section>
 
