@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, forwardRef } from "react";
 import { ChevronDown, ChevronRight, Loader2, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,7 +8,10 @@ interface LiveThoughtProps {
   className?: string;
 }
 
-export function LiveThought({ logs, isThinking, className }: LiveThoughtProps) {
+export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(function LiveThought(
+  { logs, isThinking, className },
+  ref
+) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -33,7 +36,13 @@ export function LiveThought({ logs, isThinking, className }: LiveThoughtProps) {
   if (logs.length === 0 && !isThinking) return null;
 
   return (
-    <div className={cn("w-full max-w-[90%] mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300", className)}>
+    <div
+      ref={ref}
+      className={cn(
+        "w-full max-w-[90%] mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300",
+        className
+      )}
+    >
       
       {/* HEADER (Always Visible) */}
       <button 
@@ -116,4 +125,5 @@ export function LiveThought({ logs, isThinking, className }: LiveThoughtProps) {
       )}
     </div>
   );
-}
+});
+LiveThought.displayName = "LiveThought";
