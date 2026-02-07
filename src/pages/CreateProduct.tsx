@@ -17,6 +17,7 @@ import VideoFrameSelector from "@/components/product/VideoFrameSelector";
 import { Progress } from "@/components/ui/progress";
 import UploadProgressOverlay from "@/components/product/UploadProgressOverlay";
 import { useFileUploadProgress, validateTotalFileSize, formatBytes, MAX_PRODUCT_SIZE_BYTES } from "@/hooks/useFileUploadProgress";
+import { useSellerGate } from "@/hooks/useSellerGate";
 
 const productTypes = [
   { value: "preset", label: "Preset Pack" },
@@ -66,6 +67,9 @@ const extractYoutubeId = (url: string): string | null => {
 export default function CreateProduct() {
   const { user, profile, profileLoading } = useAuth();
   const navigate = useNavigate();
+  
+  // Seller gate - redirects to agreement if not signed
+  const { isSellerVerified, isChecking: isSellerChecking } = useSellerGate();
   
   // Derive seller status from centralized auth
   const isSeller = profile?.is_seller || false;
