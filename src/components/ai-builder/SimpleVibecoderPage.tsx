@@ -65,9 +65,9 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   const [creditsError, setCreditsError] = useState<{ needed: number; available: number } | null>(null);
   const [streamingLogs, setStreamingLogs] = useState<string[]>([]);
   
-  // "Magical Doorway" state - shows fullscreen prompt experience until first generation
-  const [showDoorway, setShowDoorway] = useState(true);
-  
+  // "Magical Doorway" state - shows fullscreen prompt experience ONLY when starting a new project
+  const [showDoorway, setShowDoorway] = useState(false);
+
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userCredits, setUserCredits] = useState(0);
@@ -105,7 +105,52 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     // In real implementation, this would need to be added
   }, [user]);
   
-  // Load project data when active project changes
+  // Restore last selected project on entry (skip doorway if projects exist)
+  useEffect(() => {
+    const restoreLastProject = async () => {
+      if (!user) return;
+
+      const storageKey = `vibecoder:lastProjectId:${user.id}`;
+      const lastProjectId = localStorage.getItem(storageKey);
+
+      // Prefer last selected project if it still exists
+      if (lastProjectId) {
+        const { data: exists } = await supabase
+          .from('vibecoder_projects')
+          .select('id')
+          .eq('id', lastProjectId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (exists?.id) {
+          setActiveProjectId(exists.id);
+          setShowDoorway(false);
+          return;
+        }
+      }
+
+      // Otherwise load most recently updated project, if any
+      const { data: latest } = await supabase
+        .from('vibecoder_projects')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latest?.id) {
+        setActiveProjectId(latest.id);
+        setShowDoorway(false);
+      } else {
+        // No projects yet → show doorway
+        setActiveProjectId(null);
+        setShowDoorway(true);
+      }
+    };
+
+    restoreLastProject();
+  }, [user]);
+
   useEffect(() => {
     const loadProject = async () => {
       if (!activeProjectId) {
@@ -151,26 +196,16 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     loadProject();
   }, [activeProjectId, profileId]);
   
-  // Create new project
+  // Start a new project flow (show doorway). Actual project is created on first prompt.
   const handleCreateProject = async () => {
-    if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('vibecoder_projects')
-      .insert({
-        user_id: user.id,
-        name: `Storefront ${new Date().toLocaleDateString()}`,
-      })
-      .select('id')
-      .single();
-    
-    if (error) {
-      toast.error('Failed to create project');
-      return;
-    }
-    
-    setActiveProjectId(data.id);
-    toast.success('New project created');
+    setActiveProjectId(null);
+    setCode(DEFAULT_CODE);
+    setMessages([]);
+    setError(null);
+    setCreditsError(null);
+    setStreamingLogs([]);
+    setShowDoorway(true);
+    toast.success('Start a new project');
   };
   
   // Delete project
@@ -432,7 +467,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     });
   };
   
-  // Show magical doorway when no active project
+  // Show magical doorway only when explicitly starting a new project
   if (showDoorway && !activeProjectId) {
     return (
       <LovableHero
@@ -466,6 +501,9 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
             onSelectProject={(projectId) => {
               setActiveProjectId(projectId);
               setShowDoorway(false);
+              if (user) {
+                localStorage.setItem(`vibecoder:lastProjectId:${user.id}`, projectId);
+              }
             }}
             onCreateProject={handleCreateProject}
             onDeleteProject={handleDeleteProject}
