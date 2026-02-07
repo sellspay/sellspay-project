@@ -287,22 +287,36 @@ export function ChatInputBar({
   const promptBeforeSpeechRef = useRef("");
   // Ref to track latest transcript for onend handler (closure issue)
   const transcriptRef = useRef("");
+  // Detect "ends immediately" (common when mic is blocked in embedded iframes)
+  const speechDidStartRef = useRef(false);
 
   // Speech-to-Text Handler with REAL-TIME live typing in the input
-  const toggleSpeechRecognition = useCallback(() => {
+  const toggleSpeechRecognition = useCallback(async () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
+
     if (!SpeechRecognition) {
-      import('sonner').then(({ toast }) => {
-        toast.error('Speech recognition is not supported in your browser. Please try Chrome, Edge, or Safari.');
-      });
+      const { toast } = await import('sonner');
+      toast.error('Speech recognition is not supported in your browser. Please try Chrome, Edge, or Safari.');
       return;
     }
 
-    // If already listening, stop and finalize
+    // If already listening, stop
     if (isListening && speechRecognitionRef.current) {
       speechRecognitionRef.current.stop();
-      return; // onend will handle cleanup
+      return;
+    }
+
+    // Preflight mic permission (forces the browser permission prompt)
+    try {
+      if (navigator?.mediaDevices?.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Immediately release the mic - we only needed the permission
+        stream.getTracks().forEach(t => t.stop());
+      }
+    } catch (e) {
+      const { toast } = await import('sonner');
+      toast.error('Microphone permission is blocked. Please allow mic access in your browser settings.');
+      return;
     }
 
     // Save current text BEFORE we start listening (so we append to it)
@@ -311,10 +325,24 @@ export function ChatInputBar({
     try {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
-      recognition.interimResults = true; // CRITICAL: Show text AS you speak
+      recognition.interimResults = true;
       recognition.lang = 'en-US';
 
+      speechDidStartRef.current = false;
+
+      const startGuard = window.setTimeout(async () => {
+        if (!speechDidStartRef.current) {
+          // If onstart never fires, SpeechRecognition is effectively blocked (common in iframes)
+          try { recognition.stop(); } catch { /* ignore */ }
+          const { toast } = await import('sonner');
+          toast.error('Mic can’t start here (likely blocked in this embedded preview). Open the app in a new tab and allow mic access, then try again.');
+          setIsListening(false);
+        }
+      }, 800);
+
       recognition.onstart = () => {
+        window.clearTimeout(startGuard);
+        speechDidStartRef.current = true;
         console.log('[Speech] Recognition started');
         setIsListening(true);
         setTranscript('');
@@ -325,59 +353,52 @@ export function ChatInputBar({
         let finalTranscript = '';
         let interimTranscript = '';
 
-        // Loop through ALL results (not just from resultIndex)
         for (let i = 0; i < event.results.length; i++) {
           const transcriptText = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcriptText;
-          } else {
-            interimTranscript += transcriptText;
-          }
+          if (event.results[i].isFinal) finalTranscript += transcriptText;
+          else interimTranscript += transcriptText;
         }
 
-        // Combined live transcript
         const liveText = finalTranscript + interimTranscript;
         setTranscript(liveText);
         transcriptRef.current = liveText;
 
-        // 🎯 LIVE UPDATE: Show in the ACTUAL input as you speak
         const baseText = promptBeforeSpeechRef.current;
         const spacing = baseText ? ' ' : '';
-        const fullText = baseText + spacing + liveText;
-        onChange(fullText);
+        onChange(baseText + spacing + liveText);
       };
 
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      recognition.onerror = async (event: SpeechRecognitionErrorEvent) => {
+        window.clearTimeout(startGuard);
         console.error('[Speech] Error:', event.error, event.message);
         setIsListening(false);
-        
-        import('sonner').then(({ toast }) => {
-          if (event.error === 'not-allowed') {
-            toast.error('Microphone access denied. Please allow microphone permission in your browser.');
-          } else if (event.error === 'no-speech') {
-            toast.info('No speech detected. Try speaking closer to your microphone.');
-          } else {
-            toast.error(`Speech recognition error: ${event.error}`);
-          }
-        });
+
+        const { toast } = await import('sonner');
+        if (event.error === 'not-allowed') {
+          toast.error('Microphone access denied. Please allow microphone permission in your browser.');
+        } else if (event.error === 'no-speech') {
+          toast.info('No speech detected. Try speaking closer to your microphone.');
+        } else {
+          toast.error(`Speech recognition error: ${event.error}`);
+        }
       };
 
       recognition.onend = () => {
+        window.clearTimeout(startGuard);
         console.log('[Speech] Recognition ended');
         setIsListening(false);
         setTranscript('');
         transcriptRef.current = '';
-        // Text is already in the input from live updates, no need to set again
       };
 
       speechRecognitionRef.current = recognition;
-      recognition.start();
       console.log('[Speech] Starting recognition...');
+      recognition.start();
     } catch (err) {
       console.error('[Speech] Failed to start:', err);
-      import('sonner').then(({ toast }) => {
-        toast.error('Failed to start speech recognition. Please try again.');
-      });
+      const { toast } = await import('sonner');
+      toast.error('Failed to start speech recognition. Please try again.');
+      setIsListening(false);
     }
   }, [isListening, value, onChange]);
 
