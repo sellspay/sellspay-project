@@ -73,6 +73,15 @@ export const SimplePreview = memo(function SimplePreview({
   const isDefaultCode = code.includes('Welcome to Vibecoder') || !code.trim();
   
   useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!iframeRef.current || !code) return;
 
     // New render scope: prevents late postMessage events from older code/projects
@@ -112,8 +121,15 @@ export const SimplePreview = memo(function SimplePreview({
     };
 
     const safeCode = sanitize(code);
-    
-    // Check for obvious syntax issues before even trying
+
+    // If the generated file isn't wrapped in App(), try to find a reasonable fallback component.
+    // This prevents the whole preview from hard-crashing on "No App component found".
+    const fallbackComponentName = (() => {
+      const functionMatches = Array.from(safeCode.matchAll(/\bfunction\s+([A-Z][A-Za-z0-9_]*)\s*\(/g)).map(m => m[1]);
+      const constMatches = Array.from(safeCode.matchAll(/\bconst\s+([A-Z][A-Za-z0-9_]*)\s*=\s*(?:\(|function\b)/g)).map(m => m[1]);
+      const candidates = [...functionMatches, ...constMatches].filter(n => n && n !== 'App');
+      return candidates[candidates.length - 1] || null;
+    })();
     const openBraces = (safeCode.match(/\{/g) || []).length;
     const closeBraces = (safeCode.match(/\}/g) || []).length;
     const openParens = (safeCode.match(/\(/g) || []).length;
@@ -167,15 +183,16 @@ export const SimplePreview = memo(function SimplePreview({
     // ═══════════════════════════════════════════════════════════════
     // ENHANCED ERROR CAPTURE - Phase B of bulletproof plan
     // ═══════════════════════════════════════════════════════════════
-    // Reports structured error payloads with stack traces to parent
-    const __RUN_ID__ = "${runId}";
-    const reportError = (payload) => {
-      try {
-        window.parent.postMessage({ ...payload, runId: __RUN_ID__ }, '*');
-      } catch (e) {
-        console.error('[Preview] Failed to report error to parent:', e);
-      }
-    };
+     // Reports structured error payloads with stack traces to parent
+     const __RUN_ID__ = "${runId}";
+     const __FALLBACK_COMPONENT__ = ${fallbackComponentName ? JSON.stringify(fallbackComponentName) : 'null'};
+     const reportError = (payload) => {
+       try {
+         window.parent.postMessage({ ...payload, runId: __RUN_ID__ }, '*');
+       } catch (e) {
+         console.error('[Preview] Failed to report error to parent:', e);
+       }
+     };
 
     const showError = (title, details) => {
       document.getElementById('root').innerHTML =
@@ -424,16 +441,32 @@ export const SimplePreview = memo(function SimplePreview({
       
       // === END MOCKS ===
       
-      // User's generated code (sanitized)
-      ${safeCode}
-      
-      if (typeof App !== 'function') {
-        throw new Error('No App component found. Make sure the generated code defines function App() or const App = () => ...');
-      }
+       // User's generated code (sanitized)
+       ${safeCode}
 
-      // Render the App component
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(React.createElement(App));
+       // Choose what to render:
+       // 1) App (preferred)
+       // 2) Fallback component (best-effort) if the builder forgot the App wrapper
+       let RootComponent = (typeof App === 'function') ? App : null;
+       if (!RootComponent && __FALLBACK_COMPONENT__) {
+         try {
+           const maybe = eval(__FALLBACK_COMPONENT__);
+           if (typeof maybe === 'function') RootComponent = maybe;
+         } catch (e) {
+           // ignore
+         }
+       }
+
+       if (typeof RootComponent !== 'function') {
+         throw new Error(
+           'No App component found. Expected function App() (or export default function App()).' +
+           (__FALLBACK_COMPONENT__ ? ' Also tried fallback: ' + __FALLBACK_COMPONENT__ : '')
+         );
+       }
+
+       // Render the root component
+       const root = ReactDOM.createRoot(document.getElementById('root'));
+       root.render(React.createElement(RootComponent));
       
        // Signal success after successful render (Phase 2: Preview Ready)
        setTimeout(() => {
