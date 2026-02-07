@@ -1,8 +1,15 @@
-import { useState } from "react";
-import { 
-  ArrowLeft, Eye, Code2, 
-  Monitor, Smartphone, ExternalLink, Loader2,
-  Image as ImageIcon, Film, RefreshCw
+import { useState, forwardRef } from "react";
+import {
+  ArrowLeft,
+  Eye,
+  Code2,
+  Monitor,
+  Smartphone,
+  ExternalLink,
+  Loader2,
+  Image as ImageIcon,
+  Film,
+  RefreshCw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -38,18 +45,18 @@ interface VibecoderHeaderProps {
 }
 
 // Tab button component for the view switcher
-function TabButton({ 
-  mode, 
-  icon: Icon, 
-  label, 
-  isActive, 
+function TabButton({
+  mode,
+  icon: Icon,
+  label,
+  isActive,
   onClick,
-  activeClass = "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-}: { 
-  mode: ViewMode; 
-  icon: React.ElementType; 
-  label: string; 
-  isActive: boolean; 
+  activeClass = "bg-blue-600 text-white shadow-lg shadow-blue-900/20",
+}: {
+  mode: ViewMode;
+  icon: React.ElementType;
+  label: string;
+  isActive: boolean;
   onClick: () => void;
   activeClass?: string;
 }) {
@@ -57,8 +64,8 @@ function TabButton({
     <button
       onClick={onClick}
       className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-        isActive 
-          ? activeClass 
+        isActive
+          ? activeClass
           : "text-zinc-400 hover:text-white hover:bg-zinc-800"
       }`}
     >
@@ -68,28 +75,31 @@ function TabButton({
   );
 }
 
-export function VibecoderHeader({ 
-  projectName = "New Storefront",
-  viewMode,
-  setViewMode,
-  deviceMode,
-  setDeviceMode,
-  onRefresh,
-  onPublish,
-  isPublished,
-  isPublishing,
-  isEmpty,
-  username,
-  currentPath = "/",
-  onNavigate,
-  pages = [{ id: 'home', path: '/', label: 'Home' }],
-  onRegenerate,
-  isGenerating = false,
-  avatarUrl,
-  userCredits = 0,
-  subscriptionTier,
-  onSignOut,
-}: VibecoderHeaderProps) {
+export const VibecoderHeader = forwardRef<HTMLElement, VibecoderHeaderProps>(function VibecoderHeader(
+  {
+    projectName = "New Storefront",
+    viewMode,
+    setViewMode,
+    deviceMode,
+    setDeviceMode,
+    onRefresh,
+    onPublish,
+    isPublished,
+    isPublishing,
+    isEmpty,
+    username,
+    currentPath = "/",
+    onNavigate,
+    pages = [{ id: 'home', path: '/', label: 'Home' }],
+    onRegenerate,
+    isGenerating = false,
+    avatarUrl,
+    userCredits = 0,
+    subscriptionTier,
+    onSignOut,
+  },
+  ref
+) {
   const navigate = useNavigate();
   const [isRegenerateOpen, setIsRegenerateOpen] = useState(false);
 
@@ -98,7 +108,10 @@ export function VibecoderHeader({
     onRegenerate?.(tweak);
   };
   return (
-    <header className="h-14 w-full bg-zinc-950/80 backdrop-blur-sm flex items-center justify-between px-4 shrink-0 relative z-50">
+    <header
+      ref={ref}
+      className="h-14 w-full bg-zinc-950/80 backdrop-blur-sm flex items-center justify-between px-4 shrink-0 relative z-50"
+    >
       {/* Subtle gradient separator instead of hard border */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-700/50 to-transparent" />
       
@@ -265,4 +278,4 @@ export function VibecoderHeader({
       />
     </header>
   );
-}
+});

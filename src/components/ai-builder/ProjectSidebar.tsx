@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -35,17 +35,20 @@ interface ProjectSidebarProps {
   onToggleCollapse?: () => void;
 }
 
-export function ProjectSidebar({
-  projects,
-  activeProjectId,
-  loading,
-  onSelectProject,
-  onCreateProject,
-  onDeleteProject,
-  onRenameProject,
-  collapsed = false,
-  onToggleCollapse,
-}: ProjectSidebarProps) {
+export const ProjectSidebar = forwardRef<HTMLDivElement, ProjectSidebarProps>(function ProjectSidebar(
+  {
+    projects,
+    activeProjectId,
+    loading,
+    onSelectProject,
+    onCreateProject,
+    onDeleteProject,
+    onRenameProject,
+    collapsed = false,
+    onToggleCollapse,
+  },
+  ref
+) {
   const [projectToDelete, setProjectToDelete] = useState<VibecoderProject | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -95,7 +98,10 @@ export function ProjectSidebar({
 
   if (collapsed) {
     return (
-      <div className="w-12 bg-zinc-950/80 flex flex-col items-center py-4 gap-2 shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)]">
+      <div
+        ref={ref}
+        className="w-12 bg-zinc-950/80 flex flex-col items-center py-4 gap-2 shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)]"
+      >
         <Button
           variant="ghost"
           size="icon"
@@ -139,7 +145,10 @@ export function ProjectSidebar({
 
   return (
     <>
-      <div className="w-64 bg-zinc-950/80 flex flex-col h-full shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)]">
+      <div
+        ref={ref}
+        className="w-64 bg-zinc-950/80 flex flex-col h-full shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)]"
+      >
         {/* Header */}
         <div className="p-3 border-b border-border/30 flex items-center gap-2">
           <Button
@@ -260,4 +269,4 @@ export function ProjectSidebar({
       />
     </>
   );
-}
+});

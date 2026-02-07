@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, forwardRef } from "react";
 import { X, ArrowRight, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { GeneratedAsset } from "./types/generation";
@@ -17,12 +17,11 @@ const QUICK_PLACEMENTS = [
   "Place in the testimonials section",
 ];
 
-export function PlacementPromptModal({ 
-  isOpen, 
-  onClose, 
-  onSubmit, 
-  asset 
-}: PlacementPromptModalProps) {
+export const PlacementPromptModal = forwardRef<HTMLDivElement, PlacementPromptModalProps>(
+  function PlacementPromptModal(
+    { isOpen, onClose, onSubmit, asset }: PlacementPromptModalProps,
+    ref
+  ) {
   const [input, setInput] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -37,8 +36,9 @@ export function PlacementPromptModal({
     setInput("");
   };
 
-  return (
-    <AnimatePresence>
+    return (
+      <div ref={ref}>
+        <AnimatePresence>
       {isOpen && (
         <motion.div 
           initial={{ opacity: 0 }}
@@ -132,6 +132,9 @@ export function PlacementPromptModal({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
-  );
-}
+        </AnimatePresence>
+      </div>
+    );
+  }
+);
+PlacementPromptModal.displayName = 'PlacementPromptModal';
