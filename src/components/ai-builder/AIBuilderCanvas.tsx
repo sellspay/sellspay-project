@@ -343,14 +343,35 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       return;
     }
     processedJobIdsRef.current.add(job.id);
-    
+
     console.log('[BackgroundGen] Job completed:', job.id);
-    
-    // If we have code result, apply it
+
+    // 🛡️ SAFETY: Never apply JSON (job status / accidental payload) as code
+    const looksLikeJson = (text: string): boolean => {
+      const trimmed = (text || '').trim();
+      if (!trimmed.startsWith('{')) return false;
+      try {
+        const parsed = JSON.parse(trimmed);
+        return parsed && typeof parsed === 'object' && (
+          'jobId' in parsed || 'status' in parsed || 'success' in parsed
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    // If we have code result, apply it (only if it looks like TSX/JS)
     if (job.code_result) {
-      setCode(job.code_result);
+      if (looksLikeJson(job.code_result)) {
+        console.error('[BackgroundGen] Refusing to apply JSON as code_result for job:', job.id);
+        toast.error('Auto-fix failed: received invalid code payload');
+      } else {
+        setCode(job.code_result);
+      }
+    } else {
+      console.warn('[BackgroundGen] Job completed with no code_result:', job.id);
     }
-    
+
     // If we have a plan result, show the plan approval card
     if (job.plan_result) {
       setPendingPlan({
@@ -358,7 +379,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         originalPrompt: job.prompt
       });
     }
-    
+
     // Add assistant message with the summary
     if (job.summary && activeProjectId) {
       addMessage('assistant', job.summary, job.code_result || undefined, activeProjectId);
@@ -877,6 +898,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // Add user message to history (CLEAN prompt only - no system instructions visible)
     await addMessage('user', cleanPrompt, undefined, projectId);
 
+    // 🛡️ AUTO-FIX SAFETY: If this is an auto-fix request, don't feed the AI the currently-broken code.
+    // Use the last known-good snapshot instead.
+    const isAutoFixRequest = cleanPrompt.startsWith('CRITICAL_ERROR_REPORT:');
+    const lastGoodSnapshot = isAutoFixRequest ? getLastCodeSnapshot() : null;
+    const existingCodeForAgent = lastGoodSnapshot || (code !== DEFAULT_CODE ? code : undefined);
+
     // 🔄 CREATE BACKGROUND JOB: This ensures generation persists even if user leaves
     // The job will be picked up by the edge function and results saved to database
     const job = await createJob(cleanPrompt, promptForAI, activeModel?.id, isPlanMode);
@@ -885,12 +912,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       console.log('[BackgroundGen] Created job:', job.id, 'for project:', projectId);
       
       // Start the agent loop with the AI prompt AND the job ID
-      // The edge function will write results to the job record
-      startAgent(promptForAI, code !== DEFAULT_CODE ? code : undefined, projectId, job.id);
+      // The backend will write results to the job record
+      startAgent(promptForAI, existingCodeForAgent, projectId, job.id);
     } else {
       // Fallback: Start without job (streaming only, won't persist if user leaves)
       console.warn('[BackgroundGen] Failed to create job, using streaming-only mode');
-      startAgent(promptForAI, code !== DEFAULT_CODE ? code : undefined, projectId);
+      startAgent(promptForAI, existingCodeForAgent, projectId);
     }
   };
 
