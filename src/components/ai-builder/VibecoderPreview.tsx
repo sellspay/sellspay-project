@@ -8,6 +8,7 @@ import {
 } from '@codesandbox/sandpack-react';
 import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
 import type { ViewMode } from './types/generation';
+import { useSuppressPreviewNoise } from './hooks/useSuppressPreviewNoise';
 
 interface VibecoderPreviewProps {
   code: string;
@@ -19,6 +20,7 @@ interface VibecoderPreviewProps {
 }
 
 // Nuclear CSS fix - forces all Sandpack internal wrappers to fill height
+// + hides any Sandpack/react-error full overlay so errors never block the preview UI.
 const SANDPACK_HEIGHT_FIX = `
   .sp-wrapper, 
   .sp-layout, 
@@ -52,7 +54,22 @@ const SANDPACK_HEIGHT_FIX = `
   .cm-editor {
     height: 100% !important;
   }
+
+  /* Never let any full-screen error overlay cover the preview */
+  .sp-error-overlay,
+  .sp-error,
+  .sp-error-message,
+  .sp-error-title,
+  .sp-error-stack,
+  .error-overlay,
+  #react-error-overlay,
+  [data-react-error-overlay] {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
 `;
+
 
 // Custom dark theme matching our app
 const customTheme: SandpackTheme = {
@@ -290,6 +307,10 @@ export function VibecoderPreview({
   onReady,
   viewMode = 'preview',
 }: VibecoderPreviewProps) {
+  // Prevent Sandpack/react-error-overlay from taking over the whole UI,
+  // and suppress the noisy repeated console errors from frozen SyntaxError objects.
+  useSuppressPreviewNoise(true);
+
   return (
     <div className="h-full w-full relative bg-background flex flex-col">
       {/* Nuclear CSS Fix - Inject global styles to force Sandpack height */}
@@ -302,3 +323,4 @@ export function VibecoderPreview({
     </div>
   );
 }
+
