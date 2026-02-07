@@ -77,6 +77,21 @@ function buildTestHtml(code: string): string {
   <\/script>
   <script type="text/babel" data-presets="react,typescript">
     try {
+      // Make common React APIs available even when imports are stripped.
+      // This prevents "useState is not defined" and similar runtime crashes.
+      const {
+        useState,
+        useEffect,
+        useMemo,
+        useCallback,
+        useRef,
+        useReducer,
+        useLayoutEffect,
+        useContext,
+        Fragment,
+        createElement,
+      } = React;
+
       // Simple icon components (same as SimplePreview)
       const Icon = ({ name, size = 24, className = '' }) => {
         const icons = {
