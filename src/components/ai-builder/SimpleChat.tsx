@@ -39,9 +39,9 @@ export function SimpleChat({ messages, isStreaming, streamingLogs = [], children
   
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-background">
-      {/* Messages area - flex-1 + min-h-0 forces internal scroll */}
-      <ScrollArea className="flex-1 min-h-0 px-4" viewportClassName="!block">
-        <div ref={scrollRef} className="py-4 space-y-4">
+      {/* Messages area - flex-1 + min-h-0 forces internal scroll, overflow-x-hidden prevents horizontal bleed */}
+      <ScrollArea className="flex-1 min-h-0 px-4 overflow-x-hidden" viewportClassName="!block overflow-x-hidden">
+        <div ref={scrollRef} className="py-4 space-y-4 pr-2">
           {messages.length === 0 ? (
             // Empty state
             <div className="flex flex-col items-center justify-center h-[60vh] text-center">
@@ -77,14 +77,20 @@ export function SimpleChat({ messages, isStreaming, streamingLogs = [], children
                   </div>
                 )}
                 
-                {/* Message */}
+                {/* Message - NUCLEAR TEXT CONSTRAINT for full visibility */}
                 <div 
                   className={cn(
-                    "text-sm break-words whitespace-pre-wrap",
+                    "text-sm",
                     msg.role === 'user' 
                       ? 'max-w-[85%] px-4 py-3 bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white rounded-2xl rounded-br-md' 
-                      : 'max-w-[92%] text-foreground leading-relaxed pl-3 pr-2 py-1'
+                      : 'max-w-[92%] text-foreground leading-relaxed pl-3 pr-4 py-1'
                   )}
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                    overflowX: 'hidden',
+                  }}
                 >
                   {msg.content}
                 </div>
