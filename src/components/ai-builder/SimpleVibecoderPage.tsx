@@ -605,6 +605,46 @@ Analyze the error, identify the root cause in the code above, and regenerate the
     }
   };
   
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MAGICAL DOORWAY: Show fullscreen LovableHero when starting a new project
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (showDoorway) {
+    return (
+      <LovableHero
+        userName={profile?.username || user?.email?.split('@')[0] || 'Creator'}
+        variant="fullscreen"
+        onStart={(prompt, isPlanMode) => {
+          // Add user message to chat immediately
+          const userMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'user',
+            content: prompt,
+          };
+          setMessages([userMessage]);
+          
+          // Exit doorway and transition to canvas
+          setShowDoorway(false);
+          
+          // Trigger the build with the prompt
+          handleSendMessage({
+            isPlanMode: isPlanMode || false,
+            model: activeModel,
+            attachments: [],
+            promptOverride: prompt, // Pass prompt directly since inputValue may not be set yet
+          });
+        }}
+        onBack={() => {
+          // If user has projects, go back to last project; otherwise stay in doorway
+          if (activeProjectId) {
+            setShowDoorway(false);
+          } else {
+            navigate('/');
+          }
+        }}
+      />
+    );
+  }
+  
   return (
     <div className="h-screen w-screen flex bg-background overflow-hidden">
       {/* Always-available chat toggle (in case the panel is off-screen) */}
