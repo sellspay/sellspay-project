@@ -7,6 +7,7 @@ import { SimplePreview } from './SimplePreview';
 import { SimpleChat, type ChatMessage } from './SimpleChat';
 import { ChatInputBar, AI_MODELS, type AIModel } from './ChatInputBar';
 import { ProfileMenu } from './ProfileMenu';
+import { CanvasToolbar, type ViewMode, type DeviceMode } from './CanvasToolbar';
 import { InsufficientCreditsCard, isCreditsError, parseCreditsError } from './InsufficientCreditsCard';
 import { LovableHero } from './LovableHero';
 import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
@@ -71,6 +72,9 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   const [userCredits, setUserCredits] = useState(0);
   const [isPrivileged, setIsPrivileged] = useState(false);
   const [activeModel, setActiveModel] = useState<AIModel>(AI_MODELS.code[0]);
+  const [viewMode, setViewMode] = useState<ViewMode>('preview');
+  const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
+  const [refreshKey, setRefreshKey] = useState(0);
   const [profile, setProfile] = useState<{
     avatar_url?: string | null;
     username?: string | null;
@@ -402,11 +406,20 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     );
   }
   
+  // Get device mode dimensions
+  const getDeviceDimensions = () => {
+    switch (deviceMode) {
+      case 'mobile': return 'max-w-[375px]';
+      case 'tablet': return 'max-w-[768px]';
+      default: return 'w-full';
+    }
+  };
+  
   return (
-    <div className="h-screen w-screen flex bg-zinc-950 overflow-hidden">
+    <div className="h-screen w-screen flex bg-background overflow-hidden">
       {/* Sidebar */}
       <div className={cn(
-        "transition-all duration-300 ease-in-out",
+        "transition-all duration-300 ease-in-out border-r border-border/50",
         sidebarCollapsed ? "w-0" : "w-64"
       )}>
         {!sidebarCollapsed && (
@@ -425,61 +438,98 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
       
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="h-14 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
-          <div className="flex items-center gap-3">
-            {/* Sidebar toggle */}
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors"
-            >
-              {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-            </button>
-            
-            {/* Logo */}
-            <div className="flex items-center gap-2">
-              <img src={sellspayLogo} alt="Vibecoder" className="w-7 h-7" />
-              <span className="font-semibold text-white">Vibecoder</span>
-              <span className="px-1.5 py-0.5 bg-violet-500/20 text-violet-400 text-[10px] font-bold rounded">
-                BETA
-              </span>
-            </div>
-          </div>
-          
-          {/* Profile menu */}
-          <ProfileMenu
-            avatarUrl={profile?.avatar_url}
-            username={profile?.username}
-            userCredits={userCredits}
-            subscriptionTier={profile?.subscription_tier}
-            onSignOut={handleSignOut}
-          />
-        </header>
+        {/* Canvas Toolbar with tabs */}
+        <CanvasToolbar
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          deviceMode={deviceMode}
+          setDeviceMode={setDeviceMode}
+          onRefresh={() => setRefreshKey(k => k + 1)}
+          onExit={() => navigate('/')}
+          onTweak={() => toast.info('Tweak modal coming soon!')}
+          onPublish={() => toast.info('Publish flow coming soon!')}
+        />
         
         {/* Main workspace */}
         <div className="flex-1 flex min-h-0">
-          {/* Preview pane */}
-          <div className="flex-1 min-w-0">
-            <SimplePreview
-              code={code}
-              isLoading={isStreaming}
-              onError={handlePreviewError}
-            />
+          {/* Preview/Code/Studio pane */}
+          <div className="flex-1 min-w-0 p-4 bg-muted/20">
+            <div className={cn(
+              "h-full mx-auto rounded-2xl overflow-hidden border border-border/50 bg-background shadow-2xl transition-all duration-300",
+              getDeviceDimensions()
+            )}>
+              {viewMode === 'preview' && (
+                <SimplePreview
+                  key={refreshKey}
+                  code={code}
+                  isLoading={isStreaming}
+                  onError={handlePreviewError}
+                />
+              )}
+              {viewMode === 'code' && (
+                <div className="h-full overflow-auto p-4 bg-zinc-950">
+                  <pre className="text-xs text-zinc-300 font-mono whitespace-pre-wrap">
+                    {code}
+                  </pre>
+                </div>
+              )}
+              {viewMode === 'image' && (
+                <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                  <div className="w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center border border-pink-500/30">
+                    <span className="text-4xl">🎨</span>
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">Image Studio</h3>
+                  <p className="text-muted-foreground text-sm max-w-xs">
+                    Generate custom images for your storefront using AI models like DALL·E and Midjourney.
+                  </p>
+                  <span className="mt-4 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                    Coming Soon
+                  </span>
+                </div>
+              )}
+              {viewMode === 'video' && (
+                <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                  <div className="w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center border border-blue-500/30">
+                    <span className="text-4xl">🎬</span>
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">Video Studio</h3>
+                  <p className="text-muted-foreground text-sm max-w-xs">
+                    Create AI-generated video content for product showcases and promotional materials.
+                  </p>
+                  <span className="mt-4 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                    Coming Soon
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
           
           {/* Chat pane */}
-          <div className="w-[400px] border-l border-zinc-800 flex flex-col min-h-0">
+          <div className="w-[400px] border-l border-border/50 flex flex-col min-h-0 bg-background">
+            {/* Project header in chat */}
+            <div className="px-4 py-3 border-b border-border/50 flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <img src={sellspayLogo} alt="" className="w-6 h-6" />
+                <span className="font-medium text-foreground text-sm truncate max-w-[200px]">
+                  {activeProjectId ? 'Your Storefront' : 'New Project'}
+                </span>
+              </div>
+              <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded">
+                BETA
+              </span>
+            </div>
+            
             {/* Error display */}
             {error && !creditsError && (
-              <div className="p-3 bg-red-950/50 border-b border-red-900/50 flex items-start gap-2">
-                <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-300">{error}</p>
+              <div className="p-3 bg-destructive/10 border-b border-destructive/20 flex items-start gap-2">
+                <AlertCircle size={16} className="text-destructive shrink-0 mt-0.5" />
+                <p className="text-sm text-destructive">{error}</p>
               </div>
             )}
             
             {/* Credits error */}
             {creditsError && (
-              <div className="p-4 border-b border-zinc-800">
+              <div className="p-4 border-b border-border">
                 <InsufficientCreditsCard
                   creditsNeeded={creditsError.needed}
                   creditsAvailable={creditsError.available}

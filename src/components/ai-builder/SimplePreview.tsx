@@ -1,10 +1,12 @@
 import { useRef, useEffect, memo } from 'react';
 import { Loader2 } from 'lucide-react';
+import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 
 interface SimplePreviewProps {
   code: string;
   isLoading?: boolean;
   onError?: (error: string) => void;
+  showPlaceholder?: boolean;
 }
 
 /**
@@ -19,9 +21,13 @@ interface SimplePreviewProps {
 export const SimplePreview = memo(function SimplePreview({ 
   code, 
   isLoading = false,
-  onError 
+  onError,
+  showPlaceholder = false
 }: SimplePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  
+  // Check if we should show placeholder (default code or empty)
+  const isDefaultCode = code.includes('Welcome to Vibecoder') || !code.trim();
   
   useEffect(() => {
     if (!iframeRef.current || !code) return;
@@ -129,14 +135,35 @@ export const SimplePreview = memo(function SimplePreview({
     return () => window.removeEventListener('message', handleMessage);
   }, [onError]);
   
+  // Vibecoder Ready placeholder for initial state
+  if ((showPlaceholder || isDefaultCode) && !isLoading) {
+    return (
+      <div className="h-full w-full relative bg-background flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center text-center animate-fade-in">
+          {/* Logo badge */}
+          <div className="w-16 h-16 mb-6 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center border border-violet-500/30 shadow-lg shadow-violet-500/10">
+            <img src={sellspayLogo} alt="" className="w-10 h-10" />
+          </div>
+          
+          <h3 className="text-xl font-semibold text-foreground mb-2">
+            Vibecoder Ready
+          </h3>
+          <p className="text-muted-foreground text-sm">
+            Describe your vision to start building
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
-    <div className="h-full w-full relative bg-zinc-950 flex flex-col">
+    <div className="h-full w-full relative bg-background flex flex-col">
       {/* Loading overlay */}
       {isLoading && (
-        <div className="absolute inset-0 z-10 bg-zinc-950/80 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
-            <span className="text-sm text-zinc-400">Generating...</span>
+        <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3 animate-fade-in">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <span className="text-sm text-muted-foreground">Generating...</span>
           </div>
         </div>
       )}
@@ -144,7 +171,7 @@ export const SimplePreview = memo(function SimplePreview({
       {/* Preview iframe */}
       <iframe 
         ref={iframeRef}
-        className="w-full h-full border-0 bg-zinc-950"
+        className="w-full h-full border-0 bg-background rounded-lg"
         sandbox="allow-scripts"
         title="Preview"
       />
