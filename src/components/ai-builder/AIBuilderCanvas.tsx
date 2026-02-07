@@ -333,13 +333,22 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   });
 
   // 🔄 BACKGROUND GENERATION: Jobs that persist even if user leaves
+  // Track processed jobs to prevent duplicate message additions
+  const processedJobIdsRef = useRef<Set<string>>(new Set());
+  
   const handleJobComplete = useCallback((job: GenerationJob) => {
+    // Prevent duplicate processing
+    if (processedJobIdsRef.current.has(job.id)) {
+      console.log('[BackgroundGen] Job already processed, skipping:', job.id);
+      return;
+    }
+    processedJobIdsRef.current.add(job.id);
+    
     console.log('[BackgroundGen] Job completed:', job.id);
     
     // If we have code result, apply it
     if (job.code_result) {
       setCode(job.code_result);
-      // Note: Removed toast - feedback shown in chat only
     }
     
     // If we have a plan result, show the plan approval card
@@ -388,14 +397,21 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   }, [loading, needsOnboarding]);
 
   // 🔄 RESUME: Check for completed jobs when returning to the page
+  // Note: The realtime subscription now handles completed jobs via onJobComplete callback
+  // This effect is only needed if the user returns AFTER the job completed (no realtime event)
+  const processedCompletedJobRef = useRef<string | null>(null);
+  
   useEffect(() => {
-    if (hasCompletedJob && currentJob && !isLoadingJob) {
+    // Only process if we have a completed job that hasn't been processed yet
+    if (hasCompletedJob && currentJob && !isLoadingJob && processedCompletedJobRef.current !== currentJob.id) {
       console.log('[BackgroundGen] Found completed job on mount, applying results...');
+      
+      // Mark as processed BEFORE applying to prevent re-runs
+      processedCompletedJobRef.current = currentJob.id;
       
       // Apply the completed job's results
       if (currentJob.code_result) {
         setCode(currentJob.code_result);
-        // Note: Removed toast - feedback shown in chat only
       }
       
       if (currentJob.plan_result) {
