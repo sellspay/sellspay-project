@@ -1165,16 +1165,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
         {/* Split View Content - Chat + Preview always visible */}
         <div className="flex-1 flex min-h-0 overflow-hidden relative">
-          {/* === GLOBAL TRANSITION CURTAIN === 
-              Covers the ENTIRE workspace during project switch.
-              Uses opacity transition for smooth 0.2s fade-out/fade-in.
-              Sits ABOVE all content (z-50) so flicker is hidden behind it. */}
-           <div
-             className={`pointer-events-none absolute inset-0 z-50 bg-background transition-opacity duration-200 ease-out ${
-               (isProjectTransitioning || isStreaming || isAwaitingPreviewReady) ? 'opacity-100' : 'opacity-0'
-             }`}
-             style={{ willChange: 'opacity' }}
-           />
 
           {/* LEFT PANEL: Preview/Studio (seamless) */}
           <div
