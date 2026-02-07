@@ -42,6 +42,8 @@ export default function WalletCard({ onRequestPayout }: WalletCardProps) {
   const [payoutProvider, setPayoutProvider] = useState<"stripe" | "paypal" | "payoneer">("stripe");
   const [instantPayout, setInstantPayout] = useState(false);
   const [processingPayout, setProcessingPayout] = useState(false);
+  const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(true);
+  const [redirectingToOnboarding, setRedirectingToOnboarding] = useState(false);
   const [payoutSuccess, setPayoutSuccess] = useState<{
     amount: number;
     provider: string;
@@ -51,7 +53,27 @@ export default function WalletCard({ onRequestPayout }: WalletCardProps) {
 
   useEffect(() => {
     fetchBalance();
+    checkOnboardingStatus();
   }, []);
+
+  const checkOnboardingStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data } = await supabase.functions.invoke("check-connect-status", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (data) {
+        setStripeOnboardingComplete(data.onboarding_complete ?? false);
+      }
+    } catch (err) {
+      console.error("Error checking onboarding status:", err);
+    }
+  };
 
   const fetchBalance = async () => {
     try {
@@ -81,7 +103,36 @@ export default function WalletCard({ onRequestPayout }: WalletCardProps) {
     }
   };
 
-  const handleRequestPayout = () => {
+  const handleRequestPayout = async () => {
+    // If Stripe onboarding not complete, redirect to complete it first
+    if (!stripeOnboardingComplete && balance?.seller_mode === "CONNECT") {
+      setRedirectingToOnboarding(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Not authenticated");
+
+        const { data, error } = await supabase.functions.invoke("create-connect-account", {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+
+        if (data?.url) {
+          window.location.href = data.url;
+          return;
+        }
+      } catch (err) {
+        console.error("Error starting onboarding:", err);
+        toast.error(err instanceof Error ? err.message : "Failed to start verification");
+      } finally {
+        setRedirectingToOnboarding(false);
+      }
+      return;
+    }
+
     // Set default provider based on seller mode
     if (balance?.seller_mode === "MOR") {
       setPayoutProvider("paypal");
@@ -251,14 +302,37 @@ export default function WalletCard({ onRequestPayout }: WalletCardProps) {
           {/* Withdraw Button */}
           <Button
             className="w-full"
-            disabled={!canWithdraw}
+            disabled={!canWithdraw || redirectingToOnboarding}
             onClick={handleRequestPayout}
           >
-            <ArrowUpRight className="h-4 w-4 mr-2" />
-            {canWithdraw
-              ? `Withdraw $${balance.available_usd}`
-              : `Min. $20 to withdraw`}
+            {redirectingToOnboarding ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Redirecting...
+              </>
+            ) : !stripeOnboardingComplete && balance.seller_mode === "CONNECT" ? (
+              <>
+                <ArrowUpRight className="h-4 w-4 mr-2" />
+                Complete Setup to Withdraw
+              </>
+            ) : canWithdraw ? (
+              <>
+                <ArrowUpRight className="h-4 w-4 mr-2" />
+                Withdraw ${balance.available_usd}
+              </>
+            ) : (
+              <>
+                <ArrowUpRight className="h-4 w-4 mr-2" />
+                Min. $20 to withdraw
+              </>
+            )}
           </Button>
+
+          {!stripeOnboardingComplete && balance.seller_mode === "CONNECT" && (
+            <p className="text-xs text-center text-amber-500">
+              Complete your account verification to withdraw earnings
+            </p>
+          )}
 
           {balance.pending_cents > 0 && isMorMode && (
             <p className="text-xs text-center text-muted-foreground">
