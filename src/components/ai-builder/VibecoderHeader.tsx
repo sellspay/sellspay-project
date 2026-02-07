@@ -230,22 +230,7 @@ export const VibecoderHeader = forwardRef<HTMLElement, VibecoderHeaderProps>(fun
           />
         </div>
 
-        {/* Nuke & Refresh Button - Clears all Sandpack caches */}
-        {onNukeAndRefresh && viewMode === 'preview' && (
-          <button 
-            onClick={handleNukeAndRefresh}
-            disabled={isNuking}
-            className="flex items-center gap-2 px-3 py-1.5 bg-red-900/50 hover:bg-red-800/60 border border-red-700/50 rounded-lg text-xs font-bold text-red-300 transition-all disabled:opacity-50"
-            title="Nuclear Reset: Clears all cached data and forces a fresh preview"
-          >
-            {isNuking ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <Trash2 size={12} />
-            )}
-            <span>Nuke</span>
-          </button>
-        )}
+        {/* REMOVED: Nuke button - triggers mutation observer crash */}
 
         {/* Tweak Design Button - Never shows loading state */}
         {!isEmpty && onRegenerate && (
