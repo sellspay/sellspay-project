@@ -32,6 +32,7 @@ export const SimplePreview = memo(function SimplePreview({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isFixing, setIsFixing] = useState(false);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
+  const [isPreviewReady, setIsPreviewReady] = useState(true);
   const fixingRef = useRef(false); // Track fixing state without re-renders
   
   // Handle auto-fix - clears error and enters "fixing" mode
@@ -56,7 +57,10 @@ export const SimplePreview = memo(function SimplePreview({
   
   useEffect(() => {
     if (!iframeRef.current || !code) return;
-    
+
+    // Hold loading state until the iframe confirms a clean mount
+    setIsPreviewReady(false);
+
     // Reset error state
     setPreviewError(null);
 
@@ -196,6 +200,21 @@ export const SimplePreview = memo(function SimplePreview({
   </script>
   <script type="text/babel" data-presets="react,typescript">
     try {
+      // Make common React APIs available even when imports are stripped.
+      // This prevents "useState is not defined" and similar runtime crashes.
+      const {
+        useState,
+        useEffect,
+        useMemo,
+        useCallback,
+        useRef,
+        useReducer,
+        useLayoutEffect,
+        useContext,
+        Fragment,
+        createElement,
+      } = React;
+
       // Simple icon components as SVG (no external dependency)
       const Icon = ({ name, size = 24, className = '' }) => {
         const icons = {
@@ -418,20 +437,25 @@ export const SimplePreview = memo(function SimplePreview({
   // IMPORTANT: Suppresses errors during fixing mode to prevent UI spam
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'preview-ready') {
+        setIsPreviewReady(true);
+        return;
+      }
+
       if (event.data?.type === 'preview-error') {
         // If we're currently fixing, don't show new errors (they're expected while rebuilding)
         if (fixingRef.current || isFixing) {
           console.log('[Preview] Suppressing error during fix mode');
           return;
         }
-        
+
         // Build a rich error string that includes stack trace when available
         const errorDetails = event.data.fullDetails || event.data.stack || event.data.error;
         const source = event.data.source ? `[${event.data.source}]` : '';
         const location = event.data.line ? ` at line ${event.data.line}${event.data.col ? ':' + event.data.col : ''}` : '';
-        
+
         const fullError = `${source}${location} ${errorDetails}`.trim();
-        
+
         setPreviewError(fullError);
         if (onError) {
           onError(fullError);
@@ -545,7 +569,7 @@ export const SimplePreview = memo(function SimplePreview({
   return (
     <div className="h-full w-full relative bg-background flex flex-col">
       {/* Loading overlay */}
-      {isLoading && (
+      {(isLoading || !isPreviewReady) && (
         <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex items-center justify-center">
           <div className="flex flex-col items-center gap-3 animate-fade-in">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
