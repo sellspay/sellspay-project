@@ -1,280 +1,184 @@
 
-# Million Dollar Vibecoder: Premium Factory System
-
-## Problem Analysis
-
-The current Vibecoder has solid foundations but produces inconsistent quality because:
-
-1. **No "Unique Design Feature" Mandate** — The Architect can plan generic layouts without a signature element
-2. **No Navigation Component** — File manifest only plans 4 files, missing the sticky nav that makes sites feel complete
-3. **Expansion Protocol is Passive** — Examples exist but aren't enforced with a "MINIMUM REQUIREMENTS" block
-4. **No Quality Gate** — There's no complexity scoring that REJECTS low-density plans
-5. **Builder Missing Typography Pairing Rules** — No explicit font hierarchy enforcement
-
-## Solution: "Premium Factory" System Defaults
-
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                  MILLION DOLLAR VIBECODER                           │
-├─────────────────────────────────────────────────────────────────────┤
-│  1. ARCHITECT: Add "Unique Design Feature" REQUIREMENT              │
-│     └─ Every plan MUST include a signature element                 │
-│                                                                     │
-│  2. ARCHITECT: Expand file manifest to 5-6 files                    │
-│     └─ Add Navigation.tsx as MANDATORY                             │
-│                                                                     │
-│  3. ARCHITECT: Add "Quality Gate" scoring                           │
-│     └─ Reject plans with complexity < 4                            │
-│                                                                     │
-│  4. BUILDER: Add Typography Pairing Rules                           │
-│     └─ Explicit Playfair + Inter mandate                           │
-│                                                                     │
-│  5. BUILDER: Add "Micro-Interaction Checklist"                      │
-│     └─ Every element must have hover/motion                        │
-└─────────────────────────────────────────────────────────────────────┘
-```
+## Goal
+Fix three critical AI Builder issues without introducing new lockouts:
+1) Doorway “first prompt” not appearing in chat when creating a new project.
+2) Switching/refreshing projects loads the wrong project (code/chat bleed and refresh mismatch).
+3) Repeated Sandpack “Build error: Cannot assign to read only property 'message'…” toast during generations.
 
 ---
 
-## Implementation Details
+## What’s actually causing each problem (diagnosis)
 
-### Phase 1: Architect "Premium Factory" Defaults
+### 1) Doorway prompt not showing
+In `AIBuilderCanvas.tsx`, `heroOnStart()` currently does:
+- `ensureProject(...)` (creates & sets `activeProjectId`, but React state update is async)
+- `await addMessage('user', prompt)` **without a project id**
+- `navigate(..., { state: { initialPrompt } })`
 
-**File:** `supabase/functions/vibecoder-architect/index.ts`
-
-Add a "MINIMUM QUALITY REQUIREMENTS" section to the system prompt:
-
-```text
-### MINIMUM QUALITY REQUIREMENTS (REJECT IF NOT MET)
-
-Every blueprint MUST achieve a complexity score of 4+ (out of 5).
-If the AI cannot meet these requirements, it MUST add more detail.
-
-**MANDATORY FILE STRUCTURE (5-6 files):**
-1. data/products.ts — Product data (max 6 items, high-res Unsplash)
-2. components/Navigation.tsx — Sticky/glassmorphism nav with logo + links
-3. components/Hero.tsx — Full-screen hero with 3+ gradient layers
-4. components/ProductGrid.tsx — ASYMMETRIC editorial grid (NOT uniform)
-5. App.tsx — Main orchestrator (imports + assembles, max 40 lines)
-6. components/Footer.tsx — Optional but recommended
-
-**UNIQUE DESIGN FEATURE (MANDATORY):**
-Every plan MUST include a "uniqueDesignFeature" field with:
-- element: The specific visual feature (e.g., "magnetic cursor buttons")
-- implementation: Tailwind/CSS approach to achieve it
-
-Examples of unique features:
-- Scroll-triggered parallax layers with different speeds
-- Text shimmer animation on hero heading
-- Asymmetric grid with featured product spanning 2 columns
-- Floating decorative blobs with organic animation
-- Cursor-following radial glow effect
-- Glassmorphism card stack with depth blur
-
-**TYPOGRAPHY MANDATE:**
-- Hero: MUST be text-7xl+ with font-serif or professional typeface
-- Pairing: Heading serif + body sans-serif (e.g., Playfair + Inter)
-- NEVER use default system fonts without explicit classes
+Because `addMessage()` in `useVibecoderProjects` uses:
+```ts
+const targetProjectId = forProjectId || activeProjectId;
 ```
+…there’s a real window where `activeProjectId` is still `null`, so the user message insert/optimistic UI never happens.
+
+There’s a second, separate issue: the “auto-start initial prompt” effect is guarded by `hasStartedInitialRef`, which is **never reset**. After you’ve used the doorway once, that ref can prevent future doorway prompts from being optimistically injected/started in the same session.
+
+### 2) Wrong project loads / overlap + refresh mismatch
+There are two overlapping causes:
+
+**A) Refresh mismatch**
+- `selectProject(projectId)` only updates React state, not the URL query param.
+- On refresh, `useVibecoderProjects` initializes `activeProjectId` from `?project=...`.
+So if you switched projects but the URL never changed, refreshing re-loads the old project (exactly what you reported: “Both”).
+
+**B) Cross-project code snapshot bleed on switch**
+In `AIBuilderCanvas.tsx`, the “scorched earth orchestrator” effect runs on `activeProjectId` change and *immediately* does:
+```ts
+const lastSnapshot = getLastCodeSnapshotRef.current();
+setCode(lastSnapshot);
+```
+But at that moment, `messages` may still be from the *previous* project (because the message fetch for the new project hasn’t completed yet). That means `getLastCodeSnapshot()` can return the wrong project’s snapshot, and you mount the wrong code.
+
+Even if we “gate” rendering, this still breaks correctness because the wrong code is now in state and can leak into subsequent operations.
+
+### 3) “Cannot assign to read only property 'message' …” build error spam
+Your screenshot shows Sandpack reporting this as a build error. This commonly comes from an **error overlay** trying to “decorate”/rewrite an error object (assigning to `.message`) where the underlying error instance (often a SyntaxError) is read-only/frozen in that environment.
+
+You already avoid mutating `sandpack.error` in `ErrorDetector`, which is good, but Sandpack’s own overlay can still do it. The clean fix is to **disable Sandpack’s built-in error overlay** and rely on your existing FixErrorToast + Safe extraction.
 
 ---
 
-### Phase 2: Builder "Micro-Interaction Checklist"
+## Implementation approach (minimal, surgical, correct)
 
-**File:** `supabase/functions/vibecoder-builder/index.ts`
+### A) Make doorway prompt always appear (and start reliably)
+**File:** `src/components/ai-builder/AIBuilderCanvas.tsx`
 
-Add a "MICRO-INTERACTION CHECKLIST" that enforces polish on every element:
+1) In `heroOnStart`:
+- Either remove the premature `addMessage('user', prompt)` entirely and let the “auto-start initial prompt” effect handle the optimistic insert…
+  - OR pass `newProjectId` explicitly: `addMessage('user', prompt, undefined, newProjectId)`
 
-```text
-### MICRO-INTERACTION CHECKLIST (EVERY COMPONENT)
+Given your current architecture already has an “auto-start initial prompt” flow that *also* adds a user message (line ~315), the cleanest is:
+- **Stop inserting the message inside `heroOnStart`**
+- Rely on the auto-start effect to do the optimistic user message + agent start
 
-Before completing any component, verify these are present:
+2) Reset the “auto-start guard” per project:
+- Replace `hasStartedInitialRef` (single boolean for the entire session) with a **per-project/per-navigation guard**, e.g.:
+  - `startedInitialPromptForProjectRef.current = activeProjectId`
+  - or store `{projectId, promptHash}`.
+- Reset it when:
+  - `activeProjectId` changes, or
+  - `location.state?.initialPrompt` changes.
 
-**Hero Section:**
-- [ ] motion.h1 with initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
-- [ ] Staggered subtitle/CTA with delay
-- [ ] Background gradient with at least 3 layers
-- [ ] CTA button with whileHover={{ scale: 1.05 }}
+This ensures every new project created from the doorway always injects the first user message and starts the agent.
 
-**Navigation:**
-- [ ] fixed top-0 with backdrop-blur-xl
-- [ ] Glassmorphism: bg-white/5 border-b border-white/10
-- [ ] Links with hover underline animation
-
-**Product Cards:**
-- [ ] group class on wrapper for hover coordination
-- [ ] Image with group-hover:scale-110 transition-transform duration-700
-- [ ] overflow-hidden on image container
-- [ ] hover:border-amber-500/30 or similar accent border
-- [ ] motion.div with whileInView stagger animation
-
-**Buttons:**
-- [ ] whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-- [ ] transition-all duration-300
-- [ ] For primary: bg-white text-black hover:bg-amber-400
-- [ ] For secondary: bg-white/10 backdrop-blur-sm border border-white/20
-
-**FORBIDDEN:**
-- Static elements without any motion
-- Buttons without hover/active states
-- Images without scale/zoom on hover
-- Cards without border/shadow transitions
-```
+**Expected result:** The initial prompt bubble always shows immediately (optimistic), every time, for doorway-created projects.
 
 ---
 
-### Phase 3: Add Navigation.tsx Template
+### B) Fix “wrong project loads” for switching + refreshing
+**Files:**
+- `src/components/ai-builder/hooks/useVibecoderProjects.ts`
+- `src/components/ai-builder/AIBuilderCanvas.tsx`
 
-**File:** `supabase/functions/vibecoder-builder/index.ts`
+#### B1) URL must always reflect the selected project (fix refresh mismatch)
+In `useVibecoderProjects.ts`, update `selectProject(projectId)` to:
+- set `activeProjectId`
+- update the URL query param `?project=...` via `history.replaceState` (consistent with createProject behavior)
 
-Add a new template to `FILE_TEMPLATES` for Navigation.tsx:
+This makes refresh deterministic and aligned with what you’re currently viewing.
 
-```typescript
-'components/Navigation.tsx': `
-### NAVIGATION COMPONENT TEMPLATE (components/Navigation.tsx)
-Sticky glassmorphism nav with logo and smooth scroll links.
+#### B2) Hard stop: never derive code from `messages` during the “project switch” orchestrator
+In `AIBuilderCanvas.tsx` project-switch orchestrator (`useLayoutEffect` on `[activeProjectId]`):
+- Remove/avoid this step:
+  - “load code from getLastCodeSnapshotRef.current()” during verification
+- On project change, do only:
+  - `resetCode()` (blank safe template)
+  - `setContentProjectId(null)` (gate stays closed)
+  - start verification
+  - mount agent lock `mountAgentProject(activeProjectId)` (fine)
+  - let the **separate restoration effect** (the one that waits for `messagesLoading === false`) restore the correct snapshot once messages are loaded for the new project.
 
-\`\`\`tsx
-import React from 'react';
-import { motion } from 'framer-motion';
+#### B3) Ensure messages cannot remain from previous project for even a moment
+In `useVibecoderProjects.ts` message loader effect on `[activeProjectId]`:
+- Immediately call `setMessages([])` when `activeProjectId` changes (before starting fetch).
+This prevents the restoration effect and UI from seeing old messages while the new fetch is in flight.
 
-interface NavigationProps {
-  brandName: string;
-  links?: { label: string; href: string }[];
-}
+#### B4) Set `contentProjectId` only when the correct project’s content is actually ready
+Right now `contentProjectId` is set in the orchestrator *before* messages necessarily load (so the gate can open too early). We will change:
+- Don’t set `contentProjectId` inside the orchestrator after verification.
+- Instead set it in the **restoration effect** after:
+  - `messagesLoading` is false
+  - and we have either restored a snapshot or confirmed there is none
 
-export function Navigation({ brandName, links = [] }: NavigationProps) {
-  const defaultLinks = links.length > 0 ? links : [
-    { label: 'Collection', href: '#products' },
-    { label: 'About', href: '#about' },
-    { label: 'Contact', href: '#contact' },
-  ];
+This makes the gate reflect the true “content mounted” moment.
 
-  return (
-    <motion.nav 
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-2xl border-b border-white/10"
-    >
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <a href="#" className="text-xl font-serif text-white tracking-tight">
-          {brandName}
-        </a>
-        <div className="hidden md:flex items-center gap-8">
-          {defaultLinks.map((link) => (
-            <a 
-              key={link.href}
-              href={link.href}
-              className="text-sm text-zinc-400 hover:text-white transition-colors duration-300 relative group"
-            >
-              {link.label}
-              <span className="absolute -bottom-1 left-0 w-0 h-px bg-amber-400 group-hover:w-full transition-all duration-300" />
-            </a>
-          ))}
-        </div>
-      </div>
-    </motion.nav>
-  );
-}
-\`\`\``,
-```
+**Expected result:** Switching projects never shows the wrong code/messages; refresh always lands on the project in the URL.
 
 ---
 
-### Phase 4: Update Output Format
+### C) Stop the repeating “read only property 'message'” build error toast
+**File:** `src/components/ai-builder/VibecoderPreview.tsx`
 
-**File:** `supabase/functions/vibecoder-architect/index.ts`
+Disable Sandpack’s built-in overlay to prevent internal mutation attempts:
+- Pass `showSandpackErrorOverlay={false}` to `SandpackPreviewComponent`
 
-Update the JSON output format to include Navigation.tsx in the files array:
+You already have:
+- `ErrorDetector` to capture errors
+- `FixErrorToast` UI
+So removing the default overlay is safe and should eliminate this particular class of error.
 
-```json
-{
-  "vibeAnalysis": { ... },
-  "files": [
-    { "path": "data/products.ts", "priority": 1 },
-    { "path": "components/Navigation.tsx", "priority": 2 },
-    { "path": "components/Hero.tsx", "priority": 3 },
-    { "path": "components/ProductGrid.tsx", "priority": 4 },
-    { "path": "App.tsx", "priority": 5 }
-  ],
-  "uniqueDesignFeature": {
-    "element": "REQUIRED - must describe signature visual",
-    "implementation": "REQUIRED - Tailwind classes or approach"
-  },
-  "executionOrder": [...],
-  "complexityScore": 5
-}
-```
+(If Sandpack also supports `showErrorScreen={false}`, we’ll use that too, but `showSandpackErrorOverlay` is the key one per Sandpack docs/snippets.)
+
+**Expected result:** The specific “Cannot assign to read only property 'message'…” error should stop appearing repeatedly during generations. If there are real build errors from generated code, you’ll still see them via your own toast and can click Fix.
 
 ---
 
-## Technical Changes Summary
-
-| File | Change | Purpose |
-|------|--------|---------|
-| `vibecoder-architect/index.ts` | Add "MINIMUM QUALITY REQUIREMENTS" | Enforce 4+ complexity, unique feature |
-| `vibecoder-architect/index.ts` | Add Navigation.tsx to file manifest | Complete the site structure |
-| `vibecoder-architect/index.ts` | Add Typography Mandate | Force professional font pairings |
-| `vibecoder-builder/index.ts` | Add Navigation.tsx template | Provide the nav pattern |
-| `vibecoder-builder/index.ts` | Add "MICRO-INTERACTION CHECKLIST" | Enforce polish on every element |
-
----
-
-## Expected Outcomes
-
-1. **Every site has a sticky nav** — No more floating content with no structure
-2. **Unique signature feature** — Each storefront has a differentiating element
-3. **Minimum complexity 4+** — Rejects "PDF-style" low-density plans
-4. **Typography enforcement** — Professional font pairings are mandatory
-5. **Micro-interactions everywhere** — Every element has hover/motion states
+## Step-by-step execution order (so we don’t make things worse)
+1) **Fix URL sync** on project selection (`useVibecoderProjects.selectProject`).
+2) **Clear messages immediately** on `activeProjectId` change (`useVibecoderProjects`).
+3) **Stop loading snapshot from stale messages** in the orchestrator (remove that part) and **move `contentProjectId` “ready”** to the restoration effect (`AIBuilderCanvas`).
+4) **Fix doorway prompt**:
+   - remove `heroOnStart` premature addMessage OR pass explicit `newProjectId`
+   - reset the initialPrompt guard per project
+5) **Disable Sandpack error overlay** (`VibecoderPreview`).
 
 ---
 
-## Code Injection Blocks
+## How we’ll verify (explicit test checklist)
+1) Doorway flow:
+   - Click “New project” → doorway appears → type prompt
+   - Confirm your prompt bubble shows immediately (before AI finishes)
+   - Confirm the created project contains that first prompt after refresh
+2) Switching projects:
+   - Create 2 projects with very different prompts (easy to tell apart)
+   - Switch A → B → A repeatedly
+   - Confirm code + chat always match the selected project
+3) Refresh correctness:
+   - Switch to Project B
+   - Refresh the page
+   - Confirm it still loads Project B (and URL has `?project=B`)
+4) Build error spam:
+   - Ask “add a shop button”
+   - Confirm the “Cannot assign to read only property 'message'…” toast no longer appears
+   - If a real syntax error occurs, confirm Fix toast still appears and works
 
-### Architect: Minimum Quality Requirements
-```text
-### MINIMUM QUALITY REQUIREMENTS (REJECT IF NOT MET)
+---
 
-Every blueprint MUST achieve complexity score 4+ (out of 5).
+## Files we will change
+- `src/components/ai-builder/AIBuilderCanvas.tsx`
+  - Fix doorway prompt insertion/guard
+  - Remove snapshot restore from orchestrator
+  - Move `contentProjectId` set to restoration-ready moment
+- `src/components/ai-builder/hooks/useVibecoderProjects.ts`
+  - Clear messages immediately on project change
+  - Update URL on `selectProject`
+- `src/components/ai-builder/VibecoderPreview.tsx`
+  - Disable Sandpack error overlay (`showSandpackErrorOverlay={false}`)
 
-**MANDATORY FILES (5-6):**
-1. data/products.ts
-2. components/Navigation.tsx (sticky glassmorphism)
-3. components/Hero.tsx (3+ gradient layers)
-4. components/ProductGrid.tsx (asymmetric editorial)
-5. App.tsx (max 40 lines)
+---
 
-**UNIQUE DESIGN FEATURE (MANDATORY):**
-Every plan MUST include "uniqueDesignFeature" with:
-- element: Signature visual feature
-- implementation: Tailwind approach
-```
+## Notes / edge cases handled
+- Sidebar always stays visible during transitions (we keep your “gatekeeper inside content” layout).
+- Cancels in-flight generations on switch are preserved (you already do `cancelStream()` + `cancelAgent()`).
+- We avoid reintroducing the old “messages dependency infinite loop” by keeping orchestration on `activeProjectId` only; restoration happens in the existing effect that already waits for `messagesLoading`.
 
-### Builder: Micro-Interaction Checklist
-```text
-### MICRO-INTERACTION CHECKLIST
-
-Hero:
-- motion.h1 with opacity/y animation
-- 3+ gradient background layers
-- CTA with whileHover scale
-
-Cards:
-- group class + overflow-hidden
-- group-hover:scale-110 on images
-- hover:border accent change
-- motion.div whileInView stagger
-
-Buttons:
-- whileHover + whileTap scale
-- transition-all duration-300
-```
-
-### New Navigation Template
-```tsx
-<motion.nav className="fixed top-0 z-50 bg-black/40 backdrop-blur-2xl border-b border-white/10">
-  {/* Logo + Links with hover underline animation */}
-</motion.nav>
-```

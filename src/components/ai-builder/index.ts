@@ -1,44 +1,29 @@
-// AI Builder exports - Rebuilt 2026-02-07 (Stable Architecture)
-
-// Main page component
-export { SimpleVibecoderPage } from './SimpleVibecoderPage';
-
-// Core components
-export { SimplePreview } from './SimplePreview';
-export { SimpleChat, type ChatMessage } from './SimpleChat';
-export { SimpleSidebar } from './SimpleSidebar';
-export { CanvasToolbar, type ViewMode, type DeviceMode } from './CanvasToolbar';
-
-// Shared components (kept from old architecture)
-export { ChatInputBar, AI_MODELS, type AIModel } from './ChatInputBar';
-export { ProfileMenu } from './ProfileMenu';
+export { AIBuilderCanvas } from './AIBuilderCanvas';
 export { PremiumGate } from './PremiumGate';
-export { InsufficientCreditsCard, isCreditsError, parseCreditsError } from './InsufficientCreditsCard';
-export { AIBuilderMessage, type AIBuilderChatMessage } from './AIBuilderMessage';
-export { LovableHero } from './LovableHero';
-export { testCodeInShadow, silentHeal, type ShadowTestResult } from './ShadowTester';
-
-// Onboarding
 export { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
 export { AIBuilderLockedButton, AIBuilderInlineUpsell, AIBuilderBannerUpsell } from './AIBuilderUpsell';
-
-// Layout patterns (for future use)
 export { LAYOUT_PATTERNS, getPatternRegistrySummary } from './layoutPatterns';
 
-// Style Profiles
-export { 
-  STYLE_PROFILES, 
-  getStyleProfile, 
-  getDefaultStyleProfile,
-  injectStyleProfile,
-  type StyleProfile 
-} from '@/lib/vibecoder-style-profiles';
+// Vibecoder (Generative Runtime) exports
+export { VibecoderPreview } from './VibecoderPreview';
+export { VibecoderChat } from './VibecoderChat';
+export { CanvasToolbar } from './CanvasToolbar';
+export { useStreamingCode } from './useStreamingCode';
+export { ProjectSidebar } from './ProjectSidebar';
+export { VibecoderMessageBubble } from './VibecoderMessageBubble';
+export { useVibecoderProjects } from './hooks/useVibecoderProjects';
 
-// Context Pruning Utilities
-export {
-  analyzePromptIntent,
-  extractRelevantContext,
-  createCodeSummary,
-  formatProductsForContext,
-  type ProductSummary,
-} from '@/lib/vibecoder-context-pruning';
+// Agent UI exports
+export { AgentProgress } from './AgentProgress';
+export type { AgentStep } from './AgentProgress';
+
+// Creative Studio exports
+export { GenerationCanvas } from './GenerationCanvas';
+export { PlacementPromptModal } from './PlacementPromptModal';
+export type { GeneratedAsset, ViewMode } from './types/generation';
+
+// Chat UI components
+export { ChatInputBar } from './ChatInputBar';
+export { PlanApprovalCard } from './PlanApprovalCard';
+export { ProfileMenu } from './ProfileMenu';
+export { PageNavigator } from './PageNavigator';

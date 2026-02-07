@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog, Globe, Wallet, ScrollText, Layout, Sparkles } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog, Globe, Wallet, ScrollText, Layout } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -696,14 +696,6 @@ export default function Admin() {
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           <p className="text-muted-foreground">Manage users, products, and platform settings.</p>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={() => navigate('/changelog')}
-          className="gap-2"
-        >
-          <Sparkles size={16} />
-          Changelog
-        </Button>
       </div>
 
       {/* Stats */}

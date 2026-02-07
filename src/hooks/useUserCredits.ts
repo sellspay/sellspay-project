@@ -16,19 +16,9 @@ export function useUserCredits(): UseUserCreditsReturn {
   const { isAdmin, isOwner } = useAuth();
   const isPrivileged = isAdmin || isOwner;
 
-  // ⚡ IMMEDIATE BYPASS: If privileged, start with max credits (no async fetch needed)
-  const [credits, setCredits] = useState(() => isPrivileged ? PRIVILEGED_CREDITS : 0);
-  const [isLoading, setIsLoading] = useState(() => !isPrivileged);
+  const [credits, setCredits] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Sync credits when privilege status changes (handles async role loading)
-  useEffect(() => {
-    if (isPrivileged) {
-      setCredits(PRIVILEGED_CREDITS);
-      setIsLoading(false);
-      setError(null);
-    }
-  }, [isPrivileged]);
 
   const fetchCredits = useCallback(async () => {
     // Owner/Admin bypass: treat as unlimited and skip all wallet reads.

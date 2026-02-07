@@ -4,7 +4,6 @@ import { ArrowRight, Plus, ArrowLeft, Mic, Zap, CreditCard } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useAuth } from "@/lib/auth";
 import heroBg from "@/assets/hero-aurora-bg.jpg";
 
 interface LovableHeroProps {
@@ -47,8 +46,6 @@ export function LovableHero({
     textarea.style.overflowY = textarea.scrollHeight > 400 ? "auto" : "hidden";
   }, [prompt]);
   const navigate = useNavigate();
-  const { isAdmin, isOwner } = useAuth();
-  const isPrivileged = isAdmin || isOwner; // Owner/admin bypass all checks
   const { isPremium, credits, hasCredits, goToPricing, loading: subLoading } = useSubscription();
 
   // Initialize speech recognition
@@ -121,12 +118,6 @@ export function LovableHero({
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!prompt.trim()) return;
-    
-    // ⚡ OWNER/ADMIN BYPASS: Skip all gates
-    if (isPrivileged) {
-      onStart(prompt, isPlanMode);
-      return;
-    }
     
     // Gate check: must have premium subscription AND credits
     if (!isPremium) {

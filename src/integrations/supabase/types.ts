@@ -903,48 +903,30 @@ export type Database = {
           category: string
           content: string
           created_at: string | null
-          discord_sent: boolean | null
-          feature_tags: string[] | null
           id: string
           is_pinned: boolean | null
-          media_type: string | null
-          media_url: string | null
           title: string
           updated_at: string | null
-          version_number: string | null
-          version_type: string | null
         }
         Insert: {
           author_id: string
           category?: string
           content: string
           created_at?: string | null
-          discord_sent?: boolean | null
-          feature_tags?: string[] | null
           id?: string
           is_pinned?: boolean | null
-          media_type?: string | null
-          media_url?: string | null
           title: string
           updated_at?: string | null
-          version_number?: string | null
-          version_type?: string | null
         }
         Update: {
           author_id?: string
           category?: string
           content?: string
           created_at?: string | null
-          discord_sent?: boolean | null
-          feature_tags?: string[] | null
           id?: string
           is_pinned?: boolean | null
-          media_type?: string | null
-          media_url?: string | null
           title?: string
           updated_at?: string | null
-          version_number?: string | null
-          version_type?: string | null
         }
         Relationships: [
           {
@@ -1389,7 +1371,6 @@ export type Database = {
           file_path: string
           id: string
           profile_id: string
-          project_id: string | null
           updated_at: string
           version: number
         }
@@ -1399,7 +1380,6 @@ export type Database = {
           file_path: string
           id?: string
           profile_id: string
-          project_id?: string | null
           updated_at?: string
           version?: number
         }
@@ -1409,7 +1389,6 @@ export type Database = {
           file_path?: string
           id?: string
           profile_id?: string
-          project_id?: string | null
           updated_at?: string
           version?: number
         }
@@ -1433,13 +1412,6 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "safe_public_identities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_files_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "vibecoder_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2396,50 +2368,6 @@ export type Database = {
         }
         Relationships: []
       }
-      vibecoder_heal_logs: {
-        Row: {
-          attempts: number | null
-          created_at: string | null
-          error_message: string | null
-          error_type: string
-          healing_source: string | null
-          id: string
-          project_id: string | null
-          success: boolean | null
-          user_id: string
-        }
-        Insert: {
-          attempts?: number | null
-          created_at?: string | null
-          error_message?: string | null
-          error_type: string
-          healing_source?: string | null
-          id?: string
-          project_id?: string | null
-          success?: boolean | null
-          user_id: string
-        }
-        Update: {
-          attempts?: number | null
-          created_at?: string | null
-          error_message?: string | null
-          error_type?: string
-          healing_source?: string | null
-          id?: string
-          project_id?: string | null
-          success?: boolean | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vibecoder_heal_logs_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "vibecoder_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       vibecoder_messages: {
         Row: {
           code_snapshot: string | null
@@ -2482,9 +2410,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          is_broken: boolean | null
           last_edited_at: string
-          last_success_at: string | null
           name: string | null
           thumbnail_url: string | null
           updated_at: string
@@ -2493,9 +2419,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          is_broken?: boolean | null
           last_edited_at?: string
-          last_success_at?: string | null
           name?: string | null
           thumbnail_url?: string | null
           updated_at?: string
@@ -2504,9 +2428,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          is_broken?: boolean | null
           last_edited_at?: string
-          last_success_at?: string | null
           name?: string | null
           thumbnail_url?: string | null
           updated_at?: string

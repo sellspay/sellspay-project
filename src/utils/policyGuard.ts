@@ -6,7 +6,6 @@ export interface PolicyRule {
   category: string;
   keywords: string[];
   message: string;
-  redirect: string; // Suggested design task when policy is violated
 }
 
 export const POLICY_RULES: PolicyRule[] = [
@@ -23,7 +22,6 @@ export const POLICY_RULES: PolicyRule[] = [
       'register form', 'login modal', 'signup modal',
     ],
     message: "Authentication features are securely managed by the SellsPay platform. I can't build login, signup, or password pages—these are handled at the platform level to ensure security and compliance. Instead, I can help you create a stunning storefront, product showcase, or landing page!",
-    redirect: "Try asking me to create a cinematic hero section, premium product grid, or stunning landing page instead!",
   },
   {
     id: 'settings_restriction',
@@ -36,7 +34,6 @@ export const POLICY_RULES: PolicyRule[] = [
       'manage account', 'delete account', 'security settings',
     ],
     message: "User settings, billing, and account management are handled by the SellsPay platform. Your storefront should focus on showcasing your products and converting visitors. I can help you build beautiful product galleries, hero sections, or about pages instead!",
-    redirect: "Let me help you design a stunning product showcase, testimonials section, or about page for your brand!",
   },
   {
     id: 'backend_restriction',
@@ -48,7 +45,6 @@ export const POLICY_RULES: PolicyRule[] = [
       'server-side', 'backend logic', 'database table',
     ],
     message: "VibeCoder is designed for frontend storefront design. Backend infrastructure, databases, and admin panels are pre-provisioned by SellsPay. I specialize in creating visually stunning storefronts—let me help you design an amazing product page or landing section!",
-    redirect: "I can create an editorial product grid, animated hero, or premium storefront design—just describe your brand vibe!",
   },
   {
     id: 'payment_restriction',
@@ -61,7 +57,6 @@ export const POLICY_RULES: PolicyRule[] = [
       'crypto payment', 'bitcoin payment',
     ],
     message: "All payments on SellsPay are processed through our secure, unified checkout system. Custom payment integrations aren't permitted to ensure buyer protection and seller compliance. Your 'Buy Now' buttons will automatically use the platform's checkout—I can help you design compelling CTAs and product cards!",
-    redirect: "I can design beautiful product cards with premium 'Buy Now' CTAs that connect to SellsPay checkout automatically!",
   },
 ];
 

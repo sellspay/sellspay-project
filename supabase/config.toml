@@ -89,24 +89,3 @@ verify_jwt = false
 
 [functions.vibecoder-v2]
 verify_jwt = false
-
-[functions.vibecoder-orchestrator]
-verify_jwt = false
-
-[functions.vibecoder-architect]
-verify_jwt = false
-
-[functions.vibecoder-builder]
-verify_jwt = false
-
-[functions.vibecoder-linter]
-verify_jwt = false
-
-[functions.vibecoder-heal]
-verify_jwt = false
-
-[functions.notify-changelog]
-verify_jwt = false
-
-[functions.deduct-ai-credits]
-verify_jwt = false

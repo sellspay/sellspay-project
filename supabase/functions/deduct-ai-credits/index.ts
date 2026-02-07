@@ -12,20 +12,16 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 };
 
 // Credit costs for different actions
-// VibeCoder 2.1: Tiered pricing based on complexity
+// Updated Fair Pricing: 8x reduction to match actual API costs
 const CREDIT_COSTS: Record<string, number> = {
-  // VibeCoder actions (tiered by orchestrator, these are fallbacks)
-  vibecoder_gen: 8,       // Full generation (default medium complexity)
-  vibecoder_flash: 1,     // Quick edit mode
-  vibecoder_heal: 0,      // Healing is free (already paid for gen)
-  // Creative Studio
-  image_gen: 10,          // ~$0.04 API cost × 2.5 margin
-  video_gen: 50,          // ~$0.50 API cost × 1.25 margin
-  // Audio tools
-  sfx_gen: 5,             // Sound effect generation
-  voice_isolator: 5,      // Voice isolation
-  sfx_isolator: 5,        // SFX isolation
-  music_splitter: 5,      // Stem separation
+  vibecoder_gen: 3,      // Was 25 - Premium coding model
+  vibecoder_flash: 0,    // Free tier for small edits
+  image_gen: 10,         // Was 100 - ~$0.04 API cost × 2.5 margin
+  video_gen: 50,         // Was 500 - ~$0.50 API cost × 1.25 margin
+  sfx_gen: 5,            // Was 25 - Adjusted
+  voice_isolator: 5,     // Was 25 - Adjusted
+  sfx_isolator: 5,       // Was 25 - Adjusted
+  music_splitter: 5,     // Was 25 - Adjusted
 };
 
 // Action to required capability mapping
