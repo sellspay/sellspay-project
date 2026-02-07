@@ -148,24 +148,27 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
           )}
         </div>
 
-        {/* Minimal action bar - only show restore button if applicable */}
+        {/* Minimal note for code messages */}
         {hasCode && !isStreaming && (
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800/50">
-            {canRestore && onRestoreCode && (
+          <div className="mt-3 pt-3 border-t border-zinc-800/50">
+            <span className="text-[10px] text-zinc-600 italic">Code applied to preview</span>
+          </div>
+        )}
+
+        {/* Hover toolbar - all icons on same line */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {canRestore && onRestoreCode && (
+            <>
               <button
                 className="p-1.5 text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
                 onClick={handleRevertClick}
                 title="Revert to this version"
               >
-                <Undo2 className="h-3.5 w-3.5" />
+                <Undo2 size={14} />
               </button>
-            )}
-            <span className="text-[10px] text-zinc-600 italic">Code applied to preview</span>
-          </div>
-        )}
-
-        {/* Hover toolbar */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="w-px h-3 bg-zinc-800 mx-1" />
+            </>
+          )}
           {onRate && (
             <>
               <button 
