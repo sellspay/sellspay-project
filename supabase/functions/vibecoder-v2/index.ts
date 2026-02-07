@@ -7,6 +7,175 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ═══════════════════════════════════════════════════════════════
+// DATA AVAILABILITY CHECK: Detect if user needs to set up data
+// ═══════════════════════════════════════════════════════════════
+
+interface DataAvailabilityResult {
+  needsSubscriptionPlans: boolean;
+  needsProducts: boolean;
+  subscriptionCount: number;
+  productCount: number;
+  requestedSubscriptionCount: number;
+  requestedProductCount: number;
+}
+
+// Keywords that indicate the user is building a pricing/subscription page
+const PRICING_KEYWORDS = [
+  'pricing', 'price', 'subscription', 'plan', 'tier', 'membership',
+  'monthly', 'yearly', 'annual', 'premium', 'pro plan', 'basic plan',
+  'enterprise', 'billing', 'payment plan', 'recurring'
+];
+
+// Keywords that indicate the user is building a products page
+const PRODUCT_KEYWORDS = [
+  'product', 'shop', 'store', 'catalog', 'merchandise', 'item',
+  'buy', 'purchase', 'cart', 'checkout', 'listing', 'collection'
+];
+
+/**
+ * Detects if the prompt is about pricing/subscriptions or products
+ * and returns what count of items the user mentioned (if any)
+ */
+function detectDataIntent(prompt: string): { 
+  needsPricing: boolean; 
+  needsProducts: boolean;
+  requestedPricingCount: number;
+  requestedProductCount: number;
+} {
+  const lower = prompt.toLowerCase();
+  
+  const needsPricing = PRICING_KEYWORDS.some(kw => lower.includes(kw));
+  const needsProducts = PRODUCT_KEYWORDS.some(kw => lower.includes(kw));
+  
+  // Try to detect how many items they're requesting
+  let requestedPricingCount = 0;
+  let requestedProductCount = 0;
+  
+  // Common patterns: "three subscriptions", "3 plans", "ten products"
+  const numberMap: Record<string, number> = {
+    'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+    'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+    'eleven': 11, 'twelve': 12
+  };
+  
+  // Check for numbers near pricing keywords
+  if (needsPricing) {
+    const pricingMatch = lower.match(/(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:subscription|plan|tier|pricing|price)/);
+    if (pricingMatch) {
+      const num = pricingMatch[1];
+      requestedPricingCount = numberMap[num] ?? (parseInt(num) || 0);
+    }
+  }
+  
+  // Check for numbers near product keywords
+  if (needsProducts) {
+    const productMatch = lower.match(/(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:product|item|listing)/);
+    if (productMatch) {
+      const num = productMatch[1];
+      requestedProductCount = numberMap[num] ?? (parseInt(num) || 0);
+    }
+  }
+  
+  return { needsPricing, needsProducts, requestedPricingCount, requestedProductCount };
+}
+
+/**
+ * Check the database for the user's actual subscription plans and products
+ */
+async function checkDataAvailability(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  prompt: string
+): Promise<DataAvailabilityResult | null> {
+  const intent = detectDataIntent(prompt);
+  
+  // If prompt doesn't mention pricing or products, skip the check
+  if (!intent.needsPricing && !intent.needsProducts) {
+    return null;
+  }
+  
+  // Get the user's profile ID first
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .single();
+    
+  if (!profile) return null;
+  
+  let subscriptionCount = 0;
+  let productCount = 0;
+  
+  // Check subscription plans if needed
+  if (intent.needsPricing) {
+    const { count } = await supabase
+      .from('creator_subscription_plans')
+      .select('id', { count: 'exact', head: true })
+      .eq('creator_id', profile.id)
+      .eq('is_active', true);
+    
+    subscriptionCount = count ?? 0;
+  }
+  
+  // Check products if needed
+  if (intent.needsProducts) {
+    const { count } = await supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('creator_id', profile.id)
+      .eq('status', 'published');
+    
+    productCount = count ?? 0;
+  }
+  
+  return {
+    needsSubscriptionPlans: intent.needsPricing && subscriptionCount === 0,
+    needsProducts: intent.needsProducts && (productCount === 0 || (intent.requestedProductCount > 0 && productCount < intent.requestedProductCount)),
+    subscriptionCount,
+    productCount,
+    requestedSubscriptionCount: intent.requestedPricingCount,
+    requestedProductCount: intent.requestedProductCount,
+  };
+}
+
+/**
+ * Generate a helpful "Next Steps" message for missing data
+ */
+function generateDataGuidance(result: DataAvailabilityResult): string {
+  const parts: string[] = [];
+  
+  if (result.needsSubscriptionPlans) {
+    parts.push(
+      `\n\n---\n\n⚠️ **Heads up:** You don't have any subscription plans set up yet. ` +
+      `The pricing cards I created are placeholders. To make them functional:\n\n` +
+      `1. Go to your **Settings → Subscriptions** or use the **Subscriptions tab** above\n` +
+      `2. Create your subscription plans with your actual pricing\n` +
+      `3. Come back and tell me to "link my subscriptions to the pricing cards"\n`
+    );
+  }
+  
+  if (result.needsProducts) {
+    if (result.productCount === 0) {
+      parts.push(
+        `\n\n---\n\n⚠️ **Heads up:** You don't have any products yet. ` +
+        `The product cards I created are using placeholder data. To make them real:\n\n` +
+        `1. Use the **Products tab** above to create your products\n` +
+        `2. Once you have products, tell me to "use my real products" and I'll update the page\n`
+      );
+    } else if (result.requestedProductCount > 0 && result.productCount < result.requestedProductCount) {
+      const missing = result.requestedProductCount - result.productCount;
+      parts.push(
+        `\n\n---\n\n⚠️ **Heads up:** You asked for ${result.requestedProductCount} products, but you only have ${result.productCount}. ` +
+        `I've filled the extra ${missing} slot${missing > 1 ? 's' : ''} with placeholder${missing > 1 ? 's' : ''}.\n\n` +
+        `Create ${missing} more product${missing > 1 ? 's' : ''} in the **Products tab**, then tell me to refresh the products!\n`
+      );
+    }
+  }
+  
+  return parts.join('');
+}
+
 // Fair Pricing Economy (8x reduction from original)
 const CREDIT_COSTS: Record<string, number> = {
   'vibecoder-pro': 3,     // Premium model
@@ -990,6 +1159,24 @@ serve(async (req) => {
           summary = fullContent;
         }
 
+        // ═══════════════════════════════════════════════════════════
+        // DATA AVAILABILITY CHECK: Append guidance if data is missing
+        // ═══════════════════════════════════════════════════════════
+        if (codeResult && summary) {
+          try {
+            const dataCheck = await checkDataAvailability(supabase, userId, prompt);
+            if (dataCheck && (dataCheck.needsSubscriptionPlans || dataCheck.needsProducts)) {
+              const guidance = generateDataGuidance(dataCheck);
+              if (guidance) {
+                summary = summary + guidance;
+                console.log(`[Job ${jobId}] Added data availability guidance`);
+              }
+            }
+          } catch (e) {
+            console.warn(`[Job ${jobId}] Data check failed:`, e);
+          }
+        }
+
         // Update job with results
         await supabase
           .from('ai_generation_jobs')
@@ -997,7 +1184,7 @@ serve(async (req) => {
             status: 'completed',
             completed_at: new Date().toISOString(),
             code_result: codeResult,
-            summary: summary?.slice(0, 5000), // Limit summary length
+            summary: summary?.slice(0, 8000), // Increased limit for guidance
             plan_result: planResult,
             progress_logs: ['Starting AI generation...', 'Processing response...', 'Generation complete!']
           })
