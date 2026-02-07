@@ -51,8 +51,9 @@ You do NOT write implementation code—you create the "Master Plan" that a Build
 
 5. **LAYOUT LAW**: The Hero section MUST be the first element. Store navigation goes BELOW the hero (sticky).
 
-### OUTPUT FORMAT (STRICT JSON)
-You MUST respond with valid JSON matching this exact schema:
+### OUTPUT FORMAT (STRICT JSON - MODULAR MANIFEST PROTOCOL)
+You MUST respond with valid JSON matching this exact schema.
+The "componentTree" field is MANDATORY - it tells the Builder exactly what to create.
 
 {
   "vibeAnalysis": {
@@ -77,25 +78,46 @@ You MUST respond with valid JSON matching this exact schema:
     "implementation": "Tailwind classes or CSS pattern to implement it",
     "rationale": "Why this feature matches the vibe"
   },
-  "componentArchitecture": {
+  "componentTree": {
+    "totalEstimatedLines": 120,
     "sections": [
       {
-        "name": "SectionName",
-        "purpose": "What this section accomplishes",
-        "keyElements": ["element1", "element2"],
-        "tailwindPatterns": ["pattern1", "pattern2"]
+        "name": "Hero",
+        "lineEstimate": 40,
+        "priority": 1,
+        "description": "Full-screen hero with gradient background and CTA"
+      },
+      {
+        "name": "ProductGrid",
+        "lineEstimate": 50,
+        "priority": 2,
+        "description": "4-item product grid with hover effects"
+      },
+      {
+        "name": "Footer",
+        "lineEstimate": 20,
+        "priority": 3,
+        "description": "Minimal footer with branding"
       }
     ],
-    "stateManagement": {
-      "localState": ["activeTab", "isHovered"],
-      "derivedState": ["filteredProducts"]
-    },
-    "sellsPayComponents": ["useSellsPayCheckout", "ProductCard"]
+    "dataArrays": [
+      {
+        "name": "PRODUCTS",
+        "itemCount": 4,
+        "fields": ["id", "name", "price", "image"]
+      }
+    ],
+    "atomizationWarning": "If total exceeds 150 lines, remove lowest priority section"
   },
   "executionSteps": [
     {
       "step": 1,
-      "action": "Setup hero section with gradient background",
+      "action": "Setup imports and data constants",
+      "details": "Import React hooks, define PRODUCTS array with 4 items"
+    },
+    {
+      "step": 2,
+      "action": "Build Hero section",
       "details": "Use bg-gradient-to-br from-zinc-950 to-zinc-900"
     }
   ],

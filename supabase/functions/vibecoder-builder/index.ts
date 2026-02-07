@@ -234,16 +234,19 @@ Before outputting code, mentally count:
 - Every ( must have a matching )
 A SINGLE missing bracket = build crash = wasted credits = failure
 
-### ⛔ ATOMIZATION RULE (MODULAR ENFORCEMENT)
-If your output would exceed 150 lines, you MUST simplify:
-- Reduce the number of products/items in arrays to maximum 4-6 items
-- Simplify animations - use simple opacity/y transitions only
-- Remove redundant sections - focus on Hero + Products + Footer
-- Combine similar elements instead of repeating
-- Use compact Tailwind classes (no redundant utilities)
+### ⛔ ATOMIZATION RULE (HARD 150-LINE LIMIT - NON-NEGOTIABLE)
+YOU ARE FORBIDDEN FROM OUTPUTTING MORE THAN 150 LINES. This is a HARD LIMIT.
+If your output would exceed 150 lines, you MUST atomize BEFORE writing:
 
-LONG FILES CAUSE AI HALLUCINATION AND BRACKET ERRORS.
-Keep it tight: < 150 lines is ideal, < 200 is acceptable, > 200 is FAILURE.
+1. **Product Arrays**: Maximum 4 items. No exceptions.
+2. **Sections**: Maximum 3 sections total (Hero + Products + Footer ONLY)
+3. **Animations**: ONE simple transition (opacity or y-axis). No complex variants.
+4. **Tailwind**: Combine classes. No duplicate utilities. Use shorthand.
+5. **Comments**: ZERO comments. Every line must be functional code.
+
+⚠️ THE VALIDATOR WILL REJECT CODE OVER 150 LINES AUTOMATICALLY.
+If you write 151+ lines, your entire output is WASTED and must be regenerated.
+Count your lines mentally as you write. Stop at 140 to leave buffer.
 
 ### ⛔ SILENT COMPLETION CHECK
 Before outputting, mentally trace through your code:
