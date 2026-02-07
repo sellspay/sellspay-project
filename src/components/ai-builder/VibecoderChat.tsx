@@ -12,7 +12,7 @@ import { PlanApprovalCard } from './PlanApprovalCard';
 import type { PlanData } from './useStreamingCode';
 
 interface VibecoderChatProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (displayMessage: string, aiPrompt?: string) => void;
   onGenerateAsset?: (model: AIModel, prompt: string) => void;
   isStreaming: boolean;
   onCancel: () => void;
@@ -169,7 +169,6 @@ export function VibecoderChat({
     if (!input.trim() || isStreaming) return;
     
     // Check if this is an image/video model - route to asset generation
-    // This auto-switches to the Image or Video tab
     const isAssetModel = options.model.category === 'image' || options.model.category === 'video';
     
     if (isAssetModel && onGenerateAsset) {
@@ -178,17 +177,21 @@ export function VibecoderChat({
       return;
     }
     
-    // Otherwise, continue with code generation
-    let finalPrompt = input.trim();
+    // Clean user prompt (what they typed) - this is what gets shown in the chat
+    const cleanPrompt = input.trim();
+    
+    // Build the prompt that goes to the AI backend (may include system instructions)
+    let aiPrompt = cleanPrompt;
     
     // PLAN MODE: Inject the Architect instruction so AI returns a plan instead of code
+    // IMPORTANT: This is a BACKEND-ONLY directive - the user should NOT see this in their message
     if (options.isPlanMode) {
-      finalPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${finalPrompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
+      aiPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${cleanPrompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
     }
     
     // Prepend model context if using a non-default model
     if (options.model.id !== 'vibecoder-pro') {
-      finalPrompt = `[MODEL: ${options.model.id}]\n${finalPrompt}`;
+      aiPrompt = `[MODEL: ${options.model.id}]\n${aiPrompt}`;
     }
     
     // TODO: Handle attachments (upload to storage and include URLs in prompt)
@@ -196,7 +199,9 @@ export function VibecoderChat({
       console.log('Attachments to process:', options.attachments.length);
     }
     
-    onSendMessage(finalPrompt);
+    // Send the CLEAN prompt for display, but pass the AI prompt for processing
+    // The onSendMessage handler will receive this and should save the clean version
+    onSendMessage(cleanPrompt, aiPrompt);
     setInput('');
   };
 
