@@ -10,7 +10,7 @@ import { ProfileMenu } from './ProfileMenu';
 import { CanvasToolbar, type ViewMode, type DeviceMode } from './CanvasToolbar';
 import { InsufficientCreditsCard, isCreditsError, parseCreditsError } from './InsufficientCreditsCard';
 import { LovableHero } from './LovableHero';
-import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, AlertCircle, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
@@ -70,6 +70,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
 
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [chatCollapsed, setChatCollapsed] = useState(false);
   const [userCredits, setUserCredits] = useState(0);
   const [activeModel, setActiveModel] = useState<AIModel>(AI_MODELS.code[0]);
   
@@ -490,26 +491,21 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   return (
     <div className="h-screen w-screen flex bg-background overflow-hidden">
       {/* Sidebar */}
-      <div className={cn(
-        "transition-all duration-300 ease-in-out border-r border-border/50",
-        sidebarCollapsed ? "w-0" : "w-64"
-      )}>
-        {!sidebarCollapsed && (
-          <SimpleSidebar
-            userId={user.id}
-            activeProjectId={activeProjectId}
-            onSelectProject={(projectId) => {
-              setActiveProjectId(projectId);
-              setShowDoorway(false);
-              if (user) {
-                localStorage.setItem(`vibecoder:lastProjectId:${user.id}`, projectId);
-              }
-            }}
-            onCreateProject={handleCreateProject}
-            onDeleteProject={handleDeleteProject}
-          />
-        )}
-      </div>
+      <SimpleSidebar
+        userId={user.id}
+        activeProjectId={activeProjectId}
+        onSelectProject={(projectId) => {
+          setActiveProjectId(projectId);
+          setShowDoorway(false);
+          if (user) {
+            localStorage.setItem(`vibecoder:lastProjectId:${user.id}`, projectId);
+          }
+        }}
+        onCreateProject={handleCreateProject}
+        onDeleteProject={handleDeleteProject}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
       
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -579,56 +575,75 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
             </div>
           </div>
           
-          {/* Chat pane */}
-          <div className="w-[400px] border-l border-border/50 flex flex-col min-h-0 bg-background">
-            {/* Project header in chat */}
-            <div className="px-4 py-3 border-b border-border/50 flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <img src={sellspayLogo} alt="" className="w-6 h-6" />
-                <span className="font-medium text-foreground text-sm truncate max-w-[200px]">
-                  {activeProjectId ? 'Your Storefront' : 'New Project'}
-                </span>
-              </div>
-              <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded">
-                BETA
-              </span>
+          {/* Chat pane - collapsible */}
+          {chatCollapsed ? (
+            <div className="w-12 border-l border-border/50 flex flex-col items-center py-4 bg-background">
+              <button
+                onClick={() => setChatCollapsed(false)}
+                className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                title="Expand chat"
+              >
+                <PanelRightClose size={18} />
+              </button>
             </div>
-            
-            {/* Error display */}
-            {error && !creditsError && (
-              <div className="p-3 bg-destructive/10 border-b border-destructive/20 flex items-start gap-2">
-                <AlertCircle size={16} className="text-destructive shrink-0 mt-0.5" />
-                <p className="text-sm text-destructive">{error}</p>
+          ) : (
+            <div className="w-[400px] border-l border-border/50 flex flex-col min-h-0 bg-background">
+              {/* Project header in chat */}
+              <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <img src={sellspayLogo} alt="" className="w-6 h-6" />
+                  <span className="font-medium text-foreground text-sm truncate max-w-[200px]">
+                    {activeProjectId ? 'Your Storefront' : 'New Project'}
+                  </span>
+                  <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded">
+                    BETA
+                  </span>
+                </div>
+                <button
+                  onClick={() => setChatCollapsed(true)}
+                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title="Collapse chat"
+                >
+                  <PanelRightOpen size={16} />
+                </button>
               </div>
-            )}
-            
-            {/* Credits error */}
-            {creditsError && (
-              <div className="p-4 border-b border-border">
-                <InsufficientCreditsCard
-                  creditsNeeded={creditsError.needed}
-                  creditsAvailable={creditsError.available}
-                  onUpgrade={() => navigate('/pricing')}
+              
+              {/* Error display */}
+              {error && !creditsError && (
+                <div className="p-3 bg-destructive/10 border-b border-destructive/20 flex items-start gap-2">
+                  <AlertCircle size={16} className="text-destructive shrink-0 mt-0.5" />
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+              
+              {/* Credits error */}
+              {creditsError && (
+                <div className="p-4 border-b border-border">
+                  <InsufficientCreditsCard
+                    creditsNeeded={creditsError.needed}
+                    creditsAvailable={creditsError.available}
+                    onUpgrade={() => navigate('/pricing')}
+                  />
+                </div>
+              )}
+              
+              {/* Chat */}
+              <SimpleChat messages={messages} isStreaming={isStreaming} streamingLogs={streamingLogs}>
+                <ChatInputBar
+                  value={inputValue}
+                  onChange={setInputValue}
+                  onSubmit={handleSendMessage}
+                  isGenerating={isStreaming}
+                  onCancel={() => setIsStreaming(false)}
+                  userCredits={userCredits}
+                  isPrivileged={isPrivileged}
+                  activeModel={activeModel}
+                  onModelChange={setActiveModel}
+                  onOpenBilling={() => navigate('/pricing')}
                 />
-              </div>
-            )}
-            
-            {/* Chat */}
-            <SimpleChat messages={messages} isStreaming={isStreaming} streamingLogs={streamingLogs}>
-              <ChatInputBar
-                value={inputValue}
-                onChange={setInputValue}
-                onSubmit={handleSendMessage}
-                isGenerating={isStreaming}
-                onCancel={() => setIsStreaming(false)}
-                userCredits={userCredits}
-                isPrivileged={isPrivileged}
-                activeModel={activeModel}
-                onModelChange={setActiveModel}
-                onOpenBilling={() => navigate('/pricing')}
-              />
-            </SimpleChat>
-          </div>
+              </SimpleChat>
+            </div>
+          )}
         </div>
       </div>
     </div>
