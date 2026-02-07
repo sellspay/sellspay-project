@@ -31,7 +31,25 @@ export const SimplePreview = memo(function SimplePreview({
   
   useEffect(() => {
     if (!iframeRef.current || !code) return;
-    
+
+    // Sanitize generated code for iframe execution (no module loader in srcdoc)
+    const sanitize = (raw: string) => {
+      return raw
+        // remove imports (including CSS imports)
+        .replace(/^\s*import\s+[\s\S]*?;\s*$/gm, '')
+        // remove export default
+        .replace(/^\s*export\s+default\s+/gm, '')
+        // remove named exports (export const/function/class)
+        .replace(/^\s*export\s+(?=(const|function|class)\s)/gm, '')
+        // remove export { ... } statements
+        .replace(/^\s*export\s*\{[\s\S]*?\}\s*;?\s*$/gm, '')
+        // remove "use client" directives
+        .replace(/^\s*['\"]use client['\"];?\s*$/gm, '')
+        .trim();
+    };
+
+    const safeCode = sanitize(code);
+
     // Create a self-contained HTML document with React + Tailwind CDN
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -100,9 +118,13 @@ export const SimplePreview = memo(function SimplePreview({
         );
       };
       
-      // User's generated code
-      ${code}
+      // User's generated code (sanitized)
+      ${safeCode}
       
+      if (typeof App !== 'function') {
+        throw new Error('No App component found. Make sure the generated code defines function App() or const App = () => ...');
+      }
+
       // Render the App component
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(React.createElement(App));
