@@ -728,32 +728,37 @@ export function ChatInputBar({
               <Plus size={16} />
             </button>
             
-            {/* Model selector chip */}
+            {/* Model selector - icon only */}
             <button
               ref={modelButtonRef}
               type="button"
               onClick={toggleModelMenu}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors"
+              title={`Model: ${selectedModel.name}`}
+              className={cn(
+                "p-1.5 rounded-lg transition-colors",
+                showModelMenu 
+                  ? "text-white bg-zinc-700" 
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-700"
+              )}
             >
-              <Bot size={12} className="text-violet-400" />
-              <span>Model</span>
-              <ChevronDown size={10} className="opacity-50" />
+              <Bot size={16} className="text-violet-400" />
             </button>
             
-            {/* Style Profile selector chip - only for code models */}
+            {/* Style Profile selector - icon only, only for code models */}
             {selectedModel.category === 'code' && (
               <button
                 ref={styleButtonRef}
                 type="button"
                 onClick={toggleStyleMenu}
+                title={`Style: ${currentProfile.name}`}
                 className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors",
-                  showStyleMenu && "bg-zinc-700 text-white"
+                  "p-1.5 rounded-lg transition-colors",
+                  showStyleMenu 
+                    ? "text-white bg-zinc-700" 
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-700"
                 )}
               >
-                <Palette size={12} className="text-amber-400" />
-                <span className="max-w-[80px] truncate">{currentProfile.name}</span>
-                <ChevronDown size={10} className="opacity-50" />
+                <Palette size={16} className="text-amber-400" />
               </button>
             )}
           </div>
