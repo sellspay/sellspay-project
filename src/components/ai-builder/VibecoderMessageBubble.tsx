@@ -1,4 +1,4 @@
-import { useRef, useEffect, forwardRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Copy, Undo2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -39,8 +39,7 @@ interface AssistantMessageProps {
   isStreaming?: boolean;
 }
 
-const AssistantMessage = forwardRef<HTMLDivElement, AssistantMessageProps>(
-  function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStreaming }, ref) {
+function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStreaming }: AssistantMessageProps) {
   const hasCode = !!message.code_snapshot;
 
   const handleCopy = () => {
@@ -49,7 +48,6 @@ const AssistantMessage = forwardRef<HTMLDivElement, AssistantMessageProps>(
 
   return (
     <motion.div 
-      ref={ref}
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       className="flex gap-3 mb-6 group w-full"
@@ -72,55 +70,45 @@ const AssistantMessage = forwardRef<HTMLDivElement, AssistantMessageProps>(
             <div className="prose prose-sm prose-invert max-w-none">
               <ReactMarkdown
                 components={{
-                  // Paragraphs: Nice breathing room
                   p: ({ children, ...props }) => (
                     <p className="mb-4 last:mb-0 leading-relaxed text-zinc-300" {...props}>
                       {children}
                     </p>
                   ),
-                  // Links: Violet accent
                   a: ({ children, ...props }) => (
                     <a className="text-violet-400 hover:text-violet-300 hover:underline transition-colors" {...props}>
                       {children}
                     </a>
                   ),
-                  // Inline code: Subtle background for technical terms
                   code: ({ children, className }) => {
                     const isBlock = className?.includes('language-');
-                    if (isBlock) {
-                      return <code className={className}>{children}</code>;
-                    }
+                    if (isBlock) return <code className={className}>{children}</code>;
                     return (
                       <code className="bg-zinc-800/80 px-1.5 py-0.5 rounded text-xs font-mono text-violet-300 border border-zinc-700/50">
                         {children}
                       </code>
                     );
                   },
-                  // ORDERED LISTS: Clean numbered formatting with proper spacing
                   ol: ({ children, ...props }) => (
                     <ol className="list-decimal pl-5 space-y-4 mb-4 marker:text-zinc-400 marker:font-semibold" {...props}>
                       {children}
                     </ol>
                   ),
-                  // UNORDERED LISTS: Standard bullets
                   ul: ({ children, ...props }) => (
                     <ul className="list-disc pl-5 space-y-2 mb-4 marker:text-zinc-500" {...props}>
                       {children}
                     </ul>
                   ),
-                  // LIST ITEMS: Proper alignment and text color
                   li: ({ children, ...props }) => (
                     <li className="pl-1 text-zinc-300 leading-relaxed" {...props}>
                       {children}
                     </li>
                   ),
-                  // BOLD: Make headers pop with white color
                   strong: ({ children, ...props }) => (
                     <strong className="font-semibold text-white" {...props}>
                       {children}
                     </strong>
                   ),
-                  // Headers
                   h1: ({ children, ...props }) => (
                     <h1 className="text-lg font-bold text-zinc-100 mt-4 mb-2" {...props}>{children}</h1>
                   ),
@@ -138,7 +126,6 @@ const AssistantMessage = forwardRef<HTMLDivElement, AssistantMessageProps>(
           )}
         </div>
 
-        {/* Minimal action bar - only show restore button if applicable */}
         {hasCode && !isStreaming && (
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800/50">
             {canRestore && onRestoreCode && (
@@ -156,7 +143,6 @@ const AssistantMessage = forwardRef<HTMLDivElement, AssistantMessageProps>(
           </div>
         )}
 
-        {/* Hover toolbar */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {onRate && (
             <>
@@ -194,8 +180,7 @@ const AssistantMessage = forwardRef<HTMLDivElement, AssistantMessageProps>(
       </div>
     </motion.div>
   );
-});
-AssistantMessage.displayName = 'AssistantMessage';
+}
 
 // --- EMPTY STATE ---
 function EmptyState() {
