@@ -73,6 +73,8 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [chatCollapsed, setChatCollapsed] = useState(false);
+  const [chatWidth, setChatWidth] = useState(400); // Default width in px
+  const [isResizing, setIsResizing] = useState(false);
   const [userCredits, setUserCredits] = useState(0);
   const [activeModel, setActiveModel] = useState<AIModel>(AI_MODELS.code[0]);
   
@@ -702,7 +704,7 @@ Analyze the error, identify the root cause in the code above, and regenerate the
             </div>
           </div>
           
-          {/* Chat pane - collapsible - HIGHEST Z-INDEX to prevent overlay collision */}
+          {/* Chat pane - collapsible + RESIZABLE - HIGHEST Z-INDEX to prevent overlay collision */}
           {chatCollapsed ? (
             <div className="w-14 border-l border-border/50 flex flex-col items-center justify-between py-4 bg-background relative z-50">
               <button
@@ -718,7 +720,43 @@ Analyze the error, identify the root cause in the code above, and regenerate the
               <div className="h-8" />
             </div>
           ) : (
-            <div className="w-[400px] border-l border-border/50 flex flex-col min-h-0 bg-background relative z-50">
+            <div 
+              className="border-l border-border/50 flex flex-col min-h-0 bg-background relative z-50"
+              style={{ width: chatWidth, minWidth: 360, maxWidth: '45vw' }}
+            >
+              {/* Resize handle - left edge */}
+              <div
+                className={cn(
+                  "absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-50 transition-colors",
+                  isResizing ? "bg-primary" : "bg-transparent hover:bg-primary/50"
+                )}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setIsResizing(true);
+                  const startX = e.clientX;
+                  const startWidth = chatWidth;
+                  
+                  const handleMouseMove = (moveEvent: MouseEvent) => {
+                    // Dragging left increases width (inverse of mouse movement)
+                    const delta = startX - moveEvent.clientX;
+                    const newWidth = Math.min(
+                      Math.max(startWidth + delta, 360), // min 360px
+                      window.innerWidth * 0.45 // max 45vw
+                    );
+                    setChatWidth(newWidth);
+                  };
+                  
+                  const handleMouseUp = () => {
+                    setIsResizing(false);
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                  };
+                  
+                  document.addEventListener('mousemove', handleMouseMove);
+                  document.addEventListener('mouseup', handleMouseUp);
+                }}
+              />
+              
               {/* Project header in chat */}
               <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
