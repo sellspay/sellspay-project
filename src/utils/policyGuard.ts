@@ -1,14 +1,17 @@
 // SellsPay Policy Guardrail System
 // Prevents the AI from generating authentication, settings, backend, or platform-managed features
+// Also enforces layout hierarchy: Hero FIRST, Nav SECOND (never nav above hero)
 
 export interface PolicyRule {
   id: string;
   category: string;
   keywords: string[];
   message: string;
+  redirectSuggestion?: string; // Constructive alternative to offer
 }
 
 export const POLICY_RULES: PolicyRule[] = [
+  // === AUTHENTICATION RESTRICTIONS ===
   {
     id: 'auth_restriction',
     category: 'Security Policy',
@@ -19,10 +22,14 @@ export const POLICY_RULES: PolicyRule[] = [
       'create login', 'build login', 'make login', 'add login',
       'create signup', 'build signup', 'make signup', 'add signup',
       'user authentication', 'auth system', 'login form', 'signup form',
-      'register form', 'login modal', 'signup modal',
+      'register form', 'login modal', 'signup modal', 'sign out button',
+      'auth flow', 'authentication flow', 'login flow', 'signup flow',
     ],
-    message: "Authentication features are securely managed by the SellsPay platform. I can't build login, signup, or password pages—these are handled at the platform level to ensure security and compliance. Instead, I can help you create a stunning storefront, product showcase, or landing page!",
+    message: "Authentication is securely managed by SellsPay. I can't build login, signup, or password pages—these are handled at the platform level to ensure security. Your customers sign in through SellsPay, not your storefront.",
+    redirectSuggestion: "I can help you create a stunning Hero section or product showcase instead!",
   },
+  
+  // === SETTINGS & PROFILE PAGE RESTRICTIONS ===
   {
     id: 'settings_restriction',
     category: 'Platform Scope',
@@ -32,9 +39,15 @@ export const POLICY_RULES: PolicyRule[] = [
       'billing page', 'payment settings', 'subscription settings', 'account management',
       'user preferences', 'notification settings', 'privacy settings',
       'manage account', 'delete account', 'security settings',
+      'profile page', 'my profile', 'user profile', 'edit profile',
+      'account page', 'my account', 'user dashboard', 'creator dashboard',
+      'settings modal', 'preferences page', 'profile editor',
     ],
-    message: "User settings, billing, and account management are handled by the SellsPay platform. Your storefront should focus on showcasing your products and converting visitors. I can help you build beautiful product galleries, hero sections, or about pages instead!",
+    message: "User settings, profiles, and account management are handled by the SellsPay platform. Your storefront should focus on showcasing your products and converting visitors.",
+    redirectSuggestion: "I can help you build beautiful product galleries, hero sections, or an About section for your store instead!",
   },
+  
+  // === BACKEND & DATABASE RESTRICTIONS ===
   {
     id: 'backend_restriction',
     category: 'Architecture Limit',
@@ -42,10 +55,15 @@ export const POLICY_RULES: PolicyRule[] = [
       'create database', 'database schema', 'sql query', 'backend api',
       'server setup', 'admin panel', 'admin dashboard', 'cms system',
       'api endpoint', 'rest api', 'graphql', 'webhook handler',
-      'server-side', 'backend logic', 'database table',
+      'server-side', 'backend logic', 'database table', 'create api',
+      'build backend', 'make backend', 'add database', 'create table',
+      'fetch api', 'api call', 'api integration', 'connect api',
     ],
-    message: "VibeCoder is designed for frontend storefront design. Backend infrastructure, databases, and admin panels are pre-provisioned by SellsPay. I specialize in creating visually stunning storefronts—let me help you design an amazing product page or landing section!",
+    message: "VibeCoder is designed for frontend storefront design only. All backend infrastructure, databases, and APIs are pre-provisioned by SellsPay.",
+    redirectSuggestion: "I specialize in creating visually stunning storefronts—let me help you design an amazing product page or landing section!",
   },
+  
+  // === PAYMENT & CHECKOUT RESTRICTIONS ===
   {
     id: 'payment_restriction',
     category: 'Payment Policy',
@@ -54,9 +72,42 @@ export const POLICY_RULES: PolicyRule[] = [
       'custom checkout', 'payment gateway', 'payment processor',
       'credit card form', 'payment form', 'checkout system',
       'integrate stripe', 'integrate paypal', 'cashapp', 'venmo',
-      'crypto payment', 'bitcoin payment',
+      'crypto payment', 'bitcoin payment', 'add stripe', 'add paypal',
+      'payment integration', 'payment link', 'paypal button', 'stripe button',
+      'checkout flow', 'payment flow', 'buy button integration',
+      'custom payment', 'external payment', 'third party payment',
     ],
-    message: "All payments on SellsPay are processed through our secure, unified checkout system. Custom payment integrations aren't permitted to ensure buyer protection and seller compliance. Your 'Buy Now' buttons will automatically use the platform's checkout—I can help you design compelling CTAs and product cards!",
+    message: "All payments on SellsPay are processed through our secure, unified checkout system. Custom payment integrations aren't permitted to ensure buyer protection and seller compliance.",
+    redirectSuggestion: "Your 'Buy Now' buttons will automatically use the platform's checkout. I can help you design compelling CTAs and product cards!",
+  },
+  
+  // === LAYOUT HIERARCHY VIOLATIONS ===
+  {
+    id: 'nav_above_hero',
+    category: 'Layout Policy',
+    keywords: [
+      'nav at top', 'navigation at top', 'navbar at top', 'menu at top',
+      'nav above hero', 'navbar above hero', 'navigation above hero',
+      'put nav at top', 'move nav to top', 'navigation bar at top',
+      'header navigation', 'top navigation', 'nav before hero',
+      'menu above banner', 'nav above banner', 'navigation first',
+      'put menu at top', 'move menu above', 'top menu', 'header menu',
+    ],
+    message: "I cannot place navigation above the Hero section. SellsPay storefronts use a 'Hero-First, Nav-Second' layout to prevent double-navbar issues with the platform's global navigation.",
+    redirectSuggestion: "The store navigation sits beautifully below your hero banner with sticky positioning. Want me to style it differently?",
+  },
+  
+  // === ROUTING & MULTI-PAGE RESTRICTIONS ===
+  {
+    id: 'routing_restriction',
+    category: 'Architecture Limit',
+    keywords: [
+      'react router', 'add route', 'create route', 'new page',
+      'separate page', 'another page', 'multi page', 'page navigation',
+      'url routing', 'browser routing', 'link to page',
+    ],
+    message: "Storefronts are single-page experiences. Navigation between sections (Products, Bundles, Support) uses tabs within your storefront, not separate URL routes.",
+    redirectSuggestion: "I can create a tabbed navigation system to organize your content beautifully!",
   },
 ];
 
@@ -75,6 +126,17 @@ export function checkPolicyViolation(prompt: string): PolicyRule | null {
       })
     ) ?? null
   );
+}
+
+/**
+ * Get a user-friendly response for a policy violation
+ */
+export function getPolicyViolationResponse(rule: PolicyRule): string {
+  let response = rule.message;
+  if (rule.redirectSuggestion) {
+    response += ` ${rule.redirectSuggestion}`;
+  }
+  return response;
 }
 
 function keywordToRegex(keyword: string): RegExp {
