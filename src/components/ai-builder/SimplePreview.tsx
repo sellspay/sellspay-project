@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, memo } from 'react';
-import { Loader2, AlertTriangle, Zap, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, AlertTriangle, Zap, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
@@ -518,84 +518,10 @@ export const SimplePreview = memo(function SimplePreview({
     );
   }
   
-  // Show "fixing in progress" state when auto-fix is running
-  if (isFixing) {
-    return (
-      <div className="h-full w-full relative bg-background flex flex-col items-center justify-center">
-        <div className="flex flex-col items-center text-center animate-fade-in">
-          {/* Logo with pulse animation */}
-          <div className="w-16 h-16 mb-6 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center border border-violet-500/30 shadow-lg shadow-violet-500/10 animate-pulse">
-            <Zap className="w-8 h-8 text-violet-400" />
-          </div>
-          
-          <h3 className="text-xl font-semibold text-foreground mb-2">
-            Fixing Error...
-          </h3>
-          <p className="text-muted-foreground text-sm">
-            AI is analyzing and repairing the code
-          </p>
-          
-          {/* Progress indicator */}
-          <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
-            <span>Please wait</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  // Show error state if there's a preview error and not loading
-  if (previewError && !isLoading) {
-    return (
-      <div className="h-full w-full relative bg-background flex flex-col items-center justify-center p-8">
-        <div className="max-w-lg w-full">
-          {/* Error header */}
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 mb-4 mx-auto rounded-2xl bg-red-500/10 flex items-center justify-center border border-red-500/30 animate-pulse">
-              <AlertTriangle className="w-8 h-8 text-red-400" />
-            </div>
-            
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Build Error Detected
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              The generated code has issues. Let AI analyze and fix them automatically.
-            </p>
-          </div>
-          
-          {/* Fix button - prominent */}
-          {onFixError && (
-            <Button
-              onClick={handleFixError}
-              className="w-full mb-4 h-12 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold shadow-lg shadow-violet-500/25"
-            >
-              <Zap className="w-5 h-5 mr-2" />
-              Fix This Now
-            </Button>
-          )}
-          
-          {/* Collapsible error details */}
-          <Collapsible open={showErrorDetails} onOpenChange={setShowErrorDetails}>
-            <CollapsibleTrigger asChild>
-              <button className="w-full flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                {showErrorDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                <span>{showErrorDetails ? 'Hide' : 'View'} Error Details</span>
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="mt-2 p-4 rounded-lg bg-red-950/50 border border-red-500/30 text-left">
-                <pre className="text-xs text-red-300 whitespace-pre-wrap break-words font-mono max-h-40 overflow-auto">
-                  {previewError}
-                </pre>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-      </div>
-    );
-  }
-  
+  // NOTE: We intentionally do NOT replace the preview with a full-screen error page.
+  // Preview stays mounted so you can still see the last render (or the iframe's own error display).
+  // We surface errors as a small, dismissible popup instead.
+
   return (
     <div className="h-full w-full relative bg-background flex flex-col">
       {/* Loading overlay */}
@@ -607,7 +533,7 @@ export const SimplePreview = memo(function SimplePreview({
           </div>
         </div>
       )}
-      
+
       {/* Preview iframe */}
       <iframe 
         ref={iframeRef}
@@ -615,6 +541,99 @@ export const SimplePreview = memo(function SimplePreview({
         sandbox="allow-scripts"
         title="Preview"
       />
+
+      {/* Fixing popup (non-blocking) */}
+      {isFixing && !isLoading && (
+        <div className="absolute bottom-4 right-4 z-20 w-[420px] max-w-[calc(100%-2rem)]">
+          <div className="rounded-2xl border border-border/60 bg-background/95 backdrop-blur-xl shadow-2xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-foreground">Fixing error…</div>
+                <div className="text-xs text-muted-foreground">AI is repairing the code. Preview stays visible.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Build error popup (dismissible, non-blocking) */}
+      {previewError && !isLoading && (
+        <div className="absolute bottom-4 right-4 z-20 w-[520px] max-w-[calc(100%-2rem)]">
+          <div className="rounded-2xl border border-border/60 bg-background/95 backdrop-blur-xl shadow-2xl">
+            <div className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-semibold text-foreground">Build error detected</div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewError(null);
+                        setShowErrorDetails(false);
+                      }}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Dismiss error"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    You can keep browsing the preview. Fix it now, or dismiss this popup.
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {onFixError && (
+                      <Button
+                        onClick={handleFixError}
+                        size="sm"
+                        className="h-9 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white shadow-lg shadow-violet-500/20"
+                      >
+                        <Zap className="w-4 h-4 mr-2" />
+                        Fix This Now
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => {
+                        setPreviewError(null);
+                        setShowErrorDetails(false);
+                      }}
+                      size="sm"
+                      variant="outline"
+                      className="h-9"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+
+                  <Collapsible open={showErrorDetails} onOpenChange={setShowErrorDetails}>
+                    <div className="mt-3">
+                      <CollapsibleTrigger asChild>
+                        <button className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                          {showErrorDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          <span>{showErrorDetails ? 'Hide' : 'View'} details</span>
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2 rounded-xl border border-border/60 bg-muted/30 p-3">
+                          <pre className="text-[11px] leading-relaxed text-foreground/80 whitespace-pre-wrap break-words font-mono max-h-40 overflow-auto">
+                            {previewError}
+                          </pre>
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
