@@ -17,6 +17,8 @@ export { useVibecoderProjects } from './hooks/useVibecoderProjects';
 // Agent UI exports (VibeCoder 2.0)
 export { AgentProgress } from './AgentProgress';
 export type { AgentStep } from './AgentProgress';
+export { LiveThought } from './LiveThought';
+export { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 // Creative Studio exports
 export { GenerationCanvas } from './GenerationCanvas';

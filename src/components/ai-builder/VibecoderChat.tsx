@@ -1,3 +1,4 @@
+// VibeCoder Chat Interface - Cache-bust: 2026-02-07
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Code2, CheckCircle2 } from 'lucide-react';
