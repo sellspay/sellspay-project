@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
- import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth, checkUserRole } from '@/lib/auth';
- import { supabase } from '@/integrations/supabase/client';
- import { PremiumGate } from '@/components/ai-builder/PremiumGate';
- import { AIBuilderCanvas } from '@/components/ai-builder/AIBuilderCanvas';
- import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { PremiumGate } from '@/components/ai-builder/PremiumGate';
+import { AIBuilderCanvas } from '@/components/ai-builder/AIBuilderCanvas';
+import { WorkspaceErrorBoundary } from '@/components/ai-builder/WorkspaceErrorBoundary';
+import { Loader2 } from 'lucide-react';
  
  export default function AIBuilder() {
    const { user, loading: authLoading } = useAuth();
@@ -59,8 +60,12 @@ import { useAuth, checkUserRole } from '@/lib/auth';
    }
  
   if (!hasAccess) {
-     return <PremiumGate />;
-   }
- 
-   return <AIBuilderCanvas profileId={profile.id} />;
- }
+    return <PremiumGate />;
+  }
+
+  return (
+    <WorkspaceErrorBoundary>
+      <AIBuilderCanvas profileId={profile.id} />
+    </WorkspaceErrorBoundary>
+  );
+}
