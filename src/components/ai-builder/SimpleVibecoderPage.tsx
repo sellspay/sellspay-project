@@ -352,16 +352,16 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
             // Handle different event types
             if (event.type === 'status') {
               const statusMsg = event.data?.message || `Step: ${event.step}`;
-              pushLog(`⚙️ ${statusMsg}`);
+              pushLog(statusMsg);
             } else if (event.type === 'log') {
               const logMsg = typeof event.data === 'string' ? event.data : JSON.stringify(event.data);
               pushLog(logMsg);
             } else if (event.type === 'plan') {
-              pushLog('📋 Plan created');
+              pushLog('Plan created');
             } else if (event.type === 'code') {
               generatedCode = event.data?.code || '';
               summary = event.data?.summary || 'Storefront updated.';
-              pushLog('✅ Code generated');
+              pushLog('Code generated');
             } else if (event.type === 'error') {
               const errorMsg = event.data?.message || 'Generation failed';
 
@@ -444,11 +444,11 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     // Build a fix prompt
     const fixPrompt = `Fix the following build error in the code:\n\nError: ${errorMsg}\n\nAnalyze the error, identify the root cause, and regenerate the code with the fix applied. Keep all existing functionality intact.`;
     
-    // Add AI message to chat
+    // Add a status line to chat
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: `🔧 Auto-fixing build error...`,
+      content: `Auto-fixing build error…`,
     };
     setMessages(prev => [...prev, userMessage]);
     
@@ -602,14 +602,18 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           
           {/* Chat pane - collapsible */}
           {chatCollapsed ? (
-            <div className="w-12 border-l border-border/50 flex flex-col items-center py-4 bg-background">
+            <div className="w-14 border-l border-border/50 flex flex-col items-center justify-between py-4 bg-background">
               <button
                 onClick={() => setChatCollapsed(false)}
-                className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                title="Expand chat"
+                className="p-2.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                title="Open chat"
               >
-                <PanelRightClose size={18} />
+                <PanelRightOpen size={18} />
               </button>
+              <div className="text-[11px] tracking-wide text-muted-foreground/70 rotate-90 whitespace-nowrap select-none">
+                Chat
+              </div>
+              <div className="h-8" />
             </div>
           ) : (
             <div className="w-[400px] border-l border-border/50 flex flex-col min-h-0 bg-background">
@@ -629,7 +633,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
                   className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   title="Collapse chat"
                 >
-                  <PanelRightOpen size={16} />
+                  <PanelRightClose size={16} />
                 </button>
               </div>
               
