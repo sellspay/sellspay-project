@@ -269,12 +269,13 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     attachments: File[];
     styleProfile?: string;
     promptOverride?: string; // For doorway → build transition
+    projectIdOverride?: string; // For doorway: avoid race with setActiveProjectId
   }) => {
     const prompt = options.promptOverride || inputValue;
     if (!prompt.trim() || isStreaming || !user) return;
-    
+
     // Create project if none exists
-    let projectId = activeProjectId;
+    let projectId = options.projectIdOverride || activeProjectId;
     if (!projectId) {
       const { data, error } = await supabase
         .from('vibecoder_projects')
@@ -284,12 +285,12 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
         })
         .select('id')
         .single();
-      
+
       if (error) {
         toast.error('Failed to create project');
         return;
       }
-      
+
       projectId = data.id;
       setActiveProjectId(projectId);
     }
@@ -653,26 +654,54 @@ Analyze the error, identify the root cause in the code above, and regenerate the
   if (!user) return null;
   
   // Handle prompt from the magical doorway - passes prompt directly to avoid state race
-  const handleDoorwayStart = (prompt: string, isPlanMode?: boolean) => {
-    // Exit doorway and enter workspace
-    setShowDoorway(false);
-    setInputValue(prompt); // Show in input for visual feedback
-    
-    // Add user message to chat immediately (optimistic)
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: prompt,
-    };
-    setMessages([userMessage]);
-    
-    // Trigger the build with prompt passed directly (no state dependency)
-    handleSendMessage({
-      isPlanMode: isPlanMode || false,
-      model: activeModel,
-      attachments: [],
-      promptOverride: prompt, // Pass directly to avoid stale state
-    });
+  const handleDoorwayStart = async (prompt: string, isPlanMode?: boolean) => {
+    if (!user) return;
+
+    try {
+      // Create the project FIRST so the UI + generation are always tied to a real project id
+      const { data, error } = await supabase
+        .from('vibecoder_projects')
+        .insert({
+          user_id: user.id,
+          name: `Storefront ${new Date().toLocaleDateString()}`,
+        })
+        .select('id')
+        .single();
+
+      if (error || !data?.id) {
+        toast.error('Failed to create project');
+        return;
+      }
+
+      const newProjectId = data.id;
+      setActiveProjectId(newProjectId);
+
+      // Exit doorway and enter workspace
+      setShowDoorway(false);
+      setInputValue(prompt); // brief visual feedback before streaming takes over
+
+      // Add user message to chat immediately (optimistic)
+      const userMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: prompt,
+      };
+      setMessages([userMessage]);
+
+      // Trigger the build with explicit projectId (no async state race)
+      handleSendMessage({
+        isPlanMode: isPlanMode || false,
+        model: activeModel,
+        attachments: [],
+        promptOverride: prompt,
+        projectIdOverride: newProjectId,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start project';
+      toast.error(message);
+      // Keep user on doorway if something goes wrong
+      setShowDoorway(true);
+    }
   };
   
   // Show magical doorway only when explicitly starting a new project
