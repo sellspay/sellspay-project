@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { ChatInputBar, type AIModel } from './ChatInputBar';
 import { useUserCredits } from '@/hooks/useUserCredits';
 import { type AgentStep } from './AgentProgress';
+import { LiveThought } from './LiveThought';
 
 interface VibecoderChatProps {
   onSendMessage: (message: string) => void;
@@ -259,6 +260,15 @@ export function VibecoderChat({
                 messages={messages}
                 onRateMessage={onRateMessage}
                 onRestoreToVersion={onRestoreToVersion}
+              />
+            )}
+            
+            {/* 🔴 LIVE THOUGHT: Show real-time AI thinking/logs during streaming */}
+            {(isStreaming || isAgentMode) && (
+              <LiveThought 
+                logs={agentLogs.length > 0 ? agentLogs : liveSteps}
+                isThinking={isStreaming}
+                className="mt-4"
               />
             )}
           </>
