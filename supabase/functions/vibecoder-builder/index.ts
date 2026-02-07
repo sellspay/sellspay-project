@@ -19,65 +19,83 @@ const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
  */
 
 // ═══════════════════════════════════════════════════════════════
-// PREMIUM DESIGN TOKEN RECIPES (v3.1 - High-End Mandatory)
+// LUXURY TIER DESIGN TOKENS (v3.2 - Editorial Premium)
 // ═══════════════════════════════════════════════════════════════
 const DESIGN_TOKENS: Record<string, string> = {
   'luxury-minimal': `
-### 💎 LUXURY MINIMAL DESIGN TOKENS (PREMIUM TIER)
-**MANDATORY ELEMENTS:**
-- Background: bg-gradient-to-b from-zinc-950 via-black to-zinc-950
-- Hero: min-h-screen with bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.1),transparent_50%)]
-- Typography: text-7xl md:text-9xl font-serif tracking-tighter leading-none
-- Text Shimmer: bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-white to-amber-200
-- Glassmorphism: bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl
-- Shadows: shadow-[0_20px_60px_-15px_rgba(251,191,36,0.3)]
-- Animations: framer-motion staggerChildren={0.1}, whileInView with viewport once
-- Hover States: group-hover:scale-105 transition-all duration-500 ease-out
-- Spacing: py-32 px-6, section gaps of gap-24
-- Product Cards: aspect-[3/4] with overflow-hidden, image scale on hover`,
+### 💎 ATHLETIC LUXURY DESIGN TOKENS (Y-3/NIKE EDITORIAL)
+**MANDATORY ELEMENTS - NO BASIC GRIDS:**
+
+**Background Depth Stack:**
+- Base: bg-gradient-to-b from-zinc-950 via-black to-zinc-950
+- Mid layer: absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(251,191,36,0.15),transparent)]
+- Top layer: absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.03),transparent_40%)]
+
+**Hero Typography (CINEMATIC):**
+- Main: text-7xl md:text-9xl lg:text-[11rem] font-serif tracking-[-0.04em] leading-[0.85]
+- Shimmer: bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-white to-amber-200 bg-[length:200%_100%]
+- Subtitle: text-lg md:text-xl text-zinc-400 font-light tracking-wide
+
+**ASYMMETRIC GRID (MANDATORY - NO UNIFORM COLUMNS):**
+- Container: grid grid-cols-1 md:grid-cols-[2fr_1fr] lg:grid-cols-[2fr_1fr_1fr] gap-4
+- Featured card: md:col-span-1 md:row-span-2 (hero product takes double height)
+- OR use: grid-cols-12 with varying col-span-4, col-span-5, col-span-3
+
+**Premium Card System:**
+- Wrapper: group relative bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden
+- Image container: aspect-[3/4] overflow-hidden
+- Image: w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out
+- Overlay text: absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent
+
+**Shadows & Glow:**
+- Card hover: hover:shadow-[0_30px_100px_-20px_rgba(251,191,36,0.25)]
+- Ambient orb: absolute w-96 h-96 bg-amber-500/20 rounded-full blur-[100px] -z-10
+
+**Motion Requirements:**
+- Container: motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+- Items: staggerChildren: 0.08, child initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }}
+- Hover: whileHover={{ scale: 1.02, rotate: 0.5 }} transition={{ type: 'spring', stiffness: 400 }}`,
 
   'cyberpunk-neon': `
-### ⚡ CYBERPUNK NEON DESIGN TOKENS (PREMIUM TIER)
+### ⚡ CYBERPUNK NEON DESIGN TOKENS (BLADE RUNNER AESTHETIC)
 **MANDATORY ELEMENTS:**
-- Background: bg-black with CSS grid overlay (repeating-linear-gradient)
-- Hero Glow: absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-transparent to-fuchsia-500/20 blur-3xl
-- Typography: font-mono uppercase tracking-[0.3em] text-5xl md:text-7xl
-- Neon Text: text-cyan-400 drop-shadow-[0_0_20px_rgba(6,182,212,0.8)]
-- Glassmorphism: bg-cyan-950/30 backdrop-blur-xl border border-cyan-500/40 rounded-xl
-- Animated Borders: animate-pulse border-cyan-400 or gradient border with bg-gradient-to-r
-- Scanline Effect: before:absolute before:inset-0 before:bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.3)_2px,rgba(0,0,0,0.3)_4px)]
-- Glow Shadows: shadow-[0_0_40px_rgba(6,182,212,0.5),inset_0_0_20px_rgba(6,182,212,0.1)]
-- Animations: motion variants with glitch effects, pulsing elements`,
+- Background: bg-black with animated plasma: bg-[conic-gradient(from_90deg,#0ff,#f0f,#0ff)] animate-spin-slow
+- Grid overlay: before:absolute before:inset-0 before:bg-[linear-gradient(rgba(6,182,212,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.03)_1px,transparent_1px)] before:bg-[size:60px_60px]
+- Hero glow: absolute inset-0 bg-gradient-to-r from-cyan-500/30 via-transparent to-fuchsia-500/30 blur-3xl
+- Typography: font-mono uppercase tracking-[0.4em] text-5xl md:text-7xl
+- Neon text: text-cyan-400 drop-shadow-[0_0_30px_rgba(6,182,212,0.9)] drop-shadow-[0_0_60px_rgba(6,182,212,0.5)]
+- Cards: bg-cyan-950/20 backdrop-blur-xl border border-cyan-500/50 rounded-xl
+- Animated border: bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-cyan-500 bg-[length:200%_100%] animate-gradient-x
+- Glow shadows: shadow-[0_0_60px_rgba(6,182,212,0.4),inset_0_0_30px_rgba(6,182,212,0.1)]
+- Scanlines: after:absolute after:inset-0 after:bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.3)_2px,rgba(0,0,0,0.3)_4px)] after:pointer-events-none`,
 
   'streetwear-dark': `
-### 🔥 STREETWEAR DARK DESIGN TOKENS (PREMIUM TIER)
+### 🔥 STREETWEAR BRUTALIST DESIGN TOKENS
 **MANDATORY ELEMENTS:**
-- Background: bg-zinc-950 with subtle noise texture overlay
-- Hero: Asymmetric layout with overlapping elements, broken grid
-- Typography: text-8xl md:text-[12rem] font-black uppercase tracking-tighter -rotate-2
-- Accent Slashes: bg-red-500 h-1 w-32 or diagonal stripes
-- Cards: bg-zinc-900 border-l-4 border-red-500 hover:translate-x-2 transition-transform
-- Raw Aesthetic: Mix of serif and heavy sans, intentional visual tension
-- Hover: Dramatic scale (hover:scale-110) with fast duration-200
-- Editorial Layout: Overlapping z-index layers, negative margins
-- Product Display: Full-bleed images with text overlays`,
+- Background: bg-zinc-950 with noise texture
+- Hero: Broken grid with XXL rotated typography
+- Typography: text-8xl md:text-[12rem] lg:text-[15rem] font-black uppercase tracking-tighter -rotate-3 origin-left
+- Accent slashes: absolute w-2 h-32 bg-red-500 -rotate-12
+- Cards: bg-zinc-900 border-l-4 border-red-500 hover:translate-x-4 transition-transform duration-200
+- Raw aesthetic: Mix serif/sans, exposed borders, intentional visual tension
+- High contrast: Pure black/white with single red accent
+- Motion: Aggressive, snappy (duration-200), scale-110 on hover`,
 
-  'kawaii-pop': `
-### 🌸 KAWAII POP DESIGN TOKENS (PREMIUM TIER)
+  'soft-luxury': `
+### 🌸 SOFT LUXURY DESIGN TOKENS (GLOSSIER/AESOP)
 **MANDATORY ELEMENTS:**
-- Background: bg-gradient-to-br from-pink-100 via-purple-50 to-blue-100
-- Floating Elements: Animated decorative shapes (circles, stars) with motion.div animate={{ y: [0, -10, 0] }}
-- Typography: text-5xl md:text-7xl font-bold with text-pink-600, playful letter-spacing
-- Cards: rounded-[2rem] bg-white shadow-[0_20px_50px_-10px_rgba(236,72,153,0.3)] hover:shadow-pink-300/50
-- Borders: border-4 border-pink-300 with hover:border-pink-400
-- Emoji Accents: Strategic use of ✨ 🌸 💖 as decorative elements
-- Bouncy Animations: motion spring with stiffness: 300, damping: 20
-- Pastel Gradients: bg-gradient-to-r from-pink-400 to-purple-400 on buttons
-- Soft Shadows: shadow-xl shadow-pink-200/50`,
+- Background: bg-gradient-to-br from-stone-50 via-amber-50/30 to-stone-100
+- Hero: Generous whitespace, floating organic shapes
+- Typography: text-6xl md:text-8xl font-serif font-light tracking-tight text-stone-800
+- Cards: bg-white rounded-[2rem] shadow-[0_20px_60px_-20px_rgba(120,100,80,0.15)]
+- Subtle borders: border border-stone-200/60
+- Organic shapes: absolute decorative blobs with blur
+- Motion: Spring physics type:'spring' stiffness:100 damping:15
+- Palette: stone-800, amber-700, cream backgrounds`,
 };
 
 // ═══════════════════════════════════════════════════════════════
-// PREMIUM FILE TEMPLATES (v3.1 - High-End Examples)
+// PREMIUM FILE TEMPLATES (v3.2 - Editorial Examples)
 // ═══════════════════════════════════════════════════════════════
 const FILE_TEMPLATES: Record<string, string> = {
   'data/products.ts': `
@@ -267,20 +285,24 @@ export default function App() {
 };
 
 const BUILDER_SYSTEM_PROMPT = `You are the SellsPay Implementation Engineer.
-You generate ONE FILE AT A TIME for a modular storefront.
+You generate ONE FILE AT A TIME for a LUXURY-TIER modular storefront.
 
 ## ═══════════════════════════════════════════════════════════════
-## 🚨 ATOMIC FILE PROTOCOL (v3.0)
+## 🚨 ATOMIC FILE PROTOCOL (v3.2 - LUXURY TIER)
 ## ═══════════════════════════════════════════════════════════════
 
 You are generating a SINGLE FILE from a multi-file build.
 The file path and purpose will be provided in the request.
 
+### ABSOLUTE QUALITY MANDATE
+**FORBIDDEN: Basic "Temu-style" uniform grids, simple cards, minimal styling.**
+Every file must feel like it came from a $50K agency build.
+
 ### STRICT RULES
-1. **ONE FILE ONLY**: Output ONLY the requested file, nothing else
-2. **80 LINE LIMIT**: Your output must be ≤80 lines (data files ≤30)
+1. **ONE FILE ONLY**: Output ONLY the requested file
+2. **80 LINE LIMIT**: Components ≤80 lines, data files ≤30 lines
 3. **COMPLETE CODE**: No fragments, no placeholders, no "// ..."
-4. **CORRECT IMPORTS**: Each file imports what it needs
+4. **LUXURY STYLING**: Every element must have depth, motion, and polish
 
 ### FILE TYPE RULES
 
@@ -288,13 +310,14 @@ The file path and purpose will be provided in the request.
 - Export typed arrays/objects
 - NO React imports
 - Max 30 lines
-- Use Unsplash images only
+- Use ONLY high-res Unsplash: https://images.unsplash.com/photo-XXXXX?auto=format&fit=crop&w=800&q=80
 
 **components/*.tsx files:**
 - Export a named function component
 - Import React, motion, icons as needed
 - Props interface at top
 - Max 80 lines
+- MUST include framer-motion animations
 
 **App.tsx:**
 - Import useSellsPayCheckout from './hooks/useSellsPayCheckout'
@@ -302,32 +325,44 @@ The file path and purpose will be provided in the request.
 - Import components from './components/*'
 - Max 40 lines
 - MUST be export default function App()
+- MUST wrap in AnimatePresence
 
-### IMAGE PROTOCOL
-ONLY use Unsplash: https://images.unsplash.com/photo-XXXXX?auto=format&fit=crop&w=800&q=80
+### MANDATORY PREMIUM ELEMENTS (EVERY FILE)
+
+**For Hero.tsx:**
+- min-h-screen with layered gradient backgrounds (3+ layers)
+- Hero text: text-7xl md:text-9xl or larger
+- Text shimmer with bg-clip-text text-transparent
+- motion.div with initial/animate/transition
+- Scroll CTA button with bounce animation
+
+**For ProductGrid.tsx:**
+- ASYMMETRIC GRID: Use col-span-2 or grid-cols-[2fr_1fr_1fr] - NO uniform grids
+- Each card: bg-white/[0.03] backdrop-blur-2xl border border-white/10
+- Image hover: group-hover:scale-110 with overflow-hidden
+- Complex shadows on hover
+- motion.div with staggerChildren: 0.08
+- Typography overlapping images
+
+**For App.tsx:**
+- AnimatePresence wrapper
+- Smooth scroll button
+- Clean imports, minimal logic
 
 ### OUTPUT FORMAT
-1. Start with the marker: \`/// BEGIN_FILE ///\`
-2. Output ONLY the code (no markdown fences around the actual code)
+1. Start with: \`/// BEGIN_FILE ///\`
+2. Output ONLY the code (no markdown fences)
 3. End with: \`/// END_FILE ///\`
 
-Example:
-\`\`\`
-/// BEGIN_FILE ///
-import React from 'react';
-
-export function Hero() {
-  return <section>...</section>;
-}
-/// END_FILE ///
-\`\`\`
-
 ### FORBIDDEN
-- Markdown code fences inside the file content
-- Fragment placeholders (// ...)
-- Hooks outside component functions
-- Direct payment logic (use useSellsPayCheckout)
+- Uniform 3-column grids (use asymmetric spans)
+- Missing framer-motion (every component needs it)
+- Basic typography (hero must be text-7xl+)
+- Flat cards (need shadows, borders, blur)
+- Single-color backgrounds (need gradients/layers)
+- Static elements (everything needs hover/motion)
 - Files over 80 lines`;
+
 
 interface BuilderRequest {
   prompt: string;
