@@ -271,8 +271,12 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     promptOverride?: string; // For doorway → build transition
     projectIdOverride?: string; // For doorway: avoid race with setActiveProjectId
   }) => {
+    // Use promptOverride if provided, otherwise use inputValue
     const prompt = options.promptOverride || inputValue;
-    if (!prompt.trim() || isStreaming || !user) return;
+    if (!prompt.trim() || isStreaming || !user) {
+      console.log('[handleSendMessage] Early return:', { prompt: prompt.trim(), isStreaming, user: !!user });
+      return;
+    }
 
     // Create project if none exists
     let projectId = options.projectIdOverride || activeProjectId;
@@ -653,12 +657,12 @@ Analyze the error, identify the root cause in the code above, and regenerate the
   
   if (!user) return null;
   
-  // Handle prompt from the magical doorway - passes prompt directly to avoid state race
+  // Handle prompt from the magical doorway - bypasses useCallback closure issues
   const handleDoorwayStart = async (prompt: string, isPlanMode?: boolean) => {
     if (!user) return;
 
     try {
-      // Create the project FIRST so the UI + generation are always tied to a real project id
+      // Create the project FIRST
       const { data, error } = await supabase
         .from('vibecoder_projects')
         .insert({
@@ -674,11 +678,10 @@ Analyze the error, identify the root cause in the code above, and regenerate the
       }
 
       const newProjectId = data.id;
-      setActiveProjectId(newProjectId);
-
-      // Exit doorway and enter workspace
+      
+      // Exit doorway FIRST so the canvas is visible
       setShowDoorway(false);
-      setInputValue(prompt); // brief visual feedback before streaming takes over
+      setActiveProjectId(newProjectId);
 
       // Add user message to chat immediately (optimistic)
       const userMessage: ChatMessage = {
@@ -687,20 +690,161 @@ Analyze the error, identify the root cause in the code above, and regenerate the
         content: prompt,
       };
       setMessages([userMessage]);
+      
+      // Start streaming state
+      setIsStreaming(true);
+      setError(null);
+      setCreditsError(null);
+      setStreamingLogs([]);
+      setStreamingCode('');
 
-      // Trigger the build with explicit projectId (no async state race)
-      handleSendMessage({
-        isPlanMode: isPlanMode || false,
-        model: activeModel,
-        attachments: [],
-        promptOverride: prompt,
-        projectIdOverride: newProjectId,
+      // Save user message to database
+      await supabase.from('vibecoder_messages').insert({
+        project_id: newProjectId,
+        role: 'user',
+        content: prompt,
       });
+
+      // Call the orchestrator DIRECTLY (bypass handleSendMessage to avoid closure issues)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('Not authenticated');
+      }
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/vibecoder-orchestrator`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          currentCode: DEFAULT_CODE,
+          styleProfile: undefined,
+          userId: profileId,
+          projectId: newProjectId,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText);
+      }
+      
+      if (!response.body) {
+        throw new Error('No response stream');
+      }
+      
+      // Process SSE stream (same logic as handleSendMessage)
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let generatedCode = '';
+      let summary = '';
+      const collectedLogs: string[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+
+          try {
+            const event = JSON.parse(jsonStr);
+
+            const pushLog = (msg: string) => {
+              collectedLogs.push(msg);
+              setStreamingLogs(prev => [...prev, msg]);
+            };
+
+            if (event.type === 'status') {
+              pushLog(event.data?.message || `Step: ${event.step}`);
+            } else if (event.type === 'log') {
+              pushLog(typeof event.data === 'string' ? event.data : JSON.stringify(event.data));
+            } else if (event.type === 'plan') {
+              pushLog('Plan created');
+            } else if (event.type === 'code_chunk') {
+              const chunk = event.data?.chunk || '';
+              generatedCode += chunk;
+              setStreamingCode(generatedCode);
+            } else if (event.type === 'code') {
+              generatedCode = event.data?.code || generatedCode;
+              setStreamingCode(generatedCode);
+              summary = event.data?.summary || 'Storefront updated.';
+              pushLog('Code generated');
+            } else if (event.type === 'error') {
+              const errorMsg = event.data?.message || 'Generation failed';
+              if (isCreditsError(errorMsg)) {
+                const parsed = parseCreditsError(errorMsg);
+                setCreditsError({ needed: parsed.creditsNeeded || 3, available: parsed.creditsAvailable || 0 });
+              } else {
+                throw new Error(errorMsg);
+              }
+            }
+          } catch (parseErr) {
+            if (parseErr instanceof SyntaxError) {
+              buffer = `data: ${jsonStr}\n` + buffer;
+              break;
+            }
+            throw parseErr;
+          }
+        }
+      }
+
+      // If we got code, use it
+      if (generatedCode) {
+        setCode(generatedCode);
+        setStreamingCode('');
+
+        // Save to database
+        await Promise.all([
+          supabase.from('project_files').upsert({
+            project_id: newProjectId,
+            profile_id: profileId,
+            file_path: '/App.tsx',
+            content: generatedCode,
+            version: 1,
+          }, { onConflict: 'project_id,file_path' }),
+          supabase.from('vibecoder_messages').insert({
+            project_id: newProjectId,
+            role: 'assistant',
+            content: summary,
+            code_snapshot: generatedCode,
+          }),
+          supabase.from('vibecoder_projects').update({
+            is_broken: false,
+            last_success_at: new Date().toISOString(),
+          }).eq('id', newProjectId),
+        ]);
+
+        // Add assistant message
+        const assistantMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: summary,
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      }
+
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start project';
+      setError(message);
       toast.error(message);
-      // Keep user on doorway if something goes wrong
-      setShowDoorway(true);
+    } finally {
+      setIsStreaming(false);
     }
   };
   
