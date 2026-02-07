@@ -5,6 +5,10 @@
  * 
  * Path Aliases: The AI may import from various paths (@/, ./, etc.)
  * We provide multiple aliases to catch common variations.
+ * 
+ * NUCLEAR ERROR SILENCE PROTOCOL:
+ * - iframe-silence.js: Patches console/window.onerror inside iframe
+ * - iframe-silence.css: Hides all error overlays inside iframe
  */
 export const VIBECODER_STDLIB: Record<string, string> = {
   // ============================================
@@ -19,6 +23,166 @@ export const VIBECODER_STDLIB: Record<string, string> = {
       paths: { "@/*": ["./src/*"] }
     }
   }),
+
+  // ============================================
+  // NUCLEAR SILENCE: Iframe Error Suppression Script
+  // This runs BEFORE React boots and patches all error handlers
+  // ============================================
+  '/src/iframe-silence.js': `
+// NUCLEAR ERROR SILENCE PROTOCOL - Layer 2: Iframe Runtime Silencer
+// Patches console.error, window.onerror, and removes error overlays
+
+(function() {
+  'use strict';
+  
+  // Patterns to suppress (same as parent window)
+  const NOISE_PATTERNS = [
+    /Cannot assign to read only property/i,
+    /MutationRecord/i,
+    /which has only a getter/i,
+    /react-error-overlay/i,
+    /SyntaxError/i,
+    /Unexpected token/i,
+    /Cannot find module/i,
+    /is not defined/i,
+    /Cannot read properties of/i,
+    /undefined is not an object/i,
+    /Minified React error/i,
+    /The above error occurred/i,
+    /sandpack/i,
+    /bundler/i,
+  ];
+  
+  const shouldSuppress = (msg) => {
+    if (!msg) return false;
+    const str = typeof msg === 'string' ? msg : String(msg?.message || msg);
+    return NOISE_PATTERNS.some(p => p.test(str));
+  };
+  
+  // Patch console.error
+  const origError = console.error;
+  console.error = function(...args) {
+    if (args.some(shouldSuppress)) return;
+    origError.apply(console, args);
+  };
+  
+  // Patch console.warn
+  const origWarn = console.warn;
+  console.warn = function(...args) {
+    if (args.some(shouldSuppress)) return;
+    origWarn.apply(console, args);
+  };
+  
+  // Patch window.onerror
+  window.onerror = function(message) {
+    if (shouldSuppress(message)) return true;
+    return false;
+  };
+  
+  // Patch unhandled rejections
+  window.onunhandledrejection = function(event) {
+    if (shouldSuppress(event?.reason)) {
+      event.preventDefault();
+      return true;
+    }
+    return false;
+  };
+  
+  // Mutation observer to remove error overlays as they appear
+  const removeErrorOverlays = () => {
+    const selectors = [
+      '#react-error-overlay',
+      '.error-overlay',
+      '[data-react-error-overlay]',
+      '.sp-error-overlay',
+      '.sp-error',
+      '.sp-error-message',
+      '.sp-error-title',
+      '.sp-error-stack',
+    ];
+    
+    selectors.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        el.style.display = 'none';
+        el.style.visibility = 'hidden';
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+      });
+    });
+  };
+  
+  // Run immediately
+  removeErrorOverlays();
+  
+  // Set up mutation observer to catch dynamically added overlays
+  if (typeof MutationObserver !== 'undefined') {
+    const observer = new MutationObserver(removeErrorOverlays);
+    
+    // Start observing once DOM is ready
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true });
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        observer.observe(document.body, { childList: true, subtree: true });
+      });
+    }
+  }
+  
+  // Fallback interval (catches edge cases)
+  setInterval(removeErrorOverlays, 500);
+})();
+`,
+
+  // ============================================
+  // NUCLEAR SILENCE: Iframe Error Overlay CSS
+  // Hides all known error overlay components
+  // ============================================
+  '/src/iframe-silence.css': `
+/* NUCLEAR ERROR SILENCE PROTOCOL - Layer 1: Iframe CSS Suppression */
+/* Hides ALL known error overlay components inside the Sandpack iframe */
+
+#react-error-overlay,
+.error-overlay,
+[data-react-error-overlay],
+.sp-error-overlay,
+.sp-error,
+.sp-error-message,
+.sp-error-title,
+.sp-error-stack,
+.sp-error-banner,
+.cm-diagnosticMessage,
+.cm-diagnostic,
+.cm-lintRange-error,
+.cm-lintRange-warning,
+div[style*="background-color: rgb(255, 0, 0)"],
+div[style*="background-color: red"],
+div[style*="background: red"],
+div[style*="position: fixed"][style*="z-index: 9999"],
+div[style*="position: fixed"][style*="background"][style*="color: white"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+}
+
+/* Hide any element with "error" in class that looks like an overlay */
+[class*="error-overlay"],
+[class*="error_overlay"],
+[class*="errorOverlay"],
+[class*="ErrorOverlay"] {
+  display: none !important;
+}
+
+/* Prevent fixed position error banners */
+body > div[style*="position: fixed"][style*="top: 0"] {
+  display: none !important;
+}
+`,
 
   // ============================================
   // PRIMARY: The SellsPay Checkout Hook (mocked for preview)

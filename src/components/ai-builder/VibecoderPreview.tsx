@@ -19,9 +19,11 @@ interface VibecoderPreviewProps {
   onReady?: () => void;
 }
 
-// Nuclear CSS fix - forces all Sandpack internal wrappers to fill height
-// + hides any Sandpack/react-error full overlay so errors never block the preview UI.
+// NUCLEAR ERROR SILENCE PROTOCOL - Layer 5: Parent CSS Nuclear Strike
+// Forces all Sandpack internal wrappers to fill height AND
+// COMPLETELY HIDES all error overlays, banners, and diagnostic UI
 const SANDPACK_HEIGHT_FIX = `
+  /* Height fixes for Sandpack layout */
   .sp-wrapper, 
   .sp-layout, 
   .sp-stack { 
@@ -55,18 +57,84 @@ const SANDPACK_HEIGHT_FIX = `
     height: 100% !important;
   }
 
-  /* Never let any full-screen error overlay cover the preview */
+  /* ======================================================
+   * NUCLEAR ERROR SILENCE PROTOCOL - HIDE EVERYTHING
+   * ======================================================
+   * These styles hide ALL error overlays, banners, and 
+   * diagnostic messages from Sandpack, React, and CodeMirror.
+   * The user will only see FixErrorToast at the bottom.
+   * ====================================================== */
+
+  /* Sandpack error overlays */
   .sp-error-overlay,
   .sp-error,
   .sp-error-message,
   .sp-error-title,
   .sp-error-stack,
-  .error-overlay,
-  #react-error-overlay,
-  [data-react-error-overlay] {
+  .sp-error-banner,
+  .sp-bridge-frame,
+  .sp-preview-actions-error {
     display: none !important;
     opacity: 0 !important;
+    visibility: hidden !important;
     pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+    z-index: -1 !important;
+  }
+
+  /* React error overlay */
+  #react-error-overlay,
+  [data-react-error-overlay],
+  .error-overlay,
+  [class*="error-overlay"],
+  [class*="errorOverlay"],
+  [class*="ErrorOverlay"] {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* CodeMirror diagnostics/lint messages */
+  .cm-diagnosticMessage,
+  .cm-diagnostic,
+  .cm-lintRange-error,
+  .cm-lintRange-warning,
+  .cm-lint-marker,
+  .cm-panel-lint,
+  .cm-tooltip-lint {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  /* Generic red error banners (fallback selectors) */
+  div[style*="background-color: rgb(255, 0, 0)"],
+  div[style*="background-color: red"],
+  div[style*="background: red"],
+  div[style*="background: rgb(255"],
+  div[style*="position: fixed"][style*="z-index: 9999"],
+  div[style*="position: fixed"][style*="top: 0"][style*="background"] {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* Sandpack console error panel */
+  .sp-console,
+  .sp-console-list,
+  .sp-console-item-error {
+    display: none !important;
+  }
+
+  /* Any iframe-injected error overlays (catches dynamically added) */
+  iframe[title*="error"],
+  iframe[src*="error"] {
+    display: none !important;
   }
 `;
 
@@ -108,12 +176,14 @@ const customTheme: SandpackTheme = {
 // ONLY notifies parent of errors - does NOT render any UI overlay.
 // The parent (AIBuilderCanvas) shows the FixErrorToast at the bottom.
 // CRITICAL: Suppresses error reporting while isStreaming is true to prevent flashing.
+// NUCLEAR: All error object access is wrapped in try/catch to prevent secondary crashes.
 const ErrorDetector = forwardRef<HTMLDivElement, { onError?: (error: string) => void; isStreaming?: boolean }>(
   function ErrorDetector({ onError, isStreaming = false }, ref) {
     const { sandpack } = useSandpack();
     const lastErrorRef = useRef<string | null>(null);
     const onErrorRef = useRef(onError);
     const isStreamingRef = useRef(isStreaming);
+    const debounceTimerRef = useRef<number | null>(null);
 
     // Keep refs in sync to avoid stale closures without causing re-renders
     useEffect(() => {
@@ -124,45 +194,74 @@ const ErrorDetector = forwardRef<HTMLDivElement, { onError?: (error: string) => 
       isStreamingRef.current = isStreaming;
     }, [isStreaming]);
 
-    // Safely extract error message - never mutate the original error object
-    // Some browsers lock error objects as read-only
-    // CRITICAL: Do this inside the effect to avoid issues with frozen objects
+    // NUCLEAR SAFE ERROR EXTRACTION
+    // Never touch the original error object - create brand new strings immediately
     useEffect(() => {
       // 🛡️ GUARD: Suppress ALL error reporting while streaming
-      // During streaming, code is intentionally incomplete and errors are expected
       if (isStreamingRef.current) {
         return;
       }
 
-      // CRITICAL: Never touch or mutate sandpack.error - it may be frozen/read-only.
-      // Extract message into a brand new string immediately.
-      let safeMessage: string | null = null;
+      // Debounce to prevent rapid-fire error reporting
+      if (debounceTimerRef.current) {
+        window.clearTimeout(debounceTimerRef.current);
+      }
 
-      try {
-        if (sandpack.error && typeof sandpack.error === 'object') {
-          // Read into local variable - DO NOT assign back to error object
-          const rawMsg = sandpack.error.message;
-          if (typeof rawMsg === 'string' && rawMsg.length > 0) {
-            // Create a completely NEW string - never pass the original reference
-            safeMessage = String(rawMsg);
+      debounceTimerRef.current = window.setTimeout(() => {
+        let safeMessage: string | null = null;
+
+        // CRITICAL: Triple-wrapped try/catch to handle frozen Error objects
+        try {
+          if (sandpack.error) {
+            try {
+              // Attempt to read message property
+              const errorObj = sandpack.error;
+              if (typeof errorObj === 'object' && errorObj !== null) {
+                // Read into local variable immediately
+                let rawMsg: unknown;
+                try {
+                  rawMsg = (errorObj as any).message;
+                } catch {
+                  rawMsg = null;
+                }
+                
+                if (typeof rawMsg === 'string' && rawMsg.length > 0) {
+                  // Create BRAND NEW string - never pass original reference
+                  safeMessage = String(rawMsg).slice(0, 500); // Truncate for safety
+                }
+              }
+            } catch {
+              // If reading throws, use generic fallback
+              safeMessage = 'Build error detected';
+            }
+          }
+        } catch {
+          // Outer catch for any edge case
+          safeMessage = 'Build error detected';
+        }
+
+        // Only report if this is a NEW error (not the same as last time)
+        if (safeMessage && safeMessage !== lastErrorRef.current) {
+          lastErrorRef.current = safeMessage;
+          // Pass brand new string up to parent
+          try {
+            onErrorRef.current?.(safeMessage);
+          } catch {
+            // Ignore callback errors
           }
         }
-      } catch {
-        // If reading throws (frozen object edge case), use a generic fallback
-        safeMessage = sandpack.error ? 'Build error occurred' : null;
-      }
 
-      // Only report if this is a NEW error (not the same as last time)
-      if (safeMessage && safeMessage !== lastErrorRef.current) {
-        lastErrorRef.current = safeMessage;
-        // Pass brand new string up to parent
-        onErrorRef.current?.(safeMessage);
-      }
+        // Clear ref when error is resolved
+        if (!safeMessage && lastErrorRef.current) {
+          lastErrorRef.current = null;
+        }
+      }, 300); // 300ms debounce
 
-      // Clear ref when error is resolved
-      if (!safeMessage && lastErrorRef.current) {
-        lastErrorRef.current = null;
-      }
+      return () => {
+        if (debounceTimerRef.current) {
+          window.clearTimeout(debounceTimerRef.current);
+        }
+      };
     }, [sandpack.error, isStreaming]);
 
     // Render a tiny node so any injected refs are safe (prevents ref warnings)
@@ -224,6 +323,7 @@ const SandpackRenderer = memo(function SandpackRenderer({
   isStreaming?: boolean;
 }) {
   // Wrap the code in proper structure, including the standard library
+  // NUCLEAR: Also inject iframe-silence.js and iframe-silence.css
   const files = useMemo(() => ({
     // Standard library (hooks, utils) - always available to prevent crashes
     ...Object.fromEntries(
@@ -237,8 +337,13 @@ const SandpackRenderer = memo(function SandpackRenderer({
       code,
       active: true,
     },
+    // Entry point that imports the silence script FIRST
     '/index.tsx': {
-      code: `import React from "react";
+      code: `// NUCLEAR ERROR SILENCE - Import silencer before anything else
+import "./iframe-silence.css";
+import "./iframe-silence.js";
+
+import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 
@@ -287,7 +392,7 @@ root.render(<App />);`,
               <SandpackCodeEditor
                 showTabs={true}
                 showLineNumbers={true}
-                showInlineErrors={true}
+                showInlineErrors={false} // NUCLEAR: Disable inline errors in editor too
                 wrapContent={true}
                 readOnly={true}
                 style={{ height: '100%', flex: 1 }}
@@ -307,13 +412,14 @@ export function VibecoderPreview({
   onReady,
   viewMode = 'preview',
 }: VibecoderPreviewProps) {
-  // Prevent Sandpack/react-error-overlay from taking over the whole UI,
-  // and suppress the noisy repeated console errors from frozen SyntaxError objects.
+  // NUCLEAR ERROR SILENCE PROTOCOL - Layer 4: Parent Window Suppression
+  // Prevents Sandpack/react-error-overlay from taking over the whole UI,
+  // and suppresses the noisy repeated console errors from frozen SyntaxError objects.
   useSuppressPreviewNoise(true);
 
   return (
     <div className="h-full w-full relative bg-background flex flex-col">
-      {/* Nuclear CSS Fix - Inject global styles to force Sandpack height */}
+      {/* NUCLEAR CSS Fix - Inject global styles to force Sandpack height AND hide all error UI */}
       <style>{SANDPACK_HEIGHT_FIX}</style>
 
       {/* Sandpack preview/code - no loading overlay, just renders directly */}
@@ -323,4 +429,3 @@ export function VibecoderPreview({
     </div>
   );
 }
-
