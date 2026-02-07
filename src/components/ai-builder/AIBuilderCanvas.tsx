@@ -468,41 +468,34 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   }, [loading, needsOnboarding]);
 
-  // 🔄 RESUME: Check for completed jobs when returning to the page
-  // Note: The realtime subscription now handles completed jobs via onJobComplete callback
-  // This effect is only needed if the user returns AFTER the job completed (no realtime event)
+  // 🔄 RESUME: If a job completes while the user is away and we miss the realtime event,
+  // we may still rehydrate `currentJob` as completed in rare cases.
+  // IMPORTANT: Never append messages here directly (that caused duplication).
+  // Always route through the deduped job handlers.
   const processedCompletedJobRef = useRef<string | null>(null);
   
   useEffect(() => {
-    // Only process if we have a completed job that hasn't been processed yet
-    if (hasCompletedJob && currentJob && !isLoadingJob && processedCompletedJobRef.current !== currentJob.id) {
-      console.log('[BackgroundGen] Found completed job on mount, applying results...');
-      
-      // Mark as processed BEFORE applying to prevent re-runs
-      processedCompletedJobRef.current = currentJob.id;
-      
-      // Apply the completed job's results
-      if (currentJob.code_result) {
-        setCode(currentJob.code_result);
-      }
-      
-      if (currentJob.plan_result) {
-        setPendingPlan({
-          plan: currentJob.plan_result,
-          originalPrompt: currentJob.prompt
-        });
-      }
-      
-      if (currentJob.summary && activeProjectId) {
-        addMessage('assistant', currentJob.summary, currentJob.code_result || undefined, activeProjectId);
-      }
-      
-      // Acknowledge the job so we don't re-apply on next mount
-      acknowledgeJob(currentJob.id);
-    }
-  }, [hasCompletedJob, currentJob, isLoadingJob, setCode, activeProjectId, addMessage, acknowledgeJob]);
+    if (!hasCompletedJob || !currentJob || isLoadingJob) return;
 
-  // Note: Removed toast notification for active jobs - all feedback shown in chat only
+    // Only process once per job ID
+    if (processedCompletedJobRef.current === currentJob.id) return;
+
+    // If we've already handled this job via realtime completion, skip.
+    if (processedJobIdsRef.current.has(currentJob.id)) {
+      processedCompletedJobRef.current = currentJob.id;
+      acknowledgeJob(currentJob.id);
+      return;
+    }
+
+    console.log('[BackgroundGen] Found completed job on mount, routing through handler...');
+    processedCompletedJobRef.current = currentJob.id;
+
+    // Reuse the deduped completion handler (sets code, pending plan, and appends ONE assistant msg)
+    handleJobComplete(currentJob);
+
+    // Clear local "currentJob" pointer so we don't re-run
+    acknowledgeJob(currentJob.id);
+  }, [hasCompletedJob, currentJob, isLoadingJob, acknowledgeJob, handleJobComplete]);
 
   // AUTO-START: Pick up initial prompt from navigation state (passed from Hero)
   useEffect(() => {
