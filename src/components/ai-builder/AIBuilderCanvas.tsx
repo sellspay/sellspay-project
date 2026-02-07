@@ -729,17 +729,24 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
   // Send message handler (with auto-create) - NOW USES AGENT LOOP
   // Implements the "Chat-to-Create" flow: first message creates project automatically
-  const handleSendMessage = async (prompt: string) => {
+  // displayMessage: Clean user prompt shown in chat
+  // aiPrompt: Backend-only prompt with system instructions (optional - defaults to displayMessage)
+  const handleSendMessage = async (displayMessage: string, aiPrompt?: string) => {
+    // Use the clean display message for policy checks and storage
+    const cleanPrompt = displayMessage;
+    // Use the AI prompt for actual generation (may include system instructions)
+    const promptForAI = aiPrompt || displayMessage;
+
     // 🛡️ POLICY GUARD: Check for forbidden requests BEFORE any processing
-    const violation = checkPolicyViolation(prompt);
+    const violation = checkPolicyViolation(cleanPrompt);
     if (violation) {
       console.warn(`🛑 Policy Violation: ${violation.id}`);
-      console.warn('[PolicyGuard] Blocked prompt (first 300 chars):', (prompt || '').slice(0, 300));
+      console.warn('[PolicyGuard] Blocked prompt (first 300 chars):', (cleanPrompt || '').slice(0, 300));
 
       // If we have an active project, persist the user message + assistant response
       // so the UI shows a clear explanation (instead of "nothing happened").
       if (activeProjectId) {
-        await addMessage('user', prompt, undefined, activeProjectId);
+        await addMessage('user', cleanPrompt, undefined, activeProjectId);
         await addMessage('assistant', violation.message, undefined, activeProjectId);
       }
 
@@ -760,7 +767,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // Extract first 4-5 meaningful words as the project name
     let projectName: string | undefined;
     if (isFreshStart) {
-      const words = prompt
+      const words = cleanPrompt
         .replace(/[^\w\s]/g, '') // Remove punctuation
         .split(/\s+/)
         .filter((w) => w.length > 2) // Skip tiny words
@@ -778,12 +785,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // 🔒 LOCK: Capture which project this generation belongs to BEFORE starting
     generationLockRef.current = projectId;
 
-    // Add user message to history (with explicit project ID for safety)
-    await addMessage('user', prompt, undefined, projectId);
+    // Add user message to history (CLEAN prompt only - no system instructions visible)
+    await addMessage('user', cleanPrompt, undefined, projectId);
 
-    // Start the agent loop (which internally calls streamCode)
+    // Start the agent loop with the AI prompt (which may include backend-only instructions)
     // Pass the project ID to lock the agent to this specific project
-    startAgent(prompt, code !== DEFAULT_CODE ? code : undefined, projectId);
+    startAgent(promptForAI, code !== DEFAULT_CODE ? code : undefined, projectId);
   };
 
   // Handle new project creation - FRESH START PROTOCOL
