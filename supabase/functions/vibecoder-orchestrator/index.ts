@@ -61,17 +61,22 @@ function calculateCredits(complexityScore: number, skipArchitect: boolean): numb
 }
 
 // ═══════════════════════════════════════════════════════════════
-// STRUCTURAL CODE GUARD - VibeCoder 2.2
+// STRUCTURAL CODE GUARD - VibeCoder 2.3
 // ═══════════════════════════════════════════════════════════════
 // Validates code structure BEFORE delivery to prevent build crashes.
 // This catches the "hooks inside arrays" and "missing export wrapper" bugs.
 function validateCodeStructure(code: string): { valid: boolean; error?: string } {
   // Check 1: Must have the component wrapper
-  if (!code.includes('export default function App')) {
-    return { valid: false, error: 'Missing "export default function App" wrapper' };
+  const hasExportDefault = code.includes('export default function App');
+  const hasFunctionApp = code.includes('function App()') || code.includes('function App (');
+  
+  if (!hasExportDefault && !hasFunctionApp) {
+    return { valid: false, error: 'Missing "export default function App()" wrapper - code is incomplete' };
   }
   
-  const appIndex = code.indexOf('export default function App');
+  const appIndex = code.indexOf('export default function App') >= 0 
+    ? code.indexOf('export default function App')
+    : code.indexOf('function App');
   
   // Check 2: Hooks cannot appear before the component declaration
   const hookPatterns = ['useEffect(', 'useState(', 'useCallback(', 'useMemo(', 'useSellsPayCheckout(', 'useRef('];
@@ -79,67 +84,92 @@ function validateCodeStructure(code: string): { valid: boolean; error?: string }
   for (const hook of hookPatterns) {
     const hookIndex = code.indexOf(hook);
     if (hookIndex >= 0 && hookIndex < appIndex) {
-      return { valid: false, error: `Hook "${hook.replace('(', '')}" called outside component boundary` };
+      return { valid: false, error: `Hook "${hook.replace('(', '')}" called outside component boundary - must be inside App()` };
     }
   }
   
-  // Check 3: Basic bracket balance (catches obvious structural collapse)
+  // Check 3: Strict bracket balance (catches code truncation)
   const openBraces = (code.match(/{/g) || []).length;
   const closeBraces = (code.match(/}/g) || []).length;
-  if (Math.abs(openBraces - closeBraces) > 3) {
-    return { valid: false, error: 'Severely unbalanced braces - likely syntax error' };
-  }
+  const openParens = (code.match(/\(/g) || []).length;
+  const closeParens = (code.match(/\)/g) || []).length;
+  const openBrackets = (code.match(/\[/g) || []).length;
+  const closeBrackets = (code.match(/\]/g) || []).length;
   
-  // Check 4: STRICT ARRAY CLOSURE CHECK
-  // Extract everything before the App component
-  const preAppCode = code.substring(0, appIndex);
-  
-  // Count open and close brackets in the pre-App section
-  const openBrackets = (preAppCode.match(/\[/g) || []).length;
-  const closeBrackets = (preAppCode.match(/\]/g) || []).length;
-  
-  if (openBrackets !== closeBrackets) {
+  // Allow max 1 difference (accounts for template literals)
+  if (Math.abs(openBraces - closeBraces) > 1) {
     return { 
       valid: false, 
-      error: `Unclosed array detected: ${openBrackets} "[" but only ${closeBrackets} "]" before App component. Close all arrays with "];".` 
+      error: `Unclosed bracket '{' - code is incomplete (found ${openBraces} open, ${closeBraces} close)` 
     };
   }
   
-  // Check 5: Named array declarations must have matching closures
-  // Look for common data array patterns
-  const namedArrays = ['PRODUCTS', 'MOVIES', 'ITEMS', 'DATA', 'COURSES', 'TRACKS', 'SOUNDS', 'LUTS', 'PRESETS', 'CATEGORIES', 'FEATURES'];
+  if (Math.abs(openParens - closeParens) > 1) {
+    return { 
+      valid: false, 
+      error: `Unclosed parenthesis '(' - code is incomplete (found ${openParens} open, ${closeParens} close)` 
+    };
+  }
+  
+  if (Math.abs(openBrackets - closeBrackets) > 1) {
+    return { 
+      valid: false, 
+      error: `Unclosed array '[' - code is incomplete (found ${openBrackets} open, ${closeBrackets} close)` 
+    };
+  }
+  
+  // Check 4: Code must end with a closing brace (the App component's closing brace)
+  const trimmedCode = code.trim();
+  if (!trimmedCode.endsWith('}')) {
+    return { valid: false, error: 'Code does not end with closing brace "}" - likely truncated' };
+  }
+  
+  // Check 5: Must have a return statement with JSX
+  if (!code.includes('return (') && !code.includes('return(')) {
+    return { valid: false, error: 'Missing "return (" statement - component has no JSX output' };
+  }
+  
+  // Check 6: Check for common truncation patterns
+  if (code.includes('className="') && !code.includes('">')) {
+    // Opened a className but might have cut off mid-attribute
+    const lastClassName = code.lastIndexOf('className="');
+    const afterClassName = code.substring(lastClassName);
+    if (!afterClassName.includes('"')) {
+      return { valid: false, error: 'Code truncated mid-attribute - className not closed' };
+    }
+  }
+  
+  // Check 7: STRICT ARRAY CLOSURE CHECK for data arrays before component
+  const preAppCode = code.substring(0, appIndex);
+  const namedArrays = ['PRODUCTS', 'MOVIES', 'ITEMS', 'DATA', 'COURSES', 'TRACKS', 'SOUNDS', 'LUTS', 'PRESETS', 'CATEGORIES', 'FEATURES', 'CONTENT', 'SECTIONS', 'CARDS'];
   
   for (const arrayName of namedArrays) {
     const pattern = new RegExp(`const\\s+${arrayName}\\s*=\\s*\\[`, 'g');
     const matches = preAppCode.match(pattern);
     
     if (matches && matches.length > 0) {
-      // Find where this array starts
       const arrayStart = preAppCode.indexOf(`const ${arrayName}`);
       if (arrayStart >= 0) {
-        // Look for the closing ];
         const afterArrayName = preAppCode.substring(arrayStart);
-        // Check if there's a ]; somewhere after the array starts
         const hasClosing = afterArrayName.includes('];');
         
         if (!hasClosing) {
           return { 
             valid: false, 
-            error: `Data array "${arrayName}" was never closed with "];". Tape the box shut!` 
+            error: `Data array "${arrayName}" was never closed with "];" - must close before App component` 
           };
         }
       }
     }
   }
   
-  // Check 6: Look for the specific failure pattern - hook right after array item
-  // Pattern: } followed by const { (hook destructuring) without ] in between
+  // Check 8: Look for the specific failure pattern - hook right after array item
   const dangerPattern = /\}\s*\n\s*const\s*\{/;
   const preAppHasDanger = dangerPattern.test(preAppCode);
   if (preAppHasDanger) {
     return { 
       valid: false, 
-      error: 'Detected hook destructuring immediately after object - likely unclosed array. Add "];" before the hook.' 
+      error: 'Detected hook destructuring after object without array closure - add "];" before hooks' 
     };
   }
   
@@ -539,12 +569,34 @@ serve(async (req: Request) => {
               break;
             }
 
-            // Prepare healing context for next attempt
+            // Prepare healing context for next attempt with specific fix instructions
+            const errorMsg = structureResult.error || 'Unknown structural error';
+            let fixSuggestion = '';
+            
+            if (errorMsg.includes('incomplete') || errorMsg.includes('truncated') || errorMsg.includes('Unclosed')) {
+              fixSuggestion = `YOUR CODE IS INCOMPLETE. The error says: "${errorMsg}". 
+You MUST:
+1. Output COMPLETE code with ALL brackets closed
+2. SIMPLIFY the design if needed - fewer sections, smaller arrays
+3. Make sure every { has }, every ( has ), every [ has ]
+4. End the code with the closing brace of the App function
+5. Do NOT start over - fix the specific incomplete parts`;
+            } else if (errorMsg.includes('Hook')) {
+              fixSuggestion = `HOOK PLACEMENT ERROR: "${errorMsg}".
+You MUST:
+1. Close ALL data arrays with ]; BEFORE the App component
+2. Put useSellsPayCheckout() INSIDE the App function
+3. Put ALL useState/useEffect calls INSIDE the App function`;
+            } else {
+              fixSuggestion = `Fix this error: "${errorMsg}". 
+Ensure: 1) export default function App() wrapper, 2) All hooks inside App, 3) All arrays closed with ];`;
+            }
+            
             healingContext = {
               errorType: 'STRUCTURAL_ERROR',
-              errorMessage: structureResult.error || 'Unknown structural error',
+              errorMessage: errorMsg,
               failedCode: generatedCode,
-              fixSuggestion: 'Fix the structural error: 1) Ensure "export default function App()" wrapper exists, 2) Move all hooks INSIDE the App function, 3) Close all data arrays with ]; before the component declaration.',
+              fixSuggestion,
             };
 
             sendEvent(controller, { type: 'log', data: "Triggering self-correction for structural issues..." }, streamState);
