@@ -34,6 +34,7 @@ export const SimplePreview = memo(function SimplePreview({
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [isPreviewReady, setIsPreviewReady] = useState(true);
   const fixingRef = useRef(false); // Track fixing state without re-renders
+  const runIdRef = useRef<string>(''); // Scope postMessage events to the current render
   
   // Handle auto-fix - clears error and enters "fixing" mode
   const handleFixError = () => {
@@ -57,6 +58,10 @@ export const SimplePreview = memo(function SimplePreview({
   
   useEffect(() => {
     if (!iframeRef.current || !code) return;
+
+    // New render scope: prevents late postMessage events from older code/projects
+    const runId = crypto.randomUUID();
+    runIdRef.current = runId;
 
     // Hold loading state until the iframe confirms a clean mount
     setIsPreviewReady(false);
@@ -137,9 +142,10 @@ export const SimplePreview = memo(function SimplePreview({
     // ENHANCED ERROR CAPTURE - Phase B of bulletproof plan
     // ═══════════════════════════════════════════════════════════════
     // Reports structured error payloads with stack traces to parent
+    const __RUN_ID__ = "${runId}";
     const reportError = (payload) => {
-      try { 
-        window.parent.postMessage(payload, '*'); 
+      try {
+        window.parent.postMessage({ ...payload, runId: __RUN_ID__ }, '*');
       } catch (e) {
         console.error('[Preview] Failed to report error to parent:', e);
       }
@@ -403,10 +409,10 @@ export const SimplePreview = memo(function SimplePreview({
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(React.createElement(App));
       
-      // Signal success after successful render (Phase 2: Preview Ready)
-      setTimeout(() => {
-        window.parent.postMessage({ type: 'preview-ready' }, '*');
-      }, 100);
+       // Signal success after successful render (Phase 2: Preview Ready)
+       setTimeout(() => {
+         window.parent.postMessage({ type: 'preview-ready', runId: __RUN_ID__ }, '*');
+       }, 100);
     } catch (err) {
       // Runtime error during component initialization
       const message = err.message || String(err);
@@ -416,14 +422,15 @@ export const SimplePreview = memo(function SimplePreview({
         '<div class="error-display"><strong>Runtime Error:</strong>\\n' + 
         (stack || message) + '</div>';
       
-      // Notify parent window with structured payload
-      window.parent.postMessage({ 
-        type: 'preview-error', 
-        error: message,
-        stack: stack,
-        source: 'runtime-trycatch',
-        fullDetails: stack || message
-      }, '*');
+       // Notify parent window with structured payload
+       window.parent.postMessage({ 
+         type: 'preview-error', 
+         error: message,
+         stack: stack,
+         source: 'runtime-trycatch',
+         fullDetails: stack || message,
+         runId: __RUN_ID__,
+       }, '*');
     }
   <\/script>
 </body>
@@ -437,12 +444,20 @@ export const SimplePreview = memo(function SimplePreview({
   // IMPORTANT: Suppresses errors during fixing mode to prevent UI spam
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'preview-ready') {
+      const data = event.data;
+      if (!data) return;
+
+      // Ignore stale events from previous iframe renders/projects
+      if ((data.type === 'preview-ready' || data.type === 'preview-error') && data.runId !== runIdRef.current) {
+        return;
+      }
+
+      if (data.type === 'preview-ready') {
         setIsPreviewReady(true);
         return;
       }
 
-      if (event.data?.type === 'preview-error') {
+      if (data.type === 'preview-error') {
         // If we're currently fixing, don't show new errors (they're expected while rebuilding)
         if (fixingRef.current || isFixing) {
           console.log('[Preview] Suppressing error during fix mode');
@@ -450,9 +465,9 @@ export const SimplePreview = memo(function SimplePreview({
         }
 
         // Build a rich error string that includes stack trace when available
-        const errorDetails = event.data.fullDetails || event.data.stack || event.data.error;
-        const source = event.data.source ? `[${event.data.source}]` : '';
-        const location = event.data.line ? ` at line ${event.data.line}${event.data.col ? ':' + event.data.col : ''}` : '';
+        const errorDetails = data.fullDetails || data.stack || data.error;
+        const source = data.source ? `[${data.source}]` : '';
+        const location = data.line ? ` at line ${data.line}${data.col ? ':' + data.col : ''}` : '';
 
         const fullError = `${source}${location} ${errorDetails}`.trim();
 
