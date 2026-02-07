@@ -38,9 +38,9 @@ export function SimpleChat({ messages, isStreaming, streamingLogs = [], children
   }, [messages, isStreaming]);
   
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col flex-1 min-h-0 bg-background">
       {/* Messages area */}
-      <ScrollArea className="flex-1 px-4" viewportClassName="!block">
+      <ScrollArea className="flex-1 min-h-0 px-4" viewportClassName="!block">
         <div ref={scrollRef} className="py-4 space-y-4">
           {messages.length === 0 ? (
             // Empty state
@@ -124,7 +124,7 @@ export function SimpleChat({ messages, isStreaming, streamingLogs = [], children
       </ScrollArea>
       
       {/* Input bar (passed as children) */}
-      <div className="shrink-0 border-t border-zinc-800">
+      <div className="shrink-0 border-t border-border/50 bg-background">
         {children}
       </div>
     </div>
