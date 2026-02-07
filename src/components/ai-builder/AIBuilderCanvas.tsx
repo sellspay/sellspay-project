@@ -308,6 +308,17 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       // Hard refresh the preview by incrementing refreshKey
       setRefreshKey(prev => prev + 1);
       
+      // 🛡️ FALLBACK: If Sandpack fails to signal ready (crash, hang), force-release handshake
+      // This gives a 3-second grace period for Sandpack to initialize before we unlock the UI
+      setTimeout(() => {
+        setIsWaitingForPreviewMount(prev => {
+          if (prev) {
+            console.log('[VibeCoder 2.2] Fallback: Releasing handshake after code delivery timeout');
+          }
+          return false;
+        });
+      }, 3000);
+      
       // Add assistant message with code snapshot
       // Use agent's lockedProjectId as the source of truth (generationLockRef can be wiped by project switching / refresh flows)
       const targetProjectId = lockedProjectId || generationLockRef.current;

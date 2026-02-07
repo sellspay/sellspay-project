@@ -301,9 +301,21 @@ export function useAgentLoop({
         const codeData = event.data as { code: string; summary?: string };
         setStep('verifying');
         addLog('> Code delivered');
+        
+        // 🛡️ Safe code delivery with size validation and sanitization
+        const safeCode = typeof codeData.code === 'string' 
+          ? codeData.code 
+          : String(codeData.code);
+        
+        // Warn if code is unusually large (potential postMessage failure risk)
+        if (safeCode.length > 20000) {
+          console.warn('[AgentLoop] Large code payload:', safeCode.length, 'chars - may cause postMessage issues');
+          addLog(`⚠️ Large payload: ${safeCode.length} chars`);
+        }
+        
         // Track last generated code for healing
-        setState(prev => ({ ...prev, lastGeneratedCode: codeData.code }));
-        onCodeGenerated?.(codeData.code, codeData.summary || 'Storefront generated.');
+        setState(prev => ({ ...prev, lastGeneratedCode: safeCode }));
+        onCodeGenerated?.(safeCode, codeData.summary || 'Storefront generated.');
         break;
       }
       
