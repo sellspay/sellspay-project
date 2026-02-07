@@ -71,8 +71,9 @@ function validateCodeStructure(code: string): { valid: boolean; error?: string }
     return { valid: false, error: 'Missing "export default function App" wrapper' };
   }
   
-  // Check 2: Hooks cannot appear before the component declaration
   const appIndex = code.indexOf('export default function App');
+  
+  // Check 2: Hooks cannot appear before the component declaration
   const hookPatterns = ['useEffect(', 'useState(', 'useCallback(', 'useMemo(', 'useSellsPayCheckout(', 'useRef('];
   
   for (const hook of hookPatterns) {
@@ -89,31 +90,57 @@ function validateCodeStructure(code: string): { valid: boolean; error?: string }
     return { valid: false, error: 'Severely unbalanced braces - likely syntax error' };
   }
   
-  // Check 4: Array declarations must be closed before the App component
-  // Look for patterns like "const SOMETHING = [" that aren't closed before "export default"
-  const arrayDeclPattern = /const\s+[A-Z_]+\s*=\s*\[/g;
-  let match;
-  while ((match = arrayDeclPattern.exec(code)) !== null) {
-    const declStart = match.index;
-    // Only check arrays declared before the App component
-    if (declStart < appIndex) {
-      // Find the closing bracket for this array
-      let depth = 0;
-      let foundClosing = false;
-      for (let i = declStart; i < appIndex; i++) {
-        if (code[i] === '[') depth++;
-        if (code[i] === ']') {
-          depth--;
-          if (depth === 0) {
-            foundClosing = true;
-            break;
-          }
+  // Check 4: STRICT ARRAY CLOSURE CHECK
+  // Extract everything before the App component
+  const preAppCode = code.substring(0, appIndex);
+  
+  // Count open and close brackets in the pre-App section
+  const openBrackets = (preAppCode.match(/\[/g) || []).length;
+  const closeBrackets = (preAppCode.match(/\]/g) || []).length;
+  
+  if (openBrackets !== closeBrackets) {
+    return { 
+      valid: false, 
+      error: `Unclosed array detected: ${openBrackets} "[" but only ${closeBrackets} "]" before App component. Close all arrays with "];".` 
+    };
+  }
+  
+  // Check 5: Named array declarations must have matching closures
+  // Look for common data array patterns
+  const namedArrays = ['PRODUCTS', 'MOVIES', 'ITEMS', 'DATA', 'COURSES', 'TRACKS', 'SOUNDS', 'LUTS', 'PRESETS', 'CATEGORIES', 'FEATURES'];
+  
+  for (const arrayName of namedArrays) {
+    const pattern = new RegExp(`const\\s+${arrayName}\\s*=\\s*\\[`, 'g');
+    const matches = preAppCode.match(pattern);
+    
+    if (matches && matches.length > 0) {
+      // Find where this array starts
+      const arrayStart = preAppCode.indexOf(`const ${arrayName}`);
+      if (arrayStart >= 0) {
+        // Look for the closing ];
+        const afterArrayName = preAppCode.substring(arrayStart);
+        // Check if there's a ]; somewhere after the array starts
+        const hasClosing = afterArrayName.includes('];');
+        
+        if (!hasClosing) {
+          return { 
+            valid: false, 
+            error: `Data array "${arrayName}" was never closed with "];". Tape the box shut!` 
+          };
         }
       }
-      if (!foundClosing) {
-        return { valid: false, error: 'Data array not properly closed before component declaration' };
-      }
     }
+  }
+  
+  // Check 6: Look for the specific failure pattern - hook right after array item
+  // Pattern: } followed by const { (hook destructuring) without ] in between
+  const dangerPattern = /\}\s*\n\s*const\s*\{/;
+  const preAppHasDanger = dangerPattern.test(preAppCode);
+  if (preAppHasDanger) {
+    return { 
+      valid: false, 
+      error: 'Detected hook destructuring immediately after object - likely unclosed array. Add "];" before the hook.' 
+    };
   }
   
   return { valid: true };

@@ -223,11 +223,16 @@ ALL hooks (useState, useEffect, useCallback, useMemo, useSellsPayCheckout) MUST 
 - NEVER inside arrays, objects, or JSX
 - BEFORE any return statement
 
-### DATA DECLARATION (CRITICAL)
+### DATA DECLARATION (CRITICAL - "TAPE THE BOX SHUT")
 Data constants (e.g., \`const PRODUCTS = [...]\`) MUST be:
 - DEFINED OUTSIDE the App component (above it)
 - COMPLETELY CLOSED with \`];\` before the component starts
 - NEVER contain hook calls or function definitions inside them
+
+⚠️ MENTAL MODEL: Treat every data array like a physical shipping box.
+You MUST "tape the box shut" with \`];\` BEFORE you write ANY other code.
+If you see a hook like useSellsPayCheckout, STOP and check: "Did I close every array?"
+If you're unsure, scroll up and verify every \`const SOMETHING = [\` has a matching \`];\`.
 
 ### ❌ CASCADE FAILURE EXAMPLES (NEVER DO THIS):
 \`\`\`tsx
