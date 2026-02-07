@@ -242,21 +242,22 @@ function validateCodeStructure(code: string): { valid: boolean; error?: string }
     }
   }
   // Check 13: FILE SIZE LIMIT (Modular Constraint)
-  // Files over 3000 characters cause AI hallucination and bracket errors
+  // Files over 6000 characters cause AI hallucination and bracket errors
   const charCount = code.length;
-  if (charCount > 8000) {
+  if (charCount > 6000) {
     return { 
       valid: false, 
-      error: `Code is too long (${charCount} chars, max 8000). SIMPLIFY: reduce array items, remove sections, or combine components. Long files cause AI bracket hallucinations.` 
+      error: `Code is too long (${charCount} chars, max 6000). ATOMIZE: reduce products to 4-6 items, use simpler animations, fewer sections. The AI cannot reliably complete files this large.` 
     };
   }
   
-  // Check 14: LINE COUNT CHECK (200 line soft limit for AI reliability)
+  // Check 14: STRICT LINE COUNT (150 line hard limit for Zero-Guessing reliability)
+  // This is the #1 cause of truncation - enforce strictly
   const lineCount = lines.length;
-  if (lineCount > 300) {
+  if (lineCount > 150) {
     return { 
       valid: false, 
-      error: `Code is too long (${lineCount} lines, max 300). SIMPLIFY the design: fewer products, simpler animations, less sections.` 
+      error: `Code exceeds 150-line limit (${lineCount} lines). MANDATORY SIMPLIFICATION: max 4 products in arrays, one Hero + one Grid section, remove duplicate styling, compact Tailwind classes. This limit prevents AI truncation errors.` 
     };
   }
   
