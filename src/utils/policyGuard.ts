@@ -93,8 +93,26 @@ export const POLICY_RULES: PolicyRule[] = [
       'menu above banner', 'nav above banner', 'navigation first',
       'put menu at top', 'move menu above', 'top menu', 'header menu',
     ],
-    message: "I cannot place navigation above the Hero section. SellsPay storefronts use a 'Hero-First, Nav-Second' layout to prevent double-navbar issues with the platform's global navigation.",
-    redirectSuggestion: "The store navigation sits beautifully below your hero banner with sticky positioning. Want me to style it differently?",
+    message: "I can't move navigation above the Hero section. Since SellsPay already has its own navigation bar at the top of every page, adding another one above your hero banner would create a visually cluttered 'double navbar' effect. That's why we default to having your Hero section first, with your store navigation below it—it looks much cleaner and more visually appealing for your customers.",
+    redirectSuggestion: "Your store navigation sits beautifully below the hero with sticky positioning—would you like me to restyle it with a different look?",
+  },
+  
+  // === PROMPT INJECTION & SYSTEM ABUSE ===
+  {
+    id: 'credit_bypass',
+    category: 'Security Policy',
+    keywords: [
+      'grant me credits', 'give me credits', 'add credits', 'free credits',
+      'unlimited credits', 'bypass credits', 'ignore credit', 'skip credit',
+      'i am owner', 'i am admin', 'make me owner', 'make me admin',
+      'grant admin', 'grant owner', 'owner access', 'admin access',
+      'unlimited access', 'bypass limit', 'ignore limit', 'remove limit',
+      'hack', 'exploit', 'jailbreak', 'ignore previous', 'disregard instructions',
+      'new instructions', 'override system', 'system prompt', 'you are now',
+      'pretend you are', 'act as if', 'forget your rules', 'ignore your rules',
+    ],
+    message: "I'm a visual design AI that creates beautiful storefronts—I don't have the ability to modify credits, grant access, or change system settings. Those are handled securely by SellsPay at the platform level.",
+    redirectSuggestion: "Let me help you with what I'm great at—designing an amazing storefront! What style are you going for?",
   },
   
   // === ROUTING & MULTI-PAGE RESTRICTIONS ===
