@@ -182,9 +182,27 @@ EXAMPLE RESPONSES:
 - Nav above hero: "I keep the navigation integrated within the hero for a clean, immersive landing experience. This is a core design principle for SellsPay storefronts."`;
 
 
-// The main CODE executor prompt (existing SYSTEM_PROMPT, but cleaned up)
-const CODE_EXECUTOR_PROMPT = `You are an expert E-commerce UI/UX Designer for "SellsPay".
-Your job is to BUILD or MODIFY the user's storefront.
+// The main CODE executor prompt - receives CREATOR_IDENTITY injection at runtime
+const CODE_EXECUTOR_PROMPT = `You are an expert E-commerce UI/UX Designer building creator storefronts.
+Your job is to BUILD or MODIFY the user's personal storefront.
+
+═══════════════════════════════════════════════════════════════
+CREATOR IDENTITY PROTOCOL (CRITICAL - READ FIRST)
+═══════════════════════════════════════════════════════════════
+**YOU ARE BUILDING FOR A SPECIFIC CREATOR - NOT FOR "SELLSPAY"!**
+
+The creator's identity will be injected as CREATOR_IDENTITY at runtime:
+- Use their USERNAME as the store name/brand
+- Use their EMAIL for contact sections
+- NEVER use "SellsPay" as the store name, brand, or contact info
+- SellsPay is the PLATFORM, not the creator's brand
+
+**MANDATORY FOOTER (CANNOT BE REMOVED):**
+Every storefront MUST include a footer with this exact text:
+\`<p className="text-xs text-gray-500">Powered by SellsPay</p>\`
+This is the ONLY place "SellsPay" should appear. Users cannot remove this.
+
+═══════════════════════════════════════════════════════════════
 
 OUTPUT FORMAT PROTOCOL (CRITICAL - ALWAYS START WITH TYPE FLAG):
 - Start response EXACTLY with: "/// TYPE: CODE ///"
@@ -557,7 +575,8 @@ async function executeIntent(
   currentCode: string | null,
   productsContext: any[] | null,
   model: string,
-  apiKey: string
+  apiKey: string,
+  creatorIdentity: { username: string; email: string } | null
 ): Promise<Response> {
   
   // Select the appropriate system prompt based on intent
@@ -583,6 +602,25 @@ async function executeIntent(
   const messages: Array<{role: string; content: string}> = [
     { role: "system", content: systemPrompt },
   ];
+
+  // Inject creator identity for personalization
+  let creatorInjection = '';
+  if (creatorIdentity && (intent.intent === 'BUILD' || intent.intent === 'MODIFY' || intent.intent === 'FIX')) {
+    creatorInjection = `
+═══════════════════════════════════════════════════════════════
+CREATOR_IDENTITY (USE THIS FOR ALL CONTACT/ABOUT/FAQ PAGES):
+═══════════════════════════════════════════════════════════════
+- Store Name: ${creatorIdentity.username}
+- Contact Email: ${creatorIdentity.email}
+- Brand: Use "${creatorIdentity.username}" as the brand name, NOT "SellsPay"
+- For contact sections: Use "${creatorIdentity.email}"
+- For about pages: Reference "${creatorIdentity.username}" as the creator/store owner
+- For FAQ: Frame questions as "${creatorIdentity.username}'s products/store"
+
+CRITICAL: "SellsPay" should ONLY appear in the footer as "Powered by SellsPay".
+═══════════════════════════════════════════════════════════════
+`;
+  }
 
   // Add products context for code generation
   let productsInjection = '';
@@ -612,12 +650,12 @@ Use ONLY these real products. NEVER generate fake placeholder products.
     if (currentCode?.trim()) {
       messages.push({
         role: "user",
-        content: `${productsInjection}${resolvedTargetContext}Here is the current code:\n\n${currentCode}\n\nNow, apply this change: ${prompt}`,
+        content: `${creatorInjection}${productsInjection}${resolvedTargetContext}Here is the current code:\n\n${currentCode}\n\nNow, apply this change: ${prompt}`,
       });
     } else {
       messages.push({
         role: "user",
-        content: `${productsInjection}Create a complete storefront with this description: ${prompt}`,
+        content: `${creatorInjection}${productsInjection}Create a complete storefront with this description: ${prompt}`,
       });
     }
   }
@@ -761,6 +799,33 @@ serve(async (req) => {
     }
 
     // ════════════════════════════════════════════════════════════
+    // FETCH CREATOR IDENTITY (for personalization)
+    // ════════════════════════════════════════════════════════════
+    let creatorIdentity: { username: string; email: string } | null = null;
+    
+    try {
+      // Get user's profile for username
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('user_id', userId)
+        .single();
+      
+      // Get user's email from auth
+      const userEmail = userData.user.email || '';
+      
+      if (profile?.username || userEmail) {
+        creatorIdentity = {
+          username: profile?.username || 'My Store',
+          email: userEmail
+        };
+        console.log(`[Creator Identity] Username: ${creatorIdentity.username}, Email: ${creatorIdentity.email}`);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch creator identity:", e);
+    }
+
+    // ════════════════════════════════════════════════════════════
     // STAGE 1: INTENT CLASSIFICATION (Chain-of-Thought Reasoning)
     // ════════════════════════════════════════════════════════════
     console.log(`[Stage 1] Classifying intent for: "${prompt.slice(0, 100)}..."`);
@@ -785,7 +850,8 @@ serve(async (req) => {
       currentCode || null,
       productsContext || null,
       model,
-      LOVABLE_API_KEY
+      LOVABLE_API_KEY,
+      creatorIdentity
     );
 
     if (!response.ok) {
