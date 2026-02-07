@@ -52,7 +52,7 @@ interface SimpleVibecoderPageProps {
  * - Stable iframe-based preview (no Sandpack)
  */
 export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
-  const { user } = useAuth();
+  const { user, isAdmin, isOwner } = useAuth();
   const navigate = useNavigate();
   
   // Core state
@@ -70,8 +70,10 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [userCredits, setUserCredits] = useState(0);
-  const [isPrivileged, setIsPrivileged] = useState(false);
   const [activeModel, setActiveModel] = useState<AIModel>(AI_MODELS.code[0]);
+  
+  // Owner and admin bypass all credit checks
+  const isPrivileged = isOwner || isAdmin;
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('desktop');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -94,9 +96,6 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
       
       if (data) {
         setProfile(data);
-        // Check if privileged (admin/owner or premium tier)
-        const isPremium = ['pro', 'enterprise', 'creator_pro', 'agency'].includes(data.subscription_tier || '');
-        setIsPrivileged(isPremium);
       }
     };
     
