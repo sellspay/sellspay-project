@@ -59,6 +59,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   // Core state
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [code, setCode] = useState(DEFAULT_CODE);
+  const [streamingCode, setStreamingCode] = useState<string>(''); // Real-time code updates during generation
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -279,6 +280,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     setError(null);
     setCreditsError(null);
     setStreamingLogs([]); // Reset logs
+    setStreamingCode(''); // Reset streaming code
     
     try {
       // Save user message to database
@@ -362,8 +364,15 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
               pushLog(logMsg);
             } else if (event.type === 'plan') {
               pushLog('Plan created');
+            } else if (event.type === 'code_chunk') {
+              // Real-time code streaming - update as chunks arrive
+              const chunk = event.data?.chunk || '';
+              generatedCode += chunk;
+              setStreamingCode(generatedCode); // Update UI in real-time
             } else if (event.type === 'code') {
-              generatedCode = event.data?.code || '';
+              // Final complete code
+              generatedCode = event.data?.code || generatedCode;
+              setStreamingCode(generatedCode);
               summary = event.data?.summary || 'Storefront updated.';
               pushLog('Code generated');
             } else if (event.type === 'error') {
@@ -720,10 +729,24 @@ Analyze the error, identify the root cause in the code above, and regenerate the
                 />
               )}
               {viewMode === 'code' && (
-                <div className="h-full overflow-auto p-4 bg-zinc-950">
+                <div className="h-full overflow-auto p-4 bg-zinc-950 relative">
+                  {/* Show streaming code during generation, otherwise show final code */}
                   <pre className="text-xs text-zinc-300 font-mono whitespace-pre-wrap">
-                    {code}
+                    {isStreaming && streamingCode ? streamingCode : code}
                   </pre>
+                  {/* Streaming indicator */}
+                  {isStreaming && (
+                    <div className="sticky bottom-0 left-0 right-0 py-2 px-3 bg-gradient-to-t from-zinc-950 via-zinc-950/95 to-transparent">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-xs text-green-400 font-mono">
+                          {streamingCode.length > 0 
+                            ? `Writing code... ${streamingCode.split('\n').length} lines`
+                            : 'Generating...'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {viewMode === 'image' && (
