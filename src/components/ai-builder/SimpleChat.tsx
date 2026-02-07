@@ -72,13 +72,13 @@ export function SimpleChat({ messages, isStreaming, streamingLogs = [], children
                   </div>
                 )}
                 
-                {/* Message bubble */}
+                {/* Message bubble - only user messages get the card style */}
                 <div 
                   className={cn(
-                    "max-w-[80%] px-4 py-3 rounded-2xl text-sm break-words whitespace-pre-wrap",
+                    "max-w-[85%] text-sm break-words whitespace-pre-wrap",
                     msg.role === 'user' 
-                      ? 'bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white rounded-br-md' 
-                      : 'bg-zinc-800 text-zinc-200 rounded-bl-md border border-zinc-700/50'
+                      ? 'px-4 py-3 bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white rounded-2xl rounded-br-md' 
+                      : 'text-zinc-300 py-1'
                   )}
                 >
                   {msg.content}
@@ -93,7 +93,7 @@ export function SimpleChat({ messages, isStreaming, streamingLogs = [], children
               <div className="shrink-0 w-8 h-8 rounded-lg overflow-hidden">
                 <img src={sellspayLogo} alt="AI" className="w-full h-full object-cover" />
               </div>
-              <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-zinc-800 border border-zinc-700/50 min-w-[200px]">
+              <div className="min-w-[200px]">
                 {streamingLogs.length > 0 ? (
                   <div className="space-y-1">
                     {streamingLogs.map((log, i) => (

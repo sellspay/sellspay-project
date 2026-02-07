@@ -431,11 +431,35 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     }
   }, [inputValue, isStreaming, activeProjectId, code, profileId, user]);
   
-  // Handle preview errors
+  // Handle preview errors - show in error state
   const handlePreviewError = (errorMsg: string) => {
     console.warn('[Preview Error]', errorMsg);
-    // Could trigger auto-heal here in the future
+    setError(errorMsg);
   };
+  
+  // Handle auto-fix - AI analyzes and fixes the error
+  const handleFixError = useCallback(async (errorMsg: string) => {
+    if (!user || isStreaming) return;
+    
+    // Build a fix prompt
+    const fixPrompt = `Fix the following build error in the code:\n\nError: ${errorMsg}\n\nAnalyze the error, identify the root cause, and regenerate the code with the fix applied. Keep all existing functionality intact.`;
+    
+    // Add AI message to chat
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: `🔧 Auto-fixing build error...`,
+    };
+    setMessages(prev => [...prev, userMessage]);
+    
+    // Trigger build with fix prompt
+    handleSendMessage({
+      isPlanMode: false,
+      model: activeModel,
+      attachments: [],
+      promptOverride: fixPrompt,
+    });
+  }, [user, isStreaming, activeModel, handleSendMessage]);
   
   // Handle sign out
   const handleSignOut = async () => {
@@ -535,6 +559,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
                   code={code}
                   isLoading={isStreaming}
                   onError={handlePreviewError}
+                  onFixError={handleFixError}
                 />
               )}
               {viewMode === 'code' && (

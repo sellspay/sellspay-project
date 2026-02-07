@@ -172,10 +172,10 @@ export function SimpleSidebar({
     setEditName('');
   };
   
-  // Collapsed view
+  // Collapsed view - show project icons
   if (collapsed) {
     return (
-      <div className="w-12 h-full bg-zinc-950 border-r border-zinc-800 flex flex-col items-center py-4">
+      <div className="w-14 h-full bg-zinc-950 border-r border-zinc-800 flex flex-col items-center py-4">
         <button
           onClick={onToggleCollapse}
           className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors mb-4"
@@ -186,11 +186,33 @@ export function SimpleSidebar({
         
         <button
           onClick={onCreateProject}
-          className="p-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+          className="p-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors mb-4"
           title="New Project"
         >
           <Plus size={18} />
         </button>
+        
+        {/* Project icons */}
+        <div className="flex-1 flex flex-col items-center gap-1.5 overflow-y-auto py-2 w-full px-1.5">
+          {projects.slice(0, 8).map((project) => (
+            <button
+              key={project.id}
+              onClick={() => onSelectProject(project.id)}
+              className={cn(
+                "w-9 h-9 rounded-lg flex items-center justify-center transition-all shrink-0",
+                activeProjectId === project.id
+                  ? "bg-violet-600 text-white ring-2 ring-violet-400/50"
+                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
+              )}
+              title={project.name}
+            >
+              <FolderOpen size={16} />
+            </button>
+          ))}
+          {projects.length > 8 && (
+            <div className="text-[10px] text-zinc-500 mt-1">+{projects.length - 8}</div>
+          )}
+        </div>
       </div>
     );
   }
