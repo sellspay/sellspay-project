@@ -665,9 +665,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         // Force Sandpack remount
         setRefreshKey(prev => prev + 1);
       }
-      // Second timeout (10s total): Nuclear option - nuke caches
+      // Second timeout (10s total): Nuclear option - nuke caches and switch to code view
       else if (retryCount >= 2) {
-        console.log('[Recovery] 🔥 Sandpack still unresponsive - nuking caches...');
+        console.log('[Recovery] 🔥 Sandpack still unresponsive - nuking caches and switching to code view...');
         try {
           await nukeSandpackCache();
         } catch (e) {
@@ -677,7 +677,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         // Force complete remount with new key
         setRefreshKey(prev => prev + 1);
         setResetKey(prev => prev + 1);
-        toast.warning('Preview recovered after timeout. If issues persist, try creating a new project.');
+        // 🛟 SAFE MODE: Switch to code view so user can see their code
+        setViewMode('code');
+        toast.warning('Preview crashed. Switched to Code view. Try "Refresh" in the header to retry.', {
+          duration: 6000,
+        });
       }
     }, 5000);
     
@@ -1138,22 +1142,27 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
   // 🛑 THE GATEKEEPER 🛑
   // Prevent "flash of old content" when switching projects.
-  // Core rule: NEVER render the workspace with files/messages that belong to a different project.
-  // We gate on `contentProjectId` (the project whose content is actually mounted) instead of
-  // only async flags, so we also cover the 1-frame gap right after the URL/activeProjectId flips.
   // 
-  // CRITICAL: The PRIMARY check is contentProjectId !== activeProjectId.
-  // This is the ONLY reliable way to know if the correct content is mounted.
-  // 🤝 HANDSHAKE: Also wait for Sandpack to signal it's ready (isWaitingForPreviewMount)
-  const isProjectTransitioning = Boolean(
+  // CRITICAL FIX: We now have TWO separate transition states:
+  // 1. isProjectDataTransitioning - Blocks ENTIRE UI (project switch in progress)
+  // 2. isPreviewLoading - Only blocks PREVIEW (Sandpack still initializing)
+  // This ensures CHAT remains visible even when preview crashes/hangs.
+  
+  // Data-level transition (blocks everything)
+  const isProjectDataTransitioning = Boolean(
     activeProjectId && (
       contentProjectId !== activeProjectId ||
       isVerifyingProject ||
       messagesLoading ||
-      isWaitingForPreviewMount || // Wait for Sandpack's onReady signal
       (lockedProjectId && lockedProjectId !== activeProjectId)
     )
   );
+  
+  // Preview-only transition (only blocks preview pane, chat stays visible)
+  const isPreviewLoading = isWaitingForPreviewMount && !isProjectDataTransitioning;
+  
+  // Combined check for backward compat (used by transition curtain opacity)
+  const isProjectTransitioning = isProjectDataTransitioning;
 
   // === AUTO-SELECT: If no active project but projects exist, auto-select first one ===
   // This runs as an effect to avoid calling selectProject during render (infinite loop)
@@ -1280,9 +1289,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           onSignOut={handleSignOut}
         />
 
-        {/* Split View Content - Chat + Preview always visible */}
-        {/* 🛑 GATEKEEPER MOVED HERE: Show loader INSIDE content area, not full screen */}
-        {isProjectTransitioning ? (
+        {/* 🛑 GATEKEEPER: Only show full-screen loader for DATA transitions (not preview) */}
+        {isProjectDataTransitioning ? (
           <div className="flex-1 flex items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-3">
               <div className="relative">
@@ -1330,6 +1338,19 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 <div
                   className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-800 shadow-2xl bg-zinc-950' : 'w-full'} relative`}
                 >
+
+                  {/* Preview-only loading overlay (chat stays visible) */}
+                  {isPreviewLoading && (
+                    <div className="absolute inset-0 z-30 bg-zinc-950 flex items-center justify-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="relative">
+                          <div className="w-8 h-8 border-2 border-primary/30 rounded-full" />
+                          <div className="absolute inset-0 w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Initializing preview...</p>
+                      </div>
+                    </div>
+                  )}
 
                   <PreviewErrorBoundary
                     onAutoFix={handleAutoFix}
