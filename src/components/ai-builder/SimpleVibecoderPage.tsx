@@ -11,7 +11,7 @@ import { CanvasToolbar, type ViewMode, type DeviceMode } from './CanvasToolbar';
 import { InsufficientCreditsCard, isCreditsError, parseCreditsError } from './InsufficientCreditsCard';
 import { LovableHero } from './LovableHero';
 import { testCodeInShadow, silentHeal } from './ShadowTester';
-import { ChevronLeft, ChevronRight, AlertCircle, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
@@ -702,9 +702,9 @@ Analyze the error, identify the root cause in the code above, and regenerate the
             </div>
           </div>
           
-          {/* Chat pane - collapsible */}
+          {/* Chat pane - collapsible - HIGHEST Z-INDEX to prevent overlay collision */}
           {chatCollapsed ? (
-            <div className="w-14 border-l border-border/50 flex flex-col items-center justify-between py-4 bg-background">
+            <div className="w-14 border-l border-border/50 flex flex-col items-center justify-between py-4 bg-background relative z-50">
               <button
                 onClick={() => setChatCollapsed(false)}
                 className="p-2.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -718,7 +718,7 @@ Analyze the error, identify the root cause in the code above, and regenerate the
               <div className="h-8" />
             </div>
           ) : (
-            <div className="w-[400px] border-l border-border/50 flex flex-col min-h-0 bg-background">
+            <div className="w-[400px] border-l border-border/50 flex flex-col min-h-0 bg-background relative z-50">
               {/* Project header in chat */}
               <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -739,13 +739,7 @@ Analyze the error, identify the root cause in the code above, and regenerate the
                 </button>
               </div>
               
-              {/* Error display - hidden during auto-fix and streaming */}
-              {error && !creditsError && !isAutoFixing && !isStreaming && (
-                <div className="p-3 bg-destructive/10 border-b border-destructive/20 flex items-start gap-2">
-                  <AlertCircle size={16} className="text-destructive shrink-0 mt-0.5" />
-                  <p className="text-sm text-destructive">{error}</p>
-                </div>
-              )}
+              {/* Error display REMOVED - all errors are centralized in SimplePreview only */}
               
               {/* Credits error */}
               {creditsError && (
