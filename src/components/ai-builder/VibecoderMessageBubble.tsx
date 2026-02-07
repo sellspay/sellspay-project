@@ -152,15 +152,13 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
         {hasCode && !isStreaming && (
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800/50">
             {canRestore && onRestoreCode && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1.5 text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10"
+              <button
+                className="p-1.5 text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
                 onClick={handleRevertClick}
+                title="Revert to this version"
               >
-                <Undo2 className="h-3 w-3" />
-                Revert to this version
-              </Button>
+                <Undo2 className="h-3.5 w-3.5" />
+              </button>
             )}
             <span className="text-[10px] text-zinc-600 italic">Code applied to preview</span>
           </div>
