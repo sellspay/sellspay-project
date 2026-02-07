@@ -234,12 +234,23 @@ Before outputting code, mentally count:
 - Every ( must have a matching )
 A SINGLE missing bracket = build crash = wasted credits = failure
 
-### ⛔ ATOMIZATION RULE
-If your code would exceed 200 lines, you MUST simplify:
-- Reduce the number of products/items in arrays
-- Simplify animations and effects
-- Remove redundant sections
-Long files cause AI hallucination. Keep it tight.
+### ⛔ ATOMIZATION RULE (MODULAR ENFORCEMENT)
+If your output would exceed 150 lines, you MUST simplify:
+- Reduce the number of products/items in arrays to maximum 4-6 items
+- Simplify animations - use simple opacity/y transitions only
+- Remove redundant sections - focus on Hero + Products + Footer
+- Combine similar elements instead of repeating
+- Use compact Tailwind classes (no redundant utilities)
+
+LONG FILES CAUSE AI HALLUCINATION AND BRACKET ERRORS.
+Keep it tight: < 150 lines is ideal, < 200 is acceptable, > 200 is FAILURE.
+
+### ⛔ SILENT COMPLETION CHECK
+Before outputting, mentally trace through your code:
+1. Count opening braces { and closing braces }
+2. Count opening brackets [ and closing brackets ]
+3. Count opening parens ( and closing parens )
+IF ANY COUNT IS UNBALANCED, FIX IT BEFORE OUTPUTTING.
 
 ## ═══════════════════════════════════════════════════════════════
 ## 🔒 GOLDEN TEMPLATE (MANDATORY STRUCTURE)
@@ -576,8 +587,8 @@ serve(async (req: Request) => {
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
         ],
-        temperature: 0.5, // Lower for more consistent, complete outputs
-        max_tokens: 12000, // Increased to prevent truncation
+        temperature: healingContext ? 0.2 : 0.4, // Lower for healing mode, moderate for generation
+        max_tokens: 16000, // Increased further to prevent truncation
         stream: true,
       }),
     });

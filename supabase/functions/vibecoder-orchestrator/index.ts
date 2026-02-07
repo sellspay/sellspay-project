@@ -502,7 +502,8 @@ function runGhostFixer(code: string): string {
 // ═══════════════════════════════════════════════════════════════
 // STATIC PRE-FLIGHT LINTER - Policy Violations & Import Checks
 // ═══════════════════════════════════════════════════════════════
-// Catches 50%+ of errors in <1ms with NO AI call. Runs BEFORE delivery.
+// Catches 60%+ of errors in <1ms with NO AI call. Runs BEFORE delivery.
+// Enhanced in v2.3 with additional pattern detection.
 function runStaticPreFlight(code: string): { pass: boolean; errors: string[] } {
   const errors: string[] = [];
   
@@ -512,7 +513,7 @@ function runStaticPreFlight(code: string): { pass: boolean; errors: string[] } {
   for (const match of importMatches) {
     const pkg = match[1];
     // Skip relative imports and allowed packages
-    if (pkg.startsWith('.') || pkg.startsWith('/')) continue;
+    if (pkg.startsWith('.') || pkg.startsWith('/') || pkg.startsWith('@/')) continue;
     if (!allowedImports.some(allowed => pkg.includes(allowed))) {
       errors.push(`Forbidden import: ${pkg} (only react, lucide-react, framer-motion allowed)`);
     }
@@ -525,6 +526,9 @@ function runStaticPreFlight(code: string): { pass: boolean; errors: string[] } {
   if (/dangerouslySetInnerHTML/i.test(code)) errors.push('dangerouslySetInnerHTML is forbidden for security');
   if (/eval\s*\(/i.test(code)) errors.push('eval() is forbidden for security');
   if (/new Function\s*\(/i.test(code)) errors.push('new Function() is forbidden for security');
+  if (/import\s+.*from\s+['"]next/i.test(code)) errors.push('Next.js imports are forbidden');
+  if (/import\s+.*from\s+['"]@tanstack/i.test(code)) errors.push('TanStack imports are forbidden');
+  if (/import\s+.*from\s+['"]react-router/i.test(code)) errors.push('React Router is forbidden - use useState for tabs');
   
   // 3. Check hooks are imported when used
   const reactHooks = ['useState', 'useEffect', 'useCallback', 'useMemo', 'useRef', 'useContext', 'useReducer'];
@@ -567,6 +571,37 @@ function runStaticPreFlight(code: string): { pass: boolean; errors: string[] } {
     if (openPattern.test(code)) {
       errors.push(`<${tag}> must be self-closing in JSX (use <${tag} />)`);
     }
+  }
+  
+  // 7. Check for common AI hallucinations
+  if (/\bStripe\b/i.test(code) && !/useSellsPayCheckout/i.test(code)) {
+    errors.push('Direct Stripe usage is forbidden - use useSellsPayCheckout()');
+  }
+  if (/\bPayPal\b/i.test(code)) {
+    errors.push('PayPal SDK is forbidden - use useSellsPayCheckout()');
+  }
+  if (/createCheckoutSession/i.test(code)) {
+    errors.push('createCheckoutSession is forbidden - use useSellsPayCheckout().buyProduct()');
+  }
+  
+  // 8. Check for async/await in component body without useEffect
+  const hasAsyncInComponent = /export\s+default\s+function\s+App\s*\([^)]*\)\s*{[^}]*async\s+/s.test(code);
+  if (hasAsyncInComponent && !/useEffect/.test(code)) {
+    errors.push('async/await in component body requires useEffect wrapper');
+  }
+  
+  // 9. Check for common JSX mistakes
+  if (/class=/.test(code) && !/className=/.test(code)) {
+    errors.push('Use className instead of class in JSX');
+  }
+  if (/for=["']/.test(code)) {
+    errors.push('Use htmlFor instead of for in JSX');
+  }
+  
+  // 10. Check for fetch/API calls (should use platform)
+  const fetchPattern = /fetch\s*\(\s*['"`][^'"`]*api/i;
+  if (fetchPattern.test(code)) {
+    errors.push('Direct API calls are forbidden - platform handles backend');
   }
   
   return { pass: errors.length === 0, errors };

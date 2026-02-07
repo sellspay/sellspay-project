@@ -400,17 +400,20 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
       }
 
       // ═══════════════════════════════════════════════════════════════
-      // PHASE 3: SHADOW MOUNT + SILENT RETRY LOOP
+      // PHASE 3: SHADOW MOUNT + SILENT RETRY LOOP (Zero-Guessing Architecture)
       // ═══════════════════════════════════════════════════════════════
       // Test code in hidden iframe BEFORE showing to user. If it fails,
-      // silently heal and retry up to 2 times. User only sees final result.
+      // silently heal and retry up to 3 times. User only sees final result.
       if (generatedCode) {
         let codeToDeliver = generatedCode;
         let shadowPassed = false;
-        const maxSilentRetries = 2;
+        const maxSilentRetries = 3; // Increased from 2 for better recovery
         
         for (let retry = 0; retry <= maxSilentRetries; retry++) {
-          collectedLogs.push(retry > 0 ? `Silent retry ${retry}...` : 'Shadow testing...');
+          const logMsg = retry === 0 
+            ? 'Shadow testing...' 
+            : `Auto-healing attempt ${retry}/${maxSilentRetries}...`;
+          collectedLogs.push(logMsg);
           setStreamingLogs([...collectedLogs]);
           
           // Run shadow test
@@ -424,8 +427,9 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           }
           
           // Shadow test failed
+          const errorPreview = shadowResult.error?.substring(0, 80) || 'Unknown error';
           console.log(`[Vibecoder] Shadow test failed (attempt ${retry + 1}):`, shadowResult.error);
-          collectedLogs.push(`⚠️ Shadow error: ${shadowResult.error?.substring(0, 60)}...`);
+          collectedLogs.push(`⚠️ ${errorPreview}...`);
           setStreamingLogs([...collectedLogs]);
           
           // If we have retries left, try silent heal
@@ -434,29 +438,39 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
             const { data: { session } } = await supabase.auth.getSession();
             
             if (session?.access_token) {
+              // Build comprehensive error context for the heal agent
+              const errorContext = `${shadowResult.error}${shadowResult.stack ? `\n\nStack: ${shadowResult.stack.substring(0, 500)}` : ''}`;
+              
+              collectedLogs.push('🔧 Applying surgical fix...');
+              setStreamingLogs([...collectedLogs]);
+              
               const healedCode = await silentHeal(
                 supabaseUrl,
                 session.access_token,
                 codeToDeliver,
-                shadowResult.error || 'Unknown runtime error',
+                errorContext,
                 profileId
               );
               
-              if (healedCode && healedCode.length > 50) {
+              if (healedCode && healedCode.length > 100) {
                 codeToDeliver = healedCode;
-                collectedLogs.push('🔧 Silent heal applied');
+                collectedLogs.push('✓ Fix applied, re-testing...');
                 setStreamingLogs([...collectedLogs]);
               } else {
-                collectedLogs.push('⚠️ Silent heal returned empty');
+                collectedLogs.push('⚠️ Heal returned insufficient code');
                 setStreamingLogs([...collectedLogs]);
-                break; // Can't heal, stop retrying
+                // Don't break - try again, the AI might do better
               }
+            } else {
+              collectedLogs.push('⚠️ No auth session for healing');
+              setStreamingLogs([...collectedLogs]);
+              break;
             }
           }
         }
         
-        // Only apply/save code if shadow testing passed.
-        // This prevents broken/truncated generations from "taking over" the workspace UI.
+        // Apply code and save - even if shadow failed, we still save to history
+        // but with a clear failure message
         if (shadowPassed) {
           setCode(codeToDeliver);
           setRefreshKey(k => k + 1); // Force preview refresh
@@ -472,11 +486,17 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
             },
             { onConflict: 'project_id,file_path' }
           );
+          
+          collectedLogs.push('✓ Code saved successfully');
+          setStreamingLogs([...collectedLogs]);
+        } else {
+          collectedLogs.push('✗ Max retries reached - code not applied');
+          setStreamingLogs([...collectedLogs]);
         }
 
         // Persist build logs inside the assistant message so they remain in chat history
         const logBlock = collectedLogs.length
-          ? `\n\nBuild log:\n${collectedLogs.map(l => `- ${l}`).join('\n')}`
+          ? `\n\n**Build log:**\n${collectedLogs.map(l => `- ${l}`).join('\n')}`
           : '';
 
         const assistantMessage: ChatMessage = {
@@ -484,7 +504,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           role: 'assistant',
           content: shadowPassed
             ? `${summary}${logBlock}`
-            : `Build failed — I did not apply the generated code (to avoid breaking your workspace).${logBlock}`,
+            : `**Build failed** — The generated code had runtime errors that couldn't be auto-fixed. Try simplifying your request or being more specific about what you want.${logBlock}`,
         };
 
         setMessages(prev => [...prev, assistantMessage]);
@@ -499,7 +519,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
         if (shadowPassed) {
           toast.success('Changes applied!');
         } else {
-          toast.error('Build failed — code not applied');
+          toast.error('Build failed — try a simpler request');
         }
       }
 
