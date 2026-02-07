@@ -1,5 +1,5 @@
-import { useRef, useEffect, memo } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useRef, useEffect, useState, memo } from 'react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 
 interface SimplePreviewProps {
@@ -25,12 +25,16 @@ export const SimplePreview = memo(function SimplePreview({
   showPlaceholder = false
 }: SimplePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   
   // Check if we should show placeholder (default code or empty)
   const isDefaultCode = code.includes('Welcome to Vibecoder') || !code.trim();
   
   useEffect(() => {
     if (!iframeRef.current || !code) return;
+    
+    // Reset error state
+    setPreviewError(null);
 
     // Sanitize generated code for iframe execution (no module loader in srcdoc)
     const sanitize = (raw: string) => {
@@ -49,6 +53,19 @@ export const SimplePreview = memo(function SimplePreview({
     };
 
     const safeCode = sanitize(code);
+    
+    // Check for obvious syntax issues before even trying
+    const openBraces = (safeCode.match(/\{/g) || []).length;
+    const closeBraces = (safeCode.match(/\}/g) || []).length;
+    const openParens = (safeCode.match(/\(/g) || []).length;
+    const closeParens = (safeCode.match(/\)/g) || []).length;
+    
+    if (Math.abs(openBraces - closeBraces) > 2 || Math.abs(openParens - closeParens) > 2) {
+      const errMsg = `Syntax error: Unbalanced brackets detected (braces: ${openBraces}/${closeBraces}, parens: ${openParens}/${closeParens}). The generated code is incomplete.`;
+      setPreviewError(errMsg);
+      if (onError) onError(errMsg);
+      return;
+    }
 
     // Create a self-contained HTML document with React + Tailwind CDN
     const html = `<!DOCTYPE html>
@@ -57,10 +74,10 @@ export const SimplePreview = memo(function SimplePreview({
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Preview</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"><\/script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><\/script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { 
@@ -80,11 +97,21 @@ export const SimplePreview = memo(function SimplePreview({
       font-family: monospace;
       font-size: 14px;
       white-space: pre-wrap;
+      word-break: break-word;
     }
   </style>
 </head>
 <body>
   <div id="root"></div>
+  <script>
+    // Catch Babel compilation errors before they crash silently
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      document.getElementById('root').innerHTML = 
+        '<div class="error-display"><strong>Compilation Error:</strong>\\n' + msg + '</div>';
+      window.parent.postMessage({ type: 'preview-error', error: msg }, '*');
+      return true;
+    };
+  </script>
   <script type="text/babel" data-presets="react,typescript">
     try {
       // Simple icon components as SVG (no external dependency)
@@ -100,22 +127,29 @@ export const SimplePreview = memo(function SimplePreview({
           menu: '<line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>',
           play: '<polygon points="5 3 19 12 5 21 5 3"/>',
           zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+          search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+          user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+          home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+          chevronRight: '<polyline points="9 18 15 12 9 6"/>',
+          chevronLeft: '<polyline points="15 18 9 12 15 6"/>',
+          chevronDown: '<polyline points="6 9 12 15 18 9"/>',
+          plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+          minus: '<line x1="5" y1="12" x2="19" y2="12"/>',
+          settings: '<circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
         };
-        return (
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width={size} 
-            height={size} 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            className={className}
-            dangerouslySetInnerHTML={{ __html: icons[name] || icons.star }}
-          />
-        );
+        return React.createElement('svg', {
+          xmlns: 'http://www.w3.org/2000/svg',
+          width: size,
+          height: size,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 2,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          className: className,
+          dangerouslySetInnerHTML: { __html: icons[name] || icons.star }
+        });
       };
       
       // User's generated code (sanitized)
@@ -137,19 +171,22 @@ export const SimplePreview = memo(function SimplePreview({
       // Also notify parent window
       window.parent.postMessage({ type: 'preview-error', error: err.message || String(err) }, '*');
     }
-  </script>
+  <\/script>
 </body>
 </html>`;
     
     // Write to iframe - simple, no mutation observer conflicts
     iframeRef.current.srcdoc = html;
-  }, [code]);
+  }, [code, onError]);
   
   // Listen for error messages from iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'preview-error' && onError) {
-        onError(event.data.error);
+      if (event.data?.type === 'preview-error') {
+        setPreviewError(event.data.error);
+        if (onError) {
+          onError(event.data.error);
+        }
       }
     };
     
@@ -173,6 +210,31 @@ export const SimplePreview = memo(function SimplePreview({
           <p className="text-muted-foreground text-sm">
             Describe your vision to start building
           </p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show error state if there's a preview error and not loading
+  if (previewError && !isLoading) {
+    return (
+      <div className="h-full w-full relative bg-background flex flex-col items-center justify-center p-8">
+        <div className="max-w-md text-center">
+          <div className="w-16 h-16 mb-6 mx-auto rounded-2xl bg-red-500/10 flex items-center justify-center border border-red-500/30">
+            <AlertTriangle className="w-8 h-8 text-red-400" />
+          </div>
+          
+          <h3 className="text-xl font-semibold text-foreground mb-2">
+            Build Error
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            The generated code has syntax errors. Try regenerating or simplifying your request.
+          </p>
+          <div className="p-4 rounded-lg bg-red-950/50 border border-red-500/30 text-left">
+            <pre className="text-xs text-red-300 whitespace-pre-wrap break-words font-mono">
+              {previewError}
+            </pre>
+          </div>
         </div>
       </div>
     );
