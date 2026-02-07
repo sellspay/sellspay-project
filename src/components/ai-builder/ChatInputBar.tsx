@@ -288,81 +288,97 @@ export function ChatInputBar({
   // Ref to track latest transcript for onend handler (closure issue)
   const transcriptRef = useRef("");
 
-  // Speech-to-Text Handler with REAL-TIME interim results
+  // Speech-to-Text Handler with REAL-TIME live typing in the input
   const toggleSpeechRecognition = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
-      // Import toast dynamically to avoid dependency issues
       import('sonner').then(({ toast }) => {
         toast.error('Speech recognition is not supported in your browser. Please try Chrome, Edge, or Safari.');
       });
       return;
     }
 
+    // If already listening, stop and finalize
     if (isListening && speechRecognitionRef.current) {
       speechRecognitionRef.current.stop();
-      setIsListening(false);
-      return;
+      return; // onend will handle cleanup
     }
 
     // Save current text BEFORE we start listening (so we append to it)
     promptBeforeSpeechRef.current = value;
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true; // CRITICAL: Show text AS you speak
-    recognition.lang = 'en-US';
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true; // CRITICAL: Show text AS you speak
+      recognition.lang = 'en-US';
 
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
+      recognition.onstart = () => {
+        console.log('[Speech] Recognition started');
+        setIsListening(true);
+        setTranscript('');
+        transcriptRef.current = '';
+      };
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
 
-      // Loop through results - Speech API returns fragments
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcriptText = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcriptText;
-        } else {
-          interimTranscript += transcriptText;
+        // Loop through ALL results (not just from resultIndex)
+        for (let i = 0; i < event.results.length; i++) {
+          const transcriptText = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcriptText;
+          } else {
+            interimTranscript += transcriptText;
+          }
         }
-      }
 
-      // Update the POPUP with live speech, NOT the main input (prevents resize loops)
-      const currentTranscript = finalTranscript + interimTranscript;
-      setTranscript(currentTranscript);
-      transcriptRef.current = currentTranscript; // Keep ref in sync for onend
+        // Combined live transcript
+        const liveText = finalTranscript + interimTranscript;
+        setTranscript(liveText);
+        transcriptRef.current = liveText;
 
-      // Update base text when final transcript is confirmed
-      if (finalTranscript) {
-        const spacing = promptBeforeSpeechRef.current ? ' ' : '';
-        promptBeforeSpeechRef.current += spacing + finalTranscript;
-      }
-    };
+        // 🎯 LIVE UPDATE: Show in the ACTUAL input as you speak
+        const baseText = promptBeforeSpeechRef.current;
+        const spacing = baseText ? ' ' : '';
+        const fullText = baseText + spacing + liveText;
+        onChange(fullText);
+      };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error);
-      setIsListening(false);
-    };
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error('[Speech] Error:', event.error, event.message);
+        setIsListening(false);
+        
+        import('sonner').then(({ toast }) => {
+          if (event.error === 'not-allowed') {
+            toast.error('Microphone access denied. Please allow microphone permission in your browser.');
+          } else if (event.error === 'no-speech') {
+            toast.info('No speech detected. Try speaking closer to your microphone.');
+          } else {
+            toast.error(`Speech recognition error: ${event.error}`);
+          }
+        });
+      };
 
-    recognition.onend = () => {
-      setIsListening(false);
-      // Use ref for latest transcript (closure issue with state)
-      const finalText = transcriptRef.current.trim();
-      if (finalText) {
-        const spacing = promptBeforeSpeechRef.current ? ' ' : '';
-        onChange(promptBeforeSpeechRef.current + spacing + finalText);
-      }
-      setTranscript("");
-      transcriptRef.current = "";
-    };
+      recognition.onend = () => {
+        console.log('[Speech] Recognition ended');
+        setIsListening(false);
+        setTranscript('');
+        transcriptRef.current = '';
+        // Text is already in the input from live updates, no need to set again
+      };
 
-    speechRecognitionRef.current = recognition;
-    recognition.start();
+      speechRecognitionRef.current = recognition;
+      recognition.start();
+      console.log('[Speech] Starting recognition...');
+    } catch (err) {
+      console.error('[Speech] Failed to start:', err);
+      import('sonner').then(({ toast }) => {
+        toast.error('Failed to start speech recognition. Please try again.');
+      });
+    }
   }, [isListening, value, onChange]);
 
   // Cleanup speech recognition on unmount
@@ -469,19 +485,25 @@ export function ChatInputBar({
   return (
     <div className="flex-shrink-0 px-4 py-3 bg-background relative">
       
-      {/* SPEECH POPUP BUBBLE (Floats ABOVE input) */}
+      {/* SPEECH INDICATOR (Floats ABOVE input) */}
       {isListening && (
         <div className="absolute bottom-full left-4 right-4 mb-2 z-20 animate-in slide-in-from-bottom-2 fade-in duration-200">
-          <div className="bg-zinc-800/95 border border-zinc-700 p-3 rounded-xl shadow-xl flex items-center gap-3 backdrop-blur-md">
-            <div className="p-1.5 bg-red-500/10 rounded-full animate-pulse text-red-500 shrink-0">
-              <Mic size={16} />
+          <div className="bg-zinc-800/95 border border-red-500/30 p-3 rounded-xl shadow-xl flex items-center gap-3 backdrop-blur-md">
+            <div className="p-1.5 bg-red-500/20 rounded-full animate-pulse shrink-0">
+              <Mic size={16} className="text-red-400" />
             </div>
-            <p className="text-sm text-white font-medium flex-1 truncate">
-              {transcript || <span className="text-zinc-500 italic">Listening...</span>}
-            </p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-red-400 font-medium mb-0.5">
+                🎙️ Listening - speak now...
+              </p>
+              <p className="text-sm text-white/80 truncate">
+                {transcript || <span className="text-zinc-500 italic">Waiting for speech...</span>}
+              </p>
+            </div>
             <button 
               onClick={toggleSpeechRecognition} 
-              className="p-1 hover:bg-zinc-700 rounded-full text-zinc-500 hover:text-white transition-colors"
+              className="p-1.5 hover:bg-zinc-700 rounded-full text-zinc-400 hover:text-white transition-colors shrink-0"
+              title="Stop recording"
             >
               <X size={14} />
             </button>
