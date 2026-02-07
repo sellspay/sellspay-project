@@ -143,6 +143,14 @@ export function VibecoderChat({
   const [isApprovingPlan, setIsApprovingPlan] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Reset approval state when a new plan arrives or plan is cleared
+  useEffect(() => {
+    if (pendingPlan) {
+      // New plan arrived - reset to pending (not executing)
+      setIsApprovingPlan(false);
+    }
+  }, [pendingPlan]);
+
   // Rotate placeholder examples
   useEffect(() => {
     const interval = setInterval(() => {
