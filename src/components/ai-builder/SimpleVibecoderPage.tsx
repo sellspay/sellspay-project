@@ -501,24 +501,43 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
         // Apply code and save - even if shadow failed, we still save to history
         // but with a clear failure message
         if (shadowPassed) {
+          // ═══════════════════════════════════════════════════════════════
+          // ATOMIC STATUS SYNC: Update both DB and UI in one operation
+          // This prevents "ghost fix button" from appearing after project switch
+          // by ensuring the is_broken flag is set BEFORE the UI updates
+          // ═══════════════════════════════════════════════════════════════
+          await Promise.all([
+            // Save code to project_files
+            supabase.from('project_files').upsert(
+              {
+                project_id: projectId,
+                profile_id: profileId,
+                file_path: '/App.tsx',
+                content: codeToDeliver,
+                version: 1,
+              },
+              { onConflict: 'project_id,file_path' }
+            ),
+            // Mark project as NOT broken (success state)
+            supabase.from('vibecoder_projects').update({
+              is_broken: false,
+              last_success_at: new Date().toISOString(),
+            }).eq('id', projectId),
+          ]);
+          
+          // NOW safe to update UI (after DB confirms)
           setCode(codeToDeliver);
+          setError(null); // Clear any stale errors
           setRefreshKey(k => k + 1); // Force preview refresh
-
-          // Save to database SCOPED TO THIS PROJECT
-          await supabase.from('project_files').upsert(
-            {
-              project_id: projectId,
-              profile_id: profileId,
-              file_path: '/App.tsx',
-              content: codeToDeliver,
-              version: 1,
-            },
-            { onConflict: 'project_id,file_path' }
-          );
           
           collectedLogs.push('✓ Code saved successfully');
           setStreamingLogs([...collectedLogs]);
         } else {
+          // Mark project as broken so Fix button persists across refreshes
+          await supabase.from('vibecoder_projects').update({
+            is_broken: true,
+          }).eq('id', projectId);
+          
           collectedLogs.push('✗ Max retries reached - code not applied');
           setStreamingLogs([...collectedLogs]);
         }
@@ -758,6 +777,31 @@ Analyze the error, identify the root cause in the code above, and regenerate the
           onExit={() => navigate('/')}
           onTweak={() => toast.info('Tweak modal coming soon!')}
           onPublish={() => toast.info('Publish flow coming soon!')}
+          onResetState={async () => {
+            // Manual state refresh - escape hatch for stuck UI
+            if (activeProjectId) {
+              toast.info('Refreshing project state...');
+              purgeProject(activeProjectId);
+              resetProjectState();
+              
+              // Refetch fresh code from database
+              const { data } = await supabase
+                .from('project_files')
+                .select('content')
+                .eq('project_id', activeProjectId)
+                .eq('file_path', '/App.tsx')
+                .maybeSingle();
+              
+              if (data?.content) {
+                setCode(data.content);
+              }
+              
+              setRefreshKey(k => k + 1);
+              toast.success('Project state refreshed!');
+            } else {
+              toast.warning('No active project to refresh');
+            }
+          }}
         />
         
         {/* Main workspace */}
@@ -775,6 +819,7 @@ Analyze the error, identify the root cause in the code above, and regenerate the
                   isLoading={isStreaming}
                   onError={handlePreviewError}
                   onFixError={handleFixError}
+                  projectId={activeProjectId}
                 />
               )}
               {viewMode === 'code' && (

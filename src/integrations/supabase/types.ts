@@ -2482,7 +2482,9 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_broken: boolean | null
           last_edited_at: string
+          last_success_at: string | null
           name: string | null
           thumbnail_url: string | null
           updated_at: string
@@ -2491,7 +2493,9 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_broken?: boolean | null
           last_edited_at?: string
+          last_success_at?: string | null
           name?: string | null
           thumbnail_url?: string | null
           updated_at?: string
@@ -2500,7 +2504,9 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_broken?: boolean | null
           last_edited_at?: string
+          last_success_at?: string | null
           name?: string | null
           thumbnail_url?: string | null
           updated_at?: string

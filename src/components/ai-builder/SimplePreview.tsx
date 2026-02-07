@@ -10,6 +10,7 @@ interface SimplePreviewProps {
   onError?: (error: string) => void;
   onFixError?: (error: string) => void;
   showPlaceholder?: boolean;
+  projectId?: string | null; // For project-scoped error validation
 }
 
 /**
@@ -26,7 +27,8 @@ export const SimplePreview = memo(function SimplePreview({
   isLoading = false,
   onError,
   onFixError,
-  showPlaceholder = false
+  showPlaceholder = false,
+  projectId = null, // Project-scoped error validation
 }: SimplePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -35,6 +37,19 @@ export const SimplePreview = memo(function SimplePreview({
   const [isPreviewReady, setIsPreviewReady] = useState(true);
   const fixingRef = useRef(false); // Track fixing state without re-renders
   const runIdRef = useRef<string>(''); // Scope postMessage events to the current render
+  const projectIdRef = useRef<string | null>(projectId); // Track which project this render belongs to
+  
+  // Update projectIdRef when prop changes
+  useEffect(() => {
+    projectIdRef.current = projectId;
+  }, [projectId]);
+  
+  // Clear error state when project changes (prevent cross-project error bleeding)
+  useEffect(() => {
+    setPreviewError(null);
+    setIsFixing(false);
+    fixingRef.current = false;
+  }, [projectId]);
   
   // Handle auto-fix - clears error and enters "fixing" mode
   const handleFixError = () => {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { clearProjectLocalStorage, nukeSandpackCache } from '@/utils/storageNuke';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * useProjectScopedState
@@ -8,11 +9,18 @@ import { clearProjectLocalStorage, nukeSandpackCache } from '@/utils/storageNuke
  * 1. Detecting project_id changes and triggering cleanup
  * 2. Providing project-scoped localStorage keys
  * 3. Purging all related cache on project switch
+ * 4. Fetching fresh data from database on demand
  */
 interface UseProjectScopedStateProps {
   projectId: string | null;
   userId: string | null;
   onProjectChange?: () => void; // Callback to reset component state
+}
+
+interface ProjectData {
+  code: string | null;
+  isBroken: boolean;
+  lastSuccessAt: string | null;
 }
 
 export function useProjectScopedState({
@@ -101,6 +109,42 @@ export function useProjectScopedState({
     console.log(`[ProjectScope] Purged project: ${targetProjectId}`);
   }, []);
 
+  // Fetch fresh project data from database (escape hatch for stuck UI)
+  const refreshFromDatabase = useCallback(async (): Promise<ProjectData | null> => {
+    if (!projectId) {
+      console.warn('[ProjectScope] Cannot refresh: no active project');
+      return null;
+    }
+
+    try {
+      // Fetch code and project status in parallel
+      const [filesResult, projectResult] = await Promise.all([
+        supabase
+          .from('project_files')
+          .select('content')
+          .eq('project_id', projectId)
+          .eq('file_path', '/App.tsx')
+          .maybeSingle(),
+        supabase
+          .from('vibecoder_projects')
+          .select('is_broken, last_success_at')
+          .eq('id', projectId)
+          .maybeSingle(),
+      ]);
+
+      const code = filesResult.data?.content || null;
+      const isBroken = projectResult.data?.is_broken ?? false;
+      const lastSuccessAt = projectResult.data?.last_success_at || null;
+
+      console.log(`[ProjectScope] Refreshed from DB: isBroken=${isBroken}, hasCode=${!!code}`);
+      
+      return { code, isBroken, lastSuccessAt };
+    } catch (err) {
+      console.error('[ProjectScope] Failed to refresh from database:', err);
+      return null;
+    }
+  }, [projectId]);
+
   return {
     getScopedKey,
     getProjectData,
@@ -108,6 +152,7 @@ export function useProjectScopedState({
     clearCurrentProjectData,
     nukeAllCaches,
     purgeProject,
+    refreshFromDatabase,
     currentProjectId: projectId,
   };
 }
