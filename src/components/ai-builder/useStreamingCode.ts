@@ -130,6 +130,24 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         throw new Error(errorData.error || `Request failed: ${response.status}`);
       }
 
+      // 🛡️ CRITICAL FIX: Detect JSON job status response vs streaming text
+      // When jobId is passed, backend returns JSON instead of streaming.
+      // We MUST NOT treat JSON as code or the preview will crash.
+      const contentType = response.headers.get('Content-Type') || '';
+      const isJsonResponse = contentType.includes('application/json');
+
+      if (isJsonResponse) {
+        // Backend returned a job status response (non-streaming mode)
+        // The realtime subscription will handle the completed job
+        console.log('[useStreamingCode] JSON response detected - deferring to realtime subscription');
+        const jsonData = await response.json().catch(() => ({}));
+        console.log('[useStreamingCode] Job status:', jsonData);
+        
+        // Return early WITHOUT modifying code state
+        setState(prev => ({ ...prev, isStreaming: false }));
+        return state.code; // Keep existing code, don't set JSON as code
+      }
+
       if (!response.body) {
         throw new Error('No response body');
       }
@@ -148,7 +166,26 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       // Marker that separates explanation/logs from the actual TSX payload
       const BEGIN_CODE_MARKER = '/// BEGIN_CODE ///';
 
+      // 🛡️ SAFETY: Helper to detect if content looks like JSON (not TSX code)
+      const looksLikeJson = (text: string): boolean => {
+        const trimmed = text.trim();
+        if (!trimmed.startsWith('{')) return false;
+        try {
+          const parsed = JSON.parse(trimmed);
+          // Check for known job status fields
+          return parsed.success !== undefined || parsed.jobId !== undefined || parsed.status !== undefined;
+        } catch {
+          return false;
+        }
+      };
+
       const extractCodeFromRaw = (raw: string): string => {
+        // 🛡️ SAFETY: Never return JSON as code
+        if (looksLikeJson(raw)) {
+          console.warn('[useStreamingCode] Raw stream looks like JSON - skipping code extraction');
+          return ''; // Return empty, don't set JSON as code
+        }
+
         // Prefer explicit begin marker; fallback to type marker
         const beginIdx = raw.indexOf(BEGIN_CODE_MARKER);
         const typeIdx = raw.indexOf('/// TYPE: CODE ///');
@@ -164,11 +201,19 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           codePart = raw;
         }
 
-        return codePart
+        const cleaned = codePart
           .replace(LOG_PATTERN, '')
           .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
           .replace(/\n?```\s*$/i, '')
           .trim();
+
+        // Final safety check: don't return JSON
+        if (looksLikeJson(cleaned)) {
+          console.warn('[useStreamingCode] Cleaned code looks like JSON - returning empty');
+          return '';
+        }
+
+        return cleaned;
       };
 
       const extractSummaryFromRaw = (raw: string): string => {
@@ -238,6 +283,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           }
         }
 
+        // 🛡️ SAFETY: Early detection of JSON response that slipped through
+        // If the stream starts with { and looks like JSON, abort code processing
+        if (mode === 'detecting' && rawStream.trim().startsWith('{') && rawStream.length > 50) {
+          if (looksLikeJson(rawStream)) {
+            console.warn('[useStreamingCode] JSON detected in stream - aborting code extraction');
+            setState(prev => ({ ...prev, isStreaming: false }));
+            return state.code; // Keep existing code
+          }
+        }
+
         // Intent Router: detect response type as soon as the type flag appears
         if (mode === 'detecting') {
           if (rawStream.includes('/// TYPE: CHAT ///')) {
@@ -251,6 +306,12 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           } else if (rawStream.includes('/// TYPE: CODE ///')) {
             mode = 'code';
           } else if (rawStream.length > 120) {
+            // 🛡️ SAFETY: Before falling back to code mode, verify it's not JSON
+            if (looksLikeJson(rawStream)) {
+              console.warn('[useStreamingCode] JSON detected before mode fallback - aborting');
+              setState(prev => ({ ...prev, isStreaming: false }));
+              return state.code;
+            }
             // Fallback: assume code if no flag appears early
             mode = 'code';
           }
@@ -265,8 +326,11 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         if (mode === 'code') {
           // Update state with cleaned code portion only
           const cleanCode = extractCodeFromRaw(rawStream);
-          setState(prev => ({ ...prev, code: cleanCode }));
-          options.onChunk?.(cleanCode);
+          // 🛡️ SAFETY: Only update if we got valid code (not empty from JSON detection)
+          if (cleanCode) {
+            setState(prev => ({ ...prev, code: cleanCode }));
+            options.onChunk?.(cleanCode);
+          }
         }
       }
 
