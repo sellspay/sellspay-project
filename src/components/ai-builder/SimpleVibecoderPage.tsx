@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
+import { useProjectScopedState } from '@/hooks/useProjectScopedState';
 import { SimpleSidebar } from './SimpleSidebar';
 import { SimplePreview } from './SimplePreview';
 import { SimpleChat, type ChatMessage } from './SimpleChat';
@@ -89,6 +90,30 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     username?: string | null;
     subscription_tier?: string | null;
   } | null>(null);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PROJECT ISOLATION: Reset all transient state when switching projects
+  // This prevents "ghost project" overlaps where error states bleed across tabs
+  // ═══════════════════════════════════════════════════════════════════════════
+  const resetProjectState = useCallback(() => {
+    console.log('[SimpleVibecoderPage] Resetting project state for isolation');
+    setCode(DEFAULT_CODE);
+    setStreamingCode('');
+    setMessages([]);
+    setError(null);
+    setCreditsError(null);
+    setStreamingLogs([]);
+    setIsAutoFixing(false);
+    setIsStreaming(false);
+    setRefreshKey(k => k + 1); // Force preview refresh
+  }, []);
+
+  // Hook for project-scoped state management
+  const { purgeProject } = useProjectScopedState({
+    projectId: activeProjectId,
+    userId: user?.id || null,
+    onProjectChange: resetProjectState,
+  });
   
   // Fetch user profile and credits
   useEffect(() => {
@@ -214,7 +239,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     toast.success('Start a new project');
   };
   
-  // Delete project
+  // Delete project - also purges all browser caches for that project
   const handleDeleteProject = async (projectId: string) => {
     const { error } = await supabase
       .from('vibecoder_projects')
@@ -226,8 +251,12 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
       return;
     }
     
+    // CRITICAL: Purge all browser caches for this project to prevent ghost data
+    purgeProject(projectId);
+    
     if (activeProjectId === projectId) {
       setActiveProjectId(null);
+      resetProjectState();
     }
     
     toast.success('Project deleted');

@@ -10,6 +10,7 @@ const VIBECODER_PREFIXES = [
   'vibecoder-files-',
   'vibecoder-chat-',
   'vibecoder-state-',
+  'vibecoder:',
   'sandpack-',
 ];
 
