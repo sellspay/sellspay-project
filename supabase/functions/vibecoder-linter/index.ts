@@ -133,8 +133,20 @@ function runStaticValidation(code: string): StaticValidationResult | null {
       };
     }
   }
+
+  // 3. IMPORT VALIDATION - Check for missing React hook imports
+  const reactHookImportCheck = validateReactHookImports(code);
+  if (reactHookImportCheck) {
+    return reactHookImportCheck;
+  }
+
+  // 4. Check for missing framer-motion imports
+  const framerImportCheck = validateFramerImports(code);
+  if (framerImportCheck) {
+    return framerImportCheck;
+  }
   
-  // 3. Check for missing export default
+  // 5. Check for missing export default
   if (!code.includes('export default')) {
     return {
       isValid: false,
@@ -146,6 +158,77 @@ function runStaticValidation(code: string): StaticValidationResult | null {
   }
   
   return null; // Passed static validation
+}
+
+// ═══════════════════════════════════════════════════════════════
+// IMPORT VALIDATORS - Catch missing imports BEFORE runtime
+// ═══════════════════════════════════════════════════════════════
+
+function validateReactHookImports(code: string): StaticValidationResult | null {
+  const reactHooks = [
+    { name: 'useState', pattern: /\buseState\s*[<(]/g },
+    { name: 'useEffect', pattern: /\buseEffect\s*\(/g },
+    { name: 'useCallback', pattern: /\buseCallback\s*[<(]/g },
+    { name: 'useMemo', pattern: /\buseMemo\s*[<(]/g },
+    { name: 'useRef', pattern: /\buseRef\s*[<(]/g },
+    { name: 'useContext', pattern: /\buseContext\s*\(/g },
+    { name: 'useReducer', pattern: /\buseReducer\s*[<(]/g },
+  ];
+
+  // Extract React imports
+  const reactImportMatch = code.match(/import\s+(?:React,?\s*)?{([^}]*)}\s+from\s+['"]react['"]/);
+  const importedHooks = reactImportMatch
+    ? reactImportMatch[1].split(',').map(h => h.trim()).filter(Boolean)
+    : [];
+
+  for (const { name, pattern } of reactHooks) {
+    if (pattern.test(code) && !importedHooks.includes(name)) {
+      // Double check - might be imported via "import React from 'react'"
+      const hasDefaultImport = /import\s+React\s+from\s+['"]react['"]/.test(code);
+      // React.useState would be valid if default import exists
+      const usedWithPrefix = new RegExp(`React\\.${name}\\s*[<(]`).test(code);
+      
+      if (!hasDefaultImport && !usedWithPrefix) {
+        return {
+          isValid: false,
+          errorType: 'Imports',
+          explanation: `Hook "${name}" is used but not imported from 'react'`,
+          location: 'Import section',
+          fixSuggestion: `Add "${name}" to your React import: import { ${name} } from 'react'`,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function validateFramerImports(code: string): StaticValidationResult | null {
+  const framerComponents = [
+    { name: 'motion', pattern: /\bmotion\./g },
+    { name: 'AnimatePresence', pattern: /<AnimatePresence/g },
+  ];
+
+  const framerImportMatch = code.match(/import\s+{([^}]*)}\s+from\s+['"]framer-motion['"]/);
+  const importedComponents = framerImportMatch
+    ? framerImportMatch[1].split(',').map(c => c.trim()).filter(Boolean)
+    : [];
+
+  const hasAnyFramerImport = /import\s+.*from\s+['"]framer-motion['"]/.test(code);
+
+  for (const { name, pattern } of framerComponents) {
+    if (pattern.test(code) && !importedComponents.includes(name) && !hasAnyFramerImport) {
+      return {
+        isValid: false,
+        errorType: 'Imports',
+        explanation: `"${name}" is used but not imported from 'framer-motion'`,
+        location: 'Import section',
+        fixSuggestion: `Add: import { ${name} } from 'framer-motion'`,
+      };
+    }
+  }
+
+  return null;
 }
 
 // ═══════════════════════════════════════════════════════════════

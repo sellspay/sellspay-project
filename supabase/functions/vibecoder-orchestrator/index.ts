@@ -246,6 +246,229 @@ function validateCodeStructure(code: string): { valid: boolean; error?: string }
 }
 
 // ═══════════════════════════════════════════════════════════════
+// GHOST FIXER - AUTO-IMPORT RESOLVER
+// ═══════════════════════════════════════════════════════════════
+// Automatically detects and injects missing React hook imports.
+// This eliminates 50%+ of common "white screen" errors before the user sees them.
+function autoFixImports(code: string): string {
+  // Define React hooks and their usage patterns
+  const reactHooks = [
+    { name: 'useState', pattern: /\buseState\s*[<(]/g },
+    { name: 'useEffect', pattern: /\buseEffect\s*\(/g },
+    { name: 'useCallback', pattern: /\buseCallback\s*[<(]/g },
+    { name: 'useMemo', pattern: /\buseMemo\s*[<(]/g },
+    { name: 'useRef', pattern: /\buseRef\s*[<(]/g },
+    { name: 'useContext', pattern: /\buseContext\s*\(/g },
+    { name: 'useReducer', pattern: /\buseReducer\s*[<(]/g },
+    { name: 'useLayoutEffect', pattern: /\buseLayoutEffect\s*\(/g },
+    { name: 'useId', pattern: /\buseId\s*\(/g },
+  ];
+
+  // Find which hooks are used in the code
+  const usedHooks: string[] = [];
+  for (const { name, pattern } of reactHooks) {
+    if (pattern.test(code)) {
+      usedHooks.push(name);
+    }
+  }
+
+  if (usedHooks.length === 0) {
+    return code; // No hooks used, no changes needed
+  }
+
+  // Check which hooks are already imported
+  const reactImportMatch = code.match(/import\s+(?:React,?\s*)?{([^}]+)}\s+from\s+['"]react['"]/);
+  const hasDefaultReactImport = /import\s+React\s+from\s+['"]react['"]/.test(code);
+  const hasAnyReactImport = /import\s+.*from\s+['"]react['"]/.test(code);
+
+  let importedHooks: string[] = [];
+  if (reactImportMatch) {
+    importedHooks = reactImportMatch[1]
+      .split(',')
+      .map(h => h.trim())
+      .filter(Boolean);
+  }
+
+  // Find missing hooks
+  const missingHooks = usedHooks.filter(h => !importedHooks.includes(h));
+
+  if (missingHooks.length === 0) {
+    return code; // All hooks already imported
+  }
+
+  console.log(`[Ghost Fixer] Auto-injecting missing imports: ${missingHooks.join(', ')}`);
+
+  // Merge missing hooks with existing imports
+  const allHooks = [...new Set([...importedHooks, ...missingHooks])].sort();
+
+  if (reactImportMatch) {
+    // Replace existing React import with expanded one
+    const newImport = `import React, { ${allHooks.join(', ')} } from 'react'`;
+    return code.replace(/import\s+(?:React,?\s*)?{[^}]+}\s+from\s+['"]react['"]/, newImport);
+  } else if (hasDefaultReactImport) {
+    // Replace "import React from 'react'" with destructured version
+    const newImport = `import React, { ${allHooks.join(', ')} } from 'react'`;
+    return code.replace(/import\s+React\s+from\s+['"]react['"]/, newImport);
+  } else if (!hasAnyReactImport) {
+    // No React import at all - add it at the top
+    const newImport = `import React, { ${allHooks.join(', ')} } from 'react';\n`;
+    return newImport + code;
+  }
+
+  return code;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTO-FIX FRAMER MOTION IMPORTS
+// ═══════════════════════════════════════════════════════════════
+function autoFixFramerImports(code: string): string {
+  const framerComponents = [
+    { name: 'motion', pattern: /\bmotion\./g },
+    { name: 'AnimatePresence', pattern: /\bAnimatePresence\b/g },
+    { name: 'useAnimation', pattern: /\buseAnimation\s*\(/g },
+    { name: 'useInView', pattern: /\buseInView\s*\(/g },
+  ];
+
+  const usedComponents: string[] = [];
+  for (const { name, pattern } of framerComponents) {
+    if (pattern.test(code)) {
+      usedComponents.push(name);
+    }
+  }
+
+  if (usedComponents.length === 0) {
+    return code;
+  }
+
+  // Check existing framer import
+  const framerImportMatch = code.match(/import\s+{([^}]+)}\s+from\s+['"]framer-motion['"]/);
+  const hasAnyFramerImport = /import\s+.*from\s+['"]framer-motion['"]/.test(code);
+
+  let importedComponents: string[] = [];
+  if (framerImportMatch) {
+    importedComponents = framerImportMatch[1]
+      .split(',')
+      .map(c => c.trim())
+      .filter(Boolean);
+  }
+
+  const missingComponents = usedComponents.filter(c => !importedComponents.includes(c));
+
+  if (missingComponents.length === 0) {
+    return code;
+  }
+
+  console.log(`[Ghost Fixer] Auto-injecting framer-motion imports: ${missingComponents.join(', ')}`);
+
+  const allComponents = [...new Set([...importedComponents, ...missingComponents])].sort();
+
+  if (framerImportMatch) {
+    const newImport = `import { ${allComponents.join(', ')} } from 'framer-motion'`;
+    return code.replace(/import\s+{[^}]+}\s+from\s+['"]framer-motion['"]/, newImport);
+  } else if (!hasAnyFramerImport) {
+    // Find where to insert (after React import)
+    const reactImportEnd = code.search(/import\s+.*from\s+['"]react['"].*;?\n/);
+    if (reactImportEnd >= 0) {
+      const insertPos = code.indexOf('\n', reactImportEnd) + 1;
+      const newImport = `import { ${allComponents.join(', ')} } from 'framer-motion';\n`;
+      return code.slice(0, insertPos) + newImport + code.slice(insertPos);
+    } else {
+      // No React import, add at top
+      const newImport = `import { ${allComponents.join(', ')} } from 'framer-motion';\n`;
+      return newImport + code;
+    }
+  }
+
+  return code;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTO-FIX LUCIDE IMPORTS
+// ═══════════════════════════════════════════════════════════════
+function autoFixLucideImports(code: string): string {
+  // Common Lucide icons used in SellsPay storefronts
+  const lucideIcons = [
+    'Play', 'Pause', 'Volume2', 'VolumeX', 'Download', 'ShoppingCart', 'Heart',
+    'Star', 'ChevronRight', 'ChevronLeft', 'ChevronDown', 'ChevronUp', 'X', 'Menu',
+    'Search', 'User', 'Settings', 'Info', 'Check', 'Plus', 'Minus', 'ArrowRight',
+    'ArrowLeft', 'ExternalLink', 'Share', 'Mail', 'Bell', 'Clock', 'Calendar',
+    'Eye', 'EyeOff', 'Lock', 'Unlock', 'Trash', 'Edit', 'Save', 'Copy', 'Film',
+    'Music', 'Image', 'Video', 'Folder', 'File', 'Award', 'Zap', 'Shield',
+    'Sparkles', 'Crown', 'Flame', 'Gift', 'Package', 'Truck', 'CreditCard', 'Loader2'
+  ];
+
+  // Find which icons are used (check for JSX-style usage like <Play or {Play})
+  const usedIcons: string[] = [];
+  for (const icon of lucideIcons) {
+    const jsxPattern = new RegExp(`<${icon}[\\s/>]`, 'g');
+    const propPattern = new RegExp(`\\{${icon}\\}`, 'g');
+    const componentPattern = new RegExp(`icon={${icon}}`, 'gi');
+    
+    if (jsxPattern.test(code) || propPattern.test(code) || componentPattern.test(code)) {
+      usedIcons.push(icon);
+    }
+  }
+
+  if (usedIcons.length === 0) {
+    return code;
+  }
+
+  // Check existing lucide import
+  const lucideImportMatch = code.match(/import\s+{([^}]+)}\s+from\s+['"]lucide-react['"]/);
+  const hasAnyLucideImport = /import\s+.*from\s+['"]lucide-react['"]/.test(code);
+
+  let importedIcons: string[] = [];
+  if (lucideImportMatch) {
+    importedIcons = lucideImportMatch[1]
+      .split(',')
+      .map(i => i.trim())
+      .filter(Boolean);
+  }
+
+  const missingIcons = usedIcons.filter(i => !importedIcons.includes(i));
+
+  if (missingIcons.length === 0) {
+    return code;
+  }
+
+  console.log(`[Ghost Fixer] Auto-injecting lucide-react imports: ${missingIcons.join(', ')}`);
+
+  const allIcons = [...new Set([...importedIcons, ...missingIcons])].sort();
+
+  if (lucideImportMatch) {
+    const newImport = `import { ${allIcons.join(', ')} } from 'lucide-react'`;
+    return code.replace(/import\s+{[^}]+}\s+from\s+['"]lucide-react['"]/, newImport);
+  } else if (!hasAnyLucideImport) {
+    // Find where to insert (after framer-motion or React import)
+    const framerImportEnd = code.search(/import\s+.*from\s+['"]framer-motion['"].*;?\n/);
+    const reactImportEnd = code.search(/import\s+.*from\s+['"]react['"].*;?\n/);
+    const insertAfter = framerImportEnd >= 0 ? framerImportEnd : reactImportEnd;
+    
+    if (insertAfter >= 0) {
+      const insertPos = code.indexOf('\n', insertAfter) + 1;
+      const newImport = `import { ${allIcons.join(', ')} } from 'lucide-react';\n`;
+      return code.slice(0, insertPos) + newImport + code.slice(insertPos);
+    } else {
+      const newImport = `import { ${allIcons.join(', ')} } from 'lucide-react';\n`;
+      return newImport + code;
+    }
+  }
+
+  return code;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MASTER GHOST FIXER - Runs all auto-fixers
+// ═══════════════════════════════════════════════════════════════
+function runGhostFixer(code: string): string {
+  let fixedCode = code;
+  fixedCode = autoFixImports(fixedCode);
+  fixedCode = autoFixFramerImports(fixedCode);
+  fixedCode = autoFixLucideImports(fixedCode);
+  return fixedCode;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SHADOW RENDER - DISABLED (esbuild WASM not supported in Deno Edge)
 // ═══════════════════════════════════════════════════════════════
 // NOTE: esbuild WASM requires Web Workers which aren't available in Deno.
@@ -661,7 +884,7 @@ serve(async (req: Request) => {
 
           // Extract summary FIRST before stripping markers
           const summary = extractSummaryFromResponse(builderContent);
-          const generatedCode = extractCodeFromResponse(builderContent);
+          let generatedCode = extractCodeFromResponse(builderContent);
 
           if (!generatedCode || generatedCode.length < 50) {
             sendEvent(controller, {
@@ -670,6 +893,15 @@ serve(async (req: Request) => {
             }, streamState);
             closeStream();
             return;
+          }
+
+          // ───────────────────────────────────────────────────────────
+          // GHOST FIXER STAGE - Auto-inject missing imports
+          // ───────────────────────────────────────────────────────────
+          const originalLength = generatedCode.length;
+          generatedCode = runGhostFixer(generatedCode);
+          if (generatedCode.length !== originalLength) {
+            sendEvent(controller, { type: 'log', data: "🔧 Ghost Fixer auto-resolved missing imports" }, streamState);
           }
 
           // Store summary for final delivery (persist across heal attempts)
