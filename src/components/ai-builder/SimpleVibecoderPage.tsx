@@ -514,6 +514,17 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   
   return (
     <div className="h-screen w-screen flex bg-background overflow-hidden">
+      {/* Always-available chat toggle (in case the panel is off-screen) */}
+      {chatCollapsed && (
+        <button
+          onClick={() => setChatCollapsed(false)}
+          className="fixed right-3 top-1/2 -translate-y-1/2 z-50 rounded-full border border-border/60 bg-background/90 backdrop-blur px-3 py-2 text-xs font-medium text-foreground shadow-lg hover:bg-muted transition-colors"
+          title="Open chat"
+        >
+          Open chat
+        </button>
+      )}
+
       {/* Sidebar */}
       <SimpleSidebar
         userId={user.id}
