@@ -9,495 +9,255 @@ const corsHeaders = {
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 /**
- * VibeCoder Builder Agent (v2.1)
+ * VibeCoder Builder Agent (v3.0 - Atomic File Generator)
  * 
  * Role: Lead Frontend Engineer & Tailwind Master
  * Model: google/gemini-3-flash-preview (fast code generation)
  * 
- * IMPROVEMENTS:
- * - Design tokens injected per style profile
- * - SDK component documentation included
- * - Stricter error prevention patterns
+ * KEY CHANGE: Now generates ONE FILE AT A TIME.
+ * The Orchestrator calls this multiple times for multi-file builds.
  */
 
 // ═══════════════════════════════════════════════════════════════
-// DESIGN TOKEN RECIPES - Injected based on style profile
+// DESIGN TOKEN RECIPES
 // ═══════════════════════════════════════════════════════════════
 const DESIGN_TOKENS: Record<string, string> = {
   'luxury-minimal': `
 ### LUXURY MINIMAL DESIGN TOKENS
-- **Background**: bg-zinc-950 or bg-black
-- **Text Primary**: text-zinc-100 
-- **Text Secondary**: text-zinc-500
-- **Accent**: text-amber-400, border-amber-500/30
-- **Typography**: 
-  - Headings: font-serif tracking-tight text-5xl md:text-7xl
-  - Body: font-light text-lg leading-relaxed
-- **Shadows**: shadow-[0_20px_60px_rgba(0,0,0,0.5)]
-- **Borders**: border-zinc-800 hover:border-zinc-700
-- **Spacing**: Very generous - py-24 px-8, gap-16
-- **Hover Effects**: group-hover:scale-[1.02] transition-transform duration-500
-- **Special**: Use text-gradient with bg-gradient-to-r from-amber-200 to-amber-500 bg-clip-text text-transparent`,
+- Background: bg-zinc-950 or bg-black
+- Text Primary: text-zinc-100, Text Secondary: text-zinc-500
+- Accent: text-amber-400, border-amber-500/30
+- Typography: font-serif tracking-tight, generous spacing py-24`,
 
   'cyberpunk-neon': `
 ### CYBERPUNK NEON DESIGN TOKENS
-- **Background**: bg-black or bg-zinc-950
-- **Primary Neon**: text-cyan-400, shadow-cyan-500/50
-- **Secondary Neon**: text-pink-500, shadow-pink-500/50
-- **Accent**: text-lime-400
-- **Glassmorphism**: bg-black/40 backdrop-blur-xl border border-cyan-500/30
-- **Typography**:
-  - Headings: font-mono uppercase tracking-widest text-4xl
-  - Body: font-mono text-zinc-400
-- **Glow Effects**: 
-  - shadow-[0_0_30px_rgba(6,182,212,0.5)]
-  - hover:shadow-[0_0_50px_rgba(6,182,212,0.7)]
-- **Borders**: border-2 border-cyan-500/50 hover:border-cyan-400
-- **Animations**: Use animate-pulse on accent elements
-- **Special**: Add scanline overlay with repeating-linear-gradient`,
+- Background: bg-black, Primary Neon: text-cyan-400
+- Glassmorphism: bg-black/40 backdrop-blur-xl border border-cyan-500/30
+- Glow: shadow-[0_0_30px_rgba(6,182,212,0.5)]`,
 
   'streetwear-dark': `
 ### STREETWEAR DARK DESIGN TOKENS
-- **Background**: bg-zinc-950
-- **Text Primary**: text-white font-black
-- **Accent**: text-red-500 or text-orange-500
-- **Typography**:
-  - Headings: font-black uppercase text-6xl tracking-tighter
-  - Body: font-medium text-zinc-400
-- **Cards**: bg-zinc-900 border-2 border-zinc-800 rounded-none
-- **Buttons**: bg-white text-black hover:bg-zinc-200 font-bold uppercase
-- **Shadows**: shadow-[8px_8px_0_rgba(255,255,255,0.1)]
-- **Hover**: translate-x-1 translate-y-1 shadow-none (button press effect)
-- **Special**: Use skew-x-3 on accent elements`,
+- Background: bg-zinc-950, Text: text-white font-black
+- Accent: text-red-500 or text-orange-500
+- Cards: bg-zinc-900 border-2 border-zinc-800 rounded-none`,
 
   'kawaii-pop': `
 ### KAWAII POP DESIGN TOKENS
-- **Background**: bg-gradient-to-br from-pink-100 to-purple-100 (light) or bg-zinc-950 (dark mode)
-- **Primary**: text-pink-500
-- **Secondary**: text-purple-400
-- **Accent**: text-yellow-400, text-cyan-400
-- **Typography**:
-  - Headings: font-bold text-4xl (add emoji decorations 🌸 ✨)
-  - Body: text-zinc-600 font-medium
-- **Cards**: bg-white rounded-3xl shadow-xl border-2 border-pink-200
-- **Buttons**: bg-gradient-to-r from-pink-400 to-purple-400 rounded-full px-8
-- **Borders**: border-4 border-dashed border-pink-300
-- **Animations**: animate-bounce on icons
-- **Special**: rounded-full on everything, liberal use of emojis`,
-
-  'brutalist-raw': `
-### BRUTALIST RAW DESIGN TOKENS
-- **Background**: bg-white or bg-zinc-100
-- **Text**: text-black font-black
-- **Accent**: text-red-600 or text-blue-600
-- **Typography**:
-  - Headings: font-mono font-black text-6xl uppercase
-  - Body: font-mono text-sm tracking-wide
-- **Cards**: bg-white border-4 border-black rounded-none
-- **Buttons**: bg-black text-white uppercase border-4 border-black px-8 py-4
-- **Shadows**: shadow-[8px_8px_0_black]
-- **Hover**: -translate-y-1 shadow-[12px_12px_0_black]
-- **Special**: Use rotate-1 or -rotate-1 on elements, harsh contrast`,
-
-  'vaporwave-retro': `
-### VAPORWAVE RETRO DESIGN TOKENS
-- **Background**: bg-gradient-to-b from-purple-900 via-pink-800 to-orange-600
-- **Primary**: text-pink-300
-- **Secondary**: text-cyan-300
-- **Accent**: text-yellow-200
-- **Typography**:
-  - Headings: font-bold text-5xl italic (use Japanese characters 美的)
-  - Body: text-pink-200
-- **Glassmorphism**: bg-white/10 backdrop-blur-md
-- **Chrome Text**: bg-gradient-to-b from-zinc-100 via-zinc-400 to-zinc-100 bg-clip-text text-transparent
-- **Shadows**: shadow-[0_10px_40px_rgba(236,72,153,0.4)]
-- **Grid**: Add perspective grid overlay
-- **Special**: Use skew transforms, sunset gradients`,
+- Background: bg-gradient-to-br from-pink-100 to-purple-100
+- Primary: text-pink-500, Cards: rounded-3xl shadow-xl
+- Liberal use of emojis 🌸 ✨`,
 };
 
 // ═══════════════════════════════════════════════════════════════
-// SDK COMPONENT DOCUMENTATION
+// FILE-SPECIFIC TEMPLATES
 // ═══════════════════════════════════════════════════════════════
-const SDK_DOCUMENTATION = `
-### SELLSPAY SDK COMPONENTS (Pre-built, use these!)
+const FILE_TEMPLATES: Record<string, string> = {
+  'data/products.ts': `
+### DATA FILE TEMPLATE (data/products.ts)
+Export a typed array of products. Max 6 items. No React imports.
 
-1. **ProductCard** - Complete product display with buy button
-\`\`\`tsx
-import { ProductCard } from '@/components/sellspay';
-<ProductCard 
-  id="prod_123" 
-  title="Premium Pack" 
-  price={29.99} 
-  image="https://images.unsplash.com/..." 
-  description="Optional description"
-/>
-\`\`\`
+\`\`\`typescript
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  description?: string;
+}
 
-2. **CheckoutButton** - Standalone buy button
-\`\`\`tsx
-import { CheckoutButton } from '@/components/sellspay';
-<CheckoutButton 
-  productId="prod_123" 
-  variant="primary" // primary | secondary | ghost
-  className="w-full"
->
-  Get Access Now
-</CheckoutButton>
-\`\`\`
+export const PRODUCTS: Product[] = [
+  {
+    id: "prod_1",
+    name: "Product Name",
+    price: 29.99,
+    image: "https://images.unsplash.com/photo-XXXXX?w=800",
+  },
+  // ... max 6 items
+];
+\`\`\``,
 
-3. **FeaturedProducts** - Auto-grid product section
-\`\`\`tsx
-import { FeaturedProducts } from '@/components/sellspay';
-<FeaturedProducts 
-  products={products} 
-  title="Latest Drops" 
-  columns={3} 
-/>
-\`\`\`
-
-4. **CreatorBio** - About section with avatar
-\`\`\`tsx
-import { CreatorBio } from '@/components/sellspay';
-<CreatorBio 
-  name="Creator Name" 
-  avatar="https://images.unsplash.com/..." 
-  bio="Description here" 
-/>
-\`\`\`
-
-**FALLBACK**: If SDK components don't fit, use \`useSellsPayCheckout\`:
-\`\`\`tsx
-import { useSellsPayCheckout } from '@/hooks/useSellsPayCheckout';
-const { buyProduct, isProcessing } = useSellsPayCheckout();
-\`\`\`
-`;
-
-// ═══════════════════════════════════════════════════════════════
-// ERROR PREVENTION PATTERNS
-// ═══════════════════════════════════════════════════════════════
-const ERROR_PREVENTION = `
-### CRITICAL ERROR PREVENTION PATTERNS
-
-1. **Safe Array Mapping**:
-   ✅ {products?.map(p => <div key={p.id}>...</div>)}
-   ❌ {products.map(p => ...)} // Crashes if undefined
-
-2. **Safe Optional Chaining**:
-   ✅ {user?.name || 'Creator'}
-   ❌ {user.name} // Crashes if null
-
-3. **Unique Keys**: Always use \`key={item.id}\` or \`key={index}\` on mapped elements
-
-4. **Image Error Handling**:
-   <img 
-     src={url} 
-     alt="" 
-     onError={(e) => e.currentTarget.src = 'https://images.unsplash.com/photo-1557683316-973673baf926?w=800'}
-   />
-
-5. **Motion Component Safety**:
-   ✅ <motion.div initial={{opacity:0}} animate={{opacity:1}}>
-   ❌ Missing initial prop causes flash
-
-6. **Conditional Rendering**:
-   ✅ {isLoaded && <Component />}
-   ✅ {data ? <Content /> : <Skeleton />}
-`;
-
-const BUILDER_SYSTEM_PROMPT = `You are the SellsPay Implementation Engineer.
-Your ONLY goal is to turn the Architect's JSON Plan into pixel-perfect React code.
-
-## ═══════════════════════════════════════════════════════════════
-## 🚨 MASTER OPERATION PROTOCOL (FAILURE = IMMEDIATE REJECTION)
-## ═══════════════════════════════════════════════════════════════
-
-### ⛔ STRICT OVERWRITE POLICY
-You are an IN-PLACE EDITOR, not a file generator.
-- You MUST replace the ENTIRE App.tsx file with your complete output
-- You are FORBIDDEN from creating fragments, snippets, or partial code
-- You are FORBIDDEN from writing "// ...rest of code", "// ... existing code", or ANY placeholder comments
-- Every response MUST be a complete, standalone file ready to execute
-
-### ⛔ NO FRAGMENTS RULE
-If you EVER output any of these, the build will be REJECTED:
-- \`// ...\`
-- \`// rest of code\`
-- \`// ... existing code\`
-- \`// Add more here\`
-- \`// etc.\`
-- Suggestions to "create a new component" or "create a new file"
-
-### ⛔ BRACKET SYMMETRY CHECK
-Before outputting code, mentally count:
-- Every { must have a matching }
-- Every [ must have a matching ]
-- Every ( must have a matching )
-A SINGLE missing bracket = build crash = wasted credits = failure
-
-### ⛔ ATOMIZATION RULE (HARD 150-LINE LIMIT - NON-NEGOTIABLE)
-YOU ARE FORBIDDEN FROM OUTPUTTING MORE THAN 150 LINES. This is a HARD LIMIT.
-If your output would exceed 150 lines, you MUST atomize BEFORE writing:
-
-1. **Product Arrays**: Maximum 4 items. No exceptions.
-2. **Sections**: Maximum 3 sections total (Hero + Products + Footer ONLY)
-3. **Animations**: ONE simple transition (opacity or y-axis). No complex variants.
-4. **Tailwind**: Combine classes. No duplicate utilities. Use shorthand.
-5. **Comments**: ZERO comments. Every line must be functional code.
-
-⚠️ THE VALIDATOR WILL REJECT CODE OVER 150 LINES AUTOMATICALLY.
-If you write 151+ lines, your entire output is WASTED and must be regenerated.
-Count your lines mentally as you write. Stop at 140 to leave buffer.
-
-### ⛔ SILENT COMPLETION CHECK
-Before outputting, mentally trace through your code:
-1. Count opening braces { and closing braces }
-2. Count opening brackets [ and closing brackets ]
-3. Count opening parens ( and closing parens )
-IF ANY COUNT IS UNBALANCED, FIX IT BEFORE OUTPUTTING.
-
-## ═══════════════════════════════════════════════════════════════
-## 🔒 GOLDEN TEMPLATE (MANDATORY STRUCTURE)
-## ═══════════════════════════════════════════════════════════════
-
-EVERY file you generate MUST follow this EXACT skeleton:
+  'components/Hero.tsx': `
+### HERO COMPONENT TEMPLATE (components/Hero.tsx)
+Standalone hero component. Imports React hooks directly.
 
 \`\`\`tsx
-// ═══════════════════════════════════════════════════════════════
-// SECTION 1: IMPORTS (Always at the top, never modify)
-// ═══════════════════════════════════════════════════════════════
-import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
+import { motion } from 'framer-motion';
+
+interface HeroProps {
+  title: string;
+  subtitle?: string;
+  onCTAClick?: () => void;
+}
+
+export function Hero({ title, subtitle, onCTAClick }: HeroProps) {
+  return (
+    <section className="min-h-screen flex items-center justify-center bg-zinc-950">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center"
+      >
+        <h1 className="text-6xl font-bold text-white">{title}</h1>
+        {subtitle && <p className="text-zinc-400 mt-4">{subtitle}</p>}
+        <button onClick={onCTAClick} className="mt-8 px-8 py-4 bg-white text-black rounded-lg">
+          Shop Now
+        </button>
+      </motion.div>
+    </section>
+  );
+}
+\`\`\``,
+
+  'components/ProductGrid.tsx': `
+### PRODUCT GRID TEMPLATE (components/ProductGrid.tsx)
+Imports Product type from data file. Uses useSellsPayCheckout.
+
+\`\`\`tsx
+import React from 'react';
+import { motion } from 'framer-motion';
+import type { Product } from '../data/products';
+
+interface ProductGridProps {
+  products: Product[];
+  onBuy: (id: string) => void;
+}
+
+export function ProductGrid({ products, onBuy }: ProductGridProps) {
+  return (
+    <section className="py-20 px-6 bg-zinc-950">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+        {products.map((product) => (
+          <motion.div 
+            key={product.id}
+            whileHover={{ scale: 1.02 }}
+            className="bg-zinc-900 rounded-xl overflow-hidden"
+          >
+            <img src={product.image} alt={product.name} className="w-full h-48 object-cover" />
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-white">{product.name}</h3>
+              <p className="text-zinc-400">\${product.price}</p>
+              <button 
+                onClick={() => onBuy(product.id)}
+                className="mt-4 w-full py-3 bg-white text-black rounded-lg"
+              >
+                Buy Now
+              </button>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+}
+\`\`\``,
+
+  'App.tsx': `
+### APP.TSX TEMPLATE (App.tsx)
+Main orchestrator. Imports components and data. Max 40 lines.
+
+\`\`\`tsx
+import React from 'react';
 import { useSellsPayCheckout } from './hooks/useSellsPayCheckout';
+import { PRODUCTS } from './data/products';
+import { Hero } from './components/Hero';
+import { ProductGrid } from './components/ProductGrid';
 
-// ═══════════════════════════════════════════════════════════════
-// SECTION 2: DATA CONSTANTS (Always OUTSIDE App, always CLOSED with ];)
-// ═══════════════════════════════════════════════════════════════
-const SITE_CONFIG = {
-  name: "Site Name",
-  theme: { primary: "#e11d48", bg: "#000000" }
-};
-
-const PRODUCTS = [
-  { id: "prod_1", name: "Product", price: 29.99, image: "https://images.unsplash.com/..." },
-  // Add more products here
-]; // ← MUST end with ];
-
-// ═══════════════════════════════════════════════════════════════
-// SECTION 3: THE IMMUTABLE APP WRAPPER
-// ═══════════════════════════════════════════════════════════════
 export default function App() {
-  // 3A. ALL HOOKS GO HERE - at the top of App(), nowhere else
   const { buyProduct } = useSellsPayCheckout();
-  const [activeTab, setActiveTab] = useState('home');
 
-  // 3B. DERIVED DATA (useMemo, computed values)
-  const filteredProducts = useMemo(() => PRODUCTS.filter(p => p.price > 0), []);
-
-  // 3C. HANDLERS
-  const handleBuy = (id: string) => {
-    buyProduct(id);
+  const handleBuy = (productId: string) => {
+    buyProduct(productId);
   };
 
-  // 3D. RETURN JSX
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center">
-        {/* Hero content */}
-      </section>
-
-      {/* Products Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-          {PRODUCTS.map((product) => (
-            <div key={product.id}>
-              {/* Product card */}
-            </div>
-          ))}
-        </div>
-      </section>
+    <div className="min-h-screen bg-zinc-950">
+      <Hero 
+        title="Creator Store" 
+        subtitle="Premium digital products"
+        onCTAClick={() => document.getElementById('products')?.scrollIntoView()}
+      />
+      <div id="products">
+        <ProductGrid products={PRODUCTS} onBuy={handleBuy} />
+      </div>
     </div>
   );
-} // ← MUST be the LAST line
-\`\`\`
+}
+\`\`\``,
+};
+
+const BUILDER_SYSTEM_PROMPT = `You are the SellsPay Implementation Engineer.
+You generate ONE FILE AT A TIME for a modular storefront.
 
 ## ═══════════════════════════════════════════════════════════════
-## 🚨 STRUCTURAL INTEGRITY (NON-NEGOTIABLE)
+## 🚨 ATOMIC FILE PROTOCOL (v3.0)
 ## ═══════════════════════════════════════════════════════════════
 
-### COMPONENT WRAPPER (CRITICAL)
-- ALWAYS start with: \`export default function App() {\`
-- NEVER omit the export or the function body
-- The closing brace \`}\` must be the LAST line of code
+You are generating a SINGLE FILE from a multi-file build.
+The file path and purpose will be provided in the request.
 
-### HOOK PLACEMENT (CRITICAL)
-ALL hooks (useState, useEffect, useCallback, useMemo, useSellsPayCheckout) MUST be:
-- INSIDE the App() function body
-- At the TOP LEVEL (never inside if/for/callbacks)
-- NEVER inside arrays, objects, or JSX
-- BEFORE any return statement
+### STRICT RULES
+1. **ONE FILE ONLY**: Output ONLY the requested file, nothing else
+2. **80 LINE LIMIT**: Your output must be ≤80 lines (data files ≤30)
+3. **COMPLETE CODE**: No fragments, no placeholders, no "// ..."
+4. **CORRECT IMPORTS**: Each file imports what it needs
 
-### DATA DECLARATION (CRITICAL - "TAPE THE BOX SHUT")
-Data constants (e.g., \`const PRODUCTS = [...]\`) MUST be:
-- DEFINED OUTSIDE the App component (above it)
-- COMPLETELY CLOSED with \`];\` before the component starts
-- NEVER contain hook calls or function definitions inside them
+### FILE TYPE RULES
 
-⚠️ MENTAL MODEL: Treat every data array like a physical shipping box.
-You MUST "tape the box shut" with \`];\` BEFORE you write ANY other code.
-If you see a hook like useSellsPayCheckout, STOP and check: "Did I close every array?"
-If you're unsure, scroll up and verify every \`const SOMETHING = [\` has a matching \`];\`.
+**data/*.ts files:**
+- Export typed arrays/objects
+- NO React imports
+- Max 30 lines
+- Use Unsplash images only
 
-### ❌ CASCADE FAILURE EXAMPLES (NEVER DO THIS):
-\`\`\`tsx
-// ERROR 1: Hook inside array
-const DATA = [
-  { id: 1, action: () => { const { buy } = useSellsPayCheckout(); } }
-];
+**components/*.tsx files:**
+- Export a named function component
+- Import React, motion, icons as needed
+- Props interface at top
+- Max 80 lines
 
-// ERROR 2: Array not closed before component
-const MOVIES = [
-  { id: 'm1', title: 'Film' }
-  // Missing ];
-const { buyProduct } = useSellsPayCheckout(); // CRASH: Hook outside component!
-
-// ERROR 3: Missing export wrapper
-const App = () => { ... } // CRASH: Missing "export default function"
-
-// ERROR 4: Fragment placeholder (FORBIDDEN)
-// ... rest of code
-
-// ERROR 5: Trailing comma death
-{ id: 1, price: 49.99," }
-\`\`\`
-
-### ✅ CORRECT STRUCTURE (ALWAYS DO THIS):
-\`\`\`tsx
-import React, { useState, useEffect } from 'react';
-import { useSellsPayCheckout } from './hooks/useSellsPayCheckout';
-
-// 1. DATA ARRAYS - Defined OUTSIDE, completely closed
-const PRODUCTS = [
-  { id: 'prod_1', name: 'Pro LUT Pack', price: 29.99 },
-  { id: 'prod_2', name: 'Sound FX Bundle', price: 19.99 }
-]; // <-- CLOSED with ];
-
-// 2. COMPONENT WRAPPER - Always export default function
-export default function App() {
-  // 3. HOOKS - At the top of the function body
-  const { buyProduct } = useSellsPayCheckout();
-  const [activeTab, setActiveTab] = useState('home');
-  
-  useEffect(() => {
-    // Side effects here
-  }, []);
-
-  // 4. RETURN JSX
-  return (
-    <div className="min-h-screen">
-      {PRODUCTS.map(p => (
-        <button key={p.id} onClick={() => buyProduct(p.id)}>
-          {p.name}
-        </button>
-      ))}
-    </div>
-  );
-} // <-- CLOSING BRACE
-\`\`\`
-
-## ═══════════════════════════════════════════════════════════════
-## MARKETPLACE RULES (SELLSPAY SPECIFIC)
-## ═══════════════════════════════════════════════════════════════
-
-1. **DIGITAL ONLY**: This is a digital-only marketplace (tutorials, LUTs, SFX, courses)
-2. **CENTRALIZED CHECKOUT**: SellsPay handles payments
-   - Initialize ONCE: \`const { buyProduct } = useSellsPayCheckout();\`
-   - Pass to buttons: \`onClick={() => buyProduct(productId)}\`
-   - DO NOT calculate fees or process cards - platform handles this
-3. **PREVIEW LOGIC**: Include preview capability for digital goods
-
-### MARKETPLACE GUARDRAILS
-1. **NO AUTH**: Never build login/signup forms
-2. **NO PAYMENTS**: Never use Stripe/PayPal directly - use useSellsPayCheckout()
-3. **NO BACKEND**: No axios, fetch, or API calls
-4. **NO ROUTER**: Use useState for tabs, NOT React Router
-
-### LAYOUT LAW
-1. Hero section is ALWAYS the FIRST element
-2. Navigation goes BELOW hero with \`sticky top-0 z-40\`
-3. NEVER place navbar at absolute top
+**App.tsx:**
+- Import useSellsPayCheckout from './hooks/useSellsPayCheckout'
+- Import data from './data/*'
+- Import components from './components/*'
+- Max 40 lines
+- MUST be export default function App()
 
 ### IMAGE PROTOCOL
-- ONLY use Unsplash URLs: https://images.unsplash.com/photo-XXXXX?auto=format&fit=crop&w=800&q=80
-- NEVER use ./assets, /images, or relative paths
-- Add onError handler as fallback
-
-## ═══════════════════════════════════════════════════════════════
-## 🧠 SELF-HEALING PROTOCOL (AUTONOMOUS ERROR PREVENTION)
-## ═══════════════════════════════════════════════════════════════
-
-You are an AUTONOMOUS engineer. You are responsible for ensuring all dependencies are resolved.
-BEFORE outputting any code, you MUST perform this mental checklist:
-
-### IMPORT VERIFICATION CHECKLIST
-□ If you use useState, useEffect, useMemo, useCallback, useRef → VERIFY they are imported from 'react'
-□ If you use motion.div or AnimatePresence → VERIFY they are imported from 'framer-motion'
-□ If you use useSellsPayCheckout → VERIFY it is imported from './hooks/useSellsPayCheckout'
-□ If you use any Lucide icon (Play, Heart, etc.) → VERIFY each icon is imported from 'lucide-react'
-
-### IF YOU SEE A REFERENCE ERROR IN PREVIOUS ATTEMPT
-When healingContext mentions "is not defined" or "ReferenceError":
-1. Your FIRST action is to check the import statements
-2. Add the missing import
-3. Do NOT refactor or change anything else
-4. Output the COMPLETE fixed file
-
-### FORBIDDEN BEHAVIORS
-❌ Never assume React hooks are globally available
-❌ Never use a hook without importing it first
-❌ Never use motion.* without importing motion
-❌ Never use an icon without importing it from lucide-react
-
-### STRICT RULES (ZERO TOLERANCE)
-1. **USE FRAMER MOTION**: Every section uses <motion.div> with initial={{opacity:0, y:20}} animate={{opacity:1, y:0}}
-2. **NO PLACEHOLDERS**: Use realistic mock data (names, prices, images)
-3. **TAILWIND ONLY**: Use advanced Tailwind (bg-clip-text, backdrop-blur, custom shadows)
-4. **ERROR AVOIDANCE**: Always use optional chaining (products?.map, user?.name)
-5. **SDK FIRST**: Use <ProductCard>, <CheckoutButton>, <FeaturedProducts> from @/components/sellspay
-
-${SDK_DOCUMENTATION}
-
-${ERROR_PREVENTION}
+ONLY use Unsplash: https://images.unsplash.com/photo-XXXXX?auto=format&fit=crop&w=800&q=80
 
 ### OUTPUT FORMAT
-1. Brief markdown summary (3-6 numbered points)
-2. [LOG: Action] tags for transparency (3-5 logs)
-3. The marker: \`/// BEGIN_CODE ///\`
-4. COMPLETE React TSX starting with \`export default function App()\`
+1. Start with the marker: \`/// BEGIN_FILE ///\`
+2. Output ONLY the code (no markdown fences around the actual code)
+3. End with: \`/// END_FILE ///\`
 
 Example:
 \`\`\`
-/// TYPE: CODE ///
-Building a luxury storefront with neon accents.
+/// BEGIN_FILE ///
+import React from 'react';
 
-1. **Hero**: Full-bleed gradient with animated headline
-2. **Products**: 3-column grid using FeaturedProducts SDK
-3. **About**: CreatorBio component with social links
-
-[LOG: Constructing hero with motion animations...]
-[LOG: Integrating FeaturedProducts from SDK...]
-[LOG: Adding sticky navigation below hero...]
-/// BEGIN_CODE ///
-export default function App() {
-  // ... complete code
+export function Hero() {
+  return <section>...</section>;
 }
-\`\`\``;
+/// END_FILE ///
+\`\`\`
+
+### FORBIDDEN
+- Markdown code fences inside the file content
+- Fragment placeholders (// ...)
+- Hooks outside component functions
+- Direct payment logic (use useSellsPayCheckout)
+- Files over 80 lines`;
 
 interface BuilderRequest {
   prompt: string;
-  architectPlan: Record<string, unknown>;
-  currentCode?: string;
-  prunedContext?: string;
+  architectPlan?: Record<string, unknown>;
+  targetFile: {
+    path: string;
+    description: string;
+    lineEstimate: number;
+  };
+  otherFiles?: Record<string, string>; // Already generated files for context
   styleProfile?: string;
   healingContext?: {
     errorType: string;
@@ -515,16 +275,16 @@ serve(async (req: Request) => {
   try {
     const { 
       prompt, 
-      architectPlan, 
-      currentCode, 
-      prunedContext,
+      architectPlan,
+      targetFile,
+      otherFiles,
       styleProfile,
       healingContext 
     } = await req.json() as BuilderRequest;
 
-    if (!prompt) {
+    if (!prompt || !targetFile) {
       return new Response(
-        JSON.stringify({ error: "Missing prompt" }),
+        JSON.stringify({ error: "Missing prompt or targetFile" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -534,15 +294,27 @@ serve(async (req: Request) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Build the system prompt with design tokens
+    // Build the system prompt with file-specific template
     let systemPrompt = BUILDER_SYSTEM_PROMPT;
     
-    // Inject design tokens based on style profile
+    // Add file-specific template if available
+    const fileKey = targetFile.path.includes('/') 
+      ? targetFile.path 
+      : targetFile.path;
+    
+    for (const [pattern, template] of Object.entries(FILE_TEMPLATES)) {
+      if (targetFile.path.includes(pattern.replace('components/', '').replace('data/', '')) || 
+          targetFile.path === pattern) {
+        systemPrompt += `\n\n${template}`;
+        break;
+      }
+    }
+    
+    // Inject design tokens
     if (styleProfile && DESIGN_TOKENS[styleProfile]) {
       systemPrompt += `\n\n${DESIGN_TOKENS[styleProfile]}`;
-    } else if (architectPlan?.vibeAnalysis?.visualStyle) {
-      // Try to match from architect's analysis
-      const style = String(architectPlan.vibeAnalysis.visualStyle).toLowerCase();
+    } else if (architectPlan?.vibeAnalysis) {
+      const style = String((architectPlan.vibeAnalysis as any)?.visualStyle || '').toLowerCase();
       for (const [key, tokens] of Object.entries(DESIGN_TOKENS)) {
         if (style.includes(key.split('-')[0])) {
           systemPrompt += `\n\n${tokens}`;
@@ -551,32 +323,42 @@ serve(async (req: Request) => {
       }
     }
 
-    // Build the user message with all context
-    let userMessage = `## User Request\n${prompt}\n`;
+    // Build user message
+    let userMessage = `## Original User Request\n${prompt}\n`;
     
-    if (architectPlan && Object.keys(architectPlan).length > 0) {
-      userMessage += `\n## Architect's Plan\n\`\`\`json\n${JSON.stringify(architectPlan, null, 2)}\n\`\`\`\n`;
+    userMessage += `\n## TARGET FILE TO GENERATE\n`;
+    userMessage += `**Path:** ${targetFile.path}\n`;
+    userMessage += `**Description:** ${targetFile.description}\n`;
+    userMessage += `**Line Limit:** ${targetFile.lineEstimate} lines\n`;
+    
+    if (architectPlan?.vibeAnalysis) {
+      userMessage += `\n## Design Direction\n`;
+      userMessage += `Style: ${(architectPlan.vibeAnalysis as any)?.visualStyle || 'Custom'}\n`;
     }
     
-    if (prunedContext) {
-      userMessage += `\n## Relevant Existing Code\n\`\`\`tsx\n${prunedContext}\n\`\`\`\n`;
-    } else if (currentCode) {
-      userMessage += `\n## Current Full Code\n\`\`\`tsx\n${currentCode}\n\`\`\`\n`;
-    }
-    
-    // Self-healing mode: Include FULL error context for targeted fixes
-    if (healingContext) {
-      userMessage += `\n## 🚨 SELF-HEALING MODE: YOUR PREVIOUS CODE FAILED\n`;
-      userMessage += `**Error Type:** ${healingContext.errorType}\n`;
-      userMessage += `**Error Message:** ${healingContext.errorMessage}\n`;
-      if (healingContext.fixSuggestion) {
-        userMessage += `**Fix Suggestion:** ${healingContext.fixSuggestion}\n`;
+    // Provide context of other files that have been generated
+    if (otherFiles && Object.keys(otherFiles).length > 0) {
+      userMessage += `\n## Already Generated Files (for import reference)\n`;
+      for (const [path, content] of Object.entries(otherFiles)) {
+        // Show just exports for context
+        const exports = content.match(/export\s+(const|function|interface|type)\s+(\w+)/g) || [];
+        if (exports.length > 0) {
+          userMessage += `**${path}:** exports ${exports.join(', ')}\n`;
+        }
       }
-      userMessage += `\n**Your Previous Failed Code:**\n\`\`\`tsx\n${healingContext.failedCode}\n\`\`\`\n`;
-      userMessage += `\n⚠️ IMPORTANT: Fix ONLY the specific error above. Do NOT refactor or change anything else. Output the corrected COMPLETE file.`;
+    }
+    
+    if (healingContext) {
+      userMessage += `\n## 🚨 FIX REQUIRED\n`;
+      userMessage += `**Error:** ${healingContext.errorMessage}\n`;
+      userMessage += `**Fix:** ${healingContext.fixSuggestion || 'Fix the error and regenerate'}\n`;
+      userMessage += `**Failed Code:**\n\`\`\`tsx\n${healingContext.failedCode}\n\`\`\`\n`;
     }
 
-    userMessage += `\n## Final Instructions\nGenerate complete, production-ready React TSX. Follow the Architect's plan exactly. Use SDK components where appropriate.`;
+    userMessage += `\n## Instructions\n`;
+    userMessage += `Generate ONLY the file "${targetFile.path}". `;
+    userMessage += `Keep it under ${targetFile.lineEstimate} lines. `;
+    userMessage += `Output complete, working code with /// BEGIN_FILE /// and /// END_FILE /// markers.`;
 
     const response = await fetch(LOVABLE_AI_URL, {
       method: "POST",
@@ -590,8 +372,8 @@ serve(async (req: Request) => {
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
         ],
-        temperature: healingContext ? 0.2 : 0.4, // Lower for healing mode, moderate for generation
-        max_tokens: 16000, // Increased further to prevent truncation
+        temperature: healingContext ? 0.2 : 0.4,
+        max_tokens: 4000, // Smaller since we're generating one file
         stream: true,
       }),
     });
@@ -610,7 +392,7 @@ serve(async (req: Request) => {
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    // Stream the response back to the client
+    // Stream the response back
     return new Response(response.body, {
       headers: {
         ...corsHeaders,

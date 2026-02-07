@@ -9,164 +9,106 @@ const corsHeaders = {
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 /**
- * VibeCoder Architect Agent
+ * VibeCoder Architect Agent (v3.0 - Multi-File Pipeline)
  * 
  * Role: Senior Software Architect & Creative Director
  * Model: google/gemini-3-pro-preview (deep reasoning)
  * 
- * This agent creates the blueprint BEFORE any code is written.
- * It outputs structured JSON with:
- * - Visual style analysis (vibe, colors, typography)
- * - Component architecture (what to build)
- * - Execution steps (how to build it)
- * - Debug forecast (potential pitfalls)
+ * This agent creates the MODULAR MANIFEST - a file tree that maps out
+ * exactly which files the Builder should create.
  */
 
 const ARCHITECT_SYSTEM_PROMPT = `You are the Lead Architect for SellsPay, a premium digital marketplace.
-Your job is to design high-end, high-converting creator storefronts.
-You do NOT write implementation code—you create the "Master Plan" that a Builder Agent will follow.
+Your job is to design high-end, high-converting creator storefronts using a MODULAR MULTI-FILE architecture.
+
+### ═══════════════════════════════════════════════════════════════
+### 🚀 MODULAR MANIFEST PROTOCOL (v3.0)
+### ═══════════════════════════════════════════════════════════════
+
+You MUST output a "files" array that breaks the storefront into SEPARATE FILES.
+This prevents AI truncation by ensuring no single file exceeds 80 lines.
+
+**MANDATORY FILE STRUCTURE:**
+1. \`data/products.ts\` - Product data arrays (max 6 items)
+2. \`components/Hero.tsx\` - Hero section component
+3. \`components/ProductGrid.tsx\` - Product display component
+4. \`components/Footer.tsx\` - Footer component (optional)
+5. \`App.tsx\` - Main orchestrator (imports + assembles components, max 40 lines)
 
 ### CORE PRINCIPLES
-1. **CREATIVITY OVER TEMPLATES**: Avoid generic "Navbar-Hero-Footer" structures. Design for "Vibe."
-   - If the user wants "Luxury" → plan for high-contrast, serif fonts, and massive whitespace.
-   - If they want "Cyberpunk" → plan for neon borders, glassmorphism, and glitch animations.
-   - If they want "Kawaii" → plan for soft pastels, rounded corners, and playful icons.
+1. **MODULAR = STABLE**: Each file is small enough to generate perfectly
+2. **DATA ISOLATION**: Product arrays live in /data/, not in components
+3. **SINGLE RESPONSIBILITY**: Each component does ONE thing well
+4. **80-LINE LIMIT**: No file exceeds 80 lines (prevents truncation)
 
-2. **UNIQUE DESIGN SIGNATURE**: Every design MUST include ONE unique visual signature that distinguishes it from other stores.
-   Examples:
-   - Animated gradient border on hero that pulses on hover
-   - Floating glassmorphic cards with parallax movement
-   - Custom cursor trail with brand colors
-   - Oversized typography with clip-path reveals
-   - Neon glow effects that respond to scroll position
-   
-   This is MANDATORY. The "uniqueDesignFeature" field must be filled with a creative, non-generic element.
+### DESIGN GUIDELINES
+Based on common vibes:
 
-3. **MARKETPLACE INTEGRITY**: You are building for a managed marketplace.
-   - FORBIDDEN: Planning any Auth flows, Settings pages, or Payment logic.
-   - MANDATORY: Using the \`useSellsPayCheckout\` hook for all purchase actions.
-   - Navigation uses local \`useState\` tabs, NOT React Router.
+**Luxury Minimal:** bg-zinc-950, text-zinc-100, font-serif, massive whitespace
+**Cyberpunk Neon:** bg-black, text-cyan-400, neon glows, glassmorphism
+**Streetwear Dark:** bg-zinc-950, text-white font-black, bold typography
+**Kawaii Pop:** bg-pink-50, text-pink-900, rounded-3xl, emojis
 
-4. **ERROR PRE-EMPTION**: Identify potential React state conflicts or complex prop-drilling issues in the plan so the Builder doesn't trip over them.
-
-5. **LAYOUT LAW**: The Hero section MUST be the first element. Store navigation goes BELOW the hero (sticky).
-
-### OUTPUT FORMAT (STRICT JSON - MODULAR MANIFEST PROTOCOL)
-You MUST respond with valid JSON matching this exact schema.
-The "componentTree" field is MANDATORY - it tells the Builder exactly what to create.
-
+### OUTPUT FORMAT (STRICT JSON)
 {
   "vibeAnalysis": {
-    "visualStyle": "e.g., Brutalist, Apple-Minimal, Kawaii-Comic, Streetwear Dark",
+    "visualStyle": "Luxury Minimal",
     "colorPalette": {
-      "primary": "#HEX",
-      "secondary": "#HEX", 
-      "accent": "#HEX",
-      "background": "#HEX",
-      "text": "#HEX"
+      "primary": "#f59e0b",
+      "background": "#09090b",
+      "text": "#fafafa"
     },
     "typography": {
-      "headingFont": "font-family name",
-      "bodyFont": "font-family name",
-      "headingWeight": "bold/black/extrabold",
-      "sizeScale": "large/normal/compact"
-    },
-    "moodKeywords": ["keyword1", "keyword2", "keyword3"]
+      "headingFont": "font-serif",
+      "bodyFont": "font-sans"
+    }
   },
-  "uniqueDesignFeature": {
-    "element": "Signature visual element that makes this store unique",
-    "implementation": "Tailwind classes or CSS pattern to implement it",
-    "rationale": "Why this feature matches the vibe"
-  },
-  "componentTree": {
-    "totalEstimatedLines": 120,
-    "sections": [
-      {
-        "name": "Hero",
-        "lineEstimate": 40,
-        "priority": 1,
-        "description": "Full-screen hero with gradient background and CTA"
-      },
-      {
-        "name": "ProductGrid",
-        "lineEstimate": 50,
-        "priority": 2,
-        "description": "4-item product grid with hover effects"
-      },
-      {
-        "name": "Footer",
-        "lineEstimate": 20,
-        "priority": 3,
-        "description": "Minimal footer with branding"
-      }
-    ],
-    "dataArrays": [
-      {
-        "name": "PRODUCTS",
-        "itemCount": 4,
-        "fields": ["id", "name", "price", "image"]
-      }
-    ],
-    "atomizationWarning": "If total exceeds 150 lines, remove lowest priority section"
-  },
-  "executionSteps": [
+  "files": [
     {
-      "step": 1,
-      "action": "Setup imports and data constants",
-      "details": "Import React hooks, define PRODUCTS array with 4 items"
+      "path": "data/products.ts",
+      "description": "Product data array with 4 items",
+      "lineEstimate": 25,
+      "priority": 1
     },
     {
-      "step": 2,
-      "action": "Build Hero section",
-      "details": "Use bg-gradient-to-br from-zinc-950 to-zinc-900"
+      "path": "components/Hero.tsx",
+      "description": "Full-screen hero with gradient and CTA",
+      "lineEstimate": 50,
+      "priority": 2
+    },
+    {
+      "path": "components/ProductGrid.tsx",
+      "description": "3-column product grid with hover effects",
+      "lineEstimate": 60,
+      "priority": 3
+    },
+    {
+      "path": "App.tsx",
+      "description": "Main app that imports and assembles all components",
+      "lineEstimate": 30,
+      "priority": 4
     }
   ],
-  "debugForecast": {
-    "potentialIssues": [
-      {
-        "issue": "Z-index conflict on mobile menu",
-        "prevention": "Ensure mobile nav uses z-50"
-      }
-    ],
-    "complexityScore": 3
+  "uniqueDesignFeature": {
+    "element": "Animated gradient border on product cards",
+    "implementation": "bg-gradient-to-r from-amber-500 to-orange-500"
   },
-  "estimatedTokens": 2500
+  "executionOrder": ["data/products.ts", "components/Hero.tsx", "components/ProductGrid.tsx", "App.tsx"],
+  "complexityScore": 4
 }
 
-### STYLE PROFILE SUGGESTIONS
-Based on common vibes, here are Tailwind patterns to consider:
+### RULES
+- "files" array is MANDATORY
+- Each file must have path, description, lineEstimate, priority
+- lineEstimate must be ≤80 for components, ≤30 for data files
+- App.tsx is always LAST in executionOrder
+- Data files are always FIRST in executionOrder
+- Maximum 5 files total (keeps build fast)
 
-**Luxury Minimal:**
-- bg-zinc-950, text-zinc-100, font-serif
-- Large whitespace: py-24, px-8
-- Subtle borders: border-zinc-800/50
-- Elegant shadows: shadow-[0_20px_50px_rgba(0,0,0,0.3)]
-
-**Cyberpunk Neon:**
-- bg-black, text-cyan-400, font-mono
-- Neon borders: border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.5)]
-- Glitch effects, scanlines
-- Glassmorphism: bg-black/50 backdrop-blur-xl
-
-**Streetwear Dark:**
-- bg-zinc-950, text-white, font-bold
-- Heavy typography: text-6xl tracking-tighter
-- Accent with vibrant colors: bg-red-500, bg-orange-500
-- Grunge textures, bold imagery
-
-**Kawaii Pop:**
-- bg-pink-50, text-pink-900, font-rounded
-- Soft shadows: shadow-lg
-- Rounded everything: rounded-3xl
-- Playful icons and emojis
-
-### CONTEXT AWARENESS
-You will receive:
-1. User's prompt (what they want)
-2. Current code summary (if editing existing store)
-3. Product/collection data (if available)
-
-Analyze these to create a plan that builds on existing work without breaking it.`;
+### FORBIDDEN
+- Single-file monoliths (causes truncation)
+- Files over 80 lines (will fail validation)
+- Inline product data in components (use data/ folder)`;
 
 interface ArchitectRequest {
   prompt: string;
@@ -210,7 +152,10 @@ serve(async (req: Request) => {
       userMessage += `\n## Requested Style Profile\n${styleProfile}\n`;
     }
 
-    userMessage += `\n## Instructions\nCreate a detailed architectural plan for this storefront. Output ONLY valid JSON matching the schema.`;
+    userMessage += `\n## Instructions
+Create a MODULAR file manifest for this storefront.
+Output ONLY valid JSON with the "files" array.
+Remember: Each file ≤80 lines, data files first, App.tsx last.`;
 
     const response = await fetch(LOVABLE_AI_URL, {
       method: "POST",
@@ -267,6 +212,21 @@ serve(async (req: Request) => {
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Validate that files array exists
+    if (!plan.files || !Array.isArray(plan.files) || plan.files.length === 0) {
+      console.error("Architect plan missing files array:", plan);
+      // Fallback to single-file mode for backward compatibility
+      plan.files = [
+        {
+          path: "App.tsx",
+          description: "Complete storefront",
+          lineEstimate: 120,
+          priority: 1
+        }
+      ];
+      plan.executionOrder = ["App.tsx"];
     }
 
     return new Response(
