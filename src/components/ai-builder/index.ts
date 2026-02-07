@@ -16,6 +16,7 @@ export { PremiumGate } from './PremiumGate';
 export { InsufficientCreditsCard, isCreditsError, parseCreditsError } from './InsufficientCreditsCard';
 export { AIBuilderMessage, type AIBuilderChatMessage } from './AIBuilderMessage';
 export { LovableHero } from './LovableHero';
+export { testCodeInShadow, silentHeal, type ShadowTestResult } from './ShadowTester';
 
 // Onboarding
 export { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
