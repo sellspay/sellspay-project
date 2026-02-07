@@ -17,8 +17,38 @@ export default function Terms() {
             </p>
           </section>
 
+          <section className="space-y-4 bg-primary/5 p-6 rounded-lg border border-primary/20">
+            <h2 className="text-2xl font-semibold text-foreground">2. Marketplace Role & Merchant of Record</h2>
+            <p>
+              SellsPay operates as a <strong className="text-foreground">Marketplace Facilitator</strong> and{' '}
+              <strong className="text-foreground">Merchant of Record (MoR)</strong> for all transactions 
+              conducted through the platform. When a customer purchases a digital product, the transaction 
+              is legally between the customer and SellsPay.
+            </p>
+            
+            <h3 className="text-xl font-medium text-foreground mt-4">For Sellers</h3>
+            <p>
+              You appoint SellsPay as your agent to sell your digital products. While you retain ownership 
+              of your content, SellsPay is responsible for processing payments, collecting applicable 
+              sales tax/VAT, and handling initial billing support.
+            </p>
+            
+            <h3 className="text-xl font-medium text-foreground mt-4">For Buyers</h3>
+            <p>
+              Your financial transaction is with SellsPay. This is why "SELLSPAY" will appear on your 
+              bank or credit card statement.
+            </p>
+            
+            <h3 className="text-xl font-medium text-foreground mt-4">Tax Collection</h3>
+            <p>
+              SellsPay collects and remits sales tax/VAT on your behalf where required by law. Sellers 
+              are not required to register for sales tax in individual jurisdictions—SellsPay handles 
+              this as the Merchant of Record.
+            </p>
+          </section>
+
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">2. Description of Service</h2>
+            <h2 className="text-2xl font-semibold text-foreground">3. Description of Service</h2>
             <p>
               SellsPay is a marketplace platform that connects creators with digital products, 
               tools, and services for video editing and content creation. We provide:
@@ -34,7 +64,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">3. User Accounts</h2>
+            <h2 className="text-2xl font-semibold text-foreground">4. User Accounts</h2>
             <p>
               To access certain features, you must create an account. You are responsible for:
             </p>
@@ -51,7 +81,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">4. Creator & Seller Terms</h2>
+            <h2 className="text-2xl font-semibold text-foreground">5. Creator & Seller Terms</h2>
             <p>
               To sell products on SellsPay, you must apply and be approved as a Creator. As a seller, you agree to:
             </p>
@@ -73,7 +103,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">5. Creator Subscription Plans</h2>
+            <h2 className="text-2xl font-semibold text-foreground">6. Creator Subscription Plans</h2>
             <p>
               Creators may offer subscription plans providing exclusive access to their products:
             </p>
@@ -86,7 +116,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">6. Payment Terms for Sellers</h2>
+            <h2 className="text-2xl font-semibold text-foreground">7. Payment Terms for Sellers</h2>
             
             <h3 className="text-xl font-medium text-foreground mt-4">Revenue Split</h3>
             <ul className="list-disc pl-6 space-y-2">
@@ -126,7 +156,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">7. Editor Services Terms</h2>
+            <h2 className="text-2xl font-semibold text-foreground">8. Editor Services Terms</h2>
             <p>For users offering editor-for-hire services:</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>You must apply and be approved as an Editor</li>
@@ -139,7 +169,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">8. Pro Tools & Credits</h2>
+            <h2 className="text-2xl font-semibold text-foreground">9. Pro Tools & Credits</h2>
             <p>
               SellsPay offers AI-powered audio tools that operate on a credits system:
             </p>
@@ -153,7 +183,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">9. Tax Compliance</h2>
+            <h2 className="text-2xl font-semibold text-foreground">10. Tax Compliance</h2>
             
             <h3 className="text-xl font-medium text-foreground mt-4">Seller Responsibilities</h3>
             <p>Sellers are responsible for:</p>
@@ -177,7 +207,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">10. Intellectual Property</h2>
+            <h2 className="text-2xl font-semibold text-foreground">11. Intellectual Property</h2>
             <p>
               All content on SellsPay, including but not limited to text, graphics, logos, 
               and software, is the property of SellsPay or its content suppliers and is 
@@ -191,7 +221,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">11. Prohibited Conduct</h2>
+            <h2 className="text-2xl font-semibold text-foreground">12. Prohibited Conduct</h2>
             <p>You agree not to:</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Violate any applicable laws or regulations</li>
@@ -207,7 +237,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">12. Refunds and Disputes</h2>
+            <h2 className="text-2xl font-semibold text-foreground">13. Refunds and Disputes</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li>Refund requests must be made within 14 days of purchase</li>
               <li>Digital products are generally non-refundable once downloaded</li>
@@ -222,7 +252,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">13. Account Suspension & Termination</h2>
+            <h2 className="text-2xl font-semibold text-foreground">14. Account Suspension & Termination</h2>
             <p>
               SellsPay reserves the right to suspend or terminate accounts that violate these terms. 
               Grounds for suspension include but are not limited to:
@@ -240,7 +270,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">14. Limitation of Liability</h2>
+            <h2 className="text-2xl font-semibold text-foreground">15. Limitation of Liability</h2>
             <p>
               SellsPay shall not be liable for any indirect, incidental, special, 
               consequential, or punitive damages resulting from your use of the platform. 
@@ -249,7 +279,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">15. Changes to Terms</h2>
+            <h2 className="text-2xl font-semibold text-foreground">16. Changes to Terms</h2>
             <p>
               We may update these Terms of Service from time to time. We will notify users of 
               significant changes via email or platform notification. Continued use of the 
@@ -258,7 +288,7 @@ export default function Terms() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-foreground">16. Contact Information</h2>
+            <h2 className="text-2xl font-semibold text-foreground">17. Contact Information</h2>
             <p>
               For questions about these Terms of Service, please contact us at:
             </p>

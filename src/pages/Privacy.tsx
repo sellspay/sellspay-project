@@ -20,6 +20,16 @@ export default function Privacy() {
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-foreground">2. Information We Collect</h2>
+            
+            <div className="bg-primary/5 p-4 rounded-lg border border-primary/20 mb-4">
+              <h3 className="text-xl font-medium text-foreground">Merchant of Record Data Collection</h3>
+              <p className="mt-2">
+                Because SellsPay acts as the <strong className="text-foreground">Merchant of Record</strong>, 
+                we collect personal information (such as name, email address, and IP address) to process 
+                payments, prevent fraud, and calculate taxes.
+              </p>
+            </div>
+            
             <h3 className="text-xl font-medium text-foreground">Information You Provide</h3>
             <ul className="list-disc pl-6 space-y-2">
               <li>Account information (name, email, password)</li>
@@ -35,6 +45,26 @@ export default function Privacy() {
               <li>Usage data and analytics</li>
               <li>Cookies and similar technologies</li>
             </ul>
+            
+            <h3 className="text-xl font-medium text-foreground mt-4">Sharing with Sellers</h3>
+            <p>
+              We share the buyer's name and email with the specific Seller whose product was purchased 
+              to allow for product delivery and customer support. Sellers do not receive your payment 
+              details or full billing address.
+            </p>
+            
+            <h3 className="text-xl font-medium text-foreground mt-4">Third-Party Processors</h3>
+            <p>
+              Your payment data is handled securely by Stripe. SellsPay does not store your full 
+              credit card details on our servers.
+            </p>
+            
+            <h3 className="text-xl font-medium text-foreground mt-4">Compliance & Retention</h3>
+            <p>
+              We retain transaction records as required by law for tax reporting (e.g., 1099-K reporting 
+              in the United States) and audit purposes. This data is typically retained for 7 years 
+              as required by financial regulations.
+            </p>
           </section>
 
           <section className="space-y-4">
