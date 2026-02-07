@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { forwardRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,12 +18,15 @@ interface UpgradeModalProps {
   insufficientCredits?: boolean;
 }
 
-export function UpgradeModal({ 
-  open, 
-  onOpenChange, 
-  requiredFeature,
-  insufficientCredits = false 
-}: UpgradeModalProps) {
+export const UpgradeModal = forwardRef<HTMLDivElement, UpgradeModalProps>(function UpgradeModal(
+  {
+    open,
+    onOpenChange,
+    requiredFeature,
+    insufficientCredits = false,
+  },
+  ref
+) {
   const navigate = useNavigate();
   const { plan } = useSubscription();
 
@@ -57,7 +60,8 @@ export function UpgradeModal({
   const recommendedPlan = getRecommendedPlan();
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <div ref={ref}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="text-center">
           <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/10 border border-primary/20 flex items-center justify-center mb-4">
@@ -111,6 +115,8 @@ export function UpgradeModal({
           Maybe Later
         </Button>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+    </div>
   );
-}
+});
+UpgradeModal.displayName = 'UpgradeModal';
