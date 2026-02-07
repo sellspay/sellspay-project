@@ -142,20 +142,38 @@ const ErrorDetector = forwardRef<HTMLDivElement, { onError?: (error: string) => 
 );
 ErrorDetector.displayName = 'ErrorDetector';
 
-// Ready detector - fires onReady when Sandpack finishes bundling
+// Ready detector - fires onReady when Sandpack finishes bundling.
+// Includes a fallback timer to avoid the workspace getting stuck behind the transition mask.
 const ReadyDetector = forwardRef<HTMLDivElement, { onReady?: () => void }>(
   function ReadyDetector({ onReady }, ref) {
     const { sandpack } = useSandpack();
     const hasCalledReady = useRef(false);
 
+    const callReady = () => {
+      if (hasCalledReady.current) return;
+      hasCalledReady.current = true;
+      onReady?.();
+    };
+
     useEffect(() => {
       // Sandpack status: 'initial' | 'idle' | 'running'
       // 'idle' means bundling is complete
-      if (sandpack.status === 'idle' && !hasCalledReady.current) {
-        hasCalledReady.current = true;
-        onReady?.();
+      if (sandpack.status === 'idle') {
+        callReady();
       }
-    }, [sandpack.status, onReady]);
+    }, [sandpack.status]);
+
+    useEffect(() => {
+      // Fallback: if we never hit 'idle' (edge-case), release after a short delay.
+      // This prevents the entire canvas from appearing to "vanish" behind the mask.
+      const t = window.setTimeout(() => {
+        if (!hasCalledReady.current && sandpack.status !== 'initial') {
+          callReady();
+        }
+      }, 1500);
+
+      return () => window.clearTimeout(t);
+    }, []);
 
     return <div ref={ref} style={{ display: 'none' }} aria-hidden="true" />;
   }
