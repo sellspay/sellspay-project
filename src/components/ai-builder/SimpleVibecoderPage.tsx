@@ -848,56 +848,17 @@ Analyze the error, identify the root cause in the code above, and regenerate the
     }
   };
   
-  // Show magical doorway only when explicitly starting a new project
-  if (showDoorway && !activeProjectId) {
-    return (
-      <LovableHero
-        userName={profile?.username || 'Creator'}
-        variant="fullscreen"
-        onStart={handleDoorwayStart}
-      />
-    );
-  }
-  
-  // Get device mode dimensions
-  const getDeviceDimensions = () => {
-    switch (deviceMode) {
-      case 'mobile': return 'max-w-[375px]';
-      case 'tablet': return 'max-w-[768px]';
-      default: return 'w-full';
-    }
-  };
-  
-  // ═══════════════════════════════════════════════════════════════════════════
-  // MAGICAL DOORWAY: Show fullscreen LovableHero when starting a new project
-  // ═══════════════════════════════════════════════════════════════════════════
+  // Show Magical Doorway when explicitly starting a new project
+  // (single rendering path to avoid “prompt sent but build never starts” bugs)
   if (showDoorway) {
     return (
       <LovableHero
         userName={profile?.username || user?.email?.split('@')[0] || 'Creator'}
         variant="fullscreen"
-        onStart={(prompt, isPlanMode) => {
-          // Add user message to chat immediately
-          const userMessage: ChatMessage = {
-            id: crypto.randomUUID(),
-            role: 'user',
-            content: prompt,
-          };
-          setMessages([userMessage]);
-          
-          // Exit doorway and transition to canvas
-          setShowDoorway(false);
-          
-          // Trigger the build with the prompt
-          handleSendMessage({
-            isPlanMode: isPlanMode || false,
-            model: activeModel,
-            attachments: [],
-            promptOverride: prompt, // Pass prompt directly since inputValue may not be set yet
-          });
-        }}
+        onStart={handleDoorwayStart}
         onBack={() => {
-          // If user has projects, go back to last project; otherwise stay in doorway
+          // If user already has a project selected, just close the doorway.
+          // Otherwise, go back home.
           if (activeProjectId) {
             setShowDoorway(false);
           } else {
@@ -907,6 +868,15 @@ Analyze the error, identify the root cause in the code above, and regenerate the
       />
     );
   }
+
+  const getDeviceDimensions = () => {
+    switch (deviceMode) {
+      case 'mobile': return 'max-w-[375px]';
+      case 'tablet': return 'max-w-[768px]';
+      default: return 'w-full';
+    }
+  };
+  
   
   return (
     <div className="h-screen w-screen flex bg-background overflow-hidden">
