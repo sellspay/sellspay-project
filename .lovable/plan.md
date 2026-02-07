@@ -1,114 +1,79 @@
 
-# Nuclear Error Silence Protocol
+# Fix: JSON Response Being Rendered as Code
 
-## The Problem
-The current noise suppression hook (`useSuppressPreviewNoise`) only patches the outer window's console and error handlers, but **Sandpack renders inside an iframe** with its own JavaScript context. Errors from the AI-generated code crash inside that iframe, trigger react-error-overlay, and spam the iframe's console—none of which is caught by the parent window patches.
+## Problem Analysis
 
-Additionally, the `ErrorDetector` component inside Sandpack is watching `sandpack.error` and sometimes mutates or reads frozen Error objects, causing secondary crashes.
+The VibeCoder AI builder has a critical bug where the **preview crashes** with a `TypeError: Cannot assign to read only property 'message'` error. This happens because:
 
-## Architecture Overview
+1. When you send a request, the frontend passes a `jobId` to the backend for background-persistent generation
+2. The backend (`vibecoder-v2`) detects the `jobId` and switches to **non-streaming mode**
+3. Instead of streaming the AI's code, it returns a JSON status: `{"success":true,"jobId":"...","status":"completed"}`
+4. The frontend streaming code (`useStreamingCode.ts`) doesn't recognize this JSON response
+5. It treats the JSON as if it were React/TSX code and sets it as the preview code
+6. Sandpack tries to render `{"success":...}` as a React component, which fails with a syntax error
+7. The error object is frozen by Sandpack, and when React's error overlay tries to modify it, it crashes with the "read-only property" error
+
+## Technical Solution
+
+### 1. Detect JSON Response in `useStreamingCode.ts`
+
+Before processing the response body as streaming text, check if the response is JSON (Content-Type header) and if it contains a job status response. If so, **skip the streaming parser** and let the background generation handler deal with it.
 
 ```text
-┌────────────────────────────────────────────────────────────────────┐
-│  PARENT WINDOW (Lovable App)                                       │
-│  • useSuppressPreviewNoise → patches console.error/warn            │
-│  • CSS hides .sp-error-overlay, #react-error-overlay               │
-│                                                                    │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │  IFRAME (Sandpack Preview)                                   │  │
-│  │  • Has its OWN window + console + error overlay              │  │
-│  │  • react-error-overlay runs INSIDE this iframe               │  │
-│  │  • Errors here spam the IFRAME'S console, not parent's       │  │
-│  │  • Currently: NO suppression active inside iframe            │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Frontend: useStreamingCode.ts                              │
+│                                                             │
+│  fetch('/vibecoder-v2', { jobId: '...' })                   │
+│           │                                                 │
+│           ▼                                                 │
+│  ┌─────────────────────────────────┐                        │
+│  │ Check Content-Type header       │                        │
+│  │ OR first bytes of response      │                        │
+│  └─────────────────────────────────┘                        │
+│           │                                                 │
+│     ┌─────┴─────┐                                           │
+│     │           │                                           │
+│     ▼           ▼                                           │
+│  [JSON]      [Stream]                                       │
+│     │           │                                           │
+│     ▼           ▼                                           │
+│  Return early   Continue with                               │
+│  (job will be   streaming parser                            │
+│  handled by                                                 │
+│  realtime sub)                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Solution: Multi-Layer "Nuclear Silence" Shield
+### 2. Add Content-Type Check
 
-### Layer 1: Inject CSS Into Sandpack Iframe
-Sandpack allows injecting custom CSS via a special file. We'll add styles that hide react-error-overlay and any crash banners inside the iframe itself.
+The backend returns `Content-Type: application/json` for job responses and `Content-Type: text/event-stream` for streaming. The frontend should check this header and handle accordingly.
 
-### Layer 2: Inject Runtime Silencer Script
-Sandpack supports custom entry files. We'll inject a tiny script that patches the iframe's `console.error` and `window.onerror` before React even boots.
+### 3. Add JSON Prefix Detection (Fallback)
 
-### Layer 3: Disable React Error Overlay at Compile Time
-Sandpack can be configured to disable the default react-error-overlay entirely using `showSandpackErrorOverlay={false}` (already set) AND by not including the error overlay dependency.
-
-### Layer 4: Strengthen Parent Window Suppression
-Expand the regex patterns in `useSuppressPreviewNoise` to catch additional noisy patterns like `MutationRecord`, `attributeName`, `SyntaxError`, and any Sandpack bundler spam.
-
-### Layer 5: CSS "!important" Nuclear Strike on All Error UI
-Expand the existing CSS block to target every known Sandpack/React error class, including iframe-injected overlays and the `.sp-error-message` banner.
-
----
-
-## Technical Changes
-
-### 1. Expand Noise Suppression Patterns
-**File:** `src/components/ai-builder/hooks/useSuppressPreviewNoise.ts`
-
-Add additional regex patterns to silence:
-- `MutationRecord` / `attributeName` (the specific error in your console)
-- `SyntaxError` patterns from bundler
-- `Cannot read properties of undefined`
-- Sandpack bundler noise (`/sandbox\.`, `/static\/js\/`)
-
-### 2. Inject Silence Script Into Sandpack Files
-**File:** `src/components/ai-builder/VibecoderPreview.tsx`
-
-Add a hidden file to the Sandpack `files` object that:
-- Patches `window.onerror` and `window.onunhandledrejection` inside the iframe
-- Patches `console.error` and `console.warn` inside the iframe
-- Removes any DOM elements that look like error overlays every 500ms (mutation observer fallback)
-
-### 3. Inject "Nuclear CSS" Into Iframe
-**File:** `src/components/ai-builder/VibecoderPreview.tsx`
-
-Add a hidden CSS file that hides:
-- `#react-error-overlay`
-- `.error-overlay`
-- `[data-react-error-overlay]`
-- Any `div` with red background and "Error" text (fallback)
-
-### 4. Safer ErrorDetector Logic
-**File:** `src/components/ai-builder/VibecoderPreview.tsx`
-
-Wrap ALL reads of `sandpack.error` in try/catch with read-only guards:
-- Never pass the original Error object reference
-- Clone the message string immediately
-- Add a debounce/throttle to prevent rapid-fire re-reporting
-
-### 5. Strengthen Parent CSS
-**File:** `src/components/ai-builder/VibecoderPreview.tsx`
-
-Expand the `SANDPACK_HEIGHT_FIX` CSS to include:
-- `.cm-diagnosticMessage` (CodeMirror inline errors)
-- `.sp-bridge-frame` error UI
-- Any element with `position: fixed` and red color
-
----
+As a safety net, if the first characters of the response body are `{` (indicating JSON), treat it as a job status response and skip the code parser.
 
 ## Files to Modify
 
-| File | Change Summary |
-|------|----------------|
-| `src/components/ai-builder/hooks/useSuppressPreviewNoise.ts` | Add more regex patterns for MutationRecord, SyntaxError, bundler noise |
-| `src/components/ai-builder/VibecoderPreview.tsx` | Inject silencer script + CSS into Sandpack files, strengthen parent CSS, safer ErrorDetector |
-| `src/lib/vibecoder-stdlib.ts` | Add iframe-silence.js and iframe-silence.css entries |
+1. **`src/components/ai-builder/useStreamingCode.ts`**
+   - After checking `response.ok`, read the `Content-Type` header
+   - If `application/json`, parse as job status and return early (the realtime subscription will handle the completed job)
+   - Add a fallback check for responses starting with `{`
 
----
+2. **Optional safety: `supabase/functions/vibecoder-v2/index.ts`**
+   - Could add a more explicit marker in the JSON response so the frontend can definitely identify it
 
-## Expected Outcome
-1. **No overlay ever** - the red/white error screen will never appear, inside or outside the iframe
-2. **No console spam** - errors from the iframe will be silently caught and dropped
-3. **Toast-only feedback** - the `FixErrorToast` at the bottom remains the only error UI
-4. **Streaming stability** - errors during streaming are completely suppressed since `isStreaming` guard is active
+## Expected Behavior After Fix
 
-## Testing Checklist
-After implementation:
-1. Generate code that intentionally has a syntax error → No overlay, toast appears
-2. Generate code with missing import → No overlay, toast appears
-3. Generate code with undefined function call → No infinite loop, toast appears
-4. Watch console during generation → No spam
-5. Complete a successful generation → Preview renders cleanly
+1. User sends a request → `jobId` is created and passed to backend
+2. Backend processes in non-streaming mode, returns JSON status
+3. **Frontend detects JSON response** and returns early without modifying code state
+4. Realtime subscription picks up the completed job and applies `code_result` from the database
+5. Preview updates cleanly with no syntax errors
+
+## Why This Fixes the Read-Only Property Error
+
+The error happens because:
+- Invalid JSON is set as code → Sandpack crashes → Error object is frozen
+- Error overlay tries to modify frozen object → TypeError
+
+By preventing JSON from ever being set as code, we eliminate the root cause entirely.
