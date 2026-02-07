@@ -1010,14 +1010,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     )
   );
 
-  // Simple loading gate - show minimal spinner only during initial data fetch (no fancy animation)
-  if (!hasBooted && isDataLoading) {
-    return (
-      <div className="h-screen w-full bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   // NOTE: isProjectTransitioning is now handled INSIDE the content area below,
   // NOT here. This ensures the sidebar stays visible during project switches.
@@ -1189,12 +1181,12 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               Covers the ENTIRE workspace during project switch.
               Uses opacity transition for smooth 0.2s fade-out/fade-in.
               Sits ABOVE all content (z-50) so flicker is hidden behind it. */}
-          <div
-            className={`pointer-events-none absolute inset-0 z-50 bg-zinc-950 transition-opacity duration-200 ease-out ${
-              isProjectTransitioning ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}
-            style={{ willChange: 'opacity' }}
-          />
+           <div
+             className={`pointer-events-none absolute inset-0 z-50 bg-background transition-opacity duration-200 ease-out ${
+               (isProjectTransitioning || isStreaming || isAwaitingPreviewReady) ? 'opacity-100' : 'opacity-0'
+             }`}
+             style={{ willChange: 'opacity' }}
+           />
 
           {/* LEFT PANEL: Preview/Studio (seamless) */}
           <div

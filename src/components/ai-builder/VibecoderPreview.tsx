@@ -34,11 +34,16 @@ const SANDPACK_HEIGHT_FIX = `
     height: 100% !important;
     display: flex !important;
     flex-direction: column !important;
+    background: transparent !important;
+  }
+  .sp-preview {
+    background: transparent !important;
   }
   .sp-preview-iframe {
     flex: 1 !important;
     height: 100% !important;
     min-height: 0 !important;
+    background: transparent !important;
   }
   .sp-code-editor {
     flex: 1 !important;
@@ -251,7 +256,7 @@ export function VibecoderPreview({
   viewMode = 'preview',
 }: VibecoderPreviewProps) {
   return (
-    <div className="h-full w-full relative bg-zinc-950 flex flex-col">
+    <div className="h-full w-full relative bg-background flex flex-col">
       {/* Nuclear CSS Fix - Inject global styles to force Sandpack height */}
       <style>{SANDPACK_HEIGHT_FIX}</style>
 
