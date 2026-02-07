@@ -476,7 +476,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, currentCode, profileId, model = 'vibecoder-pro' } = await req.json();
+    const { prompt, currentCode, profileId, model = 'vibecoder-pro', productsContext } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -586,16 +586,34 @@ serve(async (req) => {
       { role: "system", content: SYSTEM_PROMPT },
     ];
 
+    // Inject products context if provided
+    let productsInjection = '';
+    if (productsContext && Array.isArray(productsContext) && productsContext.length > 0) {
+      productsInjection = `
+
+═══════════════════════════════════════════════════════════════
+CREATOR_PRODUCTS (REAL DATA - USE THESE ONLY)
+═══════════════════════════════════════════════════════════════
+The following are the creator's REAL products from their store.
+When asked to show products, display products, or build a products page,
+you MUST use ONLY these real products. NEVER generate fake placeholder products.
+
+${JSON.stringify(productsContext, null, 2)}
+
+If the creator has no products, explain that they need to create products first.
+`;
+    }
+
     // If there's existing code, include it for context
     if (currentCode && currentCode.trim()) {
       messages.push({
         role: "user",
-        content: `Here is the current code:\n\n${currentCode}\n\nNow, apply this change: ${prompt}`,
+        content: `${productsInjection}Here is the current code:\n\n${currentCode}\n\nNow, apply this change: ${prompt}`,
       });
     } else {
       messages.push({
         role: "user",
-        content: `Create a complete storefront with this description: ${prompt}`,
+        content: `${productsInjection}Create a complete storefront with this description: ${prompt}`,
       });
     }
 

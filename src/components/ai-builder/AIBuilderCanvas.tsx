@@ -11,6 +11,7 @@ import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects, type VibecoderMessage } from './hooks/useVibecoderProjects';
 import { useAgentLoop } from '@/hooks/useAgentLoop';
 import { GenerationCanvas } from './GenerationCanvas';
+import { ProductsPanel } from './ProductsPanel';
 import { PlacementPromptModal } from './PlacementPromptModal';
 import { AI_MODELS, type AIModel } from './ChatInputBar';
 import type { GeneratedAsset, ViewMode } from './types/generation';
@@ -191,6 +192,28 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         return true;
       }
       return false;
+    },
+    // 📦 PRODUCTS CONTEXT: Fetch real products for AI to use
+    getProductsContext: async () => {
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, name, price_cents, pricing_type, product_type, cover_image_url')
+        .eq('creator_id', profileId)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!products || products.length === 0) return [];
+
+      return products.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.pricing_type === 'free' || !p.price_cents 
+          ? 'Free' 
+          : `$${(p.price_cents / 100).toFixed(2)}`,
+        type: p.product_type,
+        image: p.cover_image_url,
+      }));
     },
     onLogUpdate: (logs) => {
       // Update live steps in real-time as they stream in
@@ -1174,7 +1197,10 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             {/* Soft edge shadow to separate preview from chat without boxing */}
             <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 z-20 bg-gradient-to-l from-background/70 to-transparent" />
 
-            {(viewMode === 'image' || viewMode === 'video') ? (
+            {viewMode === 'products' ? (
+              /* Products Panel: Show creator's products */
+              <ProductsPanel profileId={profileId} />
+            ) : (viewMode === 'image' || viewMode === 'video') ? (
               /* Creative Studio: Image/Video generation */
               <GenerationCanvas
                 mode={viewMode}

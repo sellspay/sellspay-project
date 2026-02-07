@@ -12,6 +12,15 @@ interface UseStreamingCodeOptions {
   onSummary?: (summary: string) => void; // NEW: AI's natural language response extracted from stream
   onError?: (error: Error) => void;
   shouldAbort?: () => boolean; // Race condition guard: check if generation should be discarded
+  getProductsContext?: () => Promise<ProductContext[]>; // Fetch products for AI context
+}
+
+interface ProductContext {
+  id: string;
+  name: string;
+  price: string;
+  type: string | null;
+  image: string | null;
 }
 
 type StreamMode = 'detecting' | 'chat' | 'code';
@@ -65,6 +74,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         throw new Error('Not authenticated');
       }
 
+      // Fetch products context for AI if getter is provided
+      let productsContext: ProductContext[] | undefined;
+      if (options.getProductsContext) {
+        try {
+          productsContext = await options.getProductsContext();
+        } catch (e) {
+          console.warn('Failed to fetch products context:', e);
+        }
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vibecoder-v2`,
         {
@@ -77,6 +96,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           body: JSON.stringify({
             prompt,
             currentCode,
+            productsContext,
           }),
           signal: abortControllerRef.current.signal,
         }

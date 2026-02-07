@@ -2,7 +2,7 @@ import { useState } from "react";
 import { 
   ArrowLeft, Eye, Code2, 
   Monitor, Smartphone, ExternalLink, Loader2,
-  Image as ImageIcon, Film, RefreshCw
+  Image as ImageIcon, Film, RefreshCw, Package
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -158,6 +158,19 @@ export function VibecoderHeader({
             isActive={viewMode === 'video'}
             onClick={() => setViewMode('video')}
             activeClass="bg-pink-600 text-white shadow-lg shadow-pink-900/20"
+          />
+
+          {/* Divider */}
+          <div className="w-px h-4 bg-zinc-700 mx-1" />
+
+          {/* Products Tab */}
+          <TabButton
+            mode="products"
+            icon={Package}
+            label="Products"
+            isActive={viewMode === 'products'}
+            onClick={() => setViewMode('products')}
+            activeClass="bg-emerald-600 text-white shadow-lg shadow-emerald-900/20"
           />
         </div>
 
