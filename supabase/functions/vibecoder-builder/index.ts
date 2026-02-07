@@ -19,42 +19,71 @@ const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
  */
 
 // ═══════════════════════════════════════════════════════════════
-// DESIGN TOKEN RECIPES
+// PREMIUM DESIGN TOKEN RECIPES (v3.1 - High-End Mandatory)
 // ═══════════════════════════════════════════════════════════════
 const DESIGN_TOKENS: Record<string, string> = {
   'luxury-minimal': `
-### LUXURY MINIMAL DESIGN TOKENS
-- Background: bg-zinc-950 or bg-black
-- Text Primary: text-zinc-100, Text Secondary: text-zinc-500
-- Accent: text-amber-400, border-amber-500/30
-- Typography: font-serif tracking-tight, generous spacing py-24`,
+### 💎 LUXURY MINIMAL DESIGN TOKENS (PREMIUM TIER)
+**MANDATORY ELEMENTS:**
+- Background: bg-gradient-to-b from-zinc-950 via-black to-zinc-950
+- Hero: min-h-screen with bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.1),transparent_50%)]
+- Typography: text-7xl md:text-9xl font-serif tracking-tighter leading-none
+- Text Shimmer: bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-white to-amber-200
+- Glassmorphism: bg-white/5 backdrop-blur-2xl border border-white/10 rounded-2xl
+- Shadows: shadow-[0_20px_60px_-15px_rgba(251,191,36,0.3)]
+- Animations: framer-motion staggerChildren={0.1}, whileInView with viewport once
+- Hover States: group-hover:scale-105 transition-all duration-500 ease-out
+- Spacing: py-32 px-6, section gaps of gap-24
+- Product Cards: aspect-[3/4] with overflow-hidden, image scale on hover`,
 
   'cyberpunk-neon': `
-### CYBERPUNK NEON DESIGN TOKENS
-- Background: bg-black, Primary Neon: text-cyan-400
-- Glassmorphism: bg-black/40 backdrop-blur-xl border border-cyan-500/30
-- Glow: shadow-[0_0_30px_rgba(6,182,212,0.5)]`,
+### ⚡ CYBERPUNK NEON DESIGN TOKENS (PREMIUM TIER)
+**MANDATORY ELEMENTS:**
+- Background: bg-black with CSS grid overlay (repeating-linear-gradient)
+- Hero Glow: absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-transparent to-fuchsia-500/20 blur-3xl
+- Typography: font-mono uppercase tracking-[0.3em] text-5xl md:text-7xl
+- Neon Text: text-cyan-400 drop-shadow-[0_0_20px_rgba(6,182,212,0.8)]
+- Glassmorphism: bg-cyan-950/30 backdrop-blur-xl border border-cyan-500/40 rounded-xl
+- Animated Borders: animate-pulse border-cyan-400 or gradient border with bg-gradient-to-r
+- Scanline Effect: before:absolute before:inset-0 before:bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(0,0,0,0.3)_2px,rgba(0,0,0,0.3)_4px)]
+- Glow Shadows: shadow-[0_0_40px_rgba(6,182,212,0.5),inset_0_0_20px_rgba(6,182,212,0.1)]
+- Animations: motion variants with glitch effects, pulsing elements`,
 
   'streetwear-dark': `
-### STREETWEAR DARK DESIGN TOKENS
-- Background: bg-zinc-950, Text: text-white font-black
-- Accent: text-red-500 or text-orange-500
-- Cards: bg-zinc-900 border-2 border-zinc-800 rounded-none`,
+### 🔥 STREETWEAR DARK DESIGN TOKENS (PREMIUM TIER)
+**MANDATORY ELEMENTS:**
+- Background: bg-zinc-950 with subtle noise texture overlay
+- Hero: Asymmetric layout with overlapping elements, broken grid
+- Typography: text-8xl md:text-[12rem] font-black uppercase tracking-tighter -rotate-2
+- Accent Slashes: bg-red-500 h-1 w-32 or diagonal stripes
+- Cards: bg-zinc-900 border-l-4 border-red-500 hover:translate-x-2 transition-transform
+- Raw Aesthetic: Mix of serif and heavy sans, intentional visual tension
+- Hover: Dramatic scale (hover:scale-110) with fast duration-200
+- Editorial Layout: Overlapping z-index layers, negative margins
+- Product Display: Full-bleed images with text overlays`,
 
   'kawaii-pop': `
-### KAWAII POP DESIGN TOKENS
-- Background: bg-gradient-to-br from-pink-100 to-purple-100
-- Primary: text-pink-500, Cards: rounded-3xl shadow-xl
-- Liberal use of emojis 🌸 ✨`,
+### 🌸 KAWAII POP DESIGN TOKENS (PREMIUM TIER)
+**MANDATORY ELEMENTS:**
+- Background: bg-gradient-to-br from-pink-100 via-purple-50 to-blue-100
+- Floating Elements: Animated decorative shapes (circles, stars) with motion.div animate={{ y: [0, -10, 0] }}
+- Typography: text-5xl md:text-7xl font-bold with text-pink-600, playful letter-spacing
+- Cards: rounded-[2rem] bg-white shadow-[0_20px_50px_-10px_rgba(236,72,153,0.3)] hover:shadow-pink-300/50
+- Borders: border-4 border-pink-300 with hover:border-pink-400
+- Emoji Accents: Strategic use of ✨ 🌸 💖 as decorative elements
+- Bouncy Animations: motion spring with stiffness: 300, damping: 20
+- Pastel Gradients: bg-gradient-to-r from-pink-400 to-purple-400 on buttons
+- Soft Shadows: shadow-xl shadow-pink-200/50`,
 };
 
 // ═══════════════════════════════════════════════════════════════
-// FILE-SPECIFIC TEMPLATES
+// PREMIUM FILE TEMPLATES (v3.1 - High-End Examples)
 // ═══════════════════════════════════════════════════════════════
 const FILE_TEMPLATES: Record<string, string> = {
   'data/products.ts': `
 ### DATA FILE TEMPLATE (data/products.ts)
 Export a typed array of products. Max 6 items. No React imports.
+Use HIGH-QUALITY Unsplash images with proper dimensions.
 
 \`\`\`typescript
 export interface Product {
@@ -63,6 +92,7 @@ export interface Product {
   price: number;
   image: string;
   description?: string;
+  tag?: string;
 }
 
 export const PRODUCTS: Product[] = [
@@ -70,48 +100,74 @@ export const PRODUCTS: Product[] = [
     id: "prod_1",
     name: "Product Name",
     price: 29.99,
-    image: "https://images.unsplash.com/photo-XXXXX?w=800",
+    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80",
+    tag: "NEW"
   },
-  // ... max 6 items
+  // ... max 6 items with varied, high-quality images
 ];
 \`\`\``,
 
   'components/Hero.tsx': `
-### HERO COMPONENT TEMPLATE (components/Hero.tsx)
-Standalone hero component. Imports React hooks directly.
+### PREMIUM HERO COMPONENT TEMPLATE (components/Hero.tsx)
+Full-screen hero with MANDATORY premium elements:
+- Gradient background with glow overlay
+- Large typography (text-7xl+) with shimmer
+- Smooth scroll CTA button
+- Motion animations
 
 \`\`\`tsx
 import React from 'react';
 import { motion } from 'framer-motion';
+import { ArrowDown } from 'lucide-react';
 
 interface HeroProps {
   title: string;
   subtitle?: string;
-  onCTAClick?: () => void;
 }
 
-export function Hero({ title, subtitle, onCTAClick }: HeroProps) {
+export function Hero({ title, subtitle }: HeroProps) {
   return (
-    <section className="min-h-screen flex items-center justify-center bg-zinc-950">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center"
-      >
-        <h1 className="text-6xl font-bold text-white">{title}</h1>
-        {subtitle && <p className="text-zinc-400 mt-4">{subtitle}</p>}
-        <button onClick={onCTAClick} className="mt-8 px-8 py-4 bg-white text-black rounded-lg">
-          Shop Now
-        </button>
-      </motion.div>
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-zinc-950 via-black to-zinc-950">
+      {/* Ambient glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(251,191,36,0.15),transparent_50%)]" />
+      
+      <div className="relative z-10 text-center px-6">
+        <motion.h1 
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-6xl md:text-8xl lg:text-9xl font-serif tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-white to-amber-200"
+        >
+          {title}
+        </motion.h1>
+        {subtitle && (
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="mt-6 text-lg md:text-xl text-zinc-400 max-w-xl mx-auto"
+          >
+            {subtitle}
+          </motion.p>
+        )}
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })}
+          className="mt-12 inline-flex items-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white hover:bg-white/20 transition-all duration-300"
+        >
+          Explore <ArrowDown className="w-4 h-4 animate-bounce" />
+        </motion.button>
+      </div>
     </section>
   );
 }
 \`\`\``,
 
   'components/ProductGrid.tsx': `
-### PRODUCT GRID TEMPLATE (components/ProductGrid.tsx)
-Imports Product type from data file. Uses useSellsPayCheckout.
+### PREMIUM PRODUCT GRID TEMPLATE (components/ProductGrid.tsx)
+Glassmorphism cards with hover effects and stagger animations.
 
 \`\`\`tsx
 import React from 'react';
@@ -125,27 +181,52 @@ interface ProductGridProps {
 
 export function ProductGrid({ products, onBuy }: ProductGridProps) {
   return (
-    <section className="py-20 px-6 bg-zinc-950">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-        {products.map((product) => (
-          <motion.div 
-            key={product.id}
-            whileHover={{ scale: 1.02 }}
-            className="bg-zinc-900 rounded-xl overflow-hidden"
-          >
-            <img src={product.image} alt={product.name} className="w-full h-48 object-cover" />
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-white">{product.name}</h3>
-              <p className="text-zinc-400">\${product.price}</p>
-              <button 
-                onClick={() => onBuy(product.id)}
-                className="mt-4 w-full py-3 bg-white text-black rounded-lg"
-              >
-                Buy Now
-              </button>
-            </div>
-          </motion.div>
-        ))}
+    <section id="products" className="py-32 px-6 bg-zinc-950">
+      <div className="max-w-7xl mx-auto">
+        <motion.h2 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-4xl md:text-5xl font-serif text-white mb-16 text-center"
+        >
+          Featured Collection
+        </motion.h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {products.map((product, i) => (
+            <motion.div 
+              key={product.id}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="group relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden hover:border-amber-500/30 transition-all duration-500"
+            >
+              <div className="aspect-[3/4] overflow-hidden">
+                <img 
+                  src={product.image} 
+                  alt={product.name} 
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                />
+              </div>
+              {product.tag && (
+                <span className="absolute top-4 left-4 px-3 py-1 bg-amber-500 text-black text-xs font-bold rounded-full">
+                  {product.tag}
+                </span>
+              )}
+              <div className="p-6">
+                <h3 className="text-xl font-medium text-white">{product.name}</h3>
+                <p className="text-amber-400 font-bold mt-1">\${product.price}</p>
+                <button 
+                  onClick={() => onBuy(product.id)}
+                  className="mt-4 w-full py-3 bg-white text-black font-medium rounded-xl hover:bg-amber-400 transition-colors duration-300"
+                >
+                  Add to Cart
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -154,10 +235,11 @@ export function ProductGrid({ products, onBuy }: ProductGridProps) {
 
   'App.tsx': `
 ### APP.TSX TEMPLATE (App.tsx)
-Main orchestrator. Imports components and data. Max 40 lines.
+Main orchestrator with AnimatePresence. Max 40 lines.
 
 \`\`\`tsx
 import React from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useSellsPayCheckout } from './hooks/useSellsPayCheckout';
 import { PRODUCTS } from './data/products';
 import { Hero } from './components/Hero';
@@ -166,21 +248,19 @@ import { ProductGrid } from './components/ProductGrid';
 export default function App() {
   const { buyProduct } = useSellsPayCheckout();
 
-  const handleBuy = (productId: string) => {
-    buyProduct(productId);
-  };
-
   return (
-    <div className="min-h-screen bg-zinc-950">
-      <Hero 
-        title="Creator Store" 
-        subtitle="Premium digital products"
-        onCTAClick={() => document.getElementById('products')?.scrollIntoView()}
-      />
-      <div id="products">
-        <ProductGrid products={PRODUCTS} onBuy={handleBuy} />
+    <AnimatePresence>
+      <div className="min-h-screen bg-zinc-950">
+        <Hero 
+          title="Premium Store" 
+          subtitle="Curated digital products for creators"
+        />
+        <ProductGrid 
+          products={PRODUCTS} 
+          onBuy={(id) => buyProduct(id)} 
+        />
       </div>
-    </div>
+    </AnimatePresence>
   );
 }
 \`\`\``,
