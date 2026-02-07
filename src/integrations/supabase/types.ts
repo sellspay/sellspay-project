@@ -1324,6 +1324,7 @@ export type Database = {
           mfa_enabled: boolean | null
           previous_username: string | null
           previous_username_available_at: string | null
+          seller_contract_signed_at: string | null
           seller_country_code: string | null
           seller_kyc_status: string | null
           seller_mode: string | null
@@ -1370,6 +1371,7 @@ export type Database = {
           mfa_enabled?: boolean | null
           previous_username?: string | null
           previous_username_available_at?: string | null
+          seller_contract_signed_at?: string | null
           seller_country_code?: string | null
           seller_kyc_status?: string | null
           seller_mode?: string | null
@@ -1416,6 +1418,7 @@ export type Database = {
           mfa_enabled?: boolean | null
           previous_username?: string | null
           previous_username_available_at?: string | null
+          seller_contract_signed_at?: string | null
           seller_country_code?: string | null
           seller_kyc_status?: string | null
           seller_mode?: string | null

@@ -17,6 +17,7 @@ import { ConversionFunnel } from '@/components/dashboard/ConversionFunnel';
 import { EditorApplicationCard } from '@/components/dashboard/EditorApplicationCard';
 import { EarningsCard } from '@/components/dashboard/EarningsCard';
 import { format, subDays, startOfMonth, eachDayOfInterval } from 'date-fns';
+import { useSellerGate } from '@/hooks/useSellerGate';
 
 interface Product {
   id: string;
@@ -57,6 +58,10 @@ interface ProductDownload {
 export default function Dashboard() {
   const { user, profile, profileLoading } = useAuth();
   const navigate = useNavigate();
+  
+  // Seller gate - redirects to agreement if not signed
+  const { isSellerVerified, isChecking: isSellerChecking } = useSellerGate();
+  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);

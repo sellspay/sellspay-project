@@ -13,6 +13,7 @@ export interface ProfileData {
   is_seller: boolean;
   is_editor: boolean;
   verified: boolean;
+  seller_contract_signed_at: string | null;
 }
 
 interface AuthContextType {
@@ -83,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, user_id, username, full_name, avatar_url, is_creator, is_seller, is_editor, verified')
+        .select('id, user_id, username, full_name, avatar_url, is_creator, is_seller, is_editor, verified, seller_contract_signed_at')
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           is_seller: data.is_seller || false,
           is_editor: data.is_editor || false,
           verified: data.verified || false,
+          seller_contract_signed_at: data.seller_contract_signed_at || null,
         });
       } else {
         setProfile(null);
