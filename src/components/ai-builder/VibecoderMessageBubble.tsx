@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, forwardRef } from 'react';
 import { ThumbsUp, ThumbsDown, Copy, Undo2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -39,7 +39,8 @@ interface AssistantMessageProps {
   isStreaming?: boolean;
 }
 
-function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStreaming }: AssistantMessageProps) {
+const AssistantMessage = forwardRef<HTMLDivElement, AssistantMessageProps>(
+  function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStreaming }, ref) {
   const hasCode = !!message.code_snapshot;
 
   const handleCopy = () => {
@@ -48,6 +49,7 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
 
   return (
     <motion.div 
+      ref={ref}
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       className="flex gap-3 mb-6 group w-full"
@@ -192,7 +194,8 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
       </div>
     </motion.div>
   );
-}
+});
+AssistantMessage.displayName = 'AssistantMessage';
 
 // --- EMPTY STATE ---
 function EmptyState() {
