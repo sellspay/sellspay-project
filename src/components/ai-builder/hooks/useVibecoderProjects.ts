@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke';
@@ -75,11 +75,22 @@ export function useVibecoderProjects() {
     loadProjects();
   }, [user]);
 
+  // Track previous project to detect actual changes
+  const prevProjectIdRef = useRef<string | null>(null);
+  
   // Load messages when active project changes
   useEffect(() => {
-    // CRITICAL: Immediately clear messages to prevent cross-project bleed
-    // This ensures the UI/restoration logic never sees stale messages from the previous project
-    setMessages([]);
+    // Only clear messages if we're switching to a DIFFERENT project
+    // This prevents flicker when the same project is re-mounted
+    const isProjectSwitch = prevProjectIdRef.current !== null && 
+                            prevProjectIdRef.current !== activeProjectId;
+    
+    if (isProjectSwitch) {
+      // CRITICAL: Clear messages only on actual project switch to prevent cross-project bleed
+      setMessages([]);
+    }
+    
+    prevProjectIdRef.current = activeProjectId;
     
     if (!activeProjectId) {
       return;
