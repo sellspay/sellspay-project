@@ -419,6 +419,9 @@ export type Database = {
           country_code: string
           country_name: string
           notes: string | null
+          payoneer_eligible: boolean | null
+          paypal_eligible: boolean | null
+          recommended_provider: string | null
           updated_at: string | null
           updated_by: string | null
         }
@@ -427,6 +430,9 @@ export type Database = {
           country_code: string
           country_name: string
           notes?: string | null
+          payoneer_eligible?: boolean | null
+          paypal_eligible?: boolean | null
+          recommended_provider?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -435,6 +441,9 @@ export type Database = {
           country_code?: string
           country_name?: string
           notes?: string | null
+          payoneer_eligible?: boolean | null
+          paypal_eligible?: boolean | null
+          recommended_provider?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -1307,6 +1316,8 @@ export type Database = {
           bio: string | null
           created_at: string | null
           creator_tags: string[] | null
+          date_of_birth: string | null
+          detected_country_code: string | null
           editor_about: string | null
           editor_city: string | null
           editor_country: string | null
@@ -1325,7 +1336,10 @@ export type Database = {
           is_seller: boolean | null
           last_username_changed_at: string | null
           mfa_enabled: boolean | null
+          payout_address: string | null
+          payout_method: string | null
           permanent_ban_reason: string | null
+          platform_fee_percent: number | null
           previous_username: string | null
           previous_username_available_at: string | null
           seller_contract_signed_at: string | null
@@ -1358,6 +1372,8 @@ export type Database = {
           bio?: string | null
           created_at?: string | null
           creator_tags?: string[] | null
+          date_of_birth?: string | null
+          detected_country_code?: string | null
           editor_about?: string | null
           editor_city?: string | null
           editor_country?: string | null
@@ -1376,7 +1392,10 @@ export type Database = {
           is_seller?: boolean | null
           last_username_changed_at?: string | null
           mfa_enabled?: boolean | null
+          payout_address?: string | null
+          payout_method?: string | null
           permanent_ban_reason?: string | null
+          platform_fee_percent?: number | null
           previous_username?: string | null
           previous_username_available_at?: string | null
           seller_contract_signed_at?: string | null
@@ -1409,6 +1428,8 @@ export type Database = {
           bio?: string | null
           created_at?: string | null
           creator_tags?: string[] | null
+          date_of_birth?: string | null
+          detected_country_code?: string | null
           editor_about?: string | null
           editor_city?: string | null
           editor_country?: string | null
@@ -1427,7 +1448,10 @@ export type Database = {
           is_seller?: boolean | null
           last_username_changed_at?: string | null
           mfa_enabled?: boolean | null
+          payout_address?: string | null
+          payout_method?: string | null
           permanent_ban_reason?: string | null
+          platform_fee_percent?: number | null
           previous_username?: string | null
           previous_username_available_at?: string | null
           seller_contract_signed_at?: string | null
