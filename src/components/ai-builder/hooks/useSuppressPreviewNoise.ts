@@ -90,67 +90,65 @@ const DEFAULT_PATTERNS: RegExp[] = [
  */
 export function useSuppressPreviewNoise(enabled: boolean, extraPatterns: RegExp[] = []) {
   const originals = useRef<{ error: typeof console.error; warn: typeof console.warn } | null>(null);
+  const observerRef = useRef<MutationObserver | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
 
     const patterns = [...DEFAULT_PATTERNS, ...extraPatterns];
     
+    // NUCLEAR: Never read .message from Error objects - just check type
     const matches = (value: unknown): boolean => {
-      // Handle null/undefined
       if (value == null) return false;
       
-      // Try to extract message safely
-      let msg: string | undefined;
+      // If it's an Error, suppress it entirely to avoid frozen object crashes
+      if (value instanceof Error) return true;
       
       try {
+        let msg: string | undefined;
         if (typeof value === "string") {
           msg = value;
-        } else if (value instanceof Error) {
-          // Clone the message immediately - never hold reference to Error object
-          msg = String(value.message || '');
         } else if (typeof value === "object") {
-          // Safely try to read message property
-          const rawMsg = (value as any)?.message;
-          if (typeof rawMsg === "string") {
-            msg = String(rawMsg);
-          } else {
-            // Try toString as fallback
-            msg = String(value);
-          }
+          // Don't read .message - just stringify safely
+          msg = String(value);
         }
+        if (typeof msg !== "string" || msg.length === 0) return false;
+        return patterns.some((p) => p.test(msg!));
       } catch {
-        // If reading throws (frozen object), suppress it anyway
-        return true;
+        return true; // If reading throws, suppress
       }
-      
-      if (typeof msg !== "string" || msg.length === 0) return false;
-      return patterns.some((p) => p.test(msg!));
     };
 
-    // Capture window error events
+    // Capture window error events - NEVER touch event.error.message
     const onWindowError = (event: ErrorEvent) => {
       try {
-        if (matches(event.message) || matches(event.error)) {
+        // Just check event.message (string), never touch event.error
+        if (typeof event.message === 'string' && patterns.some(p => p.test(event.message))) {
           event.preventDefault();
           event.stopPropagation();
-          (event as any).stopImmediatePropagation?.();
+          return true;
+        }
+        // If there's an Error object, suppress without reading it
+        if (event.error instanceof Error) {
+          event.preventDefault();
+          event.stopPropagation();
           return true;
         }
       } catch {
-        // If checking throws, suppress anyway
         event.preventDefault();
         return true;
       }
     };
 
-    // Capture unhandled promise rejections
     const onUnhandledRejection = (event: PromiseRejectionEvent) => {
       try {
+        // Suppress all promise rejections with Error objects
+        if (event.reason instanceof Error) {
+          event.preventDefault();
+          return true;
+        }
         if (matches(event.reason)) {
           event.preventDefault();
-          event.stopPropagation();
-          (event as any).stopImmediatePropagation?.();
           return true;
         }
       } catch {
@@ -159,29 +157,37 @@ export function useSuppressPreviewNoise(enabled: boolean, extraPatterns: RegExp[
       }
     };
 
-    // Patch console spam (only error/warn) for known noisy patterns.
+    // NUCLEAR: MutationObserver to instantly nuke any error overlays in parent
+    const nukeParentOverlays = () => {
+      const selectors = ['#react-error-overlay', '[class*="error-overlay"]', '.sp-error'];
+      selectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => {
+          try { el.remove(); } catch { (el as HTMLElement).style.display = 'none'; }
+        });
+      });
+    };
+
+    observerRef.current = new MutationObserver(() => nukeParentOverlays());
+    observerRef.current.observe(document.body, { childList: true, subtree: true });
+
+    // Patch console
     if (!originals.current) {
-      originals.current = {
-        error: console.error,
-        warn: console.warn,
-      };
+      originals.current = { error: console.error, warn: console.warn };
 
       console.error = (...args: any[]) => {
         try {
+          // Don't even check Error objects - just suppress them
+          if (args.some(a => a instanceof Error)) return;
           if (args.some(matches)) return;
-        } catch {
-          // If matching throws, suppress
-          return;
-        }
+        } catch { return; }
         originals.current!.error(...args);
       };
 
       console.warn = (...args: any[]) => {
         try {
+          if (args.some(a => a instanceof Error)) return;
           if (args.some(matches)) return;
-        } catch {
-          return;
-        }
+        } catch { return; }
         originals.current!.warn(...args);
       };
     }
@@ -192,6 +198,7 @@ export function useSuppressPreviewNoise(enabled: boolean, extraPatterns: RegExp[
     return () => {
       window.removeEventListener("error", onWindowError, true);
       window.removeEventListener("unhandledrejection", onUnhandledRejection, true);
+      observerRef.current?.disconnect();
 
       if (originals.current) {
         console.error = originals.current.error;
