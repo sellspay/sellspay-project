@@ -99,6 +99,9 @@ interface ChatInputBarProps {
   onModelChange?: (model: AIModel) => void;
   // Paywall callback
   onOpenBilling?: () => void;
+  // Controlled plan mode state
+  isPlanMode?: boolean;
+  onPlanModeChange?: (isPlanMode: boolean) => void;
 }
 
 // Portal component to render children directly on document.body
@@ -246,10 +249,22 @@ export function ChatInputBar({
   activeModel,
   onModelChange,
   onOpenBilling,
+  isPlanMode: controlledPlanMode,
+  onPlanModeChange,
 }: ChatInputBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
-  const [isPlanMode, setIsPlanMode] = useState(false);
+  // Use controlled plan mode if provided, otherwise use local state
+  const [internalPlanMode, setInternalPlanMode] = useState(false);
+  const isPlanMode = controlledPlanMode ?? internalPlanMode;
+  const togglePlanMode = () => {
+    const newValue = !isPlanMode;
+    if (onPlanModeChange) {
+      onPlanModeChange(newValue);
+    } else {
+      setInternalPlanMode(newValue);
+    }
+  };
   // Use controlled model if provided, otherwise use local state
   const [internalModel, setInternalModel] = useState<AIModel>(AI_MODELS.code[0]);
   const selectedModel = activeModel ?? internalModel;
@@ -278,7 +293,10 @@ export function ChatInputBar({
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
-      console.warn('Speech recognition not supported in this browser');
+      // Import toast dynamically to avoid dependency issues
+      import('sonner').then(({ toast }) => {
+        toast.error('Speech recognition is not supported in your browser. Please try Chrome, Edge, or Safari.');
+      });
       return;
     }
 
@@ -648,11 +666,11 @@ export function ChatInputBar({
             {selectedModel.category === 'code' && (
               <button 
                 type="button"
-                onClick={() => setIsPlanMode(!isPlanMode)}
+                onClick={togglePlanMode}
                 className={cn(
                   "px-2.5 py-1.5 text-xs font-medium transition-colors rounded-lg",
                   isPlanMode 
-                    ? "text-blue-400" 
+                    ? "text-blue-400 bg-blue-500/10" 
                     : "text-zinc-500 hover:text-white"
                 )}
               >
