@@ -3,6 +3,7 @@ import { CreditCard, Plus, Loader2, ExternalLink, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import CreatePlanWizard from '@/components/subscription/CreatePlanWizard';
 
 interface SubscriptionPlan {
   id: string;
@@ -22,6 +23,7 @@ interface SubscriptionsPanelProps {
 export function SubscriptionsPanel({ profileId, onPlansChange }: SubscriptionsPanelProps) {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const fetchPlans = async () => {
     setLoading(true);
@@ -40,6 +42,12 @@ export function SubscriptionsPanel({ profileId, onPlansChange }: SubscriptionsPa
   useEffect(() => {
     fetchPlans();
   }, [profileId]);
+
+  const handlePlanCreated = () => {
+    fetchPlans();
+    onPlansChange?.();
+    setShowCreateDialog(false);
+  };
 
   const formatPrice = (plan: SubscriptionPlan) => {
     const dollars = plan.price_cents / 100;
@@ -73,7 +81,7 @@ export function SubscriptionsPanel({ profileId, onPlansChange }: SubscriptionsPa
           </div>
         </div>
         <Button
-          onClick={() => window.open('/settings?tab=subscriptions', '_blank')}
+          onClick={() => setShowCreateDialog(true)}
           className="gap-2 bg-violet-600 hover:bg-violet-500 text-white"
           size="sm"
         >
@@ -105,7 +113,7 @@ export function SubscriptionsPanel({ profileId, onPlansChange }: SubscriptionsPa
               Once created, they'll appear here and be available for AI-generated pricing pages.
             </p>
             <Button
-              onClick={() => window.open('/settings?tab=subscriptions', '_blank')}
+              onClick={() => setShowCreateDialog(true)}
               className="gap-2 bg-violet-600 hover:bg-violet-500 text-white"
             >
               <Plus className="w-4 h-4" />
@@ -186,6 +194,14 @@ export function SubscriptionsPanel({ profileId, onPlansChange }: SubscriptionsPa
           </div>
         )}
       </div>
+
+      {/* Create Plan Dialog */}
+      <CreatePlanWizard
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        creatorId={profileId}
+        onSuccess={handlePlanCreated}
+      />
     </div>
   );
 }
