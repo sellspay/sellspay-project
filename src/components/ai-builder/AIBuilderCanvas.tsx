@@ -18,7 +18,7 @@ import { parseRoutesFromCode, type SitePage } from '@/utils/routeParser';
 import { toast } from 'sonner';
 import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke';
 import { LovableHero } from './LovableHero';
-import { PremiumLoadingScreen } from './PremiumLoadingScreen';
+
 import { FixErrorToast } from './FixErrorToast';
 import { checkPolicyViolation } from '@/utils/policyGuard';
 
@@ -40,8 +40,6 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
-  // Minimum loading time state - ensures smooth loading animation
-  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
 
   // Once the app is "booted", never show the full-screen loading screen again.
   // This prevents random re-appearance during background refetches (messages/projects).
@@ -984,17 +982,14 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   }, [viewMode, currentVideoAsset, currentImageAsset]);
 
 
-  // Show premium loading screen ONLY during initial boot.
-  // After boot, background refetches (messages/projects) should never trigger a full-screen overlay.
+  // Mark boot complete when data is ready (no loading screen needed)
   const isDataLoading = loading || projectsLoading || isVerifyingProject || messagesLoading;
-  const shouldShowLoading = !hasBooted && (isDataLoading || !minLoadingComplete);
-
-  // Mark boot complete as soon as both conditions are satisfied.
+  
   useEffect(() => {
-    if (!hasBooted && minLoadingComplete && !isDataLoading) {
+    if (!hasBooted && !isDataLoading) {
       setHasBooted(true);
     }
-  }, [hasBooted, minLoadingComplete, isDataLoading]);
+  }, [hasBooted, isDataLoading]);
 
   // 🛑 THE GATEKEEPER 🛑
   // Prevent "flash of old content" when switching projects.
@@ -1015,14 +1010,12 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     )
   );
 
-  if (shouldShowLoading) {
+  // Simple loading gate - show minimal spinner only during initial data fetch (no fancy animation)
+  if (!hasBooted && isDataLoading) {
     return (
-      <PremiumLoadingScreen
-        onComplete={() => {
-          setMinLoadingComplete(true);
-          // hasBooted is set by the effect once data is also ready
-        }}
-      />
+      <div className="h-screen w-full bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
     );
   }
 
@@ -1191,18 +1184,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         />
 
         {/* Split View Content - Chat + Preview always visible */}
-        {/* 🛑 GATEKEEPER MOVED HERE: Show loader INSIDE content area, not full screen */}
-        {isProjectTransitioning ? (
-          <div className="flex-1 flex items-center justify-center bg-background">
-            <div className="flex flex-col items-center gap-3">
-              <div className="relative">
-                <div className="w-10 h-10 border-2 border-primary/30 rounded-full" />
-                <div className="absolute inset-0 w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-              <p className="text-sm text-muted-foreground animate-pulse">Loading project...</p>
-            </div>
-          </div>
-        ) : (
         <div className="flex-1 flex min-h-0 overflow-hidden relative">
           {/* === GLOBAL TRANSITION CURTAIN === 
               Covers the ENTIRE workspace during project switch.
@@ -1252,7 +1233,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
                       code={code}
                       isStreaming={isStreaming}
-                      showLoadingOverlay={isStreaming || isAwaitingPreviewReady}
+                      showLoadingOverlay={false}
                       onReady={() => {
                         // 🤝 HANDSHAKE COMPLETE: Sandpack is ready, release the transition lock
                         setIsWaitingForPreviewMount(false);
@@ -1329,7 +1310,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             </div>
           </div>
         </div>
-        )}
       </div>
 
       {/* Placement Prompt Modal */}
