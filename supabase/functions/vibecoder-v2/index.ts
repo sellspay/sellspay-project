@@ -693,7 +693,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, currentCode, profileId, model = 'vibecoder-pro', productsContext, conversationHistory = [] } = await req.json();
+    const { prompt, currentCode, profileId, model = 'vibecoder-pro', productsContext, conversationHistory = [], jobId } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -881,7 +881,166 @@ serve(async (req) => {
       throw new Error("No response body from AI");
     }
 
-    // Create a transform stream to parse SSE and extract content
+    // ════════════════════════════════════════════════════════════
+    // JOB-BASED PROCESSING: If jobId is provided, process in background
+    // and write results to database (allows user to leave and return)
+    // ════════════════════════════════════════════════════════════
+    if (jobId) {
+      console.log(`[Job ${jobId}] Starting background processing...`);
+      
+      // Mark job as running
+      await supabase
+        .from('ai_generation_jobs')
+        .update({ 
+          status: 'running', 
+          started_at: new Date().toISOString(),
+          progress_logs: ['Starting AI generation...']
+        })
+        .eq('id', jobId);
+
+      // Collect the full response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = "";
+      let buffer = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete lines
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            
+            if (!trimmed || trimmed.startsWith(":")) continue;
+            if (!trimmed.startsWith("data: ")) continue;
+
+            const jsonStr = trimmed.slice(6).trim();
+            if (jsonStr === "[DONE]") continue;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const content = parsed.choices?.[0]?.delta?.content;
+              
+              if (content) {
+                fullContent += content;
+              }
+            } catch (e) {
+              // Incomplete JSON, will be completed in next chunk
+            }
+          }
+        }
+
+        // Process any remaining buffer
+        if (buffer.trim()) {
+          const trimmed = buffer.trim();
+          if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
+            try {
+              const parsed = JSON.parse(trimmed.slice(6));
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                fullContent += content;
+              }
+            } catch (e) {
+              // Ignore
+            }
+          }
+        }
+
+        console.log(`[Job ${jobId}] Generation complete, content length: ${fullContent.length}`);
+
+        // Parse the response to extract code and summary
+        let codeResult = null;
+        let summary = null;
+        let planResult = null;
+
+        // Check for plan response
+        if (fullContent.includes('"type": "plan"') || fullContent.includes('"type":"plan"')) {
+          try {
+            // Extract JSON from the response
+            const jsonMatch = fullContent.match(/\{[\s\S]*"type"\s*:\s*"plan"[\s\S]*\}/);
+            if (jsonMatch) {
+              planResult = JSON.parse(jsonMatch[0]);
+            }
+          } catch (e) {
+            console.error(`[Job ${jobId}] Failed to parse plan:`, e);
+          }
+        }
+
+        // Check for code response
+        if (fullContent.includes('/// BEGIN_CODE ///')) {
+          const codeMatch = fullContent.split('/// BEGIN_CODE ///');
+          if (codeMatch.length > 1) {
+            codeResult = codeMatch[1].trim();
+            // Remove any trailing markers
+            codeResult = codeResult.replace(/\/\/\/\s*END_CODE\s*\/\/\//g, '').trim();
+          }
+          // Extract summary (text before BEGIN_CODE)
+          summary = codeMatch[0].replace('/// TYPE: CODE ///', '').trim();
+        } else if (fullContent.includes('/// TYPE: CHAT ///')) {
+          // Chat response
+          summary = fullContent.replace('/// TYPE: CHAT ///', '').trim();
+        } else {
+          summary = fullContent;
+        }
+
+        // Update job with results
+        await supabase
+          .from('ai_generation_jobs')
+          .update({ 
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            code_result: codeResult,
+            summary: summary?.slice(0, 5000), // Limit summary length
+            plan_result: planResult,
+            progress_logs: ['Starting AI generation...', 'Processing response...', 'Generation complete!']
+          })
+          .eq('id', jobId);
+
+        console.log(`[Job ${jobId}] Job completed successfully`);
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          jobId,
+          status: 'completed'
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+
+      } catch (e) {
+        console.error(`[Job ${jobId}] Processing error:`, e);
+        
+        // Mark job as failed
+        await supabase
+          .from('ai_generation_jobs')
+          .update({ 
+            status: 'failed',
+            completed_at: new Date().toISOString(),
+            error_message: e instanceof Error ? e.message : 'Unknown error',
+            progress_logs: ['Starting AI generation...', 'Error occurred', e instanceof Error ? e.message : 'Unknown error']
+          })
+          .eq('id', jobId);
+
+        return new Response(JSON.stringify({ 
+          success: false, 
+          jobId,
+          error: e instanceof Error ? e.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // STREAMING MODE: Original behavior when no jobId (for real-time UI)
+    // ════════════════════════════════════════════════════════════
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 

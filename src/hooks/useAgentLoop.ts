@@ -10,7 +10,7 @@ interface AgentState {
 }
 
 interface UseAgentLoopOptions {
-  onStreamCode: (prompt: string, existingCode?: string) => void;
+  onStreamCode: (prompt: string, existingCode?: string, jobId?: string) => void;
   onComplete?: () => void;
   getActiveProjectId?: () => string | null; // For race condition checking
 }
@@ -54,9 +54,10 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
 
   /**
    * Starts the agent loop with the given prompt
-   * Now accepts projectId to lock the generation to a specific project
+   * Now accepts projectId and jobId to lock the generation to a specific project
+   * and enable background-persistent generation
    */
-  const startAgent = useCallback(async (prompt: string, existingCode?: string, projectId?: string) => {
+  const startAgent = useCallback(async (prompt: string, existingCode?: string, projectId?: string, jobId?: string) => {
     abortRef.current = false;
     streamStartedRef.current = false;
     
@@ -108,9 +109,9 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       setStep('writing');
       addLog('> Generating React components...');
       
-      // Trigger the actual streaming code generation
+      // Trigger the actual streaming code generation (with optional jobId for background persistence)
       streamStartedRef.current = true;
-      onStreamCode(prompt, existingCode);
+      onStreamCode(prompt, existingCode, jobId);
       
       // The rest of the steps will be triggered by external callbacks
 
