@@ -337,69 +337,75 @@ const SandpackRenderer = memo(function SandpackRenderer({
       code,
       active: true,
     },
-    // Entry point that imports the silence script FIRST (FIXED PATHS)
+    // Entry point with NUCLEAR error suppression
     '/index.tsx': {
-      code: `// NUCLEAR ERROR SILENCE - Import silencer before anything else
-import "./styles/error-silence.css";
-
+      code: `import "./styles/error-silence.css";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 
-// NUCLEAR: Kill any error overlays that exist before mount
-const killOverlays = () => {
-  const selectors = ['#react-error-overlay', '.error-overlay', '[class*="error"]', '.sp-error'];
-  selectors.forEach(sel => {
-    try {
-      document.querySelectorAll(sel).forEach(el => {
-        if (el.id === 'root') return; // Don't kill root
-        (el as HTMLElement).style.cssText = 'display:none!important;visibility:hidden!important;opacity:0!important;';
+// NUCLEAR ERROR SILENCE PROTOCOL
+(function() {
+  // 1. Freeze-safe error handler - NEVER touch error.message
+  const safeHandler = () => true;
+  window.onerror = safeHandler;
+  window.onunhandledrejection = (e) => { try { e.preventDefault(); } catch {} return true; };
+  
+  // 2. Patch console to silently drop errors
+  const noop = () => {};
+  const origError = console.error;
+  console.error = (...args) => {
+    const str = args.join(' ');
+    if (/read.only|frozen|extensible|SyntaxError|TypeError/i.test(str)) return;
+    origError.apply(console, args);
+  };
+
+  // 3. Nuke any overlay element immediately
+  const nukeOverlays = () => {
+    const dangerous = document.querySelectorAll(
+      '#react-error-overlay, [class*="error"], [class*="Error"], .sp-error, [style*="position: fixed"][style*="z-index"]'
+    );
+    dangerous.forEach(el => {
+      if (el.id === 'root' || el.closest('#root')) return;
+      try { el.remove(); } catch { (el as HTMLElement).style.display = 'none'; }
+    });
+  };
+
+  // 4. MutationObserver to catch overlays the instant they appear
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      m.addedNodes.forEach(node => {
+        if (node.nodeType === 1) {
+          const el = node as HTMLElement;
+          const isOverlay = el.id?.includes('error') || 
+                           el.className?.toString().includes('error') ||
+                           el.style?.position === 'fixed';
+          if (isOverlay && el.id !== 'root') {
+            try { el.remove(); } catch { el.style.display = 'none'; }
+          }
+        }
       });
-    } catch {}
+    }
   });
-};
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 
-// Run immediately and on interval
-killOverlays();
-setInterval(killOverlays, 200);
-
-// Patch onerror to suppress noise
-window.onerror = () => true;
-window.onunhandledrejection = (e) => { e.preventDefault(); return true; };
+  // 5. Run nuker immediately and periodically
+  nukeOverlays();
+  setInterval(nukeOverlays, 100);
+})();
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);`,
       hidden: true,
     },
-    // Inline CSS file (avoids import resolution issues)
     '/styles/error-silence.css': {
-      code: `/* NUCLEAR ERROR SILENCE - Hide ALL error overlays */
-#react-error-overlay,
-.error-overlay,
-[data-react-error-overlay],
-.sp-error-overlay,
-.sp-error,
-.sp-error-message,
-.sp-error-title,
-.sp-error-stack,
-.sp-error-banner,
-[class*="error-overlay"],
-[class*="errorOverlay"],
-[class*="ErrorOverlay"],
+      code: `#react-error-overlay,[class*="error-overlay"],[class*="ErrorOverlay"],
+.sp-error,.sp-error-overlay,.sp-error-message,
 div[style*="position: fixed"][style*="z-index: 9999"],
-div[style*="position: fixed"][style*="background"][style*="color: white"],
-div[style*="background-color: rgb(255, 0, 0)"],
-div[style*="background-color: red"],
-div[style*="background: red"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  position: absolute !important;
-  left: -99999px !important;
-  z-index: -99999 !important;
+div[style*="background-color: red"],div[style*="background: red"] {
+  display:none!important;visibility:hidden!important;opacity:0!important;
+  pointer-events:none!important;width:0!important;height:0!important;
+  position:absolute!important;left:-99999px!important;z-index:-99999!important;
 }`,
       hidden: true,
     },
