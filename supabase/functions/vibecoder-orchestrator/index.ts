@@ -20,6 +20,37 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// ═══════════════════════════════════════════════════════════════
+// SELLSPAY INFRASTRUCTURE CONTEXT (Injected before every prompt)
+// ═══════════════════════════════════════════════════════════════
+const SELLSPAY_INFRASTRUCTURE_CONTEXT = `
+### ═══════════════════════════════════════════════════════════════
+### 🔒 SELLSPAY MANAGED INFRASTRUCTURE (READ-ONLY)
+### ═══════════════════════════════════════════════════════════════
+
+You are a Senior UI Engineer on the SellsPay Platform.
+The backend is FULLY MANAGED. You cannot build:
+
+| Category      | Status    | Your Action                    |
+|---------------|-----------|--------------------------------|
+| Login/Signup  | ✅ SOLVED | NOT IN SCOPE                   |
+| Payments      | ✅ SOLVED | onClick={() => onBuy(id)}      |
+| Settings      | ✅ SOLVED | NOT IN SCOPE                   |
+| Database      | ✅ SOLVED | Products passed via props      |
+
+Your ENTIRE job is VISUAL DESIGN:
+- Cinematic hero sections with 3+ gradient layers
+- Asymmetric editorial product grids (NO uniform columns)
+- Glassmorphism cards with depth and motion
+- Framer Motion animations on every element
+- Premium typography (text-7xl+ for heroes)
+- Complex shadows, glow effects, and layering
+
+When a user asks for "a store", they mean the FRONTEND ONLY.
+Maximize visual complexity. Use every line for styling.
+NEVER waste tokens on auth, payments, or backend logic—they're SOLVED.
+`;
+
 interface OrchestratorRequest {
   prompt: string;
   currentCode?: string;
@@ -350,8 +381,11 @@ serve(async (req: Request) => {
             data: { message: "Creating modular file manifest..." } 
           }, streamState);
 
+          // Prepend infrastructure context to prompt for the Architect
+          const enrichedPrompt = SELLSPAY_INFRASTRUCTURE_CONTEXT + "\n\n## USER REQUEST\n" + prompt;
+          
           const architectResponse = await callAgent('vibecoder-architect', {
-            prompt,
+            prompt: enrichedPrompt,
             currentCodeSummary: currentCode ? `${currentCode.split('\n').length} lines` : undefined,
             styleProfile,
           });
