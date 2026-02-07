@@ -63,6 +63,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [creditsError, setCreditsError] = useState<{ needed: number; available: number } | null>(null);
+  const [streamingLogs, setStreamingLogs] = useState<string[]>([]);
   
   // "Magical Doorway" state - shows fullscreen prompt experience until first generation
   const [showDoorway, setShowDoorway] = useState(true);
@@ -191,14 +192,16 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     toast.success('Project deleted');
   };
   
-  // Handle sending a message
+  // Handle sending a message - accepts optional prompt override for doorway flow
   const handleSendMessage = useCallback(async (options: {
     isPlanMode: boolean;
     model: AIModel;
     attachments: File[];
     styleProfile?: string;
+    promptOverride?: string; // For doorway → build transition
   }) => {
-    if (!inputValue.trim() || isStreaming || !user) return;
+    const prompt = options.promptOverride || inputValue;
+    if (!prompt.trim() || isStreaming || !user) return;
     
     // Create project if none exists
     let projectId = activeProjectId;
@@ -221,24 +224,28 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
       setActiveProjectId(projectId);
     }
     
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: inputValue,
-    };
+    // Only add user message if not coming from doorway (which already adds it)
+    if (!options.promptOverride) {
+      const userMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: prompt,
+      };
+      setMessages(prev => [...prev, userMessage]);
+    }
     
-    setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsStreaming(true);
     setError(null);
     setCreditsError(null);
+    setStreamingLogs([]); // Reset logs
     
     try {
       // Save user message to database
       await supabase.from('vibecoder_messages').insert({
         project_id: projectId,
         role: 'user',
-        content: inputValue,
+        content: prompt,
       });
       
       // Call the orchestrator
@@ -256,10 +263,10 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          prompt: inputValue,
+          prompt: prompt,
           currentCode: code,
           styleProfile: options.styleProfile,
-          userId: user.id,
+          userId: profileId, // Pass profileId - orchestrator maps to auth user
           projectId,
         }),
       });
@@ -300,9 +307,19 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           try {
             const event = JSON.parse(jsonStr);
             
-            if (event.type === 'code') {
+            // Handle different event types
+            if (event.type === 'status') {
+              const statusMsg = event.data?.message || `Step: ${event.step}`;
+              setStreamingLogs(prev => [...prev, `⚙️ ${statusMsg}`]);
+            } else if (event.type === 'log') {
+              const logMsg = typeof event.data === 'string' ? event.data : JSON.stringify(event.data);
+              setStreamingLogs(prev => [...prev, logMsg]);
+            } else if (event.type === 'plan') {
+              setStreamingLogs(prev => [...prev, '📋 Plan created']);
+            } else if (event.type === 'code') {
               generatedCode = event.data?.code || '';
               summary = event.data?.summary || 'Storefront updated.';
+              setStreamingLogs(prev => [...prev, '✅ Code generated']);
             } else if (event.type === 'error') {
               const errorMsg = event.data?.message || 'Generation failed';
               
@@ -318,8 +335,11 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
             }
           } catch (parseErr) {
             // If JSON was cut mid-chunk, put it back
-            buffer = `data: ${jsonStr}\n` + buffer;
-            break;
+            if (parseErr instanceof SyntaxError) {
+              buffer = `data: ${jsonStr}\n` + buffer;
+              break;
+            }
+            throw parseErr;
           }
         }
       }
@@ -327,6 +347,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
       // Apply the generated code
       if (generatedCode) {
         setCode(generatedCode);
+        setRefreshKey(k => k + 1); // Force preview refresh
         
         // Save to database
         await supabase.from('project_files').upsert({
@@ -336,11 +357,15 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           version: 1,
         });
         
-        // Add assistant message
+        // Add assistant message with summary and logs
+        const logSummary = streamingLogs.length > 0 
+          ? `\n\n---\n**Build Log:**\n${streamingLogs.map(l => `• ${l}`).join('\n')}`
+          : '';
+        
         const assistantMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: summary,
+          content: summary + logSummary,
         };
         
         setMessages(prev => [...prev, assistantMessage]);
@@ -361,8 +386,9 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
       toast.error(message);
     } finally {
       setIsStreaming(false);
+      setStreamingLogs([]);
     }
-  }, [inputValue, isStreaming, activeProjectId, code, profileId, user]);
+  }, [inputValue, isStreaming, activeProjectId, code, profileId, user, streamingLogs]);
   
   // Handle preview errors
   const handlePreviewError = (errorMsg: string) => {
@@ -378,20 +404,27 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   
   if (!user) return null;
   
-  // Handle prompt from the magical doorway
-  const handleDoorwayStart = async (prompt: string, isPlanMode?: boolean) => {
+  // Handle prompt from the magical doorway - passes prompt directly to avoid state race
+  const handleDoorwayStart = (prompt: string, isPlanMode?: boolean) => {
     // Exit doorway and enter workspace
     setShowDoorway(false);
-    setInputValue(prompt);
+    setInputValue(prompt); // Show in input for visual feedback
     
-    // Trigger the message send after a tick to ensure state is updated
-    setTimeout(() => {
-      handleSendMessage({
-        isPlanMode: isPlanMode || false,
-        model: activeModel,
-        attachments: [],
-      });
-    }, 100);
+    // Add user message to chat immediately (optimistic)
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: prompt,
+    };
+    setMessages([userMessage]);
+    
+    // Trigger the build with prompt passed directly (no state dependency)
+    handleSendMessage({
+      isPlanMode: isPlanMode || false,
+      model: activeModel,
+      attachments: [],
+      promptOverride: prompt, // Pass directly to avoid stale state
+    });
   };
   
   // Show magical doorway when no active project
@@ -538,7 +571,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
             )}
             
             {/* Chat */}
-            <SimpleChat messages={messages} isStreaming={isStreaming}>
+            <SimpleChat messages={messages} isStreaming={isStreaming} streamingLogs={streamingLogs}>
               <ChatInputBar
                 value={inputValue}
                 onChange={setInputValue}
