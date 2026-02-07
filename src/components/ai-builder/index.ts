@@ -7,12 +7,15 @@ export { SimpleVibecoderPage } from './SimpleVibecoderPage';
 export { SimplePreview } from './SimplePreview';
 export { SimpleChat, type ChatMessage } from './SimpleChat';
 export { SimpleSidebar } from './SimpleSidebar';
+export { CanvasToolbar, type ViewMode, type DeviceMode } from './CanvasToolbar';
 
 // Shared components (kept from old architecture)
 export { ChatInputBar, AI_MODELS, type AIModel } from './ChatInputBar';
 export { ProfileMenu } from './ProfileMenu';
 export { PremiumGate } from './PremiumGate';
 export { InsufficientCreditsCard, isCreditsError, parseCreditsError } from './InsufficientCreditsCard';
+export { AIBuilderMessage, type AIBuilderChatMessage } from './AIBuilderMessage';
+export { LovableHero } from './LovableHero';
 
 // Onboarding
 export { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
