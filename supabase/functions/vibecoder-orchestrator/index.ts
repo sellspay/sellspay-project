@@ -36,7 +36,7 @@ interface OrchestratorRequest {
 }
 
 interface StreamEvent {
-  type: 'status' | 'log' | 'plan' | 'code' | 'error' | 'complete';
+  type: 'status' | 'log' | 'plan' | 'code' | 'code_chunk' | 'error' | 'complete';
   step?: 'architect' | 'builder' | 'linter' | 'healing' | 'shadow-render';
   data: unknown;
 }
@@ -628,16 +628,16 @@ async function callAgent(
 }
 
 /**
- * ROBUST LINE-BUFFERED SSE PARSER
+ * ROBUST LINE-BUFFERED SSE PARSER WITH REAL-TIME STREAMING
  * 
- * Fixes the "shredded code" issue where JSON split across network chunks
- * was being silently dropped. This implementation:
- * 1. Maintains a textBuffer across chunks
- * 2. Only processes complete lines (ending with \n)
- * 3. Re-buffers partial JSON lines if parsing fails
- * 4. Never discards tokens - waits for more data or fails cleanly
+ * Streams code chunks to the frontend as they arrive while still
+ * returning the complete content at the end.
  */
-async function extractStreamedCode(response: Response): Promise<string> {
+async function extractStreamedCode(
+  response: Response,
+  controller?: ReadableStreamDefaultController,
+  streamState?: { closed: boolean }
+): Promise<string> {
   if (!response.body) throw new Error("No response body");
   
   const reader = response.body.getReader();
@@ -645,6 +645,7 @@ async function extractStreamedCode(response: Response): Promise<string> {
   let textBuffer = ""; // Accumulates partial chunks
   let fullContent = "";
   let parsingFailed = false;
+  let lastSentLength = 0; // Track what we've already sent to avoid duplicates
   
   while (true) {
     const { done, value } = await reader.read();
@@ -683,10 +684,22 @@ async function extractStreamedCode(response: Response): Promise<string> {
         const content = parsed.choices?.[0]?.delta?.content;
         if (content) {
           fullContent += content;
+          
+          // Stream code chunks to frontend in real-time
+          if (controller && streamState && !streamState.closed) {
+            // Only send the new chunk (delta), not the full content
+            const newChunk = fullContent.substring(lastSentLength);
+            if (newChunk) {
+              sendEvent(controller, { 
+                type: 'code_chunk', 
+                data: { chunk: newChunk } 
+              }, streamState);
+              lastSentLength = fullContent.length;
+            }
+          }
         }
       } catch (parseErr) {
         // JSON was split across chunks - push back into buffer and wait for more data
-        // This is the critical fix: we DON'T discard the line, we re-buffer it
         console.log('[Orchestrator] Partial JSON detected, re-buffering:', jsonStr.substring(0, 50));
         textBuffer = line + '\n' + textBuffer;
         parsingFailed = true;
@@ -710,6 +723,17 @@ async function extractStreamedCode(response: Response): Promise<string> {
         const content = parsed.choices?.[0]?.delta?.content;
         if (content) {
           fullContent += content;
+          
+          // Send final chunk
+          if (controller && streamState && !streamState.closed) {
+            const newChunk = fullContent.substring(lastSentLength);
+            if (newChunk) {
+              sendEvent(controller, { 
+                type: 'code_chunk', 
+                data: { chunk: newChunk } 
+              }, streamState);
+            }
+          }
         }
       } catch {
         // Stream ended with incomplete JSON - this is a genuine error
@@ -983,8 +1007,9 @@ serve(async (req: Request) => {
             return;
           }
           
-          // Extract code from streaming response
-          const builderContent = await extractStreamedCode(builderResponse);
+          // Extract code from streaming response WITH REAL-TIME CHUNKS
+          // Pass controller and streamState to stream code_chunk events as they arrive
+          const builderContent = await extractStreamedCode(builderResponse, controller, streamState);
 
           // Extract summary FIRST before stripping markers
           const summary = extractSummaryFromResponse(builderContent);
