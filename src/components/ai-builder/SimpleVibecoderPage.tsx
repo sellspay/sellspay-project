@@ -446,17 +446,20 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           }
         }
         
-        // Deliver whatever we have (either passed or best effort after retries)
-        setCode(codeToDeliver);
-        setRefreshKey(k => k + 1); // Force preview refresh
+        // Only apply/save code if shadow testing passed.
+        // This prevents broken/truncated generations from "taking over" the workspace UI.
+        if (shadowPassed) {
+          setCode(codeToDeliver);
+          setRefreshKey(k => k + 1); // Force preview refresh
 
-        // Save to database
-        await supabase.from('project_files').upsert({
-          profile_id: profileId,
-          file_path: '/App.tsx',
-          content: codeToDeliver,
-          version: 1,
-        });
+          // Save to database
+          await supabase.from('project_files').upsert({
+            profile_id: profileId,
+            file_path: '/App.tsx',
+            content: codeToDeliver,
+            version: 1,
+          });
+        }
 
         // Persist build logs inside the assistant message so they remain in chat history
         const logBlock = collectedLogs.length
@@ -466,7 +469,9 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
         const assistantMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: `${summary}${logBlock}`,
+          content: shadowPassed
+            ? `${summary}${logBlock}`
+            : `Build failed — I did not apply the generated code (to avoid breaking your workspace).${logBlock}`,
         };
 
         setMessages(prev => [...prev, assistantMessage]);
@@ -478,7 +483,11 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           content: assistantMessage.content,
         });
 
-        toast.success(shadowPassed ? 'Changes applied!' : 'Applied with warnings');
+        if (shadowPassed) {
+          toast.success('Changes applied!');
+        } else {
+          toast.error('Build failed — code not applied');
+        }
       }
 
     } catch (err) {
