@@ -13,6 +13,7 @@ interface UseStreamingCodeOptions {
   onError?: (error: Error) => void;
   shouldAbort?: () => boolean; // Race condition guard: check if generation should be discarded
   getProductsContext?: () => Promise<ProductContext[]>; // Fetch products for AI context
+  getConversationHistory?: () => Array<{role: string; content: string}>; // Recent chat for context
 }
 
 interface ProductContext {
@@ -84,6 +85,9 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         }
       }
 
+      // Get conversation history for pronoun resolution
+      const conversationHistory = options.getConversationHistory?.() || [];
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vibecoder-v2`,
         {
@@ -97,6 +101,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
             prompt,
             currentCode,
             productsContext,
+            conversationHistory, // Pass conversation history for pronoun resolution
           }),
           signal: abortControllerRef.current.signal,
         }
