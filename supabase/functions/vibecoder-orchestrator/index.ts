@@ -903,14 +903,42 @@ serve(async (req: Request) => {
           });
           
           if (!architectResponse.ok) {
-            const error = await architectResponse.json();
-            sendEvent(controller, { type: 'error', data: error }, streamState);
+            // Safely parse error - might be HTML instead of JSON
+            let errorMessage = `Architect agent failed (${architectResponse.status})`;
+            try {
+              const errorText = await architectResponse.text();
+              // Check if it's HTML (error page) vs JSON
+              if (errorText.startsWith('<!DOCTYPE') || errorText.startsWith('<html')) {
+                console.error('[Orchestrator] Architect returned HTML error page:', architectResponse.status);
+                errorMessage = `Architect agent unavailable (${architectResponse.status}). Please try again.`;
+              } else {
+                // Try to parse as JSON
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.error || errorJson.message || errorMessage;
+              }
+            } catch {
+              // If parsing fails, use default message
+            }
+            sendEvent(controller, { type: 'error', data: { message: errorMessage } }, streamState);
             closeStream();
             return;
           }
           
-          const architectResult = await architectResponse.json();
-          architectPlan = architectResult.plan;
+          // Safely parse architect response
+          let architectResult: Record<string, unknown>;
+          try {
+            const responseText = await architectResponse.text();
+            if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+              throw new Error('Received HTML instead of JSON');
+            }
+            architectResult = JSON.parse(responseText);
+          } catch (parseErr) {
+            console.error('[Orchestrator] Failed to parse architect response:', parseErr);
+            sendEvent(controller, { type: 'error', data: { message: 'Failed to parse architect response' } }, streamState);
+            closeStream();
+            return;
+          }
+          architectPlan = architectResult.plan as Record<string, unknown>;
           
           // Extract complexity score for tiered pricing
           complexityScore = Number(architectPlan?.complexityScore) || 5;
@@ -1001,8 +1029,21 @@ serve(async (req: Request) => {
           });
           
           if (!builderResponse.ok) {
-            const error = await builderResponse.json();
-            sendEvent(controller, { type: 'error', data: error }, streamState);
+            // Safely parse error - might be HTML instead of JSON
+            let errorMessage = `Builder agent failed (${builderResponse.status})`;
+            try {
+              const errorText = await builderResponse.text();
+              if (errorText.startsWith('<!DOCTYPE') || errorText.startsWith('<html')) {
+                console.error('[Orchestrator] Builder returned HTML error page:', builderResponse.status);
+                errorMessage = `Builder agent unavailable (${builderResponse.status}). Please try again.`;
+              } else {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.error || errorJson.message || errorMessage;
+              }
+            } catch {
+              // Use default message
+            }
+            sendEvent(controller, { type: 'error', data: { message: errorMessage } }, streamState);
             closeStream();
             return;
           }

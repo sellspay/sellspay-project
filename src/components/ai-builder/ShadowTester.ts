@@ -100,6 +100,189 @@ function buildTestHtml(code: string): string {
         });
       };
       
+      // === MOCK HOOKS AND COMPONENTS FOR SHADOW TESTING ===
+      
+      // Mock useSellsPayCheckout hook
+      const useSellsPayCheckout = () => ({
+        buyProduct: (id) => console.log('[Mock] Buy product:', id),
+        isProcessing: false,
+        error: null,
+      });
+      
+      // Mock framer-motion (simplified passthrough)
+      const motion = new Proxy({}, {
+        get: (_, prop) => {
+          // Return a component that renders the element with props
+          return React.forwardRef((props, ref) => {
+            const { children, initial, animate, exit, transition, whileHover, whileTap, variants, ...rest } = props;
+            return React.createElement(String(prop), { ...rest, ref }, children);
+          });
+        }
+      });
+      
+      // Mock AnimatePresence (passthrough)
+      const AnimatePresence = ({ children }) => children;
+      
+      // Mock Lucide icons (simplified)
+      const createIconComponent = (name) => ({ size = 24, className = '', ...props }) => 
+        React.createElement('svg', {
+          xmlns: 'http://www.w3.org/2000/svg',
+          width: size,
+          height: size,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 2,
+          className: className,
+          'data-icon': name,
+          ...props
+        }, React.createElement('circle', { cx: 12, cy: 12, r: 10 }));
+      
+      // Common Lucide icons
+      const ChevronDown = createIconComponent('ChevronDown');
+      const ChevronUp = createIconComponent('ChevronUp');
+      const ChevronLeft = createIconComponent('ChevronLeft');
+      const ChevronRight = createIconComponent('ChevronRight');
+      const ArrowRight = createIconComponent('ArrowRight');
+      const ArrowLeft = createIconComponent('ArrowLeft');
+      const Star = createIconComponent('Star');
+      const Heart = createIconComponent('Heart');
+      const ShoppingCart = createIconComponent('ShoppingCart');
+      const Play = createIconComponent('Play');
+      const Pause = createIconComponent('Pause');
+      const Check = createIconComponent('Check');
+      const X = createIconComponent('X');
+      const Menu = createIconComponent('Menu');
+      const Search = createIconComponent('Search');
+      const User = createIconComponent('User');
+      const Settings = createIconComponent('Settings');
+      const Sparkles = createIconComponent('Sparkles');
+      const Zap = createIconComponent('Zap');
+      const Crown = createIconComponent('Crown');
+      const Diamond = createIconComponent('Diamond');
+      const Music = createIconComponent('Music');
+      const Video = createIconComponent('Video');
+      const Image = createIconComponent('Image');
+      const Download = createIconComponent('Download');
+      const Upload = createIconComponent('Upload');
+      const Share = createIconComponent('Share');
+      const Clock = createIconComponent('Clock');
+      const Calendar = createIconComponent('Calendar');
+      const Eye = createIconComponent('Eye');
+      const Package = createIconComponent('Package');
+      const Gift = createIconComponent('Gift');
+      const Award = createIconComponent('Award');
+      const TrendingUp = createIconComponent('TrendingUp');
+      const Flame = createIconComponent('Flame');
+      const Target = createIconComponent('Target');
+      const Headphones = createIconComponent('Headphones');
+      const Camera = createIconComponent('Camera');
+      const Mic = createIconComponent('Mic');
+      const Volume2 = createIconComponent('Volume2');
+      const Film = createIconComponent('Film');
+      const Palette = createIconComponent('Palette');
+      const Layers = createIconComponent('Layers');
+      const Grid = createIconComponent('Grid');
+      const List = createIconComponent('List');
+      const Filter = createIconComponent('Filter');
+      const Plus = createIconComponent('Plus');
+      const Minus = createIconComponent('Minus');
+      const ExternalLink = createIconComponent('ExternalLink');
+      const MapPin = createIconComponent('MapPin');
+      const Mail = createIconComponent('Mail');
+      const Phone = createIconComponent('Phone');
+      const Globe = createIconComponent('Globe');
+      const Shield = createIconComponent('Shield');
+      const Lock = createIconComponent('Lock');
+      const Unlock = createIconComponent('Unlock');
+      const CreditCard = createIconComponent('CreditCard');
+      const DollarSign = createIconComponent('DollarSign');
+      const Percent = createIconComponent('Percent');
+      const Tag = createIconComponent('Tag');
+      const Bookmark = createIconComponent('Bookmark');
+      const Bell = createIconComponent('Bell');
+      const Info = createIconComponent('Info');
+      const AlertCircle = createIconComponent('AlertCircle');
+      const CheckCircle = createIconComponent('CheckCircle');
+      const XCircle = createIconComponent('XCircle');
+      const HelpCircle = createIconComponent('HelpCircle');
+      const RefreshCw = createIconComponent('RefreshCw');
+      const RotateCw = createIconComponent('RotateCw');
+      const Loader2 = createIconComponent('Loader2');
+      const MoreHorizontal = createIconComponent('MoreHorizontal');
+      const MoreVertical = createIconComponent('MoreVertical');
+      const Move = createIconComponent('Move');
+      const Maximize = createIconComponent('Maximize');
+      const Minimize = createIconComponent('Minimize');
+      const Shuffle = createIconComponent('Shuffle');
+      const Repeat = createIconComponent('Repeat');
+      const SkipBack = createIconComponent('SkipBack');
+      const SkipForward = createIconComponent('SkipForward');
+      const Volume = createIconComponent('Volume');
+      const VolumeX = createIconComponent('VolumeX');
+      const Disc = createIconComponent('Disc');
+      const Radio = createIconComponent('Radio');
+      const Tv = createIconComponent('Tv');
+      const Monitor = createIconComponent('Monitor');
+      const Smartphone = createIconComponent('Smartphone');
+      const Tablet = createIconComponent('Tablet');
+      const Laptop = createIconComponent('Laptop');
+      const Watch = createIconComponent('Watch');
+      const Wifi = createIconComponent('Wifi');
+      const Bluetooth = createIconComponent('Bluetooth');
+      const Battery = createIconComponent('Battery');
+      const Power = createIconComponent('Power');
+      const Sun = createIconComponent('Sun');
+      const Moon = createIconComponent('Moon');
+      const CloudRain = createIconComponent('CloudRain');
+      const Wind = createIconComponent('Wind');
+      const Thermometer = createIconComponent('Thermometer');
+      const Droplet = createIconComponent('Droplet');
+      const Umbrella = createIconComponent('Umbrella');
+      const Sunrise = createIconComponent('Sunrise');
+      const Sunset = createIconComponent('Sunset');
+      const Send = createIconComponent('Send');
+      const MessageCircle = createIconComponent('MessageCircle');
+      const MessageSquare = createIconComponent('MessageSquare');
+      const AtSign = createIconComponent('AtSign');
+      const Hash = createIconComponent('Hash');
+      const Link = createIconComponent('Link');
+      const Paperclip = createIconComponent('Paperclip');
+      const File = createIconComponent('File');
+      const FileText = createIconComponent('FileText');
+      const Folder = createIconComponent('Folder');
+      const FolderOpen = createIconComponent('FolderOpen');
+      const Trash = createIconComponent('Trash');
+      const Trash2 = createIconComponent('Trash2');
+      const Edit = createIconComponent('Edit');
+      const Edit2 = createIconComponent('Edit2');
+      const Edit3 = createIconComponent('Edit3');
+      const Scissors = createIconComponent('Scissors');
+      const Copy = createIconComponent('Copy');
+      const Clipboard = createIconComponent('Clipboard');
+      const Save = createIconComponent('Save');
+      const Printer = createIconComponent('Printer');
+      const Archive = createIconComponent('Archive');
+      const Box = createIconComponent('Box');
+      const Truck = createIconComponent('Truck');
+      const Home = createIconComponent('Home');
+      const Building = createIconComponent('Building');
+      const Store = createIconComponent('Store');
+      const Briefcase = createIconComponent('Briefcase');
+      const Users = createIconComponent('Users');
+      const UserPlus = createIconComponent('UserPlus');
+      const UserMinus = createIconComponent('UserMinus');
+      const UserCheck = createIconComponent('UserCheck');
+      const UserX = createIconComponent('UserX');
+      const LogIn = createIconComponent('LogIn');
+      const LogOut = createIconComponent('LogOut');
+      const Key = createIconComponent('Key');
+      const Footprints = createIconComponent('Footprints');
+      const Activity = createIconComponent('Activity');
+      const Aperture = createIconComponent('Aperture');
+      
+      // === END MOCKS ===
+      
       // User's generated code
       ${safeCode}
       
