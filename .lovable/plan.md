@@ -1,243 +1,280 @@
 
-
-# Logic-Locked Vibecoder: Pure Design Engine Implementation
+# Million Dollar Vibecoder: Premium Factory System
 
 ## Problem Analysis
 
-The current Vibecoder is producing "short" and "PDF-style" responses because:
+The current Vibecoder has solid foundations but produces inconsistent quality because:
 
-1. **No Infrastructure Context Injection** — The AI doesn't receive a clear "Senior Creative Director" brief stating what's pre-provisioned (auth, payments, settings) and what its role is
-2. **No Prompt Expansion Protocol** — Simple prompts like "shoe store" don't get inflated into high-density design specifications
-3. **Commerce Binding is Optional** — The AI sometimes invents payment flows instead of using `useSellsPayCheckout()`
-4. **Policy Guard is Reactive** — Violations are caught but don't redirect the AI's energy toward design
+1. **No "Unique Design Feature" Mandate** — The Architect can plan generic layouts without a signature element
+2. **No Navigation Component** — File manifest only plans 4 files, missing the sticky nav that makes sites feel complete
+3. **Expansion Protocol is Passive** — Examples exist but aren't enforced with a "MINIMUM REQUIREMENTS" block
+4. **No Quality Gate** — There's no complexity scoring that REJECTS low-density plans
+5. **Builder Missing Typography Pairing Rules** — No explicit font hierarchy enforcement
 
-## Solution: Three-Layer Context Injection
+## Solution: "Premium Factory" System Defaults
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    LOGIC-LOCKED ARCHITECTURE                        │
+│                  MILLION DOLLAR VIBECODER                           │
 ├─────────────────────────────────────────────────────────────────────┤
-│  LAYER 1: ORCHESTRATOR                                              │
-│  └─ Inject "SellsPay Infrastructure Context" before every prompt   │
+│  1. ARCHITECT: Add "Unique Design Feature" REQUIREMENT              │
+│     └─ Every plan MUST include a signature element                 │
 │                                                                     │
-│  LAYER 2: ARCHITECT                                                 │
-│  └─ Add "Expansion Protocol" to inflate simple prompts             │
+│  2. ARCHITECT: Expand file manifest to 5-6 files                    │
+│     └─ Add Navigation.tsx as MANDATORY                             │
 │                                                                     │
-│  LAYER 3: BUILDER                                                   │
-│  └─ Add "Commerce Binding" mandate for all Buy buttons             │
-├─────────────────────────────────────────────────────────────────────┤
-│  BONUS: POLICY GUARD                                                │
-│  └─ Add redirect suggestions to guide users toward design tasks    │
+│  3. ARCHITECT: Add "Quality Gate" scoring                           │
+│     └─ Reject plans with complexity < 4                            │
+│                                                                     │
+│  4. BUILDER: Add Typography Pairing Rules                           │
+│     └─ Explicit Playfair + Inter mandate                           │
+│                                                                     │
+│  5. BUILDER: Add "Micro-Interaction Checklist"                      │
+│     └─ Every element must have hover/motion                        │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Implementation Plan
+## Implementation Details
 
-### Phase 1: Orchestrator Infrastructure Injection
-
-**File:** `supabase/functions/vibecoder-orchestrator/index.ts`
-
-Inject a "SellsPay Infrastructure Context" block before every prompt so the AI knows what's solved and what its role is.
-
-**Changes:**
-- Add a constant `SELLSPAY_INFRASTRUCTURE_CONTEXT` block
-- Prepend this to the prompt before sending to the Architect
-- Include explicit table of what's PRE-PROVISIONED vs what's the AI's scope
-
-**Infrastructure Context Block:**
-```
-### SELLSPAY MANAGED INFRASTRUCTURE (READ-ONLY)
-
-You are a Senior UI Engineer on the SellsPay Platform.
-The backend is FULLY MANAGED. You cannot build:
-
-| Category      | Status    | Your Action                    |
-|---------------|-----------|--------------------------------|
-| Login/Signup  | SOLVED    | Not in scope                   |
-| Payments      | SOLVED    | onClick={() => onBuy(id)}      |
-| Settings      | SOLVED    | Not in scope                   |
-| Database      | SOLVED    | Products passed via props      |
-
-Your ENTIRE job is VISUAL DESIGN:
-- Cinematic hero sections
-- Editorial product grids
-- Glassmorphism cards
-- Framer Motion animations
-- Premium typography
-- Depth layering and shadows
-
-When a user asks for "a store", they mean the FRONTEND.
-Maximize visual complexity. Use every line for styling.
-```
-
----
-
-### Phase 2: Architect Expansion Protocol
+### Phase 1: Architect "Premium Factory" Defaults
 
 **File:** `supabase/functions/vibecoder-architect/index.ts`
 
-Add an "Expansion Protocol" section that transforms simple prompts into detailed design specifications.
+Add a "MINIMUM QUALITY REQUIREMENTS" section to the system prompt:
 
-**Changes:**
-- Add `EXPANSION_PROTOCOL` section to system prompt
-- Include mapping table: User Says -> Architect Expands To
-- Mandate minimum visual complexity for every request
+```text
+### MINIMUM QUALITY REQUIREMENTS (REJECT IF NOT MET)
 
-**Expansion Protocol:**
-```
-### EXPANSION PROTOCOL (MANDATORY)
+Every blueprint MUST achieve a complexity score of 4+ (out of 5).
+If the AI cannot meet these requirements, it MUST add more detail.
 
-Transform every user request into a LUXURY design specification:
+**MANDATORY FILE STRUCTURE (5-6 files):**
+1. data/products.ts — Product data (max 6 items, high-res Unsplash)
+2. components/Navigation.tsx — Sticky/glassmorphism nav with logo + links
+3. components/Hero.tsx — Full-screen hero with 3+ gradient layers
+4. components/ProductGrid.tsx — ASYMMETRIC editorial grid (NOT uniform)
+5. App.tsx — Main orchestrator (imports + assembles, max 40 lines)
+6. components/Footer.tsx — Optional but recommended
 
-| User Says           | You MUST Expand To                                    |
-|---------------------|-------------------------------------------------------|
-| "shoe store"        | Hero (3 gradient layers, text-9xl), asymmetric grid   |
-|                     | (col-span-2 for featured), glassmorphism cards,       |
-|                     | staggered reveal animations                           |
-| "add products"      | Editorial grid refinement, varied aspect ratios,      |
-|                     | hover scale+rotate, scroll-linked parallax            |
-| "landing page"      | Full-bleed hero, stats bar, testimonials, featured    |
-|                     | products, sticky nav with glass effect                |
-| "make it premium"   | Typography upgrade (Playfair + Inter), ambient glow   |
-|                     | orbs, text shimmer, magnetic button effects           |
-| "sports brand"      | Athletic Luxury profile: horizontal parallax,         |
-|                     | bold condensed fonts, high-contrast shadows           |
+**UNIQUE DESIGN FEATURE (MANDATORY):**
+Every plan MUST include a "uniqueDesignFeature" field with:
+- element: The specific visual feature (e.g., "magnetic cursor buttons")
+- implementation: Tailwind/CSS approach to achieve it
 
-NEVER accept a simple request at face value.
-Always inflate to maximum visual density.
+Examples of unique features:
+- Scroll-triggered parallax layers with different speeds
+- Text shimmer animation on hero heading
+- Asymmetric grid with featured product spanning 2 columns
+- Floating decorative blobs with organic animation
+- Cursor-following radial glow effect
+- Glassmorphism card stack with depth blur
+
+**TYPOGRAPHY MANDATE:**
+- Hero: MUST be text-7xl+ with font-serif or professional typeface
+- Pairing: Heading serif + body sans-serif (e.g., Playfair + Inter)
+- NEVER use default system fonts without explicit classes
 ```
 
 ---
 
-### Phase 3: Builder Commerce Binding
+### Phase 2: Builder "Micro-Interaction Checklist"
 
 **File:** `supabase/functions/vibecoder-builder/index.ts`
 
-Add explicit "Commerce Binding" instructions so every Buy button uses the platform checkout.
+Add a "MICRO-INTERACTION CHECKLIST" that enforces polish on every element:
 
-**Changes:**
-- Add `COMMERCE_BINDING_MANDATE` section
-- Explicit instructions for onBuy prop pattern
-- FORBIDDEN list for custom payment flows
+```text
+### MICRO-INTERACTION CHECKLIST (EVERY COMPONENT)
 
-**Commerce Binding Mandate:**
-```
-### COMMERCE BINDING (NON-NEGOTIABLE)
+Before completing any component, verify these are present:
 
-Every product MUST have an "onBuy" prop.
-Every "Buy" / "Add to Cart" button MUST call:
-  onClick={() => onBuy(product.id)}
+**Hero Section:**
+- [ ] motion.h1 with initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
+- [ ] Staggered subtitle/CTA with delay
+- [ ] Background gradient with at least 3 layers
+- [ ] CTA button with whileHover={{ scale: 1.05 }}
 
-The App.tsx MUST:
-1. Import useSellsPayCheckout from './hooks/useSellsPayCheckout'
-2. Destructure: const { buyProduct } = useSellsPayCheckout();
-3. Pass to grid: <ProductGrid products={PRODUCTS} onBuy={buyProduct} />
+**Navigation:**
+- [ ] fixed top-0 with backdrop-blur-xl
+- [ ] Glassmorphism: bg-white/5 border-b border-white/10
+- [ ] Links with hover underline animation
 
-FORBIDDEN:
-- Creating custom payment forms
-- Importing Stripe/PayPal directly
-- Building auth pages
-- Creating settings/profile pages
-- Inventing new checkout flows
+**Product Cards:**
+- [ ] group class on wrapper for hover coordination
+- [ ] Image with group-hover:scale-110 transition-transform duration-700
+- [ ] overflow-hidden on image container
+- [ ] hover:border-amber-500/30 or similar accent border
+- [ ] motion.div with whileInView stagger animation
 
-The payment system is SOLVED. Focus 100% on visual design.
+**Buttons:**
+- [ ] whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+- [ ] transition-all duration-300
+- [ ] For primary: bg-white text-black hover:bg-amber-400
+- [ ] For secondary: bg-white/10 backdrop-blur-sm border border-white/20
+
+**FORBIDDEN:**
+- Static elements without any motion
+- Buttons without hover/active states
+- Images without scale/zoom on hover
+- Cards without border/shadow transitions
 ```
 
 ---
 
-### Phase 4: Policy Guard Redirect Suggestions
+### Phase 3: Add Navigation.tsx Template
 
-**File:** `src/utils/policyGuard.ts`
+**File:** `supabase/functions/vibecoder-builder/index.ts`
 
-Enhance the PolicyRule interface to include redirect suggestions that guide users toward valid design tasks.
+Add a new template to `FILE_TEMPLATES` for Navigation.tsx:
 
-**Changes:**
-- Add `redirect` property to `PolicyRule` interface
-- Add constructive suggestions to each policy rule
-- Update export to include redirect strings
-
-**Updated Interface:**
 ```typescript
-export interface PolicyRule {
-  id: string;
-  category: string;
-  keywords: string[];
-  message: string;
-  redirect: string; // NEW: Suggested design task
+'components/Navigation.tsx': `
+### NAVIGATION COMPONENT TEMPLATE (components/Navigation.tsx)
+Sticky glassmorphism nav with logo and smooth scroll links.
+
+\`\`\`tsx
+import React from 'react';
+import { motion } from 'framer-motion';
+
+interface NavigationProps {
+  brandName: string;
+  links?: { label: string; href: string }[];
 }
+
+export function Navigation({ brandName, links = [] }: NavigationProps) {
+  const defaultLinks = links.length > 0 ? links : [
+    { label: 'Collection', href: '#products' },
+    { label: 'About', href: '#about' },
+    { label: 'Contact', href: '#contact' },
+  ];
+
+  return (
+    <motion.nav 
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
+      className="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-2xl border-b border-white/10"
+    >
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="#" className="text-xl font-serif text-white tracking-tight">
+          {brandName}
+        </a>
+        <div className="hidden md:flex items-center gap-8">
+          {defaultLinks.map((link) => (
+            <a 
+              key={link.href}
+              href={link.href}
+              className="text-sm text-zinc-400 hover:text-white transition-colors duration-300 relative group"
+            >
+              {link.label}
+              <span className="absolute -bottom-1 left-0 w-0 h-px bg-amber-400 group-hover:w-full transition-all duration-300" />
+            </a>
+          ))}
+        </div>
+      </div>
+    </motion.nav>
+  );
+}
+\`\`\``,
 ```
 
-**Example Redirect:**
-```typescript
+---
+
+### Phase 4: Update Output Format
+
+**File:** `supabase/functions/vibecoder-architect/index.ts`
+
+Update the JSON output format to include Navigation.tsx in the files array:
+
+```json
 {
-  id: 'auth_restriction',
-  // ... existing fields
-  redirect: "Try asking me to create a stunning hero section, product showcase, or landing page instead!"
+  "vibeAnalysis": { ... },
+  "files": [
+    { "path": "data/products.ts", "priority": 1 },
+    { "path": "components/Navigation.tsx", "priority": 2 },
+    { "path": "components/Hero.tsx", "priority": 3 },
+    { "path": "components/ProductGrid.tsx", "priority": 4 },
+    { "path": "App.tsx", "priority": 5 }
+  ],
+  "uniqueDesignFeature": {
+    "element": "REQUIRED - must describe signature visual",
+    "implementation": "REQUIRED - Tailwind classes or approach"
+  },
+  "executionOrder": [...],
+  "complexityScore": 5
 }
 ```
 
 ---
 
-## Technical Summary
+## Technical Changes Summary
 
-| File | Change Type | Purpose |
-|------|-------------|---------|
-| `vibecoder-orchestrator/index.ts` | Add constant + inject | Prepend infrastructure context |
-| `vibecoder-architect/index.ts` | Extend system prompt | Add Expansion Protocol |
-| `vibecoder-builder/index.ts` | Extend system prompt | Add Commerce Binding mandate |
-| `src/utils/policyGuard.ts` | Extend interface | Add redirect suggestions |
+| File | Change | Purpose |
+|------|--------|---------|
+| `vibecoder-architect/index.ts` | Add "MINIMUM QUALITY REQUIREMENTS" | Enforce 4+ complexity, unique feature |
+| `vibecoder-architect/index.ts` | Add Navigation.tsx to file manifest | Complete the site structure |
+| `vibecoder-architect/index.ts` | Add Typography Mandate | Force professional font pairings |
+| `vibecoder-builder/index.ts` | Add Navigation.tsx template | Provide the nav pattern |
+| `vibecoder-builder/index.ts` | Add "MICRO-INTERACTION CHECKLIST" | Enforce polish on every element |
 
 ---
 
 ## Expected Outcomes
 
-1. **No More "PDF-Style" Code** — Every simple prompt gets expanded into luxury specifications
-2. **Zero Auth/Payment Confusion** — AI knows these are solved and focuses elsewhere
-3. **Higher Visual Density** — 100% of token budget goes to gradients, motion, typography
-4. **Faster Builds** — No wasted cycles trying to figure out backend infrastructure
-5. **Better User Guidance** — Policy violations now suggest constructive alternatives
+1. **Every site has a sticky nav** — No more floating content with no structure
+2. **Unique signature feature** — Each storefront has a differentiating element
+3. **Minimum complexity 4+** — Rejects "PDF-style" low-density plans
+4. **Typography enforcement** — Professional font pairings are mandatory
+5. **Micro-interactions everywhere** — Every element has hover/motion states
 
 ---
 
-## Code Injection Summary
+## Code Injection Blocks
 
-### Orchestrator: Infrastructure Context (prepend to every prompt)
-```
-### ═══════════════════════════════════════════════════════════════
-### SELLSPAY MANAGED INFRASTRUCTURE (READ-ONLY)
-### ═══════════════════════════════════════════════════════════════
+### Architect: Minimum Quality Requirements
+```text
+### MINIMUM QUALITY REQUIREMENTS (REJECT IF NOT MET)
 
-You are a Senior UI Engineer on the SellsPay Platform.
-The backend is FULLY MANAGED. You cannot build:
-- Authentication (login/signup) → NOT IN SCOPE
-- Payments → Use onClick={() => onBuy(id)}
-- Settings/Billing → NOT IN SCOPE
-- Database → Products passed via props
+Every blueprint MUST achieve complexity score 4+ (out of 5).
 
-Your ENTIRE job is VISUAL DESIGN.
-Maximize visual complexity. Use every line for styling.
-```
+**MANDATORY FILES (5-6):**
+1. data/products.ts
+2. components/Navigation.tsx (sticky glassmorphism)
+3. components/Hero.tsx (3+ gradient layers)
+4. components/ProductGrid.tsx (asymmetric editorial)
+5. App.tsx (max 40 lines)
 
-### Architect: Expansion Protocol (add to system prompt)
-```
-### EXPANSION PROTOCOL (MANDATORY)
-
-NEVER accept simple requests at face value.
-ALWAYS inflate to maximum visual density.
-
-"shoe store" → Hero (3 gradient layers, text-9xl), asymmetric grid, glassmorphism
-"landing page" → Full-bleed hero, stats bar, testimonials, featured products
-"sports brand" → Athletic Luxury: parallax, bold fonts, high-contrast shadows
+**UNIQUE DESIGN FEATURE (MANDATORY):**
+Every plan MUST include "uniqueDesignFeature" with:
+- element: Signature visual feature
+- implementation: Tailwind approach
 ```
 
-### Builder: Commerce Binding (add to system prompt)
-```
-### COMMERCE BINDING (NON-NEGOTIABLE)
+### Builder: Micro-Interaction Checklist
+```text
+### MICRO-INTERACTION CHECKLIST
 
-Every "Buy" button MUST use: onClick={() => onBuy(product.id)}
-App.tsx MUST: import useSellsPayCheckout, pass buyProduct to grid
-FORBIDDEN: Custom payment forms, Stripe imports, auth pages
+Hero:
+- motion.h1 with opacity/y animation
+- 3+ gradient background layers
+- CTA with whileHover scale
+
+Cards:
+- group class + overflow-hidden
+- group-hover:scale-110 on images
+- hover:border accent change
+- motion.div whileInView stagger
+
+Buttons:
+- whileHover + whileTap scale
+- transition-all duration-300
 ```
 
+### New Navigation Template
+```tsx
+<motion.nav className="fixed top-0 z-50 bg-black/40 backdrop-blur-2xl border-b border-white/10">
+  {/* Logo + Links with hover underline animation */}
+</motion.nav>
+```
