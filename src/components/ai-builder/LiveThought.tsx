@@ -39,8 +39,13 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
 
     if (!isThinking && logs.length === 0) return null;
 
-    // THINKING MODE: Simple "Thinking..." indicator with no logs
-    if (mode === 'thinking') {
+    // Determine if we're in "thinking" phase (no logs yet) vs "building" phase (logs arriving)
+    const hasRealLogs = logs.length > 0;
+    const isThinkingPhase = isThinking && !hasRealLogs;
+    const isBuildingPhase = isThinking && hasRealLogs;
+
+    // THINKING PHASE: Simple "Thinking..." indicator with no logs
+    if (isThinkingPhase || mode === 'thinking') {
       if (!isThinking) return null;
       
       return (
@@ -62,31 +67,7 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
       );
     }
 
-    // BUILDING MODE: Show detailed logs (existing behavior)
-    // Only switch to building mode once we have actual logs
-    const hasBuildingLogs = logs.length > 0;
-    
-    if (!hasBuildingLogs && isThinking) {
-      // Still in initial thinking phase, show simple indicator
-      return (
-        <div
-          ref={ref}
-          className={cn(
-            "w-full max-w-[90%] mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300",
-            className
-          )}
-        >
-          <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
-            </span>
-            <span>Thinking...</span>
-          </div>
-        </div>
-      );
-    }
-
+    // BUILDING PHASE: Show detailed logs with timer
     return (
       <div
         ref={ref}
@@ -108,7 +89,7 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
           )}
           
           <span className="flex items-center gap-2">
-            {isThinking ? (
+            {isBuildingPhase ? (
               <>
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
@@ -132,7 +113,7 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
                 <Terminal size={12} />
                 <span className="text-[10px] font-mono uppercase tracking-wider">Execution Log</span>
               </div>
-              {isThinking && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+              {isBuildingPhase && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
             </div>
 
             {/* LOG STREAM */}
@@ -160,7 +141,7 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
                 );
               })}
               
-              {isThinking && (
+              {isBuildingPhase && (
                 <div className="flex gap-2 opacity-50">
                   <span className="text-muted-foreground/50">›</span>
                   <span className="animate-pulse">_</span>
@@ -174,7 +155,7 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
         {!isExpanded && logs.length > 0 && (
           <div className="ml-6 text-xs text-muted-foreground/70 truncate font-mono">
             {logs[logs.length - 1].replace(/^\[LOG:\s*/, '').replace(/\]$/, '').replace(/^>\s*/, '').trim()}
-            {isThinking && '...'}
+            {isBuildingPhase && '...'}
           </div>
         )}
       </div>
