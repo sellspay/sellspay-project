@@ -736,6 +736,32 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     setRefreshKey(prev => prev + 1);
   }, []);
 
+  // Nuclear reset: Clears ALL Sandpack caches and forces complete remount
+  // Use this when the preview is completely stuck (DataCloneError, 500 errors, etc.)
+  const handleNukeAndRefresh = useCallback(async () => {
+    console.log('☢️ NUCLEAR RESET: Clearing all caches and remounting...');
+    
+    // 1. Clear all Sandpack caches (IndexedDB, localStorage)
+    await nukeSandpackCache();
+    
+    // 2. Clear project-specific localStorage if we have an active project
+    if (activeProjectId) {
+      clearProjectLocalStorage(activeProjectId);
+    }
+    
+    // 3. Force both reset key and refresh key to guarantee complete remount
+    setResetKey(prev => prev + 1);
+    setRefreshKey(prev => prev + 1);
+    
+    // 4. Release any stuck handshake state
+    setIsWaitingForPreviewMount(false);
+    setIsAwaitingPreviewReady(false);
+    
+    toast.success('Cache cleared! Preview should reload.', {
+      icon: '☢️',
+    });
+  }, [activeProjectId]);
+
   // Restore specific code version (time travel with DB sync)
   const handleRestoreCode = useCallback(async (messageId: string) => {
     if (!confirm('Are you sure? This will delete all messages after this point.')) return;
@@ -1270,6 +1296,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           deviceMode={deviceMode}
           setDeviceMode={setDeviceMode}
           onRefresh={handleRefresh}
+          onNukeAndRefresh={handleNukeAndRefresh}
           onPublish={handlePublish}
           isPublished={isPublished}
           isPublishing={publishing}

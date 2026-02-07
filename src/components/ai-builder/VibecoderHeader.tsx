@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Film,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ interface VibecoderHeaderProps {
   deviceMode: 'desktop' | 'mobile';
   setDeviceMode: (mode: 'desktop' | 'mobile') => void;
   onRefresh: () => void;
+  onNukeAndRefresh?: () => void; // Nuclear reset: clears all Sandpack caches
   onPublish: () => void;
   isPublished: boolean;
   isPublishing: boolean;
@@ -83,6 +85,7 @@ export const VibecoderHeader = forwardRef<HTMLElement, VibecoderHeaderProps>(fun
     deviceMode,
     setDeviceMode,
     onRefresh,
+    onNukeAndRefresh,
     onPublish,
     isPublished,
     isPublishing,
@@ -102,11 +105,23 @@ export const VibecoderHeader = forwardRef<HTMLElement, VibecoderHeaderProps>(fun
 ) {
   const navigate = useNavigate();
   const [isRegenerateOpen, setIsRegenerateOpen] = useState(false);
+  const [isNuking, setIsNuking] = useState(false);
 
   const handleRegenerate = (tweak: string) => {
     setIsRegenerateOpen(false);
     onRegenerate?.(tweak);
   };
+
+  const handleNukeAndRefresh = async () => {
+    if (!onNukeAndRefresh) return;
+    setIsNuking(true);
+    try {
+      await onNukeAndRefresh();
+    } finally {
+      setTimeout(() => setIsNuking(false), 1000);
+    }
+  };
+
   return (
     <header
       ref={ref}
@@ -214,6 +229,23 @@ export const VibecoderHeader = forwardRef<HTMLElement, VibecoderHeaderProps>(fun
             onRefresh={onRefresh} 
           />
         </div>
+
+        {/* Nuke & Refresh Button - Clears all Sandpack caches */}
+        {onNukeAndRefresh && viewMode === 'preview' && (
+          <button 
+            onClick={handleNukeAndRefresh}
+            disabled={isNuking}
+            className="flex items-center gap-2 px-3 py-1.5 bg-red-900/50 hover:bg-red-800/60 border border-red-700/50 rounded-lg text-xs font-bold text-red-300 transition-all disabled:opacity-50"
+            title="Nuclear Reset: Clears all cached data and forces a fresh preview"
+          >
+            {isNuking ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <Trash2 size={12} />
+            )}
+            <span>Nuke</span>
+          </button>
+        )}
 
         {/* Tweak Design Button - Never shows loading state */}
         {!isEmpty && onRegenerate && (
