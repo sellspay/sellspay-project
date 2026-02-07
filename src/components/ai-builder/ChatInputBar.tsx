@@ -64,6 +64,7 @@ export const AI_MODELS = {
   code: [
     { id: "vibecoder-pro", name: "Gemini 3 Pro", desc: "Best for complex layouts", cost: 3, icon: Sparkles, category: "code" },
     { id: "vibecoder-flash", name: "Gemini Flash", desc: "Fast, for small edits", cost: 0, icon: Zap, category: "code" },
+    { id: "reasoning-o1", name: "GPT-5.2", desc: "Deep reasoning mode", cost: 8, icon: BrainCircuit, category: "code" },
   ],
   image: [
     { id: "nano-banana", name: "Nano Banana", desc: "Gemini Image Gen", cost: 10, icon: ImageIcon, category: "image" },
