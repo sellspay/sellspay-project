@@ -287,8 +287,10 @@ export function ChatInputBar({
   const promptBeforeSpeechRef = useRef("");
   // Ref to track latest transcript for onend handler (closure issue)
   const transcriptRef = useRef("");
-  // Detect "ends immediately" (common when mic is blocked in embedded iframes)
+  // Detect "ends immediately" (common when Web Speech is blocked in embedded iframes)
   const speechDidStartRef = useRef(false);
+  // Track whether the browser granted raw mic access (getUserMedia) so we can message accurately
+  const micPreflightOkRef = useRef(false);
 
   // Speech-to-Text Handler with REAL-TIME live typing in the input
   const toggleSpeechRecognition = useCallback(async () => {
@@ -306,10 +308,13 @@ export function ChatInputBar({
       return;
     }
 
+    micPreflightOkRef.current = false;
+
     // Preflight mic permission (forces the browser permission prompt)
     try {
       if (navigator?.mediaDevices?.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micPreflightOkRef.current = true;
         // Immediately release the mic - we only needed the permission
         stream.getTracks().forEach(t => t.stop());
       }
@@ -332,10 +337,27 @@ export function ChatInputBar({
 
       const startGuard = window.setTimeout(async () => {
         if (!speechDidStartRef.current) {
-          // If onstart never fires, SpeechRecognition is effectively blocked (common in iframes)
+          // If onstart never fires, the Web Speech API is blocked (commonly by iframe Permissions-Policy)
           try { recognition.stop(); } catch { /* ignore */ }
           const { toast } = await import('sonner');
-          toast.error('Mic can’t start here (likely blocked in this embedded preview). Open the app in a new tab and allow mic access, then try again.');
+
+          const msg = micPreflightOkRef.current
+            ? 'Speech-to-text can’t start inside this embedded preview (browser blocks Web Speech in iframes).'
+            : 'Mic can’t start here.';
+
+          toast.error(msg, {
+            action: {
+              label: 'Open in new tab',
+              onClick: () => {
+                try {
+                  window.open(window.location.href, '_blank', 'noopener,noreferrer');
+                } catch {
+                  // ignore
+                }
+              },
+            },
+          });
+
           setIsListening(false);
         }
       }, 800);
