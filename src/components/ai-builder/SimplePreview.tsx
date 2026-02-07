@@ -123,11 +123,24 @@ export const SimplePreview = memo(function SimplePreview({
 <body>
   <div id="root"></div>
   <script>
-    // Catch Babel compilation errors before they crash silently
+    // Catch script/runtime errors and report back to parent
+    const report = (payload) => {
+      try { window.parent.postMessage(payload, '*'); } catch (e) {}
+    };
+
     window.onerror = function(msg, url, lineNo, columnNo, error) {
-      document.getElementById('root').innerHTML = 
-        '<div class="error-display"><strong>Compilation Error:</strong>\\n' + msg + '</div>';
-      window.parent.postMessage({ type: 'preview-error', error: msg }, '*');
+      const details = error && error.stack ? error.stack : String(msg);
+      document.getElementById('root').innerHTML =
+        '<div class="error-display"><strong>Error:</strong>\\n' + details + '</div>';
+      report({ type: 'preview-error', error: details });
+      return true;
+    };
+
+    window.onunhandledrejection = function(event) {
+      const reason = event && event.reason ? (event.reason.stack || String(event.reason)) : 'Unhandled promise rejection';
+      document.getElementById('root').innerHTML =
+        '<div class="error-display"><strong>Error:</strong>\\n' + reason + '</div>';
+      report({ type: 'preview-error', error: reason });
       return true;
     };
   </script>

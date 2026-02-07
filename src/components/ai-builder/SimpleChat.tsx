@@ -57,28 +57,33 @@ export function SimpleChat({ messages, isStreaming, streamingLogs = [], children
             </div>
           ) : (
             // Message list
-            messages.map((msg) => (
+            messages.map((msg, idx) => (
               <div 
                 key={msg.id} 
                 className={cn(
-                  "flex gap-3",
+                  "flex",
                   msg.role === 'user' ? 'justify-end' : 'justify-start'
                 )}
               >
                 {/* Assistant avatar */}
                 {msg.role === 'assistant' && (
-                  <div className="shrink-0 w-8 h-8 rounded-lg overflow-hidden">
+                  <div className={cn(
+                    "shrink-0 w-8 h-8 overflow-hidden",
+                    // slightly irregular placement like Lovable
+                    idx % 3 === 0 ? "mt-0.5" : idx % 3 === 1 ? "mt-2" : "mt-1",
+                    "rounded-md"
+                  )}>
                     <img src={sellspayLogo} alt="AI" className="w-full h-full object-cover" />
                   </div>
                 )}
                 
-                {/* Message bubble - only user messages get the card style */}
+                {/* Message */}
                 <div 
                   className={cn(
-                    "max-w-[85%] text-sm break-words whitespace-pre-wrap",
+                    "text-sm break-words whitespace-pre-wrap",
                     msg.role === 'user' 
-                      ? 'px-4 py-3 bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white rounded-2xl rounded-br-md' 
-                      : 'text-zinc-300 py-1'
+                      ? 'max-w-[85%] px-4 py-3 bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white rounded-2xl rounded-br-md' 
+                      : 'max-w-[92%] text-foreground leading-relaxed pl-3 pr-2 py-1'
                   )}
                 >
                   {msg.content}
