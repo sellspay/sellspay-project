@@ -11,6 +11,7 @@ import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects, type VibecoderMessage } from './hooks/useVibecoderProjects';
 import { useAgentLoop } from '@/hooks/useAgentLoop';
 import { useBackgroundGeneration, type GenerationJob } from '@/hooks/useBackgroundGeneration';
+import { useDataAvailabilityCheck } from './hooks/useDataAvailabilityCheck';
 import { GenerationCanvas } from './GenerationCanvas';
 import { ProductsPanel } from './ProductsPanel';
 import { SubscriptionsPanel } from './SubscriptionsPanel';
@@ -185,6 +186,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // 📋 PLAN MODE STATE
   const [isPlanMode, setIsPlanMode] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<{ plan: import('./useStreamingCode').PlanData; originalPrompt: string } | null>(null);
+  
+  // 📊 DATA AVAILABILITY CHECK: Detects missing subscriptions/products after generation
+  const { checkDataAvailability } = useDataAvailabilityCheck(profileId);
+  // Track the last user prompt for data availability checking
+  const lastUserPromptRef = useRef<string>('');
+  
   // Streaming code state
   const { 
     code, 
@@ -267,8 +274,21 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       }
 
       // Use the REAL AI summary, or fallback if empty
-      const capturedSummary = pendingSummaryRef.current;
+      let capturedSummary = pendingSummaryRef.current;
       console.log('[Vibecoder] 💬 Final summary for message:', capturedSummary?.substring(0, 150) || '(empty - using fallback)');
+      
+      // 📊 DATA AVAILABILITY CHECK: Append guidance if user needs to set up data
+      if (lastUserPromptRef.current) {
+        try {
+          const dataGuidance = await checkDataAvailability(lastUserPromptRef.current);
+          if (dataGuidance) {
+            capturedSummary = (capturedSummary || '') + dataGuidance;
+            console.log('[Vibecoder] Added data availability guidance to response');
+          }
+        } catch (e) {
+          console.warn('[Vibecoder] Data availability check failed:', e);
+        }
+      }
       
       const aiResponse = capturedSummary || 'Updated the storefront based on your request.';
       pendingSummaryRef.current = ''; // Reset for next generation
@@ -939,6 +959,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
 
     // 🔒 LOCK: Capture which project this generation belongs to BEFORE starting
     generationLockRef.current = projectId;
+    
+    // 📊 Store the user's prompt for data availability checking later
+    lastUserPromptRef.current = cleanPrompt;
 
     // Add user message to history (CLEAN prompt only - no system instructions visible)
     await addMessage('user', cleanPrompt, undefined, projectId);
