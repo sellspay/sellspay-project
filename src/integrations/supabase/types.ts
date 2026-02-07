@@ -1300,6 +1300,8 @@ export type Database = {
           active_storefront_mode: string
           avatar_url: string | null
           background_url: string | null
+          banned_at: string | null
+          banned_stripe_account_id: string | null
           banner_position_y: number | null
           banner_url: string | null
           bio: string | null
@@ -1319,9 +1321,11 @@ export type Database = {
           id: string
           is_creator: boolean | null
           is_editor: boolean | null
+          is_permanently_banned: boolean | null
           is_seller: boolean | null
           last_username_changed_at: string | null
           mfa_enabled: boolean | null
+          permanent_ban_reason: string | null
           previous_username: string | null
           previous_username_available_at: string | null
           seller_contract_signed_at: string | null
@@ -1347,6 +1351,8 @@ export type Database = {
           active_storefront_mode?: string
           avatar_url?: string | null
           background_url?: string | null
+          banned_at?: string | null
+          banned_stripe_account_id?: string | null
           banner_position_y?: number | null
           banner_url?: string | null
           bio?: string | null
@@ -1366,9 +1372,11 @@ export type Database = {
           id?: string
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_permanently_banned?: boolean | null
           is_seller?: boolean | null
           last_username_changed_at?: string | null
           mfa_enabled?: boolean | null
+          permanent_ban_reason?: string | null
           previous_username?: string | null
           previous_username_available_at?: string | null
           seller_contract_signed_at?: string | null
@@ -1394,6 +1402,8 @@ export type Database = {
           active_storefront_mode?: string
           avatar_url?: string | null
           background_url?: string | null
+          banned_at?: string | null
+          banned_stripe_account_id?: string | null
           banner_position_y?: number | null
           banner_url?: string | null
           bio?: string | null
@@ -1413,9 +1423,11 @@ export type Database = {
           id?: string
           is_creator?: boolean | null
           is_editor?: boolean | null
+          is_permanently_banned?: boolean | null
           is_seller?: boolean | null
           last_username_changed_at?: string | null
           mfa_enabled?: boolean | null
+          permanent_ban_reason?: string | null
           previous_username?: string | null
           previous_username_available_at?: string | null
           seller_contract_signed_at?: string | null

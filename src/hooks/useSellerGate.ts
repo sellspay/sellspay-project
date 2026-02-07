@@ -5,8 +5,9 @@ import { useAuth } from '@/lib/auth';
 /**
  * Hook that gates seller-only features.
  * Redirects to the seller agreement page if the user hasn't signed the contract.
+ * Blocks permanently banned users from accessing seller features.
  * 
- * @returns { isSellerVerified, isChecking }
+ * @returns { isSellerVerified, isChecking, isPermanentlyBanned }
  */
 export function useSellerGate() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export function useSellerGate() {
 
   const isChecking = loading || profileLoading;
   const isSellerVerified = Boolean(profile?.seller_contract_signed_at);
+  const isPermanentlyBanned = Boolean((profile as any)?.is_permanently_banned);
 
   useEffect(() => {
     // Don't redirect while still loading
@@ -23,17 +25,24 @@ export function useSellerGate() {
     // If no user, let the page handle auth redirect
     if (!user) return;
     
+    // If permanently banned, redirect to home with message
+    if (isPermanentlyBanned) {
+      navigate('/');
+      return;
+    }
+    
     // If user hasn't signed the seller agreement, redirect
     if (!isSellerVerified) {
       // Save the intended destination
       const returnTo = location.pathname + location.search;
       navigate(`/onboarding/seller-agreement?returnTo=${encodeURIComponent(returnTo)}`);
     }
-  }, [isChecking, user, isSellerVerified, navigate, location]);
+  }, [isChecking, user, isSellerVerified, isPermanentlyBanned, navigate, location]);
 
   return {
     isSellerVerified,
     isChecking,
+    isPermanentlyBanned,
   };
 }
 

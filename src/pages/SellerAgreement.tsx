@@ -125,6 +125,20 @@ export default function SellerAgreement() {
                   your products or your breach of this agreement.
                 </p>
               </div>
+
+              {/* Physical Goods Ban Warning */}
+              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30">
+                <h3 className="font-semibold text-destructive mb-2 flex items-center gap-2">
+                  <span className="text-lg">⚠️</span>
+                  7. STRICT PHYSICAL GOODS BAN
+                </h3>
+                <p className="text-destructive/90">
+                  <strong>I certify that I will ONLY sell digital products.</strong> I understand that 
+                  listing any physical product will result in an <strong>immediate, permanent ban</strong> of 
+                  my account and <strong>forfeiture of all pending funds</strong>. There is no appeal 
+                  process for physical goods violations.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -141,7 +155,8 @@ export default function SellerAgreement() {
               I have read and agree to the <strong>Seller Contract</strong> and I understand that{' '}
               <strong>SellsPay is the Merchant of Record</strong> for my sales. I confirm that I own 
               all rights to the products I will sell and agree to the revenue split and tax responsibilities 
-              outlined above.
+              outlined above. <strong className="text-destructive">I certify that I will ONLY sell digital 
+              products and understand that selling physical goods will result in permanent account termination.</strong>
             </span>
           </label>
         </div>

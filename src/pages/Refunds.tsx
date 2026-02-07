@@ -45,6 +45,17 @@ export default function Refunds() {
               However, we understand that issues can arise, and we're committed to resolving 
               legitimate concerns.
             </p>
+
+            {/* Digital-Only Policy Notice */}
+            <div className="bg-amber-500/10 p-4 rounded-lg border border-amber-500/20 mt-4">
+              <p className="text-muted-foreground">
+                <strong className="text-foreground">Digital-Only Policy:</strong> Because SellsPay does 
+                not facilitate the sale of physical goods, there are no "returns" possible. Once a digital 
+                file is delivered or access is granted, the "seal is broken" and the product cannot be 
+                returned. We do not offer refunds for "buyer's remorse" or for users attempting to bypass 
+                our digital-only policy by selling physical items.
+              </p>
+            </div>
           </section>
 
           {/* Exceptions */}
