@@ -86,6 +86,74 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_generation_jobs: {
+        Row: {
+          ai_prompt: string | null
+          code_result: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          is_plan_mode: boolean | null
+          model_id: string | null
+          plan_result: Json | null
+          progress_logs: string[] | null
+          project_id: string
+          prompt: string
+          started_at: string | null
+          status: string
+          summary: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_prompt?: string | null
+          code_result?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          is_plan_mode?: boolean | null
+          model_id?: string | null
+          plan_result?: Json | null
+          progress_logs?: string[] | null
+          project_id: string
+          prompt: string
+          started_at?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_prompt?: string | null
+          code_result?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          is_plan_mode?: boolean | null
+          model_id?: string | null
+          plan_result?: Json | null
+          progress_logs?: string[] | null
+          project_id?: string
+          prompt?: string
+          started_at?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_generation_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "vibecoder_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_runs: {
         Row: {
           applied: boolean | null

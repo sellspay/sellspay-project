@@ -10,6 +10,7 @@ import { VibecoderHeader } from './VibecoderHeader';
 import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects, type VibecoderMessage } from './hooks/useVibecoderProjects';
 import { useAgentLoop } from '@/hooks/useAgentLoop';
+import { useBackgroundGeneration, type GenerationJob } from '@/hooks/useBackgroundGeneration';
 import { GenerationCanvas } from './GenerationCanvas';
 import { ProductsPanel } from './ProductsPanel';
 import { PlacementPromptModal } from './PlacementPromptModal';
@@ -331,6 +332,49 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     getActiveProjectId: () => activeProjectId,
   });
 
+  // 🔄 BACKGROUND GENERATION: Jobs that persist even if user leaves
+  const handleJobComplete = useCallback((job: GenerationJob) => {
+    console.log('[BackgroundGen] Job completed:', job.id);
+    
+    // If we have code result, apply it
+    if (job.code_result) {
+      setCode(job.code_result);
+      toast.success('Generation completed!');
+    }
+    
+    // If we have a plan result, show the plan approval card
+    if (job.plan_result) {
+      setPendingPlan({
+        plan: job.plan_result,
+        originalPrompt: job.prompt
+      });
+    }
+    
+    // Add assistant message with the summary
+    if (job.summary && activeProjectId) {
+      addMessage('assistant', job.summary, job.code_result || undefined, activeProjectId);
+    }
+  }, [setCode, activeProjectId, addMessage]);
+
+  const handleJobError = useCallback((job: GenerationJob) => {
+    console.error('[BackgroundGen] Job failed:', job.error_message);
+    toast.error(`Generation failed: ${job.error_message || 'Unknown error'}`);
+  }, []);
+
+  const {
+    currentJob,
+    hasActiveJob,
+    hasCompletedJob,
+    isLoading: isLoadingJob,
+    createJob,
+    cancelJob,
+    acknowledgeJob,
+  } = useBackgroundGeneration({
+    projectId: activeProjectId,
+    onJobComplete: handleJobComplete,
+    onJobError: handleJobError,
+  });
+
   // Dynamically detected pages from generated code
   const detectedPages = useMemo<SitePage[]>(() => {
     return parseRoutesFromCode(code);
@@ -342,6 +386,44 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       setShowOnboarding(true);
     }
   }, [loading, needsOnboarding]);
+
+  // 🔄 RESUME: Check for completed jobs when returning to the page
+  useEffect(() => {
+    if (hasCompletedJob && currentJob && !isLoadingJob) {
+      console.log('[BackgroundGen] Found completed job on mount, applying results...');
+      
+      // Apply the completed job's results
+      if (currentJob.code_result) {
+        setCode(currentJob.code_result);
+        toast.success('Your generation completed while you were away!', {
+          duration: 5000,
+        });
+      }
+      
+      if (currentJob.plan_result) {
+        setPendingPlan({
+          plan: currentJob.plan_result,
+          originalPrompt: currentJob.prompt
+        });
+      }
+      
+      if (currentJob.summary && activeProjectId) {
+        addMessage('assistant', currentJob.summary, currentJob.code_result || undefined, activeProjectId);
+      }
+      
+      // Acknowledge the job so we don't re-apply on next mount
+      acknowledgeJob(currentJob.id);
+    }
+  }, [hasCompletedJob, currentJob, isLoadingJob, setCode, activeProjectId, addMessage, acknowledgeJob]);
+
+  // Show toast when there's an active job running
+  useEffect(() => {
+    if (hasActiveJob && currentJob) {
+      toast.info(`Generation in progress: "${currentJob.prompt.slice(0, 50)}..."`, {
+        duration: 3000,
+      });
+    }
+  }, [hasActiveJob, currentJob]);
 
   // AUTO-START: Pick up initial prompt from navigation state (passed from Hero)
   useEffect(() => {
@@ -788,9 +870,21 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // Add user message to history (CLEAN prompt only - no system instructions visible)
     await addMessage('user', cleanPrompt, undefined, projectId);
 
-    // Start the agent loop with the AI prompt (which may include backend-only instructions)
-    // Pass the project ID to lock the agent to this specific project
-    startAgent(promptForAI, code !== DEFAULT_CODE ? code : undefined, projectId);
+    // 🔄 CREATE BACKGROUND JOB: This ensures generation persists even if user leaves
+    // The job will be picked up by the edge function and results saved to database
+    const job = await createJob(cleanPrompt, promptForAI, activeModel?.id, isPlanMode);
+    
+    if (job) {
+      console.log('[BackgroundGen] Created job:', job.id, 'for project:', projectId);
+      
+      // Start the agent loop with the AI prompt AND the job ID
+      // The edge function will write results to the job record
+      startAgent(promptForAI, code !== DEFAULT_CODE ? code : undefined, projectId, job.id);
+    } else {
+      // Fallback: Start without job (streaming only, won't persist if user leaves)
+      console.warn('[BackgroundGen] Failed to create job, using streaming-only mode');
+      startAgent(promptForAI, code !== DEFAULT_CODE ? code : undefined, projectId);
+    }
   };
 
   // Handle new project creation - FRESH START PROTOCOL

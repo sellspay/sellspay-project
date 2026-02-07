@@ -70,7 +70,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   // Track original prompt for plan execution
   const originalPromptRef = useRef<string>('');
 
-  const streamCode = useCallback(async (prompt: string, currentCode?: string) => {
+  const streamCode = useCallback(async (prompt: string, currentCode?: string, jobId?: string) => {
     // Cancel any existing stream
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -119,6 +119,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
             currentCode,
             productsContext,
             conversationHistory, // Pass conversation history for pronoun resolution
+            jobId, // Pass job ID for background-persistent generation
           }),
           signal: abortControllerRef.current.signal,
         }
