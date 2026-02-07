@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { ThumbsUp, ThumbsDown, Copy, Undo2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import type { BuildStep } from './types/chat';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { PolicyViolationCard } from './PolicyViolationCard';
+import { RevertConfirmDialog } from './RevertConfirmDialog';
+
 // Extended message type with steps
 export interface MessageWithSteps extends VibecoderMessage {
   steps?: BuildStep[];
@@ -41,9 +43,19 @@ interface AssistantMessageProps {
 
 function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStreaming }: AssistantMessageProps) {
   const hasCode = !!message.code_snapshot;
+  const [showRevertDialog, setShowRevertDialog] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content || '');
+  };
+
+  const handleRevertClick = () => {
+    setShowRevertDialog(true);
+  };
+
+  const handleConfirmRevert = () => {
+    setShowRevertDialog(false);
+    onRestoreCode?.();
   };
 
   return (
@@ -143,11 +155,11 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs gap-1.5 text-zinc-500 hover:text-white hover:bg-zinc-800"
-                onClick={onRestoreCode}
+                className="h-7 text-xs gap-1.5 text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10"
+                onClick={handleRevertClick}
               >
                 <Undo2 className="h-3 w-3" />
-                Restore this version
+                Revert to this version
               </Button>
             )}
             <span className="text-[10px] text-zinc-600 italic">Code applied to preview</span>
@@ -190,6 +202,13 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
           </button>
         </div>
       </div>
+
+      {/* Revert Confirmation Dialog */}
+      <RevertConfirmDialog
+        open={showRevertDialog}
+        onOpenChange={setShowRevertDialog}
+        onConfirm={handleConfirmRevert}
+      />
     </motion.div>
   );
 }
