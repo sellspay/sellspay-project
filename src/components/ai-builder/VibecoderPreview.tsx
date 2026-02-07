@@ -243,8 +243,11 @@ const ReadyDetector = forwardRef<HTMLDivElement, { onReady?: () => void }>(
 
     useEffect(() => {
       // Sandpack status: 'initial' | 'idle' | 'running'
-      // 'idle' means bundling is complete
-      if (sandpack.status === 'idle' && !hasCalledReady.current) {
+      // 'idle' = bundling complete, 'running' = bundle succeeded, code is executing
+      // BOTH are valid "ready" states - 'running' is "good enough" to release the handshake
+      const isReadyState = sandpack.status === 'idle' || sandpack.status === 'running';
+      
+      if (isReadyState && !hasCalledReady.current) {
         hasCalledReady.current = true;
         onReady?.();
       }

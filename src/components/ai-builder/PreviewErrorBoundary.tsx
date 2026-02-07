@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, Sparkles, RefreshCcw } from 'lucide-react';
+import { nukeSandpackCache } from '@/utils/storageNuke';
 
 interface Props {
   children: ReactNode;
@@ -40,7 +41,11 @@ export class PreviewErrorBoundary extends Component<Props, State> {
     }
   };
 
-  handleManualReset = () => {
+  handleManualReset = async () => {
+    // 🔥 Scorched Earth: Nuke all Sandpack caches before resetting
+    // This ensures a clean slate when the preview remounts
+    await nukeSandpackCache();
+    
     this.setState({ hasError: false, error: null });
     this.props.onReset?.();
   };
