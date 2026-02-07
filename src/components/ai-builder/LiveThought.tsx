@@ -6,10 +6,16 @@ interface LiveThoughtProps {
   logs: string[];
   isThinking: boolean;
   className?: string;
+  /** 
+   * Mode determines display behavior:
+   * - 'thinking': Just show "Thinking..." (for questions/chat)
+   * - 'building': Show detailed logs (for code changes)
+   */
+  mode?: 'thinking' | 'building';
 }
 
 export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
-  function LiveThought({ logs, isThinking, className }: LiveThoughtProps, ref) {
+  function LiveThought({ logs, isThinking, className, mode = 'building' }: LiveThoughtProps, ref) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [seconds, setSeconds] = useState(0);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -31,7 +37,55 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
       }
     }, [logs, isExpanded]);
 
-    if (logs.length === 0 && !isThinking) return null;
+    if (!isThinking && logs.length === 0) return null;
+
+    // THINKING MODE: Simple "Thinking..." indicator with no logs
+    if (mode === 'thinking') {
+      if (!isThinking) return null;
+      
+      return (
+        <div
+          ref={ref}
+          className={cn(
+            "w-full max-w-[90%] mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300",
+            className
+          )}
+        >
+          <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
+            </span>
+            <span>Thinking...</span>
+          </div>
+        </div>
+      );
+    }
+
+    // BUILDING MODE: Show detailed logs (existing behavior)
+    // Only switch to building mode once we have actual logs
+    const hasBuildingLogs = logs.length > 0;
+    
+    if (!hasBuildingLogs && isThinking) {
+      // Still in initial thinking phase, show simple indicator
+      return (
+        <div
+          ref={ref}
+          className={cn(
+            "w-full max-w-[90%] mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300",
+            className
+          )}
+        >
+          <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
+            </span>
+            <span>Thinking...</span>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div
@@ -60,10 +114,10 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
                 </span>
-                <span>Thought for {seconds}s</span>
+                <span>Building for {seconds}s</span>
               </>
             ) : (
-              <span className="text-muted-foreground">Finished thinking ({seconds}s)</span>
+              <span className="text-muted-foreground">Built in {seconds}s</span>
             )}
           </span>
         </button>
@@ -129,4 +183,3 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
 );
 
 LiveThought.displayName = "LiveThought";
-
