@@ -444,8 +444,8 @@ serve(async (req: Request) => {
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
         ],
-        temperature: 0.7,
-        max_tokens: 8000,
+        temperature: 0.5, // Lower for more consistent, complete outputs
+        max_tokens: 12000, // Increased to prevent truncation
         stream: true,
       }),
     });
