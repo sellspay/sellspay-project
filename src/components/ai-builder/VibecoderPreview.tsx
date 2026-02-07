@@ -241,8 +241,10 @@ root.render(<App />);`,
           externalResources: [
             'https://cdn.tailwindcss.com',
           ],
+          // Prevent preview "spazzing" during streaming by delaying recompiles.
+          // When streaming ends, this snaps back to the normal delay.
           recompileMode: 'delayed',
-          recompileDelay: 500,
+          recompileDelay: isStreaming ? 20000 : 500,
         }}
         customSetup={{
           dependencies: {
