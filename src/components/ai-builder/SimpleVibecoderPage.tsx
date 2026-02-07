@@ -10,6 +10,7 @@ import { ProfileMenu } from './ProfileMenu';
 import { CanvasToolbar, type ViewMode, type DeviceMode } from './CanvasToolbar';
 import { InsufficientCreditsCard, isCreditsError, parseCreditsError } from './InsufficientCreditsCard';
 import { LovableHero } from './LovableHero';
+import { testCodeInShadow, silentHeal } from './ShadowTester';
 import { ChevronLeft, ChevronRight, AlertCircle, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -387,16 +388,71 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
         }
       }
 
-      // Apply the generated code
+      // ═══════════════════════════════════════════════════════════════
+      // PHASE 3: SHADOW MOUNT + SILENT RETRY LOOP
+      // ═══════════════════════════════════════════════════════════════
+      // Test code in hidden iframe BEFORE showing to user. If it fails,
+      // silently heal and retry up to 2 times. User only sees final result.
       if (generatedCode) {
-        setCode(generatedCode);
+        let codeToDeliver = generatedCode;
+        let shadowPassed = false;
+        const maxSilentRetries = 2;
+        
+        for (let retry = 0; retry <= maxSilentRetries; retry++) {
+          collectedLogs.push(retry > 0 ? `Silent retry ${retry}...` : 'Shadow testing...');
+          setStreamingLogs([...collectedLogs]);
+          
+          // Run shadow test
+          const shadowResult = await testCodeInShadow(codeToDeliver);
+          
+          if (shadowResult.success) {
+            collectedLogs.push('✓ Shadow test passed');
+            setStreamingLogs([...collectedLogs]);
+            shadowPassed = true;
+            break;
+          }
+          
+          // Shadow test failed
+          console.log(`[Vibecoder] Shadow test failed (attempt ${retry + 1}):`, shadowResult.error);
+          collectedLogs.push(`⚠️ Shadow error: ${shadowResult.error?.substring(0, 60)}...`);
+          setStreamingLogs([...collectedLogs]);
+          
+          // If we have retries left, try silent heal
+          if (retry < maxSilentRetries) {
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session?.access_token) {
+              const healedCode = await silentHeal(
+                supabaseUrl,
+                session.access_token,
+                codeToDeliver,
+                shadowResult.error || 'Unknown runtime error',
+                profileId
+              );
+              
+              if (healedCode && healedCode.length > 50) {
+                codeToDeliver = healedCode;
+                collectedLogs.push('🔧 Silent heal applied');
+                setStreamingLogs([...collectedLogs]);
+              } else {
+                collectedLogs.push('⚠️ Silent heal returned empty');
+                setStreamingLogs([...collectedLogs]);
+                break; // Can't heal, stop retrying
+              }
+            }
+          }
+        }
+        
+        // Deliver whatever we have (either passed or best effort after retries)
+        setCode(codeToDeliver);
         setRefreshKey(k => k + 1); // Force preview refresh
 
         // Save to database
         await supabase.from('project_files').upsert({
           profile_id: profileId,
           file_path: '/App.tsx',
-          content: generatedCode,
+          content: codeToDeliver,
           version: 1,
         });
 
@@ -420,7 +476,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           content: assistantMessage.content,
         });
 
-        toast.success('Changes applied!');
+        toast.success(shadowPassed ? 'Changes applied!' : 'Applied with warnings');
       }
 
     } catch (err) {

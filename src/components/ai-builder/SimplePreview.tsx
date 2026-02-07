@@ -244,6 +244,11 @@ export const SimplePreview = memo(function SimplePreview({
       // Render the App component
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(React.createElement(App));
+      
+      // Signal success after successful render (Phase 2: Preview Ready)
+      setTimeout(() => {
+        window.parent.postMessage({ type: 'preview-ready' }, '*');
+      }, 100);
     } catch (err) {
       // Runtime error during component initialization
       const message = err.message || String(err);
