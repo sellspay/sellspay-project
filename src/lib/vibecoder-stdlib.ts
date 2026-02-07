@@ -298,4 +298,23 @@ export function cn(...inputs: ClassValue[]) {
   // Root level utils alias
   '/utils.ts': `export * from './lib/utils';
 `,
+
+  // ============================================
+  // PATH ALIASES: Silencer assets (match preview imports)
+  // Some previews import ./lib/* while the canonical files live in /src/*
+  // ============================================
+  '/lib/iframe-silence.js': `// Alias entrypoint for Sandpack previews
+import "../src/iframe-silence.js";
+`,
+
+  '/lib/iframe-silence.css': `/* Alias stylesheet for Sandpack previews */
+@import "../src/iframe-silence.css";
+`,
+
+  // Extra root-level aliases for robustness
+  '/iframe-silence.js': `import "./src/iframe-silence.js";
+`,
+
+  '/iframe-silence.css': `@import "./src/iframe-silence.css";
+`,
 };
