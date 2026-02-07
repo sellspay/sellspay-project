@@ -8,6 +8,7 @@ import { SimpleChat, type ChatMessage } from './SimpleChat';
 import { ChatInputBar, AI_MODELS, type AIModel } from './ChatInputBar';
 import { ProfileMenu } from './ProfileMenu';
 import { InsufficientCreditsCard, isCreditsError, parseCreditsError } from './InsufficientCreditsCard';
+import { LovableHero } from './LovableHero';
 import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -44,11 +45,10 @@ interface SimpleVibecoderPageProps {
 /**
  * SimpleVibecoderPage - The main Vibecoder interface
  * 
- * Completely rebuilt with stability in mind:
- * - No Sandpack (uses iframe srcdoc instead)
- * - No complex state machines
- * - No scorched earth reset logic
- * - Simple, predictable data flow
+ * Features the "Magical Doorway" onboarding experience:
+ * - Shows LovableHero with aurora background when no project exists
+ * - After first prompt, transitions to the canvas workspace
+ * - Stable iframe-based preview (no Sandpack)
  */
 export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   const { user } = useAuth();
@@ -62,6 +62,9 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [creditsError, setCreditsError] = useState<{ needed: number; available: number } | null>(null);
+  
+  // "Magical Doorway" state - shows fullscreen prompt experience until first generation
+  const [showDoorway, setShowDoorway] = useState(true);
   
   // UI state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -372,6 +375,33 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   
   if (!user) return null;
   
+  // Handle prompt from the magical doorway
+  const handleDoorwayStart = async (prompt: string, isPlanMode?: boolean) => {
+    // Exit doorway and enter workspace
+    setShowDoorway(false);
+    setInputValue(prompt);
+    
+    // Trigger the message send after a tick to ensure state is updated
+    setTimeout(() => {
+      handleSendMessage({
+        isPlanMode: isPlanMode || false,
+        model: activeModel,
+        attachments: [],
+      });
+    }, 100);
+  };
+  
+  // Show magical doorway when no active project
+  if (showDoorway && !activeProjectId) {
+    return (
+      <LovableHero
+        userName={profile?.username || 'Creator'}
+        variant="fullscreen"
+        onStart={handleDoorwayStart}
+      />
+    );
+  }
+  
   return (
     <div className="h-screen w-screen flex bg-zinc-950 overflow-hidden">
       {/* Sidebar */}
@@ -383,7 +413,10 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           <SimpleSidebar
             userId={user.id}
             activeProjectId={activeProjectId}
-            onSelectProject={setActiveProjectId}
+            onSelectProject={(projectId) => {
+              setActiveProjectId(projectId);
+              setShowDoorway(false);
+            }}
             onCreateProject={handleCreateProject}
             onDeleteProject={handleDeleteProject}
           />
