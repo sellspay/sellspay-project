@@ -1,111 +1,228 @@
 
-# VibeCoder Infrastructure Hardening Plan
+# Vibecoder Complete Rebuild Plan
 
-## ✅ IMPLEMENTED - Status: Complete (v2)
+## Overview
+Delete the entire existing Vibecoder system and rebuild from scratch with a **stable, simplified architecture** that avoids all the issues that have been causing crashes:
 
-All phases of the infrastructure hardening plan have been implemented.
+- **No Sandpack** - Replace with a simple iframe-based preview that loads static HTML+CSS+JS
+- **No lovable.js mutation observer conflicts** - Simple DOM structure with minimal churn
+- **No scorched earth/nuke logic** - Soft reset only (remount, no cache clearing)
+- **Full data wipe** - Delete all existing projects and messages to start clean
 
 ---
 
-## Latest Fixes (Session 2)
+## Phase 1: Database Cleanup
 
-### Critical Fix: Chat Decoupling from Preview State ✅
-**Problem**: When Sandpack crashed (DataCloneError, 500 errors), the entire UI was blocked because `isWaitingForPreviewMount` was part of the main transition check.
-
-**Solution**: Split into TWO separate transition states:
-1. `isProjectDataTransitioning` - Blocks ENTIRE UI (actual project switch)
-2. `isPreviewLoading` - Only blocks PREVIEW pane (Sandpack initializing)
-
-```typescript
-// Data-level transition (blocks everything)
-const isProjectDataTransitioning = Boolean(
-  activeProjectId && (
-    contentProjectId !== activeProjectId ||
-    isVerifyingProject ||
-    messagesLoading ||
-    (lockedProjectId && lockedProjectId !== activeProjectId)
-  )
-);
-
-// Preview-only transition (chat stays visible)
-const isPreviewLoading = isWaitingForPreviewMount && !isProjectDataTransitioning;
+### Delete existing Vibecoder data
+Run SQL migration to wipe all existing Vibecoder projects and messages:
+```sql
+DELETE FROM vibecoder_messages;
+DELETE FROM vibecoder_projects;
 ```
 
-### Safe Mode: Auto-Switch to Code View ✅
-When preview times out twice (10s total), the system now:
-1. Nukes all Sandpack caches
-2. **Automatically switches to Code view** so user can still see their generated code
-3. Shows toast with recovery instructions
-
-### Preview-Only Loading Overlay ✅
-Added a separate loading overlay for the preview pane only, so chat remains interactive during Sandpack initialization.
+This gives you a clean slate with no "zombie" projects or corrupted state.
 
 ---
 
-## Previously Implemented (Session 1)
+## Phase 2: Delete Old Files
 
-### Phase 1: Enhanced Ready Detection ✅
-**File**: `src/components/ai-builder/VibecoderPreview.tsx`
+### Files to DELETE (ai-builder components)
+All of these files will be removed:
+- `AIBuilderCanvas.tsx` - The 1,400+ line monster causing crashes
+- `VibecoderPreview.tsx` - Sandpack-based, causes MutationRecord errors
+- `VibecoderChat.tsx` - Overly complex, tied to broken state
+- `VibecoderHeader.tsx` - Had nuke button logic
+- `VibecoderMessageBubble.tsx` - forwardRef issues
+- `LiveThought.tsx` - forwardRef issues
+- `DeleteConfirmationModal.tsx` - forwardRef issues
+- `WorkspaceErrorBoundary.tsx` - Recovery for crashes we won't have
+- `PreviewErrorBoundary.tsx` - Same
+- `FixErrorToast.tsx` - Won't need error toast with stable preview
+- `useStreamingCode.ts` - Complex streaming logic
+- `useOrchestratorStream.ts` - Tied to old architecture
+- `ProjectSidebar.tsx` - Will rebuild simpler
+- `AgentProgress.tsx`, `StepList.tsx`, `CollapsibleMessage.tsx` - UI cruft
+- All files in `hooks/` and `types/` folders
 
-The `ReadyDetector` now triggers `onReady` on **both** `'idle'` and `'running'` Sandpack states.
-
-### Phase 2: Fallback Handshake Release ✅
-**File**: `src/components/ai-builder/AIBuilderCanvas.tsx`
-
-Added a 3-second fallback timeout in `onCodeGenerated` to force-release the preview handshake.
-
-### Phase 3: Safe Code Delivery with Size Validation ✅
-**File**: `src/hooks/useAgentLoop.ts`
-
-Added size validation and sanitization before delivering code (warns for >20k chars).
-
-### Phase 4: Enhanced Error Boundary Reset ✅
-**File**: `src/components/ai-builder/PreviewErrorBoundary.tsx`
-
-The `handleManualReset` now calls `nukeSandpackCache()` before resetting.
-
-### Phase 5: Aggressive Recovery with Retry Counter ✅
-**File**: `src/components/ai-builder/AIBuilderCanvas.tsx`
-
-- **1st timeout (5s)**: Releases handshake + forces Sandpack refresh
-- **2nd timeout (10s)**: Nukes caches + switches to code view + shows warning
-
-### Structural Code Guard ✅
-**File**: `supabase/functions/vibecoder-orchestrator/index.ts`
-
-- `validateCodeStructure()` validates code BEFORE delivery
-- Auto-retries with healing context if validation fails
-
-### Auto-Heal on Structural Errors ✅
-**File**: `src/components/ai-builder/AIBuilderCanvas.tsx`
-
-- `handlePreviewError` auto-triggers `healCode()` for structural Sandpack errors
+### Files to KEEP (reusable)
+- `ChatInputBar.tsx` - The input bar works fine
+- `ProfileMenu.tsx` - User dropdown works
+- `PremiumGate.tsx` - Access control
+- `InsufficientCreditsCard.tsx` - Credit errors
+- `index.ts` - Will update exports
 
 ---
 
-## Architecture Summary
+## Phase 3: New Architecture
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  PROJECT DATA LOADING                                           │
-│  (isProjectDataTransitioning)                                   │
-│  → Blocks ENTIRE UI                                             │
-│  → Covers: project switch, message loading, verification        │
-└─────────────────────────────────────────────────────────────────┘
-                                ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  PREVIEW INITIALIZATION                                         │
-│  (isPreviewLoading)                                             │
-│  → Blocks ONLY preview pane                                     │
-│  → Chat sidebar remains visible and interactive                 │
-│  → Timeout after 5s: Refresh Sandpack                           │
-│  → Timeout after 10s: Nuke caches + switch to Code view         │
-└─────────────────────────────────────────────────────────────────┘
+### Core Principle: **Simplicity Over Features**
+The new Vibecoder will be ~300 lines instead of 1,400+.
+
+### New File Structure
+```
+src/components/ai-builder/
+├── SimpleVibecoderPage.tsx    # Main page (~200 lines)
+├── SimplePreview.tsx          # Iframe preview (no Sandpack)
+├── SimpleChat.tsx             # Chat interface
+├── SimpleSidebar.tsx          # Project list
+├── ChatInputBar.tsx           # (existing, kept)
+├── ProfileMenu.tsx            # (existing, kept)
+├── PremiumGate.tsx            # (existing, kept)
+└── InsufficientCreditsCard.tsx # (existing, kept)
 ```
 
-## Expected Outcomes
+### SimplePreview.tsx - The Key Change
+Instead of Sandpack (which uses service workers, mutation observers, and complex bundling), we'll use a **simple iframe** that renders the generated code:
 
-1. **Chat history ALWAYS visible** - Even when Sandpack crashes with 500/DataCloneError
-2. **Safe mode fallback** - User can view code when preview is unresponsive
-3. **Automatic recovery** - Cache nuking and Sandpack remount on timeout
-4. **No infinite loading** - Multiple fallback mechanisms prevent stuck states
+```tsx
+// Simplified concept - no Sandpack, no service workers
+function SimplePreview({ code }: { code: string }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  
+  useEffect(() => {
+    if (!iframeRef.current) return;
+    
+    // Create a self-contained HTML document with Tailwind CDN
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    ${code}
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>`;
+
+    // Write to iframe - simple, no mutation observers
+    iframeRef.current.srcdoc = html;
+  }, [code]);
+  
+  return <iframe ref={iframeRef} className="w-full h-full border-0" />;
+}
+```
+
+**Why this is better:**
+- No service workers (__csb_sw crashes = gone)
+- No mutation observers inside preview
+- No DataCloneError bridging issues
+- Simple DOM update (one srcdoc change per generation)
+
+### SimpleChat.tsx - Minimal Chat UI
+```tsx
+// Stripped down chat - just messages + input
+function SimpleChat({ messages, isStreaming, onSend }) {
+  return (
+    <div className="flex flex-col h-full">
+      <ScrollArea className="flex-1 p-4">
+        {messages.map(msg => (
+          <div key={msg.id} className={msg.role === 'user' ? 'text-right' : ''}>
+            <div className="p-3 rounded-lg bg-zinc-800">{msg.content}</div>
+          </div>
+        ))}
+        {isStreaming && <Loader2 className="animate-spin" />}
+      </ScrollArea>
+      <ChatInputBar onSubmit={onSend} isGenerating={isStreaming} />
+    </div>
+  );
+}
+```
+
+### SimpleVibecoderPage.tsx - The Main Page
+Single file orchestrating everything:
+```tsx
+function SimpleVibecoderPage() {
+  const [code, setCode] = useState(DEFAULT_CODE);
+  const [messages, setMessages] = useState([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  
+  const handleSend = async (prompt: string) => {
+    setIsStreaming(true);
+    // Add user message
+    setMessages(prev => [...prev, { role: 'user', content: prompt }]);
+    
+    // Call orchestrator (keeps existing edge function)
+    const response = await callOrchestrator(prompt, code);
+    
+    // Update code and add assistant message
+    setCode(response.code);
+    setMessages(prev => [...prev, { role: 'assistant', content: response.summary }]);
+    setIsStreaming(false);
+  };
+  
+  return (
+    <div className="flex h-screen">
+      <SimpleSidebar />
+      <SimplePreview code={code} />
+      <SimpleChat messages={messages} onSend={handleSend} />
+    </div>
+  );
+}
+```
+
+---
+
+## Phase 4: Keep Backend As-Is
+
+The edge functions (`vibecoder-orchestrator`, `vibecoder-builder`, `vibecoder-architect`, `vibecoder-linter`, `vibecoder-heal`) work fine - the crashes are all frontend. We keep them unchanged.
+
+The only backend change is the database wipe in Phase 1.
+
+---
+
+## Phase 5: Update AIBuilder.tsx Page
+
+Update `src/pages/AIBuilder.tsx` to use the new `SimpleVibecoderPage` component instead of the old `AIBuilderCanvas`.
+
+---
+
+## What You Lose (Temporarily)
+- Image/Video generation tabs (can add back later)
+- Device preview toggle (desktop/mobile)
+- Page navigator dropdown
+- Tweak/Regenerate modal
+- Code view tab (only preview)
+- Real-time streaming logs display
+
+## What You Gain
+- **Stability** - No more MutationRecord crashes
+- **Speed** - Simpler DOM = faster renders
+- **Reliability** - Code actually appears when AI says "Applied changes"
+- **Sanity** - ~300 lines vs 1,400+ lines
+
+---
+
+## Timeline Estimate
+- Phase 1 (DB wipe): 1 message
+- Phase 2 (Delete files): 1 message
+- Phase 3 (Build new): 2-3 messages
+- Phase 4: No work needed
+- Phase 5: Part of Phase 3
+
+**Total: 4-5 messages to complete rebuild**
+
+---
+
+## Technical Notes
+
+### Why iframe `srcdoc` is stable:
+1. Writes a complete HTML document in one operation
+2. No incremental DOM mutations for lovable.js to track
+3. Sandboxed - errors in user code don't crash parent
+4. No service workers = no __csb_sw crashes
+5. No BroadcastChannel = no DataCloneError
+
+### Soft reset behavior:
+When user wants to "reset", we simply:
+1. Clear local React state
+2. Refetch from database
+3. No cache clearing, no IndexedDB nukes, no service worker unregisters
+
+This avoids the `Cannot set property attributeName of #<MutationRecord>` crash entirely.
