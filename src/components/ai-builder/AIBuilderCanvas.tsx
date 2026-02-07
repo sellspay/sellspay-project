@@ -872,13 +872,18 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   }, [triggerSelfCorrection, handleSendMessage]);
 
   // When Sandpack reports an error, show one-click fix toast (NO chat injection)
+  // 🛡️ GUARD: Suppress error reporting while streaming to prevent flashing/spam
   const handlePreviewError = useCallback((errorMsg: string) => {
+    // CRITICAL: Only show error UI when streaming is complete
+    // During streaming, code is intentionally incomplete and errors are expected
+    if (isStreaming) return;
+    
     setPreviewError(errorMsg);
     setShowFixToast(true);
     // Trigger self-correction state in agent for UI feedback
     triggerSelfCorrection(errorMsg);
     // DO NOT add error messages to chat - keep chat clean!
-  }, [triggerSelfCorrection]);
+  }, [isStreaming, triggerSelfCorrection]);
 
   // ===== CREATIVE STUDIO: Asset Generation Handlers =====
   
@@ -1244,7 +1249,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                     />
                   </PreviewErrorBoundary>
 
-                  {showFixToast && previewError && (
+                  {/* Only show error toast when NOT streaming - errors during streaming are expected */}
+                  {showFixToast && previewError && !isStreaming && (
                     <FixErrorToast
                       error={previewError}
                       onDismiss={() => setShowFixToast(false)}

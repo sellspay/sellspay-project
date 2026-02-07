@@ -90,21 +90,33 @@ const customTheme: SandpackTheme = {
 // Error detector component that monitors Sandpack state
 // ONLY notifies parent of errors - does NOT render any UI overlay.
 // The parent (AIBuilderCanvas) shows the FixErrorToast at the bottom.
-const ErrorDetector = forwardRef<HTMLDivElement, { onError?: (error: string) => void }>(
-  function ErrorDetector({ onError }, ref) {
+// CRITICAL: Suppresses error reporting while isStreaming is true to prevent flashing.
+const ErrorDetector = forwardRef<HTMLDivElement, { onError?: (error: string) => void; isStreaming?: boolean }>(
+  function ErrorDetector({ onError, isStreaming = false }, ref) {
     const { sandpack } = useSandpack();
     const lastErrorRef = useRef<string | null>(null);
     const onErrorRef = useRef(onError);
+    const isStreamingRef = useRef(isStreaming);
 
-    // Keep ref in sync to avoid stale closures without causing re-renders
+    // Keep refs in sync to avoid stale closures without causing re-renders
     useEffect(() => {
       onErrorRef.current = onError;
     }, [onError]);
+
+    useEffect(() => {
+      isStreamingRef.current = isStreaming;
+    }, [isStreaming]);
 
     // Safely extract error message - never mutate the original error object
     // Some browsers lock error objects as read-only
     // CRITICAL: Do this inside the effect to avoid issues with frozen objects
     useEffect(() => {
+      // 🛡️ GUARD: Suppress ALL error reporting while streaming
+      // During streaming, code is intentionally incomplete and errors are expected
+      if (isStreamingRef.current) {
+        return;
+      }
+
       // CRITICAL: Never touch or mutate sandpack.error - it may be frozen/read-only.
       // Extract message into a brand new string immediately.
       let safeMessage: string | null = null;
@@ -134,7 +146,7 @@ const ErrorDetector = forwardRef<HTMLDivElement, { onError?: (error: string) => 
       if (!safeMessage && lastErrorRef.current) {
         lastErrorRef.current = null;
       }
-    }, [sandpack.error]);
+    }, [sandpack.error, isStreaming]);
 
     // Render a tiny node so any injected refs are safe (prevents ref warnings)
     return <div ref={ref} style={{ display: 'none' }} aria-hidden="true" />;
@@ -186,11 +198,13 @@ const SandpackRenderer = memo(function SandpackRenderer({
   onError,
   onReady,
   viewMode = 'preview',
+  isStreaming = false,
 }: { 
   code: string; 
   onError?: (error: string) => void;
   onReady?: () => void;
   viewMode?: ViewMode;
+  isStreaming?: boolean;
 }) {
   // Wrap the code in proper structure, including the standard library
   const files = useMemo(() => ({
@@ -240,7 +254,7 @@ root.render(<App />);`,
         }}
       >
         <div className="h-full w-full flex-1 flex flex-col relative" style={{ height: '100%' }}>
-          <ErrorDetector onError={onError} />
+          <ErrorDetector onError={onError} isStreaming={isStreaming} />
           <ReadyDetector onReady={onReady} />
           <div className="h-full w-full flex-1 flex flex-col" style={{ height: '100%' }}>
             {viewMode === 'preview' || viewMode === 'image' || viewMode === 'video' ? (
@@ -269,6 +283,7 @@ root.render(<App />);`,
 
 export function VibecoderPreview({
   code,
+  isStreaming = false,
   onError,
   onReady,
   viewMode = 'preview',
@@ -280,7 +295,7 @@ export function VibecoderPreview({
 
       {/* Sandpack preview/code - no loading overlay, just renders directly */}
       <div className="h-full w-full flex-1 min-h-0">
-        <SandpackRenderer code={code} onError={onError} onReady={onReady} viewMode={viewMode} />
+        <SandpackRenderer code={code} onError={onError} onReady={onReady} viewMode={viewMode} isStreaming={isStreaming} />
       </div>
     </div>
   );
