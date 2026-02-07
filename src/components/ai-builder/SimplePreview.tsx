@@ -34,7 +34,8 @@ export const SimplePreview = memo(function SimplePreview({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isFixing, setIsFixing] = useState(false);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
-  const [isPreviewReady, setIsPreviewReady] = useState(true);
+  const [isPreviewReady, setIsPreviewReady] = useState(false);
+  const loadingTimeoutRef = useRef<number | null>(null);
   const fixingRef = useRef(false); // Track fixing state without re-renders
   const runIdRef = useRef<string>(''); // Scope postMessage events to the current render
   const projectIdRef = useRef<string | null>(projectId); // Track which project this render belongs to
@@ -78,8 +79,18 @@ export const SimplePreview = memo(function SimplePreview({
     const runId = crypto.randomUUID();
     runIdRef.current = runId;
 
-    // Hold loading state until the iframe confirms a clean mount
+    // Hold loading state briefly, but force-show iframe after 3s max to prevent stuck states
     setIsPreviewReady(false);
+    
+    // Clear any existing timeout
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+    }
+    
+    // Safety net: force show preview after 3 seconds even if no 'preview-ready' message
+    loadingTimeoutRef.current = window.setTimeout(() => {
+      setIsPreviewReady(true);
+    }, 3000);
 
     // Reset error state
     setPreviewError(null);
@@ -468,6 +479,11 @@ export const SimplePreview = memo(function SimplePreview({
       }
 
       if (data.type === 'preview-ready') {
+        // Clear the safety timeout since we got a real success signal
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+          loadingTimeoutRef.current = null;
+        }
         setIsPreviewReady(true);
         return;
       }
@@ -524,8 +540,8 @@ export const SimplePreview = memo(function SimplePreview({
 
   return (
     <div className="h-full w-full relative bg-background flex flex-col">
-      {/* Loading overlay */}
-      {(isLoading || !isPreviewReady) && (
+      {/* Loading overlay - only for explicit isLoading, NOT for preview ready state */}
+      {isLoading && (
         <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex items-center justify-center">
           <div className="flex flex-col items-center gap-3 animate-fade-in">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
