@@ -286,43 +286,49 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
       let buffer = '';
       let generatedCode = '';
       let summary = '';
-      
+      const collectedLogs: string[] = [];
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         buffer += decoder.decode(value, { stream: true });
-        
+
         let newlineIndex: number;
         while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
           let line = buffer.slice(0, newlineIndex);
           buffer = buffer.slice(newlineIndex + 1);
-          
+
           if (line.endsWith('\r')) line = line.slice(0, -1);
           if (!line.startsWith('data: ')) continue;
-          
+
           const jsonStr = line.slice(6).trim();
           if (!jsonStr || jsonStr === '[DONE]') continue;
-          
+
           try {
             const event = JSON.parse(jsonStr);
-            
+
+            const pushLog = (msg: string) => {
+              collectedLogs.push(msg);
+              setStreamingLogs(prev => [...prev, msg]);
+            };
+
             // Handle different event types
             if (event.type === 'status') {
               const statusMsg = event.data?.message || `Step: ${event.step}`;
-              setStreamingLogs(prev => [...prev, `⚙️ ${statusMsg}`]);
+              pushLog(`⚙️ ${statusMsg}`);
             } else if (event.type === 'log') {
               const logMsg = typeof event.data === 'string' ? event.data : JSON.stringify(event.data);
-              setStreamingLogs(prev => [...prev, logMsg]);
+              pushLog(logMsg);
             } else if (event.type === 'plan') {
-              setStreamingLogs(prev => [...prev, '📋 Plan created']);
+              pushLog('📋 Plan created');
             } else if (event.type === 'code') {
               generatedCode = event.data?.code || '';
               summary = event.data?.summary || 'Storefront updated.';
-              setStreamingLogs(prev => [...prev, '✅ Code generated']);
+              pushLog('✅ Code generated');
             } else if (event.type === 'error') {
               const errorMsg = event.data?.message || 'Generation failed';
-              
+
               if (isCreditsError(errorMsg)) {
                 const parsed = parseCreditsError(errorMsg);
                 setCreditsError({
@@ -343,12 +349,12 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           }
         }
       }
-      
+
       // Apply the generated code
       if (generatedCode) {
         setCode(generatedCode);
         setRefreshKey(k => k + 1); // Force preview refresh
-        
+
         // Save to database
         await supabase.from('project_files').upsert({
           profile_id: profileId,
@@ -356,39 +362,38 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           content: generatedCode,
           version: 1,
         });
-        
-        // Add assistant message with summary and logs
-        const logSummary = streamingLogs.length > 0 
-          ? `\n\n---\n**Build Log:**\n${streamingLogs.map(l => `• ${l}`).join('\n')}`
+
+        // Persist build logs inside the assistant message so they remain in chat history
+        const logBlock = collectedLogs.length
+          ? `\n\nBuild log:\n${collectedLogs.map(l => `- ${l}`).join('\n')}`
           : '';
-        
+
         const assistantMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: summary + logSummary,
+          content: `${summary}${logBlock}`,
         };
-        
+
         setMessages(prev => [...prev, assistantMessage]);
-        
-        // Save assistant message
+
+        // Save assistant message (including logs) so refresh/project switch keeps it
         await supabase.from('vibecoder_messages').insert({
           project_id: projectId,
           role: 'assistant',
-          content: summary,
+          content: assistantMessage.content,
         });
-        
+
         toast.success('Changes applied!');
       }
-      
+
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Generation failed';
       setError(message);
       toast.error(message);
     } finally {
       setIsStreaming(false);
-      setStreamingLogs([]);
     }
-  }, [inputValue, isStreaming, activeProjectId, code, profileId, user, streamingLogs]);
+  }, [inputValue, isStreaming, activeProjectId, code, profileId, user]);
   
   // Handle preview errors
   const handlePreviewError = (errorMsg: string) => {

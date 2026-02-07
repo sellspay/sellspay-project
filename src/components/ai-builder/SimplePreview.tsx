@@ -67,7 +67,7 @@ export const SimplePreview = memo(function SimplePreview({
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-presets="react">
+  <script type="text/babel" data-presets="react,typescript">
     try {
       // Simple icon components as SVG (no external dependency)
       const Icon = ({ name, size = 24, className = '' }) => {
