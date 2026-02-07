@@ -25,6 +25,7 @@ export default function SellerAgreement() {
 
     setLoading(true);
     try {
+      // First, update the profile to mark as seller
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -35,11 +36,26 @@ export default function SellerAgreement() {
 
       if (error) throw error;
 
+      // Silently create Stripe Connect account in background (deferred onboarding)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        try {
+          await supabase.functions.invoke('create-silent-connect-account', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+        } catch (stripeErr) {
+          // Non-blocking - they can still sell, just won't have Stripe ready
+          console.warn('Silent Stripe account creation failed (non-blocking):', stripeErr);
+        }
+      }
+
       await refreshProfile?.();
-      toast.success('Welcome to SellsPay! Setting up your seller account...');
+      toast.success('Welcome to SellsPay! You can now start selling.');
       
-      // Redirect to Stripe Connect onboarding or settings
-      navigate('/settings?tab=payout');
+      // Redirect to dashboard instead of settings - they can sell immediately!
+      navigate('/dashboard');
     } catch (err) {
       console.error('Error signing agreement:', err);
       toast.error('Failed to process agreement. Please try again.');

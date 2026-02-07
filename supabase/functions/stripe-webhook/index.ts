@@ -794,6 +794,70 @@ serve(async (req) => {
       }
     }
 
+    // Handle Connect account updates (for deferred onboarding flow)
+    if (event.type === "account.updated") {
+      const account = event.data.object as Stripe.Account;
+      logStep("Processing account.updated", { 
+        accountId: account.id,
+        details_submitted: account.details_submitted,
+        charges_enabled: account.charges_enabled,
+        payouts_enabled: account.payouts_enabled
+      });
+
+      const isComplete = account.details_submitted && account.charges_enabled && account.payouts_enabled;
+
+      if (isComplete) {
+        // Find the user by their stripe_account_id in private.seller_config
+        // We need to use a helper RPC or direct query
+        const { data: sellerConfigs, error: configError } = await supabaseAdmin
+          .from("profiles")
+          .select("id, user_id, seller_status")
+          .eq("seller_mode", "CONNECT");
+
+        if (configError) {
+          logStep("Error fetching profiles for account update", { error: configError.message });
+        } else {
+          // Check each profile's seller_config for matching stripe_account_id
+          for (const prof of sellerConfigs || []) {
+            const { data: config } = await supabaseAdmin.rpc("get_seller_config", {
+              p_user_id: prof.user_id
+            });
+
+            if (config?.[0]?.stripe_account_id === account.id) {
+              logStep("Found matching profile for account", { profileId: prof.id, accountId: account.id });
+
+              // Update seller_config to mark onboarding complete
+              await supabaseAdmin.rpc("update_seller_config", {
+                p_user_id: prof.user_id,
+                p_stripe_onboarding_complete: true
+              });
+
+              // Update profile seller_status to active
+              await supabaseAdmin
+                .from("profiles")
+                .update({ seller_status: "active" })
+                .eq("id", prof.id);
+
+              logStep("Seller onboarding marked complete via webhook", { 
+                profileId: prof.id, 
+                accountId: account.id 
+              });
+
+              // Notify the user
+              await supabaseAdmin.from("notifications").insert({
+                user_id: prof.user_id,
+                type: "seller_verified",
+                message: "Your account is verified! You can now withdraw your earnings to your bank.",
+                redirect_url: "/dashboard",
+              });
+
+              break;
+            }
+          }
+        }
+      }
+    }
+
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

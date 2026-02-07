@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, BarChart3, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { VisitorSourcesTable } from '@/components/dashboard/VisitorSourcesTable'
 import { ConversionFunnel } from '@/components/dashboard/ConversionFunnel';
 import { EditorApplicationCard } from '@/components/dashboard/EditorApplicationCard';
 import { EarningsCard } from '@/components/dashboard/EarningsCard';
+import { PendingPayoutBanner } from '@/components/dashboard/PendingPayoutBanner';
 import { format, subDays, startOfMonth, eachDayOfInterval } from 'date-fns';
 import { useSellerGate } from '@/hooks/useSellerGate';
 
@@ -70,6 +71,10 @@ export default function Dashboard() {
   const [productViews, setProductViews] = useState<ProductView[]>([]);
   const [profileViews, setProfileViews] = useState<ProfileView[]>([]);
   const [productDownloads, setProductDownloads] = useState<ProductDownload[]>([]);
+  
+  // Stripe onboarding status
+  const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(true);
+  const [pendingBalance, setPendingBalance] = useState(0);
   
   // Filters
   const [selectedProduct, setSelectedProduct] = useState('all');
@@ -158,13 +163,47 @@ export default function Dashboard() {
     }
   };
 
+  // Check Stripe onboarding status
+  const checkStripeStatus = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase.functions.invoke("check-connect-status", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!error && data) {
+        setStripeOnboardingComplete(data.onboarding_complete ?? false);
+      }
+
+      // Also fetch wallet balance for pending earnings
+      const { data: walletData } = await supabase.functions.invoke("get-wallet-balance", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (walletData) {
+        // Total pending + available that they can't withdraw yet
+        const totalEarnings = (walletData.available_cents || 0) + (walletData.pending_cents || 0);
+        setPendingBalance(totalEarnings);
+      }
+    } catch (err) {
+      console.error("Error checking Stripe status:", err);
+    }
+  }, []);
+
   useEffect(() => {
     if (user && profile && hasAccess) {
       fetchDashboardData();
+      checkStripeStatus();
     } else if (!profileLoading) {
       setLoading(false);
     }
-  }, [user, profile, hasAccess, profileLoading]);
+  }, [user, profile, hasAccess, profileLoading, checkStripeStatus]);
 
   // Get date range for filtering
   const getDateRange = () => {
@@ -394,6 +433,16 @@ export default function Dashboard() {
           Refresh
         </Button>
       </div>
+
+      {/* Pending Payout Banner - shown when Stripe onboarding incomplete */}
+      <PendingPayoutBanner
+        pendingBalance={pendingBalance}
+        isOnboardingComplete={stripeOnboardingComplete}
+        onOnboardingComplete={() => {
+          setStripeOnboardingComplete(true);
+          fetchDashboardData(false);
+        }}
+      />
 
       {/* Earnings Card at Top */}
       <div className="mb-6">
