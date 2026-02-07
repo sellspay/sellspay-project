@@ -437,18 +437,40 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     setError(errorMsg);
   };
   
-  // Handle auto-fix - AI analyzes and fixes the error
+  // Handle auto-fix - AI analyzes and fixes the error with CODE INTEGRITY PROTOCOL
   const handleFixError = useCallback(async (errorMsg: string) => {
     if (!user || isStreaming) return;
     
-    // Build a fix prompt
-    const fixPrompt = `Fix the following build error in the code:\n\nError: ${errorMsg}\n\nAnalyze the error, identify the root cause, and regenerate the code with the fix applied. Keep all existing functionality intact.`;
+    // Build a comprehensive fix prompt with CODE INTEGRITY PROTOCOL
+    const fixPrompt = `## CODE INTEGRITY PROTOCOL - FIX REQUIRED
+
+### Error Details:
+\`\`\`
+${errorMsg}
+\`\`\`
+
+### Current Code (BROKEN):
+\`\`\`tsx
+${code}
+\`\`\`
+
+### STRICT REQUIREMENTS:
+1. Return a COMPLETE, standalone App.tsx file. NO FRAGMENTS.
+2. Every { must have a matching }
+3. Every [ must have a matching ]
+4. Every ( must have a matching )
+5. All data arrays (PRODUCTS, ITEMS, etc.) MUST close with ]; BEFORE the App function
+6. All hooks (useState, useEffect, useSellsPayCheckout) MUST be INSIDE the App function
+7. Code MUST end with the closing brace of the App function
+8. NO "/// END_CODE ///" or debug markers
+
+Analyze the error, identify the root cause in the code above, and regenerate the COMPLETE fixed code. Keep all existing functionality intact.`;
     
     // Add a status line to chat
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: `Auto-fixing build error…`,
+      content: `🔧 Auto-fixing: ${errorMsg.substring(0, 100)}${errorMsg.length > 100 ? '...' : ''}`,
     };
     setMessages(prev => [...prev, userMessage]);
     
@@ -459,7 +481,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
       attachments: [],
       promptOverride: fixPrompt,
     });
-  }, [user, isStreaming, activeModel, handleSendMessage]);
+  }, [user, isStreaming, activeModel, handleSendMessage, code]);
   
   // Handle sign out
   const handleSignOut = async () => {

@@ -87,16 +87,17 @@ export const SimplePreview = memo(function SimplePreview({
     }
 
     // Create a self-contained HTML document with React + Tailwind CDN
+    // Added crossorigin="anonymous" to CDN scripts to get real stack traces (not "Script error.")
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Preview</title>
-  <script src="https://cdn.tailwindcss.com"><\/script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"><\/script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><\/script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
+  <script src="https://cdn.tailwindcss.com" crossorigin="anonymous"><\/script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin="anonymous"><\/script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"><\/script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin="anonymous"><\/script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { 
@@ -123,26 +124,70 @@ export const SimplePreview = memo(function SimplePreview({
 <body>
   <div id="root"></div>
   <script>
-    // Catch script/runtime errors and report back to parent
-    const report = (payload) => {
-      try { window.parent.postMessage(payload, '*'); } catch (e) {}
+    // ═══════════════════════════════════════════════════════════════
+    // ENHANCED ERROR CAPTURE - Phase B of bulletproof plan
+    // ═══════════════════════════════════════════════════════════════
+    // Reports structured error payloads with stack traces to parent
+    const reportError = (payload) => {
+      try { 
+        window.parent.postMessage(payload, '*'); 
+      } catch (e) {
+        console.error('[Preview] Failed to report error to parent:', e);
+      }
     };
 
-    window.onerror = function(msg, url, lineNo, columnNo, error) {
-      const details = error && error.stack ? error.stack : String(msg);
+    const showError = (title, details) => {
       document.getElementById('root').innerHTML =
-        '<div class="error-display"><strong>Error:</strong>\\n' + details + '</div>';
-      report({ type: 'preview-error', error: details });
-      return true;
+        '<div class="error-display"><strong>' + title + ':</strong>\\n' + details + '</div>';
     };
 
-    window.onunhandledrejection = function(event) {
-      const reason = event && event.reason ? (event.reason.stack || String(event.reason)) : 'Unhandled promise rejection';
-      document.getElementById('root').innerHTML =
-        '<div class="error-display"><strong>Error:</strong>\\n' + reason + '</div>';
-      report({ type: 'preview-error', error: reason });
+    // Global error handler (synchronous errors)
+    window.addEventListener('error', function(event) {
+      const error = event.error;
+      const message = error?.message || event.message || 'Unknown error';
+      const stack = error?.stack || '';
+      const source = 'window.onerror';
+      const line = event.lineno;
+      const col = event.colno;
+      
+      const details = stack || message;
+      showError('Error', details);
+      
+      reportError({ 
+        type: 'preview-error', 
+        error: message,
+        stack: stack,
+        source: source,
+        line: line,
+        col: col,
+        fullDetails: details
+      });
+      
+      event.preventDefault();
       return true;
-    };
+    }, true);
+
+    // Promise rejection handler (async errors)
+    window.addEventListener('unhandledrejection', function(event) {
+      const reason = event.reason;
+      const message = reason?.message || String(reason) || 'Unhandled promise rejection';
+      const stack = reason?.stack || '';
+      const source = 'unhandledrejection';
+      
+      const details = stack || message;
+      showError('Error', details);
+      
+      reportError({ 
+        type: 'preview-error', 
+        error: message,
+        stack: stack,
+        source: source,
+        fullDetails: details
+      });
+      
+      event.preventDefault();
+      return true;
+    }, true);
   </script>
   <script type="text/babel" data-presets="react,typescript">
     try {
@@ -195,13 +240,22 @@ export const SimplePreview = memo(function SimplePreview({
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(React.createElement(App));
     } catch (err) {
-      // Display error in iframe
+      // Runtime error during component initialization
+      const message = err.message || String(err);
+      const stack = err.stack || '';
+      
       document.getElementById('root').innerHTML = 
         '<div class="error-display"><strong>Runtime Error:</strong>\\n' + 
-        (err.message || err) + '</div>';
+        (stack || message) + '</div>';
       
-      // Also notify parent window
-      window.parent.postMessage({ type: 'preview-error', error: err.message || String(err) }, '*');
+      // Notify parent window with structured payload
+      window.parent.postMessage({ 
+        type: 'preview-error', 
+        error: message,
+        stack: stack,
+        source: 'runtime-trycatch',
+        fullDetails: stack || message
+      }, '*');
     }
   <\/script>
 </body>
@@ -211,13 +265,20 @@ export const SimplePreview = memo(function SimplePreview({
     iframeRef.current.srcdoc = html;
   }, [code, onError]);
   
-  // Listen for error messages from iframe
+  // Listen for error messages from iframe - now captures structured payloads
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'preview-error') {
-        setPreviewError(event.data.error);
+        // Build a rich error string that includes stack trace when available
+        const errorDetails = event.data.fullDetails || event.data.stack || event.data.error;
+        const source = event.data.source ? `[${event.data.source}]` : '';
+        const location = event.data.line ? ` at line ${event.data.line}${event.data.col ? ':' + event.data.col : ''}` : '';
+        
+        const fullError = `${source}${location} ${errorDetails}`.trim();
+        
+        setPreviewError(fullError);
         if (onError) {
-          onError(event.data.error);
+          onError(fullError);
         }
       }
     };

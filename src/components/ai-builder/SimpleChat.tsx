@@ -39,7 +39,7 @@ export function SimpleChat({ messages, isStreaming, streamingLogs = [], children
   
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-background">
-      {/* Messages area */}
+      {/* Messages area - flex-1 + min-h-0 forces internal scroll */}
       <ScrollArea className="flex-1 min-h-0 px-4" viewportClassName="!block">
         <div ref={scrollRef} className="py-4 space-y-4">
           {messages.length === 0 ? (
@@ -123,8 +123,8 @@ export function SimpleChat({ messages, isStreaming, streamingLogs = [], children
         </div>
       </ScrollArea>
       
-      {/* Input bar (passed as children) */}
-      <div className="shrink-0 border-t border-border/50 bg-background">
+      {/* Input bar (passed as children) - STICKY positioning for guaranteed visibility */}
+      <div className="shrink-0 sticky bottom-0 z-10 border-t border-border/50 bg-background">
         {children}
       </div>
     </div>

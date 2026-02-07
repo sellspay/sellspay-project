@@ -66,6 +66,17 @@ function calculateCredits(complexityScore: number, skipArchitect: boolean): numb
 // Validates code structure BEFORE delivery to prevent build crashes.
 // This catches the "hooks inside arrays" and "missing export wrapper" bugs.
 function validateCodeStructure(code: string): { valid: boolean; error?: string } {
+  // Check 0: Block common junk markers that indicate broken output
+  if (code.includes('/// END_CODE ///')) {
+    return { valid: false, error: 'Code contains debug marker "/// END_CODE ///" - this is not valid output' };
+  }
+  
+  // Check for unmatched triple backticks inside the code (not at start/end)
+  const backtickMatches = code.match(/```/g) || [];
+  if (backtickMatches.length % 2 !== 0) {
+    return { valid: false, error: 'Code contains unmatched triple backticks "```" - likely truncated or malformed' };
+  }
+  
   // Check 1: Must have the component wrapper
   const hasExportDefault = code.includes('export default function App');
   const hasFunctionApp = code.includes('function App()') || code.includes('function App (');
@@ -173,6 +184,16 @@ function validateCodeStructure(code: string): { valid: boolean; error?: string }
     };
   }
   
+  // Check 9: Validate code doesn't have common "stuttering" signatures
+  // Look for trailing commas before quotes (e.g., `price: 49.99,"`)
+  const stutterPattern = /:\s*[\d.]+,"/;
+  if (stutterPattern.test(code)) {
+    return { 
+      valid: false, 
+      error: 'Detected malformed object syntax (value followed by comma-quote) - likely stream corruption' 
+    };
+  }
+  
   return { valid: true };
 }
 
@@ -231,33 +252,94 @@ async function callAgent(
   return response;
 }
 
+/**
+ * ROBUST LINE-BUFFERED SSE PARSER
+ * 
+ * Fixes the "shredded code" issue where JSON split across network chunks
+ * was being silently dropped. This implementation:
+ * 1. Maintains a textBuffer across chunks
+ * 2. Only processes complete lines (ending with \n)
+ * 3. Re-buffers partial JSON lines if parsing fails
+ * 4. Never discards tokens - waits for more data or fails cleanly
+ */
 async function extractStreamedCode(response: Response): Promise<string> {
   if (!response.body) throw new Error("No response body");
   
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  let textBuffer = ""; // Accumulates partial chunks
   let fullContent = "";
+  let parsingFailed = false;
   
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     
-    const chunk = decoder.decode(value, { stream: true });
+    // Append new data to buffer
+    textBuffer += decoder.decode(value, { stream: true });
     
-    // Parse SSE format
-    const lines = chunk.split('\n');
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const jsonStr = line.slice(6);
-        if (jsonStr === '[DONE]') continue;
-        
-        try {
-          const parsed = JSON.parse(jsonStr);
-          const content = parsed.choices?.[0]?.delta?.content;
-          if (content) fullContent += content;
-        } catch {
-          // Skip invalid JSON
+    // Process complete lines only (line-by-line extraction)
+    let newlineIndex: number;
+    while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+      let line = textBuffer.slice(0, newlineIndex);
+      textBuffer = textBuffer.slice(newlineIndex + 1);
+      
+      // Normalize line endings (handle \r\n)
+      if (line.endsWith('\r')) {
+        line = line.slice(0, -1);
+      }
+      
+      // Skip SSE comments and empty lines
+      if (!line || line.startsWith(':')) continue;
+      
+      // Only process data: lines
+      if (!line.startsWith('data: ')) continue;
+      
+      const jsonStr = line.slice(6).trim();
+      
+      // Handle stream end signal
+      if (jsonStr === '[DONE]') continue;
+      
+      // Skip empty data payloads
+      if (!jsonStr) continue;
+      
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content;
+        if (content) {
+          fullContent += content;
         }
+      } catch (parseErr) {
+        // JSON was split across chunks - push back into buffer and wait for more data
+        // This is the critical fix: we DON'T discard the line, we re-buffer it
+        console.log('[Orchestrator] Partial JSON detected, re-buffering:', jsonStr.substring(0, 50));
+        textBuffer = line + '\n' + textBuffer;
+        parsingFailed = true;
+        break; // Exit inner loop, wait for more data from outer loop
+      }
+    }
+    
+    // Reset parsing flag if we successfully processed lines
+    if (!parsingFailed) {
+      parsingFailed = false;
+    }
+  }
+  
+  // Stream ended - check if buffer still has an incomplete line
+  const remainingData = textBuffer.trim();
+  if (remainingData && remainingData.startsWith('data: ')) {
+    const jsonStr = remainingData.slice(6).trim();
+    if (jsonStr && jsonStr !== '[DONE]') {
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content;
+        if (content) {
+          fullContent += content;
+        }
+      } catch {
+        // Stream ended with incomplete JSON - this is a genuine error
+        console.error('[Orchestrator] Stream ended with unparseable JSON:', jsonStr.substring(0, 100));
+        throw new Error('Stream ended with incomplete data - code may be truncated');
       }
     }
   }
