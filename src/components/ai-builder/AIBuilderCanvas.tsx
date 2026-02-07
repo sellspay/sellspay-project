@@ -641,14 +641,44 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     hasRestoredCodeRef.current = null;
   }, [activeProjectId]);
 
-  // 🛡️ SAFETY TIMEOUT: If Sandpack's onReady never fires (error, race condition, etc.),
-  // force-release the handshake after 5 seconds to prevent infinite loading
+  // 🛡️ AGGRESSIVE RECOVERY: If Sandpack's onReady never fires (ServiceWorker crash, etc.),
+  // force a full cache nuke and Sandpack remount after timeout
+  const handshakeRetryCountRef = useRef(0);
+  
   useEffect(() => {
-    if (!isWaitingForPreviewMount) return;
+    if (!isWaitingForPreviewMount) {
+      // Reset retry count on successful mount
+      handshakeRetryCountRef.current = 0;
+      return;
+    }
     
-    const safetyTimer = setTimeout(() => {
-      console.warn('⚠️ Preview handshake timed out after 5s - forcing release');
-      setIsWaitingForPreviewMount(false);
+    const safetyTimer = setTimeout(async () => {
+      handshakeRetryCountRef.current += 1;
+      const retryCount = handshakeRetryCountRef.current;
+      
+      console.warn(`⚠️ Preview handshake timed out after 5s (attempt ${retryCount})`);
+      
+      // First timeout: Just release the handshake (maybe it's just slow)
+      if (retryCount === 1) {
+        console.log('[Recovery] Releasing handshake, forcing Sandpack refresh...');
+        setIsWaitingForPreviewMount(false);
+        // Force Sandpack remount
+        setRefreshKey(prev => prev + 1);
+      }
+      // Second timeout (10s total): Nuclear option - nuke caches
+      else if (retryCount >= 2) {
+        console.log('[Recovery] 🔥 Sandpack still unresponsive - nuking caches...');
+        try {
+          await nukeSandpackCache();
+        } catch (e) {
+          console.warn('[Recovery] Cache nuke failed:', e);
+        }
+        setIsWaitingForPreviewMount(false);
+        // Force complete remount with new key
+        setRefreshKey(prev => prev + 1);
+        setResetKey(prev => prev + 1);
+        toast.warning('Preview recovered after timeout. If issues persist, try creating a new project.');
+      }
     }, 5000);
     
     return () => clearTimeout(safetyTimer);
