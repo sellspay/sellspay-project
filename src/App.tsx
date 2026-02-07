@@ -42,6 +42,7 @@ import Refunds from "./pages/Refunds";
 import NotFound from "./pages/NotFound";
 import AIBuilder from "./pages/AIBuilder";
 import SellerAgreement from "./pages/SellerAgreement";
+import ProhibitedItems from "./pages/ProhibitedItems";
 
 const queryClient = new QueryClient();
 
@@ -101,6 +102,7 @@ const App = () => (
             <Route path="/terms" element={<MainLayout><Terms /></MainLayout>} />
             <Route path="/privacy" element={<MainLayout><Privacy /></MainLayout>} />
             <Route path="/refunds" element={<MainLayout><Refunds /></MainLayout>} />
+            <Route path="/prohibited-items" element={<MainLayout><ProhibitedItems /></MainLayout>} />
             <Route path="/onboarding/seller-agreement" element={<MainLayout><SellerAgreement /></MainLayout>} />
             <Route path="/ai-builder" element={<AIBuilder />} />
             {/* Instagram-style profile route: /@username */}

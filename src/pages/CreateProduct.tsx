@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, X, Loader2, Sparkles, Check, Crown, FolderOpen, Camera, Gift, DollarSign } from "lucide-react";
+import { Upload, X, Loader2, Sparkles, Check, Crown, FolderOpen, Camera, Gift, DollarSign, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -86,6 +86,7 @@ export default function CreateProduct() {
   const [productType, setProductType] = useState("");
   const [pricingType, setPricingType] = useState("free");
   const [price, setPrice] = useState("");
+  const [isDigitalOnly, setIsDigitalOnly] = useState(true); // Required digital-only confirmation
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -262,6 +263,12 @@ export default function CreateProduct() {
 
     if (!productType) {
       toast.error("Please select a product type");
+      return;
+    }
+
+    // Digital-only validation
+    if (!isDigitalOnly) {
+      toast.error("SellsPay only allows digital products. Physical goods are strictly prohibited.");
       return;
     }
 
@@ -1107,13 +1114,46 @@ export default function CreateProduct() {
           </CardContent>
         </Card>
 
+        {/* Digital-Only Confirmation */}
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Digital Products Only
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              SellsPay is a <strong className="text-foreground">100% digital-only platform</strong>. 
+              Listing physical products or drop-shipping services is strictly prohibited and will 
+              result in <strong className="text-destructive">immediate permanent account termination</strong>.
+            </p>
+            
+            <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border border-destructive/20 bg-background/50">
+              <input
+                type="checkbox"
+                checked={isDigitalOnly}
+                onChange={(e) => setIsDigitalOnly(e.target.checked)}
+                className="mt-1 w-4 h-4 accent-primary"
+              />
+              <span className="text-sm">
+                <strong className="text-foreground">I confirm this is a digital-only product.</strong>
+                <span className="text-muted-foreground block mt-1">
+                  This product does not require physical shipping and contains only digital 
+                  content (downloads, templates, presets, tutorials, etc.).
+                </span>
+              </span>
+            </label>
+          </CardContent>
+        </Card>
+
         {/* Actions */}
         <div className="flex gap-4">
           <Button
             type="button"
             variant="outline"
             onClick={(e) => handleSubmit(e, false)}
-            disabled={loading || isOverSizeLimit}
+            disabled={loading || isOverSizeLimit || !isDigitalOnly}
             className="flex-1"
           >
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
@@ -1122,7 +1162,7 @@ export default function CreateProduct() {
           <Button
             type="button"
             onClick={(e) => handleSubmit(e, true)}
-            disabled={loading || isOverSizeLimit}
+            disabled={loading || isOverSizeLimit || !isDigitalOnly}
             className="flex-1 bg-gradient-to-r from-primary to-accent"
           >
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}

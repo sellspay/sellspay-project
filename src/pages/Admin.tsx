@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog, Globe, Wallet, ScrollText, Layout } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog, Globe, Wallet, ScrollText, Layout, Skull } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +25,7 @@ import DisputesPanel from "@/components/admin/DisputesPanel";
 import { AuditLogPanel } from "@/components/admin/AuditLogPanel";
 import { SiteContentEditor } from "@/components/admin/SiteContentEditor";
 import { CreatorApplication, PRODUCT_TYPE_OPTIONS } from "@/components/creator-application/types";
+import { NuclearBanDialog } from "@/components/admin/NuclearBanDialog";
 
 interface Profile {
   id: string;
@@ -35,8 +36,10 @@ interface Profile {
   bio: string | null;
   is_creator: boolean | null;
   is_editor: boolean | null;
+  is_seller: boolean | null;
   suspended: boolean | null;
   verified: boolean | null;
+  is_permanently_banned: boolean | null;
   created_at: string | null;
 }
 
@@ -129,6 +132,7 @@ export default function Admin() {
   const [showSpotlightDialog, setShowSpotlightDialog] = useState(false);
   const [revokingEditorId, setRevokingEditorId] = useState<string | null>(null);
   const [revokingCreatorId, setRevokingCreatorId] = useState<string | null>(null);
+  const [nuclearBanTarget, setNuclearBanTarget] = useState<Profile | null>(null);
   
   // Stats
   const [totalUsers, setTotalUsers] = useState(0);
@@ -163,7 +167,7 @@ export default function Admin() {
       // Fetch users (no email - moved to private schema)
       const { data: usersData, error: usersError } = await supabase
         .from("profiles")
-        .select("id, user_id, username, full_name, avatar_url, bio, is_creator, is_editor, suspended, verified, created_at")
+        .select("id, user_id, username, full_name, avatar_url, bio, is_creator, is_editor, is_seller, suspended, verified, is_permanently_banned, created_at")
         .order("created_at", { ascending: false });
 
       if (usersError) throw usersError;
@@ -878,14 +882,20 @@ export default function Admin() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          {profile.verified && (
+                        <div className="flex gap-1 flex-wrap">
+                          {profile.is_permanently_banned && (
+                            <Badge className="bg-black text-white border border-destructive">
+                              <Skull className="w-3 h-3 mr-1" />
+                              Banned
+                            </Badge>
+                          )}
+                          {profile.verified && !profile.is_permanently_banned && (
                             <Badge className="bg-primary/20 text-primary">Verified</Badge>
                           )}
-                          {profile.suspended && (
+                          {profile.suspended && !profile.is_permanently_banned && (
                             <Badge variant="destructive">Suspended</Badge>
                           )}
-                          {!profile.suspended && !profile.verified && (
+                          {!profile.suspended && !profile.verified && !profile.is_permanently_banned && (
                             <span className="text-muted-foreground text-sm">Active</span>
                           )}
                         </div>
@@ -911,6 +921,21 @@ export default function Admin() {
                             >
                               {profile.suspended ? "Unsuspend User" : "Suspend User"}
                             </DropdownMenuItem>
+                            {profile.is_seller && !profile.is_permanently_banned && (
+                              <DropdownMenuItem
+                                onClick={() => setNuclearBanTarget(profile)}
+                                className="text-destructive bg-destructive/10"
+                              >
+                                <Skull className="w-4 h-4 mr-2" />
+                                Nuclear Ban (Permanent)
+                              </DropdownMenuItem>
+                            )}
+                            {profile.is_permanently_banned && (
+                              <DropdownMenuItem disabled className="text-destructive/60">
+                                <Skull className="w-4 h-4 mr-2" />
+                                Already Permanently Banned
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -1802,6 +1827,14 @@ export default function Admin() {
       <SpotlightNominationsDialog 
         open={showSpotlightDialog} 
         onOpenChange={setShowSpotlightDialog} 
+      />
+      
+      {/* Nuclear Ban Dialog */}
+      <NuclearBanDialog
+        open={!!nuclearBanTarget}
+        onOpenChange={(open) => !open && setNuclearBanTarget(null)}
+        profile={nuclearBanTarget}
+        onBanComplete={fetchData}
       />
     </div>
   );
