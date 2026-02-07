@@ -311,18 +311,38 @@ export const SimplePreview = memo(function SimplePreview({
         error: null,
       });
       
-      // Mock framer-motion (simplified passthrough)
-      const motion = new Proxy({}, {
-        get: (_, prop) => {
-          return React.forwardRef((props, ref) => {
-            const { children, initial, animate, exit, transition, whileHover, whileTap, variants, ...rest } = props;
-            return React.createElement(String(prop), { ...rest, ref }, children);
-          });
-        }
-      });
-      
-      // Mock AnimatePresence (passthrough)
-      const AnimatePresence = ({ children }) => children;
+       // Mock framer-motion (simplified passthrough)
+       const motion = new Proxy({}, {
+         get: (_, prop) => {
+           return React.forwardRef((props, ref) => {
+             const { children, initial, animate, exit, transition, whileHover, whileTap, variants, ...rest } = props;
+             return React.createElement(String(prop), { ...rest, ref }, children);
+           });
+         }
+       });
+
+       // Minimal framer-motion hook stubs (prevents ReferenceError like "useScroll is not defined")
+       const __motionValue = (initial = 0) => {
+         let v = initial;
+         const subs = new Set();
+         return {
+           get: () => v,
+           set: (next) => { v = next; subs.forEach((fn) => { try { fn(v); } catch {} }); },
+           on: (_evt, fn) => { subs.add(fn); return () => subs.delete(fn); },
+           onChange: (fn) => { subs.add(fn); return () => subs.delete(fn); },
+         };
+       };
+       const useMotionValue = (v = 0) => __motionValue(v);
+       const useSpring = (value) => value;
+       const useTransform = (_value, _input, output) => {
+         const first = Array.isArray(output) ? output[0] : 0;
+         return __motionValue(typeof first === 'number' ? first : 0);
+       };
+       const useScroll = () => ({ scrollY: __motionValue(0), scrollYProgress: __motionValue(0) });
+
+       // Mock AnimatePresence (passthrough)
+       const AnimatePresence = ({ children }) => children;
+
       
       // Mock Lucide icons (simplified)
       const createIconComponent = (name) => ({ size = 24, className = '', ...props }) => 
