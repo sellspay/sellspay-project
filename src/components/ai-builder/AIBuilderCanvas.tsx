@@ -93,6 +93,11 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // 🔒 GENERATION LOCK: Captures the project ID when generation starts
   // Prevents race condition where AI writes to wrong project if user switches mid-generation
   const generationLockRef = useRef<string | null>(null);
+
+  // 🧾 JOB BACKING: When set, this generation is persisted via ai_generation_jobs.
+  // In that case, we must NOT also append assistant messages from streaming callbacks,
+  // otherwise we’ll duplicate responses.
+  const activeJobIdRef = useRef<string | null>(null);
   
   // 📝 PENDING SUMMARY: Captures the AI's natural language response during streaming
   const pendingSummaryRef = useRef<string>('');
@@ -243,6 +248,14 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       // Clear live steps
       setLiveSteps([]);
 
+      // If this run is backed by a background job, do NOT append assistant messages here.
+      // The realtime job completion handler will add the final summary + code snapshot.
+      if (activeJobIdRef.current) {
+        console.log('[Vibecoder] Job-backed run: skipping streaming onComplete message append');
+        pendingSummaryRef.current = '';
+        return;
+      }
+
       // 🛑 DOUBLE-CHECK: Verify lock before saving (belt + suspenders)
       if (generationLockRef.current && generationLockRef.current !== activeProjectId) {
         console.warn('🛑 Discarded code: Project mismatch on completion');
@@ -270,6 +283,14 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       onStreamingComplete();
     },
     onChatResponse: async (text) => {
+      // If this run is job-backed, the job completion handler will add the final summary.
+      if (activeJobIdRef.current) {
+        console.log('[Vibecoder] Job-backed run: skipping streaming onChatResponse append');
+        setLiveSteps([]);
+        setChatResponse(text);
+        return;
+      }
+
       // AI responded with a chat message instead of code
       setLiveSteps([]);
       setChatResponse(text);
@@ -279,6 +300,15 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       resetAgent();
     },
     onPlanResponse: async (plan, originalPrompt) => {
+      // If this run is job-backed, the job completion handler will surface the plan.
+      if (activeJobIdRef.current) {
+        console.log('[Vibecoder] Job-backed run: skipping streaming onPlanResponse append');
+        setLiveSteps([]);
+        setPendingPlan({ plan, originalPrompt });
+        setIsPlanMode(false);
+        return;
+      }
+
       // AI returned a plan for user approval
       setLiveSteps([]);
       setPendingPlan({ plan, originalPrompt });
@@ -344,7 +374,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
     processedJobIdsRef.current.add(job.id);
 
-    console.log('[BackgroundGen] Job completed:', job.id);
+    const isActiveRun = activeJobIdRef.current === job.id;
+
+    console.log('[BackgroundGen] Job completed:', job.id, { isActiveRun });
 
     // 🛡️ SAFETY: Never apply JSON (job status / accidental payload) as code
     const looksLikeJson = (text: string): boolean => {
@@ -376,20 +408,39 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     if (job.plan_result) {
       setPendingPlan({
         plan: job.plan_result,
-        originalPrompt: job.prompt
+        originalPrompt: job.prompt,
       });
     }
 
-    // Add assistant message with the summary
+    // Add assistant message with the summary (this is the canonical source for job-backed runs)
     if (job.summary && activeProjectId) {
       addMessage('assistant', job.summary, job.code_result || undefined, activeProjectId);
     }
-  }, [setCode, activeProjectId, addMessage]);
+
+    // ✅ IMPORTANT: Clear "building" state for the run that created this job
+    if (isActiveRun) {
+      setLiveSteps([]);
+      pendingSummaryRef.current = '';
+      generationLockRef.current = null;
+      activeJobIdRef.current = null;
+      onStreamingComplete();
+      resetAgent();
+    }
+  }, [activeProjectId, addMessage, onStreamingComplete, resetAgent, setCode]);
 
   const handleJobError = useCallback((job: GenerationJob) => {
     console.error('[BackgroundGen] Job failed:', job.error_message);
-    toast.error(`Generation failed: ${job.error_message || 'Unknown error'}`);
-  }, []);
+    const msg = job.error_message || 'Unknown error';
+    toast.error(`Generation failed: ${msg}`);
+
+    const isActiveRun = activeJobIdRef.current === job.id;
+    if (isActiveRun) {
+      setLiveSteps([]);
+      generationLockRef.current = null;
+      activeJobIdRef.current = null;
+      onStreamingError(msg);
+    }
+  }, [onStreamingError]);
 
   const {
     currentJob,
@@ -907,6 +958,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // 🔄 CREATE BACKGROUND JOB: This ensures generation persists even if user leaves
     // The job will be picked up by the edge function and results saved to database
     const job = await createJob(cleanPrompt, promptForAI, activeModel?.id, isPlanMode);
+
+    // Track whether this run is job-backed (used to prevent duplicate message appends)
+    activeJobIdRef.current = job?.id ?? null;
     
     if (job) {
       console.log('[BackgroundGen] Created job:', job.id, 'for project:', projectId);
