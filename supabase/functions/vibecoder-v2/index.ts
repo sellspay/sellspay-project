@@ -34,80 +34,103 @@ Your job is to REASON about what the user wants and classify their message.
 
 THINK STEP BY STEP:
 1. Read the user's message carefully
-2. Consider the CONTEXT (do they have existing code? what did they build before?)
-3. Identify the PRIMARY INTENT of their message
-4. Classify into one of the categories below
+2. Consider the CONVERSATION HISTORY (what was discussed before? what pronouns refer to?)
+3. Consider the CONTEXT (do they have existing code? what did they build before?)
+4. Resolve PRONOUNS and REFERENCES ("it", "that", "this", "the one we discussed")
+5. Identify the PRIMARY INTENT of their message
+6. Classify into one of the categories below
 
+═══════════════════════════════════════════════════════════════
+PRONOUN RESOLUTION PROTOCOL (CRITICAL)
+═══════════════════════════════════════════════════════════════
+When the user uses pronouns like "it", "that", "this", "the button", you MUST:
+1. Look at the PREVIOUS messages in the conversation
+2. Identify what noun/element was most recently discussed
+3. Resolve the pronoun to that specific element
+4. Include this resolution in your reasoning
+
+Examples:
+- Previous: "What is the Open for Inquiry tab for?"
+- Current: "Let's remove it"
+- Resolution: "it" = "the Open for Inquiry tab" (from previous message)
+- Intent: MODIFY (remove that specific element ONLY)
+
+- Previous: "I added a gradient to the hero"
+- Current: "I don't like it"
+- Resolution: "it" = "the gradient in the hero" (from previous message)
+- Intent: QUESTION (expressing opinion, not a clear action request)
+
+- Previous: "What does this button do?"
+- Current: "Remove that"
+- Resolution: "that" = "the button" (from previous message)
+- Intent: MODIFY (remove that specific button ONLY)
+
+═══════════════════════════════════════════════════════════════
 INTENT CATEGORIES:
+═══════════════════════════════════════════════════════════════
 - "BUILD" = User wants to CREATE something new (a storefront, page, section, component)
 - "MODIFY" = User wants to CHANGE something that exists (colors, layout, add element to existing design)
 - "QUESTION" = User is ASKING about something (what is X? why did you add Y? how does Z work?)
 - "FIX" = User is reporting an ERROR or BUG (crash, broken, not working, red screen)
 - "REFUSE" = User is asking for something PROHIBITED (payment integrations, nav above hero, external APIs)
 
-REASONING EXAMPLES:
+═══════════════════════════════════════════════════════════════
+REASONING EXAMPLES WITH CONVERSATION CONTEXT:
+═══════════════════════════════════════════════════════════════
 
-Example 1:
-User: "What is the Open for Inquiry tab for?"
+Example 1 (Pronoun Resolution):
+Conversation: ["What is the Open for Inquiry tab for?"]
+Current: "Let's remove it"
+Reasoning: The user previously asked about "the Open for Inquiry tab". Now they say "remove it" - the pronoun "it" clearly refers to that tab. This is a MODIFY request to remove ONLY that specific tab.
+Intent: MODIFY
+Target: "Open for Inquiry tab"
+
+Example 2 (Follow-up Opinion):
+Conversation: ["Can you explain the gradient effect?"]
+Current: "I'm not sure about it"
+Reasoning: User asked about "the gradient effect", then expressed uncertainty with "it" referring to that gradient. This is conversational feedback, not a clear action request.
+Intent: QUESTION
+
+Example 3 (Clear Action):
+Conversation: []
+Current: "Add a contact section"
+Reasoning: No prior context needed. User explicitly says "add" which is an action. They want a new section added.
+Intent: MODIFY
+
+Example 4 (Standalone Question):
+Current: "What is the Open for Inquiry tab for?"
 Reasoning: The user is asking "what is X for?" - this is a question about an existing element, not a request to build or change anything. They want an explanation.
 Intent: QUESTION
 
-Example 2:
-User: "Add a contact section"
-Reasoning: The user says "add" which is an action word. They want me to create a new section that doesn't exist yet. This is a modification to an existing design.
+Example 5 (Follow-up Removal):
+Conversation: ["What does this CTA button do?"]
+Current: "We don't need it"
+Reasoning: User asked about "this CTA button", then said "we don't need it". The pronoun "it" refers to that CTA button. This is a MODIFY request to remove that specific button.
 Intent: MODIFY
+Target: "CTA button"
 
-Example 3:
-User: "Make me a dark anime storefront"
-Reasoning: The user wants me to create an entirely new storefront from scratch. They're describing a new build, not modifying existing work.
-Intent: BUILD
-
-Example 4:
-User: "The page is showing a red error screen"
-Reasoning: The user is reporting a problem. "Red error screen" indicates something is broken. I need to fix this.
-Intent: FIX
-
-Example 5:
-User: "Can you explain what this button does?"
-Reasoning: "Can you explain" is asking for information, not requesting a change. This is a question.
+Example 6 (Ambiguous - Default to Question):
+Conversation: ["I added a hero section"]
+Current: "Hmm, not sure"
+Reasoning: User is expressing uncertainty but not giving a clear action. This is conversational.
 Intent: QUESTION
 
-Example 6:
-User: "Why did you add that gradient?"
-Reasoning: "Why did you" is asking for my reasoning about a past decision. This is a question, not a request.
-Intent: QUESTION
-
-Example 7:
-User: "Add my PayPal button"
-Reasoning: The user wants to add an external payment method. This is prohibited - SellsPay handles all payments.
-Intent: REFUSE
-
-Example 8:
-User: "I love it! But can you make the header bigger?"
-Reasoning: Despite the positive feedback, the user is asking to "make X bigger" which is a modification request.
-Intent: MODIFY
-
-Example 9:
-User: "What's your favorite color?"
-Reasoning: This is off-topic small talk, not about the design. I should engage conversationally.
-Intent: QUESTION
-
-Example 10:
-User: "hmm not sure about this"
-Reasoning: The user is expressing uncertainty, possibly seeking feedback or guidance. This is conversational.
-Intent: QUESTION
-
+═══════════════════════════════════════════════════════════════
 OUTPUT FORMAT:
+═══════════════════════════════════════════════════════════════
 You must respond with ONLY a valid JSON object (no markdown, no explanation):
 {
   "reasoning": "Brief chain-of-thought explaining your classification (1-2 sentences)",
   "intent": "BUILD" | "MODIFY" | "QUESTION" | "FIX" | "REFUSE",
   "confidence": 0.0-1.0,
-  "context_needed": true | false
+  "context_needed": true | false,
+  "resolved_target": "The specific element being referenced (if pronouns were resolved)"
 }
 
-IMPORTANT:
+CRITICAL RULES:
 - ALWAYS include your reasoning - this is how you "think"
+- ALWAYS resolve pronouns before classifying
+- Include "resolved_target" when pronouns like "it", "that", "this" are used
 - Be DECISIVE - pick the most likely intent even if uncertain
 - Default to QUESTION if the message is ambiguous or conversational
 - context_needed = true if you need to see the current code to respond properly`;
@@ -267,21 +290,58 @@ INFRASTRUCTURE AWARENESS (Core Assumptions)
 3. **No Boilerplate Logs:** Never output logs for "Initializing React," "Setting up Tailwind," etc.
 
 ═══════════════════════════════════════════════════════════════
+CONVERSATIONAL CONTEXT RESOLUTION (CRITICAL)
+═══════════════════════════════════════════════════════════════
+**THE "PRONOUN PRECISION" RULE:**
+When the user's message contains pronouns ("it", "that", "this", "the one"), you MUST:
+1. Look at the [CONVERSATION_CONTEXT] block for recent discussion topics
+2. Look at the [RESOLVED_TARGET] hint from the classifier
+3. Apply changes ONLY to the resolved element
+4. Do NOT touch ANY other elements
+
+**EXAMPLES:**
+- Conversation: "What is the Open for Inquiry tab?" → "Remove it"
+  → "it" = "Open for Inquiry tab" → Remove ONLY that tab
+  → Keep all other tabs, hero, footer, etc. EXACTLY as they are
+
+- Conversation: "What does the gradient do?" → "I don't like it"
+  → "it" = "the gradient" → This is feedback, not an action request
+  → Respond conversationally, ask what they'd prefer
+
+**THE "ISOLATION" RULE:**
+When removing or modifying a single element:
+- Find that EXACT element in the code
+- Remove/modify ONLY that element's JSX block
+- Do NOT restructure surrounding code
+- Do NOT "clean up" nearby elements
+- Do NOT remove other elements "while you're at it"
+
+═══════════════════════════════════════════════════════════════
 SCOPE OF WORK & CONSERVATION PROTOCOL (CRITICAL)
 ═══════════════════════════════════════════════════════════════
 **THE "SURGICAL PRECISION" RULE:**
 You are forbidden from refactoring code that is unrelated to the user's specific request.
 
+**IF** User asks: "Remove the Open for Inquiry button"
+**THEN**:
+   - Find that specific button in the JSX
+   - Delete ONLY that button's code block
+   - **DO NOT** remove other buttons
+   - **DO NOT** modify the navigation structure
+   - **DO NOT** touch the hero, footer, or other sections
+   - **DO NOT** reformat or restructure surrounding code
+
 **IF** User asks: "Make the button red"
 **THEN**:
-   - Change the button class
+   - Change ONLY that button's className
    - **DO NOT** reorder the imports
    - **DO NOT** change variable names elsewhere
-   - **DO NOT** modify the footer, hero, or other sections
+   - **DO NOT** modify any other elements
 
 **CONSERVATION OF STATE:**
 - Assume the current code is PERFECT aside from the specific change requested
 - When rewriting a file, copy existing logic EXACTLY for all unchanged parts
+- If you're unsure what "it" refers to, ASK the user rather than guessing
 
 ═══════════════════════════════════════════════════════════════
 ADDITIVE CHANGES PROTOCOL (CRITICAL - PREVENTS FULL REWRITES)
@@ -295,6 +355,11 @@ When a user asks to ADD something new, PRESERVE their existing design and APPEND
 3. **KEEP THE COLORS:** The existing color scheme stays EXACTLY as it was
 4. **KEEP THE BRANDING:** Any custom fonts, logos, or styling remain untouched
 5. **APPEND ONLY:** Add the new section/tab/page to the EXISTING structure
+
+**REMOVAL BEHAVIOR (MANDATORY):**
+1. **REMOVE ONLY THE TARGET:** If user says "remove it", remove ONLY the resolved target
+2. **PRESERVE EVERYTHING ELSE:** All other elements stay EXACTLY as they were
+3. **NO COLLATERAL CHANGES:** Do not "clean up" or "simplify" nearby code
 
 ═══════════════════════════════════════════════════════════════
 STRICT MARKETPLACE PROTOCOL (Non-Negotiable)
@@ -372,16 +437,24 @@ interface IntentClassification {
   intent: 'BUILD' | 'MODIFY' | 'QUESTION' | 'FIX' | 'REFUSE';
   confidence: number;
   context_needed: boolean;
+  resolved_target?: string; // The specific element being referenced (if pronouns were resolved)
 }
 
 async function classifyIntent(
   prompt: string,
   hasExistingCode: boolean,
+  conversationHistory: Array<{role: string; content: string}>,
   apiKey: string
 ): Promise<IntentClassification> {
   const contextHint = hasExistingCode 
     ? "The user HAS existing code/design in their project." 
     : "The user has NO existing code - this would be a fresh build.";
+
+  // Build conversation context for pronoun resolution
+  const recentMessages = conversationHistory.slice(-6); // Last 3 exchanges
+  const conversationContext = recentMessages.length > 0
+    ? `\n\nCONVERSATION HISTORY (for pronoun resolution):\n${recentMessages.map(m => `${m.role}: "${m.content}"`).join('\n')}`
+    : '';
 
   const response = await fetch(LOVABLE_AI_URL, {
     method: "POST",
@@ -393,7 +466,7 @@ async function classifyIntent(
       model: "google/gemini-2.5-flash-lite", // Fast, cheap classifier
       messages: [
         { role: "system", content: INTENT_CLASSIFIER_PROMPT },
-        { role: "user", content: `Context: ${contextHint}\n\nUser message: "${prompt}"` }
+        { role: "user", content: `Context: ${contextHint}${conversationContext}\n\nCurrent user message: "${prompt}"` }
       ],
       max_tokens: 200,
       temperature: 0.1, // Low temperature for consistent classification
@@ -420,12 +493,16 @@ async function classifyIntent(
     
     console.log(`[Intent Classifier] Reasoning: ${parsed.reasoning}`);
     console.log(`[Intent Classifier] Intent: ${parsed.intent} (${parsed.confidence})`);
+    if (parsed.resolved_target) {
+      console.log(`[Intent Classifier] Resolved Target: ${parsed.resolved_target}`);
+    }
     
     return {
       reasoning: parsed.reasoning || "No reasoning provided",
       intent: parsed.intent || "MODIFY",
       confidence: parsed.confidence || 0.5,
-      context_needed: parsed.context_needed ?? true
+      context_needed: parsed.context_needed ?? true,
+      resolved_target: parsed.resolved_target || undefined
     };
   } catch (e) {
     console.error("Failed to parse classifier response:", content);
@@ -501,11 +578,15 @@ Use ONLY these real products. NEVER generate fake placeholder products.
         : `The user asks: ${prompt}`
     });
   } else {
-    // For code generation
+    // For code generation - include resolved target for surgical precision
+    const resolvedTargetContext = intent.resolved_target 
+      ? `\n[RESOLVED_TARGET]: The user is referring to "${intent.resolved_target}" from a previous conversation. Apply changes ONLY to this specific element.\n`
+      : '';
+    
     if (currentCode?.trim()) {
       messages.push({
         role: "user",
-        content: `${productsInjection}Here is the current code:\n\n${currentCode}\n\nNow, apply this change: ${prompt}`,
+        content: `${productsInjection}${resolvedTargetContext}Here is the current code:\n\n${currentCode}\n\nNow, apply this change: ${prompt}`,
       });
     } else {
       messages.push({
@@ -548,7 +629,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, currentCode, profileId, model = 'vibecoder-pro', productsContext } = await req.json();
+    const { prompt, currentCode, profileId, model = 'vibecoder-pro', productsContext, conversationHistory = [] } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -661,6 +742,7 @@ serve(async (req) => {
     const intentResult = await classifyIntent(
       prompt,
       Boolean(currentCode?.trim()),
+      conversationHistory || [],
       LOVABLE_API_KEY
     );
 

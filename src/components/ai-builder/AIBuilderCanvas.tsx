@@ -215,6 +215,14 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
         image: p.cover_image_url,
       }));
     },
+    // 💬 CONVERSATION HISTORY: Pass recent messages for pronoun resolution
+    getConversationHistory: () => {
+      // Get last 6 messages (3 exchanges) for context
+      return messages.slice(-6).map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+    },
     onLogUpdate: (logs) => {
       // Update live steps in real-time as they stream in
       setLiveSteps(logs);
