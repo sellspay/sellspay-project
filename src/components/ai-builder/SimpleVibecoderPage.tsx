@@ -683,8 +683,8 @@ Analyze the error, identify the root cause in the code above, and regenerate the
                 </button>
               </div>
               
-              {/* Error display */}
-              {error && !creditsError && (
+              {/* Error display - hidden during auto-fix and streaming */}
+              {error && !creditsError && !isAutoFixing && !isStreaming && (
                 <div className="p-3 bg-destructive/10 border-b border-destructive/20 flex items-start gap-2">
                   <AlertCircle size={16} className="text-destructive shrink-0 mt-0.5" />
                   <p className="text-sm text-destructive">{error}</p>
