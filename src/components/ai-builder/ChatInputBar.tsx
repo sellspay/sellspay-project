@@ -341,22 +341,11 @@ export function ChatInputBar({
           try { recognition.stop(); } catch { /* ignore */ }
           const { toast } = await import('sonner');
 
-          const msg = micPreflightOkRef.current
-            ? 'Speech-to-text can’t start inside this embedded preview (browser blocks Web Speech in iframes).'
-            : 'Mic can’t start here.';
-
-          toast.error(msg, {
-            action: {
-              label: 'Open in new tab',
-              onClick: () => {
-                try {
-                  window.open(window.location.href, '_blank', 'noopener,noreferrer');
-                } catch {
-                  // ignore
-                }
-              },
-            },
-          });
+          // Simple, non-intrusive message - no forced actions, no API key required
+          toast.info(
+            'Voice input unavailable in preview (browser security). Works in published app.',
+            { duration: 4000 }
+          );
 
           setIsListening(false);
         }
