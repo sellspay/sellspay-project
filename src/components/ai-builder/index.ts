@@ -1,3 +1,4 @@
+// AI Builder exports - Cache-bust: 2026-02-07-v2
 export { AIBuilderCanvas } from './AIBuilderCanvas';
 export { PremiumGate } from './PremiumGate';
 export { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
