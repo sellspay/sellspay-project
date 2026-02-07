@@ -1389,6 +1389,7 @@ export type Database = {
           file_path: string
           id: string
           profile_id: string
+          project_id: string | null
           updated_at: string
           version: number
         }
@@ -1398,6 +1399,7 @@ export type Database = {
           file_path: string
           id?: string
           profile_id: string
+          project_id?: string | null
           updated_at?: string
           version?: number
         }
@@ -1407,6 +1409,7 @@ export type Database = {
           file_path?: string
           id?: string
           profile_id?: string
+          project_id?: string | null
           updated_at?: string
           version?: number
         }
@@ -1430,6 +1433,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "safe_public_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "vibecoder_projects"
             referencedColumns: ["id"]
           },
         ]

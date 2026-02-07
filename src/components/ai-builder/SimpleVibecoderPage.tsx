@@ -164,11 +164,11 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
         return;
       }
       
-      // Load latest code from project_files
+      // Load latest code from project_files SCOPED TO THIS PROJECT
       const { data: fileData } = await supabase
         .from('project_files')
         .select('content')
-        .eq('profile_id', profileId)
+        .eq('project_id', activeProjectId)
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -452,13 +452,17 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
           setCode(codeToDeliver);
           setRefreshKey(k => k + 1); // Force preview refresh
 
-          // Save to database
-          await supabase.from('project_files').upsert({
-            profile_id: profileId,
-            file_path: '/App.tsx',
-            content: codeToDeliver,
-            version: 1,
-          });
+          // Save to database SCOPED TO THIS PROJECT
+          await supabase.from('project_files').upsert(
+            {
+              project_id: projectId,
+              profile_id: profileId,
+              file_path: '/App.tsx',
+              content: codeToDeliver,
+              version: 1,
+            },
+            { onConflict: 'project_id,file_path' }
+          );
         }
 
         // Persist build logs inside the assistant message so they remain in chat history
