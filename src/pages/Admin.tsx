@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog, Globe, Wallet, ScrollText, Layout, Skull } from "lucide-react";
+import { Users, Package, DollarSign, TrendingUp, Search, MoreHorizontal, Loader2, Shield, FileText, CheckCircle, XCircle, Clock, Eye, Star, Trash2, AlertTriangle, X, Briefcase, Crown, UserMinus, UserCog, Globe, Wallet, ScrollText, Layout, Skull, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import { AuditLogPanel } from "@/components/admin/AuditLogPanel";
 import { SiteContentEditor } from "@/components/admin/SiteContentEditor";
 import { CreatorApplication, PRODUCT_TYPE_OPTIONS } from "@/components/creator-application/types";
 import { NuclearBanDialog } from "@/components/admin/NuclearBanDialog";
+import { ProviderFeeManager } from "@/components/admin/ProviderFeeManager";
 
 interface Profile {
   id: string;
@@ -100,7 +101,7 @@ export default function Admin() {
   
   // Get initial tab from URL query param
   const urlTab = searchParams.get('tab');
-  const validTabs = ['users', 'manage-users', 'products', 'featured', 'spotlight', 'editor-applications', 'creator-applications', 'countries', 'payouts', 'disputes', 'audit-log', 'site-content', 'settings'];
+  const validTabs = ['users', 'manage-users', 'products', 'featured', 'spotlight', 'editor-applications', 'creator-applications', 'countries', 'payouts', 'fee-management', 'disputes', 'audit-log', 'site-content', 'settings'];
   const initialTab = urlTab && validTabs.includes(urlTab) ? urlTab : 'users';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
@@ -802,6 +803,10 @@ export default function Admin() {
           <TabsTrigger value="payouts">
             <Wallet className="w-4 h-4 mr-1.5" />
             Payouts
+          </TabsTrigger>
+          <TabsTrigger value="fee-management">
+            <Percent className="w-4 h-4 mr-1.5" />
+            Fee Management
           </TabsTrigger>
           <TabsTrigger value="disputes">
             <AlertTriangle className="w-4 h-4 mr-1.5" />
@@ -1777,6 +1782,11 @@ export default function Admin() {
         {/* Payouts Tab */}
         <TabsContent value="payouts">
           <PayoutQueue />
+        </TabsContent>
+
+        {/* Fee Management Tab */}
+        <TabsContent value="fee-management">
+          <ProviderFeeManager />
         </TabsContent>
 
         {/* Disputes Tab */}

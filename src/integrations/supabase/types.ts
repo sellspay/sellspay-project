@@ -1551,6 +1551,48 @@ export type Database = {
           },
         ]
       }
+      provider_fee_settings: {
+        Row: {
+          created_at: string
+          cross_border_surcharge: number
+          fixed_fee_cents: number
+          id: string
+          is_active: boolean
+          notes: string | null
+          percentage_fee: number
+          provider_key: string
+          provider_name: string
+          safety_buffer: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cross_border_surcharge?: number
+          fixed_fee_cents?: number
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          percentage_fee?: number
+          provider_key: string
+          provider_name: string
+          safety_buffer?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cross_border_surcharge?: number
+          fixed_fee_cents?: number
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          percentage_fee?: number
+          provider_key?: string
+          provider_name?: string
+          safety_buffer?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       public_identities_cache: {
         Row: {
           avatar_url: string | null
@@ -2940,6 +2982,23 @@ export type Database = {
           p_user_id: string
         }
         Returns: number
+      }
+      calculate_estimated_seller_payout: {
+        Args: {
+          p_is_cross_border?: boolean
+          p_platform_fee_percent: number
+          p_product_price_cents: number
+          p_provider_key: string
+        }
+        Returns: {
+          cross_border_fee_cents: number
+          estimated_payout_cents: number
+          gross_amount_cents: number
+          platform_fee_cents: number
+          provider_fixed_fee_cents: number
+          provider_percentage_fee_cents: number
+          safety_buffer_cents: number
+        }[]
       }
       deduct_credits: {
         Args: { p_action: string; p_amount: number; p_user_id: string }
