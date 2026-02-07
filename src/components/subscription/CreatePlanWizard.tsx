@@ -76,24 +76,26 @@ export default function CreatePlanWizard({
     try {
       const priceCents = Math.round(parseFloat(planPrice) * 100);
 
-      const { error: planError } = await supabase
-        .from('creator_subscription_plans')
-        .insert({
-          creator_id: creatorId,
+      // Call edge function to create Stripe product/price AND database record
+      const { data, error } = await supabase.functions.invoke('create-creator-subscription', {
+        body: {
           name: planName.trim(),
           description: planDescription.trim() || null,
           price_cents: priceCents,
           currency: 'USD',
-        });
+          creator_id: creatorId,
+        },
+      });
 
-      if (planError) throw planError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      toast.success('Subscription plan created! You can add products when creating or editing them.');
+      toast.success('Subscription plan created and connected to Stripe!');
       handleClose();
       onSuccess();
     } catch (error) {
       console.error('Error creating plan:', error);
-      toast.error('Failed to create subscription plan');
+      toast.error(error instanceof Error ? error.message : 'Failed to create subscription plan');
     } finally {
       setSaving(false);
     }
