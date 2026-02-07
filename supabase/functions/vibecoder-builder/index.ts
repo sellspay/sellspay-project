@@ -252,12 +252,22 @@ export function ProductGrid({ products, onBuy }: ProductGridProps) {
 \`\`\``,
 
   'App.tsx': `
-### APP.TSX TEMPLATE (App.tsx)
+### APP.TSX TEMPLATE (App.tsx) - BULLETPROOF VERSION
 Main orchestrator with AnimatePresence. Max 40 lines.
+
+## ═══════════════════════════════════════════════════════════════
+## 🔒 BULLETPROOF APP WRAPPER (MANDATORY)
+## ═══════════════════════════════════════════════════════════════
+
+The App.tsx MUST:
+1. Start with \`export default function App()\`
+2. NEVER use class components
+3. ALWAYS return a single root element
+4. ALWAYS be named exactly "App" with default export
 
 \`\`\`tsx
 import React from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useSellsPayCheckout } from './hooks/useSellsPayCheckout';
 import { PRODUCTS } from './data/products';
 import { Hero } from './components/Hero';
@@ -268,7 +278,7 @@ export default function App() {
 
   return (
     <AnimatePresence>
-      <div className="min-h-screen bg-zinc-950">
+      <main className="min-h-screen bg-zinc-950">
         <Hero 
           title="Premium Store" 
           subtitle="Curated digital products for creators"
@@ -277,15 +287,86 @@ export default function App() {
           products={PRODUCTS} 
           onBuy={(id) => buyProduct(id)} 
         />
-      </div>
+      </main>
     </AnimatePresence>
   );
 }
 \`\`\``,
 };
 
+// ═══════════════════════════════════════════════════════════════
+// VALIDATED LUCIDE-REACT ICON ALLOWLIST
+// Prevents hallucinated icon imports like "ShieldCheck"
+// ═══════════════════════════════════════════════════════════════
+const ALLOWED_LUCIDE_ICONS = new Set([
+  // Navigation & Actions
+  'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'ChevronDown', 'ChevronUp', 
+  'ChevronLeft', 'ChevronRight', 'Menu', 'X', 'ExternalLink', 'Link',
+  // Commerce
+  'ShoppingCart', 'ShoppingBag', 'CreditCard', 'Package', 'Tag', 'Truck',
+  // Social
+  'Heart', 'Share', 'Star', 'MessageCircle', 'Send', 'ThumbsUp',
+  // Media
+  'Play', 'Pause', 'Volume2', 'VolumeX', 'Image', 'Camera', 'Video',
+  // UI Elements
+  'Search', 'Filter', 'Settings', 'User', 'Users', 'Mail', 'Phone',
+  'MapPin', 'Clock', 'Calendar', 'Check', 'Plus', 'Minus', 'Loader2',
+  // Misc
+  'Sparkles', 'Zap', 'Award', 'Gift', 'Crown', 'Flame', 'Eye',
+]);
+
 const BUILDER_SYSTEM_PROMPT = `You are the SellsPay Implementation Engineer.
 You generate ONE FILE AT A TIME for a LUXURY-TIER modular storefront.
+
+## ═══════════════════════════════════════════════════════════════
+## 🛡️ BULLETPROOF APP.TSX PROTOCOL (CRITICAL)
+## ═══════════════════════════════════════════════════════════════
+
+**THE APP.TSX FILE MUST ALWAYS:**
+1. Use \`export default function App()\` - EXACTLY this syntax
+2. Return a single \`<main>\` root element (NOT <div>)
+3. Include the AnimatePresence wrapper
+4. Be named exactly "App" - no other names allowed
+5. Use the useSellsPayCheckout hook for payments
+
+**EXAMPLE STRUCTURE (ALWAYS FOLLOW):**
+\`\`\`tsx
+import React from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useSellsPayCheckout } from './hooks/useSellsPayCheckout';
+// ... other imports
+
+export default function App() {
+  const { buyProduct } = useSellsPayCheckout();
+  return (
+    <AnimatePresence>
+      <main className="min-h-screen bg-zinc-950">
+        {/* Components here */}
+      </main>
+    </AnimatePresence>
+  );
+}
+\`\`\`
+
+## ═══════════════════════════════════════════════════════════════
+## 🚫 LUCIDE-REACT ICON VALIDATION (PREVENT CRASHES)
+## ═══════════════════════════════════════════════════════════════
+
+**ONLY USE THESE VALIDATED ICONS FROM lucide-react:**
+- Navigation: ArrowDown, ArrowUp, ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Menu, X, ExternalLink, Link
+- Commerce: ShoppingCart, ShoppingBag, CreditCard, Package, Tag, Truck
+- Social: Heart, Share, Star, MessageCircle, Send, ThumbsUp
+- Media: Play, Pause, Volume2, VolumeX, Image, Camera, Video
+- UI: Search, Filter, Settings, User, Users, Mail, Phone, MapPin, Clock, Calendar, Check, Plus, Minus, Loader2
+- Misc: Sparkles, Zap, Award, Gift, Crown, Flame, Eye
+
+**FORBIDDEN ICONS (DO NOT IMPORT - THEY CAUSE CRASHES):**
+- ShieldCheck, Shield, ShieldAlert (NOT AVAILABLE)
+- Verified, Checkmark (NOT AVAILABLE)
+- Any icon not in the list above
+
+**IF YOU NEED A "VERIFIED" OR "SECURITY" ICON:**
+Use \`Check\` or \`Award\` instead of ShieldCheck.
 
 ## ═══════════════════════════════════════════════════════════════
 ## 🔒 COMMERCE BINDING (NON-NEGOTIABLE)
@@ -391,7 +472,8 @@ Every file must feel like it came from a $50K agency build.
 - Files over 80 lines
 - Custom payment flows
 - Auth pages
-- Settings pages`;
+- Settings pages
+- Importing icons NOT in the validated list`;
 
 
 interface BuilderRequest {
