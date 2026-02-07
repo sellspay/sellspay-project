@@ -13,6 +13,7 @@ import { useAgentLoop } from '@/hooks/useAgentLoop';
 import { useBackgroundGeneration, type GenerationJob } from '@/hooks/useBackgroundGeneration';
 import { GenerationCanvas } from './GenerationCanvas';
 import { ProductsPanel } from './ProductsPanel';
+import { SubscriptionsPanel } from './SubscriptionsPanel';
 import { PlacementPromptModal } from './PlacementPromptModal';
 import { AI_MODELS, type AIModel } from './ChatInputBar';
 import type { GeneratedAsset, ViewMode } from './types/generation';
@@ -1436,6 +1437,9 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             {viewMode === 'products' ? (
               /* Products Panel: Show creator's products */
               <ProductsPanel profileId={profileId} />
+            ) : viewMode === 'subscriptions' ? (
+              /* Subscriptions Panel: Show creator's subscription plans */
+              <SubscriptionsPanel profileId={profileId} />
             ) : (viewMode === 'image' || viewMode === 'video') ? (
               /* Creative Studio: Image/Video generation */
               <GenerationCanvas
