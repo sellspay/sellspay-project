@@ -1329,16 +1329,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           </div>
         ) : (
         <div className="flex-1 flex min-h-0 overflow-hidden relative">
-          {/* === GLOBAL TRANSITION CURTAIN === 
-              Covers the ENTIRE workspace during project switch.
-              Uses opacity transition for smooth 0.2s fade-out/fade-in.
-              Sits ABOVE all content (z-50) so flicker is hidden behind it. */}
-          <div
-            className={`pointer-events-none absolute inset-0 z-50 bg-zinc-950 transition-opacity duration-200 ease-out ${
-              isProjectTransitioning ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}
-            style={{ willChange: 'opacity' }}
-          />
+          {/* REMOVED: Transition curtain - causes mutation observer crash */}
 
           {/* LEFT PANEL: Preview/Studio (seamless) */}
           <div
@@ -1366,18 +1357,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                   className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-800 shadow-2xl bg-zinc-950' : 'w-full'} relative`}
                 >
 
-                  {/* Preview-only loading overlay (chat stays visible) */}
-                  {isPreviewLoading && (
-                    <div className="absolute inset-0 z-30 bg-zinc-950 flex items-center justify-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="relative">
-                          <div className="w-8 h-8 border-2 border-primary/30 rounded-full" />
-                          <div className="absolute inset-0 w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        </div>
-                        <p className="text-xs text-muted-foreground">Initializing preview...</p>
-                      </div>
-                    </div>
-                  )}
+                  {/* REMOVED: Preview loading overlay - causes mutation observer crash */}
 
                   <PreviewErrorBoundary
                     onAutoFix={handleAutoFix}
@@ -1389,8 +1369,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                     <VibecoderPreview
                       key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
                       code={code}
-                      isStreaming={isStreaming}
-                      showLoadingOverlay={false}
                       onReady={() => {
                         // 🤝 HANDSHAKE COMPLETE: Sandpack is ready, release the transition lock
                         setIsWaitingForPreviewMount(false);
