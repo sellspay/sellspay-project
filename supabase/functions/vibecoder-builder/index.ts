@@ -251,6 +251,55 @@ export function ProductGrid({ products, onBuy }: ProductGridProps) {
 }
 \`\`\``,
 
+  'components/Navigation.tsx': `
+### NAVIGATION COMPONENT TEMPLATE (components/Navigation.tsx)
+Sticky glassmorphism nav with logo and smooth scroll links.
+
+\`\`\`tsx
+import React from 'react';
+import { motion } from 'framer-motion';
+
+interface NavigationProps {
+  brandName: string;
+  links?: { label: string; href: string }[];
+}
+
+export function Navigation({ brandName, links = [] }: NavigationProps) {
+  const defaultLinks = links.length > 0 ? links : [
+    { label: 'Collection', href: '#products' },
+    { label: 'About', href: '#about' },
+    { label: 'Contact', href: '#contact' },
+  ];
+
+  return (
+    <motion.nav 
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
+      className="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-2xl border-b border-white/10"
+    >
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="#" className="text-xl font-serif text-white tracking-tight">
+          {brandName}
+        </a>
+        <div className="hidden md:flex items-center gap-8">
+          {defaultLinks.map((link) => (
+            <a 
+              key={link.href}
+              href={link.href}
+              className="text-sm text-zinc-400 hover:text-white transition-colors duration-300 relative group"
+            >
+              {link.label}
+              <span className="absolute -bottom-1 left-0 w-0 h-px bg-amber-400 group-hover:w-full transition-all duration-300" />
+            </a>
+          ))}
+        </div>
+      </div>
+    </motion.nav>
+  );
+}
+\`\`\``,
+
   'App.tsx': `
 ### APP.TSX TEMPLATE (App.tsx) - BULLETPROOF VERSION
 Main orchestrator with AnimatePresence. Max 40 lines.
@@ -264,12 +313,14 @@ The App.tsx MUST:
 2. NEVER use class components
 3. ALWAYS return a single root element
 4. ALWAYS be named exactly "App" with default export
+5. ALWAYS import and render Navigation component
 
 \`\`\`tsx
 import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSellsPayCheckout } from './hooks/useSellsPayCheckout';
 import { PRODUCTS } from './data/products';
+import { Navigation } from './components/Navigation';
 import { Hero } from './components/Hero';
 import { ProductGrid } from './components/ProductGrid';
 
@@ -279,6 +330,7 @@ export default function App() {
   return (
     <AnimatePresence>
       <main className="min-h-screen bg-zinc-950">
+        <Navigation brandName="BRAND" />
         <Hero 
           title="Premium Store" 
           subtitle="Curated digital products for creators"
@@ -426,36 +478,43 @@ Every file must feel like it came from a $50K agency build.
 **App.tsx:**
 - Import useSellsPayCheckout from './hooks/useSellsPayCheckout'
 - Import data from './data/*'
-- Import components from './components/*'
+- Import components from './components/*' (INCLUDING Navigation)
 - Max 40 lines
 - MUST be export default function App()
 - MUST wrap in AnimatePresence
+- MUST render Navigation first, then Hero, then ProductGrid
 - MUST pass buyProduct to grids
 
-### MANDATORY PREMIUM ELEMENTS (EVERY FILE)
+### ═══════════════════════════════════════════════════════════════
+### ✅ MICRO-INTERACTION CHECKLIST (EVERY COMPONENT)
+### ═══════════════════════════════════════════════════════════════
 
-**For Hero.tsx:**
-- min-h-screen with layered gradient backgrounds (3+ layers)
-- Hero text: text-7xl md:text-9xl or larger
-- Text shimmer with bg-clip-text text-transparent
-- motion.div with initial/animate/transition
-- Scroll CTA button with bounce animation
+Before completing any component, verify these are present:
 
-**For ProductGrid.tsx:**
-- ASYMMETRIC GRID: Use col-span-2 or grid-cols-[2fr_1fr_1fr] - NO uniform grids
-- Each card: bg-white/[0.03] backdrop-blur-2xl border border-white/10
-- Image hover: group-hover:scale-110 with overflow-hidden
-- Complex shadows on hover
-- motion.div with staggerChildren: 0.08
-- Buy button: onClick={() => onBuy(product.id)}
-- Typography overlapping images
+**Navigation (MANDATORY):**
+- [ ] fixed top-0 with backdrop-blur-xl or backdrop-blur-2xl
+- [ ] Glassmorphism: bg-black/40 or bg-white/5 border-b border-white/10
+- [ ] motion.nav with initial={{ y: -100, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+- [ ] Links with hover underline animation (span with w-0 group-hover:w-full)
 
-**For App.tsx:**
-- AnimatePresence wrapper
-- useSellsPayCheckout hook
-- Pass buyProduct to ProductGrid
-- Smooth scroll button
-- Clean imports, minimal logic
+**Hero Section:**
+- [ ] motion.h1 with initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}
+- [ ] Staggered subtitle/CTA with delay
+- [ ] Background gradient with at least 3 layers
+- [ ] CTA button with whileHover={{ scale: 1.05 }}
+
+**Product Cards:**
+- [ ] group class on wrapper for hover coordination
+- [ ] Image with group-hover:scale-110 transition-transform duration-700
+- [ ] overflow-hidden on image container
+- [ ] hover:border-amber-500/30 or similar accent border
+- [ ] motion.div with whileInView stagger animation
+
+**Buttons:**
+- [ ] whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+- [ ] transition-all duration-300
+- [ ] For primary: bg-white text-black hover:bg-amber-400
+- [ ] For secondary: bg-white/10 backdrop-blur-sm border border-white/20
 
 ### OUTPUT FORMAT
 1. Start with: \`/// BEGIN_FILE ///\`
@@ -463,12 +522,16 @@ Every file must feel like it came from a $50K agency build.
 3. End with: \`/// END_FILE ///\`
 
 ### FORBIDDEN
+- Static elements without any motion
+- Buttons without hover/active states
+- Images without scale/zoom on hover
+- Cards without border/shadow transitions
+- Missing Navigation component in App.tsx
 - Uniform 3-column grids (use asymmetric spans)
 - Missing framer-motion (every component needs it)
 - Basic typography (hero must be text-7xl+)
 - Flat cards (need shadows, borders, blur)
 - Single-color backgrounds (need gradients/layers)
-- Static elements (everything needs hover/motion)
 - Files over 80 lines
 - Custom payment flows
 - Auth pages
