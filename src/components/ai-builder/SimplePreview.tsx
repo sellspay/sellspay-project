@@ -1,11 +1,14 @@
 import { useRef, useEffect, useState, memo } from 'react';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Zap, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 
 interface SimplePreviewProps {
   code: string;
   isLoading?: boolean;
   onError?: (error: string) => void;
+  onFixError?: (error: string) => void;
   showPlaceholder?: boolean;
 }
 
@@ -22,10 +25,26 @@ export const SimplePreview = memo(function SimplePreview({
   code, 
   isLoading = false,
   onError,
+  onFixError,
   showPlaceholder = false
 }: SimplePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isFixing, setIsFixing] = useState(false);
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
+  
+  // Handle auto-fix
+  const handleFixError = () => {
+    if (previewError && onFixError) {
+      setIsFixing(true);
+      onFixError(previewError);
+    }
+  };
+  
+  // Reset fixing state when error changes
+  useEffect(() => {
+    setIsFixing(false);
+  }, [previewError]);
   
   // Check if we should show placeholder (default code or empty)
   const isDefaultCode = code.includes('Welcome to Vibecoder') || !code.trim();
@@ -216,25 +235,51 @@ export const SimplePreview = memo(function SimplePreview({
   }
   
   // Show error state if there's a preview error and not loading
-  if (previewError && !isLoading) {
+  if (previewError && !isLoading && !isFixing) {
     return (
       <div className="h-full w-full relative bg-background flex flex-col items-center justify-center p-8">
-        <div className="max-w-md text-center">
-          <div className="w-16 h-16 mb-6 mx-auto rounded-2xl bg-red-500/10 flex items-center justify-center border border-red-500/30">
-            <AlertTriangle className="w-8 h-8 text-red-400" />
+        <div className="max-w-lg w-full">
+          {/* Error header */}
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 mb-4 mx-auto rounded-2xl bg-red-500/10 flex items-center justify-center border border-red-500/30 animate-pulse">
+              <AlertTriangle className="w-8 h-8 text-red-400" />
+            </div>
+            
+            <h3 className="text-xl font-semibold text-foreground mb-2">
+              Build Error Detected
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              The generated code has issues. Let AI analyze and fix them automatically.
+            </p>
           </div>
           
-          <h3 className="text-xl font-semibold text-foreground mb-2">
-            Build Error
-          </h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            The generated code has syntax errors. Try regenerating or simplifying your request.
-          </p>
-          <div className="p-4 rounded-lg bg-red-950/50 border border-red-500/30 text-left">
-            <pre className="text-xs text-red-300 whitespace-pre-wrap break-words font-mono">
-              {previewError}
-            </pre>
-          </div>
+          {/* Fix button - prominent */}
+          {onFixError && (
+            <Button
+              onClick={handleFixError}
+              className="w-full mb-4 h-12 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-semibold shadow-lg shadow-violet-500/25"
+            >
+              <Zap className="w-5 h-5 mr-2" />
+              Fix This Now
+            </Button>
+          )}
+          
+          {/* Collapsible error details */}
+          <Collapsible open={showErrorDetails} onOpenChange={setShowErrorDetails}>
+            <CollapsibleTrigger asChild>
+              <button className="w-full flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                {showErrorDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                <span>{showErrorDetails ? 'Hide' : 'View'} Error Details</span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 p-4 rounded-lg bg-red-950/50 border border-red-500/30 text-left">
+                <pre className="text-xs text-red-300 whitespace-pre-wrap break-words font-mono max-h-40 overflow-auto">
+                  {previewError}
+                </pre>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </div>
     );
