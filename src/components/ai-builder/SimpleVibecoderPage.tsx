@@ -64,6 +64,7 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [creditsError, setCreditsError] = useState<{ needed: number; available: number } | null>(null);
   const [streamingLogs, setStreamingLogs] = useState<string[]>([]);
+  const [isAutoFixing, setIsAutoFixing] = useState(false); // Track auto-fix mode to suppress errors
   
   // "Magical Doorway" state - shows fullscreen prompt experience ONLY when starting a new project
   const [showDoorway, setShowDoorway] = useState(false);
@@ -431,8 +432,13 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
     }
   }, [inputValue, isStreaming, activeProjectId, code, profileId, user]);
   
-  // Handle preview errors - show in error state
+  // Handle preview errors - only show in error state if NOT auto-fixing
   const handlePreviewError = (errorMsg: string) => {
+    // During auto-fix mode, suppress error display to avoid UI spam
+    if (isAutoFixing || isStreaming) {
+      console.log('[Preview] Suppressing error during fix/streaming mode');
+      return;
+    }
     console.warn('[Preview Error]', errorMsg);
     setError(errorMsg);
   };
@@ -440,6 +446,10 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   // Handle auto-fix - AI analyzes and fixes the error with CODE INTEGRITY PROTOCOL
   const handleFixError = useCallback(async (errorMsg: string) => {
     if (!user || isStreaming) return;
+    
+    // Enter auto-fix mode - this suppresses error displays
+    setIsAutoFixing(true);
+    setError(null); // Clear the current error immediately
     
     // Build a comprehensive fix prompt with CODE INTEGRITY PROTOCOL
     const fixPrompt = `## CODE INTEGRITY PROTOCOL - FIX REQUIRED
@@ -466,11 +476,11 @@ ${code}
 
 Analyze the error, identify the root cause in the code above, and regenerate the COMPLETE fixed code. Keep all existing functionality intact.`;
     
-    // Add a status line to chat
+    // Add a concise status line to chat (not the full error)
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: `🔧 Auto-fixing: ${errorMsg.substring(0, 100)}${errorMsg.length > 100 ? '...' : ''}`,
+      content: `🔧 Fixing detected error...`,
     };
     setMessages(prev => [...prev, userMessage]);
     
@@ -480,6 +490,9 @@ Analyze the error, identify the root cause in the code above, and regenerate the
       model: activeModel,
       attachments: [],
       promptOverride: fixPrompt,
+    }).finally(() => {
+      // Exit auto-fix mode when done
+      setIsAutoFixing(false);
     });
   }, [user, isStreaming, activeModel, handleSendMessage, code]);
   

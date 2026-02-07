@@ -32,19 +32,24 @@ export const SimplePreview = memo(function SimplePreview({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isFixing, setIsFixing] = useState(false);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
+  const fixingRef = useRef(false); // Track fixing state without re-renders
   
-  // Handle auto-fix
+  // Handle auto-fix - clears error and enters "fixing" mode
   const handleFixError = () => {
     if (previewError && onFixError) {
+      fixingRef.current = true;
       setIsFixing(true);
+      setPreviewError(null); // Clear the error immediately when fixing starts
       onFixError(previewError);
     }
   };
   
-  // Reset fixing state when error changes
+  // Reset fixing state when new code arrives (not on error change)
   useEffect(() => {
+    // When code changes, we exit fixing mode since new code was generated
+    fixingRef.current = false;
     setIsFixing(false);
-  }, [previewError]);
+  }, [code]);
   
   // Check if we should show placeholder (default code or empty)
   const isDefaultCode = code.includes('Welcome to Vibecoder') || !code.trim();
@@ -266,9 +271,16 @@ export const SimplePreview = memo(function SimplePreview({
   }, [code, onError]);
   
   // Listen for error messages from iframe - now captures structured payloads
+  // IMPORTANT: Suppresses errors during fixing mode to prevent UI spam
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'preview-error') {
+        // If we're currently fixing, don't show new errors (they're expected while rebuilding)
+        if (fixingRef.current || isFixing) {
+          console.log('[Preview] Suppressing error during fix mode');
+          return;
+        }
+        
         // Build a rich error string that includes stack trace when available
         const errorDetails = event.data.fullDetails || event.data.stack || event.data.error;
         const source = event.data.source ? `[${event.data.source}]` : '';
@@ -285,7 +297,7 @@ export const SimplePreview = memo(function SimplePreview({
     
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onError]);
+  }, [onError, isFixing]);
   
   // Vibecoder Ready placeholder for initial state
   if ((showPlaceholder || isDefaultCode) && !isLoading) {
@@ -308,8 +320,35 @@ export const SimplePreview = memo(function SimplePreview({
     );
   }
   
+  // Show "fixing in progress" state when auto-fix is running
+  if (isFixing) {
+    return (
+      <div className="h-full w-full relative bg-background flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center text-center animate-fade-in">
+          {/* Logo with pulse animation */}
+          <div className="w-16 h-16 mb-6 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center border border-violet-500/30 shadow-lg shadow-violet-500/10 animate-pulse">
+            <Zap className="w-8 h-8 text-violet-400" />
+          </div>
+          
+          <h3 className="text-xl font-semibold text-foreground mb-2">
+            Fixing Error...
+          </h3>
+          <p className="text-muted-foreground text-sm">
+            AI is analyzing and repairing the code
+          </p>
+          
+          {/* Progress indicator */}
+          <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
+            <span>Please wait</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   // Show error state if there's a preview error and not loading
-  if (previewError && !isLoading && !isFixing) {
+  if (previewError && !isLoading) {
     return (
       <div className="h-full w-full relative bg-background flex flex-col items-center justify-center p-8">
         <div className="max-w-lg w-full">
