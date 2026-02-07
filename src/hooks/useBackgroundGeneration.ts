@@ -42,6 +42,21 @@ export function useBackgroundGeneration({
   const [currentJob, setCurrentJob] = useState<GenerationJob | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const subscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  
+  // Track which jobs we've already processed to prevent duplicates
+  const processedJobsRef = useRef<Set<string>>(new Set());
+  
+  // Store callback refs to avoid subscription re-creation
+  const onJobUpdateRef = useRef(onJobUpdate);
+  const onJobCompleteRef = useRef(onJobComplete);
+  const onJobErrorRef = useRef(onJobError);
+  
+  // Update refs when callbacks change
+  useEffect(() => {
+    onJobUpdateRef.current = onJobUpdate;
+    onJobCompleteRef.current = onJobComplete;
+    onJobErrorRef.current = onJobError;
+  }, [onJobUpdate, onJobComplete, onJobError]);
 
   // Subscribe to realtime updates for this project's jobs
   useEffect(() => {
@@ -49,6 +64,9 @@ export function useBackgroundGeneration({
       setIsLoading(false);
       return;
     }
+
+    // Clear processed jobs when project changes
+    processedJobsRef.current.clear();
 
     // Check for existing pending/running job on mount
     const checkExistingJob = async () => {
@@ -71,7 +89,7 @@ export function useBackgroundGeneration({
           const job = jobs[0] as GenerationJob;
           console.log('[BackgroundGen] Found existing job:', job.id, job.status);
           setCurrentJob(job);
-          onJobUpdate?.(job);
+          onJobUpdateRef.current?.(job);
         }
       } catch (e) {
         console.error('[BackgroundGen] Error:', e);
@@ -99,12 +117,18 @@ export function useBackgroundGeneration({
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const job = payload.new as GenerationJob;
             setCurrentJob(job);
-            onJobUpdate?.(job);
+            onJobUpdateRef.current?.(job);
 
-            if (job.status === 'completed') {
-              onJobComplete?.(job);
-            } else if (job.status === 'failed') {
-              onJobError?.(job);
+            // Only fire completion/error callbacks ONCE per job
+            const jobKey = `${job.id}_${job.status}`;
+            if (!processedJobsRef.current.has(jobKey)) {
+              if (job.status === 'completed') {
+                processedJobsRef.current.add(jobKey);
+                onJobCompleteRef.current?.(job);
+              } else if (job.status === 'failed') {
+                processedJobsRef.current.add(jobKey);
+                onJobErrorRef.current?.(job);
+              }
             }
           }
         }
@@ -116,7 +140,7 @@ export function useBackgroundGeneration({
     return () => {
       channel.unsubscribe();
     };
-  }, [projectId, onJobUpdate, onJobComplete, onJobError]);
+  }, [projectId]); // Only re-subscribe when projectId changes
 
   // Create a new generation job
   const createJob = useCallback(async (
