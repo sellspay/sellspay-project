@@ -174,6 +174,10 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [showFixToast, setShowFixToast] = useState(false);
   const lastPreviewErrorRef = useRef<string | null>(null);
+  
+  // 📋 PLAN MODE STATE
+  const [isPlanMode, setIsPlanMode] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<{ plan: import('./useStreamingCode').PlanData; originalPrompt: string } | null>(null);
   // Streaming code state
   const { 
     code, 
@@ -271,6 +275,17 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       await addMessage('assistant', text, undefined, generationLockRef.current || undefined);
       generationLockRef.current = null; // Release lock
       // Reset agent on chat response (no code generated)
+      resetAgent();
+    },
+    onPlanResponse: async (plan, originalPrompt) => {
+      // AI returned a plan for user approval
+      setLiveSteps([]);
+      setPendingPlan({ plan, originalPrompt });
+      // Add a message to show the plan was generated
+      await addMessage('assistant', `I've created a plan for: "${plan.title}". Please review and approve it to proceed.`, undefined, generationLockRef.current || undefined);
+      generationLockRef.current = null; // Release lock
+      // Turn off plan mode now that we have a plan
+      setIsPlanMode(false);
       resetAgent();
     },
     onError: (err) => {
@@ -892,6 +907,32 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     triggerSelfCorrection(errorMsg);
     // DO NOT add error messages to chat - keep chat clean!
   }, [isStreaming, triggerSelfCorrection]);
+  
+  // 📋 PLAN APPROVAL: Execute the approved plan
+  const handleApprovePlan = useCallback(async (originalPrompt: string) => {
+    if (!activeProjectId) return;
+    
+    // Clear the pending plan
+    setPendingPlan(null);
+    
+    // Cover Sandpack until bundling finishes
+    setIsAwaitingPreviewReady(true);
+    
+    // 🔒 LOCK: Capture which project this generation belongs to
+    generationLockRef.current = activeProjectId;
+    
+    // Add a message to indicate we're executing the plan
+    await addMessage('user', `Execute the approved plan`, undefined, activeProjectId);
+    
+    // Start the agent with the original prompt (without ARCHITECT_MODE)
+    startAgent(originalPrompt, code !== DEFAULT_CODE ? code : undefined, activeProjectId);
+  }, [activeProjectId, addMessage, startAgent, code, DEFAULT_CODE]);
+  
+  // 📋 PLAN REJECTION: Cancel the plan and allow user to refine
+  const handleRejectPlan = useCallback(() => {
+    setPendingPlan(null);
+    toast.info('Plan cancelled. You can refine your request and try again.');
+  }, []);
 
   // ===== CREATIVE STUDIO: Asset Generation Handlers =====
   
@@ -1316,6 +1357,11 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 activeModel={activeModel}
                 onOpenBilling={() => window.open('/pricing', '_blank')}
                 onModelChange={handleModelChange}
+                isPlanMode={isPlanMode}
+                onPlanModeChange={setIsPlanMode}
+                pendingPlan={pendingPlan}
+                onApprovePlan={handleApprovePlan}
+                onRejectPlan={handleRejectPlan}
               />
             </div>
           </div>

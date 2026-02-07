@@ -8,6 +8,8 @@ import { ChatInputBar, type AIModel } from './ChatInputBar';
 import { useUserCredits } from '@/hooks/useUserCredits';
 import { type AgentStep } from './AgentProgress';
 import { LiveThought } from './LiveThought';
+import { PlanApprovalCard } from './PlanApprovalCard';
+import type { PlanData } from './useStreamingCode';
 
 interface VibecoderChatProps {
   onSendMessage: (message: string) => void;
@@ -28,6 +30,13 @@ interface VibecoderChatProps {
   onModelChange?: (model: AIModel) => void;
   // Billing callback
   onOpenBilling?: () => void;
+  // Plan mode state
+  isPlanMode?: boolean;
+  onPlanModeChange?: (isPlanMode: boolean) => void;
+  // Pending plan for approval
+  pendingPlan?: { plan: PlanData; originalPrompt: string } | null;
+  onApprovePlan?: (originalPrompt: string) => void;
+  onRejectPlan?: () => void;
 }
 
 // Live Building Card - shows steps as they stream in
@@ -123,9 +132,15 @@ export function VibecoderChat({
   activeModel,
   onModelChange,
   onOpenBilling,
+  isPlanMode,
+  onPlanModeChange,
+  pendingPlan,
+  onApprovePlan,
+  onRejectPlan,
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [isApprovingPlan, setIsApprovingPlan] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Rotate placeholder examples
@@ -263,6 +278,25 @@ export function VibecoderChat({
               />
             )}
             
+            {/* 📋 PLAN APPROVAL CARD: Show when AI returns a plan for user approval */}
+            {pendingPlan && (
+              <PlanApprovalCard
+                planId={`plan-${Date.now()}`}
+                title={pendingPlan.plan.title}
+                summary={pendingPlan.plan.summary}
+                steps={pendingPlan.plan.steps}
+                onApprove={() => {
+                  setIsApprovingPlan(true);
+                  onApprovePlan?.(pendingPlan.originalPrompt);
+                }}
+                onReject={() => {
+                  onRejectPlan?.();
+                }}
+                isApproving={isApprovingPlan}
+                status={isApprovingPlan ? 'executing' : 'pending'}
+              />
+            )}
+            
             {/* 🔴 LIVE THOUGHT: Show real-time AI thinking/logs during streaming */}
             {(isStreaming || isAgentMode) && (
               <LiveThought 
@@ -287,6 +321,8 @@ export function VibecoderChat({
         activeModel={activeModel}
         onModelChange={onModelChange}
         onOpenBilling={onOpenBilling}
+        isPlanMode={isPlanMode}
+        onPlanModeChange={onPlanModeChange}
       />
     </div>
   );

@@ -4,10 +4,20 @@ import { supabase } from '@/integrations/supabase/client';
 // Regex pattern for extracting live log tags
 const LOG_PATTERN = /\[LOG:\s*([^\]]+)\]/g;
 
+// Plan structure returned by the AI in ARCHITECT_MODE
+export interface PlanData {
+  type: 'plan';
+  title: string;
+  summary: string;
+  steps: string[];
+  estimatedTokens?: number;
+}
+
 interface UseStreamingCodeOptions {
   onChunk?: (accumulated: string) => void;
   onComplete?: (finalCode: string) => void;
   onChatResponse?: (text: string) => void;
+  onPlanResponse?: (plan: PlanData, originalPrompt: string) => void; // NEW: Plan mode callback
   onLogUpdate?: (logs: string[]) => void; // Real-time transparency logs
   onSummary?: (summary: string) => void; // NEW: AI's natural language response extracted from stream
   onError?: (error: Error) => void;
@@ -24,7 +34,7 @@ interface ProductContext {
   image: string | null;
 }
 
-type StreamMode = 'detecting' | 'chat' | 'code';
+type StreamMode = 'detecting' | 'chat' | 'code' | 'plan';
 
 interface StreamingState {
   isStreaming: boolean;
@@ -57,6 +67,9 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Track original prompt for plan execution
+  const originalPromptRef = useRef<string>('');
+
   const streamCode = useCallback(async (prompt: string, currentCode?: string) => {
     // Cancel any existing stream
     if (abortControllerRef.current) {
@@ -64,6 +77,10 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     }
 
     abortControllerRef.current = new AbortController();
+    
+    // Store original prompt (strip ARCHITECT_MODE prefix for plan approval)
+    const cleanPrompt = prompt.replace(/\[ARCHITECT_MODE_ACTIVE\]\nUser Request:\s*/i, '').split('\n\nINSTRUCTION:')[0].trim();
+    originalPromptRef.current = cleanPrompt || prompt;
     
     setState(prev => ({ ...prev, isStreaming: true, error: null }));
 
@@ -226,6 +243,10 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
             mode = 'chat';
             // Stop streaming animation for chat responses
             setState(prev => ({ ...prev, isStreaming: false }));
+          } else if (rawStream.includes('/// TYPE: PLAN ///')) {
+            mode = 'plan';
+            // Stop streaming animation for plan responses
+            setState(prev => ({ ...prev, isStreaming: false }));
           } else if (rawStream.includes('/// TYPE: CODE ///')) {
             mode = 'code';
           } else if (rawStream.length > 120) {
@@ -235,8 +256,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         }
 
         // Route based on detected mode
-        if (mode === 'chat') {
-          // Just accumulate chat text, don't update code
+        if (mode === 'chat' || mode === 'plan') {
+          // Just accumulate text, don't update code
           continue;
         }
 
@@ -255,6 +276,27 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         setState(prev => ({ ...prev, isStreaming: false }));
         options.onChatResponse?.(chatText);
         return chatText;
+      }
+
+      if (mode === 'plan') {
+        // Parse and return plan response
+        const planText = rawStream.replace('/// TYPE: PLAN ///', '').trim();
+        setState(prev => ({ ...prev, isStreaming: false }));
+        
+        try {
+          // Extract JSON from the response (may have markdown wrapper)
+          const jsonMatch = planText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const planData: PlanData = JSON.parse(jsonMatch[0]);
+            options.onPlanResponse?.(planData, originalPromptRef.current);
+            return planData;
+          }
+        } catch (e) {
+          console.error('Failed to parse plan JSON:', e);
+          // Fallback: treat as chat response
+          options.onChatResponse?.(planText);
+        }
+        return planText;
       }
 
       // Extract the AI's natural language summary (markdown explanation)
