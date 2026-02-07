@@ -1,6 +1,6 @@
 import { 
   Code2, Eye, Monitor, Smartphone, Tablet,
-  RefreshCw, Image, Video, Settings, ArrowLeft
+  RefreshCw, Image, Video, Settings, ArrowLeft, RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
@@ -19,6 +19,7 @@ interface CanvasToolbarProps {
   onTweak?: () => void;
   onPublish?: () => void;
   isPublishing?: boolean;
+  onResetState?: () => void; // Manual state refresh escape hatch
 }
 
 export function CanvasToolbar({ 
@@ -31,6 +32,7 @@ export function CanvasToolbar({
   onTweak,
   onPublish,
   isPublishing = false,
+  onResetState,
 }: CanvasToolbarProps) {
   
   const tabs = [
@@ -137,6 +139,17 @@ export function CanvasToolbar({
         >
           <RefreshCw size={16} />
         </button>
+
+        {/* Reset State button - escape hatch for stuck UI */}
+        {onResetState && (
+          <button 
+            onClick={onResetState}
+            className="p-2 rounded-lg text-zinc-500 hover:text-amber-400 hover:bg-zinc-800 transition-all"
+            title="Reset Project State (clears cache and fetches fresh data)"
+          >
+            <RotateCcw size={16} />
+          </button>
+        )}
 
         {/* Tweak button */}
         {onTweak && (
