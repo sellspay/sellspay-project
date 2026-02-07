@@ -1,180 +1,243 @@
 
-# VibeCoder "Anti-Regression + State Desync" Full Implementation Plan
 
-## Problem Summary
+# Logic-Locked Vibecoder: Pure Design Engine Implementation
 
-You're experiencing two critical issues that are destroying your workflow:
+## Problem Analysis
 
-1. **Ghost Fix Button** — The "Fix This Now" button reappears on working projects after switching tabs because the success state isn't being synchronized with the database before you navigate away.
+The current Vibecoder is producing "short" and "PDF-style" responses because:
 
-2. **Regression Loop** — When the AI performs a "Fix," it strips away complex animations and premium styling to pass build checks, resulting in "PDF-like" cheap templates instead of maintaining your high-end editorial design.
+1. **No Infrastructure Context Injection** — The AI doesn't receive a clear "Senior Creative Director" brief stating what's pre-provisioned (auth, payments, settings) and what its role is
+2. **No Prompt Expansion Protocol** — Simple prompts like "shoe store" don't get inflated into high-density design specifications
+3. **Commerce Binding is Optional** — The AI sometimes invents payment flows instead of using `useSellsPayCheckout()`
+4. **Policy Guard is Reactive** — Violations are caught but don't redirect the AI's energy toward design
 
----
-
-## Solution Architecture
-
-I will implement a comprehensive system with three pillars:
+## Solution: Three-Layer Context Injection
 
 ```text
-┌──────────────────────────────────────────────────────────────────────┐
-│                        ANTI-REGRESSION SYSTEM                        │
-├──────────────────────────────────────────────────────────────────────┤
-│  1. ATOMIC STATUS SYNC                                               │
-│     └─ Promise.all() ensures DB write BEFORE preview render         │
-│                                                                      │
-│  2. ID-MATCHED STATE                                                 │
-│     └─ Fix button logic verifies project_id matches URL             │
-│                                                                      │
-│  3. BLUEPRINT FIDELITY                                               │
-│     └─ Heal agent is FORBIDDEN from removing components/animations  │
-└──────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                    LOGIC-LOCKED ARCHITECTURE                        │
+├─────────────────────────────────────────────────────────────────────┤
+│  LAYER 1: ORCHESTRATOR                                              │
+│  └─ Inject "SellsPay Infrastructure Context" before every prompt   │
+│                                                                     │
+│  LAYER 2: ARCHITECT                                                 │
+│  └─ Add "Expansion Protocol" to inflate simple prompts             │
+│                                                                     │
+│  LAYER 3: BUILDER                                                   │
+│  └─ Add "Commerce Binding" mandate for all Buy buttons             │
+├─────────────────────────────────────────────────────────────────────┤
+│  BONUS: POLICY GUARD                                                │
+│  └─ Add redirect suggestions to guide users toward design tasks    │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Implementation Details
+## Implementation Plan
 
-### Part 1: Atomic Status Sync (Kill the Ghost Fix Button)
+### Phase 1: Orchestrator Infrastructure Injection
 
-**File: `src/components/ai-builder/SimpleVibecoderPage.tsx`**
+**File:** `supabase/functions/vibecoder-orchestrator/index.ts`
 
-The current flow saves code asynchronously, but the UI can switch projects before the save completes. I will:
+Inject a "SellsPay Infrastructure Context" block before every prompt so the AI knows what's solved and what its role is.
 
-- Wrap the database save + success flag update in a single `Promise.all()`
-- Add a `lastSuccessfulProjectId` ref that tracks which project ID achieved success
-- Only clear the error state after the database confirms the write
+**Changes:**
+- Add a constant `SELLSPAY_INFRASTRUCTURE_CONTEXT` block
+- Prepend this to the prompt before sending to the Architect
+- Include explicit table of what's PRE-PROVISIONED vs what's the AI's scope
 
-**Code Concept:**
-```typescript
-// BEFORE preview render, ensure database is updated
-await Promise.all([
-  supabase.from('project_files').upsert({ ... }),
-  supabase.from('vibecoder_projects').update({ 
-    is_broken: false, 
-    last_success_at: new Date().toISOString() 
-  }).eq('id', projectId)
-]);
+**Infrastructure Context Block:**
+```
+### SELLSPAY MANAGED INFRASTRUCTURE (READ-ONLY)
 
-// NOW safe to update UI
-setCode(codeToDeliver);
-setError(null);
+You are a Senior UI Engineer on the SellsPay Platform.
+The backend is FULLY MANAGED. You cannot build:
+
+| Category      | Status    | Your Action                    |
+|---------------|-----------|--------------------------------|
+| Login/Signup  | SOLVED    | Not in scope                   |
+| Payments      | SOLVED    | onClick={() => onBuy(id)}      |
+| Settings      | SOLVED    | Not in scope                   |
+| Database      | SOLVED    | Products passed via props      |
+
+Your ENTIRE job is VISUAL DESIGN:
+- Cinematic hero sections
+- Editorial product grids
+- Glassmorphism cards
+- Framer Motion animations
+- Premium typography
+- Depth layering and shadows
+
+When a user asks for "a store", they mean the FRONTEND.
+Maximize visual complexity. Use every line for styling.
 ```
 
 ---
 
-### Part 2: ID-Matched Error Display (Stop Cross-Project Errors)
+### Phase 2: Architect Expansion Protocol
 
-**File: `src/components/ai-builder/SimplePreview.tsx`**
+**File:** `supabase/functions/vibecoder-architect/index.ts`
 
-Currently, the `onFixError` callback doesn't validate that the error belongs to the active project. I will:
+Add an "Expansion Protocol" section that transforms simple prompts into detailed design specifications.
 
-- Add a `projectId` prop to `SimplePreview`
-- Store the error's source project ID alongside the error message
-- Reject any error display if the stored project ID doesn't match `activeProjectId`
+**Changes:**
+- Add `EXPANSION_PROTOCOL` section to system prompt
+- Include mapping table: User Says -> Architect Expands To
+- Mandate minimum visual complexity for every request
 
-**Code Concept:**
+**Expansion Protocol:**
+```
+### EXPANSION PROTOCOL (MANDATORY)
+
+Transform every user request into a LUXURY design specification:
+
+| User Says           | You MUST Expand To                                    |
+|---------------------|-------------------------------------------------------|
+| "shoe store"        | Hero (3 gradient layers, text-9xl), asymmetric grid   |
+|                     | (col-span-2 for featured), glassmorphism cards,       |
+|                     | staggered reveal animations                           |
+| "add products"      | Editorial grid refinement, varied aspect ratios,      |
+|                     | hover scale+rotate, scroll-linked parallax            |
+| "landing page"      | Full-bleed hero, stats bar, testimonials, featured    |
+|                     | products, sticky nav with glass effect                |
+| "make it premium"   | Typography upgrade (Playfair + Inter), ambient glow   |
+|                     | orbs, text shimmer, magnetic button effects           |
+| "sports brand"      | Athletic Luxury profile: horizontal parallax,         |
+|                     | bold condensed fonts, high-contrast shadows           |
+
+NEVER accept a simple request at face value.
+Always inflate to maximum visual density.
+```
+
+---
+
+### Phase 3: Builder Commerce Binding
+
+**File:** `supabase/functions/vibecoder-builder/index.ts`
+
+Add explicit "Commerce Binding" instructions so every Buy button uses the platform checkout.
+
+**Changes:**
+- Add `COMMERCE_BINDING_MANDATE` section
+- Explicit instructions for onBuy prop pattern
+- FORBIDDEN list for custom payment flows
+
+**Commerce Binding Mandate:**
+```
+### COMMERCE BINDING (NON-NEGOTIABLE)
+
+Every product MUST have an "onBuy" prop.
+Every "Buy" / "Add to Cart" button MUST call:
+  onClick={() => onBuy(product.id)}
+
+The App.tsx MUST:
+1. Import useSellsPayCheckout from './hooks/useSellsPayCheckout'
+2. Destructure: const { buyProduct } = useSellsPayCheckout();
+3. Pass to grid: <ProductGrid products={PRODUCTS} onBuy={buyProduct} />
+
+FORBIDDEN:
+- Creating custom payment forms
+- Importing Stripe/PayPal directly
+- Building auth pages
+- Creating settings/profile pages
+- Inventing new checkout flows
+
+The payment system is SOLVED. Focus 100% on visual design.
+```
+
+---
+
+### Phase 4: Policy Guard Redirect Suggestions
+
+**File:** `src/utils/policyGuard.ts`
+
+Enhance the PolicyRule interface to include redirect suggestions that guide users toward valid design tasks.
+
+**Changes:**
+- Add `redirect` property to `PolicyRule` interface
+- Add constructive suggestions to each policy rule
+- Update export to include redirect strings
+
+**Updated Interface:**
 ```typescript
-interface ErrorWithContext {
+export interface PolicyRule {
+  id: string;
+  category: string;
+  keywords: string[];
   message: string;
-  sourceProjectId: string;
-}
-
-// In error handler:
-if (errorContext.sourceProjectId !== activeProjectId) {
-  console.log('[Preview] Ignoring stale error from project:', errorContext.sourceProjectId);
-  return; // Silently discard
+  redirect: string; // NEW: Suggested design task
 }
 ```
 
----
-
-### Part 3: Blueprint Fidelity (Anti-Regression Protocol)
-
-**File: `supabase/functions/vibecoder-heal/index.ts`**
-
-The heal agent currently has free reign to "simplify" code. I will add explicit guardrails:
-
-- Extract component names and animation keywords from the original code
-- Add a "Blueprint Fidelity Check" that verifies the healed code contains all original components
-- Reject healed code that removes Framer Motion, scroll animations, or glassmorphism effects
-
-**System Prompt Addition:**
-```
-## BLUEPRINT FIDELITY PROTOCOL (MANDATORY)
-
-You are performing a SURGICAL FIX. You may ONLY fix syntax errors.
-
-FORBIDDEN ACTIONS:
-- Removing components (if Hero exists in input, Hero MUST exist in output)
-- Removing animation libraries (motion, AnimatePresence)
-- Replacing complex layouts with simple stacked divs
-- Reducing data arrays (if 8 products, output must have 8 products)
-
-ALLOWED ACTIONS:
-- Adding missing closing brackets/braces
-- Fixing import syntax
-- Correcting hook placement
-
-If you cannot fix without removing features, return the original code unchanged.
+**Example Redirect:**
+```typescript
+{
+  id: 'auth_restriction',
+  // ... existing fields
+  redirect: "Try asking me to create a stunning hero section, product showcase, or landing page instead!"
+}
 ```
 
 ---
 
-### Part 4: Manual State Refresh Button
+## Technical Summary
 
-**File: `src/components/ai-builder/CanvasToolbar.tsx`**
-
-I will add a "Refresh Project State" button that:
-
-- Clears all localStorage for the current project
-- Fetches fresh code from the database
-- Force-resets the preview iframe
-
-This gives you an escape hatch when the UI gets stuck.
+| File | Change Type | Purpose |
+|------|-------------|---------|
+| `vibecoder-orchestrator/index.ts` | Add constant + inject | Prepend infrastructure context |
+| `vibecoder-architect/index.ts` | Extend system prompt | Add Expansion Protocol |
+| `vibecoder-builder/index.ts` | Extend system prompt | Add Commerce Binding mandate |
+| `src/utils/policyGuard.ts` | Extend interface | Add redirect suggestions |
 
 ---
 
-### Part 5: Database Schema Addition
+## Expected Outcomes
 
-I will add an `is_broken` column to the `vibecoder_projects` table to persistently track project health state. This prevents the UI from "forgetting" that a project succeeded.
+1. **No More "PDF-Style" Code** — Every simple prompt gets expanded into luxury specifications
+2. **Zero Auth/Payment Confusion** — AI knows these are solved and focuses elsewhere
+3. **Higher Visual Density** — 100% of token budget goes to gradients, motion, typography
+4. **Faster Builds** — No wasted cycles trying to figure out backend infrastructure
+5. **Better User Guidance** — Policy violations now suggest constructive alternatives
 
-**Migration:**
-```sql
-ALTER TABLE vibecoder_projects 
-ADD COLUMN IF NOT EXISTS is_broken BOOLEAN DEFAULT FALSE;
+---
 
-ALTER TABLE vibecoder_projects 
-ADD COLUMN IF NOT EXISTS last_success_at TIMESTAMPTZ;
+## Code Injection Summary
+
+### Orchestrator: Infrastructure Context (prepend to every prompt)
+```
+### ═══════════════════════════════════════════════════════════════
+### SELLSPAY MANAGED INFRASTRUCTURE (READ-ONLY)
+### ═══════════════════════════════════════════════════════════════
+
+You are a Senior UI Engineer on the SellsPay Platform.
+The backend is FULLY MANAGED. You cannot build:
+- Authentication (login/signup) → NOT IN SCOPE
+- Payments → Use onClick={() => onBuy(id)}
+- Settings/Billing → NOT IN SCOPE
+- Database → Products passed via props
+
+Your ENTIRE job is VISUAL DESIGN.
+Maximize visual complexity. Use every line for styling.
 ```
 
----
+### Architect: Expansion Protocol (add to system prompt)
+```
+### EXPANSION PROTOCOL (MANDATORY)
 
-## Files to Modify
+NEVER accept simple requests at face value.
+ALWAYS inflate to maximum visual density.
 
-| File | Changes |
-|------|---------|
-| `src/components/ai-builder/SimpleVibecoderPage.tsx` | Atomic status sync, ID-matched error handling, refresh button trigger |
-| `src/components/ai-builder/SimplePreview.tsx` | Add `projectId` prop, validate errors against active project |
-| `src/components/ai-builder/CanvasToolbar.tsx` | Add "Refresh State" button |
-| `src/hooks/useProjectScopedState.ts` | Add `refreshFromDatabase()` method |
-| `supabase/functions/vibecoder-heal/index.ts` | Blueprint Fidelity Protocol in system prompt |
-| Database migration | Add `is_broken` and `last_success_at` columns |
+"shoe store" → Hero (3 gradient layers, text-9xl), asymmetric grid, glassmorphism
+"landing page" → Full-bleed hero, stats bar, testimonials, featured products
+"sports brand" → Athletic Luxury: parallax, bold fonts, high-contrast shadows
+```
 
----
+### Builder: Commerce Binding (add to system prompt)
+```
+### COMMERCE BINDING (NON-NEGOTIABLE)
 
-## Expected Outcome
+Every "Buy" button MUST use: onClick={() => onBuy(product.id)}
+App.tsx MUST: import useSellsPayCheckout, pass buyProduct to grid
+FORBIDDEN: Custom payment forms, Stripe imports, auth pages
+```
 
-After implementation:
-
-- Switching projects will no longer show phantom "Fix This Now" buttons
-- The AI will be forbidden from stripping animations and complexity during fixes
-- You will have a manual "Refresh State" button as an emergency escape hatch
-- Project health status will persist in the database, surviving page refreshes
-
----
-
-## Technical Notes
-
-- The `Promise.all()` pattern ensures atomicity — if the DB write fails, the UI won't falsely show success
-- The Blueprint Fidelity check happens inside the heal agent's response validation, not just the prompt
-- The `is_broken` column creates a source-of-truth that survives browser cache clears
