@@ -1455,6 +1455,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                   cancelAgent();
                 }}
                 messages={messages}
+                messagesLoading={messagesLoading}
                 onRateMessage={rateMessage}
                 onRestoreToVersion={handleRestoreCode}
                 projectName={activeProject?.name ?? 'New Project'}

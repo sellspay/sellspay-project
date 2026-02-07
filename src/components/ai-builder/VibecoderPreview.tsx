@@ -337,18 +337,70 @@ const SandpackRenderer = memo(function SandpackRenderer({
       code,
       active: true,
     },
-    // Entry point that imports the silence script FIRST
+    // Entry point that imports the silence script FIRST (FIXED PATHS)
     '/index.tsx': {
       code: `// NUCLEAR ERROR SILENCE - Import silencer before anything else
-import "./lib/iframe-silence.css";
-import "./lib/iframe-silence.js";
+import "./styles/error-silence.css";
 
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 
+// NUCLEAR: Kill any error overlays that exist before mount
+const killOverlays = () => {
+  const selectors = ['#react-error-overlay', '.error-overlay', '[class*="error"]', '.sp-error'];
+  selectors.forEach(sel => {
+    try {
+      document.querySelectorAll(sel).forEach(el => {
+        if (el.id === 'root') return; // Don't kill root
+        (el as HTMLElement).style.cssText = 'display:none!important;visibility:hidden!important;opacity:0!important;';
+      });
+    } catch {}
+  });
+};
+
+// Run immediately and on interval
+killOverlays();
+setInterval(killOverlays, 200);
+
+// Patch onerror to suppress noise
+window.onerror = () => true;
+window.onunhandledrejection = (e) => { e.preventDefault(); return true; };
+
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);`,
+      hidden: true,
+    },
+    // Inline CSS file (avoids import resolution issues)
+    '/styles/error-silence.css': {
+      code: `/* NUCLEAR ERROR SILENCE - Hide ALL error overlays */
+#react-error-overlay,
+.error-overlay,
+[data-react-error-overlay],
+.sp-error-overlay,
+.sp-error,
+.sp-error-message,
+.sp-error-title,
+.sp-error-stack,
+.sp-error-banner,
+[class*="error-overlay"],
+[class*="errorOverlay"],
+[class*="ErrorOverlay"],
+div[style*="position: fixed"][style*="z-index: 9999"],
+div[style*="position: fixed"][style*="background"][style*="color: white"],
+div[style*="background-color: rgb(255, 0, 0)"],
+div[style*="background-color: red"],
+div[style*="background: red"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  left: -99999px !important;
+  z-index: -99999 !important;
+}`,
       hidden: true,
     },
   }), [code]);

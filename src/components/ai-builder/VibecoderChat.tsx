@@ -17,6 +17,7 @@ interface VibecoderChatProps {
   isStreaming: boolean;
   onCancel: () => void;
   messages: VibecoderMessage[];
+  messagesLoading?: boolean; // Prevent flash during message load
   onRateMessage: (messageId: string, rating: -1 | 0 | 1) => void;
   onRestoreToVersion: (messageId: string) => void;
   projectName?: string;
@@ -122,6 +123,7 @@ export function VibecoderChat({
   isStreaming, 
   onCancel, 
   messages,
+  messagesLoading = false,
   onRateMessage,
   onRestoreToVersion,
   projectName,
@@ -218,9 +220,11 @@ export function VibecoderChat({
     onSendMessage(prompt);
   };
 
-  // Show empty state only if there are no messages AND we're not actively streaming
-  // During streaming, we should show the agent progress even if messages haven't loaded yet
-  const isEmpty = messages.length === 0 && !isStreaming;
+  // Show empty state only if:
+  // 1. There are no messages AND
+  // 2. We're not actively streaming AND
+  // 3. Messages are not currently loading (prevents flash)
+  const isEmpty = messages.length === 0 && !isStreaming && !messagesLoading;
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background rounded-r-2xl">
