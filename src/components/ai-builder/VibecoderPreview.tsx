@@ -340,8 +340,8 @@ const SandpackRenderer = memo(function SandpackRenderer({
     // Entry point that imports the silence script FIRST
     '/index.tsx': {
       code: `// NUCLEAR ERROR SILENCE - Import silencer before anything else
-import "./iframe-silence.css";
-import "./iframe-silence.js";
+import "./lib/iframe-silence.css";
+import "./lib/iframe-silence.js";
 
 import React from "react";
 import { createRoot } from "react-dom/client";
