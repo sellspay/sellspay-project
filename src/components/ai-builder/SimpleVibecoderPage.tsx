@@ -109,11 +109,12 @@ export function SimpleVibecoderPage({ profileId }: SimpleVibecoderPageProps) {
   }, []);
 
   // Hook for project-scoped state management
-  const { purgeProject } = useProjectScopedState({
+  const { purgeProject, suppressNextProjectChangeReset } = useProjectScopedState({
     projectId: activeProjectId,
     userId: user?.id || null,
     onProjectChange: resetProjectState,
   });
+
   
   // Fetch user profile and credits
   useEffect(() => {
@@ -678,10 +679,16 @@ Analyze the error, identify the root cause in the code above, and regenerate the
       }
 
       const newProjectId = data.id;
-      
-      // Exit doorway FIRST so the canvas is visible
+
+      // Prevent the project-change isolation effect from wiping our just-started streaming state.
+      suppressNextProjectChangeReset();
+
+      // Exit doorway so the canvas is visible
       setShowDoorway(false);
       setActiveProjectId(newProjectId);
+
+      // Show immediate “AI is working” feedback
+      setStreamingLogs(['Starting build...']);
 
       // Add user message to chat immediately (optimistic)
       const userMessage: ChatMessage = {
@@ -690,12 +697,11 @@ Analyze the error, identify the root cause in the code above, and regenerate the
         content: prompt,
       };
       setMessages([userMessage]);
-      
+
       // Start streaming state
       setIsStreaming(true);
       setError(null);
       setCreditsError(null);
-      setStreamingLogs([]);
       setStreamingCode('');
 
       // Save user message to database
@@ -708,11 +714,11 @@ Analyze the error, identify the root cause in the code above, and regenerate the
       // Call the orchestrator DIRECTLY (bypass handleSendMessage to avoid closure issues)
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session?.access_token) {
         throw new Error('Not authenticated');
       }
-      
+
       const response = await fetch(`${supabaseUrl}/functions/v1/vibecoder-orchestrator`, {
         method: 'POST',
         headers: {
@@ -727,23 +733,23 @@ Analyze the error, identify the root cause in the code above, and regenerate the
           projectId: newProjectId,
         }),
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(errorText);
       }
-      
+
       if (!response.body) {
         throw new Error('No response stream');
       }
-      
+
       // Process SSE stream (same logic as handleSendMessage)
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
       let generatedCode = '';
       let summary = '';
-      const collectedLogs: string[] = [];
+      const collectedLogs: string[] = ['Starting build...'];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -847,6 +853,7 @@ Analyze the error, identify the root cause in the code above, and regenerate the
       setIsStreaming(false);
     }
   };
+
   
   // Show Magical Doorway when explicitly starting a new project
   // (single rendering path to avoid “prompt sent but build never starts” bugs)
@@ -957,7 +964,7 @@ Analyze the error, identify the root cause in the code above, and regenerate the
             )}>
               {viewMode === 'preview' && (
                 <SimplePreview
-                  key={refreshKey}
+                  key={`${activeProjectId ?? 'none'}:${refreshKey}`}
                   code={code}
                   isLoading={isStreaming}
                   onError={handlePreviewError}

@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 /**
  * useProjectScopedState
- * 
+ *
  * Ensures complete state isolation between projects by:
  * 1. Detecting project_id changes and triggering cleanup
  * 2. Providing project-scoped localStorage keys
@@ -30,6 +30,12 @@ export function useProjectScopedState({
 }: UseProjectScopedStateProps) {
   const prevProjectIdRef = useRef<string | null>(null);
   const isInitialMount = useRef(true);
+  const suppressNextProjectChangeResetRef = useRef(false);
+
+  // Allow callers (e.g., Magical Doorway) to switch projectId without wiping freshly-set streaming state.
+  const suppressNextProjectChangeReset = useCallback(() => {
+    suppressNextProjectChangeResetRef.current = true;
+  }, []);
 
   // Detect project changes and trigger cleanup
   useEffect(() => {
@@ -43,9 +49,17 @@ export function useProjectScopedState({
     // If project changed, perform cleanup
     if (projectId !== prevProjectIdRef.current) {
       const prevId = prevProjectIdRef.current;
-      
+
       console.log(`[ProjectScope] Project changed: ${prevId} → ${projectId}`);
-      
+
+      // If the caller asked us to suppress the reset, do so exactly once.
+      // This is critical for flows that intentionally set state immediately after switching projects.
+      if (suppressNextProjectChangeResetRef.current) {
+        suppressNextProjectChangeResetRef.current = false;
+        prevProjectIdRef.current = projectId;
+        return;
+      }
+
       // 1. Clear localStorage for the previous project
       if (prevId) {
         clearProjectLocalStorage(prevId);
@@ -62,34 +76,43 @@ export function useProjectScopedState({
   }, [projectId, onProjectChange]);
 
   // Generate project-scoped storage key
-  const getScopedKey = useCallback((key: string): string => {
-    if (!projectId) return `vibecoder:${key}:global`;
-    return `vibecoder:${key}:${projectId}`;
-  }, [projectId]);
+  const getScopedKey = useCallback(
+    (key: string): string => {
+      if (!projectId) return `vibecoder:${key}:global`;
+      return `vibecoder:${key}:${projectId}`;
+    },
+    [projectId],
+  );
 
   // Get value from project-scoped storage
-  const getProjectData = useCallback(<T>(key: string, defaultValue: T): T => {
-    try {
-      const scopedKey = getScopedKey(key);
-      const stored = localStorage.getItem(scopedKey);
-      if (stored) {
-        return JSON.parse(stored) as T;
+  const getProjectData = useCallback(
+    <T,>(key: string, defaultValue: T): T => {
+      try {
+        const scopedKey = getScopedKey(key);
+        const stored = localStorage.getItem(scopedKey);
+        if (stored) {
+          return JSON.parse(stored) as T;
+        }
+      } catch (e) {
+        console.warn(`[ProjectScope] Failed to read ${key}:`, e);
       }
-    } catch (e) {
-      console.warn(`[ProjectScope] Failed to read ${key}:`, e);
-    }
-    return defaultValue;
-  }, [getScopedKey]);
+      return defaultValue;
+    },
+    [getScopedKey],
+  );
 
   // Set value in project-scoped storage
-  const setProjectData = useCallback(<T>(key: string, value: T): void => {
-    try {
-      const scopedKey = getScopedKey(key);
-      localStorage.setItem(scopedKey, JSON.stringify(value));
-    } catch (e) {
-      console.warn(`[ProjectScope] Failed to write ${key}:`, e);
-    }
-  }, [getScopedKey]);
+  const setProjectData = useCallback(
+    <T,>(key: string, value: T): void => {
+      try {
+        const scopedKey = getScopedKey(key);
+        localStorage.setItem(scopedKey, JSON.stringify(value));
+      } catch (e) {
+        console.warn(`[ProjectScope] Failed to write ${key}:`, e);
+      }
+    },
+    [getScopedKey],
+  );
 
   // Clear all data for current project
   const clearCurrentProjectData = useCallback(() => {
@@ -137,7 +160,7 @@ export function useProjectScopedState({
       const lastSuccessAt = projectResult.data?.last_success_at || null;
 
       console.log(`[ProjectScope] Refreshed from DB: isBroken=${isBroken}, hasCode=${!!code}`);
-      
+
       return { code, isBroken, lastSuccessAt };
     } catch (err) {
       console.error('[ProjectScope] Failed to refresh from database:', err);
@@ -153,6 +176,8 @@ export function useProjectScopedState({
     nukeAllCaches,
     purgeProject,
     refreshFromDatabase,
+    suppressNextProjectChangeReset,
     currentProjectId: projectId,
   };
 }
+
