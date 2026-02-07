@@ -339,7 +339,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     // If we have code result, apply it
     if (job.code_result) {
       setCode(job.code_result);
-      toast.success('Generation completed!');
+      // Note: Removed toast - feedback shown in chat only
     }
     
     // If we have a plan result, show the plan approval card
@@ -395,9 +395,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
       // Apply the completed job's results
       if (currentJob.code_result) {
         setCode(currentJob.code_result);
-        toast.success('Your generation completed while you were away!', {
-          duration: 5000,
-        });
+        // Note: Removed toast - feedback shown in chat only
       }
       
       if (currentJob.plan_result) {
@@ -416,14 +414,7 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
     }
   }, [hasCompletedJob, currentJob, isLoadingJob, setCode, activeProjectId, addMessage, acknowledgeJob]);
 
-  // Show toast when there's an active job running
-  useEffect(() => {
-    if (hasActiveJob && currentJob) {
-      toast.info(`Generation in progress: "${currentJob.prompt.slice(0, 50)}..."`, {
-        duration: 3000,
-      });
-    }
-  }, [hasActiveJob, currentJob]);
+  // Note: Removed toast notification for active jobs - all feedback shown in chat only
 
   // AUTO-START: Pick up initial prompt from navigation state (passed from Hero)
   useEffect(() => {
