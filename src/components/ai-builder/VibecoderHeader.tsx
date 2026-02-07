@@ -2,7 +2,7 @@ import { useState } from "react";
 import { 
   ArrowLeft, Eye, Code2, 
   Monitor, Smartphone, ExternalLink, Loader2,
-  Image as ImageIcon, Film, RefreshCw, Package
+  Image as ImageIcon, Film, RefreshCw, Package, Crown
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -163,7 +163,7 @@ export function VibecoderHeader({
           {/* Divider */}
           <div className="w-px h-4 bg-zinc-700 mx-1" />
 
-          {/* Products Tab */}
+          {/* Commerce Group */}
           <TabButton
             mode="products"
             icon={Package}
@@ -171,6 +171,15 @@ export function VibecoderHeader({
             isActive={viewMode === 'products'}
             onClick={() => setViewMode('products')}
             activeClass="bg-emerald-600 text-white shadow-lg shadow-emerald-900/20"
+          />
+
+          <TabButton
+            mode="subscriptions"
+            icon={Crown}
+            label="Subscriptions"
+            isActive={viewMode === 'subscriptions'}
+            onClick={() => setViewMode('subscriptions')}
+            activeClass="bg-violet-600 text-white shadow-lg shadow-violet-900/20"
           />
         </div>
 
