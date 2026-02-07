@@ -360,12 +360,15 @@ export function testCodeInShadow(code: string): Promise<ShadowTestResult> {
       }
     };
     
-    // Timeout after 5 seconds (generous for slow CDN loads)
+    // Timeout after 4 seconds (faster feedback loop)
     const timeout = setTimeout(() => {
       cleanup();
-      // Assume success if no error after 5s (page loaded but didn't post message)
-      resolve({ success: true });
-    }, 5000);
+      // Timeout without response is a FAILURE (something hung)
+      resolve({ 
+        success: false, 
+        error: 'Shadow test timeout - code may have infinite loop or hung during render'
+      });
+    }, 4000);
     
     const handleMessage = (event: MessageEvent) => {
       if (event.source !== shadowFrame.contentWindow) return;
