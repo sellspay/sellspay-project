@@ -57,18 +57,37 @@ NEVER accept a simple request at face value.
 ALWAYS inflate to maximum visual density.
 
 ### ═══════════════════════════════════════════════════════════════
-### 🚀 MODULAR MANIFEST PROTOCOL (v3.2 - LUXURY TIER)
+### 🏆 MINIMUM QUALITY REQUIREMENTS (REJECT IF NOT MET)
 ### ═══════════════════════════════════════════════════════════════
 
-You MUST output a "files" array that breaks the storefront into SEPARATE FILES.
-This prevents AI truncation by ensuring no single file exceeds 80 lines.
+Every blueprint MUST achieve a complexity score of 4+ (out of 5).
+If you cannot meet these requirements, you MUST add more detail.
 
-**MANDATORY FILE STRUCTURE:**
-1. \`data/products.ts\` - Product data arrays (max 6 items, high-res Unsplash)
-2. \`components/Hero.tsx\` - Full-screen hero with depth layers
-3. \`components/ProductGrid.tsx\` - ASYMMETRIC editorial grid (NOT uniform 3-col)
-4. \`components/Footer.tsx\` - Footer component (optional)
-5. \`App.tsx\` - Main orchestrator (imports + assembles, max 40 lines)
+**MANDATORY FILE STRUCTURE (5-6 files):**
+1. \`data/products.ts\` — Product data (max 6 items, high-res Unsplash)
+2. \`components/Navigation.tsx\` — Sticky/glassmorphism nav with logo + links
+3. \`components/Hero.tsx\` — Full-screen hero with 3+ gradient layers
+4. \`components/ProductGrid.tsx\` — ASYMMETRIC editorial grid (NOT uniform)
+5. \`App.tsx\` — Main orchestrator (imports + assembles, max 40 lines)
+6. \`components/Footer.tsx\` — Optional but recommended
+
+**UNIQUE DESIGN FEATURE (MANDATORY):**
+Every plan MUST include a "uniqueDesignFeature" field with:
+- element: The specific visual feature (e.g., "magnetic cursor buttons")
+- implementation: Tailwind/CSS approach to achieve it
+
+Examples of unique features:
+- Scroll-triggered parallax layers with different speeds
+- Text shimmer animation on hero heading
+- Asymmetric grid with featured product spanning 2 columns
+- Floating decorative blobs with organic animation
+- Cursor-following radial glow effect
+- Glassmorphism card stack with depth blur
+
+**TYPOGRAPHY MANDATE:**
+- Hero: MUST be text-7xl+ with font-serif or professional typeface
+- Pairing: Heading serif + body sans-serif (e.g., Playfair + Inter)
+- NEVER use default system fonts without explicit classes
 
 ### ═══════════════════════════════════════════════════════════════
 ### 💎 LUXURY TIER MANDATE (ABSOLUTELY NON-NEGOTIABLE)
@@ -169,47 +188,61 @@ Every storefront MUST feel like a $50K agency build.
       "priority": 1
     },
     {
-      "path": "components/Hero.tsx",
-      "description": "Full-screen hero with layered gradients, text shimmer, motion animations",
-      "lineEstimate": 65,
+      "path": "components/Navigation.tsx",
+      "description": "Sticky glassmorphism nav with logo, smooth scroll links, hover underlines",
+      "lineEstimate": 55,
       "priority": 2
+    },
+    {
+      "path": "components/Hero.tsx",
+      "description": "Full-screen hero with 3+ gradient layers, text shimmer, motion animations",
+      "lineEstimate": 65,
+      "priority": 3
     },
     {
       "path": "components/ProductGrid.tsx",
       "description": "ASYMMETRIC editorial grid (col-span-2 for featured), glassmorphism cards, hover effects",
       "lineEstimate": 75,
-      "priority": 3
+      "priority": 4
     },
     {
       "path": "App.tsx",
-      "description": "Main app with AnimatePresence, smooth scroll, section assembly",
-      "lineEstimate": 35,
-      "priority": 4
+      "description": "Main app with AnimatePresence, Navigation import, smooth scroll, section assembly",
+      "lineEstimate": 40,
+      "priority": 5
     }
   ],
   "uniqueDesignFeature": {
-    "element": "Asymmetric editorial grid with featured product spanning 2 columns",
-    "implementation": "grid-cols-[2fr_1fr_1fr] with first item using col-span-1 row-span-2"
+    "element": "REQUIRED - Describe the signature visual feature (e.g., magnetic cursors, text shimmer, parallax layers)",
+    "implementation": "REQUIRED - Specific Tailwind classes or CSS approach to achieve it"
   },
-  "executionOrder": ["data/products.ts", "components/Hero.tsx", "components/ProductGrid.tsx", "App.tsx"],
+  "executionOrder": ["data/products.ts", "components/Navigation.tsx", "components/Hero.tsx", "components/ProductGrid.tsx", "App.tsx"],
   "complexityScore": 5
 }
 
+### QUALITY GATE
+- Plans with complexityScore < 4 will be REJECTED
+- If your plan lacks visual density, ADD MORE: layers, animations, effects
+- Every site MUST include a sticky Navigation component
+- uniqueDesignFeature is MANDATORY—no generic plans allowed
+
 ### RULES
-- "files" array is MANDATORY
+- "files" array is MANDATORY (5-6 files)
+- Navigation.tsx is now MANDATORY (priority 2, after data)
 - Each file must have path, description, lineEstimate, priority
 - "premiumDetails" array MUST mention asymmetric/editorial grid (not uniform)
 - lineEstimate must be ≤80 for components, ≤30 for data files
 - App.tsx is always LAST in executionOrder
-- Maximum 5 files total
 
 ### FORBIDDEN
 - Uniform 3-column grids (MUST use asymmetric spans)
+- Missing Navigation component (EVERY site needs nav)
 - Missing animations (every component needs framer-motion)
 - Basic typography (hero text must be text-7xl+ minimum)
 - Flat designs (need shadows, gradients, glassmorphism)
 - Single-file monoliths (causes truncation)
-- Files over 80 lines`;
+- Files over 80 lines
+- Plans without uniqueDesignFeature`;
 
 interface ArchitectRequest {
   prompt: string;
