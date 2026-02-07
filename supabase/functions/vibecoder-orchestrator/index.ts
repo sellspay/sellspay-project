@@ -241,8 +241,39 @@ function validateCodeStructure(code: string): { valid: boolean; error?: string }
       }
     }
   }
+  // Check 13: FILE SIZE LIMIT (Modular Constraint)
+  // Files over 3000 characters cause AI hallucination and bracket errors
+  const charCount = code.length;
+  if (charCount > 8000) {
+    return { 
+      valid: false, 
+      error: `Code is too long (${charCount} chars, max 8000). SIMPLIFY: reduce array items, remove sections, or combine components. Long files cause AI bracket hallucinations.` 
+    };
+  }
+  
+  // Check 14: LINE COUNT CHECK (200 line soft limit for AI reliability)
+  const lineCount = lines.length;
+  if (lineCount > 300) {
+    return { 
+      valid: false, 
+      error: `Code is too long (${lineCount} lines, max 300). SIMPLIFY the design: fewer products, simpler animations, less sections.` 
+    };
+  }
   
   return { valid: true };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LINE NUMBER EXTRACTOR - For precise error reporting
+// ═══════════════════════════════════════════════════════════════
+function findLineNumber(code: string, searchPattern: string | RegExp): number {
+  const lines = code.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    if (typeof searchPattern === 'string' ? lines[i].includes(searchPattern) : searchPattern.test(lines[i])) {
+      return i + 1; // 1-indexed line numbers
+    }
+  }
+  return -1;
 }
 
 // ═══════════════════════════════════════════════════════════════
