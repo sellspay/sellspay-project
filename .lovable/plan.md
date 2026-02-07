@@ -1,148 +1,114 @@
 
-# Fix Plan: AI Builder Preview Errors, Build Toast Spam, and Missing Live Logs
+# Nuclear Error Silence Protocol
 
-## Summary
-This plan addresses three critical bugs in the AI Builder:
-1. **Preview "spazzing"** - Sandpack rapidly flashing errors during code streaming
-2. **Build error toast spam** - Error notifications appearing repeatedly at the bottom
-3. **Live logs not showing** - AI thinking/logs only visible after completion, not live
+## The Problem
+The current noise suppression hook (`useSuppressPreviewNoise`) only patches the outer window's console and error handlers, but **Sandpack renders inside an iframe** with its own JavaScript context. Errors from the AI-generated code crash inside that iframe, trigger react-error-overlay, and spam the iframe's console—none of which is caught by the parent window patches.
+
+Additionally, the `ErrorDetector` component inside Sandpack is watching `sandpack.error` and sometimes mutates or reads frozen Error objects, causing secondary crashes.
+
+## Architecture Overview
+
+```text
+┌────────────────────────────────────────────────────────────────────┐
+│  PARENT WINDOW (Lovable App)                                       │
+│  • useSuppressPreviewNoise → patches console.error/warn            │
+│  • CSS hides .sp-error-overlay, #react-error-overlay               │
+│                                                                    │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  IFRAME (Sandpack Preview)                                   │  │
+│  │  • Has its OWN window + console + error overlay              │  │
+│  │  • react-error-overlay runs INSIDE this iframe               │  │
+│  │  • Errors here spam the IFRAME'S console, not parent's       │  │
+│  │  • Currently: NO suppression active inside iframe            │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+## Solution: Multi-Layer "Nuclear Silence" Shield
+
+### Layer 1: Inject CSS Into Sandpack Iframe
+Sandpack allows injecting custom CSS via a special file. We'll add styles that hide react-error-overlay and any crash banners inside the iframe itself.
+
+### Layer 2: Inject Runtime Silencer Script
+Sandpack supports custom entry files. We'll inject a tiny script that patches the iframe's `console.error` and `window.onerror` before React even boots.
+
+### Layer 3: Disable React Error Overlay at Compile Time
+Sandpack can be configured to disable the default react-error-overlay entirely using `showSandpackErrorOverlay={false}` (already set) AND by not including the error overlay dependency.
+
+### Layer 4: Strengthen Parent Window Suppression
+Expand the regex patterns in `useSuppressPreviewNoise` to catch additional noisy patterns like `MutationRecord`, `attributeName`, `SyntaxError`, and any Sandpack bundler spam.
+
+### Layer 5: CSS "!important" Nuclear Strike on All Error UI
+Expand the existing CSS block to target every known Sandpack/React error class, including iframe-injected overlays and the `.sp-error-message` banner.
 
 ---
 
-## Root Cause Analysis
+## Technical Changes
 
-### Issue 1: Preview Spazzing During Streaming
-**Problem:** During code streaming, Sandpack receives incomplete/invalid code chunks every ~500ms and tries to compile them. Each failed compile triggers the `ErrorDetector` which reports a "new" error (since the message text changes slightly each time), causing rapid visual error flashing.
+### 1. Expand Noise Suppression Patterns
+**File:** `src/components/ai-builder/hooks/useSuppressPreviewNoise.ts`
 
-**Root Cause:** The `ErrorDetector` component in `VibecoderPreview.tsx` compares errors by exact string match. During streaming, the code is constantly changing and producing different error messages, so each one is treated as "new" and reported.
+Add additional regex patterns to silence:
+- `MutationRecord` / `attributeName` (the specific error in your console)
+- `SyntaxError` patterns from bundler
+- `Cannot read properties of undefined`
+- Sandpack bundler noise (`/sandbox\.`, `/static\/js\/`)
 
-**Solution:** Suppress error reporting while `isStreaming` is true. Only report errors after streaming completes and the code stabilizes.
-
-### Issue 2: Build Error Toast Spam
-**Problem:** The `FixErrorToast` appears repeatedly because every error from `ErrorDetector` triggers `handlePreviewError`, which sets `showFixToast(true)` each time.
-
-**Root Cause:** Same as Issue 1 - errors are reported too frequently during streaming. Additionally, `handlePreviewError` also calls `triggerSelfCorrection` which updates agent state, causing more re-renders.
-
-**Solution:** Gate error handling behind streaming state - only show the toast when streaming is complete AND an error persists.
-
-### Issue 3: Live Logs Not Showing
-**Problem:** The `liveSteps` and `agentLogs` props are passed to `VibecoderChat` but **never rendered**. The component defines `LiveBuildingCard` but never uses it. The `LiveThought` component exists but is never imported.
-
-**Root Cause:** Dead code - the rendering logic for live logs was removed or never connected. The props flow correctly from `AIBuilderCanvas` → `VibecoderChat`, but the chat component ignores them.
-
-**Solution:** Render the `LiveThought` component (or `LiveBuildingCard`) inside `VibecoderChat` when the agent is actively running.
-
----
-
-## Implementation Steps
-
-### Step 1: Fix Preview Error Detection During Streaming
+### 2. Inject Silence Script Into Sandpack Files
 **File:** `src/components/ai-builder/VibecoderPreview.tsx`
 
-Update the `SandpackRenderer` and `VibecoderPreview` to accept an `isStreaming` prop and pass it to `ErrorDetector`. The `ErrorDetector` will suppress error reporting while streaming is active.
+Add a hidden file to the Sandpack `files` object that:
+- Patches `window.onerror` and `window.onunhandledrejection` inside the iframe
+- Patches `console.error` and `console.warn` inside the iframe
+- Removes any DOM elements that look like error overlays every 500ms (mutation observer fallback)
 
-Changes:
-- Add `isStreaming` prop to `SandpackRenderer` component signature
-- Add `isStreaming` prop to `ErrorDetector` component
-- Only report errors when `isStreaming` is false
-- Pass `isStreaming` from `VibecoderPreview` through to `ErrorDetector`
+### 3. Inject "Nuclear CSS" Into Iframe
+**File:** `src/components/ai-builder/VibecoderPreview.tsx`
 
-### Step 2: Gate Toast Display Behind Streaming State
-**File:** `src/components/ai-builder/AIBuilderCanvas.tsx`
+Add a hidden CSS file that hides:
+- `#react-error-overlay`
+- `.error-overlay`
+- `[data-react-error-overlay]`
+- Any `div` with red background and "Error" text (fallback)
 
-Update `handlePreviewError` to only show the toast and trigger self-correction when NOT streaming:
+### 4. Safer ErrorDetector Logic
+**File:** `src/components/ai-builder/VibecoderPreview.tsx`
 
-```typescript
-const handlePreviewError = useCallback((errorMsg: string) => {
-  // ONLY show error UI when streaming is complete
-  if (isStreaming) return;
-  
-  setPreviewError(errorMsg);
-  setShowFixToast(true);
-  triggerSelfCorrection(errorMsg);
-}, [isStreaming, triggerSelfCorrection]);
-```
+Wrap ALL reads of `sandpack.error` in try/catch with read-only guards:
+- Never pass the original Error object reference
+- Clone the message string immediately
+- Add a debounce/throttle to prevent rapid-fire re-reporting
 
-Also update the toast render condition to include `!isStreaming`.
+### 5. Strengthen Parent CSS
+**File:** `src/components/ai-builder/VibecoderPreview.tsx`
 
-### Step 3: Render Live Logs in Chat
-**File:** `src/components/ai-builder/VibecoderChat.tsx`
-
-Import and render the `LiveThought` component when the agent is actively running. The component should appear:
-- After the last message in the chat
-- Before the empty state (when streaming starts with no messages yet)
-- Show `agentLogs` (the more comprehensive logs from the agent loop)
-
-Changes:
-- Import `LiveThought` from `./LiveThought`
-- Add conditional render of `LiveThought` when `isStreaming` or `isAgentMode` is true
-- Pass `agentLogs` (or fall back to `liveSteps`) and `isThinking={isStreaming}` props
-- Position it at the bottom of the messages list, before the scroll anchor
-
----
-
-## Technical Details
-
-### Error Suppression Logic
-The key insight is that during streaming, the code is intentionally incomplete. Errors are expected and normal. We should only surface errors when:
-1. Streaming has finished (`isStreaming === false`)
-2. The final compiled code still has an error
-3. The error persists for at least one render cycle (debounce)
-
-### Live Logs Data Flow
-```
-Edge Function SSE → useStreamingCode.onLogUpdate → setLiveSteps → AIBuilderCanvas
-                                                 → onStreamLog → useAgentLoop.addLog → agentLogs
-                                                 
-Both paths flow to VibecoderChat via props, but currently nothing renders them.
-```
-
-### LiveThought Component Usage
-The `LiveThought` component (already exists) provides:
-- Collapsible log viewer with expand/collapse toggle
-- Live timer showing seconds elapsed
-- Auto-scroll to latest log
-- Clean "Execution Log" UI with terminal styling
-- Handles both active thinking and finished states
+Expand the `SANDPACK_HEIGHT_FIX` CSS to include:
+- `.cm-diagnosticMessage` (CodeMirror inline errors)
+- `.sp-bridge-frame` error UI
+- Any element with `position: fixed` and red color
 
 ---
 
 ## Files to Modify
 
-1. **`src/components/ai-builder/VibecoderPreview.tsx`**
-   - Pass `isStreaming` prop through to ErrorDetector
-   - Suppress error reporting during streaming
-
-2. **`src/components/ai-builder/AIBuilderCanvas.tsx`**
-   - Gate `handlePreviewError` behind `!isStreaming`
-   - Update toast render condition
-
-3. **`src/components/ai-builder/VibecoderChat.tsx`**
-   - Import `LiveThought` component
-   - Render it when agent is running or streaming
-   - Position after messages, before scroll anchor
+| File | Change Summary |
+|------|----------------|
+| `src/components/ai-builder/hooks/useSuppressPreviewNoise.ts` | Add more regex patterns for MutationRecord, SyntaxError, bundler noise |
+| `src/components/ai-builder/VibecoderPreview.tsx` | Inject silencer script + CSS into Sandpack files, strengthen parent CSS, safer ErrorDetector |
+| `src/lib/vibecoder-stdlib.ts` | Add iframe-silence.js and iframe-silence.css entries |
 
 ---
 
 ## Expected Outcome
+1. **No overlay ever** - the red/white error screen will never appear, inside or outside the iframe
+2. **No console spam** - errors from the iframe will be silently caught and dropped
+3. **Toast-only feedback** - the `FixErrorToast` at the bottom remains the only error UI
+4. **Streaming stability** - errors during streaming are completely suppressed since `isStreaming` guard is active
 
-After these fixes:
-1. **Preview stays stable during streaming** - No error flashing, smooth code updates
-2. **Toast only appears once** - Shows only after generation completes if an error persists
-3. **Live logs visible in real-time** - User sees collapsible "Thought for Xs" with streaming logs as AI works
-
----
-
-## Risk Assessment
-
-**Low Risk:**
-- Changes are isolated to error handling and UI rendering
-- No database or backend changes
-- No changes to the core streaming/generation logic
-- All changes are additive (rendering existing data) or gating (suppressing premature UI)
-
-**Testing Notes:**
-- Test with a simple prompt like "Make the colors white and green"
-- Verify no error spam during streaming
-- Verify the thinking logs appear and update live
-- Verify toast only shows if final code has an error
+## Testing Checklist
+After implementation:
+1. Generate code that intentionally has a syntax error → No overlay, toast appears
+2. Generate code with missing import → No overlay, toast appears
+3. Generate code with undefined function call → No infinite loop, toast appears
+4. Watch console during generation → No spam
+5. Complete a successful generation → Preview renders cleanly
