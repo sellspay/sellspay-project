@@ -27,6 +27,28 @@ export interface VibecoderMessage {
   };
 }
 
+function isSameMessage(a: VibecoderMessage, b: VibecoderMessage) {
+  return (
+    a.role === b.role &&
+    (a.content ?? '').trim() === (b.content ?? '').trim() &&
+    (a.code_snapshot ?? '').trim() === (b.code_snapshot ?? '').trim()
+  );
+}
+
+/**
+ * UI-level dedupe to protect against accidental double-appends.
+ * We only collapse *consecutive* duplicates so we don’t destroy legitimate repeated content.
+ */
+function dedupeConsecutiveMessages(items: VibecoderMessage[]) {
+  const out: VibecoderMessage[] = [];
+  for (const m of items) {
+    const last = out[out.length - 1];
+    if (last && isSameMessage(last, m)) continue;
+    out.push(m);
+  }
+  return out;
+}
+
 export function useVibecoderProjects() {
   const { user } = useAuth();
   const [projects, setProjects] = useState<VibecoderProject[]>([]);
@@ -54,11 +76,11 @@ export function useVibecoderProjects() {
         console.error('Failed to load projects:', error);
       } else {
         setProjects(data as VibecoderProject[]);
-        
-        // Read project ID from URL 
+
+        // Read project ID from URL
         const urlParams = new URLSearchParams(window.location.search);
         const urlProjectId = urlParams.get('project');
-        
+
         // If URL has a valid project ID that exists in user's projects, use it
         if (urlProjectId && data.some(p => p.id === urlProjectId)) {
           if (activeProjectId !== urlProjectId) {
@@ -77,21 +99,21 @@ export function useVibecoderProjects() {
 
   // Track previous project to detect actual changes
   const prevProjectIdRef = useRef<string | null>(null);
-  
+
   // Load messages when active project changes
   useEffect(() => {
     // Only clear messages if we're switching to a DIFFERENT project
     // This prevents flicker when the same project is re-mounted
-    const isProjectSwitch = prevProjectIdRef.current !== null && 
-                            prevProjectIdRef.current !== activeProjectId;
-    
+    const isProjectSwitch = prevProjectIdRef.current !== null &&
+      prevProjectIdRef.current !== activeProjectId;
+
     if (isProjectSwitch) {
       // CRITICAL: Clear messages only on actual project switch to prevent cross-project bleed
       setMessages([]);
     }
-    
+
     prevProjectIdRef.current = activeProjectId;
-    
+
     if (!activeProjectId) {
       return;
     }
@@ -107,7 +129,8 @@ export function useVibecoderProjects() {
       if (error) {
         console.error('Failed to load messages:', error);
       } else {
-        setMessages(data as VibecoderMessage[]);
+        const next = dedupeConsecutiveMessages(data as VibecoderMessage[]);
+        setMessages(next);
       }
       setMessagesLoading(false);
     };
@@ -140,12 +163,12 @@ export function useVibecoderProjects() {
     setProjects(prev => [newProject, ...prev]);
     setActiveProjectId(newProject.id);
     setMessages([]); // Clear messages for new project
-    
+
     // Update URL without reloading so they can refresh and stay here
     const url = new URL(window.location.href);
     url.searchParams.set('project', newProject.id);
     window.history.replaceState(null, '', url.toString());
-    
+
     return newProject;
   }, [user]);
 
@@ -153,7 +176,7 @@ export function useVibecoderProjects() {
   // Accepts an optional name derived from the first prompt for smart project naming
   const ensureProject = useCallback(async (promptBasedName?: string): Promise<string | null> => {
     if (activeProjectId) return activeProjectId;
-    
+
     const newProject = await createProject(promptBasedName);
     return newProject?.id ?? null;
   }, [activeProjectId, createProject]);
@@ -179,13 +202,13 @@ export function useVibecoderProjects() {
 
       // 3. Update local state
       setProjects(prev => prev.filter(p => p.id !== projectId));
-      
+
       // 4. If deleted project was active, select another or clear
       if (activeProjectId === projectId) {
         const remaining = projects.filter(p => p.id !== projectId);
         setActiveProjectId(remaining.length > 0 ? remaining[0].id : null);
         setMessages([]); // Clear messages since project is gone
-        
+
         // 5. Clear URL parameter if it referenced the deleted project
         const url = new URL(window.location.href);
         if (url.searchParams.get('project') === projectId) {
@@ -193,7 +216,7 @@ export function useVibecoderProjects() {
           window.history.replaceState(null, '', url.toString());
         }
       }
-      
+
       return true;
     } catch (err) {
       console.error('Failed to delete project:', err);
@@ -213,7 +236,7 @@ export function useVibecoderProjects() {
       return false;
     }
 
-    setProjects(prev => prev.map(p => 
+    setProjects(prev => prev.map(p =>
       p.id === projectId ? { ...p, name: newName } : p
     ));
     return true;
@@ -232,20 +255,40 @@ export function useVibecoderProjects() {
     const targetProjectId = forProjectId || activeProjectId;
     if (!targetProjectId) return null;
 
-    // Create optimistic message for immediate UI update
-    const optimisticMessage: VibecoderMessage = {
-      id: `optimistic-${Date.now()}`,
-      project_id: targetProjectId,
-      role,
-      content,
-      code_snapshot: codeSnapshot ?? null,
-      rating: 0,
-      created_at: new Date().toISOString(),
-    };
-
-    // OPTIMISTIC UPDATE: Immediately show the message in UI
-    // This ensures user sees their prompt right away even if project was just created
-    setMessages(prev => [...prev, optimisticMessage]);
+    // Soft guard: if we’re about to append an identical message consecutively, skip the optimistic append.
+    // (DB insert still happens; this is only to prevent the UI from exploding.)
+    setMessages(prev => {
+      const last = prev[prev.length - 1];
+      if (last && last.project_id === targetProjectId && last.role === role) {
+        const lastComparable: VibecoderMessage = {
+          ...last,
+          content: last.content ?? '',
+          code_snapshot: last.code_snapshot ?? null,
+        };
+        const nextComparable: VibecoderMessage = {
+          id: 'tmp',
+          project_id: targetProjectId,
+          role,
+          content,
+          code_snapshot: codeSnapshot ?? null,
+          rating: 0,
+          created_at: new Date().toISOString(),
+        };
+        if (isSameMessage(lastComparable, nextComparable)) {
+          return prev;
+        }
+      }
+      const optimisticMessage: VibecoderMessage = {
+        id: `optimistic-${Date.now()}`,
+        project_id: targetProjectId,
+        role,
+        content,
+        code_snapshot: codeSnapshot ?? null,
+        rating: 0,
+        created_at: new Date().toISOString(),
+      };
+      return [...prev, optimisticMessage];
+    });
 
     const { data, error } = await supabase
       .from('vibecoder_messages')
@@ -261,17 +304,28 @@ export function useVibecoderProjects() {
     if (error) {
       console.error('Failed to add message:', error);
       // Remove optimistic message on error
-      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+      setMessages(prev => prev.filter(m => !m.id.startsWith('optimistic-')));
       return null;
     }
 
     const newMessage = data as VibecoderMessage;
-    
-    // Replace optimistic message with real one from DB
-    setMessages(prev => prev.map(m => 
-      m.id === optimisticMessage.id ? newMessage : m
-    ));
-    
+
+    // Replace the *last* optimistic message matching role/content/code_snapshot with the real one.
+    // This is more robust when multiple optimistic messages exist.
+    setMessages(prev => {
+      const idx = [...prev].reverse().findIndex(m => {
+        if (!m.id.startsWith('optimistic-')) return false;
+        return m.project_id === targetProjectId && m.role === role &&
+          (m.content ?? '').trim() === (content ?? '').trim() &&
+          (m.code_snapshot ?? '').trim() === (codeSnapshot ?? '').trim();
+      });
+      if (idx === -1) return prev;
+      const realIndex = prev.length - 1 - idx;
+      const next = prev.slice();
+      next[realIndex] = newMessage;
+      return dedupeConsecutiveMessages(next);
+    });
+
     return newMessage;
   }, [activeProjectId]);
 
@@ -338,7 +392,7 @@ export function useVibecoderProjects() {
       if (fetchError) {
         console.error('Failed to re-fetch messages:', fetchError);
       } else {
-        setMessages(freshMessages as VibecoderMessage[]);
+        setMessages(dedupeConsecutiveMessages(freshMessages as VibecoderMessage[]));
       }
 
       return restoredCode;
@@ -359,14 +413,14 @@ export function useVibecoderProjects() {
       .order('created_at', { ascending: true });
 
     if (!error && data) {
-      setMessages(data as VibecoderMessage[]);
+      setMessages(dedupeConsecutiveMessages(data as VibecoderMessage[]));
     }
   }, [activeProjectId]);
 
   // Select project - also syncs URL so refresh lands on the same project
   const selectProject = useCallback((projectId: string) => {
     setActiveProjectId(projectId);
-    
+
     // Sync URL query param for refresh consistency
     const url = new URL(window.location.href);
     url.searchParams.set('project', projectId);
@@ -377,7 +431,7 @@ export function useVibecoderProjects() {
   const clearActiveProject = useCallback(() => {
     setActiveProjectId(null);
     setMessages([]);
-    
+
     // Clear URL parameter
     const url = new URL(window.location.href);
     url.searchParams.delete('project');
