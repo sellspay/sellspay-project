@@ -194,6 +194,54 @@ function validateCodeStructure(code: string): { valid: boolean; error?: string }
     };
   }
   
+  // Check 10: FRAGMENT DETECTION - Block lazy AI responses with placeholders
+  const fragmentPatterns = [
+    { pattern: /\/\/\s*\.\.\./g, name: '// ...' },
+    { pattern: /\/\/\s*rest\s+of\s+code/gi, name: '// rest of code' },
+    { pattern: /\/\/\s*\.\.\.\s*existing/gi, name: '// ... existing' },
+    { pattern: /\/\/\s*Add\s+more\s+here/gi, name: '// Add more here' },
+    { pattern: /\/\/\s*etc\./gi, name: '// etc.' },
+    { pattern: /\/\*\s*\.\.\.\s*\*\//g, name: '/* ... */' },
+    { pattern: /create\s+a\s+new\s+(file|component)/gi, name: 'new file suggestion' },
+  ];
+  
+  for (const { pattern, name } of fragmentPatterns) {
+    if (pattern.test(code)) {
+      return { 
+        valid: false, 
+        error: `Detected placeholder fragment "${name}" - AI must output COMPLETE code, no shortcuts` 
+      };
+    }
+  }
+  
+  // Check 11: Trailing comma at end of file (syntax error)
+  if (trimmedCode.endsWith(',}') || trimmedCode.endsWith(',') || trimmedCode.endsWith(',);')) {
+    return { 
+      valid: false, 
+      error: 'Code ends with trailing comma - syntax error detected' 
+    };
+  }
+  
+  // Check 12: Detect mid-line cuts (common in truncated streams)
+  // Look for lines that end with operators or incomplete tokens
+  const lines = code.split('\n');
+  const lastFewLines = lines.slice(-5);
+  for (const line of lastFewLines) {
+    const trimmedLine = line.trim();
+    // Skip empty lines and closing braces
+    if (!trimmedLine || trimmedLine === '}' || trimmedLine === ');' || trimmedLine === '},' || trimmedLine === '});') continue;
+    // Check for lines ending with operators (likely cut mid-expression)
+    if (/[+\-*/%=<>&|,{(\[]$/.test(trimmedLine) && !trimmedLine.endsWith('=>')) {
+      // Exception: arrow functions and specific patterns are OK
+      if (!trimmedLine.endsWith('=> {') && !trimmedLine.endsWith('=> (')) {
+        return { 
+          valid: false, 
+          error: `Code appears truncated - line ends with operator: "${trimmedLine.substring(0, 50)}..."` 
+        };
+      }
+    }
+  }
+  
   return { valid: true };
 }
 
