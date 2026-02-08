@@ -10,6 +10,7 @@ import { type AgentStep } from './AgentProgress';
 import { LiveThought } from './LiveThought';
 import { PlanApprovalCard } from './PlanApprovalCard';
 import type { PlanData } from './useStreamingCode';
+import { type StylePreset, generateStylePrompt } from './stylePresets';
 
 interface VibecoderChatProps {
   onSendMessage: (displayMessage: string, aiPrompt?: string) => void;
@@ -31,9 +32,9 @@ interface VibecoderChatProps {
   onModelChange?: (model: AIModel) => void;
   // Billing callback
   onOpenBilling?: () => void;
-  // Plan mode state
-  isPlanMode?: boolean;
-  onPlanModeChange?: (isPlanMode: boolean) => void;
+  // Controlled style state
+  activeStyle?: StylePreset;
+  onStyleChange?: (style: StylePreset) => void;
   // Pending plan for approval
   pendingPlan?: { plan: PlanData; originalPrompt: string } | null;
   onApprovePlan?: (originalPrompt: string) => void;
@@ -134,8 +135,8 @@ export function VibecoderChat({
   activeModel,
   onModelChange,
   onOpenBilling,
-  isPlanMode,
-  onPlanModeChange,
+  activeStyle,
+  onStyleChange,
   pendingPlan,
   onApprovePlan,
   onRejectPlan,
@@ -175,6 +176,7 @@ export function VibecoderChat({
     isPlanMode: boolean; 
     model: AIModel; 
     attachments: File[];
+    style?: StylePreset;
   }) => {
     if (!input.trim() || isStreaming) return;
     
@@ -193,10 +195,11 @@ export function VibecoderChat({
     // Build the prompt that goes to the AI backend (may include system instructions)
     let aiPrompt = cleanPrompt;
     
-    // PLAN MODE: Inject the Architect instruction so AI returns a plan instead of code
-    // IMPORTANT: This is a BACKEND-ONLY directive - the user should NOT see this in their message
-    if (options.isPlanMode) {
-      aiPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${cleanPrompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
+    // STYLE INJECTION: If a style is selected, prepend the style context to the AI prompt
+    // This ensures the generated code follows the selected visual design system
+    if (options.style) {
+      const styleContext = generateStylePrompt(options.style);
+      aiPrompt = `${styleContext}\n\nUser Request: ${cleanPrompt}`;
     }
     
     // Prepend model context if using a non-default model
@@ -338,8 +341,6 @@ export function VibecoderChat({
         activeModel={activeModel}
         onModelChange={onModelChange}
         onOpenBilling={onOpenBilling}
-        isPlanMode={isPlanMode}
-        onPlanModeChange={onPlanModeChange}
       />
     </div>
   );

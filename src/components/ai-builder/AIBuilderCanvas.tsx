@@ -1577,8 +1577,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 activeModel={activeModel}
                 onOpenBilling={() => window.open('/pricing', '_blank')}
                 onModelChange={handleModelChange}
-                isPlanMode={isPlanMode}
-                onPlanModeChange={setIsPlanMode}
                 pendingPlan={pendingPlan}
                 onApprovePlan={handleApprovePlan}
                 onRejectPlan={handleRejectPlan}
