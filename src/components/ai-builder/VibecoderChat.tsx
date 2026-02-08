@@ -40,6 +40,8 @@ interface VibecoderChatProps {
   pendingPlan?: { plan: PlanData; originalPrompt: string } | null;
   onApprovePlan?: (originalPrompt: string) => void;
   onRejectPlan?: () => void;
+  // NEW: Undo capability
+  canUndo?: boolean;
 }
 
 // Live Building Card - shows steps as they stream in
@@ -149,6 +151,7 @@ export function VibecoderChat({
   pendingPlan,
   onApprovePlan,
   onRejectPlan,
+  canUndo = false,
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -306,6 +309,7 @@ export function VibecoderChat({
                 messages={messages}
                 onRateMessage={onRateMessage}
                 onRestoreToVersion={onRestoreToVersion}
+                canUndo={canUndo}
               />
             )}
             

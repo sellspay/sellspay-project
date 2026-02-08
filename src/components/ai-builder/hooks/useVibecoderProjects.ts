@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke';
+import { hasCompleteSentinel } from '../useStreamingCode';
 
 export interface VibecoderProject {
   id: string;
@@ -417,6 +418,54 @@ export function useVibecoderProjects() {
     }
   }, [activeProjectId]);
 
+  // UNDO LAST CHANGE: Quick undo that reverts to the previous code snapshot
+  // Only works if there are at least 2 messages with code snapshots (current + previous)
+  const undoLastChange = useCallback(async (): Promise<string | null> => {
+    // Find all assistant messages with code snapshots that passed linter (have sentinel)
+    const withValidCode = messages.filter(m => 
+      m.role === 'assistant' && 
+      m.code_snapshot && 
+      hasCompleteSentinel(m.code_snapshot)
+    );
+    
+    // Need at least 2 valid snapshots to undo (current + previous)
+    if (withValidCode.length < 2) {
+      console.log('[undoLastChange] Cannot undo - need at least 2 valid code snapshots');
+      return null;
+    }
+    
+    // Get the second-to-last message (the previous version)
+    const previousMessage = withValidCode[withValidCode.length - 2];
+    
+    console.log('[undoLastChange] Reverting to message:', previousMessage.id);
+    return await restoreToVersion(previousMessage.id);
+  }, [messages, restoreToVersion]);
+
+  // GET LAST SAFE VERSION: Returns the most recent code that passed linter checks
+  // Used to ensure we only restore to "healthy" code versions
+  const getLastSafeVersion = useCallback((): { messageId: string; code: string } | null => {
+    const withValidCode = messages.filter(m => 
+      m.role === 'assistant' && 
+      m.code_snapshot && 
+      hasCompleteSentinel(m.code_snapshot)
+    );
+    
+    if (withValidCode.length === 0) return null;
+    
+    const last = withValidCode[withValidCode.length - 1];
+    return { messageId: last.id, code: last.code_snapshot! };
+  }, [messages]);
+
+  // CAN UNDO: Check if undo is possible (at least 2 valid code snapshots)
+  const canUndo = useCallback((): boolean => {
+    const withValidCode = messages.filter(m => 
+      m.role === 'assistant' && 
+      m.code_snapshot && 
+      hasCompleteSentinel(m.code_snapshot)
+    );
+    return withValidCode.length >= 2;
+  }, [messages]);
+
   // Select project - also syncs URL so refresh lands on the same project
   const selectProject = useCallback((projectId: string) => {
     setActiveProjectId(projectId);
@@ -457,5 +506,9 @@ export function useVibecoderProjects() {
     getPreviousCodeSnapshot,
     restoreToVersion,
     refreshMessages,
+    // New undo functionality
+    undoLastChange,
+    getLastSafeVersion,
+    canUndo,
   };
 }
