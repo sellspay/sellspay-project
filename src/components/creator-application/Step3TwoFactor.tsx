@@ -52,7 +52,10 @@ export default function Step3TwoFactor({ userEmail, mfaEnabled, onMfaEnabled, ot
   };
 
   const verifyOtp = async () => {
-    if (otpCode.length !== 6) {
+    // Trim and clean the OTP code
+    const cleanCode = otpCode.trim();
+    
+    if (cleanCode.length !== 6) {
       toast.error('Please enter the 6-digit code');
       return;
     }
@@ -67,11 +70,16 @@ export default function Step3TwoFactor({ userEmail, mfaEnabled, onMfaEnabled, ot
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      console.log('Sending OTP verification:', { 
+        codeLength: cleanCode.length,
+        codeChars: cleanCode.split('').map(c => c.charCodeAt(0))
+      });
+
       // Pass the verification token for stateless verification
       const { data, error } = await supabase.functions.invoke('verify-otp', {
         body: { 
           userId: user.id, 
-          code: otpCode,
+          code: cleanCode,
           verificationToken,
           purpose: 'enable_mfa'
         },
