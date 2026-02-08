@@ -4,8 +4,9 @@ import {
   Plus, Send, Image as ImageIcon, 
   History, Settings, X, Square,
   Sparkles, ChevronDown, Bot, Zap, BrainCircuit, FileText, ArrowUp,
-  Paperclip, Film, Video, Coins, Mic, Lock
+  Paperclip, Film, Video, Coins, Mic, Lock, Palette, Moon, Sun, Leaf, Waves
 } from "lucide-react";
+import { STYLE_PRESETS, type StylePreset } from './stylePresets';
 import { cn } from "@/lib/utils";
 
 // Speech Recognition type declarations
@@ -86,6 +87,7 @@ interface ChatInputBarProps {
     isPlanMode: boolean; 
     model: AIModel; 
     attachments: File[];
+    style?: StylePreset;
   }) => void;
   isGenerating: boolean;
   onCancel: () => void;
@@ -99,9 +101,9 @@ interface ChatInputBarProps {
   onModelChange?: (model: AIModel) => void;
   // Paywall callback
   onOpenBilling?: () => void;
-  // Controlled plan mode state
-  isPlanMode?: boolean;
-  onPlanModeChange?: (isPlanMode: boolean) => void;
+  // Controlled style state
+  activeStyle?: StylePreset;
+  onStyleChange?: (style: StylePreset) => void;
 }
 
 // Portal component to render children directly on document.body
@@ -249,25 +251,21 @@ export function ChatInputBar({
   activeModel,
   onModelChange,
   onOpenBilling,
-  isPlanMode: controlledPlanMode,
-  onPlanModeChange,
+  activeStyle,
+  onStyleChange,
 }: ChatInputBarProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
-  // Use controlled plan mode if provided, otherwise use local state
-  const [internalPlanMode, setInternalPlanMode] = useState(false);
-  const isPlanMode = controlledPlanMode ?? internalPlanMode;
-  const togglePlanMode = () => {
-    const newValue = !isPlanMode;
-    if (onPlanModeChange) {
-      onPlanModeChange(newValue);
-    } else {
-      setInternalPlanMode(newValue);
-    }
-  };
+  const [showStyleMenu, setShowStyleMenu] = useState(false);
+  
   // Use controlled model if provided, otherwise use local state
   const [internalModel, setInternalModel] = useState<AIModel>(AI_MODELS.code[0]);
   const selectedModel = activeModel ?? internalModel;
+  
+  // Use controlled style if provided, otherwise use local state
+  const [internalStyle, setInternalStyle] = useState<StylePreset>(STYLE_PRESETS[0]);
+  const selectedStyle = activeStyle ?? internalStyle;
+  
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState(""); // Live speech text (popup only)
@@ -276,12 +274,14 @@ export function ChatInputBar({
   // Portal positioning state
   const [modelMenuCoords, setModelMenuCoords] = useState({ top: 0, left: 0 });
   const [plusMenuCoords, setPlusMenuCoords] = useState({ top: 0, left: 0 });
+  const [styleMenuCoords, setStyleMenuCoords] = useState({ top: 0, left: 0 });
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const speechRecognitionRef = useRef<SpeechRecognition | null>(null);
   const modelButtonRef = useRef<HTMLButtonElement>(null);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
+  const styleButtonRef = useRef<HTMLButtonElement>(null);
 
   // Ref to remember text before speech started (for appending)
   const promptBeforeSpeechRef = useRef("");
@@ -471,9 +471,10 @@ export function ChatInputBar({
     }
 
     onSubmit({ 
-      isPlanMode, 
+      isPlanMode: false, // Plan mode is now internal only
       model: selectedModel,
-      attachments 
+      attachments,
+      style: selectedModel.category === 'code' ? selectedStyle : undefined,
     });
     setAttachments([]);
   };
@@ -499,6 +500,7 @@ export function ChatInputBar({
     }
     setShowModelMenu(!showModelMenu);
     setShowMenu(false);
+    setShowStyleMenu(false);
   };
 
   // Toggle plus menu with position calculation
@@ -512,6 +514,44 @@ export function ChatInputBar({
     }
     setShowMenu(!showMenu);
     setShowModelMenu(false);
+    setShowStyleMenu(false);
+  };
+  
+  // Toggle style menu with position calculation
+  const toggleStyleMenu = () => {
+    if (!showStyleMenu && styleButtonRef.current) {
+      const rect = styleButtonRef.current.getBoundingClientRect();
+      setStyleMenuCoords({
+        left: rect.left,
+        top: rect.top,
+      });
+    }
+    setShowStyleMenu(!showStyleMenu);
+    setShowMenu(false);
+    setShowModelMenu(false);
+  };
+  
+  // Handle style selection
+  const handleStyleSelect = (style: StylePreset) => {
+    if (onStyleChange) {
+      onStyleChange(style);
+    } else {
+      setInternalStyle(style);
+    }
+    setShowStyleMenu(false);
+  };
+  
+  // Get icon component for style
+  const getStyleIcon = (iconName: StylePreset['icon']) => {
+    switch (iconName) {
+      case 'moon': return Moon;
+      case 'zap': return Zap;
+      case 'sun': return Sun;
+      case 'leaf': return Leaf;
+      case 'waves': return Waves;
+      case 'sparkles': return Sparkles;
+      default: return Palette;
+    }
   };
 
   return (
@@ -662,6 +702,72 @@ export function ChatInputBar({
         </Portal>
       )}
 
+      {/* Portal-based Style Menu */}
+      {showStyleMenu && (
+        <Portal>
+          <div 
+            className="fixed inset-0 z-[9998]" 
+            onClick={() => setShowStyleMenu(false)} 
+          />
+          <div 
+            className="fixed z-[9999] w-64 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
+            style={{ 
+              left: Math.max(8, styleMenuCoords.left - 200),
+              bottom: typeof window !== 'undefined' ? window.innerHeight - styleMenuCoords.top + 8 : 0,
+            }}
+          >
+            <div className="p-2">
+              <div className="px-2 py-1 mb-1">
+                <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium">Style Design</span>
+              </div>
+              <div className="space-y-1 max-h-[280px] overflow-y-auto">
+                {STYLE_PRESETS.map(style => {
+                  const StyleIcon = getStyleIcon(style.icon);
+                  const isActive = selectedStyle.id === style.id;
+                  
+                  return (
+                    <button 
+                      key={style.id}
+                      onClick={() => handleStyleSelect(style)} 
+                      className={cn(
+                        "w-full flex items-center gap-3 px-2.5 py-2 rounded-lg text-left transition-colors",
+                        isActive ? "bg-zinc-800" : "hover:bg-zinc-800/60"
+                      )}
+                    >
+                      {/* Color swatch */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <div 
+                          className="w-4 h-4 rounded-full border border-white/20" 
+                          style={{ backgroundColor: style.colors.primary }}
+                        />
+                        <div 
+                          className="w-3 h-3 rounded-full border border-white/20 -ml-1.5" 
+                          style={{ backgroundColor: style.colors.accent }}
+                        />
+                      </div>
+                      
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className={cn("text-xs font-medium", isActive ? "text-white" : "text-zinc-300")}>
+                          {style.name}
+                        </div>
+                        <div className="text-[10px] text-zinc-500 truncate">{style.description}</div>
+                      </div>
+                      
+                      {/* Icon */}
+                      <StyleIcon size={12} className={cn(
+                        "shrink-0",
+                        isActive ? "text-violet-400" : "text-zinc-600"
+                      )} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
       {/* COMPACT INPUT BAR - Matching reference image */}
       <div className="bg-zinc-800/90 backdrop-blur-sm border border-orange-500/30 rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(249,115,22,0.15)] hover:shadow-[0_0_30px_rgba(249,115,22,0.25)] transition-shadow duration-300">
         {/* Single-line input row */}
@@ -714,21 +820,27 @@ export function ChatInputBar({
             </button>
           </div>
           
-          {/* Right side: Plan, Waveform/Mic, Stop/Send */}
+          {/* Right side: Style, Waveform/Mic, Stop/Send */}
           <div className="flex items-center gap-1">
-            {/* Plan button */}
+            {/* Style Design selector (only for code models) */}
             {selectedModel.category === 'code' && (
               <button 
+                ref={styleButtonRef}
                 type="button"
-                onClick={togglePlanMode}
+                onClick={toggleStyleMenu}
                 className={cn(
-                  "px-2.5 py-1.5 text-xs font-medium transition-colors rounded-lg",
-                  isPlanMode 
-                    ? "text-blue-400 bg-blue-500/10" 
-                    : "text-zinc-500 hover:text-white"
+                  "flex items-center gap-1.5 px-2 py-1.5 text-xs transition-colors rounded-lg",
+                  showStyleMenu 
+                    ? "text-white bg-zinc-700" 
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-700"
                 )}
               >
-                Plan
+                <div 
+                  className="w-3 h-3 rounded-full border border-white/20" 
+                  style={{ backgroundColor: selectedStyle.colors.primary }}
+                />
+                <span className="hidden sm:inline">{selectedStyle.name}</span>
+                <ChevronDown size={10} className="opacity-50" />
               </button>
             )}
             
