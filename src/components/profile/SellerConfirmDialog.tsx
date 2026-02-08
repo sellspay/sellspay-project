@@ -8,7 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Store } from "lucide-react";
+import { Store, FileText } from "lucide-react";
 
 interface SellerConfirmDialogProps {
   open: boolean;
@@ -21,7 +21,6 @@ export function SellerConfirmDialog({
   open,
   onOpenChange,
   onConfirm,
-  loading,
 }: SellerConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -31,29 +30,42 @@ export function SellerConfirmDialog({
             <Store className="w-6 h-6 text-primary" />
           </div>
           <AlertDialogTitle className="text-center">
-            Turn your account into a store?
+            Become a Seller on SellsPay?
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-center space-y-2">
+          <AlertDialogDescription className="text-center space-y-3">
             <p>
-              If you proceed, you're turning your account into a seller account.
-              This unlocks the ability to create and sell products.
+              To sell products on our platform, you'll need to complete a quick
+              onboarding process including:
             </p>
+            <ul className="text-left text-sm space-y-1 bg-muted/50 p-3 rounded-lg">
+              <li className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary shrink-0" />
+                Age verification (18+ required)
+              </li>
+              <li className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary shrink-0" />
+                Payout method selection (Stripe, PayPal, or Payoneer)
+              </li>
+              <li className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary shrink-0" />
+                Seller Agreement acceptance
+              </li>
+            </ul>
             <p className="text-xs text-muted-foreground">
-              You can always switch back to a buyer account in Settings.
+              This only takes a minute. You can sell digital products immediately after.
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="sm:justify-center gap-2">
-          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction 
             onClick={(e) => {
               e.preventDefault();
               onConfirm();
             }} 
-            disabled={loading}
             className="bg-primary hover:bg-primary/90"
           >
-            {loading ? "Switching..." : "Yes, become a seller"}
+            Continue to Seller Setup
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

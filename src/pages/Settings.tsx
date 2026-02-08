@@ -307,25 +307,9 @@ export default function Settings() {
     }
   };
 
-  const handleSwitchToSeller = async () => {
-    if (!profileId) return;
-    setSwitchingAccountType(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_seller: true })
-        .eq('id', profileId);
-      
-      if (error) throw error;
-      
-      setIsSeller(true);
-      toast.success('Your account is now a seller account. You can create products!');
-    } catch (error) {
-      console.error('Error switching to seller:', error);
-      toast.error('Failed to switch account type.');
-    } finally {
-      setSwitchingAccountType(false);
-    }
+  const handleSwitchToSeller = () => {
+    // Redirect to the full seller agreement flow instead of directly updating
+    navigate('/seller-agreement');
   };
 
   const handleChangePassword = async () => {
