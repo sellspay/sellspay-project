@@ -7,6 +7,10 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export const VIBECODER_COMPLETE_SENTINEL = '// --- VIBECODER_COMPLETE ---';
 
+// Component markers for modular generation (Multi-Agent Architecture)
+export const COMPONENT_START_PATTERN = /\/\/\/\s*COMPONENT_START:\s*(\w+)\s*\/\/\//g;
+export const COMPONENT_END_PATTERN = /\/\/\/\s*COMPONENT_END\s*\/\/\//g;
+
 // Regex pattern for extracting live log tags
 const LOG_PATTERN = /\[LOG:\s*([^\]]+)\]/g;
 
@@ -108,6 +112,91 @@ export const isTruncatedCode = (code: string): boolean => {
   if (openBraces > closeBraces + 1) return true;
   
   return false;
+};
+
+/**
+ * Parse component markers from streamed code
+ * Returns array of completed components and any remaining incomplete fragment
+ */
+interface ParsedComponent {
+  name: string;
+  code: string;
+  isComplete: boolean;
+}
+
+export const parseComponentMarkers = (code: string): {
+  components: ParsedComponent[];
+  remainingFragment: string;
+} => {
+  const components: ParsedComponent[] = [];
+  let remainingFragment = '';
+  
+  // Reset regex lastIndex
+  const startPattern = /\/\/\/\s*COMPONENT_START:\s*(\w+)\s*\/\/\//g;
+  const endPattern = /\/\/\/\s*COMPONENT_END\s*\/\/\//g;
+  
+  let match;
+  const startMatches: Array<{ name: string; index: number; endIndex: number }> = [];
+  
+  // Find all COMPONENT_START markers
+  while ((match = startPattern.exec(code)) !== null) {
+    startMatches.push({
+      name: match[1],
+      index: match.index,
+      endIndex: match.index + match[0].length
+    });
+  }
+  
+  if (startMatches.length === 0) {
+    // No component markers - treat entire code as one implicit component
+    return { components: [], remainingFragment: code };
+  }
+  
+  for (let i = 0; i < startMatches.length; i++) {
+    const startMatch = startMatches[i];
+    const nextStartIndex = startMatches[i + 1]?.index ?? code.length;
+    
+    // Find the COMPONENT_END between this start and the next start (or end of code)
+    const searchRegion = code.substring(startMatch.endIndex, nextStartIndex);
+    const endMatch = searchRegion.match(/\/\/\/\s*COMPONENT_END\s*\/\/\//);
+    
+    if (endMatch && endMatch.index !== undefined) {
+      // Complete component found
+      const componentCode = searchRegion.substring(0, endMatch.index).trim();
+      components.push({
+        name: startMatch.name,
+        code: componentCode,
+        isComplete: true
+      });
+    } else {
+      // Incomplete component (no end marker yet)
+      const componentCode = searchRegion.trim();
+      if (i === startMatches.length - 1) {
+        // This is the last component and it's incomplete
+        remainingFragment = `/// COMPONENT_START: ${startMatch.name} ///\n${componentCode}`;
+      } else {
+        // Shouldn't happen - a new start without end for previous
+        components.push({
+          name: startMatch.name,
+          code: componentCode,
+          isComplete: false
+        });
+      }
+    }
+  }
+  
+  return { components, remainingFragment };
+};
+
+/**
+ * Strip component markers from code (they're structural, not app code)
+ */
+export const stripComponentMarkers = (code: string): string => {
+  return code
+    .replace(/\/\/\/\s*COMPONENT_START:\s*\w+\s*\/\/\//g, '')
+    .replace(/\/\/\/\s*COMPONENT_END\s*\/\/\//g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 };
 
 /**

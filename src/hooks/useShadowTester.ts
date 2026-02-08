@@ -49,6 +49,7 @@ export function useShadowTester(options: UseShadowTesterOptions = {}) {
   /**
    * Quick syntax validation before shadow test
    * Returns early if code has obvious syntax issues
+   * Enhanced for Multi-Agent Pipeline with completion sentinel awareness
    */
   const quickSyntaxCheck = useCallback((code: string): { valid: boolean; error?: string } => {
     if (!code || code.trim().length < 20) {
@@ -65,35 +66,16 @@ export function useShadowTester(options: UseShadowTesterOptions = {}) {
       return { valid: false, error: 'Missing App component' };
     }
     
-    // Check for balanced braces
-    const openBraces = (code.match(/\{/g) || []).length;
-    const closeBraces = (code.match(/\}/g) || []).length;
-    if (openBraces !== closeBraces) {
-      return { valid: false, error: `Unbalanced braces: ${openBraces} open, ${closeBraces} close` };
+    // Check for balanced braces (string-aware)
+    const braceBalance = checkBraceBalance(code);
+    if (!braceBalance.valid) {
+      return braceBalance;
     }
     
-    // Check for balanced parentheses
-    const openParens = (code.match(/\(/g) || []).length;
-    const closeParens = (code.match(/\)/g) || []).length;
-    if (openParens !== closeParens) {
-      return { valid: false, error: `Unbalanced parentheses: ${openParens} open, ${closeParens} close` };
-    }
-    
-    // Check for balanced brackets
-    const openBrackets = (code.match(/\[/g) || []).length;
-    const closeBrackets = (code.match(/\]/g) || []).length;
-    if (openBrackets !== closeBrackets) {
-      return { valid: false, error: `Unbalanced brackets: ${openBrackets} open, ${closeBrackets} close` };
-    }
-    
-    // Check for unterminated strings (basic check)
-    const singleQuotes = (code.match(/'/g) || []).length;
-    const doubleQuotes = (code.match(/"/g) || []).length;
-    const backticks = (code.match(/`/g) || []).length;
-    
-    // These should be even (each string has open + close)
-    if (backticks % 2 !== 0) {
-      return { valid: false, error: 'Unterminated template literal (backtick)' };
+    // Check for unterminated strings (enhanced)
+    const stringCheck = checkStringTermination(code);
+    if (!stringCheck.valid) {
+      return stringCheck;
     }
     
     // Check for common JSX issues
@@ -101,8 +83,107 @@ export function useShadowTester(options: UseShadowTesterOptions = {}) {
       return { valid: false, error: 'Unterminated JSX tag' };
     }
     
+    // Check for trailing operators (truncation symptom)
+    const trimmed = code.trim();
+    const lastChar = trimmed.slice(-1);
+    const truncationChars = ['<', '{', '(', '[', ',', ':', '=', '.', '+', '-', '*', '/'];
+    if (truncationChars.includes(lastChar)) {
+      return { valid: false, error: `Code ends with incomplete character: ${lastChar}` };
+    }
+    
     return { valid: true };
   }, []);
+
+  /**
+   * Check brace balance while respecting strings and comments
+   */
+  const checkBraceBalance = (code: string): { valid: boolean; error?: string } => {
+    let braces = 0;
+    let parens = 0;
+    let brackets = 0;
+    
+    let inSingle = false;
+    let inDouble = false;
+    let inTemplate = false;
+    let inLineComment = false;
+    let inBlockComment = false;
+    let escaped = false;
+    
+    for (let i = 0; i < code.length; i++) {
+      const c = code[i];
+      const n = code[i + 1];
+      
+      if (inLineComment) {
+        if (c === '\n') inLineComment = false;
+        continue;
+      }
+      
+      if (inBlockComment) {
+        if (c === '*' && n === '/') {
+          inBlockComment = false;
+          i++;
+        }
+        continue;
+      }
+      
+      if (inSingle || inDouble || inTemplate) {
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+        if (c === '\\') {
+          escaped = true;
+          continue;
+        }
+        if (inSingle && c === "'") inSingle = false;
+        else if (inDouble && c === '"') inDouble = false;
+        else if (inTemplate && c === '`') inTemplate = false;
+        continue;
+      }
+      
+      if (c === '/' && n === '/') { inLineComment = true; i++; continue; }
+      if (c === '/' && n === '*') { inBlockComment = true; i++; continue; }
+      if (c === "'") { inSingle = true; continue; }
+      if (c === '"') { inDouble = true; continue; }
+      if (c === '`') { inTemplate = true; continue; }
+      
+      if (c === '{') braces++;
+      else if (c === '}') braces--;
+      else if (c === '(') parens++;
+      else if (c === ')') parens--;
+      else if (c === '[') brackets++;
+      else if (c === ']') brackets--;
+      
+      if (braces < 0) return { valid: false, error: 'Extra closing brace }' };
+      if (parens < 0) return { valid: false, error: 'Extra closing parenthesis )' };
+      if (brackets < 0) return { valid: false, error: 'Extra closing bracket ]' };
+    }
+    
+    // Check for unterminated strings
+    if (inSingle || inDouble || inTemplate) {
+      return { valid: false, error: 'Unterminated string literal' };
+    }
+    
+    if (braces !== 0) return { valid: false, error: `Unbalanced braces: ${braces > 0 ? braces + ' unclosed' : Math.abs(braces) + ' extra closing'}` };
+    if (parens !== 0) return { valid: false, error: `Unbalanced parentheses: ${parens > 0 ? parens + ' unclosed' : Math.abs(parens) + ' extra closing'}` };
+    if (brackets !== 0) return { valid: false, error: `Unbalanced brackets: ${brackets > 0 ? brackets + ' unclosed' : Math.abs(brackets) + ' extra closing'}` };
+    
+    return { valid: true };
+  };
+
+  /**
+   * Check for unterminated template literals specifically
+   */
+  const checkStringTermination = (code: string): { valid: boolean; error?: string } => {
+    const backticks = (code.match(/`/g) || []).length;
+    
+    // Backticks should be even (template literals)
+    if (backticks % 2 !== 0) {
+      return { valid: false, error: 'Unterminated template literal (backtick)' };
+    }
+    
+    return { valid: true };
+  };
 
   /**
    * Test code in shadow sandbox

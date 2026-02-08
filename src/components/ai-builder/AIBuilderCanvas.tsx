@@ -25,6 +25,7 @@ import { LovableHero } from './LovableHero';
 
 import { FixErrorToast } from './FixErrorToast';
 import { checkPolicyViolation } from '@/utils/policyGuard';
+import { useGhostFixer } from '@/hooks/useGhostFixer';
 
 interface AIBuilderCanvasProps {
   profileId: string;
@@ -196,6 +197,28 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Track the last user prompt for data availability checking
   const lastUserPromptRef = useRef<string>('');
   
+  // 🔧 GHOST FIXER: Auto-recovery for truncated AI outputs
+  // This hook detects missing completion sentinels and triggers continuation
+  const ghostFixer = useGhostFixer({
+    maxRetries: 3,
+    onFixAttempt: (attempt) => {
+      console.log(`[GhostFixer] Auto-fixing truncated code (attempt ${attempt}/3)...`);
+      toast.info(`Auto-recovering code... (attempt ${attempt}/3)`);
+    },
+    onFixSuccess: (mergedCode) => {
+      console.log('[GhostFixer] ✅ Code recovered successfully');
+      toast.success('Code recovered successfully!');
+      // The setCode from useStreamingCode will be called after this hook is defined
+    },
+    onFixFailure: (reason) => {
+      console.error('[GhostFixer] ❌ Recovery failed:', reason);
+      toast.error(`Could not recover code: ${reason}`);
+    }
+  });
+  
+  // Ref to hold setCode function for Ghost Fixer callback
+  const setCodeRef = useRef<((code: string) => void) | null>(null);
+  
   // Streaming code state
   const { 
     code, 
@@ -349,8 +372,26 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       generationLockRef.current = null; // Release lock on error
       toast.error(err.message);
       onStreamingError(err.message);
+    },
+    // 🔧 GHOST FIXER TRIGGER: Called when truncation is detected (missing sentinel)
+    onTruncationDetected: async (truncatedCode, originalPrompt) => {
+      console.log('[AIBuilderCanvas] ⚠️ Truncation detected - triggering Ghost Fixer');
+      console.log('[AIBuilderCanvas] Truncated code length:', truncatedCode.length);
+      
+      // Trigger the Ghost Fixer to continue from where the AI left off
+      const recoveredCode = await ghostFixer.triggerContinuation(truncatedCode, originalPrompt);
+      
+      if (recoveredCode && setCodeRef.current) {
+        console.log('[AIBuilderCanvas] ✅ Applying recovered code from Ghost Fixer');
+        setCodeRef.current(recoveredCode);
+      }
     }
   });
+
+  // Wire setCode ref for Ghost Fixer callback
+  useEffect(() => {
+    setCodeRef.current = setCode;
+  }, [setCode]);
 
   // Safety: if Sandpack never reports "ready" (rare), don't keep the overlay forever.
   useEffect(() => {
