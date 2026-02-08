@@ -575,11 +575,23 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   }, []);
 
   const setCode = useCallback((code: string) => {
-    // Only allow external setters to overwrite lastGood when it’s valid.
-    if (isLikelyCompleteTsx(code)) {
-      lastGoodCodeRef.current = code;
+    // External setters can come from:
+    // - background job completion (DB code_result)
+    // - restore/undo snapshots
+    // If those snapshots are truncated, applying them will immediately crash Sandpack.
+    // So we *refuse* to apply invalid TSX and instead keep the last known-good snapshot.
+    if (!isLikelyCompleteTsx(code)) {
+      console.warn('[useStreamingCode] Refusing to apply invalid TSX snapshot; keeping last known-good code');
+      setState(prev => ({
+        ...prev,
+        code: lastGoodCodeRef.current,
+        error: 'Invalid code snapshot blocked (kept last working preview).',
+      }));
+      return;
     }
-    setState(prev => ({ ...prev, code }));
+
+    lastGoodCodeRef.current = code;
+    setState(prev => ({ ...prev, code, error: null }));
   }, []);
 
   // Force-reset streaming state (safety valve for stuck states)
