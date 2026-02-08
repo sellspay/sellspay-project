@@ -176,6 +176,145 @@ function generateDataGuidance(result: DataAvailabilityResult): string {
   return parts.join('');
 }
 
+// ═══════════════════════════════════════════════════════════════
+// HEALER PROTOCOL: OUTPUT INTEGRITY VALIDATION
+// ═══════════════════════════════════════════════════════════════
+// Validates AI output BEFORE saving to database to prevent broken code.
+// Checks for: completion sentinel, unterminated strings, unbalanced braces.
+
+const VIBECODER_COMPLETE_SENTINEL = '// --- VIBECODER_COMPLETE ---';
+
+type TruncationType = 
+  | 'TRUNCATION_DETECTED'
+  | 'OPEN_DOUBLE_QUOTE'
+  | 'OPEN_SINGLE_QUOTE'
+  | 'OPEN_TEMPLATE_LITERAL'
+  | 'OPEN_JSX_TAG'
+  | 'UNBALANCED_BRACES'
+  | 'UNBALANCED_PARENS';
+
+interface ValidationResult {
+  isValid: boolean;
+  errorType?: TruncationType;
+  errorMessage?: string;
+  truncationLine?: number;
+  contextTail?: string;
+}
+
+/**
+ * Validates AI output integrity before saving to database.
+ * Returns structured error info for the Ghost Fixer to use.
+ */
+function validateOutputIntegrity(code: string): ValidationResult {
+  if (!code || code.trim().length < 20) {
+    return { isValid: true }; // Too short to validate meaningfully
+  }
+
+  const trimmed = code.trim();
+  const lines = trimmed.split('\n');
+  
+  // 1. Check for completion sentinel (primary truncation indicator)
+  if (!trimmed.includes(VIBECODER_COMPLETE_SENTINEL)) {
+    console.log('[Healer] Missing completion sentinel - likely truncated');
+    return {
+      isValid: false,
+      errorType: 'TRUNCATION_DETECTED',
+      errorMessage: 'AI output missing completion sentinel - likely truncated',
+      truncationLine: lines.length,
+      contextTail: trimmed.slice(-400),
+    };
+  }
+
+  // 2. Check for unterminated strings in last 5 lines
+  const lastLines = lines.slice(-5).join('\n');
+  
+  // Count quotes (excluding escaped ones)
+  const doubleQuotes = (lastLines.match(/(?<!\\)"/g) || []).length;
+  const singleQuotes = (lastLines.match(/(?<!\\)'/g) || []).length;
+  const templateLiterals = (lastLines.match(/(?<!\\)`/g) || []).length;
+
+  if (doubleQuotes % 2 !== 0) {
+    console.log('[Healer] Unterminated double-quote string detected');
+    return {
+      isValid: false,
+      errorType: 'OPEN_DOUBLE_QUOTE',
+      errorMessage: 'Unterminated double-quote string in last 5 lines',
+      truncationLine: lines.length,
+      contextTail: trimmed.slice(-400),
+    };
+  }
+
+  if (singleQuotes % 2 !== 0) {
+    console.log('[Healer] Unterminated single-quote string detected');
+    return {
+      isValid: false,
+      errorType: 'OPEN_SINGLE_QUOTE',
+      errorMessage: 'Unterminated single-quote string in last 5 lines',
+      truncationLine: lines.length,
+      contextTail: trimmed.slice(-400),
+    };
+  }
+
+  if (templateLiterals % 2 !== 0) {
+    console.log('[Healer] Unterminated template literal detected');
+    return {
+      isValid: false,
+      errorType: 'OPEN_TEMPLATE_LITERAL',
+      errorMessage: 'Unterminated template literal in last 5 lines',
+      truncationLine: lines.length,
+      contextTail: trimmed.slice(-400),
+    };
+  }
+
+  // 3. Check for unclosed JSX tags (< without matching >)
+  const lastLine = lines[lines.length - 1] || '';
+  const openTagMatch = lastLine.match(/<(\w+)[^>]*$/);
+  if (openTagMatch) {
+    console.log('[Healer] Unclosed JSX tag detected:', openTagMatch[1]);
+    return {
+      isValid: false,
+      errorType: 'OPEN_JSX_TAG',
+      errorMessage: `Unclosed JSX tag: <${openTagMatch[1]}`,
+      truncationLine: lines.length,
+      contextTail: trimmed.slice(-400),
+    };
+  }
+
+  // 4. Check brace balance (simplified - just check last 20 lines)
+  const recentCode = lines.slice(-20).join('\n');
+  const openBraces = (recentCode.match(/\{/g) || []).length;
+  const closeBraces = (recentCode.match(/\}/g) || []).length;
+  
+  // Allow some imbalance since we're only checking recent lines
+  if (openBraces > closeBraces + 3) {
+    console.log('[Healer] Unbalanced braces detected:', openBraces, 'vs', closeBraces);
+    return {
+      isValid: false,
+      errorType: 'UNBALANCED_BRACES',
+      errorMessage: `Unbalanced braces in last 20 lines: ${openBraces} open, ${closeBraces} close`,
+      truncationLine: lines.length,
+      contextTail: trimmed.slice(-400),
+    };
+  }
+
+  // 5. Check parenthesis balance
+  const openParens = (recentCode.match(/\(/g) || []).length;
+  const closeParens = (recentCode.match(/\)/g) || []).length;
+  
+  if (openParens > closeParens + 3) {
+    console.log('[Healer] Unbalanced parentheses detected:', openParens, 'vs', closeParens);
+    return {
+      isValid: false,
+      errorType: 'UNBALANCED_PARENS',
+      errorMessage: `Unbalanced parentheses in last 20 lines: ${openParens} open, ${closeParens} close`,
+      truncationLine: lines.length,
+      contextTail: trimmed.slice(-400),
+    };
+  }
+
+  return { isValid: true };
+}
+
 // Fair Pricing Economy (8x reduction from original)
 const CREDIT_COSTS: Record<string, number> = {
   'vibecoder-pro': 3,     // Premium model
@@ -1339,9 +1478,24 @@ serve(async (req) => {
         }
 
         // ═══════════════════════════════════════════════════════════
+        // HEALER PROTOCOL: Validate output integrity before saving
+        // ═══════════════════════════════════════════════════════════
+        let validationError: ValidationResult | null = null;
+        let jobStatus = 'completed';
+        
+        if (codeResult) {
+          const validation = validateOutputIntegrity(codeResult);
+          if (!validation.isValid) {
+            console.log(`[Job ${jobId}] ⚠️ Healer detected issue: ${validation.errorType}`);
+            validationError = validation;
+            jobStatus = 'needs_continuation';
+          }
+        }
+
+        // ═══════════════════════════════════════════════════════════
         // DATA AVAILABILITY CHECK: Append guidance if data is missing
         // ═══════════════════════════════════════════════════════════
-        if (codeResult && summary) {
+        if (codeResult && summary && !validationError) {
           try {
             const dataCheck = await checkDataAvailability(supabase, userId, prompt);
             if (dataCheck && (dataCheck.needsSubscriptionPlans || dataCheck.needsProducts)) {
@@ -1356,25 +1510,44 @@ serve(async (req) => {
           }
         }
 
-        // Update job with results
+        // Update job with results (including validation error if present)
+        const updatePayload: Record<string, unknown> = {
+          status: jobStatus,
+          completed_at: new Date().toISOString(),
+          code_result: validationError ? null : codeResult, // Don't save broken code
+          summary: summary?.slice(0, 8000),
+          plan_result: planResult,
+          progress_logs: validationError 
+            ? ['Starting AI generation...', 'Processing response...', `⚠️ ${validationError.errorType}: ${validationError.errorMessage}`]
+            : ['Starting AI generation...', 'Processing response...', 'Generation complete!'],
+        };
+
+        // Store validation error for frontend Ghost Fixer
+        if (validationError) {
+          updatePayload.error_message = JSON.stringify({
+            type: validationError.errorType,
+            message: validationError.errorMessage,
+            truncationLine: validationError.truncationLine,
+            contextTail: validationError.contextTail,
+            partialCode: codeResult, // Include partial code for continuation
+          });
+        }
+
         await supabase
           .from('ai_generation_jobs')
-          .update({ 
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            code_result: codeResult,
-            summary: summary?.slice(0, 8000), // Increased limit for guidance
-            plan_result: planResult,
-            progress_logs: ['Starting AI generation...', 'Processing response...', 'Generation complete!']
-          })
+          .update(updatePayload)
           .eq('id', jobId);
 
-        console.log(`[Job ${jobId}] Job completed successfully`);
+        console.log(`[Job ${jobId}] Job ${jobStatus}${validationError ? ' (needs continuation)' : ''}`);
 
         return new Response(JSON.stringify({ 
-          success: true, 
+          success: !validationError, 
           jobId,
-          status: 'completed'
+          status: jobStatus,
+          validationError: validationError ? {
+            type: validationError.errorType,
+            message: validationError.errorMessage,
+          } : undefined,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

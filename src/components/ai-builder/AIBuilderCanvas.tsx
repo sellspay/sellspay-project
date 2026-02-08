@@ -432,7 +432,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Track processed jobs to prevent duplicate message additions
   const processedJobIdsRef = useRef<Set<string>>(new Set());
   
-  const handleJobComplete = useCallback((job: GenerationJob) => {
+  const handleJobComplete = useCallback(async (job: GenerationJob) => {
     // Prevent duplicate processing
     if (processedJobIdsRef.current.has(job.id)) {
       console.log('[BackgroundGen] Job already processed, skipping:', job.id);
@@ -442,7 +442,58 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
 
     const isActiveRun = activeJobIdRef.current === job.id;
 
-    console.log('[BackgroundGen] Job completed:', job.id, { isActiveRun });
+    console.log('[BackgroundGen] Job completed:', job.id, { isActiveRun, status: job.status });
+
+    // ═══════════════════════════════════════════════════════════════
+    // HEALER PROTOCOL: Handle 'needs_continuation' status
+    // ═══════════════════════════════════════════════════════════════
+    // If the backend detected truncation, auto-trigger Ghost Fixer
+    if (job.status === 'needs_continuation' && job.error_message) {
+      console.log('[BackgroundGen] 🔧 Healer Protocol: Job needs continuation');
+      
+      try {
+        const validationError = JSON.parse(job.error_message);
+        const partialCode = validationError.partialCode;
+        
+        if (partialCode && ghostFixer) {
+          toast.info('Auto-healing truncated code...', { duration: 3000 });
+          
+          // Trigger Ghost Fixer with the partial code
+          const recoveredCode = await ghostFixer.triggerContinuation(partialCode, job.prompt);
+          
+          if (recoveredCode) {
+            console.log('[BackgroundGen] ✅ Ghost Fixer recovered code');
+            setCode(recoveredCode);
+            
+            // Add success message
+            if (activeProjectId) {
+              await addMessage('assistant', '✅ Code recovered successfully after truncation.', recoveredCode, activeProjectId);
+            }
+          } else {
+            console.warn('[BackgroundGen] ⚠️ Ghost Fixer could not recover code');
+            toast.error('Auto-recovery failed. You may need to retry the generation.');
+            
+            // Still show the partial code so user can see progress
+            if (partialCode) {
+              setCode(partialCode);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[BackgroundGen] Failed to parse validation error:', e);
+        toast.error('Failed to recover from truncation');
+      }
+
+      // Clear state even on continuation failure
+      if (isActiveRun) {
+        setLiveSteps([]);
+        pendingSummaryRef.current = '';
+        generationLockRef.current = null;
+        activeJobIdRef.current = null;
+        resetAgent();
+      }
+      return;
+    }
 
     // 🛡️ SAFETY: Never apply JSON (job status / accidental payload) as code
     const looksLikeJson = (text: string): boolean => {
@@ -492,7 +543,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       onStreamingComplete();
       resetAgent();
     }
-  }, [activeProjectId, addMessage, onStreamingComplete, resetAgent, setCode]);
+  }, [activeProjectId, addMessage, onStreamingComplete, resetAgent, setCode, ghostFixer]);
 
   const handleJobError = useCallback((job: GenerationJob) => {
     console.error('[BackgroundGen] Job failed:', job.error_message);

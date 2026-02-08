@@ -66,6 +66,66 @@ export function useGhostFixer(options: UseGhostFixerOptions = {}) {
   }, []);
 
   /**
+   * Truncation type for surgical continuation prompts
+   */
+  type TruncationType = 
+    | 'OPEN_DOUBLE_QUOTE'
+    | 'OPEN_SINGLE_QUOTE'
+    | 'OPEN_TEMPLATE_LITERAL'
+    | 'OPEN_JSX_TAG'
+    | 'UNBALANCED_BRACES'
+    | 'UNBALANCED_PARENS'
+    | 'GENERAL_TRUNCATION';
+
+  /**
+   * Detects the specific type of truncation for surgical continuation.
+   * This allows the AI to know EXACTLY how to resume (e.g., close a string first).
+   */
+  const detectTruncationType = useCallback((code: string): TruncationType => {
+    const trimmed = code.trim();
+    const lines = trimmed.split('\n');
+    const lastLine = lines[lines.length - 1] || '';
+    const lastFiveLines = lines.slice(-5).join('\n');
+
+    // Check for unclosed quotes in last line (most precise)
+    const doubleQuotesInLast = (lastLine.match(/(?<!\\)"/g) || []).length;
+    if (doubleQuotesInLast % 2 !== 0) {
+      return 'OPEN_DOUBLE_QUOTE';
+    }
+
+    const singleQuotesInLast = (lastLine.match(/(?<!\\)'/g) || []).length;
+    if (singleQuotesInLast % 2 !== 0) {
+      return 'OPEN_SINGLE_QUOTE';
+    }
+
+    const templateLiteralsInLast = (lastFiveLines.match(/(?<!\\)`/g) || []).length;
+    if (templateLiteralsInLast % 2 !== 0) {
+      return 'OPEN_TEMPLATE_LITERAL';
+    }
+
+    // Check for unclosed JSX tag
+    if (/<(\w+)[^>]*$/.test(lastLine)) {
+      return 'OPEN_JSX_TAG';
+    }
+
+    // Check brace balance
+    const openBraces = (trimmed.match(/\{/g) || []).length;
+    const closeBraces = (trimmed.match(/\}/g) || []).length;
+    if (openBraces > closeBraces + 1) {
+      return 'UNBALANCED_BRACES';
+    }
+
+    // Check paren balance
+    const openParens = (trimmed.match(/\(/g) || []).length;
+    const closeParens = (trimmed.match(/\)/g) || []).length;
+    if (openParens > closeParens + 1) {
+      return 'UNBALANCED_PARENS';
+    }
+
+    return 'GENERAL_TRUNCATION';
+  }, []);
+
+  /**
    * Detect if code appears truncated
    */
   const isTruncated = useCallback((code: string): boolean => {
@@ -96,28 +156,70 @@ export function useGhostFixer(options: UseGhostFixerOptions = {}) {
   }, [hasCompleteSentinel]);
 
   /**
-   * Build a continuation prompt for the AI
+   * Get string-safety instruction based on truncation type
+   */
+  const getStringSafetyInstruction = useCallback((truncationType: TruncationType): string => {
+    switch (truncationType) {
+      case 'OPEN_DOUBLE_QUOTE':
+        return `⚠️ STRING SAFETY: Your last token was inside an unclosed DOUBLE-QUOTE string.
+YOUR FIRST OUTPUT MUST: Close the string with " and complete any open JSX attribute.
+EXAMPLE: gradient-to-r from-zinc-900"> to close a className.`;
+
+      case 'OPEN_SINGLE_QUOTE':
+        return `⚠️ STRING SAFETY: Your last token was inside an unclosed SINGLE-QUOTE string.
+YOUR FIRST OUTPUT MUST: Close the string with ' and complete any open expression.`;
+
+      case 'OPEN_TEMPLATE_LITERAL':
+        return `⚠️ STRING SAFETY: Your last token was inside an unclosed TEMPLATE LITERAL.
+YOUR FIRST OUTPUT MUST: Close the template literal with \` and any interpolation \${} if open.`;
+
+      case 'OPEN_JSX_TAG':
+        return `⚠️ JSX SAFETY: Your last token was inside an unclosed JSX tag.
+YOUR FIRST OUTPUT MUST: Complete the tag's attributes and close with > or />.`;
+
+      case 'UNBALANCED_BRACES':
+        return `⚠️ STRUCTURAL SAFETY: The code has unbalanced braces { }.
+YOUR FIRST OUTPUT MUST: Ensure you close any open blocks before adding new code.`;
+
+      case 'UNBALANCED_PARENS':
+        return `⚠️ STRUCTURAL SAFETY: The code has unbalanced parentheses ( ).
+YOUR FIRST OUTPUT MUST: Ensure you close any open function calls or expressions.`;
+
+      default:
+        return '';
+    }
+  }, []);
+
+  /**
+   * Build a continuation prompt for the AI with string-safety awareness
    */
   const buildContinuationPrompt = useCallback((truncatedCode: string, originalPrompt?: string): string => {
     const contextTail = getContextTail(truncatedCode, 400);
+    const truncationType = detectTruncationType(truncatedCode);
+    const stringSafetyInstruction = getStringSafetyInstruction(truncationType);
+    const lines = truncatedCode.trim().split('\n');
     
-    return `[CONTINUATION_MODE]
-You previously generated code but it was cut off. Continue EXACTLY from where you left off.
+    return `[HEALER_MODE: AUTO_RESUME]
+Your previous generation was TRUNCATED at approximately line ${lines.length}.
+ERROR TYPE: ${truncationType}
+
+${stringSafetyInstruction}
 
 LAST 400 CHARACTERS OF YOUR PREVIOUS OUTPUT:
 \`\`\`
 ${contextTail}
 \`\`\`
 
-INSTRUCTIONS:
-1. Continue EXACTLY from that point - do not repeat any code
-2. Complete the remaining code logically
-3. End with: ${VIBECODER_COMPLETE_SENTINEL}
-4. Do NOT include the "/// TYPE: CODE ///" or "/// BEGIN_CODE ///" markers
-5. Just output the remaining code that completes the file
+CRITICAL INSTRUCTIONS:
+1. Continue EXACTLY from the cutoff point - do not repeat any code
+2. If truncation was mid-string, your FIRST characters must close that string/tag
+3. Complete the remaining code logically
+4. End with: ${VIBECODER_COMPLETE_SENTINEL}
+5. Do NOT include the "/// TYPE: CODE ///" or "/// BEGIN_CODE ///" markers
+6. Just output the remaining code that completes the file
 
 ${originalPrompt ? `Original request was: ${originalPrompt}` : ''}`;
-  }, [getContextTail]);
+  }, [getContextTail, detectTruncationType, getStringSafetyInstruction]);
 
   /**
    * Merge continuation onto the truncated code
