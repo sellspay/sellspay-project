@@ -935,10 +935,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
         await addMessage('assistant', violation.message, undefined, activeProjectId);
       }
 
-      toast.warning(violation.message, {
-        duration: 8000,
-        icon: '🛡️',
-      });
+      // No toast - the chat message is sufficient feedback
 
       return; // ⛔ HARD STOP - do NOT call AI
     }
