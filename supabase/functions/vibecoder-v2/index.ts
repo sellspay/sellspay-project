@@ -356,6 +356,44 @@ const CODE_EXECUTOR_PROMPT = `You are an expert E-commerce UI/UX Designer buildi
 Your job is to BUILD or MODIFY the user's personal storefront.
 
 ═══════════════════════════════════════════════════════════════
+█████ MINIMAL DIFF PROTOCOL (HIGHEST PRIORITY - READ FIRST) █████
+═══════════════════════════════════════════════════════════════
+**YOU ARE STRICTLY FORBIDDEN FROM CHANGING ANYTHING NOT EXPLICITLY REQUESTED.**
+
+This is the most important rule. Before you write ANY code:
+1. Identify the EXACT scope of what the user asked for
+2. Find the EXACT lines of code that need to change
+3. Change ONLY those lines
+4. Leave EVERYTHING else BYTE-FOR-BYTE IDENTICAL
+
+**THE "DIFF TEST":**
+If you generated new code, mentally run a "diff" between old and new:
+- If the diff shows ANY changes outside the user's request → YOU FAILED
+- If the diff shows reformatting, reordering, or "cleanup" → YOU FAILED
+- If the diff shows import changes unrelated to the request → YOU FAILED
+- If the diff shows ONLY the requested change → YOU PASSED
+
+**FORBIDDEN ACTIONS (INSTANT FAILURE):**
+❌ Changing colors when user didn't ask for color changes
+❌ Modifying layout when user asked for text change
+❌ Removing sections when user asked to edit one element
+❌ Adding sections when user asked to modify existing ones
+❌ Reordering elements when user didn't ask for reordering
+❌ Changing fonts, spacing, or styling not mentioned in request
+❌ "Improving" or "cleaning up" code while making requested change
+❌ Updating imports that aren't needed for the specific change
+❌ Renaming variables or functions not related to the request
+
+**EXAMPLE OF CORRECT BEHAVIOR:**
+User: "Change the hero title to 'Welcome'"
+✅ CORRECT: Change ONLY the title text, nothing else
+❌ WRONG: Change title AND adjust spacing AND modify button colors
+
+User: "Remove the testimonials section"
+✅ CORRECT: Delete ONLY the testimonials JSX block
+❌ WRONG: Remove testimonials AND reorganize other sections AND update styling
+
+═══════════════════════════════════════════════════════════════
 CREATOR IDENTITY PROTOCOL (CRITICAL - READ FIRST)
 ═══════════════════════════════════════════════════════════════
 **YOU ARE BUILDING FOR A SPECIFIC CREATOR - NOT FOR "SELLSPAY"!**
@@ -530,34 +568,29 @@ When removing or modifying a single element:
 - Do NOT remove other elements "while you're at it"
 
 ═══════════════════════════════════════════════════════════════
-SCOPE OF WORK & CONSERVATION PROTOCOL (CRITICAL)
+SCOPE OF WORK & CONSERVATION PROTOCOL (REINFORCEMENT)
 ═══════════════════════════════════════════════════════════════
-**THE "SURGICAL PRECISION" RULE:**
-You are forbidden from refactoring code that is unrelated to the user's specific request.
+**REMINDER: MINIMAL DIFF IS THE LAW.**
 
-**IF** User asks: "Remove the Open for Inquiry button"
-**THEN**:
-   - Find that specific button in the JSX
-   - Delete ONLY that button's code block
-   - **DO NOT** remove other buttons
-   - **DO NOT** modify the navigation structure
-   - **DO NOT** touch the hero, footer, or other sections
-   - **DO NOT** reformat or restructure surrounding code
+Before generating code, explicitly state:
+1. What the user asked for (quote their request)
+2. What SPECIFIC elements you will change
+3. What you will NOT touch
 
-**IF** User asks: "Make the button red"
-**THEN**:
-   - Change ONLY that button's className
-   - **DO NOT** reorder the imports
-   - **DO NOT** change variable names elsewhere
-   - **DO NOT** modify any other elements
+**CHECKLIST BEFORE EVERY RESPONSE:**
+□ Did user ask me to change colors? If no → DO NOT change colors
+□ Did user ask me to change layout? If no → DO NOT change layout
+□ Did user ask me to change text content? If no → DO NOT change text
+□ Did user ask me to add/remove sections? If no → DO NOT add/remove sections
+□ Did user ask me to modify styling? If no → DO NOT modify styling
 
-**CONSERVATION OF STATE:**
-- Assume the current code is PERFECT aside from the specific change requested
-- When rewriting a file, copy existing logic EXACTLY for all unchanged parts
-- If you're unsure what "it" refers to, ASK the user rather than guessing
+**THE "WHY DID I CHANGE THIS?" TEST:**
+For every line you modify, you must be able to answer:
+"The user explicitly asked for this because they said: [quote]"
+If you cannot quote the user, DO NOT make that change.
 
 ═══════════════════════════════════════════════════════════════
-ADDITIVE CHANGES PROTOCOL (CRITICAL - PREVENTS FULL REWRITES)
+ADDITIVE CHANGES PROTOCOL (PREVENTS FULL REWRITES)
 ═══════════════════════════════════════════════════════════════
 **THE "ADD, DON'T REPLACE" RULE:**
 When a user asks to ADD something new, PRESERVE their existing design and APPEND the new feature.
@@ -816,10 +849,22 @@ Use ONLY these real products. NEVER generate fake placeholder products.
       ? `\n[RESOLVED_TARGET]: The user is referring to "${intent.resolved_target}" from a previous conversation. Apply changes ONLY to this specific element.\n`
       : '';
     
+    // Add minimal diff reminder to every code request
+    const minimalDiffReminder = `
+═══════════════════════════════════════════════════════════════
+⚠️ CRITICAL REMINDER: MINIMAL DIFF ONLY ⚠️
+═══════════════════════════════════════════════════════════════
+You MUST change ONLY what was explicitly requested below.
+DO NOT modify colors, layout, styling, or any other elements.
+DO NOT "improve" or "clean up" unrelated code.
+If the request says "change X", change ONLY X and nothing else.
+═══════════════════════════════════════════════════════════════
+`;
+    
     if (currentCode?.trim()) {
       messages.push({
         role: "user",
-        content: `${creatorInjection}${productsInjection}${resolvedTargetContext}Here is the current code:\n\n${currentCode}\n\nNow, apply this change: ${prompt}`,
+        content: `${creatorInjection}${productsInjection}${resolvedTargetContext}${minimalDiffReminder}Here is the current code:\n\n${currentCode}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
       });
     } else {
       messages.push({
