@@ -58,17 +58,134 @@ const DEFAULT_CODE = `export default function App() {
   );
 }`;
 
+// ------------------------------
+// Preview safety: validate TSX before applying
+// ------------------------------
+
+const hasTsxEntrypoint = (code: string) =>
+  /export\s+default\s+function\s+App\b|export\s+default\s+function\b|export\s+default\b|function\s+App\b|const\s+App\b/.test(code);
+
+/**
+ * Lightweight TS/TSX “completeness” check.
+ * Goal: prevent obviously-truncated output (e.g. trailing "<" or unterminated strings)
+ * from ever replacing the last-known-good preview.
+ */
+const isLikelyCompleteTsx = (code: string): boolean => {
+  const src = (code ?? '').trim();
+  if (!src) return false;
+  if (!hasTsxEntrypoint(src)) return false;
+
+  // Common truncation symptom seen in the screenshot
+  const lastChar = src.replace(/\s+$/g, '').slice(-1);
+  if (['<', '{', '(', '[', ',', ':', '=', '.', '+', '-', '*', '/'].includes(lastChar)) {
+    return false;
+  }
+
+  // Balance brackets/braces/parens while respecting strings/comments.
+  let paren = 0;
+  let brace = 0;
+  let bracket = 0;
+
+  let inSingle = false;
+  let inDouble = false;
+  let inTemplate = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escaped = false;
+
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    const n = src[i + 1];
+
+    if (inLineComment) {
+      if (c === '\n') inLineComment = false;
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (c === '*' && n === '/') {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (inSingle || inDouble || inTemplate) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (c === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (inSingle && c === "'") inSingle = false;
+      else if (inDouble && c === '"') inDouble = false;
+      else if (inTemplate && c === '`') inTemplate = false;
+      continue;
+    }
+
+    // not inside string/comment
+    if (c === '/' && n === '/') {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+    if (c === '/' && n === '*') {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+
+    if (c === "'") {
+      inSingle = true;
+      continue;
+    }
+    if (c === '"') {
+      inDouble = true;
+      continue;
+    }
+    if (c === '`') {
+      inTemplate = true;
+      continue;
+    }
+
+    if (c === '(') paren++;
+    else if (c === ')') paren--;
+    else if (c === '{') brace++;
+    else if (c === '}') brace--;
+    else if (c === '[') bracket++;
+    else if (c === ']') bracket--;
+
+    if (paren < 0 || brace < 0 || bracket < 0) return false;
+  }
+
+  // If we ended inside a string/comment, it's truncated.
+  if (inSingle || inDouble || inTemplate || inLineComment || inBlockComment) return false;
+
+  // Must be balanced
+  if (paren !== 0 || brace !== 0 || bracket !== 0) return false;
+
+  // JSX should at least contain a return with a tag
+  if (!/return\s*\(/.test(src) && !/<[A-Za-z]/.test(src)) return false;
+
+  return true;
+};
+
 export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   const [state, setState] = useState<StreamingState>({
     isStreaming: false,
     code: DEFAULT_CODE,
     error: null,
   });
-  
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Track original prompt for plan execution
   const originalPromptRef = useRef<string>('');
+
+  // Last-known-good preview snapshot (never invalid / truncated)
+  const lastGoodCodeRef = useRef<string>(DEFAULT_CODE);
 
   const streamCode = useCallback(async (prompt: string, currentCode?: string, jobId?: string) => {
     // Cancel any existing stream
@@ -77,11 +194,11 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     }
 
     abortControllerRef.current = new AbortController();
-    
+
     // Store original prompt (strip ARCHITECT_MODE prefix for plan approval)
     const cleanPrompt = prompt.replace(/\[ARCHITECT_MODE_ACTIVE\]\nUser Request:\s*/i, '').split('\n\nINSTRUCTION:')[0].trim();
     originalPromptRef.current = cleanPrompt || prompt;
-    
+
     setState(prev => ({ ...prev, isStreaming: true, error: null }));
 
     try {
@@ -142,10 +259,10 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         console.log('[useStreamingCode] JSON response detected - deferring to realtime subscription');
         const jsonData = await response.json().catch(() => ({}));
         console.log('[useStreamingCode] Job status:', jsonData);
-        
+
         // Return early WITHOUT modifying code state
         setState(prev => ({ ...prev, isStreaming: false }));
-        return state.code; // Keep existing code, don't set JSON as code
+        return lastGoodCodeRef.current; // Keep existing code, don't set JSON as code
       }
 
       if (!response.body) {
@@ -220,8 +337,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         // This prevents intermediate summary text (or stray '<') from breaking /App.tsx.
         const tsxStartPatterns: RegExp[] = [
           /(^|\n)import\s+[^\n]+/,
-          /(^|\n)export\s+default\s+function\s+/,
-          /(^|\n)export\s+function\s+/,
+          /(^|\n)export\s+default\s+function\s+/, 
+          /(^|\n)export\s+function\s+/, 
           /(^|\n)const\s+\w+\s*=\s*\(/,
           /(^|\n)function\s+\w+\s*\(/,
         ];
@@ -253,7 +370,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         // Try explicit BEGIN_CODE marker first
         let endIdx = raw.indexOf(BEGIN_CODE_MARKER);
         console.log('[extractSummary] BEGIN_CODE marker at:', endIdx);
-        
+
         // Fallback: find where actual TSX code starts (export/function/const/import at line start)
         if (endIdx < 0) {
           // Look for the first line that starts with common code patterns
@@ -262,9 +379,9 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
             /\n(export\s+function)/,
             /\n(function\s+\w+)/,
             /\n(const\s+\w+\s*=\s*\()/,
-            /\nimport\s+/,
+            /\nimport\s+/, 
           ];
-          
+
           const afterType = raw.substring(typeIdx + '/// TYPE: CODE ///'.length);
           for (const pattern of codePatterns) {
             const match = afterType.match(pattern);
@@ -279,16 +396,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         // If still no end found, just strip logs and return everything after TYPE marker
         const summaryEnd = endIdx > typeIdx ? endIdx : raw.length;
         const afterType = raw.substring(typeIdx + '/// TYPE: CODE ///'.length, summaryEnd);
-        
+
         const cleaned = afterType
           .replace(LOG_PATTERN, '')
           .replace(/```[\s\S]*$/m, '') // Remove any trailing code blocks
           .replace(/\n{3,}/g, '\n\n')
           .trim();
-        
+
         console.log('[extractSummary] Extracted summary length:', cleaned.length, 'chars');
         console.log('[extractSummary] First 200 chars:', cleaned.substring(0, 200));
-        
+
         return cleaned;
       };
 
@@ -316,7 +433,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           if (looksLikeJson(rawStream)) {
             console.warn('[useStreamingCode] JSON detected in stream - aborting code extraction');
             setState(prev => ({ ...prev, isStreaming: false }));
-            return state.code; // Keep existing code
+            return lastGoodCodeRef.current; // Keep existing code
           }
         }
 
@@ -337,7 +454,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
             if (looksLikeJson(rawStream)) {
               console.warn('[useStreamingCode] JSON detected before mode fallback - aborting');
               setState(prev => ({ ...prev, isStreaming: false }));
-              return state.code;
+              return lastGoodCodeRef.current;
             }
             // Fallback: assume code if no flag appears early
             mode = 'code';
@@ -351,10 +468,12 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         }
 
         if (mode === 'code') {
-          // Update state with cleaned code portion only
           const cleanCode = extractCodeFromRaw(rawStream);
-          // 🛡️ SAFETY: Only update if we got valid code (not empty from JSON detection)
-          if (cleanCode) {
+
+          // 🛡️ IMPORTANT: only apply code to the preview when it looks complete.
+          // This prevents Sandpack from ever seeing truncated TSX (which triggers the overlay loop).
+          if (cleanCode && isLikelyCompleteTsx(cleanCode)) {
+            lastGoodCodeRef.current = cleanCode;
             setState(prev => ({ ...prev, code: cleanCode }));
             options.onChunk?.(cleanCode);
           }
@@ -363,7 +482,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       // Final processing based on mode
       if (mode === 'chat') {
-        // Return chat response
         const chatText = rawStream.replace('/// TYPE: CHAT ///', '').trim();
         setState(prev => ({ ...prev, isStreaming: false }));
         options.onChatResponse?.(chatText);
@@ -371,10 +489,9 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       }
 
       if (mode === 'plan') {
-        // Parse and return plan response
         const planText = rawStream.replace('/// TYPE: PLAN ///', '').trim();
         setState(prev => ({ ...prev, isStreaming: false }));
-        
+
         try {
           // Extract JSON from the response (may have markdown wrapper)
           const jsonMatch = planText.match(/\{[\s\S]*\}/);
@@ -405,20 +522,23 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       const finalCode = extractCodeFromRaw(rawStream);
 
-      // 🛡️ FINAL SAFETY: If we never extracted valid TSX, keep the existing code
-      if (!finalCode) {
-        console.warn('[useStreamingCode] No valid TSX extracted - keeping existing code');
-        setState(prev => ({ ...prev, isStreaming: false }));
-        return state.code;
+      // 🛡️ FINAL SAFETY: never replace the preview with invalid TSX.
+      if (!finalCode || !isLikelyCompleteTsx(finalCode)) {
+        const err = new Error('Generated code was incomplete/invalid; kept last working preview.');
+        console.warn('[useStreamingCode] Invalid final TSX - keeping last known good snapshot');
+        setState(prev => ({ ...prev, isStreaming: false, error: err.message, code: lastGoodCodeRef.current }));
+        options.onError?.(err);
+        return lastGoodCodeRef.current;
       }
 
       // 🛑 RACE CONDITION GUARD: Check if user switched projects during generation
       if (options.shouldAbort?.()) {
         console.warn('🛑 Aborted: Project changed during generation - discarding result');
         setState(prev => ({ ...prev, isStreaming: false }));
-        return state.code; // Return existing code, don't fire onComplete
+        return lastGoodCodeRef.current; // Return existing code, don't fire onComplete
       }
 
+      lastGoodCodeRef.current = finalCode;
       setState(prev => ({ ...prev, isStreaming: false, code: finalCode }));
       options.onComplete?.(finalCode);
 
@@ -427,7 +547,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       if (error instanceof Error && error.name === 'AbortError') {
         // Stream was cancelled, don't treat as error
         setState(prev => ({ ...prev, isStreaming: false }));
-        return state.code;
+        return lastGoodCodeRef.current;
       }
 
       const err = error instanceof Error ? error : new Error('Unknown error');
@@ -435,7 +555,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       options.onError?.(err);
       throw err;
     }
-  }, [options, state.code]);
+  }, [options]);
 
   const cancelStream = useCallback(() => {
     if (abortControllerRef.current) {
@@ -446,6 +566,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   }, []);
 
   const resetCode = useCallback(() => {
+    lastGoodCodeRef.current = DEFAULT_CODE;
     setState({
       isStreaming: false,
       code: DEFAULT_CODE,
@@ -454,6 +575,10 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   }, []);
 
   const setCode = useCallback((code: string) => {
+    // Only allow external setters to overwrite lastGood when it’s valid.
+    if (isLikelyCompleteTsx(code)) {
+      lastGoodCodeRef.current = code;
+    }
     setState(prev => ({ ...prev, code }));
   }, []);
 
