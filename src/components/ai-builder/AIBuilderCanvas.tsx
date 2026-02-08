@@ -28,9 +28,10 @@ import { checkPolicyViolation } from '@/utils/policyGuard';
 
 interface AIBuilderCanvasProps {
   profileId: string;
+  hasPremiumAccess?: boolean;
 }
 
-export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
+export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuilderCanvasProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isPublished, setIsPublished] = useState(false);
@@ -81,6 +82,9 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   const [showPlacementModal, setShowPlacementModal] = useState(false);
   const [lastAssetPrompt, setLastAssetPrompt] = useState<string>('');
   const [lastAssetModel, setLastAssetModel] = useState<AIModel | null>(null);
+  
+  // Premium upgrade modal state
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Hard refresh state for fixing white screen of death
   const [refreshKey, setRefreshKey] = useState(0);
@@ -907,6 +911,12 @@ export function AIBuilderCanvas({ profileId }: AIBuilderCanvasProps) {
   // displayMessage: Clean user prompt shown in chat
   // aiPrompt: Backend-only prompt with system instructions (optional - defaults to displayMessage)
   const handleSendMessage = async (displayMessage: string, aiPrompt?: string) => {
+    // 🔒 PREMIUM GATE: Non-premium users can explore but not generate
+    if (!hasPremiumAccess) {
+      setShowUpgradeModal(true);
+      return; // ⛔ HARD STOP - show upgrade modal instead
+    }
+    
     // Use the clean display message for policy checks and storage
     const cleanPrompt = displayMessage;
     // Use the AI prompt for actual generation (may include system instructions)
@@ -1585,6 +1595,45 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         onSubmit={handleApplyAssetToCanvas}
         asset={currentAsset}
       />
+
+      {/* Premium Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center border border-primary/30">
+                <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-center text-white mb-2">Upgrade to Premium</h2>
+            <p className="text-zinc-400 text-center mb-6">
+              The AI Builder is a premium feature that lets you design your entire storefront with AI — starting from a blank canvas with no limits.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  navigate('/pricing');
+                }}
+                className="w-full py-3 px-4 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                View Plans
+              </button>
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-full py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium rounded-xl transition-colors"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

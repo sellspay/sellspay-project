@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
  import { useNavigate } from 'react-router-dom';
 import { useAuth, checkUserRole } from '@/lib/auth';
  import { supabase } from '@/integrations/supabase/client';
- import { PremiumGate } from '@/components/ai-builder/PremiumGate';
  import { AIBuilderCanvas } from '@/components/ai-builder/AIBuilderCanvas';
  import { Loader2 } from 'lucide-react';
  
@@ -58,9 +57,6 @@ import { useAuth, checkUserRole } from '@/lib/auth';
      return null;
    }
  
-  if (!hasAccess) {
-     return <PremiumGate />;
-   }
- 
-   return <AIBuilderCanvas profileId={profile.id} />;
+   // Always show the canvas - premium gating happens on send
+   return <AIBuilderCanvas profileId={profile.id} hasPremiumAccess={hasAccess} />;
  }
