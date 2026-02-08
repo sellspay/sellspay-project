@@ -167,34 +167,41 @@ export function ContextualSuggestions({
     return null;
   }
   
+  // Generate stable key for suggestions to avoid AnimatePresence ref issues
+  const suggestionsKey = suggestions.map(s => s.label).join(',');
+
   return (
     <div className={className}>
       <AnimatePresence mode="wait">
-        <motion.div
-          key={suggestions.map(s => s.label).join(',')}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-          className="flex flex-wrap gap-2 px-4 pb-2"
-        >
-          {suggestions.map((suggestion, idx) => {
-            const Icon = suggestion.icon;
-            return (
-              <motion.button
-                key={suggestion.label}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: idx * 0.05 }}
-                onClick={() => onSelectSuggestion(suggestion.prompt)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/60 border border-border/30 hover:border-border/60 rounded-full transition-all duration-200 hover:shadow-sm"
-              >
-                <Icon size={12} className="text-violet-400/70" />
-                <span>{suggestion.label}</span>
-              </motion.button>
-            );
-          })}
-        </motion.div>
+        {suggestionsKey && (
+          <motion.div
+            key={suggestionsKey}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="flex flex-wrap gap-2 px-4 pb-2"
+          >
+            {suggestions.map((suggestion, idx) => {
+              const Icon = suggestion.icon;
+              return (
+                <button
+                  key={suggestion.label}
+                  onClick={() => onSelectSuggestion(suggestion.prompt)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/60 border border-border/30 hover:border-border/60 rounded-full transition-all duration-200 hover:shadow-sm"
+                  style={{
+                    opacity: 1,
+                    transform: 'scale(1)',
+                    animation: `fadeIn 0.2s ease ${idx * 0.05}s both`
+                  }}
+                >
+                  <Icon size={12} className="text-violet-400/70" />
+                  <span>{suggestion.label}</span>
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
