@@ -8,7 +8,7 @@ export interface GenerationJob {
   user_id: string;
   prompt: string;
   ai_prompt: string | null;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'needs_continuation';
   code_result: string | null;
   summary: string | null;
   plan_result: any | null;
@@ -122,7 +122,8 @@ export function useBackgroundGeneration({
             // Only fire completion/error callbacks ONCE per job
             const jobKey = `${job.id}_${job.status}`;
             if (!processedJobsRef.current.has(jobKey)) {
-              if (job.status === 'completed') {
+              // 'needs_continuation' is treated as a special completion that triggers Healer
+              if (job.status === 'completed' || job.status === 'needs_continuation') {
                 processedJobsRef.current.add(jobKey);
                 onJobCompleteRef.current?.(job);
               } else if (job.status === 'failed') {
