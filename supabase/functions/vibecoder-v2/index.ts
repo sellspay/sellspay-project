@@ -22,61 +22,97 @@ interface DataAvailabilityResult {
 
 // Keywords that indicate the user is building a pricing/subscription page
 const PRICING_KEYWORDS = [
-  'pricing', 'price', 'subscription', 'plan', 'tier', 'membership',
-  'monthly', 'yearly', 'annual', 'premium', 'pro plan', 'basic plan',
-  'enterprise', 'billing', 'payment plan', 'recurring'
+  "pricing",
+  "price",
+  "subscription",
+  "plan",
+  "tier",
+  "membership",
+  "monthly",
+  "yearly",
+  "annual",
+  "premium",
+  "pro plan",
+  "basic plan",
+  "enterprise",
+  "billing",
+  "payment plan",
+  "recurring",
 ];
 
 // Keywords that indicate the user is building a products page
 const PRODUCT_KEYWORDS = [
-  'product', 'shop', 'store', 'catalog', 'merchandise', 'item',
-  'buy', 'purchase', 'cart', 'checkout', 'listing', 'collection'
+  "product",
+  "shop",
+  "store",
+  "catalog",
+  "merchandise",
+  "item",
+  "buy",
+  "purchase",
+  "cart",
+  "checkout",
+  "listing",
+  "collection",
 ];
 
 /**
  * Detects if the prompt is about pricing/subscriptions or products
  * and returns what count of items the user mentioned (if any)
  */
-function detectDataIntent(prompt: string): { 
-  needsPricing: boolean; 
+function detectDataIntent(prompt: string): {
+  needsPricing: boolean;
   needsProducts: boolean;
   requestedPricingCount: number;
   requestedProductCount: number;
 } {
   const lower = prompt.toLowerCase();
-  
-  const needsPricing = PRICING_KEYWORDS.some(kw => lower.includes(kw));
-  const needsProducts = PRODUCT_KEYWORDS.some(kw => lower.includes(kw));
-  
+
+  const needsPricing = PRICING_KEYWORDS.some((kw) => lower.includes(kw));
+  const needsProducts = PRODUCT_KEYWORDS.some((kw) => lower.includes(kw));
+
   // Try to detect how many items they're requesting
   let requestedPricingCount = 0;
   let requestedProductCount = 0;
-  
+
   // Common patterns: "three subscriptions", "3 plans", "ten products"
   const numberMap: Record<string, number> = {
-    'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
-    'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
-    'eleven': 11, 'twelve': 12
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+    eleven: 11,
+    twelve: 12,
   };
-  
+
   // Check for numbers near pricing keywords
   if (needsPricing) {
-    const pricingMatch = lower.match(/(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:subscription|plan|tier|pricing|price)/);
+    const pricingMatch = lower.match(
+      /(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:subscription|plan|tier|pricing|price)/,
+    );
     if (pricingMatch) {
       const num = pricingMatch[1];
       requestedPricingCount = numberMap[num] ?? (parseInt(num) || 0);
     }
   }
-  
+
   // Check for numbers near product keywords
   if (needsProducts) {
-    const productMatch = lower.match(/(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:product|item|listing)/);
+    const productMatch = lower.match(
+      /(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:product|item|listing)/,
+    );
     if (productMatch) {
       const num = productMatch[1];
       requestedProductCount = numberMap[num] ?? (parseInt(num) || 0);
     }
   }
-  
+
   return { needsPricing, needsProducts, requestedPricingCount, requestedProductCount };
 }
 
@@ -86,52 +122,50 @@ function detectDataIntent(prompt: string): {
 async function checkDataAvailability(
   supabase: ReturnType<typeof createClient>,
   userId: string,
-  prompt: string
+  prompt: string,
 ): Promise<DataAvailabilityResult | null> {
   const intent = detectDataIntent(prompt);
-  
+
   // If prompt doesn't mention pricing or products, skip the check
   if (!intent.needsPricing && !intent.needsProducts) {
     return null;
   }
-  
+
   // Get the user's profile ID first
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .single();
-    
+  const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", userId).single();
+
   if (!profile) return null;
-  
+
   let subscriptionCount = 0;
   let productCount = 0;
-  
+
   // Check subscription plans if needed
   if (intent.needsPricing) {
     const { count } = await supabase
-      .from('creator_subscription_plans')
-      .select('id', { count: 'exact', head: true })
-      .eq('creator_id', profile.id)
-      .eq('is_active', true);
-    
+      .from("creator_subscription_plans")
+      .select("id", { count: "exact", head: true })
+      .eq("creator_id", profile.id)
+      .eq("is_active", true);
+
     subscriptionCount = count ?? 0;
   }
-  
+
   // Check products if needed
   if (intent.needsProducts) {
     const { count } = await supabase
-      .from('products')
-      .select('id', { count: 'exact', head: true })
-      .eq('creator_id', profile.id)
-      .eq('status', 'published');
-    
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("creator_id", profile.id)
+      .eq("status", "published");
+
     productCount = count ?? 0;
   }
-  
+
   return {
     needsSubscriptionPlans: intent.needsPricing && subscriptionCount === 0,
-    needsProducts: intent.needsProducts && (productCount === 0 || (intent.requestedProductCount > 0 && productCount < intent.requestedProductCount)),
+    needsProducts:
+      intent.needsProducts &&
+      (productCount === 0 || (intent.requestedProductCount > 0 && productCount < intent.requestedProductCount)),
     subscriptionCount,
     productCount,
     requestedSubscriptionCount: intent.requestedPricingCount,
@@ -144,36 +178,36 @@ async function checkDataAvailability(
  */
 function generateDataGuidance(result: DataAvailabilityResult): string {
   const parts: string[] = [];
-  
+
   if (result.needsSubscriptionPlans) {
     parts.push(
       `\n\n---\n\n⚠️ **Heads up:** You don't have any subscription plans set up yet. ` +
-      `The pricing cards I created are placeholders. To make them functional:\n\n` +
-      `1. Go to your **Settings → Subscriptions** or use the **Subscriptions tab** above\n` +
-      `2. Create your subscription plans with your actual pricing\n` +
-      `3. Come back and tell me to "link my subscriptions to the pricing cards"\n`
+        `The pricing cards I created are placeholders. To make them functional:\n\n` +
+        `1. Go to your **Settings → Subscriptions** or use the **Subscriptions tab** above\n` +
+        `2. Create your subscription plans with your actual pricing\n` +
+        `3. Come back and tell me to "link my subscriptions to the pricing cards"\n`,
     );
   }
-  
+
   if (result.needsProducts) {
     if (result.productCount === 0) {
       parts.push(
         `\n\n---\n\n⚠️ **Heads up:** You don't have any products yet. ` +
-        `The product cards I created are using placeholder data. To make them real:\n\n` +
-        `1. Use the **Products tab** above to create your products\n` +
-        `2. Once you have products, tell me to "use my real products" and I'll update the page\n`
+          `The product cards I created are using placeholder data. To make them real:\n\n` +
+          `1. Use the **Products tab** above to create your products\n` +
+          `2. Once you have products, tell me to "use my real products" and I'll update the page\n`,
       );
     } else if (result.requestedProductCount > 0 && result.productCount < result.requestedProductCount) {
       const missing = result.requestedProductCount - result.productCount;
       parts.push(
         `\n\n---\n\n⚠️ **Heads up:** You asked for ${result.requestedProductCount} products, but you only have ${result.productCount}. ` +
-        `I've filled the extra ${missing} slot${missing > 1 ? 's' : ''} with placeholder${missing > 1 ? 's' : ''}.\n\n` +
-        `Create ${missing} more product${missing > 1 ? 's' : ''} in the **Products tab**, then tell me to refresh the products!\n`
+          `I've filled the extra ${missing} slot${missing > 1 ? "s" : ""} with placeholder${missing > 1 ? "s" : ""}.\n\n` +
+          `Create ${missing} more product${missing > 1 ? "s" : ""} in the **Products tab**, then tell me to refresh the products!\n`,
       );
     }
   }
-  
-  return parts.join('');
+
+  return parts.join("");
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -182,16 +216,16 @@ function generateDataGuidance(result: DataAvailabilityResult): string {
 // Validates AI output BEFORE saving to database to prevent broken code.
 // Checks for: completion sentinel, unterminated strings, unbalanced braces.
 
-const VIBECODER_COMPLETE_SENTINEL = '// --- VIBECODER_COMPLETE ---';
+const VIBECODER_COMPLETE_SENTINEL = "// --- VIBECODER_COMPLETE ---";
 
-type TruncationType = 
-  | 'TRUNCATION_DETECTED'
-  | 'OPEN_DOUBLE_QUOTE'
-  | 'OPEN_SINGLE_QUOTE'
-  | 'OPEN_TEMPLATE_LITERAL'
-  | 'OPEN_JSX_TAG'
-  | 'UNBALANCED_BRACES'
-  | 'UNBALANCED_PARENS';
+type TruncationType =
+  | "TRUNCATION_DETECTED"
+  | "OPEN_DOUBLE_QUOTE"
+  | "OPEN_SINGLE_QUOTE"
+  | "OPEN_TEMPLATE_LITERAL"
+  | "OPEN_JSX_TAG"
+  | "UNBALANCED_BRACES"
+  | "UNBALANCED_PARENS";
 
 interface ValidationResult {
   isValid: boolean;
@@ -211,69 +245,69 @@ function validateOutputIntegrity(code: string): ValidationResult {
   }
 
   const trimmed = code.trim();
-  const lines = trimmed.split('\n');
-  
+  const lines = trimmed.split("\n");
+
   // 1. Check for completion sentinel (primary truncation indicator)
   if (!trimmed.includes(VIBECODER_COMPLETE_SENTINEL)) {
-    console.log('[Healer] Missing completion sentinel - likely truncated');
+    console.log("[Healer] Missing completion sentinel - likely truncated");
     return {
       isValid: false,
-      errorType: 'TRUNCATION_DETECTED',
-      errorMessage: 'AI output missing completion sentinel - likely truncated',
+      errorType: "TRUNCATION_DETECTED",
+      errorMessage: "AI output missing completion sentinel - likely truncated",
       truncationLine: lines.length,
       contextTail: trimmed.slice(-400),
     };
   }
 
   // 2. Check for unterminated strings in last 5 lines
-  const lastLines = lines.slice(-5).join('\n');
-  
+  const lastLines = lines.slice(-5).join("\n");
+
   // Count quotes (excluding escaped ones)
   const doubleQuotes = (lastLines.match(/(?<!\\)"/g) || []).length;
   const singleQuotes = (lastLines.match(/(?<!\\)'/g) || []).length;
   const templateLiterals = (lastLines.match(/(?<!\\)`/g) || []).length;
 
   if (doubleQuotes % 2 !== 0) {
-    console.log('[Healer] Unterminated double-quote string detected');
+    console.log("[Healer] Unterminated double-quote string detected");
     return {
       isValid: false,
-      errorType: 'OPEN_DOUBLE_QUOTE',
-      errorMessage: 'Unterminated double-quote string in last 5 lines',
+      errorType: "OPEN_DOUBLE_QUOTE",
+      errorMessage: "Unterminated double-quote string in last 5 lines",
       truncationLine: lines.length,
       contextTail: trimmed.slice(-400),
     };
   }
 
   if (singleQuotes % 2 !== 0) {
-    console.log('[Healer] Unterminated single-quote string detected');
+    console.log("[Healer] Unterminated single-quote string detected");
     return {
       isValid: false,
-      errorType: 'OPEN_SINGLE_QUOTE',
-      errorMessage: 'Unterminated single-quote string in last 5 lines',
+      errorType: "OPEN_SINGLE_QUOTE",
+      errorMessage: "Unterminated single-quote string in last 5 lines",
       truncationLine: lines.length,
       contextTail: trimmed.slice(-400),
     };
   }
 
   if (templateLiterals % 2 !== 0) {
-    console.log('[Healer] Unterminated template literal detected');
+    console.log("[Healer] Unterminated template literal detected");
     return {
       isValid: false,
-      errorType: 'OPEN_TEMPLATE_LITERAL',
-      errorMessage: 'Unterminated template literal in last 5 lines',
+      errorType: "OPEN_TEMPLATE_LITERAL",
+      errorMessage: "Unterminated template literal in last 5 lines",
       truncationLine: lines.length,
       contextTail: trimmed.slice(-400),
     };
   }
 
   // 3. Check for unclosed JSX tags (< without matching >)
-  const lastLine = lines[lines.length - 1] || '';
+  const lastLine = lines[lines.length - 1] || "";
   const openTagMatch = lastLine.match(/<(\w+)[^>]*$/);
   if (openTagMatch) {
-    console.log('[Healer] Unclosed JSX tag detected:', openTagMatch[1]);
+    console.log("[Healer] Unclosed JSX tag detected:", openTagMatch[1]);
     return {
       isValid: false,
-      errorType: 'OPEN_JSX_TAG',
+      errorType: "OPEN_JSX_TAG",
       errorMessage: `Unclosed JSX tag: <${openTagMatch[1]}`,
       truncationLine: lines.length,
       contextTail: trimmed.slice(-400),
@@ -281,16 +315,16 @@ function validateOutputIntegrity(code: string): ValidationResult {
   }
 
   // 4. Check brace balance (simplified - just check last 20 lines)
-  const recentCode = lines.slice(-20).join('\n');
+  const recentCode = lines.slice(-20).join("\n");
   const openBraces = (recentCode.match(/\{/g) || []).length;
   const closeBraces = (recentCode.match(/\}/g) || []).length;
-  
+
   // Allow some imbalance since we're only checking recent lines
   if (openBraces > closeBraces + 3) {
-    console.log('[Healer] Unbalanced braces detected:', openBraces, 'vs', closeBraces);
+    console.log("[Healer] Unbalanced braces detected:", openBraces, "vs", closeBraces);
     return {
       isValid: false,
-      errorType: 'UNBALANCED_BRACES',
+      errorType: "UNBALANCED_BRACES",
       errorMessage: `Unbalanced braces in last 20 lines: ${openBraces} open, ${closeBraces} close`,
       truncationLine: lines.length,
       contextTail: trimmed.slice(-400),
@@ -300,12 +334,12 @@ function validateOutputIntegrity(code: string): ValidationResult {
   // 5. Check parenthesis balance
   const openParens = (recentCode.match(/\(/g) || []).length;
   const closeParens = (recentCode.match(/\)/g) || []).length;
-  
+
   if (openParens > closeParens + 3) {
-    console.log('[Healer] Unbalanced parentheses detected:', openParens, 'vs', closeParens);
+    console.log("[Healer] Unbalanced parentheses detected:", openParens, "vs", closeParens);
     return {
       isValid: false,
-      errorType: 'UNBALANCED_PARENS',
+      errorType: "UNBALANCED_PARENS",
       errorMessage: `Unbalanced parentheses in last 20 lines: ${openParens} open, ${closeParens} close`,
       truncationLine: lines.length,
       contextTail: trimmed.slice(-400),
@@ -317,18 +351,18 @@ function validateOutputIntegrity(code: string): ValidationResult {
 
 // Fair Pricing Economy (8x reduction from original)
 const CREDIT_COSTS: Record<string, number> = {
-  'vibecoder-pro': 3,     // Premium model
-  'vibecoder-flash': 0,   // Free tier for small edits
-  'reasoning-o1': 5,      // Deep reasoning (expensive)
+  "vibecoder-pro": 3, // Premium model
+  "vibecoder-flash": 0, // Free tier for small edits
+  "reasoning-o1": 5, // Deep reasoning (expensive)
 };
 
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 // Model Configuration Mapping - Route to different AI backends
 const MODEL_CONFIG: Record<string, { modelId: string }> = {
-  'vibecoder-pro': { modelId: 'google/gemini-3-flash-preview' },
-  'vibecoder-flash': { modelId: 'google/gemini-2.5-flash-lite' },
-  'reasoning-o1': { modelId: 'openai/gpt-5.2' },
+  "vibecoder-pro": { modelId: "google/gemini-3-flash-preview" },
+  "vibecoder-flash": { modelId: "google/gemini-2.5-flash-lite" },
+  "reasoning-o1": { modelId: "openai/gpt-5.2" },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -443,7 +477,6 @@ CRITICAL RULES:
 - Default to QUESTION if the message is ambiguous or conversational
 - context_needed = true if you need to see the current code to respond properly`;
 
-
 // ═══════════════════════════════════════════════════════════════
 // STAGE 2: EXECUTOR PROMPTS (Specialized for each intent)
 // ═══════════════════════════════════════════════════════════════
@@ -461,49 +494,77 @@ CRITICAL RULES:
 function shouldForceArchitectMode(prompt: string, hasExistingCode: boolean): boolean {
   // If user already has existing code, this is likely a modification - don't force plan
   if (hasExistingCode) return false;
-  
+
   const lower = prompt.toLowerCase();
-  
+
   // 1. Explicit multi-component requests (strong signal)
   const fullBuildPatterns = [
-    'full page', 'complete page', 'entire page', 'whole page',
-    'full storefront', 'complete storefront', 'entire storefront',
-    'full landing', 'complete landing', 'entire landing',
-    'build me a', 'create a complete', 'design a full',
-    'from scratch', 'everything', 'all sections'
+    "full page",
+    "complete page",
+    "entire page",
+    "whole page",
+    "full storefront",
+    "complete storefront",
+    "entire storefront",
+    "full landing",
+    "complete landing",
+    "entire landing",
+    "build me a",
+    "create a complete",
+    "design a full",
+    "from scratch",
+    "everything",
+    "all sections",
   ];
-  if (fullBuildPatterns.some(pattern => lower.includes(pattern))) {
-    console.log('[ComplexityDetector] Matched full-build pattern');
+  if (fullBuildPatterns.some((pattern) => lower.includes(pattern))) {
+    console.log("[ComplexityDetector] Matched full-build pattern");
     return true;
   }
-  
+
   // 2. Multiple section keywords (3+ sections = complex)
   const sectionKeywords = [
-    'hero', 'product', 'products', 'footer', 'pricing', 
-    'testimonial', 'testimonials', 'about', 'faq', 'contact',
-    'features', 'showcase', 'gallery', 'cta', 'banner',
-    'navigation', 'nav', 'header'
+    "hero",
+    "product",
+    "products",
+    "footer",
+    "pricing",
+    "testimonial",
+    "testimonials",
+    "about",
+    "faq",
+    "contact",
+    "features",
+    "showcase",
+    "gallery",
+    "cta",
+    "banner",
+    "navigation",
+    "nav",
+    "header",
   ];
-  const mentionedSections = sectionKeywords.filter(kw => lower.includes(kw));
+  const mentionedSections = sectionKeywords.filter((kw) => lower.includes(kw));
   if (mentionedSections.length >= 3) {
-    console.log(`[ComplexityDetector] Multiple sections detected: ${mentionedSections.join(', ')}`);
+    console.log(`[ComplexityDetector] Multiple sections detected: ${mentionedSections.join(", ")}`);
     return true;
   }
-  
+
   // 3. Long prompts tend to be complex requests (>40 words)
-  const wordCount = prompt.split(/\s+/).filter(w => w.length > 0).length;
+  const wordCount = prompt.split(/\s+/).filter((w) => w.length > 0).length;
   if (wordCount > 40) {
     console.log(`[ComplexityDetector] Long prompt detected: ${wordCount} words`);
     return true;
   }
-  
+
   // 4. Explicit section lists (comma-separated items)
-  const hasListPattern = /including:?|with:|contains?:|(?:,\s*(?:and\s+)?(?:a\s+)?(?:the\s+)?[a-z]+\s+(?:section|page|component|area)){2,}/i.test(prompt);
+  const hasListPattern =
+    /including:?|with:|contains?:|(?:,\s*(?:and\s+)?(?:a\s+)?(?:the\s+)?[a-z]+\s+(?:section|page|component|area)){2,}/i.test(
+      prompt,
+    );
   if (hasListPattern) {
-    console.log('[ComplexityDetector] List pattern detected');
+    console.log("[ComplexityDetector] List pattern detected");
     return true;
   }
-  
+
   return false;
 }
 
@@ -530,9 +591,8 @@ The user's request is complex. Break it down into manageable steps.
 // ═══════════════════════════════════════════════════════════════
 // These markers enable truncation detection and component-based generation
 
-const VIBECODER_COMPLETE_SENTINEL = '// --- VIBECODER_COMPLETE ---';
-const COMPONENT_START_PREFIX = '/// COMPONENT_START:';
-const COMPONENT_END_MARKER = '/// COMPONENT_END ///';
+const COMPONENT_START_PREFIX = "/// COMPONENT_START:";
+const COMPONENT_END_MARKER = "/// COMPONENT_END ///";
 
 const CHAT_EXECUTOR_PROMPT = `You are VibeCoder, a friendly and knowledgeable UI architect for SellsPay.
 The user is asking a QUESTION. Your job is to EXPLAIN, CLARIFY, or ENGAGE in conversation.
@@ -556,7 +616,6 @@ PERSONALITY:
 - Use present tense and active voice
 - No robotic phrases like "I have generated..." or "Here is..."`;
 
-
 const REFUSE_EXECUTOR_PROMPT = `You are VibeCoder, a UI architect for SellsPay.
 The user is asking for something PROHIBITED. You must politely refuse.
 
@@ -574,7 +633,6 @@ OUTPUT FORMAT:
 EXAMPLE RESPONSES:
 - Payment request: "I can't add external payment buttons. SellsPay is a managed marketplace that handles all transactions securely. Your earnings are automatically routed to your Payouts Dashboard."
 - Nav above hero: "I keep the navigation integrated within the hero for a clean, immersive landing experience. This is a core design principle for SellsPay storefronts."`;
-
 
 // The main CODE executor prompt - receives CREATOR_IDENTITY injection at runtime
 // Enhanced with COMPLETION SENTINEL and COMPONENT MARKERS for Multi-Agent Architecture
@@ -919,13 +977,12 @@ ARCHITECT MODE (PLAN-BEFORE-CODE PROTOCOL)
   "estimatedTokens": 2500
 }`;
 
-
 // ═══════════════════════════════════════════════════════════════
 // HELPER: Call the Intent Classifier (Stage 1)
 // ═══════════════════════════════════════════════════════════════
 interface IntentClassification {
   reasoning: string;
-  intent: 'BUILD' | 'MODIFY' | 'QUESTION' | 'FIX' | 'REFUSE';
+  intent: "BUILD" | "MODIFY" | "QUESTION" | "FIX" | "REFUSE";
   confidence: number;
   context_needed: boolean;
   resolved_target?: string; // The specific element being referenced (if pronouns were resolved)
@@ -934,18 +991,19 @@ interface IntentClassification {
 async function classifyIntent(
   prompt: string,
   hasExistingCode: boolean,
-  conversationHistory: Array<{role: string; content: string}>,
-  apiKey: string
+  conversationHistory: Array<{ role: string; content: string }>,
+  apiKey: string,
 ): Promise<IntentClassification> {
-  const contextHint = hasExistingCode 
-    ? "The user HAS existing code/design in their project." 
+  const contextHint = hasExistingCode
+    ? "The user HAS existing code/design in their project."
     : "The user has NO existing code - this would be a fresh build.";
 
   // Build conversation context for pronoun resolution
   const recentMessages = conversationHistory.slice(-6); // Last 3 exchanges
-  const conversationContext = recentMessages.length > 0
-    ? `\n\nCONVERSATION HISTORY (for pronoun resolution):\n${recentMessages.map(m => `${m.role}: "${m.content}"`).join('\n')}`
-    : '';
+  const conversationContext =
+    recentMessages.length > 0
+      ? `\n\nCONVERSATION HISTORY (for pronoun resolution):\n${recentMessages.map((m) => `${m.role}: "${m.content}"`).join("\n")}`
+      : "";
 
   const response = await fetch(LOVABLE_AI_URL, {
     method: "POST",
@@ -957,7 +1015,7 @@ async function classifyIntent(
       model: "google/gemini-2.5-flash-lite", // Fast, cheap classifier
       messages: [
         { role: "system", content: INTENT_CLASSIFIER_PROMPT },
-        { role: "user", content: `Context: ${contextHint}${conversationContext}\n\nCurrent user message: "${prompt}"` }
+        { role: "user", content: `Context: ${contextHint}${conversationContext}\n\nCurrent user message: "${prompt}"` },
       ],
       max_tokens: 200,
       temperature: 0.1, // Low temperature for consistent classification
@@ -970,30 +1028,30 @@ async function classifyIntent(
       reasoning: "Classifier unavailable, defaulting to code generation",
       intent: "MODIFY",
       confidence: 0.5,
-      context_needed: true
+      context_needed: true,
     };
   }
 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content || "";
-  
+
   try {
     // Parse the JSON response
-    const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
+    const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
     const parsed = JSON.parse(cleaned);
-    
+
     console.log(`[Intent Classifier] Reasoning: ${parsed.reasoning}`);
     console.log(`[Intent Classifier] Intent: ${parsed.intent} (${parsed.confidence})`);
     if (parsed.resolved_target) {
       console.log(`[Intent Classifier] Resolved Target: ${parsed.resolved_target}`);
     }
-    
+
     return {
       reasoning: parsed.reasoning || "No reasoning provided",
       intent: parsed.intent || "MODIFY",
       confidence: parsed.confidence || 0.5,
       context_needed: parsed.context_needed ?? true,
-      resolved_target: parsed.resolved_target || undefined
+      resolved_target: parsed.resolved_target || undefined,
     };
   } catch (e) {
     console.error("Failed to parse classifier response:", content);
@@ -1008,10 +1066,14 @@ async function classifyIntent(
     if (upperContent.includes("REFUSE")) {
       return { reasoning: "Detected prohibited request", intent: "REFUSE", confidence: 0.6, context_needed: false };
     }
-    return { reasoning: "Could not parse, defaulting to modify", intent: "MODIFY", confidence: 0.5, context_needed: true };
+    return {
+      reasoning: "Could not parse, defaulting to modify",
+      intent: "MODIFY",
+      confidence: 0.5,
+      context_needed: true,
+    };
   }
 }
-
 
 // ═══════════════════════════════════════════════════════════════
 // HELPER: Execute based on classified intent (Stage 2)
@@ -1023,36 +1085,33 @@ async function executeIntent(
   productsContext: any[] | null,
   model: string,
   apiKey: string,
-  creatorIdentity: { username: string; email: string } | null
+  creatorIdentity: { username: string; email: string } | null,
 ): Promise<Response> {
-  
   // Select the appropriate system prompt based on intent
   let systemPrompt: string;
   let shouldStream = true;
-  
+
   switch (intent.intent) {
-    case 'QUESTION':
+    case "QUESTION":
       systemPrompt = CHAT_EXECUTOR_PROMPT;
       break;
-    case 'REFUSE':
+    case "REFUSE":
       systemPrompt = REFUSE_EXECUTOR_PROMPT;
       break;
-    case 'FIX':
-    case 'BUILD':
-    case 'MODIFY':
+    case "FIX":
+    case "BUILD":
+    case "MODIFY":
     default:
       systemPrompt = CODE_EXECUTOR_PROMPT;
       break;
   }
 
   // Build messages array
-  const messages: Array<{role: string; content: string}> = [
-    { role: "system", content: systemPrompt },
-  ];
+  const messages: Array<{ role: string; content: string }> = [{ role: "system", content: systemPrompt }];
 
   // Inject creator identity for personalization
-  let creatorInjection = '';
-  if (creatorIdentity && (intent.intent === 'BUILD' || intent.intent === 'MODIFY' || intent.intent === 'FIX')) {
+  let creatorInjection = "";
+  if (creatorIdentity && (intent.intent === "BUILD" || intent.intent === "MODIFY" || intent.intent === "FIX")) {
     creatorInjection = `
 ═══════════════════════════════════════════════════════════════
 CREATOR_IDENTITY (USE THIS FOR ALL CONTACT/ABOUT/FAQ PAGES):
@@ -1070,8 +1129,8 @@ CRITICAL: "SellsPay" should ONLY appear in the footer as "Powered by SellsPay".
   }
 
   // Add products context for code generation
-  let productsInjection = '';
-  if ((intent.intent === 'BUILD' || intent.intent === 'MODIFY') && productsContext?.length) {
+  let productsInjection = "";
+  if ((intent.intent === "BUILD" || intent.intent === "MODIFY") && productsContext?.length) {
     productsInjection = `
 CREATOR_PRODUCTS (REAL DATA):
 ${JSON.stringify(productsContext, null, 2)}
@@ -1080,20 +1139,20 @@ Use ONLY these real products. NEVER generate fake placeholder products.
   }
 
   // Build user message based on intent
-  if (intent.intent === 'QUESTION' || intent.intent === 'REFUSE') {
+  if (intent.intent === "QUESTION" || intent.intent === "REFUSE") {
     // For chat/refuse, just pass the prompt
     messages.push({
       role: "user",
-      content: currentCode 
+      content: currentCode
         ? `The user has this current design:\n\n${currentCode}\n\nThey ask: ${prompt}`
-        : `The user asks: ${prompt}`
+        : `The user asks: ${prompt}`,
     });
   } else {
     // For code generation - include resolved target for surgical precision
-    const resolvedTargetContext = intent.resolved_target 
+    const resolvedTargetContext = intent.resolved_target
       ? `\n[RESOLVED_TARGET]: The user is referring to "${intent.resolved_target}" from a previous conversation. Apply changes ONLY to this specific element.\n`
-      : '';
-    
+      : "";
+
     // Add minimal diff reminder to every code request
     const minimalDiffReminder = `
 ═══════════════════════════════════════════════════════════════
@@ -1105,7 +1164,7 @@ DO NOT "improve" or "clean up" unrelated code.
 If the request says "change X", change ONLY X and nothing else.
 ═══════════════════════════════════════════════════════════════
 `;
-    
+
     if (currentCode?.trim()) {
       messages.push({
         role: "user",
@@ -1120,10 +1179,10 @@ If the request says "change X", change ONLY X and nothing else.
   }
 
   // Get model config
-  const config = MODEL_CONFIG[model] || MODEL_CONFIG['vibecoder-pro'];
-  
+  const config = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
+
   // Determine max tokens based on intent
-  const maxTokens = (intent.intent === 'QUESTION' || intent.intent === 'REFUSE') ? 500 : 8000;
+  const maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : 8000;
 
   console.log(`[Executor] Using model: ${config.modelId} for intent: ${intent.intent}`);
 
@@ -1145,14 +1204,21 @@ If the request says "change X", change ONLY X and nothing else.
   return response;
 }
 
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { prompt, currentCode, profileId, model = 'vibecoder-pro', productsContext, conversationHistory = [], jobId } = await req.json();
+    const {
+      prompt,
+      currentCode,
+      profileId,
+      model = "vibecoder-pro",
+      productsContext,
+      conversationHistory = [],
+      jobId,
+    } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -1169,7 +1235,7 @@ serve(async (req) => {
     // ============================================
     // CREDIT ENFORCEMENT: Check and deduct credits
     // ============================================
-    
+
     // Get user from auth header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -1181,7 +1247,7 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    
+
     if (userError || !userData.user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
@@ -1193,13 +1259,13 @@ serve(async (req) => {
     const cost = CREDIT_COSTS[model] ?? 3; // Default to pro cost
 
     // Check if user is admin/owner (bypasses credit checks)
-    const { data: isPrivileged } = await supabase.rpc('has_role', { 
-      _user_id: userId, 
-      _role: 'owner' 
+    const { data: isPrivileged } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "owner",
     });
-    const { data: isAdmin } = await supabase.rpc('has_role', { 
-      _user_id: userId, 
-      _role: 'admin' 
+    const { data: isAdmin } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
     });
     const bypassCredits = isPrivileged === true || isAdmin === true;
 
@@ -1207,12 +1273,12 @@ serve(async (req) => {
     if (cost > 0 && !bypassCredits) {
       // Get current balance
       const { data: wallet, error: walletError } = await supabase
-        .from('user_wallets')
-        .select('balance')
-        .eq('user_id', userId)
+        .from("user_wallets")
+        .select("balance")
+        .eq("user_id", userId)
         .single();
 
-      if (walletError && walletError.code !== 'PGRST116') {
+      if (walletError && walletError.code !== "PGRST116") {
         console.error("Wallet fetch error:", walletError);
         throw new Error("Failed to check credit balance");
       }
@@ -1220,24 +1286,26 @@ serve(async (req) => {
       const currentBalance = wallet?.balance ?? 0;
 
       if (currentBalance < cost) {
-        return new Response(JSON.stringify({ 
-          error: "INSUFFICIENT_CREDITS",
-          message: `Insufficient credits. You have ${currentBalance}, but this costs ${cost}.`,
-          required: cost,
-          available: currentBalance
-        }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({
+            error: "INSUFFICIENT_CREDITS",
+            message: `Insufficient credits. You have ${currentBalance}, but this costs ${cost}.`,
+            required: cost,
+            available: currentBalance,
+          }),
+          {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
 
       // Deduct credits using the secure RPC function
-      const { data: deductSuccess, error: deductError } = await supabase
-        .rpc('deduct_credits', {
-          p_user_id: userId,
-          p_amount: cost,
-          p_action: 'vibecoder_gen'
-        });
+      const { data: deductSuccess, error: deductError } = await supabase.rpc("deduct_credits", {
+        p_user_id: userId,
+        p_amount: cost,
+        p_action: "vibecoder_gen",
+      });
 
       if (deductError) {
         console.error("Credit deduction error:", deductError);
@@ -1245,13 +1313,16 @@ serve(async (req) => {
       }
 
       if (!deductSuccess) {
-        return new Response(JSON.stringify({ 
-          error: "INSUFFICIENT_CREDITS",
-          message: "Insufficient credits for this generation."
-        }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({
+            error: "INSUFFICIENT_CREDITS",
+            message: "Insufficient credits for this generation.",
+          }),
+          {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
 
       console.log(`Deducted ${cost} credits from user ${userId} for model ${model}`);
@@ -1261,22 +1332,18 @@ serve(async (req) => {
     // FETCH CREATOR IDENTITY (for personalization)
     // ════════════════════════════════════════════════════════════
     let creatorIdentity: { username: string; email: string } | null = null;
-    
+
     try {
       // Get user's profile for username
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('user_id', userId)
-        .single();
-      
+      const { data: profile } = await supabase.from("profiles").select("username").eq("user_id", userId).single();
+
       // Get user's email from auth
-      const userEmail = userData.user.email || '';
-      
+      const userEmail = userData.user.email || "";
+
       if (profile?.username || userEmail) {
         creatorIdentity = {
-          username: profile?.username || 'My Store',
-          email: userEmail
+          username: profile?.username || "My Store",
+          email: userEmail,
         };
         console.log(`[Creator Identity] Username: ${creatorIdentity.username}, Email: ${creatorIdentity.email}`);
       }
@@ -1289,7 +1356,7 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════
     const hasExistingCode = Boolean(currentCode?.trim());
     const forceArchitect = shouldForceArchitectMode(prompt, hasExistingCode);
-    
+
     if (forceArchitect) {
       console.log(`[Stage 0] 🏗️ Complex build detected - forcing Architect Mode`);
     }
@@ -1298,27 +1365,22 @@ serve(async (req) => {
     // STAGE 1: INTENT CLASSIFICATION (Chain-of-Thought Reasoning)
     // ════════════════════════════════════════════════════════════
     console.log(`[Stage 1] Classifying intent for: "${prompt.slice(0, 100)}..."`);
-    
-    const intentResult = await classifyIntent(
-      prompt,
-      hasExistingCode,
-      conversationHistory || [],
-      LOVABLE_API_KEY
-    );
+
+    const intentResult = await classifyIntent(prompt, hasExistingCode, conversationHistory || [], LOVABLE_API_KEY);
 
     console.log(`[Stage 1] Result: ${intentResult.intent} (${intentResult.confidence}) - ${intentResult.reasoning}`);
-    
+
     // ════════════════════════════════════════════════════════════
     // STAGE 1.5: FORCE ARCHITECT MODE FOR COMPLEX BUILDS
     // ════════════════════════════════════════════════════════════
     // If complexity was detected AND intent is BUILD/MODIFY, inject Architect Mode
     let modifiedPrompt = prompt;
     let forcePlanMode = false;
-    
-    if (forceArchitect && (intentResult.intent === 'BUILD' || intentResult.intent === 'MODIFY')) {
+
+    if (forceArchitect && (intentResult.intent === "BUILD" || intentResult.intent === "MODIFY")) {
       // Check if user already triggered Architect Mode manually
-      const alreadyArchitect = prompt.includes('[ARCHITECT_MODE_ACTIVE]');
-      
+      const alreadyArchitect = prompt.includes("[ARCHITECT_MODE_ACTIVE]");
+
       if (!alreadyArchitect) {
         console.log(`[Stage 1.5] Injecting Architect Mode into prompt`);
         modifiedPrompt = `[ARCHITECT_MODE_ACTIVE]\n${getArchitectModeInjection()}\nUser Request: ${prompt}`;
@@ -1329,7 +1391,7 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════
     // STAGE 2: EXECUTE BASED ON CLASSIFIED INTENT
     // ════════════════════════════════════════════════════════════
-    console.log(`[Stage 2] Executing ${intentResult.intent} handler${forcePlanMode ? ' (Plan Mode Forced)' : ''}...`);
+    console.log(`[Stage 2] Executing ${intentResult.intent} handler${forcePlanMode ? " (Plan Mode Forced)" : ""}...`);
 
     const response = await executeIntent(
       intentResult,
@@ -1338,30 +1400,30 @@ serve(async (req) => {
       productsContext || null,
       model,
       LOVABLE_API_KEY,
-      creatorIdentity
+      creatorIdentity,
     );
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("AI Gateway error:", response.status, errorText);
-      
+
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Credits exhausted. Please add more credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Credits exhausted. Please add more credits." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      
-      return new Response(
-        JSON.stringify({ error: "AI generation failed" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+
+      return new Response(JSON.stringify({ error: "AI generation failed" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (!response.body) {
@@ -1374,16 +1436,16 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════
     if (jobId) {
       console.log(`[Job ${jobId}] Starting background processing...`);
-      
+
       // Mark job as running
       await supabase
-        .from('ai_generation_jobs')
-        .update({ 
-          status: 'running', 
+        .from("ai_generation_jobs")
+        .update({
+          status: "running",
           started_at: new Date().toISOString(),
-          progress_logs: ['Starting AI generation...']
+          progress_logs: ["Starting AI generation..."],
         })
-        .eq('id', jobId);
+        .eq("id", jobId);
 
       // Collect the full response
       const reader = response.body.getReader();
@@ -1404,7 +1466,7 @@ serve(async (req) => {
 
           for (const line of lines) {
             const trimmed = line.trim();
-            
+
             if (!trimmed || trimmed.startsWith(":")) continue;
             if (!trimmed.startsWith("data: ")) continue;
 
@@ -1414,7 +1476,7 @@ serve(async (req) => {
             try {
               const parsed = JSON.parse(jsonStr);
               const content = parsed.choices?.[0]?.delta?.content;
-              
+
               if (content) {
                 fullContent += content;
               }
@@ -1461,18 +1523,18 @@ serve(async (req) => {
         }
 
         // Check for code response
-        if (fullContent.includes('/// BEGIN_CODE ///')) {
-          const codeMatch = fullContent.split('/// BEGIN_CODE ///');
+        if (fullContent.includes("/// BEGIN_CODE ///")) {
+          const codeMatch = fullContent.split("/// BEGIN_CODE ///");
           if (codeMatch.length > 1) {
             codeResult = codeMatch[1].trim();
             // Remove any trailing markers
-            codeResult = codeResult.replace(/\/\/\/\s*END_CODE\s*\/\/\//g, '').trim();
+            codeResult = codeResult.replace(/\/\/\/\s*END_CODE\s*\/\/\//g, "").trim();
           }
           // Extract summary (text before BEGIN_CODE)
-          summary = codeMatch[0].replace('/// TYPE: CODE ///', '').trim();
-        } else if (fullContent.includes('/// TYPE: CHAT ///')) {
+          summary = codeMatch[0].replace("/// TYPE: CODE ///", "").trim();
+        } else if (fullContent.includes("/// TYPE: CHAT ///")) {
           // Chat response
-          summary = fullContent.replace('/// TYPE: CHAT ///', '').trim();
+          summary = fullContent.replace("/// TYPE: CHAT ///", "").trim();
         } else {
           summary = fullContent;
         }
@@ -1481,14 +1543,14 @@ serve(async (req) => {
         // HEALER PROTOCOL: Validate output integrity before saving
         // ═══════════════════════════════════════════════════════════
         let validationError: ValidationResult | null = null;
-        let jobStatus = 'completed';
-        
+        let jobStatus = "completed";
+
         if (codeResult) {
           const validation = validateOutputIntegrity(codeResult);
           if (!validation.isValid) {
             console.log(`[Job ${jobId}] ⚠️ Healer detected issue: ${validation.errorType}`);
             validationError = validation;
-            jobStatus = 'needs_continuation';
+            jobStatus = "needs_continuation";
           }
         }
 
@@ -1509,25 +1571,6 @@ serve(async (req) => {
             console.warn(`[Job ${jobId}] Data check failed:`, e);
           }
         }
-} catch (e) {
-        console.warn(`[Job ${jobId}] Data check failed:`, e);
-      }
-    }
-
-    // --- PASTE THE FIX START ---
-    if (codeResult && !validationError) {
-      const { data: jobData } = await supabase.from('ai_generation_jobs').select('project_id').eq('id', jobId).single();
-      if (jobData?.project_id) {
-        const filesWrapper = { "App.tsx": codeResult };
-        await supabase.from('vibecoder_projects').update({ files: filesWrapper }).eq('id', jobData.project_id);
-        await supabase.from('project_versions').insert({
-            project_id: jobData.project_id,
-            files_snapshot: filesWrapper,
-            version_label: "Manual Recovery Save"
-        });
-      }
-    }
-    // --- PASTE THE FIX END ---
 
         // Update job with results (including validation error if present)
         const updatePayload: Record<string, unknown> = {
@@ -1536,9 +1579,13 @@ serve(async (req) => {
           code_result: validationError ? null : codeResult, // Don't save broken code
           summary: summary?.slice(0, 8000),
           plan_result: planResult,
-          progress_logs: validationError 
-            ? ['Starting AI generation...', 'Processing response...', `⚠️ ${validationError.errorType}: ${validationError.errorMessage}`]
-            : ['Starting AI generation...', 'Processing response...', 'Generation complete!'],
+          progress_logs: validationError
+            ? [
+                "Starting AI generation...",
+                "Processing response...",
+                `⚠️ ${validationError.errorType}: ${validationError.errorMessage}`,
+              ]
+            : ["Starting AI generation...", "Processing response...", "Generation complete!"],
         };
 
         // Store validation error for frontend Ghost Fixer
@@ -1552,47 +1599,55 @@ serve(async (req) => {
           });
         }
 
-        await supabase
-          .from('ai_generation_jobs')
-          .update(updatePayload)
-          .eq('id', jobId);
+        await supabase.from("ai_generation_jobs").update(updatePayload).eq("id", jobId);
 
-        console.log(`[Job ${jobId}] Job ${jobStatus}${validationError ? ' (needs continuation)' : ''}`);
+        console.log(`[Job ${jobId}] Job ${jobStatus}${validationError ? " (needs continuation)" : ""}`);
 
-        return new Response(JSON.stringify({ 
-          success: !validationError, 
-          jobId,
-          status: jobStatus,
-          validationError: validationError ? {
-            type: validationError.errorType,
-            message: validationError.errorMessage,
-          } : undefined,
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-
+        return new Response(
+          JSON.stringify({
+            success: !validationError,
+            jobId,
+            status: jobStatus,
+            validationError: validationError
+              ? {
+                  type: validationError.errorType,
+                  message: validationError.errorMessage,
+                }
+              : undefined,
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       } catch (e) {
         console.error(`[Job ${jobId}] Processing error:`, e);
-        
+
         // Mark job as failed
         await supabase
-          .from('ai_generation_jobs')
-          .update({ 
-            status: 'failed',
+          .from("ai_generation_jobs")
+          .update({
+            status: "failed",
             completed_at: new Date().toISOString(),
-            error_message: e instanceof Error ? e.message : 'Unknown error',
-            progress_logs: ['Starting AI generation...', 'Error occurred', e instanceof Error ? e.message : 'Unknown error']
+            error_message: e instanceof Error ? e.message : "Unknown error",
+            progress_logs: [
+              "Starting AI generation...",
+              "Error occurred",
+              e instanceof Error ? e.message : "Unknown error",
+            ],
           })
-          .eq('id', jobId);
+          .eq("id", jobId);
 
-        return new Response(JSON.stringify({ 
-          success: false, 
-          jobId,
-          error: e instanceof Error ? e.message : 'Unknown error'
-        }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({
+            success: false,
+            jobId,
+            error: e instanceof Error ? e.message : "Unknown error",
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
     }
 
@@ -1619,7 +1674,7 @@ serve(async (req) => {
 
             for (const line of lines) {
               const trimmed = line.trim();
-              
+
               if (!trimmed || trimmed.startsWith(":")) continue;
               if (!trimmed.startsWith("data: ")) continue;
 
@@ -1629,7 +1684,7 @@ serve(async (req) => {
               try {
                 const parsed = JSON.parse(jsonStr);
                 const content = parsed.choices?.[0]?.delta?.content;
-                
+
                 if (content) {
                   controller.enqueue(new TextEncoder().encode(content));
                 }
@@ -1672,9 +1727,9 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("vibecoder-v2 error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
