@@ -353,11 +353,20 @@ export default function SellerAgreement() {
               <div className="p-4 rounded-lg bg-muted/30 border border-border">
                 <h3 className="font-semibold text-foreground mb-2">3. Revenue Split</h3>
                 <p>
-                  For every sale, SellsPay will retain a <strong className="text-primary">{getPlatformFee()}% platform fee</strong>. 
-                  The remaining <strong className="text-emerald-400">{creatorShare}%</strong> will be distributed to your 
+                  On the <strong>Starter (Free) plan</strong>, SellsPay retains a <strong className="text-primary">10% platform fee</strong>. 
+                  The remaining <strong className="text-emerald-400">90%</strong> will be distributed to your 
                   chosen payout method ({payoutMethod ? payoutMethod.charAt(0).toUpperCase() + payoutMethod.slice(1) : 'selected provider'}).
                 </p>
-                <p className="text-sm mt-2">
+                <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <p className="text-sm text-foreground font-medium mb-2">
+                    🎉 Reduce your fees with a subscription:
+                  </p>
+                  <ul className="text-sm space-y-1">
+                    <li>• <strong>Creator Plan ($69/mo)</strong> — 5% platform fee (keep 95%)</li>
+                    <li>• <strong>Agency Plan ($199/mo)</strong> — <strong className="text-emerald-400">0% platform fee</strong> (keep 100%)</li>
+                  </ul>
+                </div>
+                <p className="text-sm mt-3">
                   Note: Your payout provider may charge additional transfer/FX fees. These are separate from SellsPay fees.
                 </p>
               </div>
