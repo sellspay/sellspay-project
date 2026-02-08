@@ -8,7 +8,16 @@ const AlertDialog = AlertDialogPrimitive.Root;
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 
-const AlertDialogPortal = AlertDialogPrimitive.Portal;
+// Wrap Portal in forwardRef to suppress React 18 warnings
+const AlertDialogPortal = React.forwardRef<
+  React.ElementRef<typeof AlertDialogPrimitive.Portal>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Portal>
+>(({ children, ...props }, _ref) => (
+  <AlertDialogPrimitive.Portal {...props}>
+    {children}
+  </AlertDialogPrimitive.Portal>
+));
+AlertDialogPortal.displayName = "AlertDialogPortal";
 
 const AlertDialogOverlay = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Overlay>,
