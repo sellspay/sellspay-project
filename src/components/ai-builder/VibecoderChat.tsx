@@ -11,6 +11,7 @@ import { LiveThought } from './LiveThought';
 import { PlanApprovalCard } from './PlanApprovalCard';
 import type { PlanData } from './useStreamingCode';
 import { type StylePreset, generateStylePrompt } from './stylePresets';
+import { ContextualSuggestions } from './ContextualSuggestions';
 
 interface VibecoderChatProps {
   onSendMessage: (displayMessage: string, aiPrompt?: string) => void;
@@ -338,6 +339,17 @@ export function VibecoderChat({
           </>
         )}
       </div>
+
+      {/* Contextual Suggestions - appears above input when there's conversation history */}
+      <ContextualSuggestions
+        messages={messages}
+        onSelectSuggestion={(prompt) => {
+          setInput(prompt);
+          // Auto-focus the input
+          // Optionally could auto-submit, but letting user review is better UX
+        }}
+        isStreaming={isStreaming}
+      />
 
       {/* Premium Chat Input */}
       <ChatInputBar
