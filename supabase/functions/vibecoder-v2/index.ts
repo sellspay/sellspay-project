@@ -1205,7 +1205,6 @@ If the request says "change X", change ONLY X and nothing else.
 }
 
 serve(async (req) => {
-  // Mandatory Handshake: Must return "ok" string to satisfy preflight checks
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       status: 200,
