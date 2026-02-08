@@ -86,15 +86,33 @@ export const POLICY_RULES: PolicyRule[] = [
     id: 'nav_above_hero',
     category: 'Layout Policy',
     keywords: [
+      // Direct requests to put nav above hero
       'nav at top', 'navigation at top', 'navbar at top', 'menu at top',
       'nav above hero', 'navbar above hero', 'navigation above hero',
       'put nav at top', 'move nav to top', 'navigation bar at top',
       'header navigation', 'top navigation', 'nav before hero',
       'menu above banner', 'nav above banner', 'navigation first',
       'put menu at top', 'move menu above', 'top menu', 'header menu',
+      // Moving/repositioning actions
+      'move nav above', 'move navigation above', 'move navbar above',
+      'move the nav above', 'move the navigation above', 'move the navbar above',
+      'put nav above', 'put navigation above', 'put navbar above',
+      'place nav above', 'place navigation above', 'place navbar above',
+      'nav on top', 'navbar on top', 'navigation on top',
+      'nav to the top', 'navbar to the top', 'navigation to the top',
+      // Swapping/reordering actions
+      'swap nav', 'swap navbar', 'swap navigation',
+      'nav before', 'navbar before', 'navigation before',
+      'nav first', 'navbar first', 'navigation first',
+      // Above the hero specifically
+      'above the hero', 'before the hero', 'on top of hero',
+      'higher than hero', 'over the hero',
+      // Anything "above" content
+      'add bar above', 'add navigation above', 'add nav above',
+      'bar above hero', 'header above hero', 'menu before hero',
     ],
-    message: "I can't move navigation above the Hero section. Since SellsPay already has its own navigation bar at the top of every page, adding another one above your hero banner would create a visually cluttered 'double navbar' effect. That's why we default to having your Hero section first, with your store navigation below it—it looks much cleaner and more visually appealing for your customers.",
-    redirectSuggestion: "Your store navigation sits beautifully below the hero with sticky positioning—would you like me to restyle it with a different look?",
+    message: "I can't move navigation above the Hero section. The Hero must always be the first element on your storefront. Since SellsPay already has its own navigation bar at the top of every page, adding another one above your hero banner would create a visually cluttered 'double navbar' effect. Your store navigation sits beautifully below the hero with sticky positioning.",
+    redirectSuggestion: "Would you like me to restyle your navigation with a different look, or enhance the hero section instead?",
   },
   
   // === PROMPT INJECTION & SYSTEM ABUSE ===
