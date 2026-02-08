@@ -2,9 +2,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { 
-  User, Settings, CreditCard, LogOut, ChevronRight 
+  User, Settings, CreditCard, LogOut, ChevronRight, Zap 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LowCreditWarning, LOW_CREDIT_THRESHOLD } from "./LowCreditWarning";
+import { CreditTopUpDialog } from "./CreditTopUpDialog";
 
 interface ProfileMenuProps {
   avatarUrl?: string | null;
@@ -55,6 +57,7 @@ export function ProfileMenu({
   onSignOut 
 }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [topUpOpen, setTopUpOpen] = useState(false);
   const [menuCoords, setMenuCoords] = useState({ top: 0, right: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -176,7 +179,42 @@ export function ProfileMenu({
                 </span>
               </div>
             </div>
+          </div>
 
+          {/* Credit Wallet Section */}
+          <div className="px-4 py-3 border-b border-zinc-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap size={14} className="text-violet-400" />
+                <span className="text-sm text-zinc-400">Credits</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-white tabular-nums">
+                  {userCredits.toLocaleString()}
+                </span>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setTopUpOpen(true);
+                  }}
+                  className="text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                >
+                  Top Up →
+                </button>
+              </div>
+            </div>
+
+            {/* Low Credit Warning */}
+            {userCredits < LOW_CREDIT_THRESHOLD && (
+              <LowCreditWarning
+                credits={userCredits}
+                onClick={() => {
+                  setIsOpen(false);
+                  setTopUpOpen(true);
+                }}
+                className="mt-2"
+              />
+            )}
           </div>
 
           {/* Navigation Links */}
@@ -210,6 +248,13 @@ export function ProfileMenu({
         </div>,
         document.body
       )}
+
+      {/* Credit Top Up Dialog */}
+      <CreditTopUpDialog
+        open={topUpOpen}
+        onOpenChange={setTopUpOpen}
+        currentBalance={userCredits}
+      />
     </div>
   );
 }

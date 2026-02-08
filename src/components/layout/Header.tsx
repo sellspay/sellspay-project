@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, 
   CreditCard, Loader2, Package, Sparkles, Store, Crown,
-  Wand2, Music, FileVideo, Film, Headphones, ArrowRight
+  Wand2, Music, FileVideo, Film, Headphones, ArrowRight, Zap
 } from 'lucide-react';
 import { useState } from 'react';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -28,6 +28,8 @@ import { CreditFuelGauge } from '@/components/subscription/CreditFuelGauge';
 import EditorChatIcon from '@/components/chat/EditorChatIcon';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { cn } from '@/lib/utils';
+import { LowCreditWarning, LOW_CREDIT_THRESHOLD } from '@/components/ai-builder/LowCreditWarning';
+import { CreditTopUpDialog } from '@/components/ai-builder/CreditTopUpDialog';
 
 // Product categories for dropdown
 const productCategories = [
@@ -81,6 +83,7 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [topUpOpen, setTopUpOpen] = useState(false);
   const { credits, loading: creditsLoading, plan } = useSubscription();
 
   const isCreator = profile?.is_creator || false;
@@ -375,6 +378,34 @@ export default function Header() {
                       <span className="text-xs text-muted-foreground truncate max-w-[140px]">{user.email}</span>
                     </div>
                   </div>
+
+                  {/* Credit Wallet Display */}
+                  <div className="px-3 py-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Zap size={14} className="text-primary" />
+                        <span className="text-sm font-bold text-foreground tabular-nums">
+                          {creditsLoading ? '...' : credits.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-muted-foreground">credits</span>
+                      </div>
+                      <button
+                        onClick={() => setTopUpOpen(true)}
+                        className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                      >
+                        Get More
+                      </button>
+                    </div>
+                    
+                    {/* Low Credit Warning */}
+                    {!creditsLoading && credits < LOW_CREDIT_THRESHOLD && (
+                      <LowCreditWarning
+                        credits={credits}
+                        onClick={() => setTopUpOpen(true)}
+                        className="mt-2"
+                      />
+                    )}
+                  </div>
                   
                   <DropdownMenuSeparator className="bg-border my-1" />
                   
@@ -602,6 +633,41 @@ export default function Header() {
               >
                 Pricing
               </Link>
+
+              {/* Mobile Credit Display */}
+              {user && (
+                <div className="mx-3 px-4 py-3 rounded-xl bg-muted/50 border border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap size={14} className="text-primary" />
+                      <span className="text-sm font-bold text-foreground tabular-nums">
+                        {creditsLoading ? '...' : credits.toLocaleString()}
+                      </span>
+                      <span className="text-xs text-muted-foreground">credits</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setTopUpOpen(true);
+                      }}
+                      className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Get More
+                    </button>
+                  </div>
+                  {!creditsLoading && credits < LOW_CREDIT_THRESHOLD && (
+                    <LowCreditWarning
+                      credits={credits}
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setTopUpOpen(true);
+                      }}
+                      variant="compact"
+                      className="mt-2"
+                    />
+                  )}
+                </div>
+              )}
               
               <div className="h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent my-2 mx-6" />
               
@@ -624,7 +690,12 @@ export default function Header() {
         )}
       </div>
       
-      {/* Credit Fuel Gauge is now inline */}
+      {/* Credit Top Up Dialog */}
+      <CreditTopUpDialog
+        open={topUpOpen}
+        onOpenChange={setTopUpOpen}
+        currentBalance={credits}
+      />
     </header>
   );
 }
