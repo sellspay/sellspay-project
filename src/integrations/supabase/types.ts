@@ -1686,6 +1686,41 @@ export type Database = {
           },
         ]
       }
+      project_versions: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          files_snapshot: Json
+          id: string
+          project_id: string | null
+          version_label: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          files_snapshot: Json
+          id?: string
+          project_id?: string | null
+          version_label?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          files_snapshot?: Json
+          id?: string
+          project_id?: string | null
+          version_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "vibecoder_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_fee_settings: {
         Row: {
           created_at: string

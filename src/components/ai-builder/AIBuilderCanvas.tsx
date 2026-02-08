@@ -175,6 +175,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     getLastCodeSnapshot,
     getPreviousCodeSnapshot,
     restoreToVersion,
+    canUndo,
+    undoLastChange,
   } = useVibecoderProjects();
   
   // Chat response state for intent router
@@ -1399,7 +1401,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   }
 
   const isEmpty = code === DEFAULT_CODE;
-  const canUndo = messages.filter(m => m.code_snapshot).length > 1;
+  // canUndo is now a function from useVibecoderProjects (includes sentinel safety check)
   const hasActiveProject = Boolean(activeProjectId);
 
   const heroOnStart = async (prompt: string, isPlanMode?: boolean) => {
@@ -1669,6 +1671,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 pendingPlan={pendingPlan}
                 onApprovePlan={handleApprovePlan}
                 onRejectPlan={handleRejectPlan}
+                canUndo={canUndo()}
               />
             </div>
           </div>

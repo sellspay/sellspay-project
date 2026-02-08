@@ -1,7 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
-import { ThumbsUp, ThumbsDown, Copy, Undo2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Copy, RotateCcw } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
@@ -39,9 +38,17 @@ interface AssistantMessageProps {
   onRestoreCode?: () => void;
   canRestore?: boolean;
   isStreaming?: boolean;
+  isLatestCodeMessage?: boolean; // NEW: Show prominent undo for latest code message
 }
 
-function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStreaming }: AssistantMessageProps) {
+function AssistantMessage({ 
+  message, 
+  onRate, 
+  onRestoreCode, 
+  canRestore, 
+  isStreaming,
+  isLatestCodeMessage = false 
+}: AssistantMessageProps) {
   const hasCode = !!message.code_snapshot;
   const [showRevertDialog, setShowRevertDialog] = useState(false);
 
@@ -57,6 +64,9 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
     setShowRevertDialog(false);
     onRestoreCode?.();
   };
+
+  // Show prominent undo button for the latest code message (always visible, not hover)
+  const showProminentUndo = isLatestCodeMessage && canRestore && hasCode && !isStreaming;
 
   return (
     <motion.div 
@@ -148,23 +158,37 @@ function AssistantMessage({ message, onRate, onRestoreCode, canRestore, isStream
           )}
         </div>
 
-        {/* Minimal note for code messages */}
+        {/* Code applied note + PROMINENT UNDO BUTTON (always visible for latest) */}
         {hasCode && !isStreaming && (
-          <div className="mt-3 pt-3 border-t border-zinc-800/50">
+          <div className="mt-3 pt-3 border-t border-zinc-800/50 flex items-center justify-between">
             <span className="text-[10px] text-zinc-600 italic">Code applied to preview</span>
+            
+            {/* PROMINENT UNDO PILL - Always visible for latest code message */}
+            {showProminentUndo && (
+              <button
+                onClick={handleRevertClick}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg 
+                           bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white
+                           text-xs font-medium transition-colors border border-zinc-700/50"
+              >
+                <RotateCcw size={12} />
+                Undo Change
+              </button>
+            )}
           </div>
         )}
 
-        {/* Hover toolbar - all icons on same line */}
+        {/* Hover toolbar - rating + copy (undo moved to prominent position above) */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {canRestore && onRestoreCode && (
+          {/* Only show revert in hover toolbar for non-latest messages */}
+          {canRestore && onRestoreCode && !isLatestCodeMessage && (
             <>
               <button
                 className="p-1.5 text-zinc-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
                 onClick={handleRevertClick}
                 title="Revert to this version"
               >
-                <Undo2 size={14} />
+                <RotateCcw size={14} />
               </button>
               <div className="w-px h-3 bg-zinc-800 mx-1" />
             </>
@@ -233,6 +257,7 @@ interface VibecoderMessageBubbleProps {
   onRestoreCode?: () => void;
   canRestore?: boolean;
   isStreaming?: boolean;
+  isLatestCodeMessage?: boolean; // NEW: Show prominent undo for latest code message
 }
 
 export function VibecoderMessageBubble({
@@ -241,6 +266,7 @@ export function VibecoderMessageBubble({
   onRestoreCode,
   canRestore = false,
   isStreaming = false,
+  isLatestCodeMessage = false,
 }: VibecoderMessageBubbleProps) {
   if (message.role === 'user') {
     return <UserBubble content={message.content ?? ''} />;
@@ -263,6 +289,7 @@ export function VibecoderMessageBubble({
       onRestoreCode={onRestoreCode}
       canRestore={canRestore}
       isStreaming={isStreaming}
+      isLatestCodeMessage={isLatestCodeMessage}
     />
   );
 }
@@ -273,13 +300,15 @@ interface ChatInterfaceProps {
   onRateMessage: (messageId: string, rating: -1 | 0 | 1) => void;
   onRestoreToVersion: (messageId: string) => void;
   streamingMessageId?: string | null;
+  canUndo?: boolean; // NEW: Whether undo is possible (at least 2 valid snapshots)
 }
 
 export function ChatInterface({ 
   messages, 
   onRateMessage, 
   onRestoreToVersion,
-  streamingMessageId 
+  streamingMessageId,
+  canUndo = false 
 }: ChatInterfaceProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -292,18 +321,30 @@ export function ChatInterface({
     return <EmptyState />;
   }
 
+  // Find the latest assistant message with code for prominent undo display
+  const latestCodeMessageIndex = [...messages]
+    .map((m, i) => ({ msg: m, idx: i }))
+    .filter(({ msg }) => msg.role === 'assistant' && msg.code_snapshot)
+    .pop()?.idx ?? -1;
+
   return (
     <div className="flex-1 overflow-y-auto px-4 py-6 custom-scrollbar">
-      {messages.map((msg, index) => (
-        <VibecoderMessageBubble
-          key={msg.id}
-          message={msg}
-          onRate={(rating) => onRateMessage(msg.id, rating)}
-          onRestoreCode={msg.code_snapshot ? () => onRestoreToVersion(msg.id) : undefined}
-          canRestore={index < messages.length - 1 && !!msg.code_snapshot}
-          isStreaming={msg.id === streamingMessageId}
-        />
-      ))}
+      {messages.map((msg, index) => {
+        // Determine if this is the latest code message (for prominent undo)
+        const isLatestCodeMessage = index === latestCodeMessageIndex;
+        
+        return (
+          <VibecoderMessageBubble
+            key={msg.id}
+            message={msg}
+            onRate={(rating) => onRateMessage(msg.id, rating)}
+            onRestoreCode={msg.code_snapshot ? () => onRestoreToVersion(msg.id) : undefined}
+            canRestore={index < messages.length - 1 && !!msg.code_snapshot && canUndo}
+            isStreaming={msg.id === streamingMessageId}
+            isLatestCodeMessage={isLatestCodeMessage && canUndo}
+          />
+        );
+      })}
       <div ref={bottomRef} className="h-4" />
     </div>
   );
