@@ -19,7 +19,27 @@ export interface StylePreset {
   icon: 'moon' | 'zap' | 'sun' | 'leaf' | 'waves' | 'sparkles' | 'palette';
 }
 
+// Special "None" preset that represents no style override
+export const NO_STYLE_PRESET: StylePreset = {
+  id: 'none',
+  name: 'No Style',
+  description: 'Use my existing design',
+  colors: {
+    primary: '',
+    accent: '',
+    background: '',
+    surface: '',
+    text: '',
+    muted: '',
+  },
+  backgroundStyle: '',
+  cardStyle: '',
+  typography: '',
+  icon: 'palette',
+};
+
 export const STYLE_PRESETS: StylePreset[] = [
+  NO_STYLE_PRESET, // "None" option first
   {
     id: 'midnight-luxury',
     name: 'Midnight Luxury',
@@ -127,8 +147,14 @@ export const STYLE_PRESETS: StylePreset[] = [
 /**
  * Generate a style context string to inject into the AI prompt
  * This ensures the AI uses the selected visual design system
+ * Returns null for "None" style so no style injection occurs
  */
-export function generateStylePrompt(style: StylePreset): string {
+export function generateStylePrompt(style: StylePreset): string | null {
+  // If "None" style is selected, don't inject any style context
+  if (style.id === 'none') {
+    return null;
+  }
+  
   return `
 [STYLE_CONTEXT]
 Apply this visual design system consistently:
@@ -165,4 +191,4 @@ export function getStyleById(id: string): StylePreset | undefined {
 /**
  * Default style when none is selected
  */
-export const DEFAULT_STYLE = STYLE_PRESETS[0]; // Midnight Luxury
+export const DEFAULT_STYLE = STYLE_PRESETS[0]; // "No Style" by default

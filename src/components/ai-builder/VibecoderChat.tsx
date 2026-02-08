@@ -203,11 +203,13 @@ export function VibecoderChat({
     // Build the prompt that goes to the AI backend (may include system instructions)
     let aiPrompt = cleanPrompt;
     
-    // STYLE INJECTION: If a style is selected, prepend the style context to the AI prompt
+    // STYLE INJECTION: If a style is selected (and not "None"), prepend the style context
     // This ensures the generated code follows the selected visual design system
-    if (options.style) {
+    if (options.style && options.style.id !== 'none') {
       const styleContext = generateStylePrompt(options.style);
-      aiPrompt = `${styleContext}\n\nUser Request: ${cleanPrompt}`;
+      if (styleContext) {
+        aiPrompt = `${styleContext}\n\nUser Request: ${cleanPrompt}`;
+      }
     }
     
     // Prepend model context if using a non-default model
