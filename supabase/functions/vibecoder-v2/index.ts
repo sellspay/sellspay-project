@@ -1509,6 +1509,25 @@ serve(async (req) => {
             console.warn(`[Job ${jobId}] Data check failed:`, e);
           }
         }
+} catch (e) {
+        console.warn(`[Job ${jobId}] Data check failed:`, e);
+      }
+    }
+
+    // --- PASTE THE FIX START ---
+    if (codeResult && !validationError) {
+      const { data: jobData } = await supabase.from('ai_generation_jobs').select('project_id').eq('id', jobId).single();
+      if (jobData?.project_id) {
+        const filesWrapper = { "App.tsx": codeResult };
+        await supabase.from('vibecoder_projects').update({ files: filesWrapper }).eq('id', jobData.project_id);
+        await supabase.from('project_versions').insert({
+            project_id: jobData.project_id,
+            files_snapshot: filesWrapper,
+            version_label: "Manual Recovery Save"
+        });
+      }
+    }
+    // --- PASTE THE FIX END ---
 
         // Update job with results (including validation error if present)
         const updatePayload: Record<string, unknown> = {
