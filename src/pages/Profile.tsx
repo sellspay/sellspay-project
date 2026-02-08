@@ -360,28 +360,10 @@ const ProfilePage: React.FC = () => {
   // Track profile view for analytics (only for other users' profiles)
   useProfileViewTracking(!isOwnProfile ? profile?.id : undefined);
 
-  const handleBecomeSeller = async () => {
-    if (!user || !profile) return;
-    setBecomingSellerLoading(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_seller: true })
-        .eq('id', profile.id);
-      
-      if (error) throw error;
-      
-      setProfile({ ...profile, is_seller: true });
-      // Refresh the global auth context so other pages (like CreateProduct) see the update immediately
-      await refreshProfile();
-      setShowSellerConfirm(false);
-      toast.success('Your account is now a seller account! You can create products.');
-    } catch (error) {
-      console.error('Error becoming seller:', error);
-      toast.error('Failed to switch account. Please try again.');
-    } finally {
-      setBecomingSellerLoading(false);
-    }
+  const handleBecomeSeller = () => {
+    // Redirect to the full seller agreement flow instead of directly updating
+    setShowSellerConfirm(false);
+    navigate('/seller-agreement');
   };
 
   // Check AI Builder access when profile loads
