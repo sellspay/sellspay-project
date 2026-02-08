@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS", // <--- Add this line
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
@@ -1504,104 +1504,104 @@ serve(async (req) => {
 
         console.log(`[Job ${jobId}] Generation complete, content length: ${fullContent.length}`);
 
-        // Parse the response to extract code and summary
+        // --- START OF REPLACEMENT ---
         let codeResult = null;
         let summary = null;
         let planResult = null;
 
-        // Check for plan response
+        // 1. Extract Plan if present
         if (fullContent.includes('"type": "plan"') || fullContent.includes('"type":"plan"')) {
           try {
-            // Extract JSON from the response
             const jsonMatch = fullContent.match(/\{[\s\S]*"type"\s*:\s*"plan"[\s\S]*\}/);
-            if (jsonMatch) {
-              planResult = JSON.parse(jsonMatch[0]);
-            }
+            if (jsonMatch) planResult = JSON.parse(jsonMatch[0]);
           } catch (e) {
             console.error(`[Job ${jobId}] Failed to parse plan:`, e);
           }
         }
 
-        // Check for code response
+        // 2. Extract Code and Summary
         if (fullContent.includes("/// BEGIN_CODE ///")) {
           const codeMatch = fullContent.split("/// BEGIN_CODE ///");
           if (codeMatch.length > 1) {
-            codeResult = codeMatch[1].trim();
-            // Remove any trailing markers
+            // Cleans up the sentinel and trailing markers
+            codeResult = codeMatch[1].split("// --- VIBECODER_COMPLETE ---")[0].trim();
             codeResult = codeResult.replace(/\/\/\/\s*END_CODE\s*\/\/\//g, "").trim();
           }
-          // Extract summary (text before BEGIN_CODE)
           summary = codeMatch[0].replace("/// TYPE: CODE ///", "").trim();
         } else if (fullContent.includes("/// TYPE: CHAT ///")) {
-          // Chat response
           summary = fullContent.replace("/// TYPE: CHAT ///", "").trim();
         } else {
           summary = fullContent;
         }
 
         // ═══════════════════════════════════════════════════════════
-        // HEALER PROTOCOL: Validate output integrity before saving
+        // HEALER & DATA CHECK: Logic integrated before the manual save
         // ═══════════════════════════════════════════════════════════
-        let validationError: ValidationResult | null = null;
+        let validationError = null;
         let jobStatus = "completed";
 
         if (codeResult) {
           const validation = validateOutputIntegrity(codeResult);
           if (!validation.isValid) {
-            console.log(`[Job ${jobId}] ⚠️ Healer detected issue: ${validation.errorType}`);
             validationError = validation;
             jobStatus = "needs_continuation";
           }
         }
 
-        // ═══════════════════════════════════════════════════════════
-        // DATA AVAILABILITY CHECK: Append guidance if data is missing
-        // ═══════════════════════════════════════════════════════════
         if (codeResult && summary && !validationError) {
           try {
             const dataCheck = await checkDataAvailability(supabase, userId, prompt);
             if (dataCheck && (dataCheck.needsSubscriptionPlans || dataCheck.needsProducts)) {
               const guidance = generateDataGuidance(dataCheck);
-              if (guidance) {
-                summary = summary + guidance;
-                console.log(`[Job ${jobId}] Added data availability guidance`);
-              }
+              if (guidance) summary = summary + guidance;
             }
           } catch (e) {
             console.warn(`[Job ${jobId}] Data check failed:`, e);
           }
         }
 
-        // Update job with results (including validation error if present)
-        const updatePayload: Record<string, unknown> = {
+        // 3. THE MANUAL RECOVERY FIX (The Blank Screen Fix)
+        // Forces the design into your project even if database triggers are broken
+        if (codeResult && !validationError) {
+          const { data: jobData } = await supabase
+            .from("ai_generation_jobs")
+            .select("project_id")
+            .eq("id", jobId)
+            .single();
+          if (jobData?.project_id) {
+            const filesWrapper = { "App.tsx": codeResult };
+            await supabase.from("vibecoder_projects").update({ files: filesWrapper }).eq("id", jobData.project_id);
+            await supabase.from("project_versions").insert({
+              project_id: jobData.project_id,
+              files_snapshot: filesWrapper,
+              version_label: "Manual Recovery Save",
+            });
+          }
+        }
+
+        // 4. Finalize Job Status
+        const updatePayload = {
           status: jobStatus,
           completed_at: new Date().toISOString(),
-          code_result: validationError ? null : codeResult, // Don't save broken code
+          code_result: validationError ? null : codeResult,
           summary: summary?.slice(0, 8000),
           plan_result: planResult,
           progress_logs: validationError
-            ? [
-                "Starting AI generation...",
-                "Processing response...",
-                `⚠️ ${validationError.errorType}: ${validationError.errorMessage}`,
-              ]
+            ? ["Starting AI generation...", "Processing response...", `⚠️ ${validationError.errorType}`]
             : ["Starting AI generation...", "Processing response...", "Generation complete!"],
         };
 
-        // Store validation error for frontend Ghost Fixer
         if (validationError) {
           updatePayload.error_message = JSON.stringify({
             type: validationError.errorType,
             message: validationError.errorMessage,
-            truncationLine: validationError.truncationLine,
-            contextTail: validationError.contextTail,
-            partialCode: codeResult, // Include partial code for continuation
+            partialCode: codeResult,
           });
         }
 
         await supabase.from("ai_generation_jobs").update(updatePayload).eq("id", jobId);
-
-        console.log(`[Job ${jobId}] Job ${jobStatus}${validationError ? " (needs continuation)" : ""}`);
+        console.log(`[Job ${jobId}] Job ${jobStatus}`);
+        // --- END OF REPLACEMENT ---
 
         return new Response(
           JSON.stringify({
