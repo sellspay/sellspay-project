@@ -310,6 +310,83 @@ CRITICAL RULES:
 // ═══════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════
+// STAGE 0: COMPLEXITY DETECTION (Force Architect Mode)
+// ═══════════════════════════════════════════════════════════════
+// Detects complex builds that should AUTOMATICALLY trigger Plan Mode
+// to prevent 500+ line one-shot outputs that cause truncation crashes
+
+/**
+ * Determines if a prompt is complex enough to require Architect Mode
+ * Returns true if the AI should plan before coding (multi-component builds)
+ */
+function shouldForceArchitectMode(prompt: string, hasExistingCode: boolean): boolean {
+  // If user already has existing code, this is likely a modification - don't force plan
+  if (hasExistingCode) return false;
+  
+  const lower = prompt.toLowerCase();
+  
+  // 1. Explicit multi-component requests (strong signal)
+  const fullBuildPatterns = [
+    'full page', 'complete page', 'entire page', 'whole page',
+    'full storefront', 'complete storefront', 'entire storefront',
+    'full landing', 'complete landing', 'entire landing',
+    'build me a', 'create a complete', 'design a full',
+    'from scratch', 'everything', 'all sections'
+  ];
+  if (fullBuildPatterns.some(pattern => lower.includes(pattern))) {
+    console.log('[ComplexityDetector] Matched full-build pattern');
+    return true;
+  }
+  
+  // 2. Multiple section keywords (3+ sections = complex)
+  const sectionKeywords = [
+    'hero', 'product', 'products', 'footer', 'pricing', 
+    'testimonial', 'testimonials', 'about', 'faq', 'contact',
+    'features', 'showcase', 'gallery', 'cta', 'banner',
+    'navigation', 'nav', 'header'
+  ];
+  const mentionedSections = sectionKeywords.filter(kw => lower.includes(kw));
+  if (mentionedSections.length >= 3) {
+    console.log(`[ComplexityDetector] Multiple sections detected: ${mentionedSections.join(', ')}`);
+    return true;
+  }
+  
+  // 3. Long prompts tend to be complex requests (>40 words)
+  const wordCount = prompt.split(/\s+/).filter(w => w.length > 0).length;
+  if (wordCount > 40) {
+    console.log(`[ComplexityDetector] Long prompt detected: ${wordCount} words`);
+    return true;
+  }
+  
+  // 4. Explicit section lists (comma-separated items)
+  const hasListPattern = /including:?|with:|contains?:|(?:,\s*(?:and\s+)?(?:a\s+)?(?:the\s+)?[a-z]+\s+(?:section|page|component|area)){2,}/i.test(prompt);
+  if (hasListPattern) {
+    console.log('[ComplexityDetector] List pattern detected');
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Get the forced Architect Mode prompt injection
+ */
+function getArchitectModeInjection(): string {
+  return `
+═══════════════════════════════════════════════════════════════
+🏗️ ARCHITECT MODE ENFORCED (Complex Build Detected)
+═══════════════════════════════════════════════════════════════
+This request involves multiple sections/components. You MUST:
+1. Output a PLAN first (/// TYPE: PLAN ///)
+2. Wait for user approval before generating code
+3. When approved, generate one component at a time (< 150 lines each)
+
+The user's request is complex. Break it down into manageable steps.
+═══════════════════════════════════════════════════════════════
+`;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // COMPLETION SENTINEL & MARKERS (Multi-Agent Architecture)
 // ═══════════════════════════════════════════════════════════════
 // These markers enable truncation detection and component-based generation
@@ -1069,27 +1146,55 @@ serve(async (req) => {
     }
 
     // ════════════════════════════════════════════════════════════
+    // STAGE 0: COMPLEXITY DETECTION (Auto-Trigger Architect Mode)
+    // ════════════════════════════════════════════════════════════
+    const hasExistingCode = Boolean(currentCode?.trim());
+    const forceArchitect = shouldForceArchitectMode(prompt, hasExistingCode);
+    
+    if (forceArchitect) {
+      console.log(`[Stage 0] 🏗️ Complex build detected - forcing Architect Mode`);
+    }
+
+    // ════════════════════════════════════════════════════════════
     // STAGE 1: INTENT CLASSIFICATION (Chain-of-Thought Reasoning)
     // ════════════════════════════════════════════════════════════
     console.log(`[Stage 1] Classifying intent for: "${prompt.slice(0, 100)}..."`);
     
     const intentResult = await classifyIntent(
       prompt,
-      Boolean(currentCode?.trim()),
+      hasExistingCode,
       conversationHistory || [],
       LOVABLE_API_KEY
     );
 
     console.log(`[Stage 1] Result: ${intentResult.intent} (${intentResult.confidence}) - ${intentResult.reasoning}`);
+    
+    // ════════════════════════════════════════════════════════════
+    // STAGE 1.5: FORCE ARCHITECT MODE FOR COMPLEX BUILDS
+    // ════════════════════════════════════════════════════════════
+    // If complexity was detected AND intent is BUILD/MODIFY, inject Architect Mode
+    let modifiedPrompt = prompt;
+    let forcePlanMode = false;
+    
+    if (forceArchitect && (intentResult.intent === 'BUILD' || intentResult.intent === 'MODIFY')) {
+      // Check if user already triggered Architect Mode manually
+      const alreadyArchitect = prompt.includes('[ARCHITECT_MODE_ACTIVE]');
+      
+      if (!alreadyArchitect) {
+        console.log(`[Stage 1.5] Injecting Architect Mode into prompt`);
+        modifiedPrompt = `[ARCHITECT_MODE_ACTIVE]\n${getArchitectModeInjection()}\nUser Request: ${prompt}`;
+        forcePlanMode = true;
+      }
+    }
 
     // ════════════════════════════════════════════════════════════
     // STAGE 2: EXECUTE BASED ON CLASSIFIED INTENT
     // ════════════════════════════════════════════════════════════
-    console.log(`[Stage 2] Executing ${intentResult.intent} handler...`);
+    console.log(`[Stage 2] Executing ${intentResult.intent} handler${forcePlanMode ? ' (Plan Mode Forced)' : ''}...`);
 
     const response = await executeIntent(
       intentResult,
-      prompt,
+      modifiedPrompt, // Use modified prompt with Architect Mode injection if applicable
       currentCode || null,
       productsContext || null,
       model,
