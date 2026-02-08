@@ -105,10 +105,18 @@ function LiveBuildingCard({ steps }: { steps: string[] }) {
 }
 
 const QUICK_PROMPTS = [
-  { label: 'Premium Store', prompt: 'A luxury dark mode storefront for selling premium digital products with glassmorphism cards and violet accents' },
-  { label: 'Creator Portfolio', prompt: 'A bold, modern creator portfolio with hero section, featured works gallery, and contact CTA' },
-  { label: 'SaaS Landing', prompt: 'A clean SaaS landing page with pricing tiers, feature grid, testimonials, and gradient backgrounds' },
-  { label: 'Minimal Blog', prompt: 'A minimal, elegant blog layout with typography focus, article cards, and newsletter signup' },
+  { 
+    label: 'Premium Product Landing', 
+    prompt: 'Create a luxury premium landing page for selling digital products. Include: stunning hero section with animated gradient background, floating product mockups with parallax effects, glassmorphism cards showcasing features, animated testimonials carousel, trust badges section, pricing with hover animations, FAQ accordion, and a bold CTA footer. Use smooth scroll animations, subtle micro-interactions, and a dark mode aesthetic with violet/purple accents.' 
+  },
+  { 
+    label: 'Course Platform', 
+    prompt: 'Build a professional online course landing page with: cinematic hero with course preview video, curriculum breakdown with expandable modules, instructor bio section, student success stories grid, subscription pricing tiers (Free, Pro, Premium) with feature comparison, locked content preview cards showing what subscribers get access to, progress tracking UI mockup, money-back guarantee badge, and newsletter signup. Include smooth animations and a modern educational aesthetic.' 
+  },
+  { 
+    label: 'Creator Storefront', 
+    prompt: 'Design a bold creator storefront for selling digital products and content. Include: large hero with creator branding, featured products grid with hover effects, subscription tier cards, recent uploads carousel, social proof section with follower counts, about the creator section, collection galleries, and a sticky navigation bar. Use dramatic typography, vibrant accent colors, and cinematic animations.' 
+  },
 ];
 
 const PLACEHOLDER_EXAMPLES = [
