@@ -183,7 +183,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         // 🛡️ SAFETY: Never return JSON as code
         if (looksLikeJson(raw)) {
           console.warn('[useStreamingCode] Raw stream looks like JSON - skipping code extraction');
-          return ''; // Return empty, don't set JSON as code
+          return '';
         }
 
         // Prefer explicit begin marker; fallback to type marker
@@ -192,15 +192,18 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
         let codePart = '';
         if (beginIdx >= 0) {
+          // Best case: backend explicitly marked where code begins
           codePart = raw.substring(beginIdx + BEGIN_CODE_MARKER.length);
         } else if (typeIdx >= 0) {
-          // If backend hasn't adopted BEGIN_CODE yet, best-effort fallback:
-          // take everything after TYPE marker (may include explanation, but we clean fences/logs)
+          // If BEGIN_CODE hasn't arrived yet, we may only have the summary/logs.
+          // Do NOT push anything into the preview until we can detect real TSX.
           codePart = raw.substring(typeIdx + '/// TYPE: CODE ///'.length);
         } else {
-          codePart = raw;
+          // No markers yet; treat as unknown. Don't risk updating preview.
+          return '';
         }
 
+        // Strip logs/fences then attempt to locate the real start of TSX
         const cleaned = codePart
           .replace(LOG_PATTERN, '')
           .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
@@ -213,7 +216,31 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           return '';
         }
 
-        return cleaned;
+        // 🛡️ CRITICAL: Only start updating the preview once we see real TSX code.
+        // This prevents intermediate summary text (or stray '<') from breaking /App.tsx.
+        const tsxStartPatterns: RegExp[] = [
+          /(^|\n)import\s+[^\n]+/,
+          /(^|\n)export\s+default\s+function\s+/,
+          /(^|\n)export\s+function\s+/,
+          /(^|\n)const\s+\w+\s*=\s*\(/,
+          /(^|\n)function\s+\w+\s*\(/,
+        ];
+
+        let startIdx = -1;
+        for (const pattern of tsxStartPatterns) {
+          const match = cleaned.match(pattern);
+          if (match?.index !== undefined) {
+            startIdx = match.index;
+            break;
+          }
+        }
+
+        if (startIdx < 0) {
+          // We don't have code yet (likely still summary) — don't update preview.
+          return '';
+        }
+
+        return cleaned.substring(startIdx).trim();
       };
 
       const extractSummaryFromRaw = (raw: string): string => {
@@ -377,6 +404,13 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       }
 
       const finalCode = extractCodeFromRaw(rawStream);
+
+      // 🛡️ FINAL SAFETY: If we never extracted valid TSX, keep the existing code
+      if (!finalCode) {
+        console.warn('[useStreamingCode] No valid TSX extracted - keeping existing code');
+        setState(prev => ({ ...prev, isStreaming: false }));
+        return state.code;
+      }
 
       // 🛑 RACE CONDITION GUARD: Check if user switched projects during generation
       if (options.shouldAbort?.()) {
