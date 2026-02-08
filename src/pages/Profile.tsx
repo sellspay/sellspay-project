@@ -21,11 +21,9 @@ import {
   Pencil,
   User,
   Sparkles,
-  Store,
   ChevronDown,
   FileEdit,
-  Monitor,
-  Wand2
+  Monitor
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -36,23 +34,11 @@ import { ProfileEditorDialog } from '@/components/profile-editor';
 import { PublicProfileSections } from '@/components/profile/PublicProfileSections';
 import { AIStorefrontRenderer } from '@/components/profile/AIStorefrontRenderer';
 import CreatorApplicationDialog from '@/components/creator-application/CreatorApplicationDialog';
-import { SellerConfirmDialog } from '@/components/profile/SellerConfirmDialog';
 import { UnfollowConfirmDialog } from '@/components/profile/UnfollowConfirmDialog';
 import { FollowersDialog } from '@/components/profile/FollowersDialog';
 import { createNotification, checkFollowCooldown, recordUnfollow } from '@/lib/notifications';
 import { useProfileViewTracking } from '@/hooks/useViewTracking';
 import { useIsMobile } from '@/hooks/use-mobile';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Crown } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -342,8 +328,6 @@ const ProfilePage: React.FC = () => {
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [layoutRefreshKey, setLayoutRefreshKey] = useState(0);
   const [showCreatorApplication, setShowCreatorApplication] = useState(false);
-  const [showSellerConfirm, setShowSellerConfirm] = useState(false);
-  const [becomingSellerLoading, setBecomingSellerLoading] = useState(false);
   const [showUnfollowConfirm, setShowUnfollowConfirm] = useState(false);
   const [unfollowLoading, setUnfollowLoading] = useState(false);
   const [unfollowCooldownEnds, setUnfollowCooldownEnds] = useState<Date | null>(null);
@@ -352,56 +336,12 @@ const ProfilePage: React.FC = () => {
   const [savedPage, setSavedPage] = useState(0);
   const savedGridRef = useRef<HTMLDivElement>(null);
   const SAVED_ITEMS_PER_PAGE = 30; // 6 columns × 5 rows
-  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-  const [hasAIBuilderAccess, setHasAIBuilderAccess] = useState(false);
   const [aiStorefrontPublished, setAiStorefrontPublished] = useState(false);
   const [hasVibecoderCode, setHasVibecoderCode] = useState(false);
 
   // Track profile view for analytics (only for other users' profiles)
   useProfileViewTracking(!isOwnProfile ? profile?.id : undefined);
 
-  const handleBecomeSeller = () => {
-    // Redirect to the full seller agreement flow instead of directly updating
-    setShowSellerConfirm(false);
-    navigate('/onboarding/seller-agreement');
-  };
-
-  // Check AI Builder access when profile loads
-  useEffect(() => {
-    const checkAIBuilderAccess = async () => {
-      if (!profile) return;
-      
-      // Check subscription tier
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('subscription_tier')
-        .eq('id', profile.id)
-        .maybeSingle();
-      
-      const isPremiumTier = profileData?.subscription_tier && 
-        ['pro', 'enterprise', 'creator_pro'].includes(profileData.subscription_tier);
-      
-      // Check admin/owner roles
-      const [isAdminRole, isOwnerRole] = await Promise.all([
-        checkUserRole('admin'),
-        checkUserRole('owner'),
-      ]);
-      
-      setHasAIBuilderAccess(isPremiumTier || isAdminRole || isOwnerRole);
-    };
-    
-    if (isOwnProfile && profile) {
-      checkAIBuilderAccess();
-    }
-  }, [profile, isOwnProfile]);
-
-  const handleAIBuilderClick = () => {
-    if (hasAIBuilderAccess) {
-      navigate('/ai-builder');
-    } else {
-      setShowUpgradeDialog(true);
-    }
-  };
   const fetchCollections = async (profileId: string, isOwn: boolean) => {
     try {
       // Determine which products are included in this creator's active subscription plans
@@ -1195,15 +1135,6 @@ const ProfilePage: React.FC = () => {
               {/* Own profile buttons */}
               {isOwnProfile && (
                 <>
-                      <Button 
-                        variant="default"
-                        onClick={handleAIBuilderClick}
-                        className="gap-2 bg-gradient-to-r from-primary to-accent hover:opacity-90"
-                      >
-                        <Wand2 className="w-4 h-4" />
-                        AI Builder
-                        {!hasAIBuilderAccess && <Crown className="w-3 h-3 ml-1" />}
-                      </Button>
                   <Button 
                     variant="outline"
                     onClick={copyProfileLink}
@@ -1218,16 +1149,6 @@ const ProfilePage: React.FC = () => {
                   >
                     <Settings className="w-4 h-4" />
                   </Button>
-                  {!profile.is_seller && (
-                    <Button 
-                      variant="default"
-                      onClick={() => setShowSellerConfirm(true)}
-                      className="gap-2"
-                    >
-                      <Store className="w-4 h-4" />
-                      Seller?
-                    </Button>
-                  )}
                   {!profile.verified && profile.is_seller && (
                     <Button 
                       variant="outline"
@@ -1866,14 +1787,6 @@ const ProfilePage: React.FC = () => {
         }}
       />
 
-      {/* Seller Confirmation Dialog */}
-      <SellerConfirmDialog
-        open={showSellerConfirm}
-        onOpenChange={setShowSellerConfirm}
-        onConfirm={handleBecomeSeller}
-        loading={becomingSellerLoading}
-      />
-
       {/* Unfollow Confirmation Dialog */}
       <UnfollowConfirmDialog
         open={showUnfollowConfirm}
@@ -1900,33 +1813,6 @@ const ProfilePage: React.FC = () => {
           />
         </>
       )}
-
-      {/* AI Builder Upgrade Dialog */}
-      <AlertDialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <div className="flex justify-center mb-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center border border-primary/30">
-                <Crown className="w-7 h-7 text-primary" />
-              </div>
-            </div>
-            <AlertDialogTitle className="text-center">Upgrade to Premium</AlertDialogTitle>
-            <AlertDialogDescription className="text-center">
-              The AI Builder is a premium feature that lets you design your entire storefront with AI — starting from a blank canvas with no limits.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
-            <AlertDialogAction 
-              onClick={() => navigate('/pricing')}
-              className="w-full gap-2"
-            >
-              <Crown className="w-4 h-4" />
-              View Plans
-            </AlertDialogAction>
-            <AlertDialogCancel className="w-full mt-0">Maybe Later</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </TooltipProvider>
   );
 };

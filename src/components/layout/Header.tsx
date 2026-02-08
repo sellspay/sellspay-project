@@ -18,7 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, 
-  CreditCard, Loader2, Package, Sparkles,
+  CreditCard, Loader2, Package, Sparkles, Store, Crown,
   Wand2, Music, FileVideo, Film, Headphones, ArrowRight
 } from 'lucide-react';
 import { useState } from 'react';
@@ -434,6 +434,38 @@ export default function Header() {
                       <span className="font-medium">Settings</span>
                     </Link>
                   </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator className="bg-border my-1" />
+                  
+                  {/* AI Builder - Always visible for logged-in users */}
+                  <DropdownMenuItem asChild className={cn(
+                    "rounded-lg px-3 py-2.5 cursor-pointer",
+                    "hover:bg-primary/10",
+                    "focus:bg-primary/10"
+                  )}>
+                    <Link to="/ai-builder" className="flex items-center gap-3">
+                      <Wand2 className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-primary">AI Builder</span>
+                      <Crown className="h-3 w-3 text-primary/60 ml-auto" />
+                    </Link>
+                  </DropdownMenuItem>
+                  
+                  {/* Become a Seller - Only visible for non-sellers */}
+                  {!isSeller && (
+                    <DropdownMenuItem asChild className={cn(
+                      "rounded-lg px-3 py-2.5 cursor-pointer",
+                      "hover:bg-muted",
+                      "focus:bg-muted"
+                    )}>
+                      <Link to="/onboarding/seller-agreement" className="flex items-center gap-3">
+                        <Store className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Become a Seller</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  
+                  <DropdownMenuSeparator className="bg-border my-1" />
+                  
                   {isAdmin && (
                     <DropdownMenuItem asChild className={cn(
                       "rounded-lg px-3 py-2.5 cursor-pointer",
