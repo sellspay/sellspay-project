@@ -7,6 +7,7 @@ interface AgentState {
   isRunning: boolean;
   error?: string;
   lockedProjectId: string | null; // Track which project owns this generation
+  generationStartTime: number | null; // Track when generation started for timeout
 }
 
 interface UseAgentLoopOptions {
@@ -20,6 +21,7 @@ const INITIAL_STATE: AgentState = {
   logs: [],
   isRunning: false,
   lockedProjectId: null,
+  generationStartTime: null,
 };
 
 /**
@@ -30,23 +32,60 @@ function createFreshState(): AgentState {
 }
 
 /**
+ * Validates that the current project matches the locked project
+ * Returns true if safe to proceed, false if there's a mismatch
+ */
+function validateProjectLock(
+  lockedProjectId: string | null,
+  currentProjectId: string | null,
+  context: string
+): boolean {
+  if (!lockedProjectId) {
+    console.warn(`[AgentLoop] ${context}: No project lock set`);
+    return false;
+  }
+  
+  if (lockedProjectId !== currentProjectId) {
+    console.warn(`🛑 [AgentLoop] ${context}: Project mismatch! Locked to ${lockedProjectId} but viewing ${currentProjectId}`);
+    return false;
+  }
+  
+  return true;
+}
+
+/**
  * Agent orchestration hook that manages the multi-step workflow:
  * Planning → Reading → Writing → Installing → Verifying → Done/Error
  * 
  * This wraps the existing streamCode function with agent-like behavior,
  * providing real-time logs and step transitions for a premium UX.
+ * 
+ * ENHANCED FOR MULTI-AGENT PIPELINE:
+ * - Hard project locking at generation start
+ * - Validation on every state update
+ * - Automatic abort on project switch
  */
 export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: UseAgentLoopOptions) {
   const [state, setState] = useState<AgentState>(INITIAL_STATE);
   const abortRef = useRef(false);
   const streamStartedRef = useRef(false);
+  
+  // 🔒 HARD LOCK: Capture project ID at the exact moment generation starts
+  const hardLockRef = useRef<string | null>(null);
 
   const addLog = useCallback((msg: string) => {
+    // 🛑 RACE GUARD: Only add logs if we're still locked to the right project
+    const currentProjectId = getActiveProjectId?.();
+    if (hardLockRef.current && hardLockRef.current !== currentProjectId) {
+      console.warn(`🛑 [AgentLoop] Blocked log for wrong project: ${msg.substring(0, 50)}`);
+      return;
+    }
+    
     setState(prev => ({ 
       ...prev, 
       logs: [...prev.logs, msg] 
     }));
-  }, []);
+  }, [getActiveProjectId]);
 
   const setStep = useCallback((step: AgentStep) => {
     setState(prev => ({ ...prev, step }));
@@ -69,6 +108,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       logs: ['> Initializing agent...'], 
       isRunning: true,
       lockedProjectId: lockedId,
+      generationStartTime: Date.now(),
     });
 
     try {

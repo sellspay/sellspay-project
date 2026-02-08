@@ -309,6 +309,15 @@ CRITICAL RULES:
 // STAGE 2: EXECUTOR PROMPTS (Specialized for each intent)
 // ═══════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════
+// COMPLETION SENTINEL & MARKERS (Multi-Agent Architecture)
+// ═══════════════════════════════════════════════════════════════
+// These markers enable truncation detection and component-based generation
+
+const VIBECODER_COMPLETE_SENTINEL = '// --- VIBECODER_COMPLETE ---';
+const COMPONENT_START_PREFIX = '/// COMPONENT_START:';
+const COMPONENT_END_MARKER = '/// COMPONENT_END ///';
+
 const CHAT_EXECUTOR_PROMPT = `You are VibeCoder, a friendly and knowledgeable UI architect for SellsPay.
 The user is asking a QUESTION. Your job is to EXPLAIN, CLARIFY, or ENGAGE in conversation.
 
@@ -352,6 +361,7 @@ EXAMPLE RESPONSES:
 
 
 // The main CODE executor prompt - receives CREATOR_IDENTITY injection at runtime
+// Enhanced with COMPLETION SENTINEL and COMPONENT MARKERS for Multi-Agent Architecture
 const CODE_EXECUTOR_PROMPT = `You are an expert E-commerce UI/UX Designer building creator storefronts.
 Your job is to BUILD or MODIFY the user's personal storefront.
 
@@ -650,6 +660,25 @@ PRIMARY PALETTE:
 EFFECTS:
 - Shadows: shadow-xl shadow-violet-500/10
 - Gradients: bg-gradient-to-r from-violet-500 to-blue-500
+
+═══════════════════════════════════════════════════════════════
+COMPLETION SENTINEL (CRITICAL - PREVENTS TRUNCATION)
+═══════════════════════════════════════════════════════════════
+**EVERY CODE BLOCK MUST END WITH THIS EXACT LINE:**
+\`// --- VIBECODER_COMPLETE ---\`
+
+This sentinel tells the frontend that your code is complete and not truncated.
+If you hit token limits, output what you have - the system will request continuation.
+
+**OUTPUT STRUCTURE (MANDATORY):**
+/// TYPE: CODE ///
+<markdown summary>
+[LOG: step...]
+/// BEGIN_CODE ///
+<your TSX code>
+// --- VIBECODER_COMPLETE ---
+
+**NEVER FORGET THE SENTINEL.** Code without it is considered broken.
 
 ═══════════════════════════════════════════════════════════════
 ARCHITECT MODE (PLAN-BEFORE-CODE PROTOCOL)
