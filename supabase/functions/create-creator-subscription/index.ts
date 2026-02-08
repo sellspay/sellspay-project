@@ -54,22 +54,53 @@ serve(async (req) => {
       throw new Error("Missing required fields: name, price_cents, creator_id");
     }
 
-    logStep("Creating Stripe product and price", { name, price_cents, currency });
-
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Create Stripe product
+    // Get creator's Stripe account from private schema
+    const { data: creatorProfile } = await supabaseClient
+      .from("profiles")
+      .select("user_id")
+      .eq("id", creator_id)
+      .single();
+
+    if (!creatorProfile?.user_id) {
+      throw new Error("Creator profile not found");
+    }
+
+    const { data: sellerConfig } = await supabaseClient.rpc(
+      "get_seller_config",
+      { p_user_id: creatorProfile.user_id }
+    );
+
+    const sellerStripeId = sellerConfig?.[0]?.stripe_account_id || null;
+    const stripeOnboardingComplete = sellerConfig?.[0]?.stripe_onboarding_complete || false;
+
+    if (!sellerStripeId || !stripeOnboardingComplete) {
+      throw new Error("Seller must complete Stripe onboarding to create subscription plans");
+    }
+
+    logStep("Creating Stripe product and price in SELLER catalog", { 
+      name, 
+      price_cents, 
+      currency,
+      sellerStripeId 
+    });
+
+    // Create Stripe product in SELLER's catalog (not platform catalog)
     const product = await stripe.products.create({
       name: name,
       description: description || undefined,
       metadata: {
         creator_id: creator_id,
         type: 'creator_subscription',
+        platform: 'sellspay',
       },
+    }, {
+      stripeAccount: sellerStripeId, // Creates in seller's Stripe catalog
     });
-    logStep("Stripe product created", { productId: product.id });
+    logStep("Stripe product created in seller catalog", { productId: product.id, sellerStripeId });
 
-    // Create Stripe price (recurring monthly)
+    // Create Stripe price in SELLER's catalog (recurring monthly)
     const price = await stripe.prices.create({
       product: product.id,
       unit_amount: price_cents,
@@ -81,6 +112,8 @@ serve(async (req) => {
         creator_id: creator_id,
         type: 'creator_subscription',
       },
+    }, {
+      stripeAccount: sellerStripeId, // Creates in seller's Stripe catalog
     });
     logStep("Stripe price created", { priceId: price.id });
 

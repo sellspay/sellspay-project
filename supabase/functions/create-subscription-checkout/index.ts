@@ -109,22 +109,34 @@ serve(async (req) => {
     }
 
     // Create or get the Stripe product and price for this plan
+    // Products are created in the SELLER's Stripe catalog for proper marketplace architecture
     let stripePriceId = plan.stripe_price_id;
     
     if (!stripePriceId) {
-      // Create Stripe product if not exists
+      // Create Stripe product if not exists - in SELLER's catalog
       let stripeProductId = plan.stripe_product_id;
       
       if (!stripeProductId) {
+        if (!useConnect) {
+          throw new Error("Creator must complete Stripe onboarding before creating subscription products");
+        }
+        
+        // Create product in SELLER's Stripe catalog (not platform catalog)
         const product = await stripe.products.create({
           name: `${creatorProfile.full_name || creatorProfile.username}'s ${plan.name}`,
           metadata: {
             plan_id: plan.id,
             creator_id: plan.creator_id,
+            platform: 'sellspay',
           },
+        }, {
+          stripeAccount: creatorStripeAccountId, // Creates in seller's catalog
         });
         stripeProductId = product.id;
-        logStep("Stripe product created", { productId: product.id });
+        logStep("Stripe product created in seller catalog", { 
+          productId: product.id, 
+          sellerStripeId: creatorStripeAccountId 
+        });
 
         // Save product ID to plan
         await supabaseClient
@@ -133,7 +145,7 @@ serve(async (req) => {
           .eq("id", plan.id);
       }
 
-      // Create recurring price
+      // Create recurring price in SELLER's catalog
       const price = await stripe.prices.create({
         product: stripeProductId,
         unit_amount: plan.price_cents,
@@ -142,9 +154,14 @@ serve(async (req) => {
         metadata: {
           plan_id: plan.id,
         },
+      }, {
+        stripeAccount: creatorStripeAccountId, // Creates in seller's catalog
       });
       stripePriceId = price.id;
-      logStep("Stripe price created", { priceId: price.id });
+      logStep("Stripe price created in seller catalog", { 
+        priceId: price.id,
+        sellerStripeId: creatorStripeAccountId
+      });
 
       // Save price ID to plan
       await supabaseClient
@@ -237,7 +254,10 @@ serve(async (req) => {
       logStep("Platform collection mode - creator not yet onboarded");
     }
 
-    const session = await stripe.checkout.sessions.create(sessionConfig);
+    // Create checkout session - must use stripeAccount to access seller's product catalog
+    const session = useConnect 
+      ? await stripe.checkout.sessions.create(sessionConfig, { stripeAccount: creatorStripeAccountId })
+      : await stripe.checkout.sessions.create(sessionConfig);
 
     logStep("Checkout session created", { 
       sessionId: session.id, 
