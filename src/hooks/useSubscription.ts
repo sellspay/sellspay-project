@@ -75,21 +75,10 @@ export function useSubscription() {
   const navigate = useNavigate();
   const fetchedRef = useRef(false);
 
-  // Admin/Owner override - full access without subscription
+  // Admin/Owner gets full capabilities but uses real credit balance from DB
   const isPrivileged = isAdmin || isOwner;
 
   const [state, setState] = useState<SubscriptionState>(() => {
-    if (isPrivileged) {
-      return {
-        plan: 'agency',
-        credits: 999999,
-        capabilities: { vibecoder: true, imageGen: true, videoGen: true },
-        sellerFee: 0,
-        badge: 'gold',
-        expiresAt: null,
-        stripeSubscriptionId: null,
-      };
-    }
     if (user && isCacheValid(subscriptionCache, user.id)) {
       return subscriptionCache!.state;
     }
@@ -120,12 +109,6 @@ export function useSubscription() {
       return;
     }
 
-    // Admin/Owner bypass - always have full access
-    if (isPrivileged) {
-      setLoading(false);
-      return;
-    }
-
     // Use cache if valid and not forcing refresh
     if (!forceRefresh && isCacheValid(subscriptionCache, user.id)) {
       setState(subscriptionCache!.state);
@@ -139,12 +122,15 @@ export function useSubscription() {
       
       if (error) throw error;
       
+      // Admin/Owner gets full capabilities but real credit balance
       const newState: SubscriptionState = {
-        plan: data?.plan || 'browser',
+        plan: isPrivileged ? 'agency' : (data?.plan || 'browser'),
         credits: data?.credits || 0,
-        capabilities: data?.capabilities || DEFAULT_STATE.capabilities,
-        sellerFee: data?.sellerFee ?? 10,
-        badge: data?.badge || 'none',
+        capabilities: isPrivileged 
+          ? { vibecoder: true, imageGen: true, videoGen: true }
+          : (data?.capabilities || DEFAULT_STATE.capabilities),
+        sellerFee: isPrivileged ? 0 : (data?.sellerFee ?? 10),
+        badge: isPrivileged ? 'gold' : (data?.badge || 'none'),
         expiresAt: data?.expiresAt || null,
         stripeSubscriptionId: data?.stripeSubscriptionId || null,
       };
@@ -301,21 +287,12 @@ export function useSubscription() {
   }, [user?.id]);
 
   // Admin/Owner privilege sync - update state when roles load
+  // Admin/Owner privilege sync - force refresh to get real credits + capabilities
   useEffect(() => {
-    if (isPrivileged) {
-      const privilegedState: SubscriptionState = {
-        plan: 'agency',
-        credits: 999999,
-        capabilities: { vibecoder: true, imageGen: true, videoGen: true },
-        sellerFee: 0,
-        badge: 'gold',
-        expiresAt: null,
-        stripeSubscriptionId: null,
-      };
-      setState(privilegedState);
-      setLoading(false);
+    if (isPrivileged && user && !isCacheValid(subscriptionCache, user.id)) {
+      refreshSubscription(true);
     }
-  }, [isPrivileged]);
+  }, [isPrivileged, user?.id]);
 
   // Keep all hook instances in sync
   useEffect(() => {
