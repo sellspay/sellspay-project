@@ -148,15 +148,6 @@ export default function SellerAgreement() {
     }
   };
 
-  // Calculate platform fee based on subscription tier
-  // Note: We'd need to fetch this from profile or a separate query
-  // For now, default to 10% (free tier) - this can be enhanced later
-  const getPlatformFee = () => {
-    // Could be fetched from profile.platform_fee_percent if available
-    return 10;
-  };
-
-  const creatorShare = 100 - getPlatformFee();
   const canSubmit = agreed && isAdult === true && payoutMethod && !detectingCountry;
 
   // Show "Not Available" screen if no providers work
@@ -353,17 +344,18 @@ export default function SellerAgreement() {
               <div className="p-4 rounded-lg bg-muted/30 border border-border">
                 <h3 className="font-semibold text-foreground mb-2">3. Revenue Split</h3>
                 <p>
-                  On the <strong>Starter (Free) plan</strong>, SellsPay retains a <strong className="text-primary">10% platform fee</strong>. 
-                  The remaining <strong className="text-emerald-400">90%</strong> will be distributed to your 
+                  Your payout percentage depends on your subscription plan. Earnings are distributed to your 
                   chosen payout method ({payoutMethod ? payoutMethod.charAt(0).toUpperCase() + payoutMethod.slice(1) : 'selected provider'}).
                 </p>
                 <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
                   <p className="text-sm text-foreground font-medium mb-2">
-                    🎉 Reduce your fees with a subscription:
+                    Platform Fee by Plan:
                   </p>
                   <ul className="text-sm space-y-1">
-                    <li>• <strong>Creator Plan ($69/mo)</strong> — 5% platform fee (keep 95%)</li>
-                    <li>• <strong>Agency Plan ($199/mo)</strong> — <strong className="text-emerald-400">0% platform fee</strong> (keep 100%)</li>
+                    <li>• <strong>Free Plan</strong> — 10% platform fee (you keep 90%)</li>
+                    <li>• <strong>Basic Plan</strong> — 8% platform fee (you keep 92%)</li>
+                    <li>• <strong>Pro Plan</strong> — 5% platform fee (you keep 95%)</li>
+                    <li>• <strong>Enterprise Plan</strong> — <strong className="text-emerald-400">0% platform fee</strong> (you keep 100%)</li>
                   </ul>
                 </div>
                 <p className="text-sm mt-3">
@@ -443,9 +435,9 @@ export default function SellerAgreement() {
             <span className="text-sm leading-relaxed">
               I have read and agree to the <strong>Seller Contract</strong>. I confirm that I am at least 
               18 years old, I own all rights to the products I will sell, I understand that{' '}
-              <strong>SellsPay is the Merchant of Record</strong>, and I agree to receive my{' '}
-              <strong>{creatorShare}% share</strong> via{' '}
-              <strong>{payoutMethod ? payoutMethod.charAt(0).toUpperCase() + payoutMethod.slice(1) : 'my chosen provider'}</strong>.{' '}
+              <strong>SellsPay is the Merchant of Record</strong>, and I agree to receive my earnings via{' '}
+              <strong>{payoutMethod ? payoutMethod.charAt(0).toUpperCase() + payoutMethod.slice(1) : 'my chosen provider'}</strong>{' '}
+              according to my subscription plan's revenue share.{' '}
               <strong className="text-destructive">I certify that I will ONLY sell digital 
               products and understand that selling physical goods will result in permanent account termination.</strong>
             </span>
