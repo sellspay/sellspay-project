@@ -590,7 +590,6 @@ The user's request is complex. Break it down into manageable steps.
 // COMPLETION SENTINEL & MARKERS (Multi-Agent Architecture)
 // ═══════════════════════════════════════════════════════════════
 // These markers enable truncation detection and component-based generation
-
 const COMPONENT_START_PREFIX = "/// COMPONENT_START:";
 const COMPONENT_END_MARKER = "/// COMPONENT_END ///";
 
