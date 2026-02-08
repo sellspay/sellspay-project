@@ -309,7 +309,7 @@ export default function Settings() {
 
   const handleSwitchToSeller = () => {
     // Redirect to the full seller agreement flow instead of directly updating
-    navigate('/seller-agreement');
+    navigate('/onboarding/seller-agreement');
   };
 
   const handleChangePassword = async () => {
