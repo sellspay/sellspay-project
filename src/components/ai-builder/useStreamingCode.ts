@@ -1,6 +1,12 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * Completion sentinel that MUST be present in every AI-generated code block.
+ * If missing, the output is considered truncated.
+ */
+export const VIBECODER_COMPLETE_SENTINEL = '// --- VIBECODER_COMPLETE ---';
+
 // Regex pattern for extracting live log tags
 const LOG_PATTERN = /\[LOG:\s*([^\]]+)\]/g;
 
@@ -17,13 +23,14 @@ interface UseStreamingCodeOptions {
   onChunk?: (accumulated: string) => void;
   onComplete?: (finalCode: string) => void;
   onChatResponse?: (text: string) => void;
-  onPlanResponse?: (plan: PlanData, originalPrompt: string) => void; // NEW: Plan mode callback
-  onLogUpdate?: (logs: string[]) => void; // Real-time transparency logs
-  onSummary?: (summary: string) => void; // NEW: AI's natural language response extracted from stream
+  onPlanResponse?: (plan: PlanData, originalPrompt: string) => void;
+  onLogUpdate?: (logs: string[]) => void;
+  onSummary?: (summary: string) => void;
   onError?: (error: Error) => void;
-  shouldAbort?: () => boolean; // Race condition guard: check if generation should be discarded
-  getProductsContext?: () => Promise<ProductContext[]>; // Fetch products for AI context
-  getConversationHistory?: () => Array<{role: string; content: string}>; // Recent chat for context
+  onTruncationDetected?: (truncatedCode: string, originalPrompt: string) => void; // NEW: Ghost Fixer trigger
+  shouldAbort?: () => boolean;
+  getProductsContext?: () => Promise<ProductContext[]>;
+  getConversationHistory?: () => Array<{role: string; content: string}>;
 }
 
 interface ProductContext {
@@ -66,9 +73,49 @@ const hasTsxEntrypoint = (code: string) =>
   /export\s+default\s+function\s+App\b|export\s+default\s+function\b|export\s+default\b|function\s+App\b|const\s+App\b/.test(code);
 
 /**
- * Lightweight TS/TSX “completeness” check.
+ * Check if code has the completion sentinel (indicating full generation)
+ */
+export const hasCompleteSentinel = (code: string): boolean => {
+  return code.includes(VIBECODER_COMPLETE_SENTINEL);
+};
+
+/**
+ * Strip the completion sentinel from code (it's a marker, not part of the app)
+ */
+export const stripCompleteSentinel = (code: string): string => {
+  return code.replace(new RegExp(VIBECODER_COMPLETE_SENTINEL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*', 'g'), '').trim();
+};
+
+/**
+ * Detect if code appears truncated (missing sentinel + structural issues)
+ */
+export const isTruncatedCode = (code: string): boolean => {
+  if (!code || code.trim().length < 50) return false;
+  
+  // If sentinel is present, it's complete
+  if (hasCompleteSentinel(code)) return false;
+  
+  const trimmed = code.trim();
+  const lastChar = trimmed.slice(-1);
+  
+  // Trailing operators or incomplete constructs
+  const truncationChars = ['<', '{', '(', '[', ',', ':', '=', '.', '+', '-', '*', '/', '`', '"', "'"];
+  if (truncationChars.includes(lastChar)) return true;
+  
+  // Check for unbalanced braces (strong indicator)
+  const openBraces = (code.match(/\{/g) || []).length;
+  const closeBraces = (code.match(/\}/g) || []).length;
+  if (openBraces > closeBraces + 1) return true;
+  
+  return false;
+};
+
+/**
+ * Lightweight TS/TSX "completeness" check.
  * Goal: prevent obviously-truncated output (e.g. trailing "<" or unterminated strings)
  * from ever replacing the last-known-good preview.
+ * 
+ * Enhanced with completion sentinel detection for the Multi-Agent Pipeline.
  */
 const isLikelyCompleteTsx = (code: string): boolean => {
   const src = (code ?? '').trim();
@@ -180,22 +227,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Track original prompt for plan execution
   const originalPromptRef = useRef<string>('');
-
-  // Last-known-good preview snapshot (never invalid / truncated)
   const lastGoodCodeRef = useRef<string>(DEFAULT_CODE);
 
   const streamCode = useCallback(async (prompt: string, currentCode?: string, jobId?: string) => {
-    // Cancel any existing stream
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
 
     abortControllerRef.current = new AbortController();
 
-    // Store original prompt (strip ARCHITECT_MODE prefix for plan approval)
     const cleanPrompt = prompt.replace(/\[ARCHITECT_MODE_ACTIVE\]\nUser Request:\s*/i, '').split('\n\nINSTRUCTION:')[0].trim();
     originalPromptRef.current = cleanPrompt || prompt;
 
@@ -209,7 +250,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         throw new Error('Not authenticated');
       }
 
-      // Fetch products context for AI if getter is provided
       let productsContext: ProductContext[] | undefined;
       if (options.getProductsContext) {
         try {
@@ -219,7 +259,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         }
       }
 
-      // Get conversation history for pronoun resolution
       const conversationHistory = options.getConversationHistory?.() || [];
 
       const response = await fetch(
@@ -235,8 +274,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
             prompt,
             currentCode,
             productsContext,
-            conversationHistory, // Pass conversation history for pronoun resolution
-            jobId, // Pass job ID for background-persistent generation
+            conversationHistory,
+            jobId,
           }),
           signal: abortControllerRef.current.signal,
         }
@@ -247,22 +286,15 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         throw new Error(errorData.error || `Request failed: ${response.status}`);
       }
 
-      // 🛡️ CRITICAL FIX: Detect JSON job status response vs streaming text
-      // When jobId is passed, backend returns JSON instead of streaming.
-      // We MUST NOT treat JSON as code or the preview will crash.
       const contentType = response.headers.get('Content-Type') || '';
       const isJsonResponse = contentType.includes('application/json');
 
       if (isJsonResponse) {
-        // Backend returned a job status response (non-streaming mode)
-        // The realtime subscription will handle the completed job
         console.log('[useStreamingCode] JSON response detected - deferring to realtime subscription');
         const jsonData = await response.json().catch(() => ({}));
         console.log('[useStreamingCode] Job status:', jsonData);
-
-        // Return early WITHOUT modifying code state
         setState(prev => ({ ...prev, isStreaming: false }));
-        return lastGoodCodeRef.current; // Keep existing code, don't set JSON as code
+        return lastGoodCodeRef.current;
       }
 
       if (!response.body) {
@@ -272,24 +304,19 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
-      // Keep the raw stream intact (summary + logs + markers + code)
       let rawStream = '';
       let mode: StreamMode = 'detecting';
 
-      // Real-time transparency: track logs as they stream in
       const seenLogs = new Set<string>();
       const accumulatedLogs: string[] = [];
 
-      // Marker that separates explanation/logs from the actual TSX payload
       const BEGIN_CODE_MARKER = '/// BEGIN_CODE ///';
 
-      // 🛡️ SAFETY: Helper to detect if content looks like JSON (not TSX code)
       const looksLikeJson = (text: string): boolean => {
         const trimmed = text.trim();
         if (!trimmed.startsWith('{')) return false;
         try {
           const parsed = JSON.parse(trimmed);
-          // Check for known job status fields
           return parsed.success !== undefined || parsed.jobId !== undefined || parsed.status !== undefined;
         } catch {
           return false;
@@ -297,44 +324,38 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       };
 
       const extractCodeFromRaw = (raw: string): string => {
-        // 🛡️ SAFETY: Never return JSON as code
         if (looksLikeJson(raw)) {
           console.warn('[useStreamingCode] Raw stream looks like JSON - skipping code extraction');
           return '';
         }
 
-        // Prefer explicit begin marker; fallback to type marker
         const beginIdx = raw.indexOf(BEGIN_CODE_MARKER);
         const typeIdx = raw.indexOf('/// TYPE: CODE ///');
 
         let codePart = '';
         if (beginIdx >= 0) {
-          // Best case: backend explicitly marked where code begins
           codePart = raw.substring(beginIdx + BEGIN_CODE_MARKER.length);
         } else if (typeIdx >= 0) {
-          // If BEGIN_CODE hasn't arrived yet, we may only have the summary/logs.
-          // Do NOT push anything into the preview until we can detect real TSX.
           codePart = raw.substring(typeIdx + '/// TYPE: CODE ///'.length);
         } else {
-          // No markers yet; treat as unknown. Don't risk updating preview.
           return '';
         }
 
-        // Strip logs/fences then attempt to locate the real start of TSX
-        const cleaned = codePart
+        // Strip the completion sentinel from the code part (it's a marker, not app code)
+        let cleaned = codePart
           .replace(LOG_PATTERN, '')
           .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
           .replace(/\n?```\s*$/i, '')
           .trim();
 
-        // Final safety check: don't return JSON
+        // Strip sentinel if present
+        cleaned = stripCompleteSentinel(cleaned);
+
         if (looksLikeJson(cleaned)) {
           console.warn('[useStreamingCode] Cleaned code looks like JSON - returning empty');
           return '';
         }
 
-        // 🛡️ CRITICAL: Only start updating the preview once we see real TSX code.
-        // This prevents intermediate summary text (or stray '<') from breaking /App.tsx.
         const tsxStartPatterns: RegExp[] = [
           /(^|\n)import\s+[^\n]+/,
           /(^|\n)export\s+default\s+function\s+/, 
@@ -353,7 +374,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         }
 
         if (startIdx < 0) {
-          // We don't have code yet (likely still summary) — don't update preview.
           return '';
         }
 
@@ -363,17 +383,12 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       const extractSummaryFromRaw = (raw: string): string => {
         const typeIdx = raw.indexOf('/// TYPE: CODE ///');
         if (typeIdx < 0) {
-          console.log('[extractSummary] No TYPE: CODE marker found');
           return '';
         }
 
-        // Try explicit BEGIN_CODE marker first
         let endIdx = raw.indexOf(BEGIN_CODE_MARKER);
-        console.log('[extractSummary] BEGIN_CODE marker at:', endIdx);
 
-        // Fallback: find where actual TSX code starts (export/function/const/import at line start)
         if (endIdx < 0) {
-          // Look for the first line that starts with common code patterns
           const codePatterns = [
             /\n(export\s+default\s+function)/,
             /\n(export\s+function)/,
@@ -387,24 +402,19 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
             const match = afterType.match(pattern);
             if (match && match.index !== undefined) {
               endIdx = typeIdx + '/// TYPE: CODE ///'.length + match.index;
-              console.log('[extractSummary] Found code start via pattern at:', endIdx);
               break;
             }
           }
         }
 
-        // If still no end found, just strip logs and return everything after TYPE marker
         const summaryEnd = endIdx > typeIdx ? endIdx : raw.length;
         const afterType = raw.substring(typeIdx + '/// TYPE: CODE ///'.length, summaryEnd);
 
         const cleaned = afterType
           .replace(LOG_PATTERN, '')
-          .replace(/```[\s\S]*$/m, '') // Remove any trailing code blocks
+          .replace(/```[\s\S]*$/m, '')
           .replace(/\n{3,}/g, '\n\n')
           .trim();
-
-        console.log('[extractSummary] Extracted summary length:', cleaned.length, 'chars');
-        console.log('[extractSummary] First 200 chars:', cleaned.substring(0, 200));
 
         return cleaned;
       };
@@ -416,7 +426,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         const chunk = decoder.decode(value, { stream: true });
         rawStream += chunk;
 
-        // Extract [LOG: ...] tags for real-time transparency
         const logMatches = rawStream.matchAll(LOG_PATTERN);
         for (const match of logMatches) {
           const logText = match[1].trim();
@@ -427,51 +436,40 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           }
         }
 
-        // 🛡️ SAFETY: Early detection of JSON response that slipped through
-        // If the stream starts with { and looks like JSON, abort code processing
         if (mode === 'detecting' && rawStream.trim().startsWith('{') && rawStream.length > 50) {
           if (looksLikeJson(rawStream)) {
             console.warn('[useStreamingCode] JSON detected in stream - aborting code extraction');
             setState(prev => ({ ...prev, isStreaming: false }));
-            return lastGoodCodeRef.current; // Keep existing code
+            return lastGoodCodeRef.current;
           }
         }
 
-        // Intent Router: detect response type as soon as the type flag appears
         if (mode === 'detecting') {
           if (rawStream.includes('/// TYPE: CHAT ///')) {
             mode = 'chat';
-            // Stop streaming animation for chat responses
             setState(prev => ({ ...prev, isStreaming: false }));
           } else if (rawStream.includes('/// TYPE: PLAN ///')) {
             mode = 'plan';
-            // Stop streaming animation for plan responses
             setState(prev => ({ ...prev, isStreaming: false }));
           } else if (rawStream.includes('/// TYPE: CODE ///')) {
             mode = 'code';
           } else if (rawStream.length > 120) {
-            // 🛡️ SAFETY: Before falling back to code mode, verify it's not JSON
             if (looksLikeJson(rawStream)) {
               console.warn('[useStreamingCode] JSON detected before mode fallback - aborting');
               setState(prev => ({ ...prev, isStreaming: false }));
               return lastGoodCodeRef.current;
             }
-            // Fallback: assume code if no flag appears early
             mode = 'code';
           }
         }
 
-        // Route based on detected mode
         if (mode === 'chat' || mode === 'plan') {
-          // Just accumulate text, don't update code
           continue;
         }
 
         if (mode === 'code') {
           const cleanCode = extractCodeFromRaw(rawStream);
 
-          // 🛡️ IMPORTANT: only apply code to the preview when it looks complete.
-          // This prevents Sandpack from ever seeing truncated TSX (which triggers the overlay loop).
           if (cleanCode && isLikelyCompleteTsx(cleanCode)) {
             lastGoodCodeRef.current = cleanCode;
             setState(prev => ({ ...prev, code: cleanCode }));
@@ -480,7 +478,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         }
       }
 
-      // Final processing based on mode
       if (mode === 'chat') {
         const chatText = rawStream.replace('/// TYPE: CHAT ///', '').trim();
         setState(prev => ({ ...prev, isStreaming: false }));
@@ -493,7 +490,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         setState(prev => ({ ...prev, isStreaming: false }));
 
         try {
-          // Extract JSON from the response (may have markdown wrapper)
           const jsonMatch = planText.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             const planData: PlanData = JSON.parse(jsonMatch[0]);
@@ -502,19 +498,11 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           }
         } catch (e) {
           console.error('Failed to parse plan JSON:', e);
-          // Fallback: treat as chat response
           options.onChatResponse?.(planText);
         }
         return planText;
       }
 
-      // Extract the AI's natural language summary (markdown explanation)
-      // Expected backend format:
-      // /// TYPE: CODE ///
-      // <markdown summary>
-      // [LOG: ...]
-      // /// BEGIN_CODE ///
-      // <tsx code>
       const aiSummary = extractSummaryFromRaw(rawStream);
       if (aiSummary) {
         options.onSummary?.(aiSummary);
@@ -522,8 +510,17 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       const finalCode = extractCodeFromRaw(rawStream);
 
-      // 🛡️ FINAL SAFETY: never replace the preview with invalid TSX.
+      // 🛡️ MULTI-AGENT PIPELINE: Check for completion sentinel
+      // If code looks valid structurally but is missing the sentinel, it may be truncated
+      const hasSentinel = hasCompleteSentinel(rawStream);
+      
       if (!finalCode || !isLikelyCompleteTsx(finalCode)) {
+        // Check if this is a truncation case that Ghost Fixer should handle
+        if (finalCode && finalCode.length > 200 && !hasSentinel) {
+          console.warn('[useStreamingCode] ⚠️ Truncation detected - triggering Ghost Fixer');
+          options.onTruncationDetected?.(finalCode, originalPromptRef.current);
+        }
+        
         const err = new Error('Generated code was incomplete/invalid; kept last working preview.');
         console.warn('[useStreamingCode] Invalid final TSX - keeping last known good snapshot');
         setState(prev => ({ ...prev, isStreaming: false, error: err.message, code: lastGoodCodeRef.current }));
@@ -531,11 +528,10 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         return lastGoodCodeRef.current;
       }
 
-      // 🛑 RACE CONDITION GUARD: Check if user switched projects during generation
       if (options.shouldAbort?.()) {
         console.warn('🛑 Aborted: Project changed during generation - discarding result');
         setState(prev => ({ ...prev, isStreaming: false }));
-        return lastGoodCodeRef.current; // Return existing code, don't fire onComplete
+        return lastGoodCodeRef.current;
       }
 
       lastGoodCodeRef.current = finalCode;
@@ -545,7 +541,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       return finalCode;
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        // Stream was cancelled, don't treat as error
         setState(prev => ({ ...prev, isStreaming: false }));
         return lastGoodCodeRef.current;
       }
@@ -575,12 +570,10 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   }, []);
 
   const setCode = useCallback((code: string) => {
-    // External setters can come from:
-    // - background job completion (DB code_result)
-    // - restore/undo snapshots
-    // If those snapshots are truncated, applying them will immediately crash Sandpack.
-    // So we *refuse* to apply invalid TSX and instead keep the last known-good snapshot.
-    if (!isLikelyCompleteTsx(code)) {
+    // Strip sentinel before validation (it's a marker, not app code)
+    const codeWithoutSentinel = stripCompleteSentinel(code);
+    
+    if (!isLikelyCompleteTsx(codeWithoutSentinel)) {
       console.warn('[useStreamingCode] Refusing to apply invalid TSX snapshot; keeping last known-good code');
       setState(prev => ({
         ...prev,
@@ -590,11 +583,10 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       return;
     }
 
-    lastGoodCodeRef.current = code;
-    setState(prev => ({ ...prev, code, error: null }));
+    lastGoodCodeRef.current = codeWithoutSentinel;
+    setState(prev => ({ ...prev, code: codeWithoutSentinel, error: null }));
   }, []);
 
-  // Force-reset streaming state (safety valve for stuck states)
   const forceResetStreaming = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
