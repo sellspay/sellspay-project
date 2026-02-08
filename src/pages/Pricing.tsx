@@ -8,13 +8,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// --- PLANS DATA (Updated with correct credit economy) ---
+// --- PLANS DATA (Updated 4-tier structure with dynamic pricing) ---
 const PLANS = [
   {
-    id: "browser" as const,
+    id: "starter" as const,
     name: "Starter",
     price: 0,
-    description: "Perfect for building your first store and selling products.",
+    description: "Build your store manually. No AI features.",
     badge: null,
     badgeColor: "",
     accentGradient: "from-zinc-500 to-zinc-700",
@@ -23,49 +23,74 @@ const PLANS = [
       { text: "Sell Digital Products & Subs", included: true },
       { text: "Buy from Marketplace", included: true },
       { text: "Community Access", included: true },
-      { text: "AI Website Builder", included: false },
+      { text: "VibeCoder AI Builder", included: false },
       { text: "AI Image Generation", included: false },
       { text: "AI Video Generation", included: false },
       { text: "10% Transaction Fee", isNeutral: true },
     ],
     credits: 0,
+    modelTier: null,
+  },
+  {
+    id: "basic" as const,
+    name: "Basic",
+    price: 25,
+    description: "Get started with AI-powered building.",
+    badge: null,
+    badgeColor: "",
+    accentGradient: "from-blue-500 to-cyan-500",
+    features: [
+      { text: "Everything in Starter", included: true },
+      { text: "VibeCoder (Flash Models)", included: true, highlight: true },
+      { text: "500 Monthly Credits", included: true },
+      { text: "Manual Model Selection", included: true },
+      { text: "Pro Models (GPT-5, Gemini Pro)", included: false },
+      { text: "Image & Video Generation", included: false },
+      { text: "8% Transaction Fee", isNeutral: true },
+    ],
+    credits: 500,
+    modelTier: 'flash',
   },
   {
     id: "creator" as const,
     name: "Creator",
-    price: 69,
-    description: "For serious sellers who need AI content creation tools.",
+    price: 100,
+    description: "Full AI suite for serious creators.",
     badge: "Most Popular",
     badgeColor: "bg-gradient-to-r from-violet-500 to-fuchsia-500",
     accentGradient: "from-violet-500 to-fuchsia-500",
     features: [
-      { text: "Everything in Starter", included: true },
-      { text: "VibeCoder AI Builder (Claude 3.5)", included: true, highlight: true },
-      { text: "Flux 1.1 Pro & Recraft V3 Images", included: true, highlight: true },
-      { text: "Kling & Luma AI Video", included: true, highlight: true },
-      { text: "Priority Support", included: true },
+      { text: "Everything in Basic", included: true },
+      { text: "Pro Models (GPT-5, Gemini 3 Pro)", included: true, highlight: true },
+      { text: "AI Image Generation", included: true, highlight: true },
+      { text: "Auto-Model Selection", included: true },
+      { text: "2,500 Monthly Credits", included: true },
       { text: "Grey Verified Badge", included: true },
       { text: "5% Transaction Fee", isNeutral: true },
     ],
     credits: 2500,
+    modelTier: 'pro',
   },
   {
     id: "agency" as const,
     name: "Agency",
-    price: 199,
-    description: "For power users, asset studios, and high-volume sellers.",
+    price: 200,
+    description: "Maximum power for studios and agencies.",
     badge: "Elite Status",
     badgeColor: "bg-gradient-to-r from-amber-400 to-orange-500",
     accentGradient: "from-amber-400 to-orange-500",
     features: [
       { text: "Everything in Creator", included: true },
-      { text: "Highest Rate Limits", included: true },
-      { text: "Dedicated Account Manager", included: true },
-      { text: "Early Access to New Models", included: true },
+      { text: "Flagship Models (GPT-5.2)", included: true, highlight: true },
+      { text: "AI Video Generation", included: true, highlight: true },
+      { text: "Full Auto-Model Access", included: true },
+      { text: "6,000 Monthly Credits", included: true },
+      { text: "Priority Processing", included: true },
       { text: "Gold Verified Badge", included: true, highlightColor: "text-amber-400" },
       { text: "0% Transaction Fees", highlightColor: "text-green-400" },
     ],
-    credits: 12000,
+    credits: 6000,
+    modelTier: 'flagship',
   },
 ];
 
@@ -191,7 +216,7 @@ export default function Pricing() {
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const handleSubscribe = async (tierId: 'creator' | 'agency') => {
+  const handleSubscribe = async (tierId: 'basic' | 'creator' | 'agency') => {
     if (!user) {
       toast.error("Please sign in to subscribe");
       navigate("/login");
@@ -213,13 +238,13 @@ export default function Pricing() {
     }
   };
 
-  const isCurrentPlan = (tierId: string) => plan === tierId;
+  const isCurrentPlan = (tierId: string) => plan === tierId || (plan === 'browser' && tierId === 'starter');
 
   const getButtonConfig = (planData: typeof PLANS[number]) => {
     const isCurrent = isCurrentPlan(planData.id);
     const isPurchasing = purchasing === planData.id;
     
-    if (planData.id === 'browser') {
+    if (planData.id === 'starter') {
       return {
         text: isCurrent ? "Current Plan" : "Start Building Free",
         style: "bg-zinc-800 hover:bg-zinc-700 text-white",
@@ -276,7 +301,7 @@ export default function Pricing() {
         </div>
 
         {/* PRICING CARDS */}
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 mb-24">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-24">
           
           {PLANS.map((planData) => {
             const buttonConfig = getButtonConfig(planData);
@@ -360,8 +385,8 @@ export default function Pricing() {
                 ) : (
                   <button 
                     onClick={() => {
-                      if (!buttonConfig.disabled) {
-                        handleSubscribe(planData.id as 'creator' | 'agency');
+                      if (!buttonConfig.disabled && planData.id !== 'starter') {
+                        handleSubscribe(planData.id as 'basic' | 'creator' | 'agency');
                       }
                     }}
                     disabled={buttonConfig.disabled}

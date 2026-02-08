@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
 
-export type PlanTier = 'browser' | 'creator' | 'agency';
+export type PlanTier = 'browser' | 'starter' | 'basic' | 'creator' | 'agency';
 export type BadgeType = 'none' | 'grey' | 'gold';
 
 export interface SubscriptionCapabilities {
@@ -234,7 +234,7 @@ export function useSubscription() {
     return PRO_TOOLS.includes(toolId);
   }, []);
 
-  const startCheckout = useCallback(async (planId: 'creator' | 'agency', yearly = false): Promise<{ url?: string; error?: string }> => {
+  const startCheckout = useCallback(async (planId: 'basic' | 'creator' | 'agency', yearly = false): Promise<{ url?: string; error?: string }> => {
     if (!user) {
       navigate("/login");
       return { error: "Not authenticated" };
