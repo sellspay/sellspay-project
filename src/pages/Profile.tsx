@@ -363,7 +363,7 @@ const ProfilePage: React.FC = () => {
   const handleBecomeSeller = () => {
     // Redirect to the full seller agreement flow instead of directly updating
     setShowSellerConfirm(false);
-    navigate('/seller-agreement');
+    navigate('/onboarding/seller-agreement');
   };
 
   // Check AI Builder access when profile loads
