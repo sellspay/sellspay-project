@@ -1205,12 +1205,16 @@ If the request says "change X", change ONLY X and nothing else.
 }
 
 serve(async (req) => {
+  // This MUST be the first thing in your function
   if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      status: 200,
-      headers: corsHeaders,
+    return new Response("ok", { 
+      status: 200, 
+      headers: corsHeaders 
     });
   }
+
+  try {
+    // Rest of your logic...
 
   try {
     const {
