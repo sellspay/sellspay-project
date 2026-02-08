@@ -1,162 +1,164 @@
 
 
-# Merchant of Record (MoR) Legal Infrastructure Update
+# Plan: Fix Speech-to-Text + Remove Plan Button + Add Style Design Presets
 
 ## Overview
-
-This plan updates SellsPay's legal pages and checkout flow to properly establish the platform as the **Marketplace Facilitator and Merchant of Record**. This protects you from global tax registration requirements and clarifies liability.
-
----
-
-## What's Already In Place
-
-| Component | Status |
-|-----------|--------|
-| `/terms` page | Exists, needs MoR section |
-| `/privacy` page | Exists, needs data processor language |
-| `/refunds` page | Exists, needs MoR-focused language |
-| Footer links | Already links to all 3 pages |
-| Checkout flow | Exists, missing legal checkbox |
+This plan addresses four issues in the AI Builder (Magical Doorway):
+1. Fix the microphone not working for speech-to-text
+2. Remove the Plan button
+3. Ensure model selection is accessible (already exists)
+4. Add a new Style Design selector with presets
 
 ---
 
-## Changes to Make
+## 1. Fix Microphone/Speech-to-Text
 
-### 1. Terms of Service (`/terms`) - Add Merchant of Record Section
+### Current Problem
+The AI Builder uses the Web Speech API which has known limitations in iframe/preview environments due to browser security policies. The code already handles this gracefully with a toast message, but users testing in the preview won't be able to use it.
 
-Add a new prominent section at the top (after "Acceptance of Terms") that establishes SellsPay as the Merchant of Record:
+### Solution: Implement ElevenLabs Speech-to-Text (Scribe v2 Realtime)
+ElevenLabs provides a reliable WebSocket-based transcription service that works in all environments.
 
-**New Section: "Marketplace Role & Merchant of Record"**
-- Establishes SellsPay as the Marketplace Facilitator and Merchant of Record
-- Clarifies that transactions are legally between customer and SellsPay
-- Explains seller agency relationship (sellers appoint SellsPay as agent)
-- States SellsPay handles tax collection/remittance
-- Explains why "SELLSPAY" appears on bank statements
+### Implementation Steps
 
----
+#### Step 1A: Create Token Generation Edge Function
+Create `supabase/functions/elevenlabs-scribe-token/index.ts`:
+- Fetches a single-use token from ElevenLabs API
+- Requires `ELEVENLABS_API_KEY` secret (will prompt user)
+- Returns the token to the client
 
-### 2. Privacy Policy (`/privacy`) - Add Data Processor Language
-
-Update the "Information We Collect" section to clarify:
-
-**Updates to Section 2:**
-- Explain that as Merchant of Record, SellsPay collects buyer data
-- Clarify what is shared with sellers (name, email for delivery/support only)
-- Reference third-party processors (Stripe) for payment handling
-- Add transaction retention for tax compliance (1099-K reporting)
-
----
-
-### 3. Refund Policy (`/refunds`) - MoR Language
-
-Update the overview section to reflect that:
-
-**Updates to Overview:**
-- All refunds are handled by SellsPay (not individual sellers)
-- Platform fee policy on refunds (SellsPay retains 5% fee on refunds at its discretion)
-- Seller-initiated refunds revoke access
+#### Step 1B: Update ChatInputBar Component
+Modify `src/components/ai-builder/ChatInputBar.tsx`:
+- Install `@elevenlabs/react` package for the `useScribe` hook
+- Replace the current Web Speech API implementation with ElevenLabs Scribe
+- Use the `commitStrategy: 'vad'` for automatic speech segmentation
+- Keep the existing UI (WaveformIcon, floating indicator)
+- Fallback to Web Speech API if ElevenLabs fails
 
 ---
 
-### 4. Checkout Flow - Clickwrap Agreement
+## 2. Remove Plan Button
 
-Add a mandatory checkbox before payment that users must check:
+### Current Location
+The Plan button is in `ChatInputBar.tsx` at lines 719-733.
 
-**Checkbox text:**
-"I agree to SellsPay's Terms of Service and Refund Policy"
+### Implementation Steps
 
-- Links to `/terms` and `/refunds`
-- Required to enable the payment button
-- Creates a legally binding "clickwrap" agreement
+#### Step 2A: Remove Plan Button UI
+Modify `src/components/ai-builder/ChatInputBar.tsx`:
+- Remove the Plan button from the bottom toolbar
+- Remove the `togglePlanMode` function call
+- Keep the internal state/props for future use if needed
+
+#### Step 2B: Clean Up VibecoderChat
+Modify `src/components/ai-builder/VibecoderChat.tsx`:
+- Remove `isPlanMode` and `onPlanModeChange` from the ChatInputBar props
+- The plan approval card will still work if plans are returned by AI
+
+---
+
+## 3. Model Selection (Already Exists)
+
+### Current Status
+Model selection is already implemented via the "Model" button in the ChatInputBar. It includes:
+- **Coding Models:** Gemini 3 Pro, Gemini Flash, GPT-5.2
+- **Image Models:** Nano Banana, Flux 1.1 Pro, Recraft V3
+- **Video Models:** Luma Ray 2, Kling Video
+
+### No Changes Needed
+The model selector is functional. Users click the "Model" chip in the input bar to access it.
+
+---
+
+## 4. Add Style Design Presets
+
+### Concept
+Create a "Style" selector (like the Model selector) that lets users pick a visual theme before generating. The selected style will be injected into the AI prompt.
+
+### Style Presets to Include
+
+| Style Name | Description | Colors | Background |
+|------------|-------------|--------|------------|
+| **Midnight Luxury** | Dark mode with violet accents | `#0a0a0f`, `#8b5cf6`, `#1a1a2e` | Glassmorphism overlays |
+| **Neon Cyberpunk** | Bold neon on dark | `#0f0f0f`, `#00ff88`, `#ff00ff` | Gradient meshes |
+| **Clean Minimal** | Light, spacious, professional | `#ffffff`, `#f5f5f5`, `#1a1a1a` | Subtle shadows |
+| **Warm Earth** | Natural, organic tones | `#faf7f2`, `#8b6f47`, `#3d2914` | Soft textures |
+| **Ocean Breeze** | Cool blues and teals | `#f0f9ff`, `#0ea5e9`, `#0369a1` | Gentle gradients |
+| **Retro Pop** | Vintage 80s aesthetic | `#fef3c7`, `#f97316`, `#ec4899` | Geometric patterns |
+
+### Implementation Steps
+
+#### Step 4A: Create Style Types and Data
+Create `src/components/ai-builder/stylePresets.ts`:
+- Define `StylePreset` interface with id, name, description, colors, background style
+- Export `STYLE_PRESETS` array with 6+ presets
+- Export helper function to generate style prompt injection
+
+#### Step 4B: Add Style Selector to ChatInputBar
+Modify `src/components/ai-builder/ChatInputBar.tsx`:
+- Add new state for `selectedStyle`
+- Add a "Style" button next to the "Model" button (using `Palette` icon)
+- Create a portal-based menu similar to the Model menu
+- Show color swatches and style names in the dropdown
+
+#### Step 4C: Wire Up Style to Chat Flow
+Modify `src/components/ai-builder/VibecoderChat.tsx`:
+- Pass `activeStyle` and `onStyleChange` props to ChatInputBar
+- Include selected style in the `handleSubmit` options
+- Inject style prompt into the AI request
+
+#### Step 4D: Lift Style State to Canvas
+Modify `src/components/ai-builder/AIBuilderCanvas.tsx`:
+- Add `activeStyle` state at the canvas level (like `activeModel`)
+- Pass down to VibecoderChat component
+- Include style context when calling `streamCode`
+
+#### Step 4E: Update useStreamingCode Hook
+Modify `src/components/ai-builder/useStreamingCode.ts`:
+- Accept optional `styleContext` parameter
+- Inject style instructions into the system prompt sent to AI
+- The AI will use these colors and background styles in generated code
+
+---
+
+## Files to Create
+1. `supabase/functions/elevenlabs-scribe-token/index.ts` - Token generator for ElevenLabs
+2. `src/components/ai-builder/stylePresets.ts` - Style preset definitions
+
+## Files to Modify
+1. `src/components/ai-builder/ChatInputBar.tsx` - Remove Plan, add Style, update speech-to-text
+2. `src/components/ai-builder/VibecoderChat.tsx` - Wire up Style props
+3. `src/components/ai-builder/AIBuilderCanvas.tsx` - Lift Style state
+4. `src/components/ai-builder/useStreamingCode.ts` - Inject style context
+5. `package.json` - Add `@elevenlabs/react` dependency
 
 ---
 
 ## Technical Details
 
-### Files to Modify
-
-```text
-src/pages/Terms.tsx
-├── Add new Section 2: "Marketplace Role & Merchant of Record"
-├── Move existing sections down (renumber 2→3, 3→4, etc.)
-└── Add tax collection/remittance language
-
-src/pages/Privacy.tsx
-├── Update Section 2: "Information We Collect"
-├── Add subsection: "Merchant of Record Data Collection"
-└── Add transaction retention for tax compliance
-
-src/pages/Refunds.tsx
-├── Update Overview section with MoR language
-└── Add platform fee handling on refunds
-
-src/components/checkout/PaymentMethodDialog.tsx
-├── Add state: termsAccepted (boolean)
-├── Add Checkbox component with links
-└── Disable payment button until checkbox is checked
+### Style Prompt Injection Example
+When a user selects "Midnight Luxury" style:
+```
+[STYLE_CONTEXT]
+Apply this visual design system:
+- Primary background: #0a0a0f (near black)
+- Accent color: #8b5cf6 (violet)
+- Secondary background: #1a1a2e 
+- Card style: glassmorphism with backdrop-blur-xl, border border-white/10
+- Shadows: large soft shadows with accent glow
+- Typography: Clean sans-serif, high contrast
 ```
 
-### Checkout Checkbox Implementation
-
-The checkout dialog will be updated with:
-
-1. A `useState` hook for tracking acceptance:
-   ```typescript
-   const [termsAccepted, setTermsAccepted] = useState(false);
-   ```
-
-2. A checkbox component above the payment button:
-   ```text
-   [ ] I agree to SellsPay's Terms of Service and Refund Policy
-         ↑ links open in new tab
-   ```
-
-3. Payment button disabled until `termsAccepted === true`
+### ElevenLabs Integration Flow
+1. User clicks mic button
+2. Frontend calls edge function to get single-use token
+3. Connect to ElevenLabs WebSocket with token
+4. Stream transcription in real-time to input field
+5. Auto-commit on silence (VAD)
 
 ---
 
-## Legal Content to Add
-
-### Terms of Service - New Section (after Acceptance)
-
-**Section 2: Marketplace Role & Merchant of Record**
-
-> SellsPay operates as a **Marketplace Facilitator** and **Merchant of Record (MoR)** for all transactions conducted through the platform. When a customer purchases a digital product, the transaction is legally between the customer and SellsPay.
->
-> **For Sellers:** You appoint SellsPay as your agent to sell your digital products. While you retain ownership of your content, SellsPay is responsible for processing payments, collecting applicable sales tax/VAT, and handling initial billing support.
->
-> **For Buyers:** Your financial transaction is with SellsPay. This is why "SELLSPAY" will appear on your bank or credit card statement.
->
-> **Tax Collection:** SellsPay collects and remits sales tax on your behalf where required by law. Sellers are not required to register for sales tax in individual jurisdictions.
-
-### Privacy Policy - Updated Section
-
-**Information We Collect & How It's Shared**
-
-> Because SellsPay acts as the Merchant of Record, we collect personal information (such as name, email address, and IP address) to process payments, prevent fraud, and calculate taxes.
->
-> **Sharing with Sellers:** We share the buyer's name and email with the specific Seller whose product was purchased to allow for product delivery and customer support.
->
-> **Third-Party Processors:** Your payment data is handled securely by Stripe. SellsPay does not store your full credit card details on our servers.
->
-> **Compliance:** We retain transaction records as required by law for tax reporting (e.g., 1099-K reporting) and audit purposes.
-
-### Refunds Policy - Updated Overview
-
-> SellsPay is the Merchant of Record for all purchases. Refund requests are processed and approved by SellsPay. Due to the nature of digital downloads, all sales made through SellsPay are generally final and non-refundable once the digital content has been accessed or downloaded.
->
-> **Exceptions:** Refunds may be granted at the sole discretion of SellsPay if the digital file is proven to be corrupt, defective, or significantly misdescribed by the seller.
->
-> **Seller-Initiated Refunds:** Sellers may authorize a refund for a customer at their own discretion. If a refund is issued, the customer's access to the digital product will be immediately revoked.
-
----
-
-## Summary
-
-| Change | Purpose |
-|--------|---------|
-| MoR section in Terms | Legal protection for tax liability |
-| Data processor language in Privacy | GDPR/compliance clarity |
-| MoR language in Refunds | Clarifies refund authority |
-| Clickwrap checkbox | Legally binding agreement |
+## Dependencies
+- `@elevenlabs/react` - ElevenLabs React SDK for real-time transcription
+- `ELEVENLABS_API_KEY` - Required secret (will prompt user to add)
 
