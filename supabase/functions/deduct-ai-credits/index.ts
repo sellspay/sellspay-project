@@ -11,17 +11,16 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[DEDUCT-AI-CREDITS] ${step}${detailsStr}`);
 };
 
-// Credit costs for different actions
-// Updated Fair Pricing: 8x reduction to match actual API costs
-const CREDIT_COSTS: Record<string, number> = {
-  vibecoder_gen: 3,      // Was 25 - Premium coding model
-  vibecoder_flash: 0,    // Free tier for small edits
-  image_gen: 10,         // Was 100 - ~$0.04 API cost × 2.5 margin
-  video_gen: 50,         // Was 500 - ~$0.50 API cost × 1.25 margin
-  sfx_gen: 5,            // Was 25 - Adjusted
-  voice_isolator: 5,     // Was 25 - Adjusted
-  sfx_isolator: 5,       // Was 25 - Adjusted
-  music_splitter: 5,     // Was 25 - Adjusted
+// Legacy flat credit costs (fallback if dynamic calculation fails)
+const LEGACY_CREDIT_COSTS: Record<string, number> = {
+  vibecoder_gen: 3,
+  vibecoder_flash: 0,
+  image_gen: 10,
+  video_gen: 50,
+  sfx_gen: 5,
+  voice_isolator: 5,
+  sfx_isolator: 5,
+  music_splitter: 5,
 };
 
 // Action to required capability mapping
@@ -70,17 +69,32 @@ serve(async (req) => {
     const user = userData.user;
     logStep("User authenticated", { userId: user.id });
 
-    const { action, amount } = await req.json();
+    const body = await req.json();
+    const { 
+      action, 
+      amount,
+      // New dynamic billing fields
+      model_used,
+      tokens_input = 0,
+      tokens_output = 0,
+      session_id,
+      is_auto_mode = false,
+      is_plan_mode = false,
+      is_retry = false,
+      metadata = {}
+    } = body;
     
-    if (!action || !CREDIT_COSTS[action]) {
+    if (!action) {
       return new Response(
-        JSON.stringify({ success: false, error: "Invalid action" }),
+        JSON.stringify({ success: false, error: "Action is required" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    const cost = amount || CREDIT_COSTS[action];
-    logStep("Deducting credits", { action, cost });
+    // Determine cost: use provided amount, or legacy flat cost
+    const legacyCost = LEGACY_CREDIT_COSTS[action] ?? 3;
+    const cost = amount ?? legacyCost;
+    logStep("Processing deduction", { action, cost, model_used, tokens_input, tokens_output });
 
     // Get profile to check plan
     const { data: profile, error: profileError } = await supabaseClient
@@ -117,42 +131,121 @@ serve(async (req) => {
       );
     }
 
-    // Attempt to deduct credits using RPC
-    const { data: success, error: deductError } = await supabaseClient
-      .rpc('deduct_credits', { 
-        p_user_id: user.id, 
-        p_amount: cost,
-        p_action: action 
-      });
+    // Use the NEW dynamic RPC if model/token info is provided, otherwise fall back to legacy
+    let result;
+    
+    if (model_used || tokens_input > 0 || tokens_output > 0) {
+      // Dynamic billing with token tracking
+      logStep("Using dynamic billing", { model_used, tokens_input, tokens_output });
+      
+      const { data, error: deductError } = await supabaseClient
+        .rpc('deduct_credits_dynamic', { 
+          p_user_id: user.id, 
+          p_amount: cost,
+          p_action: action,
+          p_model_used: model_used || null,
+          p_tokens_input: tokens_input,
+          p_tokens_output: tokens_output,
+          p_session_id: session_id || null,
+          p_is_auto_mode: is_auto_mode,
+          p_is_plan_mode: is_plan_mode,
+          p_is_retry: is_retry,
+          p_metadata: metadata
+        });
 
-    if (deductError) {
-      logStep("Error deducting credits", { error: deductError.message });
-      return new Response(
-        JSON.stringify({ success: false, error: "Failed to deduct credits" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-      );
+      if (deductError) {
+        logStep("Error in dynamic deduction", { error: deductError.message });
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to deduct credits" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+
+      result = data;
+    } else {
+      // Legacy flat-cost deduction
+      logStep("Using legacy billing");
+      
+      const { data: success, error: deductError } = await supabaseClient
+        .rpc('deduct_credits', { 
+          p_user_id: user.id, 
+          p_amount: cost,
+          p_action: action 
+        });
+
+      if (deductError) {
+        logStep("Error deducting credits", { error: deductError.message });
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to deduct credits" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+
+      if (!success) {
+        logStep("Insufficient credits");
+        return new Response(
+          JSON.stringify({ success: false, error: "INSUFFICIENT_CREDITS" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 }
+        );
+      }
+
+      // Get new balance for legacy response
+      const { data: wallet } = await supabaseClient
+        .from("user_wallets")
+        .select("balance")
+        .eq("user_id", user.id)
+        .single();
+
+      result = { success: true, newBalance: wallet?.balance ?? 0, cost };
     }
 
-    if (!success) {
-      logStep("Insufficient credits");
-      return new Response(
-        JSON.stringify({ success: false, error: "INSUFFICIENT_CREDITS" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 }
-      );
+    // Handle dynamic billing result
+    if (result && typeof result === 'object') {
+      if (result.error === 'INSUFFICIENT_CREDITS') {
+        logStep("Insufficient credits (dynamic)", { balance: result.balance, cost: result.cost });
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "INSUFFICIENT_CREDITS",
+            required: result.cost,
+            balance: result.balance
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 }
+        );
+      }
+      
+      if (result.error === 'NO_WALLET') {
+        logStep("No wallet found");
+        return new Response(
+          JSON.stringify({ success: false, error: "No wallet found. Please contact support." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+        );
+      }
+
+      if (result.success) {
+        logStep("Credits deducted successfully", { 
+          cost: result.cost, 
+          newBalance: result.newBalance,
+          baseCost: result.baseCost,
+          multiplier: result.multiplier
+        });
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            newBalance: result.newBalance,
+            cost: result.cost,
+            baseCost: result.baseCost,
+            multiplier: result.multiplier
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
     }
 
-    // Get new balance
-    const { data: wallet } = await supabaseClient
-      .from("user_wallets")
-      .select("balance")
-      .eq("user_id", user.id)
-      .single();
-
-    const newBalance = wallet?.balance ?? 0;
-    logStep("Credits deducted successfully", { newBalance });
-
+    // Fallback success response
     return new Response(
-      JSON.stringify({ success: true, newBalance }),
+      JSON.stringify({ success: true, newBalance: result?.newBalance ?? 0 }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error) {

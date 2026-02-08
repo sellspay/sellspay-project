@@ -154,6 +154,39 @@ export type Database = {
           },
         ]
       }
+      ai_model_weights: {
+        Row: {
+          base_cost_per_1k_tokens: number
+          created_at: string | null
+          display_name: string
+          flat_cost: number | null
+          is_active: boolean | null
+          modality: string
+          model_class: string
+          model_id: string
+        }
+        Insert: {
+          base_cost_per_1k_tokens: number
+          created_at?: string | null
+          display_name: string
+          flat_cost?: number | null
+          is_active?: boolean | null
+          modality: string
+          model_class: string
+          model_id: string
+        }
+        Update: {
+          base_cost_per_1k_tokens?: number
+          created_at?: string | null
+          display_name?: string
+          flat_cost?: number | null
+          is_active?: boolean | null
+          modality?: string
+          model_class?: string
+          model_id?: string
+        }
+        Relationships: []
+      }
       ai_runs: {
         Row: {
           applied: boolean | null
@@ -268,6 +301,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ai_usage_logs: {
+        Row: {
+          action: string
+          base_cost: number | null
+          created_at: string | null
+          final_credits_deducted: number
+          id: string
+          is_auto_mode: boolean | null
+          is_plan_mode: boolean | null
+          is_retry: boolean | null
+          metadata: Json | null
+          modality: string | null
+          model_class: string | null
+          model_used: string
+          multiplier: number | null
+          processing_time_ms: number | null
+          session_id: string | null
+          tokens_input: number | null
+          tokens_output: number | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          base_cost?: number | null
+          created_at?: string | null
+          final_credits_deducted: number
+          id?: string
+          is_auto_mode?: boolean | null
+          is_plan_mode?: boolean | null
+          is_retry?: boolean | null
+          metadata?: Json | null
+          modality?: string | null
+          model_class?: string | null
+          model_used: string
+          multiplier?: number | null
+          processing_time_ms?: number | null
+          session_id?: string | null
+          tokens_input?: number | null
+          tokens_output?: number | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          base_cost?: number | null
+          created_at?: string | null
+          final_credits_deducted?: number
+          id?: string
+          is_auto_mode?: boolean | null
+          is_plan_mode?: boolean | null
+          is_retry?: boolean | null
+          metadata?: Json | null
+          modality?: string | null
+          model_class?: string | null
+          model_used?: string
+          multiplier?: number | null
+          processing_time_ms?: number | null
+          session_id?: string | null
+          tokens_input?: number | null
+          tokens_output?: number | null
+          user_id?: string
+        }
+        Relationships: []
       }
       collection_items: {
         Row: {
@@ -623,6 +719,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      credit_packs: {
+        Row: {
+          created_at: string | null
+          credits: number
+          description: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price_cents: number
+          price_per_credit: number | null
+          stripe_price_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          credits: number
+          description?: string | null
+          display_order?: number | null
+          id: string
+          is_active?: boolean | null
+          name: string
+          price_cents: number
+          price_per_credit?: number | null
+          stripe_price_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          credits?: number
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price_cents?: number
+          price_per_credit?: number | null
+          stripe_price_id?: string | null
+        }
+        Relationships: []
       }
       editor_applications: {
         Row: {
@@ -2115,15 +2250,18 @@ export type Database = {
       }
       subscription_plans: {
         Row: {
+          auto_mode_enabled: boolean | null
           badge_type: string | null
           created_at: string | null
           display_order: number | null
           id: string
           image_gen_access: boolean | null
           is_active: boolean | null
+          model_tier: string | null
           monthly_credits: number
           name: string
           price_cents: number
+          priority_processing: boolean | null
           seller_fee_percent: number | null
           stripe_price_id: string | null
           stripe_yearly_price_id: string | null
@@ -2132,15 +2270,18 @@ export type Database = {
           yearly_price_cents: number | null
         }
         Insert: {
+          auto_mode_enabled?: boolean | null
           badge_type?: string | null
           created_at?: string | null
           display_order?: number | null
           id: string
           image_gen_access?: boolean | null
           is_active?: boolean | null
+          model_tier?: string | null
           monthly_credits?: number
           name: string
           price_cents: number
+          priority_processing?: boolean | null
           seller_fee_percent?: number | null
           stripe_price_id?: string | null
           stripe_yearly_price_id?: string | null
@@ -2149,15 +2290,18 @@ export type Database = {
           yearly_price_cents?: number | null
         }
         Update: {
+          auto_mode_enabled?: boolean | null
           badge_type?: string | null
           created_at?: string | null
           display_order?: number | null
           id?: string
           image_gen_access?: boolean | null
           is_active?: boolean | null
+          model_tier?: string | null
           monthly_credits?: number
           name?: string
           price_cents?: number
+          priority_processing?: boolean | null
           seller_fee_percent?: number | null
           stripe_price_id?: string | null
           stripe_yearly_price_id?: string | null
@@ -3003,6 +3147,22 @@ export type Database = {
       deduct_credits: {
         Args: { p_action: string; p_amount: number; p_user_id: string }
         Returns: boolean
+      }
+      deduct_credits_dynamic: {
+        Args: {
+          p_action: string
+          p_amount: number
+          p_is_auto_mode?: boolean
+          p_is_plan_mode?: boolean
+          p_is_retry?: boolean
+          p_metadata?: Json
+          p_model_used?: string
+          p_session_id?: string
+          p_tokens_input?: number
+          p_tokens_output?: number
+          p_user_id: string
+        }
+        Returns: Json
       }
       delete_project_fully: {
         Args: { p_project_id: string }
