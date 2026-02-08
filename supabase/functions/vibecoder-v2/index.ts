@@ -1232,6 +1232,7 @@ serve(async (req) => {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error("Supabase configuration missing");
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
     // ============================================
     // CREDIT ENFORCEMENT: Check and deduct credits
     // ============================================
