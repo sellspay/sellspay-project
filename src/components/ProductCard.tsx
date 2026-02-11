@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState, useRef, forwardRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Play, Flame, Heart, MessageCircle, Bookmark, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
@@ -78,7 +78,7 @@ function formatPrice(cents: number | null, currency: string | null, pricingType?
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(amount);
 }
 
-export default function ProductCard({ 
+const ProductCard = forwardRef<HTMLAnchorElement, ProductCardProps>(function ProductCard({ 
   product, 
   showFeaturedBadge = true, 
   showType = true,
@@ -89,7 +89,8 @@ export default function ProductCard({
   size = 'default',
   showCreator = false,
   createdAt
-}: ProductCardProps) {
+}, ref) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -226,6 +227,7 @@ export default function ProductCard({
 
   return (
     <Link
+      ref={ref}
       to={`/product/${product.id}`}
       className="group block h-full"
       onMouseEnter={handleMouseEnter}
@@ -332,13 +334,19 @@ export default function ProductCard({
           {/* Creator Username */}
           {showCreator && creator?.username && (
             <div className={`mt-1 ${isLarge ? 'text-sm' : 'text-xs'} text-white/70`}>
-              <Link
-                to={`/@${creator.username}`}
-                onClick={(e) => e.stopPropagation()}
-                className="hover:text-primary transition-colors"
+              <span
+                role="link"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigate(`/@${creator.username}`);
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); navigate(`/@${creator.username}`); } }}
+                className="hover:text-primary transition-colors cursor-pointer"
               >
                 @{creator.username}
-              </Link>
+              </span>
             </div>
           )}
           
@@ -363,4 +371,6 @@ export default function ProductCard({
       </div>
     </Link>
   );
-}
+});
+
+export default ProductCard;
