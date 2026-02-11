@@ -84,7 +84,7 @@ export default function Tools() {
           </TabsContent>
 
           <TabsContent value="campaigns">
-            <CampaignsGrid />
+            <CampaignsGrid creditBalance={creditBalance} />
           </TabsContent>
 
           <TabsContent value="store">
