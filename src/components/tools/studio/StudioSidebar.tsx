@@ -71,8 +71,8 @@ export function StudioSidebar({
                 onClick={() => onSectionChange(id)}
                 className={cn(
                   "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-white/[0.07] text-foreground font-medium"
+                isActive
+                    ? "bg-gradient-to-r from-[#FF7A1A] to-[#E85C00] text-white font-medium shadow-sm"
                     : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-white/[0.03]"
                 )}
               >
@@ -105,7 +105,7 @@ export function StudioSidebar({
                 className={cn(
                   "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
                   isActive
-                    ? "bg-white/[0.07] text-foreground font-medium"
+                    ? "bg-gradient-to-r from-[#FF7A1A] to-[#E85C00] text-white font-medium shadow-sm"
                     : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-white/[0.03]"
                 )}
               >
