@@ -117,42 +117,44 @@ export function SourceSelector({
 
   return (
     <div className="space-y-3">
-      {/* Toggle */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Source
-        </span>
-        <div className="flex rounded-lg border border-border overflow-hidden">
-          <button
-            onClick={clearAll}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-              mode === "blank"
-                ? "bg-primary text-primary-foreground"
-                : "bg-card text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Blank
-          </button>
-          <button
-            onClick={() => {
-              onModeChange("product");
-              openPicker();
-            }}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${
-              mode === "product"
-                ? "bg-primary text-primary-foreground"
-                : "bg-card text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Use Product
-            {multiSelect && selectedProducts.length > 0 && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                {selectedProducts.length}
-              </Badge>
-            )}
-          </button>
+      {/* Toggle — hidden when parent provides its own UI */}
+      {!hideSelectedDisplay && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Source
+          </span>
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            <button
+              onClick={clearAll}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                mode === "blank"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Blank
+            </button>
+            <button
+              onClick={() => {
+                onModeChange("product");
+                openPicker();
+              }}
+              className={`px-3 py-1.5 text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                mode === "product"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Use Product
+              {multiSelect && selectedProducts.length > 0 && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                  {selectedProducts.length}
+                </Badge>
+              )}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Selected Product Display */}
       {mode === "product" && hasSelection && !hideSelectedDisplay && (
