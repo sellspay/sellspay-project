@@ -1,144 +1,160 @@
 
 
-# Artlist-Level Refinement Pass
+# Artlist-Level Premium Refinement
 
-Strip the startup energy. Replace it with the calm, heavy confidence of a mature creative platform.
+Final pass to shift the studio from "AI SaaS" to "mature creative platform." Seven surgical changes, all visual.
 
 ---
 
-## 7 Changes
-
-### 1. Slim Down Sidebar — Kill Borders and Weight
+## 1. Sidebar — 180px, Borderless, Typography-Only
 
 **File**: `StudioSidebar.tsx`
 
-Current problems: 240px wide, heavy `border-r`, `border-b` separators, boxed credit gauge with `bg-primary/[0.06]`, "AI Studio" label in bold.
-
-Changes:
-- Shrink expanded width from 240px to 200px
-- Remove `border-r border-white/[0.06]` -- use background color difference only
-- Remove `border-b` on the header area
-- Remove the `bg-primary/[0.06]` rounded box on the credit gauge -- replace with a subtle inline pill: just text `"142 credits"` with a tiny dot indicator, no background block
-- Remove all icons from nav items -- typography only (the icons add visual noise). Active item gets a thin 2px left bar + slightly brighter text, nothing else
-- Remove the collapse chevron icons -- sidebar auto-collapses are fine, but the toggle button should be a minimal line, not chevrons
-- Overall background stays `bg-[hsl(0_0%_3%)]` but no hard edges
-
-Also update `StudioLayout.tsx` grid columns from `240px` to `200px`.
-
-### 2. Full-Bleed Hero — Remove Container Box
-
-**File**: `CampaignCanvas.tsx`
-
-Current: Hero is inside a `rounded-2xl border border-border/20 bg-card/30 backdrop-blur-xl` box.
-
-Changes:
-- Remove the rounded border container entirely -- hero content sits directly on the canvas background
-- Remove the grid pattern overlay
-- Remove the `bg-card/30` and `border` -- let the content breathe against the dark background
-- Make the headline larger: `text-4xl sm:text-5xl` with tighter tracking
-- Remove the "AI Studio" badge/icon above the headline -- the sidebar already says it
-- Reduce the paragraph description to one short line, not two
-- The Deploy button: remove `btn-premium` heavy glow -- use a clean `bg-primary hover:bg-primary/90` with subtle `shadow-sm`, rounded-full (pill), no `::before` highlight effect
-- Move stat strip pills: remove borders from them, make them more minimal (just icon + number + label, no rounded-full border pill)
-
-### 3. Kill Section Boxes Across All Canvases
-
-**Files**: `CampaignCanvas.tsx`, `ListingsCanvas.tsx`, `SocialCanvas.tsx`, `MediaCanvas.tsx`
-
-Everywhere there is `rounded-2xl border border-border/20 bg-card/30 backdrop-blur-xl` or `bg-card/20`:
-- Remove borders entirely
-- Remove `bg-card/xx` backgrounds -- let sections sit on the page background
-- Use spacing and typography to create structure instead of containers
-- Featured Actions cards: remove explicit `border` classes, keep only a very subtle `bg-white/[0.03]` on hover (not default)
-- Trending Hooks cards: remove `border border-border/20` -- just text on background with spacing
-- Listings Score Header: remove the rounded container -- scores sit directly in the flow
-- Social platform strip: remove `border` from buttons -- use just text weight/color change for active
-- Media waveform hero: remove `rounded-2xl border` container -- waveform bars sit directly on canvas
-
-### 4. Remove All Decorative Icons from Section Headers
-
-**Files**: All canvas files
-
-Current: Every section title has an icon next to it (Flame, BarChart3, Sparkles, etc.)
-
-Changes:
-- Remove icons from section headers -- just use the text label
-- "Featured Actions" -> just the cards, no heading needed (obvious from context)
-- "Trending Hooks" -> "Trending" (shorter, cleaner)
-- "Listing Performance" -> "Performance" 
-- "AI-Powered" -> keep text, remove Sparkles icon
-- "Content Formats" -> just the cards, minimal heading
-- Remove the `<Flame>` icon from trending hook cards -- just the "Trending" label in small caps
-
-### 5. Tone Down Button Glow System-Wide
-
-**Files**: `CampaignCanvas.tsx`, other canvases
-
-Changes:
-- Deploy button: `bg-primary rounded-full px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90` -- no heavy glow, no `shadow-xl shadow-primary/10`
-- Card hover effects: change from `hover:shadow-xl hover:shadow-primary/10` to `hover:bg-white/[0.04]` only -- remove the shadow lift entirely, or keep only `hover:-translate-y-0.5` (subtle, not -1)
-- Quick action pills in Listings: reduce border opacity, soften color
-
-### 6. Increase Content Density — Tighten Spacing
-
-**Files**: All canvas files
-
-Changes:
-- Reduce `space-y-8` to `space-y-6` across all canvases
-- Reduce padding from `p-6 lg:p-8` to `p-5 lg:p-6`
-- Featured Actions grid: reduce `min-h-[180px]` to `min-h-[140px]`
-- Remove `max-w-[1200px] mx-auto` -- let content stretch wider to fill the canvas
-- Recent Creations cards: increase from `w-40 h-48` to `w-48 h-52` (larger thumbnails)
-- Trending hooks cards: increase from `w-[220px]` to `w-[260px]`
-- Remove "Recommended Next" section title -- just show the cards inline if conditions match
-
-### 7. Remove the Right Context Panel When No Tool is Active
+- Shrink expanded width from 200px to 180px (collapsed stays 56px)
+- Background: match page background `bg-[#0F1115]` instead of `hsl(0 0% 3%)` (too black, needs layering)
+- Remove collapse chevron icons entirely — replace with a single thin horizontal line button (a `div` styled as a 16px wide, 2px tall bar)
+- Header: remove the "Studio" text label (sidebar context is obvious from nav items)
+- Nav items: increase font to `text-[15px]`, `font-medium`, `text-foreground/50` inactive, `text-foreground` active
+- Active indicator: keep the 2px left bar but make it `bg-foreground/60` instead of `bg-primary` (less orange noise)
+- Credit pill at bottom: just `text-[11px] text-muted-foreground/40 tabular-nums` with a tiny `h-1 w-1 rounded-full bg-foreground/20` dot — no background block at all
 
 **File**: `StudioLayout.tsx`
 
-Current: Right panel is always visible (320px) even with no tool active, showing placeholder controls.
+- Update `sidebarWidth` from 200 to 180 (and collapsed stays 56)
 
-Changes:
-- Only render `StudioContextPanel` when `activeTool` is set
-- When no tool is active, the center canvas takes full width (no 320px reserved)
-- This gives the canvas breathing room and removes the "empty sidebar" feel
-- Update grid template: `activeTool ? "1fr 320px" : "1fr"`
-- The section-specific context (listings scores, social platform picker, media format) moves into the canvas itself -- it's already there as part of each canvas component
+---
+
+## 2. Full-Bleed Hero — Remove All Containers
+
+**File**: `CampaignCanvas.tsx`
+
+- Remove the `<Rocket>` icon from the Deploy button — just text "Deploy"
+- Remove icons from stat strip items (`Package`, `Layers`, `Zap`) — just number + label text
+- Headline: bump to `text-5xl sm:text-6xl` with `tracking-tighter`
+- Remove the second paragraph line ("Turn any product into...") — one short sentence max under the headline, or remove entirely and let the input field speak
+- Deploy button: change from `bg-primary hover:bg-primary/90 rounded-full` to a clean gradient: `background: linear-gradient(180deg, #FF7A1A, #E85C00)`, `rounded-[10px]`, no outer glow, subtle `shadow-sm` only
+- Featured Actions cards: remove the gradient overlay div (`bg-gradient-to-br opacity-40`) — just clean hover `bg-white/[0.02]`, icon at 20% opacity, no lift
+- Remove icons from Featured Actions cards — just label + description, typography carries weight
+
+---
+
+## 3. Kill All Section Containers Across Canvases
+
+**Files**: `ListingsCanvas.tsx`, `SocialCanvas.tsx`, `MediaCanvas.tsx`
+
+ListingsCanvas:
+- Before/After split: remove the `divide-x divide-white/[0.04]` — use spacing gap instead
+- Remove `rounded-xl` wrapper on the split section — content sits directly in the flow
+- Quick action pills: remove any remaining border classes, just text + hover background
+
+SocialCanvas:
+- Platform strip buttons: remove `bg-white/[0.04]` on active — use only `font-semibold text-foreground` vs `text-muted-foreground/50`
+- Content type cards: remove `min-h-[130px]` (let content dictate height naturally)
+- Post assembly mock: remove `bg-white/[0.02]` on the inner card — let it float on the background with just spacing
+- Remove icons from content type cards — typography only
+
+MediaCanvas:
+- Waveform hero: keep the animated bars but remove the "Media Lab" text heading (sidebar says it)
+- Remove "Drop audio to begin" prompt — the waveform animation is self-explanatory
+- Remove the play button circle — too literal
+- AI tool cards: remove `min-h-[130px]` — let content breathe naturally
+- Remove icons from tool section headers ("AI-Powered", "Utilities")
+
+---
+
+## 4. Remove All Decorative Icons From Section Headers
+
+**All canvas files**:
+- "Trending" label: keep as `text-xs uppercase tracking-wider` — no icon
+- "Performance" label: no icon
+- "Social Tools" label: no icon
+- "AI-Powered" / "Utilities" labels: no icon
+- "Recent Creations" label: no icon
+- "Listing Tools" label: no icon
+- Tool cards themselves: remove the tool.icon render from tool grid cards — just name + description + credit cost. Icons add visual noise at this scale
+
+---
+
+## 5. Tone Down Button Glow System-Wide
+
+**File**: `src/index.css`
+
+Rewrite `.btn-premium` to be restrained:
+- Background: `linear-gradient(180deg, #FF7A1A 0%, #E85C00 100%)`
+- Border: `1px solid rgba(255, 122, 26, 0.2)`
+- Box-shadow: `0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)`
+- Remove `::before` glossy overlay entirely
+- Remove `::after` inner glow border
+- Hover: slight brightness increase (`filter: brightness(1.08)`), `translateY(-1px)`
+- Active: `filter: brightness(0.95)`, `translateY(0)`
+- Remove text-shadow
+- No `!important` on color
+
+---
+
+## 6. Increase Content Density
+
+**File**: `CampaignCanvas.tsx`
+- Reduce main padding from `p-5 lg:p-6` to `p-4 lg:p-5`
+- Reduce `space-y-6` to `space-y-5`
+- Trending hooks cards: increase from `w-[260px]` to `w-[280px]`
+- Featured Actions: reduce gap from `gap-3` to `gap-2`
+
+**File**: `RecentCreations.tsx`
+- Card size: keep `w-48 h-52`
+- Remove the `Clock` icon from timestamp — just the text distance
+- Remove "Recent Creations" label entirely — context is obvious from the content
+
+**All canvases**:
+- Standardize padding to `p-4 lg:p-5`
+- Standardize section spacing to `space-y-5`
+
+---
+
+## 7. Remove Right Context Panel When No Tool Active
+
+**File**: `StudioLayout.tsx`
+
+Already done (only renders when `activeTool` is set). No changes needed here.
+
+But update `StudioContextPanel.tsx`:
+- Remove all the `!toolId && activeSection === "xxx"` blocks — they are never rendered now since the panel only shows when a tool is active
+- This removes dead code and simplifies the component
 
 ---
 
 ## Files Modified
 
-| File | Summary |
+| File | Changes |
 |------|---------|
-| `StudioSidebar.tsx` | Slim to 200px, remove borders/separators, typography-only nav, minimal credit pill |
-| `StudioLayout.tsx` | Update grid to 200px sidebar, conditional right panel |
-| `CampaignCanvas.tsx` | Full-bleed hero, remove containers, clean button, tighter spacing |
-| `ListingsCanvas.tsx` | Remove section containers, clean headers, softer cards |
-| `SocialCanvas.tsx` | Remove containers, cleaner platform strip, tighter layout |
-| `MediaCanvas.tsx` | Remove waveform container, cleaner tool cards |
-| `RecentCreations.tsx` | Larger cards, remove border styling |
-| `StudioContextPanel.tsx` | No changes needed (only renders when tool active) |
-
----
+| `StudioSidebar.tsx` | 180px, `bg-[#0F1115]`, remove chevrons/studio label, 15px nav text, minimal credit pill |
+| `StudioLayout.tsx` | Update sidebarWidth to 180 |
+| `CampaignCanvas.tsx` | Remove icons from stat strip/buttons/cards, bigger headline, clean Deploy button, tighter spacing |
+| `ListingsCanvas.tsx` | Remove split divider, tighter spacing, no section icons |
+| `SocialCanvas.tsx` | Clean platform strip, remove card icons, simplify post mock |
+| `MediaCanvas.tsx` | Remove heading/play button, keep waveform, no card icons |
+| `RecentCreations.tsx` | Remove Clock icon, remove section label |
+| `StudioContextPanel.tsx` | Remove dead section-aware blocks |
+| `src/index.css` | Rewrite btn-premium to subtle gradient, remove pseudo-elements |
 
 ## What Gets Removed
-- All `border border-border/20` on section containers
-- All `bg-card/30 backdrop-blur-xl` on non-interactive elements  
-- All decorative icons next to section headings
-- Nav item icons in sidebar (typography carries weight)
-- Heavy credit gauge box
-- Right panel placeholder when no tool active
-- `btn-premium` heavy glow on Deploy button
-- `shadow-xl` hover effects on cards
-- Grid pattern overlay in hero
+- All decorative icons from section headers and tool cards
+- Chevron collapse icons
+- "Studio" header label
+- Rocket icon from Deploy button
+- Glossy `::before` and inner glow `::after` on btn-premium
+- Heavy box-shadow glow on buttons
+- `divide-x` on listings split view
+- "Media Lab" heading and play button in media canvas
+- Clock icon from recent creations
+- Dead section-aware code in context panel
+- `bg-white/[0.04]` active states on platform strip
 
 ## What Stays
-- framer-motion stagger animations (subtle, not removed)
-- Section-specific color accents (orange/emerald/indigo/violet glows)
-- The animated phone preview in campaign hero
-- Animated waveform bars in media
+- Framer-motion stagger animations (subtle)
+- Section-specific background glows (orange/emerald/indigo/violet)
+- Animated phone preview in campaign
+- Waveform bars in media
 - Post assembly animation in social
 - Before/after animation in listings
-- All tool launch logic unchanged
-
+- Tool launch logic unchanged
