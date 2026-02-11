@@ -365,6 +365,90 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_kits: {
+        Row: {
+          banned_words: string[] | null
+          brand_voice: string | null
+          color_palette: Json | null
+          created_at: string
+          fonts: Json | null
+          id: string
+          logo_dark_url: string | null
+          logo_url: string | null
+          product_categories: string[] | null
+          sample_prompts: Json | null
+          target_audience: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          banned_words?: string[] | null
+          brand_voice?: string | null
+          color_palette?: Json | null
+          created_at?: string
+          fonts?: Json | null
+          id?: string
+          logo_dark_url?: string | null
+          logo_url?: string | null
+          product_categories?: string[] | null
+          sample_prompts?: Json | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          banned_words?: string[] | null
+          brand_voice?: string | null
+          color_palette?: Json | null
+          created_at?: string
+          fonts?: Json | null
+          id?: string
+          logo_dark_url?: string | null
+          logo_url?: string | null
+          product_categories?: string[] | null
+          sample_prompts?: Json | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      campaign_templates: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          estimated_credits: number
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          steps: Json
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          estimated_credits?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          steps?: Json
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          estimated_credits?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          steps?: Json
+        }
+        Relationships: []
+      }
       collection_items: {
         Row: {
           collection_id: string
@@ -2578,6 +2662,181 @@ export type Database = {
           image_url?: string | null
           is_pinned?: boolean | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tool_assets: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          file_size_bytes: number | null
+          filename: string | null
+          id: string
+          is_favorite: boolean
+          job_id: string | null
+          metadata: Json | null
+          product_id: string | null
+          safety_flags: Json | null
+          storage_url: string | null
+          thumbnail_url: string | null
+          type: string
+          used_on_page: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          filename?: string | null
+          id?: string
+          is_favorite?: boolean
+          job_id?: string | null
+          metadata?: Json | null
+          product_id?: string | null
+          safety_flags?: Json | null
+          storage_url?: string | null
+          thumbnail_url?: string | null
+          type: string
+          used_on_page?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          filename?: string | null
+          id?: string
+          is_favorite?: boolean
+          job_id?: string | null
+          metadata?: Json | null
+          product_id?: string | null
+          safety_flags?: Json | null
+          storage_url?: string | null
+          thumbnail_url?: string | null
+          type?: string
+          used_on_page?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_assets_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "tool_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tool_jobs: {
+        Row: {
+          brand_kit_snapshot: Json | null
+          completed_at: string | null
+          created_at: string
+          credit_cost: number
+          credit_refunded: boolean
+          error_message: string | null
+          id: string
+          inputs: Json | null
+          product_context: Json | null
+          started_at: string | null
+          status: string
+          tool_id: string
+          user_id: string
+        }
+        Insert: {
+          brand_kit_snapshot?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          credit_cost?: number
+          credit_refunded?: boolean
+          error_message?: string | null
+          id?: string
+          inputs?: Json | null
+          product_context?: Json | null
+          started_at?: string | null
+          status?: string
+          tool_id: string
+          user_id: string
+        }
+        Update: {
+          brand_kit_snapshot?: Json | null
+          completed_at?: string | null
+          created_at?: string
+          credit_cost?: number
+          credit_refunded?: boolean
+          error_message?: string | null
+          id?: string
+          inputs?: Json | null
+          product_context?: Json | null
+          started_at?: string | null
+          status?: string
+          tool_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_jobs_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "tools_registry"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tools_registry: {
+        Row: {
+          category: string
+          created_at: string
+          credit_cost: number
+          description: string | null
+          execution_type: string
+          icon_name: string | null
+          id: string
+          inputs_schema: Json | null
+          is_active: boolean
+          is_pro: boolean
+          max_duration_seconds: number | null
+          name: string
+          outputs_schema: Json | null
+          safety_profile: string
+          sort_order: number
+          subcategory: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          credit_cost?: number
+          description?: string | null
+          execution_type?: string
+          icon_name?: string | null
+          id: string
+          inputs_schema?: Json | null
+          is_active?: boolean
+          is_pro?: boolean
+          max_duration_seconds?: number | null
+          name: string
+          outputs_schema?: Json | null
+          safety_profile?: string
+          sort_order?: number
+          subcategory?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          credit_cost?: number
+          description?: string | null
+          execution_type?: string
+          icon_name?: string | null
+          id?: string
+          inputs_schema?: Json | null
+          is_active?: boolean
+          is_pro?: boolean
+          max_duration_seconds?: number | null
+          name?: string
+          outputs_schema?: Json | null
+          safety_profile?: string
+          sort_order?: number
+          subcategory?: string | null
         }
         Relationships: []
       }
