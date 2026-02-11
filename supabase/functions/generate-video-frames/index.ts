@@ -12,11 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const GEMINI_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    if (!GEMINI_KEY) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -94,15 +94,15 @@ serve(async (req) => {
       const prompt = `${styleHint}product promo frame for "${productName || "product"}": ${frame.visual_description}. ${frame.text_overlay ? `Text overlay: "${frame.text_overlay}". ` : ""}Professional, high quality, ${aspectRatio || "9:16"} aspect ratio. No text in the image unless specified.`;
 
       const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        "https://ai.gateway.lovable.dev/v1/chat/completions",
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${GEMINI_KEY}`,
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "gemini-2.0-flash-exp",
+            model: "google/gemini-2.5-flash-image",
             messages: [{ role: "user", content: prompt }],
             modalities: ["image", "text"],
           }),
