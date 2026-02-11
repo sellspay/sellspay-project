@@ -1,102 +1,109 @@
-# Chat-Integrated Undo: Premium In-Flow Version Control
 
-## ✅ IMPLEMENTED (2026-02-08)
 
-This system adds an always-visible "Undo Change" button directly in AI message bubbles for code-changing responses.
+# Migrate All AI Functions from Lovable Gateway to Direct Google Gemini API
 
----
+## Summary
 
-## What Was Built
-
-### 1. Prominent Undo Pill in Message Bubble
-
-**File: `src/components/ai-builder/VibecoderMessageBubble.tsx`**
-
-- Added `isLatestCodeMessage` prop to identify the most recent AI response with code changes
-- For the latest code message, shows an always-visible "Undo Change" button (not hover-only)
-- Uses zinc-800 styling with RotateCcw icon per design spec
-- Older messages still have the revert button in the hover toolbar
-
-### 2. Smart Undo Logic with Sentinel Safety
-
-**File: `src/components/ai-builder/hooks/useVibecoderProjects.ts`**
-
-New functions added:
-
-- **`undoLastChange()`** - Reverts to the second-to-last valid code snapshot
-- **`canUndo()`** - Returns true if at least 2 valid snapshots exist
-- **`getLastSafeVersion()`** - Returns the most recent code that passed linter (has sentinel)
-
-Safety feature: Only reverts to code snapshots that include the `// --- VIBECODER_COMPLETE ---` sentinel, preventing restoration of truncated/broken code.
-
-### 3. Prop Threading
-
-**Files: `VibecoderChat.tsx`, `AIBuilderCanvas.tsx`**
-
-- Added `canUndo` prop flowing from hook → Canvas → Chat → ChatInterface → MessageBubble
-- Existing `onRestoreToVersion` handler continues to work for specific version restoration
+Replace the Lovable AI gateway (`ai.gateway.lovable.dev`) with direct Google Gemini API calls across all 5 edge functions. This removes the dependency on Lovable Cloud AI balance entirely -- your VibeCoder and all AI tools will run on your own Google API key.
 
 ---
 
-## UI Behavior
+## What Changes
+
+| Component | Before | After |
+|-----------|--------|-------|
+| API endpoint | `https://ai.gateway.lovable.dev/v1/chat/completions` | `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` |
+| Auth key | `LOVABLE_API_KEY` (managed by Lovable) | `GOOGLE_GEMINI_API_KEY` (your own key) |
+| Model names | `google/gemini-3-flash-preview`, `google/gemini-2.5-flash-lite`, `openai/gpt-5.2` | `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.5-pro` |
+| Billing | Lovable Cloud balance | Your Google AI billing account |
+
+---
+
+## Pre-Requisite: API Key
+
+You will need a **Google Gemini API key** from [Google AI Studio](https://aistudio.google.com/apikey). I will securely store it as a backend secret called `GOOGLE_GEMINI_API_KEY`.
+
+---
+
+## Edge Functions to Update (5 total)
+
+### 1. `vibecoder-v2/index.ts` (Main VibeCoder)
+- Replace `LOVABLE_AI_URL` constant with Google endpoint
+- Replace `LOVABLE_API_KEY` env var with `GOOGLE_GEMINI_API_KEY`
+- Update `MODEL_CONFIG` mapping:
+  - `vibecoder-pro` -> `gemini-2.5-flash` (fast, capable)
+  - `vibecoder-flash` -> `gemini-2.5-flash-lite` (free-tier small edits)
+  - `reasoning-o1` -> `gemini-2.5-pro` (deep reasoning)
+- Update intent classifier model reference
+- Both `classifyIntent()` and `executePrompt()` fetch calls updated
+
+### 2. `enhance-sfx-prompt/index.ts`
+- Replace gateway URL and API key references
+
+### 3. `generate-image/index.ts`
+- Replace gateway URL and API key
+- Note: Image generation model reference may need updating depending on what model is used
+
+### 4. `storefront-generate-asset/index.ts`
+- Replace gateway URL and API key references
+
+### 5. `storefront-vibecoder/index.ts`
+- Replace gateway URL and API key across all function calls (`extractIntent`, `createPlan`, `generateOps`, `repairOps`)
+
+---
+
+## Model Name Mapping
+
+Google's OpenAI-compatible endpoint uses different model names than the Lovable gateway prefix:
 
 ```text
-Most Recent AI Message (with code):
-┌─────────────────────────────────────────────┐
-│ I've updated the Hero with new styling...  │
-│ Code applied to preview                     │
-│                                             │
-│ [↩ Undo Change]    ← Always visible         │
-│                                             │
-│ On hover: [👍] [👎] | [📋 Copy]            │
-└─────────────────────────────────────────────┘
-
-Older AI Messages (with code):
-┌─────────────────────────────────────────────┐
-│ Previous response content...                │
-│ Code applied to preview                     │
-│                                             │
-│ On hover: [↩ Revert] | [👍] [👎] | [📋]    │
-└─────────────────────────────────────────────┘
+Lovable Gateway Name         ->  Direct Google API Name
+google/gemini-3-flash-preview -> gemini-2.5-flash
+google/gemini-2.5-flash-lite  -> gemini-2.5-flash-lite
+openai/gpt-5.2               -> gemini-2.5-pro
+google/gemini-2.5-flash-image -> gemini-2.0-flash-exp (image gen)
 ```
 
 ---
 
-## Data Flow
+## Implementation Steps
 
-```text
-User clicks "Undo Change" on latest message
-        ↓
-RevertConfirmDialog shows warning
-        ↓
-User confirms
-        ↓
-onRestoreCode() triggers restoreToVersion(messageId)
-        ↓
-RPC deletes messages after that point, returns snapshot
-        ↓
-Messages refreshed, preview updates
-        ↓
-Toast: "Restored to previous version"
-```
+1. **Add Secret** - Request `GOOGLE_GEMINI_API_KEY` from you
+2. **Update all 5 edge functions** - Swap endpoint, key, and model names
+3. **Deploy all functions** - Redeploy to pick up the new config
+4. **Test** - Verify VibeCoder generates correctly with the new API
 
 ---
 
-## Safety: Sentinel Check
+## Technical Details
 
-The `canUndo()` function only counts messages where `hasCompleteSentinel(code_snapshot)` is true. This prevents:
+### API Call Format (stays OpenAI-compatible)
 
-- Restoring to truncated/incomplete code
-- Restoring to code that failed the linter
-- Showing undo when there's only 1 valid version
+Google's Gemini API supports the OpenAI chat completions format, so the request/response shape stays identical. Only the URL, key header, and model string change:
 
 ```typescript
-const canUndo = useCallback((): boolean => {
-  const withValidCode = messages.filter(m =>
-    m.role === 'assistant' &&
-    m.code_snapshot &&
-    hasCompleteSentinel(m.code_snapshot)
-  );
-  return withValidCode.length >= 2;
-}, [messages]);
+// BEFORE
+const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const apiKey = Deno.env.get("LOVABLE_API_KEY");
+
+// AFTER
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const apiKey = Deno.env.get("GOOGLE_GEMINI_API_KEY");
 ```
+
+The `Authorization: Bearer ${apiKey}` header format remains the same -- Google's OpenAI-compatible endpoint accepts it.
+
+### No Frontend Changes Required
+
+The frontend calls the edge functions via Supabase -- it never touches the AI gateway directly. So zero client-side changes are needed.
+
+---
+
+## Risk Assessment
+
+| Risk | Mitigation |
+|------|-----------|
+| Google rate limits differ from Lovable | Monitor 429 errors; adjust retry logic if needed |
+| Model output differences | Same underlying Gemini models, just called directly |
+| Image generation model availability | Verify `gemini-2.0-flash-exp` supports image output on direct API |
+
