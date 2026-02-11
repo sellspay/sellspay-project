@@ -326,6 +326,18 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       // Pass the locked project ID explicitly for safety
       await addMessage('assistant', aiResponse, finalCode, generationLockRef.current || undefined);
 
+      // Update last_success_at on the project
+      const successProjectId = generationLockRef.current || activeProjectId;
+      if (successProjectId) {
+        supabase
+          .from('vibecoder_projects')
+          .update({ last_success_at: new Date().toISOString() })
+          .eq('id', successProjectId)
+          .then(({ error }) => {
+            if (error) console.warn('[Vibecoder] Failed to update last_success_at:', error);
+          });
+      }
+
       // Release the lock
       generationLockRef.current = null;
 
