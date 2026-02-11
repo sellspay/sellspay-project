@@ -17,6 +17,7 @@ import { ConversionFunnel } from '@/components/dashboard/ConversionFunnel';
 import { EditorApplicationCard } from '@/components/dashboard/EditorApplicationCard';
 import { EarningsCard } from '@/components/dashboard/EarningsCard';
 import { PendingPayoutBanner } from '@/components/dashboard/PendingPayoutBanner';
+import { UsageAnalyticsWidget } from '@/components/tools/UsageAnalyticsWidget';
 import { format, subDays, startOfMonth, eachDayOfInterval } from 'date-fns';
 import { useSellerGate } from '@/hooks/useSellerGate';
 
@@ -517,6 +518,13 @@ export default function Dashboard() {
             startedCheckout={Math.floor(summaryStats.totalPurchases * 1.5)}
             completedCheckout={summaryStats.totalPurchases}
           />
+        </CardContent>
+      </Card>
+
+      {/* AI Usage Analytics */}
+      <Card className="bg-card mt-6">
+        <CardContent className="p-6">
+          <UsageAnalyticsWidget />
         </CardContent>
       </Card>
 

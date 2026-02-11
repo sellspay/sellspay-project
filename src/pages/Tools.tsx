@@ -1,29 +1,59 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Coins, Zap, Layers, Store, BarChart3 } from "lucide-react";
-import { QuickToolsGrid } from "@/components/tools/QuickToolsGrid";
-import { MyAssetsDrawer } from "@/components/tools/MyAssetsDrawer";
-import { CampaignsGrid } from "@/components/tools/CampaignsGrid";
-import { StoreAssistantGrid } from "@/components/tools/StoreAssistantGrid";
+import { FileText, Image, LayoutTemplate, PackagePlus, MessageSquare, Clapperboard, Hash, GalleryHorizontal } from "lucide-react";
 import { ToolActiveView } from "@/components/tools/ToolActiveView";
-import { UsageAnalyticsWidget } from "@/components/tools/UsageAnalyticsWidget";
+import { PromoVideoBuilder } from "@/components/tools/PromoVideoBuilder";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toolsRegistry } from "@/components/tools/toolsRegistry";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+
+import { StudioHero } from "@/components/tools/studio/StudioHero";
+import { FlagshipPromo } from "@/components/tools/studio/FlagshipPromo";
+import { CreatorControlStrip } from "@/components/tools/studio/CreatorControlStrip";
+import { OutcomeSection, outcomeItemVariant } from "@/components/tools/studio/OutcomeSection";
+import { OutcomeCard } from "@/components/tools/studio/OutcomeCard";
+import { MediaUtilityGrid } from "@/components/tools/studio/MediaUtilityGrid";
+import { RecentCreations } from "@/components/tools/studio/RecentCreations";
+import { motion } from "framer-motion";
 
 export default function Tools() {
   const [searchParams] = useSearchParams();
   const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [promoOpen, setPromoOpen] = useState(false);
   const { credits: creditBalance, loading: isLoading } = useSubscription();
+  const { profile } = useAuth();
+
+  // Stats
+  const [productCount, setProductCount] = useState(0);
+  const [assetCount, setAssetCount] = useState(0);
+  const [generationCount, setGenerationCount] = useState(0);
+  const [recentAssets, setRecentAssets] = useState<any[]>([]);
 
   useEffect(() => {
     const toolParam = searchParams.get("tool");
     if (toolParam) setActiveTool(toolParam);
   }, [searchParams]);
 
+  // Fetch stats
+  useEffect(() => {
+    if (!profile?.id) return;
+    const fetchStats = async () => {
+      const [{ count: pCount }, { count: aCount }, { count: gCount }, { data: assets }] = await Promise.all([
+        supabase.from("products").select("*", { count: "exact", head: true }).eq("creator_id", profile.id),
+        supabase.from("tool_assets").select("*", { count: "exact", head: true }).eq("user_id", profile.id),
+        supabase.from("ai_usage_logs").select("*", { count: "exact", head: true }).eq("user_id", profile.id),
+        supabase.from("tool_assets").select("id, asset_type, asset_url, tool_id, created_at").eq("user_id", profile.id).order("created_at", { ascending: false }).limit(12),
+      ]);
+      setProductCount(pCount || 0);
+      setAssetCount(aCount || 0);
+      setGenerationCount(gCount || 0);
+      setRecentAssets(assets || []);
+    };
+    fetchStats();
+  }, [profile?.id]);
+
   const handleLaunch = (toolId: string) => {
-    // Find the tool in registry to check for legacy route
     const entry = toolsRegistry.find(t => t.id === toolId);
     if (entry?.legacyRoute) {
       setActiveTool(entry.legacyRoute);
@@ -31,6 +61,13 @@ export default function Tools() {
       setActiveTool(toolId);
     }
   };
+
+  // Utility tools (media creation + utility with legacy routes = active)
+  const utilityTools = useMemo(() => {
+    return toolsRegistry
+      .filter(t => (t.subcategory === "media_creation" || t.subcategory === "utility") && t.isActive && t.legacyRoute)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }, []);
 
   if (activeTool) {
     return (
@@ -47,57 +84,115 @@ export default function Tools() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">AI Studio</h1>
-            <p className="text-sm text-muted-foreground mt-1">Generate, create, and grow — all from one place.</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <MyAssetsDrawer />
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card">
-              <Coins className="h-4 w-4 text-amber-500" />
-              <span className="text-sm font-semibold text-foreground">
-                {isLoading ? "…" : creditBalance}
-              </span>
-              <span className="text-xs text-muted-foreground">credits</span>
-            </div>
-          </div>
-        </div>
+      {/* 1. Hero */}
+      <StudioHero
+        creditBalance={creditBalance}
+        isLoadingCredits={isLoading}
+        productCount={productCount}
+        assetCount={assetCount}
+        onCreatePromo={() => setPromoOpen(true)}
+        onOptimizeStore={() => handleLaunch("product-description")}
+      />
 
-        {/* Tabs */}
-        <Tabs defaultValue="quick" className="space-y-8">
-          <TabsList className="bg-muted/50 p-1 h-auto gap-1">
-            <TabsTrigger value="quick" className="gap-2 text-xs sm:text-sm data-[state=active]:bg-background px-4 py-2">
-              <Zap className="h-3.5 w-3.5" /> Quick Tools
-            </TabsTrigger>
-            <TabsTrigger value="campaigns" className="gap-2 text-xs sm:text-sm data-[state=active]:bg-background px-4 py-2">
-              <Layers className="h-3.5 w-3.5" /> Campaigns
-            </TabsTrigger>
-            <TabsTrigger value="store" className="gap-2 text-xs sm:text-sm data-[state=active]:bg-background px-4 py-2">
-              <Store className="h-3.5 w-3.5" /> Store Assistant
-            </TabsTrigger>
-          </TabsList>
+      <div className="space-y-16 pb-20">
+        {/* 2. Flagship */}
+        <FlagshipPromo onLaunchPromo={() => setPromoOpen(true)} />
 
-          <TabsContent value="quick">
-            <QuickToolsGrid onLaunch={handleLaunch} />
-          </TabsContent>
+        {/* 3. Control Strip */}
+        <CreatorControlStrip
+          productCount={productCount}
+          assetCount={assetCount}
+          generationCount={generationCount}
+          creditBalance={creditBalance}
+        />
 
-          <TabsContent value="campaigns">
-            <CampaignsGrid creditBalance={creditBalance} />
-          </TabsContent>
+        {/* 4a. Grow My Store */}
+        <OutcomeSection title="Grow My Store" emoji="🚀">
+          <motion.div variants={outcomeItemVariant}>
+            <OutcomeCard
+              title="Product Optimizer"
+              description="AI-optimized descriptions that convert browsers into buyers."
+              icon={FileText}
+              gradient="bg-gradient-to-br from-primary/15 to-primary/5"
+              onLaunch={() => handleLaunch("product-description")}
+              comingSoon
+            />
+          </motion.div>
+          <motion.div variants={outcomeItemVariant}>
+            <OutcomeCard
+              title="Sales Page Builder"
+              description="Generate hero, features, and testimonial sections instantly."
+              icon={LayoutTemplate}
+              gradient="bg-gradient-to-br from-primary/12 to-primary/3"
+              onLaunch={() => handleLaunch("sales-page-sections")}
+              comingSoon
+            />
+          </motion.div>
+          <motion.div variants={outcomeItemVariant}>
+            <OutcomeCard
+              title="Bundle & Upsell Creator"
+              description="Smart bundle recommendations to boost average order value."
+              icon={PackagePlus}
+              gradient="bg-gradient-to-br from-primary/10 to-primary/2"
+              onLaunch={() => handleLaunch("upsell-suggestions")}
+              comingSoon
+            />
+          </motion.div>
+        </OutcomeSection>
 
-          <TabsContent value="store">
-            <StoreAssistantGrid onLaunch={handleLaunch} />
-          </TabsContent>
-        </Tabs>
+        {/* 4b. Create Marketing Content */}
+        <OutcomeSection title="Create Marketing Content" emoji="🎥">
+          <motion.div variants={outcomeItemVariant}>
+            <OutcomeCard
+              title="Carousel Generator"
+              description="Multi-slide carousel posts for Instagram that get saved and shared."
+              icon={GalleryHorizontal}
+              gradient="bg-gradient-to-br from-primary/12 to-primary/4"
+              onLaunch={() => handleLaunch("carousel-generator")}
+              comingSoon
+            />
+          </motion.div>
+          <motion.div variants={outcomeItemVariant}>
+            <OutcomeCard
+              title="Hook & Script Generator"
+              description="TikTok, Reels, and Shorts scripts with scroll-stopping hooks."
+              icon={Clapperboard}
+              gradient="bg-gradient-to-br from-primary/10 to-primary/3"
+              onLaunch={() => handleLaunch("short-form-script")}
+              comingSoon
+            />
+          </motion.div>
+          <motion.div variants={outcomeItemVariant}>
+            <OutcomeCard
+              title="Caption Pack"
+              description="Engaging captions with optimized hashtag sets for every platform."
+              icon={Hash}
+              gradient="bg-gradient-to-br from-primary/8 to-primary/2"
+              onLaunch={() => handleLaunch("caption-hashtags")}
+              comingSoon
+            />
+          </motion.div>
+          <motion.div variants={outcomeItemVariant}>
+            <OutcomeCard
+              title="10 Posts from Product"
+              description="Generate a full week of social posts from a single product listing."
+              icon={MessageSquare}
+              gradient="bg-gradient-to-br from-primary/10 to-primary/3"
+              onLaunch={() => handleLaunch("social-posts-pack")}
+              comingSoon
+            />
+          </motion.div>
+        </OutcomeSection>
 
-        {/* Usage Analytics */}
-        <div className="mt-8">
-          <UsageAnalyticsWidget />
-        </div>
+        {/* 4c. Media Utilities */}
+        <MediaUtilityGrid tools={utilityTools} onLaunch={handleLaunch} />
+
+        {/* 5. Recent Creations */}
+        <RecentCreations assets={recentAssets} />
       </div>
+
+      {/* Promo Video Builder Dialog */}
+      <PromoVideoBuilder open={promoOpen} onOpenChange={setPromoOpen} />
     </div>
   );
 }
