@@ -25,7 +25,7 @@ interface PanelMedia {
  
 const DEFAULT_STEPS: Step[] = [
    {
-     bg: "#0a0a0a",
+      bg: "#060606",
      text: "#ffffff",
      headline: ["Building Made", "Simple"],
      image: aiPanel1,
@@ -36,7 +36,7 @@ const DEFAULT_STEPS: Step[] = [
      headline: ["Sell", "products"],
    },
    {
-     bg: "#0a0a0a",
+      bg: "#060606",
      text: "#ffffff",
      headline: ["Audio Made", "Simple"],
    },
@@ -53,13 +53,13 @@ const DEFAULT_STEPS: Step[] = [
       image: aiPanel5,
     },
    {
-    bg: "#0a0a0a",  // Matches first step for seamless loop
+    bg: "#060606",  // Matches first step for seamless loop
      text: "#ffffff",
      headline: ["All in", "one"],
    },
  ];
  
-const CARD_COLORS = ["#1a1a1a", "#f5f5f5", "#1a1a1a", "#e76e50", "#50A9E7", "#1a1a1a"];
+const CARD_COLORS = ["#0d0d0d", "#f5f5f5", "#0d0d0d", "#e76e50", "#50A9E7", "#0d0d0d"];
 const STEP_DISTANCE_DESKTOP = 500;
 const STEP_DISTANCE_MOBILE = 300;
 const STACK_Y = 14;
