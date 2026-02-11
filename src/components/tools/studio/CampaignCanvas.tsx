@@ -531,14 +531,7 @@ export function CampaignCanvas({
               </div>
             </div>
 
-            {/* Large Generate CTA */}
-            <button
-              onClick={onLaunchPromo}
-              className="w-full py-4 text-base font-semibold text-white rounded-xl shadow-lg shadow-orange-500/10 transition-all hover:shadow-xl hover:shadow-orange-500/20"
-              style={{ background: "linear-gradient(180deg, #FF7A1A 0%, #E85C00 100%)" }}
-            >
-              Generate Campaign Pack
-            </button>
+            {/* Generate CTA is in the right panel (CampaignControlPanel) */}
           </motion.div>
         )}
       </AnimatePresence>
