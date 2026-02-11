@@ -1,160 +1,122 @@
 
 
-# Artlist-Level Premium Refinement
+# Campaign Canvas Redesign — Marketing Pack Generator
 
-Final pass to shift the studio from "AI SaaS" to "mature creative platform." Seven surgical changes, all visual.
-
----
-
-## 1. Sidebar — 180px, Borderless, Typography-Only
-
-**File**: `StudioSidebar.tsx`
-
-- Shrink expanded width from 200px to 180px (collapsed stays 56px)
-- Background: match page background `bg-[#0F1115]` instead of `hsl(0 0% 3%)` (too black, needs layering)
-- Remove collapse chevron icons entirely — replace with a single thin horizontal line button (a `div` styled as a 16px wide, 2px tall bar)
-- Header: remove the "Studio" text label (sidebar context is obvious from nav items)
-- Nav items: increase font to `text-[15px]`, `font-medium`, `text-foreground/50` inactive, `text-foreground` active
-- Active indicator: keep the 2px left bar but make it `bg-foreground/60` instead of `bg-primary` (less orange noise)
-- Credit pill at bottom: just `text-[11px] text-muted-foreground/40 tabular-nums` with a tiny `h-1 w-1 rounded-full bg-foreground/20` dot — no background block at all
-
-**File**: `StudioLayout.tsx`
-
-- Update `sidebarWidth` from 200 to 180 (and collapsed stays 56)
+Transform Campaign from a vague "Deploy" page into a clear **Marketing Pack Generator** that shows users exactly what they get.
 
 ---
 
-## 2. Full-Bleed Hero — Remove All Containers
+## Current State
 
-**File**: `CampaignCanvas.tsx`
+The Campaign canvas has a generic hero ("Launch. Create. Optimize."), a freeform text input, a "Deploy" button, generic featured action cards, and a trending hooks shelf. It doesn't communicate what the campaign actually generates.
 
-- Remove the `<Rocket>` icon from the Deploy button — just text "Deploy"
-- Remove icons from stat strip items (`Package`, `Layers`, `Zap`) — just number + label text
-- Headline: bump to `text-5xl sm:text-6xl` with `tracking-tighter`
-- Remove the second paragraph line ("Turn any product into...") — one short sentence max under the headline, or remove entirely and let the input field speak
-- Deploy button: change from `bg-primary hover:bg-primary/90 rounded-full` to a clean gradient: `background: linear-gradient(180deg, #FF7A1A, #E85C00)`, `rounded-[10px]`, no outer glow, subtle `shadow-sm` only
-- Featured Actions cards: remove the gradient overlay div (`bg-gradient-to-br opacity-40`) — just clean hover `bg-white/[0.02]`, icon at 20% opacity, no lift
-- Remove icons from Featured Actions cards — just label + description, typography carries weight
+## New Structure
 
----
+### Section 1: Hero with Clear Value Proposition
 
-## 3. Kill All Section Containers Across Canvases
+**Replace** the current headline and input area with:
 
-**Files**: `ListingsCanvas.tsx`, `SocialCanvas.tsx`, `MediaCanvas.tsx`
+- Headline: `Launch a Campaign in 60 Seconds.`
+- Subtext: `Generate a complete content pack for your product — ready to post.`
+- Below that, a "This campaign will generate:" list showing 6 deliverables as minimal icon+text rows (Video, Carousel, Hooks, Captions, Listing Rewrite, Email Draft) using thin lucide icons
+- No emoji anywhere
 
-ListingsCanvas:
-- Before/After split: remove the `divide-x divide-white/[0.04]` — use spacing gap instead
-- Remove `rounded-xl` wrapper on the split section — content sits directly in the flow
-- Quick action pills: remove any remaining border classes, just text + hover background
+### Section 2: Product + Goal Selector (Primary Action)
 
-SocialCanvas:
-- Platform strip buttons: remove `bg-white/[0.04]` on active — use only `font-semibold text-foreground` vs `text-muted-foreground/50`
-- Content type cards: remove `min-h-[130px]` (let content dictate height naturally)
-- Post assembly mock: remove `bg-white/[0.02]` on the inner card — let it float on the background with just spacing
-- Remove icons from content type cards — typography only
+Replace the freeform "Describe your campaign..." input with structured controls:
 
-MediaCanvas:
-- Waveform hero: keep the animated bars but remove the "Media Lab" text heading (sidebar says it)
-- Remove "Drop audio to begin" prompt — the waveform animation is self-explanatory
-- Remove the play button circle — too literal
-- AI tool cards: remove `min-h-[130px]` — let content breathe naturally
-- Remove icons from tool section headers ("AI-Powered", "Utilities")
+- **Product Selector**: Reuse the existing `SourceSelector` component (already used in PromoVideoBuilder and CampaignRunner) to select a product
+- **Goal Selector**: 5 pill buttons in a flex-wrap row:
+  - "Get more sales" / "Get more traffic" / "Build trust" / "Launch new product" / "Promote discount"
+- **Optional text input**: "Extra direction (optional)" -- single line, subtle
+- **Primary CTA**: `Generate Campaign Pack` button (orange gradient, rounded-[10px])
+- **Secondary CTA**: `Plan First (Advanced)` button (ghost variant) -- opens the existing `PromoVideoBuilder` dialog as the "planner" flow
 
----
+### Section 3: Campaign Templates Shelf
 
-## 4. Remove All Decorative Icons From Section Headers
+Replace the current "Trending" hooks shelf with a **Campaign Templates** horizontal scroll:
 
-**All canvas files**:
-- "Trending" label: keep as `text-xs uppercase tracking-wider` — no icon
-- "Performance" label: no icon
-- "Social Tools" label: no icon
-- "AI-Powered" / "Utilities" labels: no icon
-- "Recent Creations" label: no icon
-- "Listing Tools" label: no icon
-- Tool cards themselves: remove the tool.icon render from tool grid cards — just name + description + credit cost. Icons add visual noise at this scale
+- 5 template cards: "Viral TikTok Launch", "Premium Brand Launch", "Discount Push", "Trust Builder", "New Release"
+- Each card: name + short description + subtle "Use Template" hover state
+- Selecting a template pre-fills the goal + extra direction fields
+- Cards styled with `bg-white/[0.02]` default, `bg-white/[0.05]` on hover, no borders
 
----
+### Section 4: Example Pack Preview Grid
 
-## 5. Tone Down Button Glow System-Wide
+Replace the featured actions 2x2 grid with a **pack preview** showing what gets generated:
 
-**File**: `src/index.css`
+- 2-row, 3-column grid of preview cards:
+  - Row 1: "Promo Video" (9:16 phone mockup with animated bars), "Carousel" (stacked slides visual), "Viral Hooks" (scrolling text preview)
+  - Row 2: "Captions Pack", "Listing Rewrite", "Email Draft"
+- Each card: title + subtle animated placeholder content (reuse existing animation patterns)
+- These are static previews -- not interactive, just showing what the output looks like
 
-Rewrite `.btn-premium` to be restrained:
-- Background: `linear-gradient(180deg, #FF7A1A 0%, #E85C00 100%)`
-- Border: `1px solid rgba(255, 122, 26, 0.2)`
-- Box-shadow: `0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)`
-- Remove `::before` glossy overlay entirely
-- Remove `::after` inner glow border
-- Hover: slight brightness increase (`filter: brightness(1.08)`), `translateY(-1px)`
-- Active: `filter: brightness(0.95)`, `translateY(0)`
-- Remove text-shadow
-- No `!important` on color
+### Section 5: Recent Creations (keep)
+
+Keep the existing `RecentCreations` component at the bottom, unchanged.
+
+### Remove
+
+- "Trending" hooks shelf (replaced by templates)
+- Featured Actions 2x2 grid (replaced by pack preview)
+- Stat strip at the top (move into sidebar or remove -- sidebar already shows credits)
+- "Recommended" section at bottom (the pack preview makes the value obvious)
+- The animated phone preview on the right side of the hero (replaced by the pack preview grid below)
 
 ---
 
-## 6. Increase Content Density
+## Technical Details
 
-**File**: `CampaignCanvas.tsx`
-- Reduce main padding from `p-5 lg:p-6` to `p-4 lg:p-5`
-- Reduce `space-y-6` to `space-y-5`
-- Trending hooks cards: increase from `w-[260px]` to `w-[280px]`
-- Featured Actions: reduce gap from `gap-3` to `gap-2`
-
-**File**: `RecentCreations.tsx`
-- Card size: keep `w-48 h-52`
-- Remove the `Clock` icon from timestamp — just the text distance
-- Remove "Recent Creations" label entirely — context is obvious from the content
-
-**All canvases**:
-- Standardize padding to `p-4 lg:p-5`
-- Standardize section spacing to `space-y-5`
-
----
-
-## 7. Remove Right Context Panel When No Tool Active
-
-**File**: `StudioLayout.tsx`
-
-Already done (only renders when `activeTool` is set). No changes needed here.
-
-But update `StudioContextPanel.tsx`:
-- Remove all the `!toolId && activeSection === "xxx"` blocks — they are never rendered now since the panel only shows when a tool is active
-- This removes dead code and simplifies the component
-
----
-
-## Files Modified
+### Files Modified
 
 | File | Changes |
 |------|---------|
-| `StudioSidebar.tsx` | 180px, `bg-[#0F1115]`, remove chevrons/studio label, 15px nav text, minimal credit pill |
-| `StudioLayout.tsx` | Update sidebarWidth to 180 |
-| `CampaignCanvas.tsx` | Remove icons from stat strip/buttons/cards, bigger headline, clean Deploy button, tighter spacing |
-| `ListingsCanvas.tsx` | Remove split divider, tighter spacing, no section icons |
-| `SocialCanvas.tsx` | Clean platform strip, remove card icons, simplify post mock |
-| `MediaCanvas.tsx` | Remove heading/play button, keep waveform, no card icons |
-| `RecentCreations.tsx` | Remove Clock icon, remove section label |
-| `StudioContextPanel.tsx` | Remove dead section-aware blocks |
-| `src/index.css` | Rewrite btn-premium to subtle gradient, remove pseudo-elements |
+| `CampaignCanvas.tsx` | Full rewrite of the canvas content. New sections: hero, product+goal selector, template shelf, pack preview grid. Import `SourceSelector` and `ProductContextCard` from existing tool components. Add state for `selectedGoal`, `selectedTemplate`, `extraDirection`, `sourceMode`, `selectedProduct`. Wire "Generate Campaign Pack" to open `CampaignRunner` with a dynamically built step list based on goal. Wire "Plan First" to `onLaunchPromo` (opens PromoVideoBuilder). |
+| `StudioCanvas.tsx` | Pass `onLaunchPromo` and products data through to CampaignCanvas (already done). No changes needed. |
+| `StudioLayout.tsx` | No changes needed -- `PromoVideoBuilder` dialog already wired. |
 
-## What Gets Removed
-- All decorative icons from section headers and tool cards
-- Chevron collapse icons
-- "Studio" header label
-- Rocket icon from Deploy button
-- Glossy `::before` and inner glow `::after` on btn-premium
-- Heavy box-shadow glow on buttons
-- `divide-x` on listings split view
-- "Media Lab" heading and play button in media canvas
-- Clock icon from recent creations
-- Dead section-aware code in context panel
-- `bg-white/[0.04]` active states on platform strip
+### New Constants in CampaignCanvas
 
-## What Stays
-- Framer-motion stagger animations (subtle)
-- Section-specific background glows (orange/emerald/indigo/violet)
-- Animated phone preview in campaign
-- Waveform bars in media
-- Post assembly animation in social
-- Before/after animation in listings
-- Tool launch logic unchanged
+```text
+GOALS = [
+  { id: "sales", label: "Get more sales" },
+  { id: "traffic", label: "Get more traffic" },
+  { id: "trust", label: "Build trust" },
+  { id: "launch", label: "Launch new product" },
+  { id: "discount", label: "Promote discount" },
+]
+
+CAMPAIGN_TEMPLATES = [
+  { id: "viral-tiktok", name: "Viral TikTok Launch", desc: "Fast cuts, bold hooks, trending audio", goal: "sales", direction: "Bold, aggressive, viral energy" },
+  { id: "premium-brand", name: "Premium Brand Launch", desc: "Cinematic, elegant, trust-building", goal: "launch", direction: "Premium, elegant, aspirational" },
+  { id: "discount-push", name: "Discount Push", desc: "Urgency-driven, countdown, scarcity", goal: "discount", direction: "Urgent, limited-time, scarcity" },
+  { id: "trust-builder", name: "Trust Builder", desc: "Testimonial-style, proof-focused", goal: "trust", direction: "Authentic, proof-heavy, relatable" },
+  { id: "new-release", name: "New Release", desc: "Teaser-reveal format, anticipation", goal: "launch", direction: "Teaser, anticipation, reveal" },
+]
+
+PACK_ITEMS = [
+  { label: "Promo Video", desc: "9:16 vertical video", icon: Video },
+  { label: "Carousel Post", desc: "5-slide swipeable", icon: GalleryHorizontal },
+  { label: "10 Viral Hooks", desc: "Scroll-stopping openers", icon: MessageSquare },
+  { label: "Captions Pack", desc: "With optimized hashtags", icon: Hash },
+  { label: "Listing Rewrite", desc: "SEO-optimized copy", icon: FileText },
+  { label: "Email Draft", desc: "Ready-to-send blast", icon: Mail },
+]
+```
+
+### Component Interface Changes
+
+`CampaignCanvasProps` adds:
+- No new props needed -- `onLaunchPromo` already opens the PromoVideoBuilder (used for "Plan First")
+- The "Generate Campaign Pack" button will open a `CampaignRunner` dialog inline (imported directly into CampaignCanvas) with dynamically assembled steps based on the selected goal
+
+### Pack Preview Grid
+
+Static preview cards using existing animation patterns:
+- Promo Video card: reuse the animated phone mockup (already exists in current hero)
+- Carousel card: 3 stacked rectangles with slight rotation
+- Hooks card: 3 text lines fading in/out (reuse HOOKS array animation)
+- Other cards: simple icon + placeholder bars
+
+All cards use `bg-white/[0.02]` background, no borders, `rounded-xl`.
+
