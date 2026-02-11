@@ -1,208 +1,129 @@
 
 
-# Tools Platform Overhaul: Database Foundation + 3-Tab UI Redesign
+# Wiring Integration + Missing Components
 
-## Overview
+## What This Plan Covers
 
-Transform the Tools page from a simple sidebar-based tool launcher into a real platform with three distinct surfaces (Quick Tools, Campaign Builder, Store Assistant), backed by a unified job pipeline, assets library, brand kit, and tools registry.
+All remaining gaps from the original vision that can be built now:
 
-## Phase 1: Database Schema (New Tables)
+1. Wire SourceSelector, BrandKitToggle, CreditEstimator, and AssetOutputPanel into ToolActiveView
+2. Build ProductContextCard (compact preview with "Edit context" after product selection)
+3. Add multi-product selection support to SourceSelector for bundle tools
+4. Add "Enhance" vs "Regenerate" mode toggle for image tools
+5. Add "Product-to-Promo" vs "Generate with reference" mode toggle for video tools
+6. Wire post-gen actions (set as thumbnail, add to gallery) with real database calls
+7. Auto-link generated assets to products
+8. Frame prompt pre-population from product data
 
-### 1. `tools_registry` -- Central tool catalog
-Defines every tool as a module with typed inputs/outputs and pricing.
+---
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | text (PK) | e.g. `sfx-generator`, `product-description` |
-| name | text | Display name |
-| category | text | `quick_tool`, `campaign`, `store_assistant` |
-| subcategory | text | `store_growth`, `social_content`, `media_creation`, `utility` |
-| icon_name | text | Lucide icon name |
-| description | text | Short description |
-| inputs_schema | jsonb | JSON Schema for tool inputs |
-| outputs_schema | jsonb | JSON Schema for tool outputs |
-| credit_cost | integer | Base credit cost per run |
-| execution_type | text | `provider_api`, `cpu_local`, `gpu_local` |
-| max_duration_seconds | integer | NULL = no limit |
-| safety_profile | text | `strict`, `normal`, `off` |
-| is_pro | boolean | Requires subscription |
-| is_active | boolean | Enabled/disabled |
-| sort_order | integer | Display ordering |
-| created_at | timestamptz | |
+## Technical Details
 
-### 2. `tool_jobs` -- Unified job pipeline
-Every tool execution becomes a tracked job with status lifecycle.
+### 1. Modify `ToolActiveView.tsx` -- Wire in all 4 standalone components
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid (PK) | |
-| user_id | uuid | Owner |
-| tool_id | text | FK to tools_registry |
-| status | text | `queued`, `processing`, `completed`, `failed`, `cancelled` |
-| inputs | jsonb | Snapshot of user inputs (prompt, settings, etc.) |
-| product_context | jsonb | NULL or snapshot of product data if "Use Product" was selected |
-| brand_kit_snapshot | jsonb | NULL or snapshot of brand kit at time of run |
-| credit_cost | integer | Reserved credits |
-| credit_refunded | boolean | True if auto-refunded on failure |
-| error_message | text | NULL unless failed |
-| started_at | timestamptz | |
-| completed_at | timestamptz | |
-| created_at | timestamptz | |
-
-### 3. `tool_assets` -- Every output is a reusable asset
-Generated outputs linked to jobs, products, and storefronts.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid (PK) | |
-| user_id | uuid | Owner |
-| job_id | uuid | FK to tool_jobs |
-| type | text | `image`, `video`, `audio`, `text`, `file` |
-| storage_url | text | URL in storage bucket |
-| thumbnail_url | text | Auto-generated thumbnail |
-| filename | text | Original/generated filename |
-| file_size_bytes | integer | |
-| duration_seconds | numeric | For audio/video |
-| metadata | jsonb | Prompt, model, seed, aspect ratio, language, etc. |
-| product_id | uuid | NULL or linked product |
-| used_on_page | text | NULL or `hero`, `gallery`, `thumbnail` |
-| safety_flags | jsonb | `{nsfw: false, copyrighted: false}` |
-| is_favorite | boolean | User-starred |
-| created_at | timestamptz | |
-
-### 4. `brand_kits` -- Per-seller brand identity
-Extends existing `storefront_brand_profiles` with tool-specific fields.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid (PK) | |
-| user_id | uuid | Owner (unique per user) |
-| logo_url | text | Primary logo |
-| logo_dark_url | text | Dark mode logo |
-| color_palette | jsonb | Array of hex colors |
-| fonts | jsonb | `{heading: "Inter", body: "System"}` |
-| brand_voice | text | Tone description/examples |
-| banned_words | text[] | Compliance/brand words to avoid |
-| target_audience | text | Niche/audience description |
-| product_categories | text[] | Types of products they sell |
-| sample_prompts | jsonb | Example prompt/output pairs for voice calibration |
-| created_at | timestamptz | |
-| updated_at | timestamptz | |
-
-### 5. `campaign_templates` -- Multi-step workflow definitions
-Pre-built campaign workflows users can run.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid (PK) | |
-| name | text | e.g. "Product Launch Pack" |
-| description | text | |
-| steps | jsonb | Array of `{tool_id, label, auto_inputs}` |
-| category | text | `product_launch`, `social_pack`, `promo_video` |
-| estimated_credits | integer | Total cost estimate |
-| is_active | boolean | |
-| sort_order | integer | |
-| created_at | timestamptz | |
-
-### Storage
-- Create a new `tool-assets` storage bucket (public) for generated outputs
-
-### RLS Policies
-- All new tables: users can only read/write their own rows (`user_id = auth.uid()`)
-- `tools_registry` and `campaign_templates`: public read, admin-only write
-- `tool-assets` bucket: authenticated users can upload/read their own files
-
-### Realtime
-- Enable realtime on `tool_jobs` so the UI can show live status updates during processing
-
-## Phase 2: Tools Page UI Redesign
-
-### New Layout: 3-Tab Architecture
-
-Replace the current sidebar + detail view with a full-page tabbed interface.
+Add state for source mode, selected product(s), brand kit toggle, and post-generation output. Insert SourceSelector + BrandKitToggle + CreditEstimator above the tool component, and AssetOutputPanel below it after generation completes. Pass product context and brand kit data down to tool components.
 
 ```text
-+--------------------------------------------------+
-|  AI Studio                        [Credits: 450]  |
-|--------------------------------------------------|
-|  [Quick Tools]  [Campaigns]  [Store Assistant]    |
-|--------------------------------------------------|
-|                                                   |
-|   (Tab content below)                             |
-|                                                   |
-+--------------------------------------------------+
++---------------------------------------------+
+| Hero Banner (existing)                      |
+|---------------------------------------------|
+| Source: [Blank] [Use Product]               |
+| [ProductContextCard if product selected]    |
+| [BrandKit toggle]   [CreditEstimator]       |
+|---------------------------------------------|
+| Tool Component (existing lazy-loaded page)  |
+|---------------------------------------------|
+| AssetOutputPanel (shown after generation)   |
++---------------------------------------------+
 ```
 
-### Tab 1: Quick Tools (Single-shot generators)
-Grid of tool cards organized by subcategory:
+Key state additions:
+- `sourceMode: "blank" | "product"`
+- `selectedProducts: ProductContext[]`
+- `brandKitEnabled: boolean`
+- `brandKitData: BrandKitData | null`
+- `generatedAsset: { type, storageUrl, filename } | null`
 
-- **Store Growth**: Product description generator, Thumbnail generator, Sales page sections, Upsell/bundle suggestions
-- **Social Content**: "10 posts from product", Short-form script generator, Caption + hashtags pack, Carousel generator
-- **Media Creation**: SFX Generator, Voice Isolator, SFX Isolator, Music Splitter, TTS Voiceover
-- **Creator Utility**: Background remover, Upscaler, Audio cleanup, Subtitle generator, Audio Cutter, Audio Joiner, Audio Converter, Audio Recorder, Video to Audio, Waveform Generator
+The tool's credit cost comes from `toolsRegistry` lookup by toolId.
 
-Each card shows: icon, name, credit cost badge (or "Free"), short description, "Launch" button.
+### 2. New component: `ProductContextCard.tsx`
 
-### Tab 2: Campaigns (Multi-step workflows)
-Shows pre-built campaign templates as large cards:
+Compact card shown after product selection with:
+- Product image thumbnail, name, tags, price
+- "Edit context" button that opens an inline editable textarea for description override
+- "Remove" button to clear selection
+- For multi-product mode: shows stacked cards with "Add another" button
 
-- **Product Launch Pack**: Extract benefits -> Generate hooks -> Scripts -> Voiceover -> Captions -> Export
-- **Social Content Pack**: Pick product -> Generate 10 posts -> Carousel images -> Caption pack
-- **Promo Video Builder**: Product images + captions + voiceover + transitions
+### 3. Modify `SourceSelector.tsx` -- Multi-product support
 
-Each campaign card shows: step count, estimated credits, products required, "Start Campaign" button.
-(Campaign execution is a future feature; this tab shows the templates and a "Coming Soon" state for the actual runner.)
+Add an optional `multiSelect` prop. When true:
+- Product picker allows selecting multiple products (checkboxes)
+- Returns `ProductContext[]` instead of single product
+- Shows count badge "3 products selected"
 
-### Tab 3: Store Assistant (Storefront-modifying tools)
-Tools that directly update the seller's storefront:
+Bundle-related tools (`upsell-suggestions`, `generate-bundles`) will pass `multiSelect={true}`.
 
-- Generate hero section
-- Rewrite copy in brand voice
-- Create FAQ from product
-- Generate SEO landing page
-- Generate bundles/upsells
+### 4. New component: `ImageToolModeToggle.tsx`
 
-Each shows a description and "Run" button. These connect to the existing storefront vibecoder system.
+For image tools (thumbnail-generator, background-remover, image-upscaler), shows:
+- "Enhance" mode: upscale, sharpen, color correction, "make it more premium"
+- "Regenerate" mode: AI describes current image, user edits description, regenerates with brand kit colors
+- "Keep product recognizable" checkbox
+- "Variations: 1-4" slider
 
-### Shared UI Elements
-- **Source Selector**: Toggle at top of every generator between "Blank" and "Use Product" (opens product picker)
-- **Brand Kit Toggle**: Checkbox "Use my Brand Kit" that injects brand context into prompts
-- **Credit Estimator**: Shows cost before running
-- **Asset Output Panel**: After generation, shows quick actions: "Set as product thumbnail", "Add to gallery", "Download", "Generate more"
+### 5. New component: `VideoToolModeToggle.tsx`
 
-### My Assets (Sub-section)
-Accessible from a "My Assets" button in the header area. Shows a filterable grid of all generated assets with:
-- Type filter (image/audio/video/text)
-- Tool filter
-- Product link filter
-- Favorite/star toggle
-- Bulk download
+For video tools, shows:
+- "Product-to-Promo" mode: auto-generates script + captions + hashtags from product data
+  - Duration picker (6/10/15/30/60s)
+  - Aspect ratio (9:16 default)
+  - Style presets (Cinematic / UGC / Tutorial / Hype / Minimal)
+  - Voiceover toggle + voice select
+- "Generate with reference" mode: uses product context but doesn't force promo format
 
-## Phase 3: Files to Create/Modify
+### 6. Wire post-gen actions in `AssetOutputPanel.tsx`
 
-| File | Action | Purpose |
-|------|--------|---------|
-| Migration SQL | Create | All 5 new tables + storage bucket + RLS + realtime |
-| `src/pages/Tools.tsx` | Rewrite | 3-tab layout with Quick Tools / Campaigns / Store Assistant |
-| `src/components/tools/QuickToolsGrid.tsx` | New | Categorized grid of single-shot tool cards |
-| `src/components/tools/CampaignsGrid.tsx` | New | Campaign template cards with step previews |
-| `src/components/tools/StoreAssistantGrid.tsx` | New | Storefront-modifying tool cards |
-| `src/components/tools/ToolCard.tsx` | New | Reusable tool card component with icon, cost, launch button |
-| `src/components/tools/SourceSelector.tsx` | New | "Blank" / "Use Product" toggle + product picker |
-| `src/components/tools/BrandKitToggle.tsx` | New | Checkbox that injects brand context |
-| `src/components/tools/AssetOutputPanel.tsx` | New | Post-generation quick actions panel |
-| `src/components/tools/MyAssetsDrawer.tsx` | New | Filterable assets library drawer/modal |
-| `src/components/tools/CreditEstimator.tsx` | New | Pre-run cost display |
-| `src/components/tools/toolsRegistry.ts` | New | Client-side tool definitions matching tools_registry table |
-| `src/components/tools/ToolShowcase.tsx` | Keep | Still used for detail view when launching a tool |
-| `src/components/tools/ToolActiveView.tsx` | Keep | Still used for running tools |
-| `src/components/tools/toolsData.ts` | Extend | Add new tool entries for store growth, social, utility tools |
+Make the buttons functional:
+- **Set as Thumbnail**: Updates `products.cover_image_url` for the linked product
+- **Add to Gallery**: Inserts into `product_gallery` or product media array
+- **Download**: Already works
+- **Generate More**: Callback to re-run the tool
+- **Generate Social Posts**: Navigates to social-posts-pack tool with product pre-selected
 
-## What This Does NOT Include (Future Phases)
+### 7. Asset-to-product linking
 
-- Actual AI implementation for new tools (product description generator, etc.) -- just the UI cards with "Coming Soon" for tools that don't have a backend yet
-- Campaign execution engine (the runner that chains tool_jobs) -- templates are shown but execution is v1.5
-- GPU worker infrastructure -- all tools continue using provider APIs
-- Abuse/moderation system -- noted in schema via `safety_flags` but no enforcement layer yet
-- Analytics dashboard widget ("Content created this week") -- future addition
+When a tool generates output with a product selected:
+- Automatically set `tool_assets.product_id` to the selected product
+- Set `tool_assets.used_on_page` when "Set as Thumbnail" or "Add to Gallery" is clicked
+- Insert a row in `tool_assets` after every generation
+
+### 8. Frame prompt pre-population
+
+When "Use Product" is active, auto-fill prompt/frame suggestions:
+- Frame 1: Product name + hook
+- Frame 2: Key benefit bullets
+- Frame 3: What's included + social proof
+- Frame 4: CTA + store URL
+
+Implemented as a utility function `buildProductFramePrompts(product: ProductContext): string[]` that tools can optionally consume.
+
+---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/components/tools/ProductContextCard.tsx` | Compact product preview with edit context |
+| `src/components/tools/ImageToolModeToggle.tsx` | Enhance vs Regenerate toggle for image tools |
+| `src/components/tools/VideoToolModeToggle.tsx` | Product-to-Promo vs Reference toggle for video tools |
+| `src/components/tools/productFramePrompts.ts` | Utility to generate frame prompts from product data |
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/tools/ToolActiveView.tsx` | Add SourceSelector, BrandKitToggle, CreditEstimator, AssetOutputPanel, ProductContextCard; manage state for product context, brand kit, generated asset |
+| `src/components/tools/SourceSelector.tsx` | Add `multiSelect` prop, checkbox-based multi-product selection, return array |
+| `src/components/tools/AssetOutputPanel.tsx` | Wire real callbacks for set-thumbnail, add-to-gallery, navigate-to-social-posts |
+| `src/components/tools/toolsRegistry.ts` | Add `supportsModes` and `supportsMultiProduct` flags to relevant entries |
 
