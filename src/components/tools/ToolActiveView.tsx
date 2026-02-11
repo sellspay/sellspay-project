@@ -20,6 +20,8 @@ import { AssetOutputPanel } from "./AssetOutputPanel";
 import { ProductContextCard } from "./ProductContextCard";
 import { ImageToolModeToggle, type ImageToolMode } from "./ImageToolModeToggle";
 import { VideoToolModeToggle, type VideoToolMode, type VideoStyle } from "./VideoToolModeToggle";
+import { ContentModerationBanner } from "./ContentModerationBanner";
+import { useContentModeration } from "@/hooks/useContentModeration";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -51,6 +53,7 @@ export function ToolActiveView({
   const [showIntro, setShowIntro] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const { isProTool, goToPricing } = useSubscription();
+  const { moderationResult, validatePrompt, clearModeration } = useContentModeration();
   
   const tool = getToolById(toolId);
   const registryEntry = toolsRegistry.find((t) => t.id === toolId);
@@ -247,6 +250,9 @@ export function ToolActiveView({
               />
             </div>
           </motion.div>
+
+          {/* Content Moderation Banner */}
+          <ContentModerationBanner result={moderationResult} onDismiss={clearModeration} />
 
           {/* Tool Component */}
           <Suspense fallback={<ToolLoadingState tool={tool} />}>
