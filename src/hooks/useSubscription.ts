@@ -269,7 +269,7 @@ export function useSubscription() {
     navigate("/pricing");
   }, [navigate]);
 
-  // Initial fetch
+  // Single consolidated fetch effect
   useEffect(() => {
     if (!user) {
       setState(DEFAULT_STATE);
@@ -281,18 +281,11 @@ export function useSubscription() {
     if (isCacheValid(subscriptionCache, user.id)) {
       setState(subscriptionCache!.state);
       setLoading(false);
-    } else {
-      refreshSubscription();
+    } else if (!fetchedRef.current) {
+      fetchedRef.current = true;
+      refreshSubscription(isPrivileged);
     }
-  }, [user?.id]);
-
-  // Admin/Owner privilege sync - update state when roles load
-  // Admin/Owner privilege sync - force refresh to get real credits + capabilities
-  useEffect(() => {
-    if (isPrivileged && user && !isCacheValid(subscriptionCache, user.id)) {
-      refreshSubscription(true);
-    }
-  }, [isPrivileged, user?.id]);
+  }, [user?.id, isPrivileged]);
 
   // Keep all hook instances in sync
   useEffect(() => {
