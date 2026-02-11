@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   CheckCircle2, Circle, Loader2, XCircle,
-  Play, ArrowRight, Coins, Package, X
+  Play, Coins, Eye, ChevronDown, ChevronUp
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -24,6 +24,7 @@ interface StepState {
   label: string;
   status: "pending" | "running" | "done" | "failed";
   output_summary?: string;
+  result?: any;
   error?: string;
 }
 
@@ -49,7 +50,7 @@ export function CampaignRunner({
   creditBalance,
 }: CampaignRunnerProps) {
   const { user } = useAuth();
-  const [phase, setPhase] = useState<"setup" | "running" | "complete">("setup");
+  const [phase, setPhase] = useState<"setup" | "running" | "complete" | "failed">("setup");
   const [sourceMode, setSourceMode] = useState<SourceMode>("blank");
   const [selectedProduct, setSelectedProduct] = useState<ProductContext | null>(null);
   const [stepsState, setStepsState] = useState<StepState[]>(
@@ -57,8 +58,10 @@ export function CampaignRunner({
   );
   const [currentStep, setCurrentStep] = useState(0);
   const [runId, setRunId] = useState<string | null>(null);
+  const [expandedStep, setExpandedStep] = useState<number | null>(null);
+  const [creditsUsed, setCreditsUsed] = useState(0);
+  const abortRef = useRef(false);
 
-  // Reset when dialog opens
   useEffect(() => {
     if (open) {
       setPhase("setup");
@@ -67,19 +70,44 @@ export function CampaignRunner({
       setStepsState(steps.map((s) => ({ ...s, status: "pending" })));
       setCurrentStep(0);
       setRunId(null);
+      setExpandedStep(null);
+      setCreditsUsed(0);
+      abortRef.current = false;
     }
   }, [open, steps]);
 
   const hasEnoughCredits = creditBalance >= estimatedCredits;
 
+  const executeStep = useCallback(async (
+    stepIndex: number,
+    stepData: CampaignStep,
+    productCtx: ProductContext | null,
+    previousOutputs: Array<{ tool_id: string; result: any }>,
+    campaignRunId: string
+  ): Promise<{ success: boolean; result?: any; error?: string }> => {
+    const { data, error } = await supabase.functions.invoke("run-campaign-step", {
+      body: {
+        tool_id: stepData.tool_id,
+        product_context: productCtx,
+        previous_outputs: previousOutputs,
+        run_id: campaignRunId,
+        step_index: stepIndex,
+      },
+    });
+
+    if (error) return { success: false, error: error.message };
+    if (data?.error) return { success: false, error: data.error };
+    return { success: true, result: data?.result };
+  }, []);
+
   const startCampaign = useCallback(async () => {
-    if (!user) return;
-    if (!hasEnoughCredits) {
+    if (!user || !hasEnoughCredits) {
       toast.error("Not enough credits");
       return;
     }
 
     setPhase("running");
+    abortRef.current = false;
 
     // Create campaign run record
     const { data: run, error } = await supabase
@@ -103,40 +131,60 @@ export function CampaignRunner({
       return;
     }
 
-    setRunId((run as any).id);
+    const campaignRunId = (run as any).id;
+    setRunId(campaignRunId);
 
-    // Simulate step execution (each step takes ~2s)
-    // In production, this would call actual tool endpoints
+    const previousOutputs: Array<{ tool_id: string; result: any }> = [];
+    let totalUsed = 0;
+
     for (let i = 0; i < steps.length; i++) {
+      if (abortRef.current) break;
+
       setCurrentStep(i);
       setStepsState((prev) =>
-        prev.map((s, idx) =>
-          idx === i ? { ...s, status: "running" } : s
-        )
+        prev.map((s, idx) => (idx === i ? { ...s, status: "running" } : s))
       );
 
-      // Simulate processing
-      await new Promise((resolve) => setTimeout(resolve, 2000 + Math.random() * 1000));
-
-      // Mark step done (simulated success)
-      setStepsState((prev) =>
-        prev.map((s, idx) =>
-          idx === i
-            ? { ...s, status: "done", output_summary: `Generated ${s.label.toLowerCase()} successfully` }
-            : s
-        )
+      const { success, result, error: stepError } = await executeStep(
+        i, steps[i], selectedProduct, previousOutputs, campaignRunId
       );
 
-      // Update DB
-      await supabase
-        .from("campaign_runs" as any)
-        .update({
-          current_step_index: i + 1,
-          steps_state: stepsState.map((s, idx) =>
-            idx <= i ? { ...s, status: "done" } : s
-          ),
-        } as any)
-        .eq("id", (run as any).id);
+      if (success && result) {
+        previousOutputs.push({ tool_id: steps[i].tool_id, result });
+        totalUsed += 1;
+        setCreditsUsed(totalUsed);
+
+        setStepsState((prev) =>
+          prev.map((s, idx) =>
+            idx === i ? {
+              ...s,
+              status: "done",
+              result,
+              output_summary: summarizeResult(steps[i].tool_id, result),
+            } : s
+          )
+        );
+      } else {
+        setStepsState((prev) =>
+          prev.map((s, idx) =>
+            idx === i ? { ...s, status: "failed", error: stepError || "Unknown error" } : s
+          )
+        );
+
+        // Mark run as failed
+        await supabase
+          .from("campaign_runs" as any)
+          .update({
+            status: "failed",
+            error_message: stepError,
+            total_credits_used: totalUsed,
+          } as any)
+          .eq("id", campaignRunId);
+
+        setPhase("failed");
+        toast.error(`Step "${steps[i].label}" failed: ${stepError}`);
+        return;
+      }
     }
 
     // Mark complete
@@ -145,13 +193,13 @@ export function CampaignRunner({
       .update({
         status: "completed",
         completed_at: new Date().toISOString(),
-        total_credits_used: estimatedCredits,
+        total_credits_used: totalUsed,
       } as any)
-      .eq("id", (run as any).id);
+      .eq("id", campaignRunId);
 
     setPhase("complete");
     toast.success(`${templateName} completed!`);
-  }, [user, selectedProduct, templateId, steps, stepsState, hasEnoughCredits, estimatedCredits, templateName]);
+  }, [user, selectedProduct, templateId, steps, hasEnoughCredits, executeStep, templateName]);
 
   const completedCount = stepsState.filter((s) => s.status === "done").length;
   const progressPercent = Math.round((completedCount / steps.length) * 100);
@@ -170,7 +218,6 @@ export function CampaignRunner({
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">{templateDescription}</p>
 
-            {/* Product selection */}
             <SourceSelector
               mode={sourceMode}
               onModeChange={setSourceMode}
@@ -181,29 +228,20 @@ export function CampaignRunner({
             {sourceMode === "product" && selectedProduct && (
               <ProductContextCard
                 products={[selectedProduct]}
-                onRemove={() => {
-                  setSelectedProduct(null);
-                  setSourceMode("blank");
-                }}
+                onRemove={() => { setSelectedProduct(null); setSourceMode("blank"); }}
               />
             )}
 
-            {/* Steps preview */}
             <div className="space-y-1.5">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Steps
-              </span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Steps</span>
               {steps.map((step, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-semibold shrink-0">
-                    {i + 1}
-                  </span>
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-semibold shrink-0">{i + 1}</span>
                   {step.label}
                 </div>
               ))}
             </div>
 
-            {/* Credit cost */}
             <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
               <div className="flex items-center gap-2">
                 <Coins className="h-4 w-4 text-amber-500" />
@@ -213,31 +251,22 @@ export function CampaignRunner({
                 <Badge variant="outline" className="gap-1 border-amber-500/30 bg-amber-500/10 text-amber-500 text-xs">
                   <Coins className="h-3 w-3" /> ~{estimatedCredits} credits
                 </Badge>
-                {!hasEnoughCredits && (
-                  <span className="text-[10px] text-destructive">Not enough</span>
-                )}
+                {!hasEnoughCredits && <span className="text-[10px] text-destructive">Not enough</span>}
               </div>
             </div>
 
-            {/* Launch */}
-            <Button
-              className="w-full gap-2"
-              onClick={startCampaign}
-              disabled={!hasEnoughCredits}
-            >
-              <Play className="h-4 w-4" />
-              Launch Campaign
+            <Button className="w-full gap-2" onClick={startCampaign} disabled={!hasEnoughCredits}>
+              <Play className="h-4 w-4" /> Launch Campaign
             </Button>
           </div>
         )}
 
-        {phase === "running" && (
+        {(phase === "running" || phase === "failed") && (
           <div className="space-y-4">
-            {/* Progress bar */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">
-                  Step {currentStep + 1} of {steps.length}
+                  Step {Math.min(currentStep + 1, steps.length)} of {steps.length}
                 </span>
                 <span className="font-medium text-foreground">{progressPercent}%</span>
               </div>
@@ -249,43 +278,63 @@ export function CampaignRunner({
               </div>
             </div>
 
-            {/* Steps list */}
-            <ScrollArea className="max-h-64">
+            <ScrollArea className="max-h-72">
               <div className="space-y-2">
                 {stepsState.map((step, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "flex items-start gap-3 p-3 rounded-lg border transition-colors",
-                      step.status === "running" && "border-primary/30 bg-primary/5",
-                      step.status === "done" && "border-border bg-card",
-                      step.status === "pending" && "border-border/50 bg-card/50",
-                      step.status === "failed" && "border-destructive/30 bg-destructive/5"
+                  <div key={i} className="rounded-lg border transition-colors overflow-hidden">
+                    <button
+                      onClick={() => setExpandedStep(expandedStep === i ? null : i)}
+                      className={cn(
+                        "flex items-start gap-3 p-3 w-full text-left transition-colors",
+                        step.status === "running" && "border-primary/30 bg-primary/5",
+                        step.status === "done" && "bg-card",
+                        step.status === "pending" && "bg-card/50",
+                        step.status === "failed" && "bg-destructive/5"
+                      )}
+                    >
+                      <div className="mt-0.5">
+                        {step.status === "pending" && <Circle className="h-4 w-4 text-muted-foreground" />}
+                        {step.status === "running" && <Loader2 className="h-4 w-4 text-primary animate-spin" />}
+                        {step.status === "done" && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                        {step.status === "failed" && <XCircle className="h-4 w-4 text-destructive" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">{step.label}</p>
+                        {step.output_summary && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{step.output_summary}</p>
+                        )}
+                        {step.error && (
+                          <p className="text-xs text-destructive mt-0.5">{step.error}</p>
+                        )}
+                      </div>
+                      {step.status === "done" && step.result && (
+                        <div className="shrink-0">
+                          {expandedStep === i ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Expanded output preview */}
+                    {expandedStep === i && step.result && (
+                      <div className="px-3 pb-3 border-t border-border/50">
+                        <pre className="text-[11px] text-muted-foreground bg-muted/50 rounded p-2 mt-2 max-h-32 overflow-auto whitespace-pre-wrap">
+                          {JSON.stringify(step.result, null, 2).slice(0, 800)}
+                        </pre>
+                      </div>
                     )}
-                  >
-                    <div className="mt-0.5">
-                      {step.status === "pending" && <Circle className="h-4 w-4 text-muted-foreground" />}
-                      {step.status === "running" && <Loader2 className="h-4 w-4 text-primary animate-spin" />}
-                      {step.status === "done" && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-                      {step.status === "failed" && <XCircle className="h-4 w-4 text-destructive" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">{step.label}</p>
-                      {step.output_summary && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{step.output_summary}</p>
-                      )}
-                      {step.error && (
-                        <p className="text-xs text-destructive mt-0.5">{step.error}</p>
-                      )}
-                    </div>
                   </div>
                 ))}
               </div>
             </ScrollArea>
 
-            <p className="text-xs text-center text-muted-foreground">
-              Running… don't close this dialog.
-            </p>
+            {phase === "running" && (
+              <p className="text-xs text-center text-muted-foreground">Running… don't close this dialog.</p>
+            )}
+            {phase === "failed" && (
+              <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+            )}
           </div>
         )}
 
@@ -304,15 +353,64 @@ export function CampaignRunner({
             </div>
             <div className="flex items-center justify-center gap-2">
               <Badge variant="outline" className="gap-1 text-xs border-amber-500/30 bg-amber-500/10 text-amber-500">
-                <Coins className="h-3 w-3" /> {estimatedCredits} credits used
+                <Coins className="h-3 w-3" /> {creditsUsed} credits used
               </Badge>
             </div>
-            <Button className="w-full" onClick={() => onOpenChange(false)}>
-              Done
-            </Button>
+
+            {/* Results preview */}
+            <div className="text-left space-y-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Results</span>
+              {stepsState.filter(s => s.result).map((step, i) => (
+                <button
+                  key={i}
+                  onClick={() => setExpandedStep(expandedStep === i ? null : i)}
+                  className="w-full text-left p-2.5 rounded-lg border border-border hover:border-primary/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium text-foreground">{step.label}</span>
+                    </div>
+                    {expandedStep === i ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                  </div>
+                  {expandedStep === i && (
+                    <pre className="text-[11px] text-muted-foreground bg-muted/50 rounded p-2 mt-2 max-h-32 overflow-auto whitespace-pre-wrap">
+                      {JSON.stringify(step.result, null, 2).slice(0, 800)}
+                    </pre>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <Button className="w-full" onClick={() => onOpenChange(false)}>Done</Button>
           </div>
         )}
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Summarize AI output for display */
+function summarizeResult(toolId: string, result: any): string {
+  if (!result) return "Done";
+  switch (toolId) {
+    case "product-description":
+      return result.headline || result.description?.slice(0, 80) || "Description generated";
+    case "social-posts-pack":
+      return `${result.posts?.length || 0} posts generated`;
+    case "short-form-script":
+      return result.hook || "Script generated";
+    case "tts-voiceover":
+      return `Voiceover ready (${result.estimated_duration_seconds || "?"}s)`;
+    case "caption-hashtags":
+      return `${result.captions?.length || 0} captions with hashtags`;
+    case "carousel-generator":
+      return `${result.slides?.length || 0} slides created`;
+    case "subtitle-generator":
+      return `${result.subtitles?.length || 0} subtitle entries`;
+    case "thumbnail-generator":
+      return `${result.concepts?.length || 0} thumbnail concepts`;
+    default:
+      return "Step completed";
+  }
 }

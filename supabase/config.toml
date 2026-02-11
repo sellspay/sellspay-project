@@ -89,3 +89,9 @@ verify_jwt = false
 
 [functions.vibecoder-v2]
 verify_jwt = false
+
+[functions.run-campaign-step]
+verify_jwt = false
+
+[functions.generate-video-frames]
+verify_jwt = false
