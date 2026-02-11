@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Video, Play, Loader2, ArrowRight, ArrowLeft, CheckCircle2,
-  Clapperboard, Film, Download, Copy, Hash, Music, Clock, Eye
+  Clapperboard, Film, Download, Copy, Hash, Music, Clock, Eye,
+  ImageIcon, Sparkles, AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +35,11 @@ interface VideoScript {
   music_mood: string;
   total_duration: number;
   frames: VideoFrame[];
+}
+
+interface GeneratedFrame {
+  frame_number: number;
+  image_url: string;
 }
 
 type VideoStyle = "cinematic" | "ugc" | "tutorial" | "hype" | "minimal";
@@ -65,27 +71,31 @@ interface PromoVideoBuilderProps {
 
 export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps) {
   const { user } = useAuth();
-  
-  // Wizard step
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
-  // Step 1: Product selection
+  // Wizard step (1-5 now: 1=product, 2=config, 3=script, 4=frames, 5=export)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+
+  // Step 1
   const [sourceMode, setSourceMode] = useState<SourceMode>("blank");
   const [selectedProduct, setSelectedProduct] = useState<ProductContext | null>(null);
   const [manualDescription, setManualDescription] = useState("");
 
-  // Step 2: Template config
+  // Step 2
   const [selectedStyle, setSelectedStyle] = useState<VideoStyle>("cinematic");
   const [duration, setDuration] = useState(15);
   const [aspectRatio, setAspectRatio] = useState("9:16");
   const [includeVoiceover, setIncludeVoiceover] = useState(true);
 
-  // Step 3: Generated script
+  // Step 3
   const [script, setScript] = useState<VideoScript | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeFrame, setActiveFrame] = useState(0);
 
-  // Reset on open
+  // Step 4: Generated frame images
+  const [generatedFrames, setGeneratedFrames] = useState<GeneratedFrame[]>([]);
+  const [isGeneratingFrames, setIsGeneratingFrames] = useState(false);
+  const [frameProgress, setFrameProgress] = useState(0);
+
   const resetWizard = useCallback(() => {
     setStep(1);
     setSourceMode("blank");
@@ -98,6 +108,9 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
     setScript(null);
     setIsGenerating(false);
     setActiveFrame(0);
+    setGeneratedFrames([]);
+    setIsGeneratingFrames(false);
+    setFrameProgress(0);
   }, []);
 
   const handleOpenChange = (open: boolean) => {
@@ -105,7 +118,7 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
     onOpenChange(open);
   };
 
-  // Generate script
+  // Generate script (Step 2 → 3)
   const generateScript = useCallback(async () => {
     setIsGenerating(true);
     try {
@@ -131,7 +144,6 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       setScript(data as VideoScript);
       setStep(3);
     } catch (err) {
@@ -142,7 +154,53 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
     }
   }, [selectedProduct, manualDescription, duration, selectedStyle, includeVoiceover, aspectRatio]);
 
-  // Copy script to clipboard
+  // Generate frame images (Step 3 → 4)
+  const generateFrameImages = useCallback(async () => {
+    if (!script) return;
+    setIsGeneratingFrames(true);
+    setFrameProgress(0);
+    setGeneratedFrames([]);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-video-frames", {
+        body: {
+          frames: script.frames.map((f) => ({
+            frame_number: f.frame_number,
+            visual_description: f.visual_description,
+            text_overlay: f.text_overlay,
+          })),
+          style: selectedStyle,
+          aspectRatio,
+          productName: selectedProduct?.name || "Product",
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) {
+        if (data.error === "INSUFFICIENT_CREDITS") {
+          toast.error(`Not enough credits. Need ${data.required}, have ${data.available}.`);
+          return;
+        }
+        // Handle partial results
+        if (data.partial_frames?.length) {
+          setGeneratedFrames(data.partial_frames);
+          toast.error(`Partially generated: ${data.partial_frames.length}/${script.frames.length} frames`);
+        }
+        throw new Error(data.error);
+      }
+
+      setGeneratedFrames(data.frames || []);
+      setStep(4);
+      toast.success(`${data.frames?.length || 0} frame images generated!`);
+    } catch (err) {
+      console.error("Frame generation error:", err);
+      toast.error("Failed to generate frame images.");
+    } finally {
+      setIsGeneratingFrames(false);
+    }
+  }, [script, selectedStyle, aspectRatio, selectedProduct]);
+
+  // Copy script
   const copyScript = () => {
     if (!script) return;
     const text = script.frames
@@ -150,8 +208,10 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
       .join("\n\n");
     const full = `${script.title}\n\nHook: ${script.hook}\nCTA: ${script.cta}\nMusic: ${script.music_mood}\nHashtags: ${script.hashtags.join(" ")}\n\n${text}`;
     navigator.clipboard.writeText(full);
-    toast.success("Script copied to clipboard!");
+    toast.success("Script copied!");
   };
+
+  const totalSteps = 5;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -160,18 +220,18 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
           <DialogTitle className="flex items-center gap-2">
             <Video className="h-5 w-5 text-primary" />
             Promo Video Builder
-            <Badge variant="outline" className="text-[10px] ml-2">Step {step}/4</Badge>
+            <Badge variant="outline" className="text-[10px] ml-2">Step {step}/{totalSteps}</Badge>
           </DialogTitle>
         </DialogHeader>
 
         {/* Step progress */}
         <div className="flex gap-1 mb-2">
-          {[1, 2, 3, 4].map((s) => (
+          {Array.from({ length: totalSteps }, (_, i) => (
             <div
-              key={s}
+              key={i}
               className={cn(
                 "h-1 flex-1 rounded-full transition-colors",
-                s <= step ? "bg-primary" : "bg-muted"
+                i + 1 <= step ? "bg-primary" : "bg-muted"
               )}
             />
           ))}
@@ -183,7 +243,7 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-1">Choose your product</h3>
-                <p className="text-xs text-muted-foreground">Select a product to generate a promo video script, or describe your product manually.</p>
+                <p className="text-xs text-muted-foreground">Select a product or describe it manually.</p>
               </div>
               <SourceSelector
                 mode={sourceMode}
@@ -223,7 +283,6 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
                 <p className="text-xs text-muted-foreground">Pick a visual style and configure your video.</p>
               </div>
 
-              {/* Style selector */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {TEMPLATES.map((tmpl) => {
                   const Icon = tmpl.icon;
@@ -246,41 +305,28 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
                 })}
               </div>
 
-              {/* Duration */}
               <div className="space-y-1.5">
                 <span className="text-xs font-medium text-foreground">Duration</span>
                 <div className="flex flex-wrap gap-1.5">
                   {DURATIONS.map((d) => (
-                    <Badge
-                      key={d}
-                      variant={duration === d ? "default" : "outline"}
-                      className="cursor-pointer text-[11px] px-2.5 py-1"
-                      onClick={() => setDuration(d)}
-                    >
+                    <Badge key={d} variant={duration === d ? "default" : "outline"} className="cursor-pointer text-[11px] px-2.5 py-1" onClick={() => setDuration(d)}>
                       <Clock className="h-3 w-3 mr-1" /> {d}s
                     </Badge>
                   ))}
                 </div>
               </div>
 
-              {/* Aspect ratio */}
               <div className="space-y-1.5">
                 <span className="text-xs font-medium text-foreground">Aspect Ratio</span>
                 <div className="flex flex-wrap gap-1.5">
                   {ASPECT_RATIOS.map((ar) => (
-                    <Badge
-                      key={ar}
-                      variant={aspectRatio === ar ? "default" : "outline"}
-                      className="cursor-pointer text-[11px] px-2.5 py-1"
-                      onClick={() => setAspectRatio(ar)}
-                    >
+                    <Badge key={ar} variant={aspectRatio === ar ? "default" : "outline"} className="cursor-pointer text-[11px] px-2.5 py-1" onClick={() => setAspectRatio(ar)}>
                       {ar}
                     </Badge>
                   ))}
                 </div>
               </div>
 
-              {/* Voiceover toggle */}
               <div className="flex items-center justify-between p-3 rounded-lg border border-border">
                 <span className="text-xs font-medium text-foreground">Include AI Voiceover</span>
                 <button
@@ -320,17 +366,15 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
                   </p>
                 </div>
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={copyScript}>
-                  <Copy className="h-3 w-3" /> Copy Script
+                  <Copy className="h-3 w-3" /> Copy
                 </Button>
               </div>
 
-              {/* Hook */}
               <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
                 <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">Hook</span>
                 <p className="text-sm text-foreground mt-1">{script.hook}</p>
               </div>
 
-              {/* Frames timeline */}
               <div className="space-y-2">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Storyboard</span>
                 {script.frames.map((frame, i) => (
@@ -339,48 +383,34 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
                     onClick={() => setActiveFrame(i)}
                     className={cn(
                       "w-full text-left p-3 rounded-lg border transition-all",
-                      activeFrame === i
-                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                        : "border-border hover:border-primary/30"
+                      activeFrame === i ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border hover:border-primary/30"
                     )}
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex flex-col items-center gap-0.5 shrink-0">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-bold">
-                          {frame.frame_number}
-                        </span>
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-bold">{frame.frame_number}</span>
                         <span className="text-[10px] text-muted-foreground">{frame.duration_seconds}s</span>
                       </div>
                       <div className="flex-1 min-w-0 space-y-1">
                         <p className="text-xs text-foreground leading-relaxed">{frame.visual_description}</p>
                         {frame.text_overlay && (
-                          <div className="flex items-center gap-1">
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                              Text: {frame.text_overlay}
-                            </Badge>
-                          </div>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">Text: {frame.text_overlay}</Badge>
                         )}
                         {frame.voiceover_text && (
-                          <p className="text-[11px] text-muted-foreground italic">
-                            🎙 "{frame.voiceover_text}"
-                          </p>
+                          <p className="text-[11px] text-muted-foreground italic">🎙 "{frame.voiceover_text}"</p>
                         )}
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
-                          → {frame.transition}
-                        </Badge>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">→ {frame.transition}</Badge>
                       </div>
                     </div>
                   </button>
                 ))}
               </div>
 
-              {/* CTA */}
               <div className="p-3 rounded-lg bg-muted/50 border border-border">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Call to Action</span>
                 <p className="text-sm text-foreground mt-1">{script.cta}</p>
               </div>
 
-              {/* Metadata */}
               <div className="flex flex-wrap gap-2">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Music className="h-3 w-3" /> {script.music_mood}
@@ -390,19 +420,89 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
                 </div>
               </div>
 
+              {/* Credit cost notice for frame generation */}
+              <div className="flex items-center gap-2 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  Generating frame images costs <span className="font-semibold text-amber-500">{script.frames.length * 10} credits</span> ({script.frames.length} frames × 10 credits each).
+                </p>
+              </div>
+
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                   <ArrowLeft className="h-4 w-4 mr-2" /> Reconfigure
                 </Button>
-                <Button onClick={() => setStep(4)} className="flex-1 gap-2">
+                <Button onClick={generateFrameImages} disabled={isGeneratingFrames} className="flex-1 gap-2">
+                  {isGeneratingFrames ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Generating Frames…</>
+                  ) : (
+                    <><ImageIcon className="h-4 w-4" /> Generate Frame Images</>
+                  )}
+                </Button>
+              </div>
+              <Button variant="ghost" className="w-full text-xs text-muted-foreground" onClick={() => setStep(5)}>
+                Skip to Export (script only)
+              </Button>
+            </div>
+          )}
+
+          {/* ── Step 4: Generated Frame Images ── */}
+          {step === 4 && script && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Generated Frames</h3>
+                <p className="text-xs text-muted-foreground">
+                  {generatedFrames.length} of {script.frames.length} frames rendered
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {script.frames.map((frame, i) => {
+                  const generated = generatedFrames.find((g) => g.frame_number === frame.frame_number);
+                  return (
+                    <div key={frame.frame_number} className="rounded-lg border border-border overflow-hidden">
+                      {generated ? (
+                        <div className="relative aspect-video bg-muted">
+                          <img
+                            src={generated.image_url}
+                            alt={`Frame ${frame.frame_number}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-1 left-1">
+                            <Badge className="text-[10px] bg-black/60 text-white border-0">
+                              F{frame.frame_number} • {frame.duration_seconds}s
+                            </Badge>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="aspect-video bg-muted flex items-center justify-center">
+                          <span className="text-xs text-muted-foreground">Not generated</span>
+                        </div>
+                      )}
+                      <div className="p-2">
+                        <p className="text-[11px] text-muted-foreground line-clamp-2">{frame.visual_description}</p>
+                        {frame.text_overlay && (
+                          <p className="text-[10px] font-medium text-foreground mt-1">"{frame.text_overlay}"</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+                  <ArrowLeft className="h-4 w-4 mr-2" /> Back to Script
+                </Button>
+                <Button onClick={() => setStep(5)} className="flex-1 gap-2">
                   Export Assets <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           )}
 
-          {/* ── Step 4: Export ── */}
-          {step === 4 && script && (
+          {/* ── Step 5: Export ── */}
+          {step === 5 && script && (
             <div className="space-y-4 text-center py-4">
               <div className="flex items-center justify-center">
                 <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -410,9 +510,13 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-foreground">Script Ready!</h3>
+                <h3 className="text-lg font-semibold text-foreground">
+                  {generatedFrames.length > 0 ? "Video Assets Ready!" : "Script Ready!"}
+                </h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Your {script.frames.length}-frame storyboard for "{script.title}" is ready.
+                  {generatedFrames.length > 0
+                    ? `${generatedFrames.length} frame images + storyboard for "${script.title}"`
+                    : `${script.frames.length}-frame storyboard for "${script.title}"`}
                 </p>
               </div>
 
@@ -420,11 +524,32 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
                 <Button className="w-full gap-2" onClick={copyScript}>
                   <Copy className="h-4 w-4" /> Copy Full Script
                 </Button>
+
+                {generatedFrames.length > 0 && (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => {
+                      // Download all frame images
+                      generatedFrames.forEach((f) => {
+                        const a = document.createElement("a");
+                        a.href = f.image_url;
+                        a.download = `${script.title.replace(/\s+/g, "-").toLowerCase()}-frame-${f.frame_number}.png`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                      });
+                      toast.success(`${generatedFrames.length} frame images downloading!`);
+                    }}
+                  >
+                    <Download className="h-4 w-4" /> Download All Frames
+                  </Button>
+                )}
+
                 <Button
                   variant="outline"
                   className="w-full gap-2"
                   onClick={() => {
-                    // Download as JSON
                     const blob = new Blob([JSON.stringify(script, null, 2)], { type: "application/json" });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement("a");
@@ -439,13 +564,16 @@ export function PromoVideoBuilder({ open, onOpenChange }: PromoVideoBuilderProps
                 >
                   <Download className="h-4 w-4" /> Download Script (JSON)
                 </Button>
-                <Button variant="outline" className="w-full gap-2" onClick={() => { setStep(2); setScript(null); }}>
+
+                <Button variant="outline" className="w-full gap-2" onClick={() => { setStep(2); setScript(null); setGeneratedFrames([]); }}>
                   <Clapperboard className="h-4 w-4" /> Generate Another
                 </Button>
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Use this script in your favorite video editor (CapCut, Premiere, DaVinci) to create the final video.
+                {generatedFrames.length > 0
+                  ? "Import these frames into your video editor (CapCut, Premiere, DaVinci) and assemble with the script timing."
+                  : "Use this script in your favorite video editor to create the final video."}
               </p>
             </div>
           )}
