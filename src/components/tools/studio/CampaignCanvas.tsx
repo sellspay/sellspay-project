@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Video, GalleryHorizontal, MessageSquare, Hash, FileText, Mail, Play, ChevronRight } from "lucide-react";
+import { Video, GalleryHorizontal, MessageSquare, Hash, FileText, Mail, Play } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -39,13 +39,13 @@ const CAMPAIGN_TEMPLATES = [
   { id: "new-release", name: "New Release", desc: "Teaser-reveal format, anticipation", goal: "launch", direction: "Teaser, anticipation, reveal" },
 ];
 
-const PACK_ITEMS = [
-  { label: "Promo Video", desc: "9:16 vertical video", icon: Video },
-  { label: "Carousel Post", desc: "5-slide swipeable", icon: GalleryHorizontal },
-  { label: "10 Viral Hooks", desc: "Scroll-stopping openers", icon: MessageSquare },
-  { label: "Captions Pack", desc: "With optimized hashtags", icon: Hash },
-  { label: "Listing Rewrite", desc: "SEO-optimized copy", icon: FileText },
-  { label: "Email Draft", desc: "Ready-to-send blast", icon: Mail },
+const OUTPUT_PILLS = [
+  { label: "Promo Video", icon: Video },
+  { label: "Carousel", icon: GalleryHorizontal },
+  { label: "10 Hooks", icon: MessageSquare },
+  { label: "Captions + Hashtags", icon: Hash },
+  { label: "Listing Rewrite", icon: FileText },
+  { label: "Email Blast", icon: Mail },
 ];
 
 const HOOKS_PREVIEW = [
@@ -78,76 +78,104 @@ export function CampaignCanvas({
   };
 
   return (
-    <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 lg:p-5 space-y-8">
-      {/* Warm orange glow */}
+    <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 lg:p-6 space-y-8">
+      {/* Warm glow */}
       <div className="pointer-events-none fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-orange-500/[0.03] blur-[140px]" />
 
-      {/* Section 1: Hero */}
-      <motion.div variants={fadeUp} className="space-y-4">
+      {/* A1: Hero */}
+      <motion.div variants={fadeUp} className="space-y-4 min-h-[200px] flex flex-col justify-center">
         <h2 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tighter leading-[1.05]">
-          Launch a Campaign<br />in 60 Seconds.
+          Launch a Campaign
         </h2>
-        <p className="text-sm text-muted-foreground/70 max-w-md">
-          Generate a complete content pack for your product — ready to post.
+        <p className="text-sm text-muted-foreground/70 max-w-lg">
+          Generate a complete marketing pack from your product — ready to post.
         </p>
 
-        {/* Deliverables manifest */}
-        <div className="pt-2">
-          <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">This campaign will generate</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5">
-            {PACK_ITEMS.map(item => (
-              <div key={item.label} className="flex items-center gap-2">
-                <item.icon className="h-3.5 w-3.5 text-muted-foreground/40" strokeWidth={1.5} />
-                <span className="text-xs text-foreground/80">{item.label}</span>
-              </div>
-            ))}
-          </div>
+        {/* Output pills row */}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {OUTPUT_PILLS.map(pill => (
+            <div
+              key={pill.label}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
+            >
+              <pill.icon className="h-3 w-3 text-muted-foreground/40" strokeWidth={1.5} />
+              <span className="text-[11px] text-foreground/70">{pill.label}</span>
+            </div>
+          ))}
         </div>
       </motion.div>
 
-      {/* Section 2: Product + Goal Selector */}
-      <motion.div variants={fadeUp} className="space-y-4">
-        <SourceSelector
-          mode={sourceMode}
-          onModeChange={setSourceMode}
-          selectedProduct={selectedProduct}
-          onProductSelect={setSelectedProduct}
-        />
-
-        {/* Goal pills */}
-        <div className="space-y-2">
-          <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">Goal</p>
-          <div className="flex flex-wrap gap-2">
-            {GOALS.map(g => (
-              <button
-                key={g.id}
-                onClick={() => {
-                  setSelectedGoal(g.id === selectedGoal ? null : g.id);
-                  setSelectedTemplate(null);
-                }}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150",
-                  selectedGoal === g.id
-                    ? "bg-gradient-to-r from-[#FF7A1A] to-[#E85C00] text-white shadow-sm"
-                    : "bg-white/[0.04] text-muted-foreground/70 hover:bg-white/[0.08] hover:text-foreground"
-                )}
-              >
-                {g.label}
-              </button>
-            ))}
+      {/* A2: Quick Launch — Product + Template + Goal + Direction */}
+      <motion.div variants={fadeUp} className="space-y-5">
+        {/* Row 1: Product + Template */}
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">Product</p>
+            <SourceSelector
+              mode={sourceMode}
+              onModeChange={setSourceMode}
+              selectedProduct={selectedProduct}
+              onProductSelect={setSelectedProduct}
+            />
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">Template</p>
+            <div className="flex flex-wrap gap-2">
+              {CAMPAIGN_TEMPLATES.map(tpl => (
+                <button
+                  key={tpl.id}
+                  onClick={() => applyTemplate(tpl)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-[11px] font-medium transition-all duration-150",
+                    selectedTemplate === tpl.id
+                      ? "bg-gradient-to-r from-[#FF7A1A] to-[#E85C00] text-white shadow-sm"
+                      : "bg-white/[0.04] text-muted-foreground/60 hover:bg-white/[0.08] hover:text-foreground"
+                  )}
+                >
+                  {tpl.name}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Extra direction */}
-        <Input
-          value={extraDirection}
-          onChange={e => setExtraDirection(e.target.value)}
-          placeholder="Extra direction (optional)"
-          className="bg-white/[0.03] border-border/20 text-sm"
-        />
+        {/* Row 2: Goal + Direction */}
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">Goal</p>
+            <div className="flex flex-wrap gap-2">
+              {GOALS.map(g => (
+                <button
+                  key={g.id}
+                  onClick={() => {
+                    setSelectedGoal(g.id === selectedGoal ? null : g.id);
+                    setSelectedTemplate(null);
+                  }}
+                  className={cn(
+                    "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150",
+                    selectedGoal === g.id
+                      ? "bg-white/[0.10] text-foreground ring-1 ring-white/[0.12]"
+                      : "bg-white/[0.04] text-muted-foreground/60 hover:bg-white/[0.08] hover:text-foreground"
+                  )}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">Extra Direction</p>
+            <Input
+              value={extraDirection}
+              onChange={e => setExtraDirection(e.target.value)}
+              placeholder="Optional: 'Make it bold and aggressive'"
+              className="bg-white/[0.03] border-border/20 text-sm"
+            />
+          </div>
+        </div>
 
-        {/* CTAs */}
-        <div className="flex items-center gap-3">
+        {/* A3: Action buttons */}
+        <div className="flex items-center gap-3 pt-1">
           <button
             onClick={onLaunchPromo}
             className="px-6 py-2.5 text-sm font-semibold text-white rounded-[10px] shadow-sm transition-all hover:shadow-md"
@@ -161,40 +189,15 @@ export function CampaignCanvas({
         </div>
       </motion.div>
 
-      {/* Section 3: Campaign Templates */}
-      <motion.div variants={fadeUp}>
-        <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-3">Campaign Templates</p>
-        <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
-          {CAMPAIGN_TEMPLATES.map(tpl => (
-            <button
-              key={tpl.id}
-              onClick={() => applyTemplate(tpl)}
-              className={cn(
-                "shrink-0 w-[220px] p-4 rounded-xl text-left transition-colors duration-150",
-                selectedTemplate === tpl.id
-                  ? "bg-white/[0.06] ring-1 ring-white/[0.08]"
-                  : "bg-white/[0.02] hover:bg-white/[0.05]"
-              )}
-            >
-              <p className="text-sm font-semibold text-foreground/90">{tpl.name}</p>
-              <p className="text-[11px] text-muted-foreground/50 mt-1 leading-snug">{tpl.desc}</p>
-              <p className="text-[10px] text-muted-foreground/30 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                Use template
-              </p>
-            </button>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Section 4: Pack Preview Grid */}
+      {/* A4: Preview Showcase — "What you'll get" */}
       <motion.div variants={fadeUp}>
         <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-3">What you'll get</p>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           {/* Promo Video — phone mockup */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[160px] flex flex-col">
+          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[180px] flex flex-col group hover:bg-white/[0.04] transition-colors">
             <p className="text-xs font-semibold text-foreground/80 mb-3">Promo Video</p>
             <div className="flex-1 flex items-center justify-center">
-              <div className="relative w-[60px] h-[107px] rounded-lg bg-gradient-to-b from-white/[0.04] to-transparent overflow-hidden">
+              <div className="relative w-[64px] h-[114px] rounded-lg bg-gradient-to-b from-white/[0.04] to-transparent overflow-hidden">
                 <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-white/[0.06]" />
                 <div className="absolute inset-x-2 bottom-3 space-y-1">
                   <div className="h-1 w-8 rounded-full bg-white/10 animate-pulse" />
@@ -209,10 +212,10 @@ export function CampaignCanvas({
           </div>
 
           {/* Carousel — stacked slides */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[160px] flex flex-col">
+          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[180px] flex flex-col group hover:bg-white/[0.04] transition-colors">
             <p className="text-xs font-semibold text-foreground/80 mb-3">Carousel Post</p>
             <div className="flex-1 flex items-center justify-center">
-              <div className="relative w-[70px] h-[70px]">
+              <div className="relative w-[72px] h-[72px]">
                 {[2, 1, 0].map(i => (
                   <div
                     key={i}
@@ -226,7 +229,7 @@ export function CampaignCanvas({
           </div>
 
           {/* Viral Hooks — animated text */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[160px] flex flex-col">
+          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[180px] flex flex-col group hover:bg-white/[0.04] transition-colors">
             <p className="text-xs font-semibold text-foreground/80 mb-3">Viral Hooks</p>
             <div className="flex-1 flex items-center">
               <div className="space-y-2 w-full overflow-hidden">
@@ -250,7 +253,7 @@ export function CampaignCanvas({
           </div>
 
           {/* Captions Pack */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[120px] flex flex-col">
+          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[120px] flex flex-col group hover:bg-white/[0.04] transition-colors">
             <p className="text-xs font-semibold text-foreground/80 mb-2">Captions Pack</p>
             <div className="flex-1 space-y-1.5">
               <div className="h-1.5 w-full rounded-full bg-white/[0.04]" />
@@ -264,7 +267,7 @@ export function CampaignCanvas({
           </div>
 
           {/* Listing Rewrite */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[120px] flex flex-col">
+          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[120px] flex flex-col group hover:bg-white/[0.04] transition-colors">
             <p className="text-xs font-semibold text-foreground/80 mb-2">Listing Rewrite</p>
             <div className="flex-1 space-y-1.5">
               <div className="h-1.5 w-full rounded-full bg-white/[0.04]" />
@@ -274,7 +277,7 @@ export function CampaignCanvas({
           </div>
 
           {/* Email Draft */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[120px] flex flex-col">
+          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[120px] flex flex-col group hover:bg-white/[0.04] transition-colors">
             <p className="text-xs font-semibold text-foreground/80 mb-2">Email Draft</p>
             <div className="flex-1 space-y-1.5">
               <div className="h-1.5 w-1/2 rounded-full bg-white/[0.04]" />
@@ -286,7 +289,36 @@ export function CampaignCanvas({
         </div>
       </motion.div>
 
-      {/* Section 5: Recent Creations (kept) */}
+      {/* A5: Campaign Templates Shelf */}
+      <motion.div variants={fadeUp}>
+        <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-3">Trending Campaign Templates</p>
+        <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
+          {CAMPAIGN_TEMPLATES.map(tpl => (
+            <button
+              key={tpl.id}
+              onClick={() => applyTemplate(tpl)}
+              className={cn(
+                "shrink-0 w-[240px] p-4 rounded-xl text-left transition-all duration-150 group",
+                selectedTemplate === tpl.id
+                  ? "bg-white/[0.06] ring-1 ring-white/[0.08]"
+                  : "bg-white/[0.02] hover:bg-white/[0.05]"
+              )}
+            >
+              {/* Preview placeholder */}
+              <div className="w-full h-[100px] rounded-lg bg-gradient-to-br from-white/[0.03] to-transparent mb-3 flex items-center justify-center">
+                <Play className="h-5 w-5 text-white/10" />
+              </div>
+              <p className="text-sm font-semibold text-foreground/90">{tpl.name}</p>
+              <p className="text-[11px] text-muted-foreground/50 mt-1 leading-snug">{tpl.desc}</p>
+              <p className="text-[10px] text-orange-400/60 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                Use template
+              </p>
+            </button>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Recent Creations */}
       <motion.div variants={fadeUp}>
         <RecentCreations assets={recentAssets} />
       </motion.div>
