@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Coins, Zap, Layers, Store } from "lucide-react";
+import { Coins, Zap, Layers, Store, BarChart3 } from "lucide-react";
 import { QuickToolsGrid } from "@/components/tools/QuickToolsGrid";
 import { MyAssetsDrawer } from "@/components/tools/MyAssetsDrawer";
 import { CampaignsGrid } from "@/components/tools/CampaignsGrid";
 import { StoreAssistantGrid } from "@/components/tools/StoreAssistantGrid";
 import { ToolActiveView } from "@/components/tools/ToolActiveView";
+import { UsageAnalyticsWidget } from "@/components/tools/UsageAnalyticsWidget";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toolsRegistry } from "@/components/tools/toolsRegistry";
 
@@ -91,6 +92,11 @@ export default function Tools() {
             <StoreAssistantGrid onLaunch={handleLaunch} />
           </TabsContent>
         </Tabs>
+
+        {/* Usage Analytics */}
+        <div className="mt-8">
+          <UsageAnalyticsWidget />
+        </div>
       </div>
     </div>
   );
