@@ -43,7 +43,7 @@ export function SourceSelector({
   selectedProducts = [],
   onProductsChange,
 }: SourceSelectorProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState<ProductContext[]>([]);
@@ -51,7 +51,7 @@ export function SourceSelector({
   const [pendingSelections, setPendingSelections] = useState<ProductContext[]>([]);
 
   const openPicker = async () => {
-    if (!user) return;
+    if (!profile) return;
     setPickerOpen(true);
     setLoading(true);
     if (multiSelect) {
@@ -60,7 +60,7 @@ export function SourceSelector({
     const { data } = await supabase
       .from("products")
       .select("id, name, description, excerpt, cover_image_url, tags, price_cents, currency")
-      .eq("creator_id", user.id)
+      .eq("creator_id", profile.id)
       .eq("status", "published")
       .order("created_at", { ascending: false })
       .limit(50);
