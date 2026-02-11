@@ -1,7 +1,8 @@
-import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { toolsRegistry } from "@/components/tools/toolsRegistry";
-import { StudioHomeView } from "./StudioHomeView";
+import { CampaignCanvas } from "./CampaignCanvas";
+import { ListingsCanvas } from "./ListingsCanvas";
+import { SocialCanvas } from "./SocialCanvas";
+import { MediaCanvas } from "./MediaCanvas";
 import type { StudioSection } from "./StudioLayout";
 
 interface StudioCanvasProps {
@@ -18,33 +19,50 @@ interface StudioCanvasProps {
 }
 
 export function StudioCanvas(props: StudioCanvasProps) {
-  const { activeSection, onLaunchTool, onLaunchPromo } = props;
+  const { activeSection, onLaunchTool, onLaunchPromo, onSectionChange } = props;
 
-  // Section-specific tools
-  const sectionTools = useMemo(() => {
-    const subcatMap: Record<string, string[]> = {
-      campaign: [], // flagship promo only
-      listings: ["store_growth"],
-      social: ["social_content"],
-      media: ["media_creation", "utility"],
-      assets: [],
-    };
-    const subs = subcatMap[activeSection] || [];
-    if (!subs.length) return [];
-    return toolsRegistry
-      .filter(t => subs.includes(t.subcategory || "") && t.isActive)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [activeSection]);
+  const renderCanvas = () => {
+    switch (activeSection) {
+      case "campaign":
+        return (
+          <CampaignCanvas
+            productCount={props.productCount}
+            assetCount={props.assetCount}
+            generationCount={props.generationCount}
+            creditBalance={props.creditBalance}
+            isLoadingCredits={props.isLoadingCredits}
+            recentAssets={props.recentAssets}
+            onLaunchPromo={onLaunchPromo}
+            onLaunchTool={onLaunchTool}
+            onSectionChange={onSectionChange}
+          />
+        );
+      case "listings":
+        return <ListingsCanvas onLaunchTool={onLaunchTool} />;
+      case "social":
+        return <SocialCanvas onLaunchTool={onLaunchTool} />;
+      case "media":
+        return <MediaCanvas onLaunchTool={onLaunchTool} />;
+      default:
+        return (
+          <CampaignCanvas
+            productCount={props.productCount}
+            assetCount={props.assetCount}
+            generationCount={props.generationCount}
+            creditBalance={props.creditBalance}
+            isLoadingCredits={props.isLoadingCredits}
+            recentAssets={props.recentAssets}
+            onLaunchPromo={onLaunchPromo}
+            onLaunchTool={onLaunchTool}
+            onSectionChange={onSectionChange}
+          />
+        );
+    }
+  };
 
   return (
     <div className="min-h-full">
-      {/* Subtle radial glow behind content */}
-      <div className="pointer-events-none fixed top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[500px] rounded-full bg-primary/[0.04] blur-[120px]" />
-
-      <StudioHomeView
-        {...props}
-        sectionTools={sectionTools}
-      />
+      {renderCanvas()}
     </div>
   );
 }

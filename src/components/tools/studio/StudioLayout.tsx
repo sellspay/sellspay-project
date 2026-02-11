@@ -95,7 +95,7 @@ export default function StudioLayout() {
 
       {/* Center Canvas + Right Panel */}
       <div className="grid overflow-hidden" style={{
-        gridTemplateColumns: activeTool ? "1fr 320px" : "1fr",
+        gridTemplateColumns: (activeTool || !activeTool) ? "1fr 320px" : "1fr",
       }}>
         {/* Center Canvas */}
         <main className="relative overflow-y-auto custom-scrollbar bg-background">
@@ -123,15 +123,14 @@ export default function StudioLayout() {
           )}
         </main>
 
-        {/* Right Context Panel */}
+        {/* Right Context Panel — always visible */}
         <AnimatePresence>
-          {activeTool && (
-            <StudioContextPanel
-              toolId={activeTool}
-              creditBalance={creditBalance}
-              isLoadingCredits={isLoadingCredits}
-            />
-          )}
+          <StudioContextPanel
+            toolId={activeTool}
+            activeSection={activeSection}
+            creditBalance={creditBalance}
+            isLoadingCredits={isLoadingCredits}
+          />
         </AnimatePresence>
       </div>
 
