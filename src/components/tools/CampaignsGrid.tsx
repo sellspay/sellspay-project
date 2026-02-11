@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Coins, ArrowRight, Layers, Rocket, Share2, Video, Play } from "lucide-react";
 import { CampaignRunner } from "./CampaignRunner";
+import { PromoVideoBuilder } from "./PromoVideoBuilder";
 
 interface CampaignStep {
   tool_id: string;
@@ -74,7 +75,15 @@ interface CampaignsGridProps {
 
 export function CampaignsGrid({ creditBalance = 0 }: CampaignsGridProps) {
   const [activeCampaign, setActiveCampaign] = useState<CampaignTemplate | null>(null);
+  const [promoBuilderOpen, setPromoBuilderOpen] = useState(false);
 
+  const handleLaunch = (campaign: CampaignTemplate) => {
+    if (campaign.id === "promo-video") {
+      setPromoBuilderOpen(true);
+    } else {
+      setActiveCampaign(campaign);
+    }
+  };
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -124,7 +133,7 @@ export function CampaignsGrid({ creditBalance = 0 }: CampaignsGridProps) {
               <div className="p-4 pt-0">
                 <Button
                   className="w-full gap-2 text-xs"
-                  onClick={() => setActiveCampaign(campaign)}
+                  onClick={() => handleLaunch(campaign)}
                 >
                   <Play className="h-3.5 w-3.5" /> Launch Campaign
                 </Button>
@@ -149,6 +158,12 @@ export function CampaignsGrid({ creditBalance = 0 }: CampaignsGridProps) {
           creditBalance={creditBalance}
         />
       )}
+
+      {/* Promo Video Builder */}
+      <PromoVideoBuilder
+        open={promoBuilderOpen}
+        onOpenChange={setPromoBuilderOpen}
+      />
     </>
   );
 }
