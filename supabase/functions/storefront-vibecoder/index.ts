@@ -667,7 +667,7 @@ function applyBlockTypeAliases(ops: any[]): any[] {
      body.tool_choice = options.toolChoice;
    }
    
-   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+   const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
      method: "POST",
      headers: {
        Authorization: `Bearer ${apiKey}`,
@@ -737,7 +737,7 @@ ${isStorefront ? 'NOTE: This is a STOREFRONT request. Strategy MUST be "creator_
 Extract the user's intent as structured JSON. Remember: BUILD IMMEDIATELY, no questions.`;
  
    const data = await callAI(apiKey, {
-     model: "google/gemini-2.5-flash-lite",
+     model: "gemini-2.5-flash-lite",
      systemPrompt: INTENT_EXTRACTOR_PROMPT,
      userMessage,
      temperature: 0.2,
@@ -808,7 +808,7 @@ DO NOT plan fewer than 5 sections. Build a COMPLETE storefront.
 Create a detailed plan. Remember: BUILD, don't ask questions.`;
  
    const data = await callAI(apiKey, {
-     model: "google/gemini-3-flash-preview",
+    model: "gemini-2.5-flash",
      systemPrompt: PLANNER_PROMPT,
      userMessage,
     temperature: 0.25,
@@ -875,7 +875,7 @@ THIS IS A FRESH BUILD. You MUST:
 Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
  
    const data = await callAI(apiKey, {
-     model: "google/gemini-3-flash-preview",
+    model: "gemini-2.5-flash",
      systemPrompt: OPS_GENERATOR_PROMPT,
      userMessage,
     temperature: 0.2,
@@ -940,7 +940,7 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
  Fix the errors and return corrected JSON.`;
  
    const data = await callAI(apiKey, {
-     model: "google/gemini-3-flash-preview",
+     model: "gemini-2.5-flash",
      systemPrompt: repairPrompt,
      userMessage,
      temperature: 0.05,
@@ -1023,10 +1023,10 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
      const startTime = Date.now();
      const { message, context, profileId, userId } = await req.json();
  
-     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-     if (!LOVABLE_API_KEY) {
-       throw new Error("LOVABLE_API_KEY is not configured");
-     }
+    const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
+    if (!GOOGLE_GEMINI_API_KEY) {
+      throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
+    }
  
      const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -1058,7 +1058,7 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      let intent: any;
      try {
-      intent = await extractIntent(LOVABLE_API_KEY, message, brandProfile, layoutSummary, fullProductContext);
+      intent = await extractIntent(GOOGLE_GEMINI_API_KEY, message, brandProfile, layoutSummary, fullProductContext);
      } catch (e) {
        console.error("Intent extraction failed:", e);
        intent = {
@@ -1078,7 +1078,7 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      let plan: any;
      try {
-      plan = await createPlan(LOVABLE_API_KEY, intent, sections, brandProfile, products, fullProductContext);
+      plan = await createPlan(GOOGLE_GEMINI_API_KEY, intent, sections, brandProfile, products, fullProductContext);
      } catch (e) {
        console.error("Planning failed:", e);
        plan = {
@@ -1102,7 +1102,7 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      let opsResult: any;
      try {
-      opsResult = await generateOps(LOVABLE_API_KEY, plan, sections, message, fullProductContext);
+      opsResult = await generateOps(GOOGLE_GEMINI_API_KEY, plan, sections, message, fullProductContext);
      } catch (e: any) {
        if (e.message === "RATE_LIMITED") {
          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
@@ -1198,7 +1198,7 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
         { path: "ops", message: opsEmptyCheck.error || "Ops array is empty", severity: "error" as const }
       ];
       try {
-        const repairedResult = await repairOps(LOVABLE_API_KEY, opsResult, repairErrors);
+        const repairedResult = await repairOps(GOOGLE_GEMINI_API_KEY, opsResult, repairErrors);
         if (repairedResult?.ops?.length > 0) {
           opsResult = repairedResult;
         }
@@ -1237,7 +1237,7 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
         severity: "error" as const
       }));
       try {
-        const repairedResult = await repairOps(LOVABLE_API_KEY, opsResult, repairErrors);
+        const repairedResult = await repairOps(GOOGLE_GEMINI_API_KEY, opsResult, repairErrors);
         if (repairedResult?.ops?.length > 0) {
           opsResult = repairedResult;
         }
@@ -1263,7 +1263,7 @@ Generate the patch operations. BUILD THE COMPLETE STOREFRONT NOW.`;
 
     if (!validationResult.valid && repairAttempts < 1) {
       try {
-        const repairedResult = await repairOps(LOVABLE_API_KEY, opsResult, validationResult.errors);
+        const repairedResult = await repairOps(GOOGLE_GEMINI_API_KEY, opsResult, validationResult.errors);
         if (repairedResult) {
           opsResult = repairedResult;
           validationResult = validateAndSanitizeOps(repairedResult.ops || [], sections);
