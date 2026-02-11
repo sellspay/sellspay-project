@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toolsRegistry } from "@/components/tools/toolsRegistry";
 import { ToolActiveView } from "@/components/tools/ToolActiveView";
 import { PromoVideoBuilder } from "@/components/tools/PromoVideoBuilder";
+import { MyAssetsDrawer } from "@/components/tools/MyAssetsDrawer";
 import { StudioSidebar } from "./StudioSidebar";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioContextPanel } from "./StudioContextPanel";
@@ -21,6 +22,7 @@ export default function StudioLayout() {
     try { return localStorage.getItem("studio-sidebar-collapsed") === "true"; } catch { return false; }
   });
   const [promoOpen, setPromoOpen] = useState(false);
+  const [assetsOpen, setAssetsOpen] = useState(false);
   const { credits: creditBalance, loading: isLoadingCredits } = useSubscription();
   const { profile } = useAuth();
 
@@ -68,6 +70,10 @@ export default function StudioLayout() {
   };
 
   const handleSectionChange = (section: StudioSection) => {
+    if (section === "assets") {
+      setAssetsOpen(true);
+      return;
+    }
     setActiveSection(section);
     setActiveTool(null);
   };
@@ -112,6 +118,7 @@ export default function StudioLayout() {
               recentAssets={recentAssets}
               onLaunchPromo={() => setPromoOpen(true)}
               onLaunchTool={handleLaunch}
+              onSectionChange={handleSectionChange}
             />
           )}
         </main>
@@ -130,6 +137,13 @@ export default function StudioLayout() {
 
       {/* Promo Video Builder Dialog */}
       <PromoVideoBuilder open={promoOpen} onOpenChange={setPromoOpen} />
+
+      {/* Assets drawer (controlled) */}
+      <MyAssetsDrawer
+        trigger={<span className="hidden" />}
+        open={assetsOpen}
+        onOpenChange={setAssetsOpen}
+      />
     </div>
   );
 }

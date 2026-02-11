@@ -14,6 +14,7 @@ interface StudioCanvasProps {
   recentAssets: any[];
   onLaunchPromo: () => void;
   onLaunchTool: (id: string) => void;
+  onSectionChange?: (section: StudioSection) => void;
 }
 
 export function StudioCanvas(props: StudioCanvasProps) {
@@ -31,7 +32,7 @@ export function StudioCanvas(props: StudioCanvasProps) {
     const subs = subcatMap[activeSection] || [];
     if (!subs.length) return [];
     return toolsRegistry
-      .filter(t => subs.includes(t.subcategory || "") && t.isActive && !t.comingSoon)
+      .filter(t => subs.includes(t.subcategory || "") && t.isActive)
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }, [activeSection]);
 

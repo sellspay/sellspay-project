@@ -45,11 +45,18 @@ const TYPE_FILTERS: { label: string; value: AssetType | "all" }[] = [
 
 interface MyAssetsDrawerProps {
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function MyAssetsDrawer({ trigger }: MyAssetsDrawerProps) {
+export function MyAssetsDrawer({ trigger, open: controlledOpen, onOpenChange }: MyAssetsDrawerProps) {
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    setInternalOpen(v);
+    onOpenChange?.(v);
+  };
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(false);
   const [typeFilter, setTypeFilter] = useState<AssetType | "all">("all");
