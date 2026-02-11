@@ -32,8 +32,8 @@ export function RecentCreations({ assets }: RecentCreationsProps) {
       transition={{ duration: 0.5 }}
       className="max-w-7xl mx-auto px-4 sm:px-6"
     >
-      <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
-        ✨ Recent Creations
+      <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+        Recent Creations
       </h2>
       <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
         {assets.map((asset) => {
