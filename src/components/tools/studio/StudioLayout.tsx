@@ -12,6 +12,7 @@ import { StudioSidebar } from "./StudioSidebar";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioContextPanel } from "./StudioContextPanel";
 import { CampaignControlPanel } from "./CampaignControlPanel";
+import type { CampaignState } from "./CampaignCanvas";
 
 export type StudioSection = "campaign" | "listings" | "social" | "media" | "assets";
 
@@ -31,6 +32,7 @@ export default function StudioLayout() {
   const [assetCount, setAssetCount] = useState(0);
   const [generationCount, setGenerationCount] = useState(0);
   const [recentAssets, setRecentAssets] = useState<any[]>([]);
+  const [campaignState, setCampaignState] = useState<CampaignState | undefined>();
 
   useEffect(() => {
     const toolParam = searchParams.get("tool");
@@ -117,6 +119,7 @@ export default function StudioLayout() {
             onLaunchPromo={() => setPromoOpen(true)}
             onLaunchTool={handleLaunch}
             onSectionChange={handleSectionChange}
+            onCampaignStateChange={setCampaignState}
           />
         )}
       </main>
@@ -136,6 +139,7 @@ export default function StudioLayout() {
               creditBalance={creditBalance}
               isLoadingCredits={isLoadingCredits}
               onGenerate={() => setPromoOpen(true)}
+              campaignState={campaignState}
             />
           ) : null}
         </AnimatePresence>
