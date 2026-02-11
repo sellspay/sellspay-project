@@ -243,6 +243,9 @@ export function useVibecoderProjects() {
     return true;
   }, []);
 
+  // INSERT DEBOUNCE: Prevent rapid-fire duplicate inserts from the frontend
+  const lastInsertRef = useRef<{ hash: string; timestamp: number }>({ hash: '', timestamp: 0 });
+
   // Add message (auto-saves to DB)
   // RACE CONDITION GUARD: Optional forProjectId allows explicit targeting
   // to prevent writes to wrong project if user switched mid-generation
@@ -255,6 +258,15 @@ export function useVibecoderProjects() {
   ) => {
     const targetProjectId = forProjectId || activeProjectId;
     if (!targetProjectId) return null;
+
+    // DEBOUNCE GUARD: Skip if same content was just inserted within 3 seconds
+    const insertHash = `${targetProjectId}:${role}:${(content ?? '').trim().slice(0, 200)}:${codeSnapshot ? 'code' : 'nocode'}`;
+    const now = Date.now();
+    if (lastInsertRef.current.hash === insertHash && now - lastInsertRef.current.timestamp < 3000) {
+      console.log('[addMessage] Debounce: skipping duplicate insert');
+      return null;
+    }
+    lastInsertRef.current = { hash: insertHash, timestamp: now };
 
     // Soft guard: if we’re about to append an identical message consecutively, skip the optimistic append.
     // (DB insert still happens; this is only to prevent the UI from exploding.)
