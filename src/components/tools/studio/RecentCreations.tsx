@@ -30,29 +30,26 @@ export function RecentCreations({ assets }: RecentCreationsProps) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
-      className="max-w-7xl mx-auto px-4 sm:px-6"
     >
-      <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-        Recent Creations
-      </h2>
+      <p className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider mb-3">Recent Creations</p>
       <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
         {assets.map((asset) => {
           const Icon = getAssetIcon(asset.asset_type);
           return (
             <div
               key={asset.id}
-              className="shrink-0 w-40 h-48 rounded-xl border border-border/20 bg-card/30 backdrop-blur-sm overflow-hidden flex flex-col items-center justify-center gap-2 hover:border-primary/20 transition-colors"
+              className="shrink-0 w-48 h-52 rounded-xl overflow-hidden flex flex-col hover:bg-white/[0.03] transition-colors"
             >
               {asset.asset_url && asset.asset_type?.includes("image") ? (
-                <img src={asset.asset_url} alt="" className="w-full h-32 object-cover" />
+                <img src={asset.asset_url} alt="" className="w-full h-36 object-cover" />
               ) : (
-                <div className="w-full h-32 flex items-center justify-center bg-muted/20">
-                  <Icon className="h-8 w-8 text-muted-foreground/40" />
+                <div className="w-full h-36 flex items-center justify-center bg-white/[0.02]">
+                  <Icon className="h-8 w-8 text-muted-foreground/20" />
                 </div>
               )}
-              <div className="px-3 pb-2 w-full">
-                <span className="text-[10px] text-muted-foreground truncate block">{asset.tool_id}</span>
-                <div className="flex items-center gap-1 text-[9px] text-muted-foreground/60">
+              <div className="px-3 py-2 w-full">
+                <span className="text-[10px] text-muted-foreground/50 truncate block">{asset.tool_id}</span>
+                <div className="flex items-center gap-1 text-[9px] text-muted-foreground/30">
                   <Clock className="h-2.5 w-2.5" />
                   {formatDistanceToNow(new Date(asset.created_at), { addSuffix: true })}
                 </div>

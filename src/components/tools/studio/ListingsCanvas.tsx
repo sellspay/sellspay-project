@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
-  TrendingUp, FileText, LayoutTemplate, PackagePlus,
-  Search, HelpCircle, PenLine, Wand2, Zap, ArrowRight,
-  BarChart3, ShieldCheck, Eye, MousePointerClick,
+  Search, Eye, MousePointerClick,
+  Zap, ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toolsRegistry } from "@/components/tools/toolsRegistry";
@@ -16,10 +15,10 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
 const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
 const SCORES = [
-  { label: "Clarity", from: 72, to: 91, icon: Eye, color: "text-emerald-400" },
-  { label: "Trust", from: 64, to: 85, icon: ShieldCheck, color: "text-teal-400" },
-  { label: "SEO", from: 48, to: 78, icon: Search, color: "text-cyan-400" },
-  { label: "CTA Strength", from: 55, to: 88, icon: MousePointerClick, color: "text-green-400" },
+  { label: "Clarity", from: 72, to: 91, color: "bg-emerald-400" },
+  { label: "Trust", from: 64, to: 85, color: "bg-teal-400" },
+  { label: "SEO", from: 48, to: 78, color: "bg-cyan-400" },
+  { label: "CTA", from: 55, to: 88, color: "bg-green-400" },
 ];
 
 const QUICK_ACTIONS = [
@@ -39,31 +38,25 @@ export function ListingsCanvas({ onLaunchTool }: ListingsCanvasProps) {
   []);
 
   return (
-    <motion.div variants={stagger} initial="hidden" animate="show" className="p-6 lg:p-8 space-y-8 max-w-[1200px] mx-auto">
+    <motion.div variants={stagger} initial="hidden" animate="show" className="p-5 lg:p-6 space-y-6">
       {/* Teal glow */}
-      <div className="pointer-events-none fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-emerald-500/[0.04] blur-[140px]" />
+      <div className="pointer-events-none fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-emerald-500/[0.03] blur-[140px]" />
 
-      {/* Score Header */}
-      <motion.div variants={fadeUp} className="rounded-2xl border border-border/20 bg-card/30 backdrop-blur-xl p-6">
-        <div className="flex items-center gap-2 mb-5">
-          <BarChart3 className="h-5 w-5 text-emerald-400" />
-          <h2 className="text-lg font-bold text-foreground">Listing Performance</h2>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Score Header — no container */}
+      <motion.div variants={fadeUp}>
+        <p className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider mb-4">Performance</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {SCORES.map(s => (
             <div key={s.label} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <s.icon className={cn("h-4 w-4", s.color)} />
-                <span className="text-xs font-semibold text-foreground">{s.label}</span>
-              </div>
+              <span className="text-xs font-medium text-foreground/70">{s.label}</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-[11px] text-muted-foreground line-through">{s.from}</span>
-                <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                <span className={cn("text-xl font-bold", s.color)}>{s.to}</span>
+                <span className="text-[11px] text-muted-foreground/40 line-through">{s.from}</span>
+                <ArrowRight className="h-2.5 w-2.5 text-muted-foreground/30" />
+                <span className="text-xl font-bold text-foreground">{s.to}</span>
               </div>
-              <div className="h-1.5 rounded-full bg-border/30 overflow-hidden">
+              <div className="h-1 rounded-full bg-white/[0.04] overflow-hidden">
                 <motion.div
-                  className={cn("h-full rounded-full", s.color.replace("text-", "bg-"))}
+                  className={cn("h-full rounded-full", s.color)}
                   initial={{ width: `${s.from}%` }}
                   animate={{ width: `${s.to}%` }}
                   transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
@@ -74,54 +67,50 @@ export function ListingsCanvas({ onLaunchTool }: ListingsCanvasProps) {
         </div>
       </motion.div>
 
-      {/* Before/After Split Preview */}
-      <motion.div variants={fadeUp} className="rounded-2xl border border-border/20 bg-card/20 backdrop-blur-xl overflow-hidden">
-        <div className="grid lg:grid-cols-2 divide-x divide-border/10">
-          {/* Current */}
+      {/* Before/After Split — no container border */}
+      <motion.div variants={fadeUp} className="overflow-hidden rounded-xl">
+        <div className="grid lg:grid-cols-2 divide-x divide-white/[0.04]">
           <div className="p-6 space-y-3">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Current Listing</span>
+            <span className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider">Current Listing</span>
             <div className="space-y-2">
-              <div className="h-3 w-3/4 rounded bg-muted-foreground/10" />
-              <div className="h-3 w-full rounded bg-muted-foreground/10" />
-              <div className="h-3 w-5/6 rounded bg-muted-foreground/10" />
-              <div className="h-3 w-2/3 rounded bg-muted-foreground/10 mt-4" />
-              <div className="h-3 w-full rounded bg-muted-foreground/10" />
-              <div className="h-8 w-24 rounded-lg bg-muted-foreground/10 mt-4" />
+              <div className="h-3 w-3/4 rounded bg-white/[0.04]" />
+              <div className="h-3 w-full rounded bg-white/[0.04]" />
+              <div className="h-3 w-5/6 rounded bg-white/[0.04]" />
+              <div className="h-3 w-2/3 rounded bg-white/[0.04] mt-4" />
+              <div className="h-3 w-full rounded bg-white/[0.04]" />
+              <div className="h-8 w-24 rounded-lg bg-white/[0.04] mt-4" />
             </div>
-            <p className="text-[11px] text-muted-foreground/60 italic mt-2">Weak headline • No FAQ • Missing CTA</p>
+            <p className="text-[11px] text-muted-foreground/30 italic mt-2">Weak headline · No FAQ · Missing CTA</p>
           </div>
-          {/* Optimized */}
           <div className="p-6 space-y-3 bg-emerald-500/[0.02]">
-            <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">AI Optimized</span>
+            <span className="text-[10px] font-semibold text-emerald-400/60 uppercase tracking-wider">AI Optimized</span>
             <div className="space-y-2">
               <motion.div initial={{ width: 0 }} animate={{ width: "85%" }} transition={{ duration: 0.8, delay: 0.5 }}
-                className="h-3.5 rounded bg-emerald-500/20 border border-emerald-500/20" />
+                className="h-3.5 rounded bg-emerald-500/15" />
               <motion.div initial={{ width: 0 }} animate={{ width: "100%" }} transition={{ duration: 0.8, delay: 0.6 }}
-                className="h-3 rounded bg-emerald-500/10" />
+                className="h-3 rounded bg-emerald-500/8" />
               <motion.div initial={{ width: 0 }} animate={{ width: "90%" }} transition={{ duration: 0.8, delay: 0.7 }}
-                className="h-3 rounded bg-emerald-500/10" />
+                className="h-3 rounded bg-emerald-500/8" />
               <motion.div initial={{ width: 0 }} animate={{ width: "75%" }} transition={{ duration: 0.8, delay: 0.9 }}
-                className="h-3 rounded bg-emerald-500/10 mt-4" />
+                className="h-3 rounded bg-emerald-500/8 mt-4" />
               <motion.div initial={{ width: 0 }} animate={{ width: "100%" }} transition={{ duration: 0.8, delay: 1.0 }}
-                className="h-3 rounded bg-emerald-500/10" />
+                className="h-3 rounded bg-emerald-500/8" />
               <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.4, delay: 1.2 }}
-                className="h-9 w-28 rounded-lg bg-emerald-500/20 border border-emerald-500/30 mt-4 flex items-center justify-center">
-                <span className="text-[10px] font-bold text-emerald-400">Strong CTA ✓</span>
+                className="h-9 w-28 rounded-lg bg-emerald-500/10 mt-4 flex items-center justify-center">
+                <span className="text-[10px] font-semibold text-emerald-400/70">Strong CTA</span>
               </motion.div>
             </div>
-            <p className="text-[11px] text-emerald-400/60 italic mt-2">Optimized headline • FAQ added • CTA improved</p>
           </div>
         </div>
       </motion.div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions — softer pills */}
       <motion.div variants={fadeUp}>
-        <h3 className="text-lg font-bold text-foreground mb-3">Quick Actions</h3>
         <div className="flex flex-wrap gap-2">
           {QUICK_ACTIONS.map(a => (
             <button
               key={a}
-              className="px-4 py-2 rounded-full text-xs font-semibold border border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-400 hover:bg-emerald-500/[0.12] hover:border-emerald-500/30 transition-colors"
+              className="px-4 py-2 rounded-full text-xs font-medium text-muted-foreground/60 hover:text-foreground hover:bg-white/[0.04] transition-colors"
             >
               {a}
             </button>
@@ -129,27 +118,23 @@ export function ListingsCanvas({ onLaunchTool }: ListingsCanvasProps) {
         </div>
       </motion.div>
 
-      {/* Tools Grid */}
+      {/* Tools Grid — no heavy borders */}
       <motion.div variants={fadeUp} className="space-y-4">
-        <h3 className="text-lg font-bold text-foreground">Listing Tools</h3>
+        <p className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider">Listing Tools</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {tools.map(tool => (
             <button
               key={tool.id}
               onClick={() => onLaunchTool(tool.id)}
-              className={cn(
-                "group p-5 rounded-xl border border-border/20 bg-card/20 backdrop-blur-sm text-left",
-                "hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-500/10 hover:border-emerald-500/20",
-                "transition-all duration-200"
-              )}
+              className="group p-5 rounded-xl text-left hover:bg-white/[0.03] transition-colors"
             >
-              <tool.icon className="h-5 w-5 text-emerald-400 mb-2" />
+              <tool.icon className="h-5 w-5 text-emerald-400/50 mb-2" />
               <p className="text-sm font-semibold text-foreground">{tool.name}</p>
-              <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{tool.description}</p>
+              <p className="text-[11px] text-muted-foreground/50 mt-1 line-clamp-2">{tool.description}</p>
               {tool.creditCost > 0 && (
                 <div className="flex items-center gap-1 mt-2">
-                  <Zap className="h-3 w-3 text-primary" />
-                  <span className="text-[10px] text-muted-foreground">{tool.creditCost} credits</span>
+                  <Zap className="h-3 w-3 text-primary/40" />
+                  <span className="text-[10px] text-muted-foreground/40">{tool.creditCost} credits</span>
                 </div>
               )}
             </button>
