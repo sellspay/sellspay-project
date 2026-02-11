@@ -324,13 +324,16 @@ const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
             stackTl.progress(coreProgress);
             colorTl.time(coreProgress * panelCount);
 
-            // Headline updates only (no transforms) to keep things stable
+            // Headline updates: sync text change to when the new card is mostly visible
             const totalTransitions = panelCount - 1;
             const stepP = 1 / totalTransitions;
             const clamped = Math.max(0, Math.min(1, coreProgress));
-            const base = Math.floor(clamped / stepP);
+            const base = Math.min(totalTransitions - 1, Math.floor(clamped / stepP));
             const local = (clamped - base * stepP) / stepP;
-            const activeIdx = local >= 0.3 ? Math.min(panelCount - 1, base + 1) : base;
+            // The card animation occupies the first (1-HOLD_RATIO) of each step.
+            // Switch text when the card slide is 70% done (well into view).
+            const switchPoint = (1 - HOLD_RATIO) * 0.7; // ~0.42 of the full step
+            const activeIdx = local >= switchPoint ? Math.min(panelCount - 1, base + 1) : base;
             setHeadline(activeIdx);
 
             // Fractional z-index for perfect forward/reverse layering
