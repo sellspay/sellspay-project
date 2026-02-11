@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import HeroSection from '@/components/home/HeroSection';
 import SlidingBanner from '@/components/home/SlidingBanner';
+import { FeatureTabsBar } from '@/components/home/FeatureTabsBar';
 import { AIToolsReveal } from '@/components/home/AIToolsReveal';
 import { AIStudioPromo } from '@/components/home/AIStudioPromo';
 import { ValueProps } from '@/components/home/ValueProps';
@@ -146,14 +147,8 @@ export default function Home() {
       {/* Sliding Logos Banner */}
       <SlidingBanner />
 
-      {/* MASSIVE Content Grid - Featured Products */}
-      <Reveal>
-        <MassiveProductGrid 
-          products={featuredWithStats} 
-          allProducts={products}
-          loading={loading} 
-        />
-      </Reveal>
+      {/* Tabbed Feature Section */}
+      <FeatureTabsBar />
 
       {/* AI Tools Reveal */}
       <AIToolsReveal />
@@ -164,6 +159,14 @@ export default function Home() {
       {/* Value Propositions */}
       <ValueProps />
 
+      {/* MASSIVE Content Grid - Featured Products */}
+      <Reveal>
+        <MassiveProductGrid 
+          products={featuredWithStats} 
+          allProducts={products}
+          loading={loading} 
+        />
+      </Reveal>
 
       {/* Featured Creators */}
       <FeaturedCreators />
