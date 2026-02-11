@@ -1,184 +1,144 @@
 
 
-# AI Studio 3.0 — Signature Canvas Overhaul
+# Artlist-Level Refinement Pass
 
-Give each workspace section a unique visual identity, layout structure, and content depth so no two tabs feel the same.
-
----
-
-## Overview
-
-The current `StudioHomeView` renders the same layout for every section: stat bar, hero card, tool grid, recent creations. This plan replaces that with **section-specific canvas components**, each with a unique layout, preview type, and content layers.
+Strip the startup energy. Replace it with the calm, heavy confidence of a mature creative platform.
 
 ---
 
-## Architecture Change
+## 7 Changes
 
-Currently:
-```text
-StudioCanvas -> StudioHomeView (same layout for all sections)
-```
+### 1. Slim Down Sidebar — Kill Borders and Weight
 
-New:
-```text
-StudioCanvas -> routes to one of:
-  - CampaignCanvas    (home / promo studio)
-  - ListingsCanvas    (upgrade listings)
-  - SocialCanvas      (social factory)
-  - MediaCanvas       (media lab)
-```
+**File**: `StudioSidebar.tsx`
 
-Each canvas has 3 content layers:
-1. **Tool Interface** (unique layout per section)
-2. **Example Outputs** (animated previews, before/after, mocks)
-3. **Contextual Intelligence** (scores, tips, suggestions)
+Current problems: 240px wide, heavy `border-r`, `border-b` separators, boxed credit gauge with `bg-primary/[0.06]`, "AI Studio" label in bold.
 
----
+Changes:
+- Shrink expanded width from 240px to 200px
+- Remove `border-r border-white/[0.06]` -- use background color difference only
+- Remove `border-b` on the header area
+- Remove the `bg-primary/[0.06]` rounded box on the credit gauge -- replace with a subtle inline pill: just text `"142 credits"` with a tiny dot indicator, no background block
+- Remove all icons from nav items -- typography only (the icons add visual noise). Active item gets a thin 2px left bar + slightly brighter text, nothing else
+- Remove the collapse chevron icons -- sidebar auto-collapses are fine, but the toggle button should be a minimal line, not chevrons
+- Overall background stays `bg-[hsl(0_0%_3%)]` but no hard edges
 
-## New Components
+Also update `StudioLayout.tsx` grid columns from `240px` to `200px`.
 
-### 1. `CampaignCanvas.tsx` — Promo Studio (Home)
+### 2. Full-Bleed Hero — Remove Container Box
 
-**Energy**: Viral, cinematic, high contrast
+**File**: `CampaignCanvas.tsx`
 
-**Layout**:
-- **Hero strip** (260px): Left headline "AI Studio / Launch. Create. Optimize." + right animated preview stack (vertical promo frame, carousel slide, thumbnail before/after cycling via framer-motion)
-- **Featured Actions** (2x2 grid, 220px tall cards): Launch Promo, Create Carousel, Upgrade Image, Optimize Listing — each with a visual background gradient, not just an icon
-- **Trending Hooks** shelf: Horizontal scroll of 6 mock hook cards (auto-rotating text like "Stop scrolling...", "You're losing money if...", "This hack changed everything...") showing the kind of output the promo generator creates
-- **Recent Creations** gallery (reuse existing component)
-- **Recommended Next Steps**: Dynamic suggestions based on counts (e.g., "Create your first promo" if generationCount === 0, "Upgrade a listing" if productCount > 0 but no optimized descriptions)
+Current: Hero is inside a `rounded-2xl border border-border/20 bg-card/30 backdrop-blur-xl` box.
 
-### 2. `ListingsCanvas.tsx` — Store Optimizer
+Changes:
+- Remove the rounded border container entirely -- hero content sits directly on the canvas background
+- Remove the grid pattern overlay
+- Remove the `bg-card/30` and `border` -- let the content breathe against the dark background
+- Make the headline larger: `text-4xl sm:text-5xl` with tighter tracking
+- Remove the "AI Studio" badge/icon above the headline -- the sidebar already says it
+- Reduce the paragraph description to one short line, not two
+- The Deploy button: remove `btn-premium` heavy glow -- use a clean `bg-primary hover:bg-primary/90` with subtle `shadow-sm`, rounded-full (pill), no `::before` highlight effect
+- Move stat strip pills: remove borders from them, make them more minimal (just icon + number + label, no rounded-full border pill)
 
-**Energy**: Analytical, conversion-focused, strategic
+### 3. Kill Section Boxes Across All Canvases
 
-**Layout**:
-- **Score Header** (full width bar): Animated gauges showing Clarity, Trust, SEO, CTA Strength — starts with placeholder values, feels like a performance dashboard
-- **Split Preview Area**: Left = "Current Listing" mock (grey, plain text), Right = "Optimized" mock (highlighted improvements, badges). Uses a subtle slide animation between states
-- **Quick Actions Row**: Pill buttons — "Improve Headline", "Add FAQ", "Strengthen CTA", "Add Urgency", "Optimize for SEO"
-- **Tools Grid** below: The actual listing tools (product-description, sales-page-sections, upsell-suggestions, generate-hero, rewrite-brand-voice, create-faq, seo-landing-page) rendered as compact cards
-- No flagship promo card — completely different vibe
+**Files**: `CampaignCanvas.tsx`, `ListingsCanvas.tsx`, `SocialCanvas.tsx`, `MediaCanvas.tsx`
 
-### 3. `SocialCanvas.tsx` — Social Factory
+Everywhere there is `rounded-2xl border border-border/20 bg-card/30 backdrop-blur-xl` or `bg-card/20`:
+- Remove borders entirely
+- Remove `bg-card/xx` backgrounds -- let sections sit on the page background
+- Use spacing and typography to create structure instead of containers
+- Featured Actions cards: remove explicit `border` classes, keep only a very subtle `bg-white/[0.03]` on hover (not default)
+- Trending Hooks cards: remove `border border-border/20` -- just text on background with spacing
+- Listings Score Header: remove the rounded container -- scores sit directly in the flow
+- Social platform strip: remove `border` from buttons -- use just text weight/color change for active
+- Media waveform hero: remove `rounded-2xl border` container -- waveform bars sit directly on canvas
 
-**Energy**: Structured storytelling, swipe-based
+### 4. Remove All Decorative Icons from Section Headers
 
-**Layout**:
-- **Platform Strip**: Large segmented control (TikTok / Instagram / YouTube / Twitter) at top — selecting one subtly tints the canvas
-- **Content Type Shelf**: Horizontal scroll of content format cards (Carousel, Caption Pack, 10 Posts, Short-Form Script, Hook Generator) — each card shows a mini animated preview of the output type (e.g., carousel shows stacked slides, caption shows text with hashtags)
-- **Canvas Area**: When no tool selected, shows an animated mock of a social post being assembled — text appearing, hashtags flying in, engagement metrics counting up
-- **Tools Grid** below for social_content tools
+**Files**: All canvas files
 
-### 4. `MediaCanvas.tsx` — Media Lab
+Current: Every section title has an icon next to it (Flame, BarChart3, Sparkles, etc.)
 
-**Energy**: Clean waveform, audio-focused
+Changes:
+- Remove icons from section headers -- just use the text label
+- "Featured Actions" -> just the cards, no heading needed (obvious from context)
+- "Trending Hooks" -> "Trending" (shorter, cleaner)
+- "Listing Performance" -> "Performance" 
+- "AI-Powered" -> keep text, remove Sparkles icon
+- "Content Formats" -> just the cards, minimal heading
+- Remove the `<Flame>` icon from trending hook cards -- just the "Trending" label in small caps
 
-**Layout**:
-- **Waveform Hero**: Large animated waveform visualization spanning full width (CSS animation, no real audio needed — decorative sine wave pattern)
-- **Tool Categories** in two rows:
-  - Row 1 "AI-Powered": SFX Generator, Voice Isolator, SFX Isolator, Music Splitter (larger cards with gradient backgrounds)
-  - Row 2 "Utilities": Audio Cutter, Joiner, Converter, Recorder, Video to Audio, Waveform Generator (compact, smaller cards)
-- Each card shows the tool's unique visual identity (waveform icon, stem visualization, etc.) instead of generic icons
-- Active tools (with legacyRoute) get a prominent "Launch" button; coming-soon tools are hidden entirely
+### 5. Tone Down Button Glow System-Wide
 
----
+**Files**: `CampaignCanvas.tsx`, other canvases
 
-## Modified Components
+Changes:
+- Deploy button: `bg-primary rounded-full px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90` -- no heavy glow, no `shadow-xl shadow-primary/10`
+- Card hover effects: change from `hover:shadow-xl hover:shadow-primary/10` to `hover:bg-white/[0.04]` only -- remove the shadow lift entirely, or keep only `hover:-translate-y-0.5` (subtle, not -1)
+- Quick action pills in Listings: reduce border opacity, soften color
 
-### `StudioCanvas.tsx`
-- Replace single `StudioHomeView` render with a switch on `activeSection`:
-  - `campaign` -> `CampaignCanvas`
-  - `listings` -> `ListingsCanvas`
-  - `social` -> `SocialCanvas`
-  - `media` -> `MediaCanvas`
-- Pass through all existing props (stats, handlers, tools)
+### 6. Increase Content Density — Tighten Spacing
 
-### `StudioHomeView.tsx`
-- No longer used directly by StudioCanvas — its content is absorbed into `CampaignCanvas`
-- Keep file for reference but it won't be rendered
+**Files**: All canvas files
 
-### `StudioContextPanel.tsx`
-- Add section-aware content: when `activeSection` is "listings", show SEO score preview; when "social", show platform selector; when "media", show format/quality controls
-- Pass `activeSection` from `StudioLayout`
+Changes:
+- Reduce `space-y-8` to `space-y-6` across all canvases
+- Reduce padding from `p-6 lg:p-8` to `p-5 lg:p-6`
+- Featured Actions grid: reduce `min-h-[180px]` to `min-h-[140px]`
+- Remove `max-w-[1200px] mx-auto` -- let content stretch wider to fill the canvas
+- Recent Creations cards: increase from `w-40 h-48` to `w-48 h-52` (larger thumbnails)
+- Trending hooks cards: increase from `w-[220px]` to `w-[260px]`
+- Remove "Recommended Next" section title -- just show the cards inline if conditions match
 
-### `StudioLayout.tsx`
-- Pass `activeSection` to `StudioContextPanel`
-- Right panel now also appears for section views (not just active tools), but with section-specific context instead of tool-specific context
+### 7. Remove the Right Context Panel When No Tool is Active
 
-### `StudioSidebar.tsx`
-- No structural changes, just ensure active state highlights correctly when switching between the new canvases
+**File**: `StudioLayout.tsx`
 
----
+Current: Right panel is always visible (320px) even with no tool active, showing placeholder controls.
 
-## Visual Identity Per Section
-
-| Section | Background Accent | Preview Type | Motion Style |
-|---------|------------------|--------------|--------------|
-| Campaign | Warm orange radial glow | Vertical phone frame, auto-cycling hooks | Fast, energetic fade-ins |
-| Listings | Cool emerald/teal tint | Split before/after comparison | Smooth analytical transitions |
-| Social | Blue/indigo platform tint | Stacked card carousel animation | Swipe-like horizontal motion |
-| Media | Purple/violet waveform | Animated sine wave hero | Pulsing, rhythmic motion |
+Changes:
+- Only render `StudioContextPanel` when `activeTool` is set
+- When no tool is active, the center canvas takes full width (no 320px reserved)
+- This gives the canvas breathing room and removes the "empty sidebar" feel
+- Update grid template: `activeTool ? "1fr 320px" : "1fr"`
+- The section-specific context (listings scores, social platform picker, media format) moves into the canvas itself -- it's already there as part of each canvas component
 
 ---
-
-## Animated Empty States
-
-Each canvas has an animated idle state instead of blank space:
-- **Campaign**: Mock phone with rotating hook text + caption overlay
-- **Listings**: Typewriter effect showing a product description being rewritten
-- **Social**: Post card assembling itself (text, image, hashtags appearing sequentially)
-- **Media**: Waveform pulsing gently with "Drop audio to begin" prompt
-
----
-
-## Recommended Next Steps (Intelligence Layer)
-
-Added to `CampaignCanvas` bottom:
-- Dynamic cards based on user data:
-  - `productCount === 0`: "Add your first product to unlock AI tools"
-  - `generationCount === 0`: "Create your first promo — it takes 30 seconds"
-  - `assetCount > 0 && generationCount < 5`: "You have assets! Try generating a carousel"
-- Each recommendation card has a CTA button that routes to the appropriate tool
-
----
-
-## Files Created
-
-| File | Purpose |
-|------|---------|
-| `src/components/tools/studio/CampaignCanvas.tsx` | Home/Promo studio with hero, featured actions, trending hooks, recommendations |
-| `src/components/tools/studio/ListingsCanvas.tsx` | Analytical optimizer with score header, split preview, quick actions |
-| `src/components/tools/studio/SocialCanvas.tsx` | Platform-aware content factory with format shelf and animated post mock |
-| `src/components/tools/studio/MediaCanvas.tsx` | Audio-focused lab with waveform hero and tiered tool grid |
 
 ## Files Modified
 
-| File | Changes |
+| File | Summary |
 |------|---------|
-| `src/components/tools/studio/StudioCanvas.tsx` | Switch on activeSection to render section-specific canvas |
-| `src/components/tools/studio/StudioContextPanel.tsx` | Add activeSection prop, render section-aware controls |
-| `src/components/tools/studio/StudioLayout.tsx` | Pass activeSection to context panel, show right panel for sections too |
-
-## Files Retired (kept, no longer rendered)
-
-| File | Reason |
-|------|---------|
-| `StudioHomeView.tsx` | Content absorbed into CampaignCanvas |
-| `FlagshipPromo.tsx` | Integrated into CampaignCanvas hero |
-| `StudioHero.tsx` | Replaced by CampaignCanvas hero strip |
-| `OutcomeSection.tsx` / `OutcomeCard.tsx` | Replaced by section-specific cards |
-| `MediaUtilityGrid.tsx` | Replaced by MediaCanvas tiered grid |
-| `CreatorControlStrip.tsx` | Stats in CampaignCanvas stat bar |
+| `StudioSidebar.tsx` | Slim to 200px, remove borders/separators, typography-only nav, minimal credit pill |
+| `StudioLayout.tsx` | Update grid to 200px sidebar, conditional right panel |
+| `CampaignCanvas.tsx` | Full-bleed hero, remove containers, clean button, tighter spacing |
+| `ListingsCanvas.tsx` | Remove section containers, clean headers, softer cards |
+| `SocialCanvas.tsx` | Remove containers, cleaner platform strip, tighter layout |
+| `MediaCanvas.tsx` | Remove waveform container, cleaner tool cards |
+| `RecentCreations.tsx` | Larger cards, remove border styling |
+| `StudioContextPanel.tsx` | No changes needed (only renders when tool active) |
 
 ---
 
-## Technical Notes
+## What Gets Removed
+- All `border border-border/20` on section containers
+- All `bg-card/30 backdrop-blur-xl` on non-interactive elements  
+- All decorative icons next to section headings
+- Nav item icons in sidebar (typography carries weight)
+- Heavy credit gauge box
+- Right panel placeholder when no tool active
+- `btn-premium` heavy glow on Deploy button
+- `shadow-xl` hover effects on cards
+- Grid pattern overlay in hero
 
-- All new canvases use framer-motion with section-specific `stagger` and `fadeUp` variants
-- Animated previews are pure CSS/framer-motion (no real data needed) — decorative elements that make empty states feel alive
-- Score gauges in ListingsCanvas use simple animated progress bars (framer-motion `animate={{ width }}`)
-- Platform tinting in SocialCanvas uses CSS custom properties for accent color shifts
-- No database changes required
-- No new edge functions required
-- Tool launch flow (`onLaunchTool`, `ToolActiveView`) remains unchanged
+## What Stays
+- framer-motion stagger animations (subtle, not removed)
+- Section-specific color accents (orange/emerald/indigo/violet glows)
+- The animated phone preview in campaign hero
+- Animated waveform bars in media
+- Post assembly animation in social
+- Before/after animation in listings
+- All tool launch logic unchanged
 
