@@ -11,6 +11,7 @@ import { MyAssetsDrawer } from "@/components/tools/MyAssetsDrawer";
 import { StudioSidebar } from "./StudioSidebar";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioContextPanel } from "./StudioContextPanel";
+import { CampaignControlPanel } from "./CampaignControlPanel";
 
 export type StudioSection = "campaign" | "listings" | "social" | "media" | "assets";
 
@@ -76,10 +77,11 @@ export default function StudioLayout() {
   };
 
   const sidebarWidth = sidebarCollapsed ? 56 : 200;
+  const showRightPanel = activeTool || (!activeTool && activeSection === "campaign");
 
   return (
     <div className="h-screen grid overflow-hidden" style={{
-      gridTemplateColumns: activeTool
+      gridTemplateColumns: showRightPanel
         ? `${sidebarWidth}px 1fr 320px`
         : `${sidebarWidth}px 1fr`,
     }}>
@@ -119,15 +121,23 @@ export default function StudioLayout() {
         )}
       </main>
 
-      {/* Right Context Panel — only when tool active */}
-      {activeTool && (
+      {/* Right Panel */}
+      {showRightPanel && (
         <AnimatePresence>
-          <StudioContextPanel
-            toolId={activeTool}
-            activeSection={activeSection}
-            creditBalance={creditBalance}
-            isLoadingCredits={isLoadingCredits}
-          />
+          {activeTool ? (
+            <StudioContextPanel
+              toolId={activeTool}
+              activeSection={activeSection}
+              creditBalance={creditBalance}
+              isLoadingCredits={isLoadingCredits}
+            />
+          ) : activeSection === "campaign" ? (
+            <CampaignControlPanel
+              creditBalance={creditBalance}
+              isLoadingCredits={isLoadingCredits}
+              onGenerate={() => setPromoOpen(true)}
+            />
+          ) : null}
         </AnimatePresence>
       )}
 
