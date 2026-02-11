@@ -28,6 +28,11 @@ const CONTENT_TYPES = [
   { id: "short-form-script", label: "Short-Form Script", icon: Clapperboard, desc: "TikTok/Reels/Shorts" },
 ];
 
+function isComingSoon(id: string) {
+  const entry = toolsRegistry.find(t => t.id === id);
+  return entry?.comingSoon ?? false;
+}
+
 const MOCK_HASHTAGS = ["#creator", "#digitalproducts", "#growthhack", "#sellonline", "#trending"];
 const MOCK_CAPTION = "This tool changed how I create content forever. Here's why…";
 
@@ -73,17 +78,24 @@ export function SocialCanvas({ onLaunchTool }: SocialCanvasProps) {
       {/* Content Type Shelf — no heavy borders */}
       <motion.div variants={fadeUp}>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {CONTENT_TYPES.map(ct => (
-            <button
-              key={ct.id}
-              onClick={() => onLaunchTool(ct.id)}
-              className="group relative p-5 rounded-xl text-left hover:bg-white/[0.03] transition-colors min-h-[130px]"
-            >
-              <ct.icon className="h-5 w-5 text-indigo-400/40 mb-3" />
-              <p className="text-sm font-semibold text-foreground">{ct.label}</p>
-              <p className="text-[11px] text-muted-foreground/50 mt-1">{ct.desc}</p>
-            </button>
-          ))}
+          {CONTENT_TYPES.map(ct => {
+            const comingSoon = isComingSoon(ct.id);
+            return (
+              <button
+                key={ct.id}
+                onClick={() => !comingSoon && onLaunchTool(ct.id)}
+                disabled={comingSoon}
+                className="group relative p-5 rounded-xl text-left hover:bg-white/[0.03] transition-colors min-h-[130px] disabled:opacity-50 disabled:cursor-default"
+              >
+                {comingSoon && (
+                  <span className="absolute top-3 right-3 text-[9px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full uppercase tracking-wider">Soon</span>
+                )}
+                <ct.icon className="h-5 w-5 text-indigo-400/40 mb-3" />
+                <p className="text-sm font-semibold text-foreground">{ct.label}</p>
+                <p className="text-[11px] text-muted-foreground/50 mt-1">{ct.desc}</p>
+              </button>
+            );
+          })}
         </div>
       </motion.div>
 
@@ -164,23 +176,30 @@ export function SocialCanvas({ onLaunchTool }: SocialCanvasProps) {
       <motion.div variants={fadeUp} className="space-y-4">
         <p className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider">Social Tools</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {tools.map(tool => (
-            <button
-              key={tool.id}
-              onClick={() => onLaunchTool(tool.id)}
-              className="group p-5 rounded-xl text-left hover:bg-white/[0.03] transition-colors"
-            >
-              <tool.icon className="h-5 w-5 text-indigo-400/40 mb-2" />
-              <p className="text-sm font-semibold text-foreground">{tool.name}</p>
-              <p className="text-[11px] text-muted-foreground/50 mt-1 line-clamp-2">{tool.description}</p>
-              {tool.creditCost > 0 && (
-                <div className="flex items-center gap-1 mt-2">
-                  <Zap className="h-3 w-3 text-primary/40" />
-                  <span className="text-[10px] text-muted-foreground/40">{tool.creditCost} credits</span>
-                </div>
-              )}
-            </button>
-          ))}
+          {tools.map(tool => {
+            const comingSoon = tool.comingSoon;
+            return (
+              <button
+                key={tool.id}
+                onClick={() => !comingSoon && onLaunchTool(tool.id)}
+                disabled={comingSoon}
+                className="group relative p-5 rounded-xl text-left hover:bg-white/[0.03] transition-colors disabled:opacity-50 disabled:cursor-default"
+              >
+                {comingSoon && (
+                  <span className="absolute top-3 right-3 text-[9px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full uppercase tracking-wider">Soon</span>
+                )}
+                <tool.icon className="h-5 w-5 text-indigo-400/40 mb-2" />
+                <p className="text-sm font-semibold text-foreground">{tool.name}</p>
+                <p className="text-[11px] text-muted-foreground/50 mt-1 line-clamp-2">{tool.description}</p>
+                {tool.creditCost > 0 && (
+                  <div className="flex items-center gap-1 mt-2">
+                    <Zap className="h-3 w-3 text-primary/40" />
+                    <span className="text-[10px] text-muted-foreground/40">{tool.creditCost} credits</span>
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </motion.div>
     </motion.div>
