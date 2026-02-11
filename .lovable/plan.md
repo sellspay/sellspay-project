@@ -1,80 +1,208 @@
 
 
-# Home Page Restructure + Tabbed Feature Section + Darker Theme + Orange Buttons
+# Tools Platform Overhaul: Database Foundation + 3-Tab UI Redesign
 
-## What Changes
+## Overview
 
-### 1. Reorder Home Page Sections
-Move the "Featured Assets" grid to appear AFTER "Why Creators Choose SellsPay" instead of before it.
+Transform the Tools page from a simple sidebar-based tool launcher into a real platform with three distinct surfaces (Quick Tools, Campaign Builder, Store Assistant), backed by a unified job pipeline, assets library, brand kit, and tools registry.
 
-New order:
+## Phase 1: Database Schema (New Tables)
+
+### 1. `tools_registry` -- Central tool catalog
+Defines every tool as a module with typed inputs/outputs and pricing.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | text (PK) | e.g. `sfx-generator`, `product-description` |
+| name | text | Display name |
+| category | text | `quick_tool`, `campaign`, `store_assistant` |
+| subcategory | text | `store_growth`, `social_content`, `media_creation`, `utility` |
+| icon_name | text | Lucide icon name |
+| description | text | Short description |
+| inputs_schema | jsonb | JSON Schema for tool inputs |
+| outputs_schema | jsonb | JSON Schema for tool outputs |
+| credit_cost | integer | Base credit cost per run |
+| execution_type | text | `provider_api`, `cpu_local`, `gpu_local` |
+| max_duration_seconds | integer | NULL = no limit |
+| safety_profile | text | `strict`, `normal`, `off` |
+| is_pro | boolean | Requires subscription |
+| is_active | boolean | Enabled/disabled |
+| sort_order | integer | Display ordering |
+| created_at | timestamptz | |
+
+### 2. `tool_jobs` -- Unified job pipeline
+Every tool execution becomes a tracked job with status lifecycle.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | |
+| user_id | uuid | Owner |
+| tool_id | text | FK to tools_registry |
+| status | text | `queued`, `processing`, `completed`, `failed`, `cancelled` |
+| inputs | jsonb | Snapshot of user inputs (prompt, settings, etc.) |
+| product_context | jsonb | NULL or snapshot of product data if "Use Product" was selected |
+| brand_kit_snapshot | jsonb | NULL or snapshot of brand kit at time of run |
+| credit_cost | integer | Reserved credits |
+| credit_refunded | boolean | True if auto-refunded on failure |
+| error_message | text | NULL unless failed |
+| started_at | timestamptz | |
+| completed_at | timestamptz | |
+| created_at | timestamptz | |
+
+### 3. `tool_assets` -- Every output is a reusable asset
+Generated outputs linked to jobs, products, and storefronts.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | |
+| user_id | uuid | Owner |
+| job_id | uuid | FK to tool_jobs |
+| type | text | `image`, `video`, `audio`, `text`, `file` |
+| storage_url | text | URL in storage bucket |
+| thumbnail_url | text | Auto-generated thumbnail |
+| filename | text | Original/generated filename |
+| file_size_bytes | integer | |
+| duration_seconds | numeric | For audio/video |
+| metadata | jsonb | Prompt, model, seed, aspect ratio, language, etc. |
+| product_id | uuid | NULL or linked product |
+| used_on_page | text | NULL or `hero`, `gallery`, `thumbnail` |
+| safety_flags | jsonb | `{nsfw: false, copyrighted: false}` |
+| is_favorite | boolean | User-starred |
+| created_at | timestamptz | |
+
+### 4. `brand_kits` -- Per-seller brand identity
+Extends existing `storefront_brand_profiles` with tool-specific fields.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | |
+| user_id | uuid | Owner (unique per user) |
+| logo_url | text | Primary logo |
+| logo_dark_url | text | Dark mode logo |
+| color_palette | jsonb | Array of hex colors |
+| fonts | jsonb | `{heading: "Inter", body: "System"}` |
+| brand_voice | text | Tone description/examples |
+| banned_words | text[] | Compliance/brand words to avoid |
+| target_audience | text | Niche/audience description |
+| product_categories | text[] | Types of products they sell |
+| sample_prompts | jsonb | Example prompt/output pairs for voice calibration |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+### 5. `campaign_templates` -- Multi-step workflow definitions
+Pre-built campaign workflows users can run.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid (PK) | |
+| name | text | e.g. "Product Launch Pack" |
+| description | text | |
+| steps | jsonb | Array of `{tool_id, label, auto_inputs}` |
+| category | text | `product_launch`, `social_pack`, `promo_video` |
+| estimated_credits | integer | Total cost estimate |
+| is_active | boolean | |
+| sort_order | integer | |
+| created_at | timestamptz | |
+
+### Storage
+- Create a new `tool-assets` storage bucket (public) for generated outputs
+
+### RLS Policies
+- All new tables: users can only read/write their own rows (`user_id = auth.uid()`)
+- `tools_registry` and `campaign_templates`: public read, admin-only write
+- `tool-assets` bucket: authenticated users can upload/read their own files
+
+### Realtime
+- Enable realtime on `tool_jobs` so the UI can show live status updates during processing
+
+## Phase 2: Tools Page UI Redesign
+
+### New Layout: 3-Tab Architecture
+
+Replace the current sidebar + detail view with a full-page tabbed interface.
+
 ```text
-Hero
-Sliding Banner
-NEW: Tabbed Feature Bar (right under hero)
-AI Tools Reveal (card panels)
-AI Studio Promo
-Value Props ("Why creators choose SellsPay")
-Featured Assets (moved down here)
-Featured Creators
++--------------------------------------------------+
+|  AI Studio                        [Credits: 450]  |
+|--------------------------------------------------|
+|  [Quick Tools]  [Campaigns]  [Store Assistant]    |
+|--------------------------------------------------|
+|                                                   |
+|   (Tab content below)                             |
+|                                                   |
++--------------------------------------------------+
 ```
 
-### 2. New Tabbed Feature Section (Under Hero)
-Inspired by the Kling-style bottom navigation bar from the reference image. A horizontal row of feature buttons where clicking each one changes the displayed content (title, description, and image/video preview).
+### Tab 1: Quick Tools (Single-shot generators)
+Grid of tool cards organized by subcategory:
 
-Features to showcase:
-- **Marketplace** -- Browse and sell digital assets
-- **Image Generation** -- AI-powered product visuals
-- **Video Generation** -- Text-to-video and image-to-video tools
-- **Audio Tools** -- SFX, voice isolation, music splitting
-- **AI Storefront** -- Build your creator page with AI
+- **Store Growth**: Product description generator, Thumbnail generator, Sales page sections, Upsell/bundle suggestions
+- **Social Content**: "10 posts from product", Short-form script generator, Caption + hashtags pack, Carousel generator
+- **Media Creation**: SFX Generator, Voice Isolator, SFX Isolator, Music Splitter, TTS Voiceover
+- **Creator Utility**: Background remover, Upscaler, Audio cleanup, Subtitle generator, Audio Cutter, Audio Joiner, Audio Converter, Audio Recorder, Video to Audio, Waveform Generator
 
-Each tab shows a title, description paragraph, feature tags, and a large preview image on the right side -- matching the "Product Features" layout from image 1.
+Each card shows: icon, name, credit cost badge (or "Free"), short description, "Launch" button.
 
-### 3. Darker Background
-Currently `--background: 0 0% 4%` (very dark gray). Will darken it to `0 0% 2.5%` and adjust `--card` from `0 0% 7%` to `0 0% 5%`, `--secondary` from `20 5% 12%` to `20 5% 9%`, and other surface tokens proportionally. This makes the entire site noticeably darker without going pure black.
+### Tab 2: Campaigns (Multi-step workflows)
+Shows pre-built campaign templates as large cards:
 
-### 4. Orange Outlined Buttons (Like Image 2)
-The second reference shows rounded pill buttons with colored outlines and arrows. Instead of green, we use the existing orange/coral primary color. Create a new utility class or update button styling to support this look: rounded-full, border-primary, with arrow icons and transparent backgrounds.
+- **Product Launch Pack**: Extract benefits -> Generate hooks -> Scripts -> Voiceover -> Captions -> Export
+- **Social Content Pack**: Pick product -> Generate 10 posts -> Carousel images -> Caption pack
+- **Promo Video Builder**: Product images + captions + voiceover + transitions
 
----
+Each campaign card shows: step count, estimated credits, products required, "Start Campaign" button.
+(Campaign execution is a future feature; this tab shows the templates and a "Coming Soon" state for the actual runner.)
 
-## Technical Details
+### Tab 3: Store Assistant (Storefront-modifying tools)
+Tools that directly update the seller's storefront:
 
-### Files to Modify
+- Generate hero section
+- Rewrite copy in brand voice
+- Create FAQ from product
+- Generate SEO landing page
+- Generate bundles/upsells
 
-| File | Change |
-|------|--------|
-| `src/pages/Home.tsx` | Reorder sections: move `MassiveProductGrid` below `ValueProps`. Add new `FeatureTabsBar` component. |
-| `src/index.css` | Darken CSS custom properties: `--background`, `--card`, `--secondary`, `--muted`, `--accent`, `--border`, `--input` |
-| `src/components/home/FeatureTabsBar.tsx` | **NEW FILE** -- Tabbed section with 5 feature categories, each with title, description, tags, and preview image. Horizontal scrollable button row on mobile. |
+Each shows a description and "Run" button. These connect to the existing storefront vibecoder system.
 
-### New Component: FeatureTabsBar
-- Horizontal row of 5-6 feature buttons (pill-shaped, orange outline, with icons and arrows)
-- Active button gets filled orange background
-- Content area below shows: left side = title + description + tag chips + "Learn More" link; right side = large preview image
-- Smooth fade transition between tabs
-- Responsive: buttons scroll horizontally on mobile, content stacks vertically
+### Shared UI Elements
+- **Source Selector**: Toggle at top of every generator between "Blank" and "Use Product" (opens product picker)
+- **Brand Kit Toggle**: Checkbox "Use my Brand Kit" that injects brand context into prompts
+- **Credit Estimator**: Shows cost before running
+- **Asset Output Panel**: After generation, shows quick actions: "Set as product thumbnail", "Add to gallery", "Download", "Generate more"
 
-### CSS Variable Changes
-```css
---background: 0 0% 2.5%;     /* was 4% */
---card: 0 0% 5%;              /* was 7% */
---secondary: 20 5% 9%;        /* was 12% */
---muted: 20 5% 10%;           /* was 14% */
---accent: 20 10% 9%;          /* was 12% */
---border: 20 5% 12%;          /* was 16% */
---input: 20 5% 12%;           /* was 16% */
---sidebar-background: 0 0% 3.5%; /* was 5% */
---sidebar-accent: 20 5% 9%;     /* was 12% */
---sidebar-border: 20 5% 10%;    /* was 14% */
-```
+### My Assets (Sub-section)
+Accessible from a "My Assets" button in the header area. Shows a filterable grid of all generated assets with:
+- Type filter (image/audio/video/text)
+- Tool filter
+- Product link filter
+- Favorite/star toggle
+- Bulk download
 
-### Button Style
-Add a `.btn-feature-tab` class for the Kling-style buttons:
-- `rounded-full` pill shape
-- `border border-primary/60` orange outline
-- Transparent background by default, `bg-primary text-white` when active
-- Arrow icon on the right side
-- Icon on the left for each feature
+## Phase 3: Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| Migration SQL | Create | All 5 new tables + storage bucket + RLS + realtime |
+| `src/pages/Tools.tsx` | Rewrite | 3-tab layout with Quick Tools / Campaigns / Store Assistant |
+| `src/components/tools/QuickToolsGrid.tsx` | New | Categorized grid of single-shot tool cards |
+| `src/components/tools/CampaignsGrid.tsx` | New | Campaign template cards with step previews |
+| `src/components/tools/StoreAssistantGrid.tsx` | New | Storefront-modifying tool cards |
+| `src/components/tools/ToolCard.tsx` | New | Reusable tool card component with icon, cost, launch button |
+| `src/components/tools/SourceSelector.tsx` | New | "Blank" / "Use Product" toggle + product picker |
+| `src/components/tools/BrandKitToggle.tsx` | New | Checkbox that injects brand context |
+| `src/components/tools/AssetOutputPanel.tsx` | New | Post-generation quick actions panel |
+| `src/components/tools/MyAssetsDrawer.tsx` | New | Filterable assets library drawer/modal |
+| `src/components/tools/CreditEstimator.tsx` | New | Pre-run cost display |
+| `src/components/tools/toolsRegistry.ts` | New | Client-side tool definitions matching tools_registry table |
+| `src/components/tools/ToolShowcase.tsx` | Keep | Still used for detail view when launching a tool |
+| `src/components/tools/ToolActiveView.tsx` | Keep | Still used for running tools |
+| `src/components/tools/toolsData.ts` | Extend | Add new tool entries for store growth, social, utility tools |
+
+## What This Does NOT Include (Future Phases)
+
+- Actual AI implementation for new tools (product description generator, etc.) -- just the UI cards with "Coming Soon" for tools that don't have a backend yet
+- Campaign execution engine (the runner that chains tool_jobs) -- templates are shown but execution is v1.5
+- GPU worker infrastructure -- all tools continue using provider APIs
+- Abuse/moderation system -- noted in schema via `safety_flags` but no enforcement layer yet
+- Analytics dashboard widget ("Content created this week") -- future addition
 
