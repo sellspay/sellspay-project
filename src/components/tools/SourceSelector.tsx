@@ -142,6 +142,56 @@ export function SourceSelector({
         </div>
       </div>
 
+      {/* Selected Product Display */}
+      {mode === "product" && hasSelection && (
+        <div className="space-y-2">
+          {multiSelect ? (
+            selectedProducts.map((p) => (
+              <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">
+                {p.cover_image_url ? (
+                  <img src={p.cover_image_url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
+                  {p.price_cents != null && (
+                    <p className="text-xs text-muted-foreground">${(p.price_cents / 100).toFixed(2)} {p.currency?.toUpperCase()}</p>
+                  )}
+                </div>
+                <button onClick={() => onProductsChange?.(selectedProducts.filter((s) => s.id !== p.id))} className="shrink-0 p-1 rounded hover:bg-white/[0.08] transition-colors">
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            ))
+          ) : selectedProduct ? (
+            <div className="flex items-center gap-3 p-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">
+              {selectedProduct.cover_image_url ? (
+                <img src={selectedProduct.cover_image_url} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+              ) : (
+                <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground truncate">{selectedProduct.name}</p>
+                {selectedProduct.price_cents != null && (
+                  <p className="text-xs text-muted-foreground">${(selectedProduct.price_cents / 100).toFixed(2)} {selectedProduct.currency?.toUpperCase()}</p>
+                )}
+              </div>
+              <button onClick={() => openPicker()} className="shrink-0 text-[10px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-white/[0.08]">
+                Change
+              </button>
+              <button onClick={clearAll} className="shrink-0 p-1 rounded hover:bg-white/[0.08] transition-colors">
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {/* Product Picker Dialog */}
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="max-w-md">
