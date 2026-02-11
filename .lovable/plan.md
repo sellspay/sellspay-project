@@ -1,106 +1,144 @@
 
 
-# AI Studio 3.0 — Creator War Machine
+# AI Studio 3.0 — Signature Canvas Overhaul
 
-Transform the current scrolling page into an immersive full-studio workspace layout with a sidebar, central creative canvas, and dynamic context panels.
+Give each workspace section a unique visual identity, layout structure, and content depth so no two tabs feel the same.
 
 ---
 
-## Architecture: Three-Panel Workspace
+## Overview
 
-The `/tools` page gets a completely new layout structure:
+The current `StudioHomeView` renders the same layout for every section: stat bar, hero card, tool grid, recent creations. This plan replaces that with **section-specific canvas components**, each with a unique layout, preview type, and content layers.
 
+---
+
+## Architecture Change
+
+Currently:
 ```text
-+------------------+-----------------------------------+---------------------+
-|                  |                                   |                     |
-|   LEFT SIDEBAR   |        CENTER CANVAS              |   RIGHT PANEL       |
-|   (Navigation)   |        (Creative Area)            |   (Context Engine)  |
-|                  |                                   |                     |
-|   Promo Studio   |   Large preview / generation      |   Product selector  |
-|   Store Optimizer|   area with visual proof           |   Style controls    |
-|   Social Factory |                                   |   Platform picker   |
-|   Media Lab      |   Recent creations feed           |   Credit estimator  |
-|   Campaigns      |   when no tool active             |   Brand kit toggle  |
-|   Assets         |                                   |                     |
-|                  |                                   |                     |
-+------------------+-----------------------------------+---------------------+
+StudioCanvas -> StudioHomeView (same layout for all sections)
 ```
 
+New:
+```text
+StudioCanvas -> routes to one of:
+  - CampaignCanvas    (home / promo studio)
+  - ListingsCanvas    (upgrade listings)
+  - SocialCanvas      (social factory)
+  - MediaCanvas       (media lab)
+```
+
+Each canvas has 3 content layers:
+1. **Tool Interface** (unique layout per section)
+2. **Example Outputs** (animated previews, before/after, mocks)
+3. **Contextual Intelligence** (scores, tips, suggestions)
+
 ---
 
-## What Changes
+## New Components
 
-### 1. New Layout Shell (`StudioLayout.tsx`)
-- Full-height (`h-screen`) three-panel layout using CSS grid
-- Left sidebar: 64px collapsed / 240px expanded (icon-only mini mode with expand toggle)
-- Center canvas: flexible, takes remaining space
-- Right panel: 320px, appears contextually when a tool is active
-- Dark glassmorphism aesthetic throughout
+### 1. `CampaignCanvas.tsx` — Promo Studio (Home)
 
-### 2. New Left Sidebar (`StudioSidebar.tsx`)
-Replaces the old `ToolsSidebarNav.tsx` concept with a workspace-grade navigation:
-- **Sections** (icon + label, collapsible to icon-only):
-  - **Launch Campaign** (flame icon) -- opens Promo Studio (flagship)
-  - **Upgrade Listings** (trending-up icon) -- Store Optimizer tools
-  - **Social Factory** (share icon) -- Content generation tools
-  - **Media Lab** (audio-lines icon) -- Audio/media utilities
-  - **My Assets** (layers icon) -- Opens asset drawer
-- Active item gets primary accent glow + left border indicator
-- Bottom: Credit gauge (mini fuel bar showing remaining credits)
-- Collapsed state: just icons, hover tooltip for labels
+**Energy**: Viral, cinematic, high contrast
 
-### 3. New Center Canvas (`StudioCanvas.tsx`)
-The main stage. Two modes:
+**Layout**:
+- **Hero strip** (260px): Left headline "AI Studio / Launch. Create. Optimize." + right animated preview stack (vertical promo frame, carousel slide, thumbnail before/after cycling via framer-motion)
+- **Featured Actions** (2x2 grid, 220px tall cards): Launch Promo, Create Carousel, Upgrade Image, Optimize Listing — each with a visual background gradient, not just an icon
+- **Trending Hooks** shelf: Horizontal scroll of 6 mock hook cards (auto-rotating text like "Stop scrolling...", "You're losing money if...", "This hack changed everything...") showing the kind of output the promo generator creates
+- **Recent Creations** gallery (reuse existing component)
+- **Recommended Next Steps**: Dynamic suggestions based on counts (e.g., "Create your first promo" if generationCount === 0, "Upgrade a listing" if productCount > 0 but no optimized descriptions)
 
-**A) Home Mode (no tool selected):**
-- Top: Compact greeting bar with stat strip (Products | Assets | Generated | Credits)
-- Main area: "Launch Campaign" hero card -- large, cinematic, single focus
-  - Product thumbnail transformation animation
-  - "Deploy" button (replaces "Generate")
-  - Quick prompt input
-- Below: Recent Creations horizontal gallery (live feed of generated assets)
-- Below: Outcome quick-launch cards in a 2x2 grid (Grow Store / Social / Media / Campaigns) -- compact, not full sections
+### 2. `ListingsCanvas.tsx` — Store Optimizer
 
-**B) Tool Active Mode:**
-- Full canvas area dedicated to the tool
-- ToolActiveView renders here (stripped of its own hero banner since the sidebar provides navigation context)
-- Tool hero banner becomes a slim top bar (tool name + back button + credits)
+**Energy**: Analytical, conversion-focused, strategic
 
-### 4. New Right Context Panel (`StudioContextPanel.tsx`)
-Only visible when a tool is active. Slides in from right.
-- **Product Context**: Selected product card with thumbnail, name, price, tags
-- **Creative Controls** (contextual per tool type):
-  - Promo: Style cards (Hype/UGC/Educational/Premium/Direct Response/Minimal), Platform picker (TikTok/Reels/Shorts), Duration segmented control, Direction text box
-  - Store tools: Before/after toggle, SEO score display
-  - Media tools: Format selector, quality settings
-- **Brand Kit Toggle**
-- **Credit Estimator** with "Deploy" / "Launch" button at bottom
-- Moderation banner appears inline here
+**Layout**:
+- **Score Header** (full width bar): Animated gauges showing Clarity, Trust, SEO, CTA Strength — starts with placeholder values, feels like a performance dashboard
+- **Split Preview Area**: Left = "Current Listing" mock (grey, plain text), Right = "Optimized" mock (highlighted improvements, badges). Uses a subtle slide animation between states
+- **Quick Actions Row**: Pill buttons — "Improve Headline", "Add FAQ", "Strengthen CTA", "Add Urgency", "Optimize for SEO"
+- **Tools Grid** below: The actual listing tools (product-description, sales-page-sections, upsell-suggestions, generate-hero, rewrite-brand-voice, create-faq, seo-landing-page) rendered as compact cards
+- No flagship promo card — completely different vibe
 
-### 5. Language/Copy Upgrades
-Throughout the UI:
-- "Generate" becomes **"Deploy"**
-- "Create Promo Video" becomes **"Launch Campaign"**
-- "Optimize My Store" becomes **"Upgrade Listings"**
-- "Coming Soon" badges **removed entirely** (hide unready tools instead)
-- Section emojis removed, replaced with subtle icon accents
-- Post-generation: show heuristic scores (Engagement: High, Hook Score: 8.4, CTA Strength: Strong)
+### 3. `SocialCanvas.tsx` — Social Factory
 
-### 6. Post-Generation Intelligence Card (`GenerationScoreCard.tsx`)
-After any generation completes, show a results card:
-- **Projected Engagement**: High / Medium / Low (heuristic based on hook length, CTA presence)
-- **Hook Score**: 1-10 (based on word count, power words, question format)
-- **CTA Strength**: Strong / Medium / Weak
-- Quick actions: Download, Copy Caption, Set as Promo, Create 5 Variations, Generate 10 Posts
+**Energy**: Structured storytelling, swipe-based
 
-### 7. Visual Style Upgrades
-- Sidebar: `bg-[hsl(0_0%_3%)]` with `border-r border-white/[0.06]`
-- Canvas: `bg-background` with subtle radial gradient glow behind active content
-- Context panel: `bg-card/60 backdrop-blur-xl border-l border-white/[0.06]`
-- Cards: 12px radius, `hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10`
-- Active sidebar item: left-2 primary border + `bg-primary/8` background
-- Primary buttons: `.btn-premium` pill-shaped with gradient
-- Micro-animations: framer-motion for panel slide-in/out, card hover lift, canvas content fade transitions
+**Layout**:
+- **Platform Strip**: Large segmented control (TikTok / Instagram / YouTube / Twitter) at top — selecting one subtly tints the canvas
+- **Content Type Shelf**: Horizontal scroll of content format cards (Carousel, Caption Pack, 10 Posts, Short-Form Script, Hook Generator) — each card shows a mini animated preview of the output type (e.g., carousel shows stacked slides, caption shows text with hashtags)
+- **Canvas Area**: When no tool selected, shows an animated mock of a social post being assembled — text appearing, hashtags flying in, engagement metrics counting up
+- **Tools Grid** below for social_content tools
+
+### 4. `MediaCanvas.tsx` — Media Lab
+
+**Energy**: Clean waveform, audio-focused
+
+**Layout**:
+- **Waveform Hero**: Large animated waveform visualization spanning full width (CSS animation, no real audio needed — decorative sine wave pattern)
+- **Tool Categories** in two rows:
+  - Row 1 "AI-Powered": SFX Generator, Voice Isolator, SFX Isolator, Music Splitter (larger cards with gradient backgrounds)
+  - Row 2 "Utilities": Audio Cutter, Joiner, Converter, Recorder, Video to Audio, Waveform Generator (compact, smaller cards)
+- Each card shows the tool's unique visual identity (waveform icon, stem visualization, etc.) instead of generic icons
+- Active tools (with legacyRoute) get a prominent "Launch" button; coming-soon tools are hidden entirely
+
+---
+
+## Modified Components
+
+### `StudioCanvas.tsx`
+- Replace single `StudioHomeView` render with a switch on `activeSection`:
+  - `campaign` -> `CampaignCanvas`
+  - `listings` -> `ListingsCanvas`
+  - `social` -> `SocialCanvas`
+  - `media` -> `MediaCanvas`
+- Pass through all existing props (stats, handlers, tools)
+
+### `StudioHomeView.tsx`
+- No longer used directly by StudioCanvas — its content is absorbed into `CampaignCanvas`
+- Keep file for reference but it won't be rendered
+
+### `StudioContextPanel.tsx`
+- Add section-aware content: when `activeSection` is "listings", show SEO score preview; when "social", show platform selector; when "media", show format/quality controls
+- Pass `activeSection` from `StudioLayout`
+
+### `StudioLayout.tsx`
+- Pass `activeSection` to `StudioContextPanel`
+- Right panel now also appears for section views (not just active tools), but with section-specific context instead of tool-specific context
+
+### `StudioSidebar.tsx`
+- No structural changes, just ensure active state highlights correctly when switching between the new canvases
+
+---
+
+## Visual Identity Per Section
+
+| Section | Background Accent | Preview Type | Motion Style |
+|---------|------------------|--------------|--------------|
+| Campaign | Warm orange radial glow | Vertical phone frame, auto-cycling hooks | Fast, energetic fade-ins |
+| Listings | Cool emerald/teal tint | Split before/after comparison | Smooth analytical transitions |
+| Social | Blue/indigo platform tint | Stacked card carousel animation | Swipe-like horizontal motion |
+| Media | Purple/violet waveform | Animated sine wave hero | Pulsing, rhythmic motion |
+
+---
+
+## Animated Empty States
+
+Each canvas has an animated idle state instead of blank space:
+- **Campaign**: Mock phone with rotating hook text + caption overlay
+- **Listings**: Typewriter effect showing a product description being rewritten
+- **Social**: Post card assembling itself (text, image, hashtags appearing sequentially)
+- **Media**: Waveform pulsing gently with "Drop audio to begin" prompt
+
+---
+
+## Recommended Next Steps (Intelligence Layer)
+
+Added to `CampaignCanvas` bottom:
+- Dynamic cards based on user data:
+  - `productCount === 0`: "Add your first product to unlock AI tools"
+  - `generationCount === 0`: "Create your first promo — it takes 30 seconds"
+  - `assetCount > 0 && generationCount < 5`: "You have assets! Try generating a carousel"
+- Each recommendation card has a CTA button that routes to the appropriate tool
 
 ---
 
@@ -108,39 +146,39 @@ After any generation completes, show a results card:
 
 | File | Purpose |
 |------|---------|
-| `src/components/tools/studio/StudioLayout.tsx` | Three-panel grid shell |
-| `src/components/tools/studio/StudioSidebar.tsx` | Left navigation sidebar |
-| `src/components/tools/studio/StudioCanvas.tsx` | Center creative canvas (home + active modes) |
-| `src/components/tools/studio/StudioContextPanel.tsx` | Right context/controls panel |
-| `src/components/tools/studio/GenerationScoreCard.tsx` | Post-gen heuristic scores |
-| `src/components/tools/studio/StudioHomeView.tsx` | Home canvas content (hero card + recent + quick launch) |
+| `src/components/tools/studio/CampaignCanvas.tsx` | Home/Promo studio with hero, featured actions, trending hooks, recommendations |
+| `src/components/tools/studio/ListingsCanvas.tsx` | Analytical optimizer with score header, split preview, quick actions |
+| `src/components/tools/studio/SocialCanvas.tsx` | Platform-aware content factory with format shelf and animated post mock |
+| `src/components/tools/studio/MediaCanvas.tsx` | Audio-focused lab with waveform hero and tiered tool grid |
 
 ## Files Modified
 
 | File | Changes |
 |------|---------|
-| `src/pages/Tools.tsx` | Rewrite to render `StudioLayout` instead of scrolling sections |
-| `src/components/tools/ToolActiveView.tsx` | Strip hero banner, adapt for embedded canvas mode |
-| `src/components/tools/studio/StudioHero.tsx` | Repurposed into compact canvas hero card |
-| `src/components/tools/studio/FlagshipPromo.tsx` | Integrated into canvas home view |
-| `src/components/tools/studio/RecentCreations.tsx` | Minor style tweaks for canvas context |
+| `src/components/tools/studio/StudioCanvas.tsx` | Switch on activeSection to render section-specific canvas |
+| `src/components/tools/studio/StudioContextPanel.tsx` | Add activeSection prop, render section-aware controls |
+| `src/components/tools/studio/StudioLayout.tsx` | Pass activeSection to context panel, show right panel for sections too |
 
-## Files No Longer Rendered (kept for reference)
+## Files Retired (kept, no longer rendered)
 
 | File | Reason |
-|------|--------|
-| `CreatorControlStrip.tsx` | Stats moved to sidebar bottom + canvas top bar |
-| `OutcomeSection.tsx` / `OutcomeCard.tsx` | Replaced by compact quick-launch grid in canvas |
-| `MediaUtilityGrid.tsx` | Tools accessed via sidebar "Media Lab" section |
+|------|---------|
+| `StudioHomeView.tsx` | Content absorbed into CampaignCanvas |
+| `FlagshipPromo.tsx` | Integrated into CampaignCanvas hero |
+| `StudioHero.tsx` | Replaced by CampaignCanvas hero strip |
+| `OutcomeSection.tsx` / `OutcomeCard.tsx` | Replaced by section-specific cards |
+| `MediaUtilityGrid.tsx` | Replaced by MediaCanvas tiered grid |
+| `CreatorControlStrip.tsx` | Stats in CampaignCanvas stat bar |
 
 ---
 
 ## Technical Notes
 
-- Three-panel layout uses `grid grid-cols-[auto_1fr_auto]` with framer-motion AnimatePresence for right panel
-- Sidebar collapse state stored in localStorage for persistence
+- All new canvases use framer-motion with section-specific `stagger` and `fadeUp` variants
+- Animated previews are pure CSS/framer-motion (no real data needed) — decorative elements that make empty states feel alive
+- Score gauges in ListingsCanvas use simple animated progress bars (framer-motion `animate={{ width }}`)
+- Platform tinting in SocialCanvas uses CSS custom properties for accent color shifts
 - No database changes required
 - No new edge functions required
-- All existing tool launch logic (`handleLaunch`, `ToolActiveView`, `PromoVideoBuilder`) stays intact -- just re-housed in the new layout
-- Mobile: sidebar collapses to bottom tab bar, context panel becomes a bottom sheet
+- Tool launch flow (`onLaunchTool`, `ToolActiveView`) remains unchanged
 
