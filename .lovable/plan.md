@@ -1,110 +1,146 @@
 
 
-# AI Studio 2.0 — Complete UI Overhaul
+# AI Studio 3.0 — Creator War Machine
 
-This plan covers two changes: (A) moving the Usage Analytics widget to the Dashboard page, and (B) a full cinematic redesign of the AI Studio (/tools) page.
-
----
-
-## Part A: Move Usage Analytics to Dashboard
-
-Remove `UsageAnalyticsWidget` from `Tools.tsx` and add it as a new section at the bottom of `Dashboard.tsx`, after the Conversion Funnel card.
-
-**Files changed:**
-- `src/pages/Tools.tsx` — Remove the analytics import and section
-- `src/pages/Dashboard.tsx` — Import and render `UsageAnalyticsWidget` after the conversion funnel
+Transform the current scrolling page into an immersive full-studio workspace layout with a sidebar, central creative canvas, and dynamic context panels.
 
 ---
 
-## Part B: AI Studio 2.0 — Cinematic Redesign
+## Architecture: Three-Panel Workspace
 
-Replace the current tab-based grid layout with a revenue-focused, visually hierarchical page.
+The `/tools` page gets a completely new layout structure:
 
-### New Page Structure (top to bottom):
+```text
++------------------+-----------------------------------+---------------------+
+|                  |                                   |                     |
+|   LEFT SIDEBAR   |        CENTER CANVAS              |   RIGHT PANEL       |
+|   (Navigation)   |        (Creative Area)            |   (Context Engine)  |
+|                  |                                   |                     |
+|   Promo Studio   |   Large preview / generation      |   Product selector  |
+|   Store Optimizer|   area with visual proof           |   Style controls    |
+|   Social Factory |                                   |   Platform picker   |
+|   Media Lab      |   Recent creations feed           |   Credit estimator  |
+|   Campaigns      |   when no tool active             |   Brand kit toggle  |
+|   Assets         |                                   |                     |
+|                  |                                   |                     |
++------------------+-----------------------------------+---------------------+
+```
 
-**1. Hero Section (70-80vh, cinematic)**
-- Dark gradient background with animated glow accents
-- Left side: Large headline "AI Studio" with subtext "Create. Market. Sell. All in one place." + two CTA buttons ("Create Promo Video" as primary, "Optimize My Store" as secondary)
-- Below buttons: live stat strip showing product count, asset count, credit balance (fetched from DB)
-- Right side: Animated vertical phone-frame video preview mockup with auto-playing visual (CSS/framer-motion animation showing a thumbnail-to-promo transformation loop)
+---
 
-**2. Flagship Tool Block — Short-Form Promo Generator**
-- Large cinematic card (not a small grid tile)
-- Dark gradient background with subtle animated grid pattern
-- Left: "Use Product" selector + quick prompt input + "Generate" button (opens PromoVideoBuilder)
-- Right: Large vertical video preview placeholder with glowing border
-- This is the primary revenue engine, visually dominant
+## What Changes
 
-**3. Creator Control Strip**
-- Thin glassmorphism bar spanning full width
-- Shows real-time stats: Products | Assets | Content Generated | Credits
-- Fetched from DB (products count, tool_assets count, ai_usage_logs count, wallet balance)
+### 1. New Layout Shell (`StudioLayout.tsx`)
+- Full-height (`h-screen`) three-panel layout using CSS grid
+- Left sidebar: 64px collapsed / 240px expanded (icon-only mini mode with expand toggle)
+- Center canvas: flexible, takes remaining space
+- Right panel: 320px, appears contextually when a tool is active
+- Dark glassmorphism aesthetic throughout
 
-**4. Outcome-Based Sections (replacing old tab grids)**
+### 2. New Left Sidebar (`StudioSidebar.tsx`)
+Replaces the old `ToolsSidebarNav.tsx` concept with a workspace-grade navigation:
+- **Sections** (icon + label, collapsible to icon-only):
+  - **Launch Campaign** (flame icon) -- opens Promo Studio (flagship)
+  - **Upgrade Listings** (trending-up icon) -- Store Optimizer tools
+  - **Social Factory** (share icon) -- Content generation tools
+  - **Media Lab** (audio-lines icon) -- Audio/media utilities
+  - **My Assets** (layers icon) -- Opens asset drawer
+- Active item gets primary accent glow + left border indicator
+- Bottom: Credit gauge (mini fuel bar showing remaining credits)
+- Collapsed state: just icons, hover tooltip for labels
 
-Section: "Grow My Store" (3 large cinematic cards)
-- Product Optimizer (product-description tool)
-- Sales Page Builder (sales-page-sections tool)
-- Bundle and Upsell Creator (upsell-suggestions tool)
-- Each card: dark gradient, visual preview area, title, 1-line benefit, hover glow + lift animation
+### 3. New Center Canvas (`StudioCanvas.tsx`)
+The main stage. Two modes:
 
-Section: "Create Marketing Content" (4 cards showing output visuals)
-- Carousel Generator
-- Hook and Script Generator (short-form-script)
-- Caption Pack (caption-hashtags)
-- 10 Posts from Product (social-posts-pack)
-- Each card shows a mock output visual (not just an icon)
+**A) Home Mode (no tool selected):**
+- Top: Compact greeting bar with stat strip (Products | Assets | Generated | Credits)
+- Main area: "Launch Campaign" hero card -- large, cinematic, single focus
+  - Product thumbnail transformation animation
+  - "Deploy" button (replaces "Generate")
+  - Quick prompt input
+- Below: Recent Creations horizontal gallery (live feed of generated assets)
+- Below: Outcome quick-launch cards in a 2x2 grid (Grow Store / Social / Media / Campaigns) -- compact, not full sections
 
-Section: "Media Utilities" (smaller clean grid, 2 rows)
-- SFX Generator, Voice Isolator, Music Splitter, Audio Cutter, etc.
-- Compact cards, supportive weight — not hero-sized
+**B) Tool Active Mode:**
+- Full canvas area dedicated to the tool
+- ToolActiveView renders here (stripped of its own hero banner since the sidebar provides navigation context)
+- Tool hero banner becomes a slim top bar (tool name + back button + credits)
 
-**5. Recent Creations Section**
-- Horizontal scrolling gallery of the user's most recent generated assets
-- Fetched from `tool_assets` table (latest 12, images show thumbnails, audio/video show type icons)
-- Makes the page feel alive and personalized
+### 4. New Right Context Panel (`StudioContextPanel.tsx`)
+Only visible when a tool is active. Slides in from right.
+- **Product Context**: Selected product card with thumbnail, name, price, tags
+- **Creative Controls** (contextual per tool type):
+  - Promo: Style cards (Hype/UGC/Educational/Premium/Direct Response/Minimal), Platform picker (TikTok/Reels/Shorts), Duration segmented control, Direction text box
+  - Store tools: Before/after toggle, SEO score display
+  - Media tools: Format selector, quality settings
+- **Brand Kit Toggle**
+- **Credit Estimator** with "Deploy" / "Launch" button at bottom
+- Moderation banner appears inline here
 
-### Visual Style Rules
-- Deep charcoal backgrounds with warm gradient highlights (orange/coral accent from existing theme)
-- Glassmorphism panels with `bg-white/5 backdrop-blur-xl border border-white/10`
-- Cards: 12px radius, soft outer glow on hover (`shadow-xl shadow-primary/10`), subtle lift (`hover:-translate-y-1`)
-- Motion: framer-motion for section fade-in, card hover lift, hero parallax-like entrance
-- Primary buttons: pill-shaped with gradient background (charcoal to orange), `::before` highlight
-- No "Quick Tools" label, no "Coming Soon" spam on the main page, no equal-weight grids
+### 5. Language/Copy Upgrades
+Throughout the UI:
+- "Generate" becomes **"Deploy"**
+- "Create Promo Video" becomes **"Launch Campaign"**
+- "Optimize My Store" becomes **"Upgrade Listings"**
+- "Coming Soon" badges **removed entirely** (hide unready tools instead)
+- Section emojis removed, replaced with subtle icon accents
+- Post-generation: show heuristic scores (Engagement: High, Hook Score: 8.4, CTA Strength: Strong)
 
-### New Components Created
-- `src/components/tools/studio/StudioHero.tsx` — Hero section with CTAs and stat strip
-- `src/components/tools/studio/FlagshipPromo.tsx` — Large promo generator block
-- `src/components/tools/studio/CreatorControlStrip.tsx` — Thin stats bar
-- `src/components/tools/studio/OutcomeSection.tsx` — Reusable section wrapper (title + cards)
-- `src/components/tools/studio/OutcomeCard.tsx` — Large cinematic tool card with visual preview area
-- `src/components/tools/studio/MediaUtilityGrid.tsx` — Compact utility tools grid
-- `src/components/tools/studio/RecentCreations.tsx` — Horizontal asset gallery
+### 6. Post-Generation Intelligence Card (`GenerationScoreCard.tsx`)
+After any generation completes, show a results card:
+- **Projected Engagement**: High / Medium / Low (heuristic based on hook length, CTA presence)
+- **Hook Score**: 1-10 (based on word count, power words, question format)
+- **CTA Strength**: Strong / Medium / Weak
+- Quick actions: Download, Copy Caption, Set as Promo, Create 5 Variations, Generate 10 Posts
 
-### Files Modified
-- `src/pages/Tools.tsx` — Complete rewrite of the page layout (hero, flagship, sections, recent creations). Still handles `activeTool` state for launching tools via `ToolActiveView`.
-- `src/pages/Dashboard.tsx` — Add UsageAnalyticsWidget import and render
+### 7. Visual Style Upgrades
+- Sidebar: `bg-[hsl(0_0%_3%)]` with `border-r border-white/[0.06]`
+- Canvas: `bg-background` with subtle radial gradient glow behind active content
+- Context panel: `bg-card/60 backdrop-blur-xl border-l border-white/[0.06]`
+- Cards: 12px radius, `hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10`
+- Active sidebar item: left-2 primary border + `bg-primary/8` background
+- Primary buttons: `.btn-premium` pill-shaped with gradient
+- Micro-animations: framer-motion for panel slide-in/out, card hover lift, canvas content fade transitions
 
-### What Gets Removed
-- Old 3-tab layout (Quick Tools / Campaigns / Store Assistant tabs)
-- `QuickToolsGrid` and `StoreAssistantGrid` are no longer rendered on the main page (components kept for potential reuse)
-- "Coming Soon" badges on the main page cards
-- Equal-weight grid layout
+---
 
-### What Stays
-- `ToolActiveView` — still used when a tool is launched
-- `MyAssetsDrawer` — moved into the hero section header
-- `CampaignsGrid` — campaigns are accessible via the "Create Marketing Content" section or the Flagship block
-- `PromoVideoBuilder` — launched from the Flagship block
-- `toolsRegistry` — still the source of truth for tool metadata
+## Files Created
+
+| File | Purpose |
+|------|---------|
+| `src/components/tools/studio/StudioLayout.tsx` | Three-panel grid shell |
+| `src/components/tools/studio/StudioSidebar.tsx` | Left navigation sidebar |
+| `src/components/tools/studio/StudioCanvas.tsx` | Center creative canvas (home + active modes) |
+| `src/components/tools/studio/StudioContextPanel.tsx` | Right context/controls panel |
+| `src/components/tools/studio/GenerationScoreCard.tsx` | Post-gen heuristic scores |
+| `src/components/tools/studio/StudioHomeView.tsx` | Home canvas content (hero card + recent + quick launch) |
+
+## Files Modified
+
+| File | Changes |
+|------|---------|
+| `src/pages/Tools.tsx` | Rewrite to render `StudioLayout` instead of scrolling sections |
+| `src/components/tools/ToolActiveView.tsx` | Strip hero banner, adapt for embedded canvas mode |
+| `src/components/tools/studio/StudioHero.tsx` | Repurposed into compact canvas hero card |
+| `src/components/tools/studio/FlagshipPromo.tsx` | Integrated into canvas home view |
+| `src/components/tools/studio/RecentCreations.tsx` | Minor style tweaks for canvas context |
+
+## Files No Longer Rendered (kept for reference)
+
+| File | Reason |
+|------|--------|
+| `CreatorControlStrip.tsx` | Stats moved to sidebar bottom + canvas top bar |
+| `OutcomeSection.tsx` / `OutcomeCard.tsx` | Replaced by compact quick-launch grid in canvas |
+| `MediaUtilityGrid.tsx` | Tools accessed via sidebar "Media Lab" section |
 
 ---
 
 ## Technical Notes
 
-- All new components use framer-motion for entrance animations (staggered children)
-- Stats in the hero and control strip are fetched via existing hooks (`useSubscription` for credits) and lightweight Supabase queries (product count, asset count)
-- The Recent Creations section queries `tool_assets` with `limit(12)` ordered by `created_at desc`
+- Three-panel layout uses `grid grid-cols-[auto_1fr_auto]` with framer-motion AnimatePresence for right panel
+- Sidebar collapse state stored in localStorage for persistence
 - No database changes required
 - No new edge functions required
+- All existing tool launch logic (`handleLaunch`, `ToolActiveView`, `PromoVideoBuilder`) stays intact -- just re-housed in the new layout
+- Mobile: sidebar collapses to bottom tab bar, context panel becomes a bottom sheet
 
