@@ -1,129 +1,110 @@
 
 
-# Wiring Integration + Missing Components
+# AI Studio 2.0 — Complete UI Overhaul
 
-## What This Plan Covers
-
-All remaining gaps from the original vision that can be built now:
-
-1. Wire SourceSelector, BrandKitToggle, CreditEstimator, and AssetOutputPanel into ToolActiveView
-2. Build ProductContextCard (compact preview with "Edit context" after product selection)
-3. Add multi-product selection support to SourceSelector for bundle tools
-4. Add "Enhance" vs "Regenerate" mode toggle for image tools
-5. Add "Product-to-Promo" vs "Generate with reference" mode toggle for video tools
-6. Wire post-gen actions (set as thumbnail, add to gallery) with real database calls
-7. Auto-link generated assets to products
-8. Frame prompt pre-population from product data
+This plan covers two changes: (A) moving the Usage Analytics widget to the Dashboard page, and (B) a full cinematic redesign of the AI Studio (/tools) page.
 
 ---
 
-## Technical Details
+## Part A: Move Usage Analytics to Dashboard
 
-### 1. Modify `ToolActiveView.tsx` -- Wire in all 4 standalone components
+Remove `UsageAnalyticsWidget` from `Tools.tsx` and add it as a new section at the bottom of `Dashboard.tsx`, after the Conversion Funnel card.
 
-Add state for source mode, selected product(s), brand kit toggle, and post-generation output. Insert SourceSelector + BrandKitToggle + CreditEstimator above the tool component, and AssetOutputPanel below it after generation completes. Pass product context and brand kit data down to tool components.
-
-```text
-+---------------------------------------------+
-| Hero Banner (existing)                      |
-|---------------------------------------------|
-| Source: [Blank] [Use Product]               |
-| [ProductContextCard if product selected]    |
-| [BrandKit toggle]   [CreditEstimator]       |
-|---------------------------------------------|
-| Tool Component (existing lazy-loaded page)  |
-|---------------------------------------------|
-| AssetOutputPanel (shown after generation)   |
-+---------------------------------------------+
-```
-
-Key state additions:
-- `sourceMode: "blank" | "product"`
-- `selectedProducts: ProductContext[]`
-- `brandKitEnabled: boolean`
-- `brandKitData: BrandKitData | null`
-- `generatedAsset: { type, storageUrl, filename } | null`
-
-The tool's credit cost comes from `toolsRegistry` lookup by toolId.
-
-### 2. New component: `ProductContextCard.tsx`
-
-Compact card shown after product selection with:
-- Product image thumbnail, name, tags, price
-- "Edit context" button that opens an inline editable textarea for description override
-- "Remove" button to clear selection
-- For multi-product mode: shows stacked cards with "Add another" button
-
-### 3. Modify `SourceSelector.tsx` -- Multi-product support
-
-Add an optional `multiSelect` prop. When true:
-- Product picker allows selecting multiple products (checkboxes)
-- Returns `ProductContext[]` instead of single product
-- Shows count badge "3 products selected"
-
-Bundle-related tools (`upsell-suggestions`, `generate-bundles`) will pass `multiSelect={true}`.
-
-### 4. New component: `ImageToolModeToggle.tsx`
-
-For image tools (thumbnail-generator, background-remover, image-upscaler), shows:
-- "Enhance" mode: upscale, sharpen, color correction, "make it more premium"
-- "Regenerate" mode: AI describes current image, user edits description, regenerates with brand kit colors
-- "Keep product recognizable" checkbox
-- "Variations: 1-4" slider
-
-### 5. New component: `VideoToolModeToggle.tsx`
-
-For video tools, shows:
-- "Product-to-Promo" mode: auto-generates script + captions + hashtags from product data
-  - Duration picker (6/10/15/30/60s)
-  - Aspect ratio (9:16 default)
-  - Style presets (Cinematic / UGC / Tutorial / Hype / Minimal)
-  - Voiceover toggle + voice select
-- "Generate with reference" mode: uses product context but doesn't force promo format
-
-### 6. Wire post-gen actions in `AssetOutputPanel.tsx`
-
-Make the buttons functional:
-- **Set as Thumbnail**: Updates `products.cover_image_url` for the linked product
-- **Add to Gallery**: Inserts into `product_gallery` or product media array
-- **Download**: Already works
-- **Generate More**: Callback to re-run the tool
-- **Generate Social Posts**: Navigates to social-posts-pack tool with product pre-selected
-
-### 7. Asset-to-product linking
-
-When a tool generates output with a product selected:
-- Automatically set `tool_assets.product_id` to the selected product
-- Set `tool_assets.used_on_page` when "Set as Thumbnail" or "Add to Gallery" is clicked
-- Insert a row in `tool_assets` after every generation
-
-### 8. Frame prompt pre-population
-
-When "Use Product" is active, auto-fill prompt/frame suggestions:
-- Frame 1: Product name + hook
-- Frame 2: Key benefit bullets
-- Frame 3: What's included + social proof
-- Frame 4: CTA + store URL
-
-Implemented as a utility function `buildProductFramePrompts(product: ProductContext): string[]` that tools can optionally consume.
+**Files changed:**
+- `src/pages/Tools.tsx` — Remove the analytics import and section
+- `src/pages/Dashboard.tsx` — Import and render `UsageAnalyticsWidget` after the conversion funnel
 
 ---
 
-## Files to Create
+## Part B: AI Studio 2.0 — Cinematic Redesign
 
-| File | Purpose |
-|------|---------|
-| `src/components/tools/ProductContextCard.tsx` | Compact product preview with edit context |
-| `src/components/tools/ImageToolModeToggle.tsx` | Enhance vs Regenerate toggle for image tools |
-| `src/components/tools/VideoToolModeToggle.tsx` | Product-to-Promo vs Reference toggle for video tools |
-| `src/components/tools/productFramePrompts.ts` | Utility to generate frame prompts from product data |
+Replace the current tab-based grid layout with a revenue-focused, visually hierarchical page.
 
-## Files to Modify
+### New Page Structure (top to bottom):
 
-| File | Changes |
-|------|---------|
-| `src/components/tools/ToolActiveView.tsx` | Add SourceSelector, BrandKitToggle, CreditEstimator, AssetOutputPanel, ProductContextCard; manage state for product context, brand kit, generated asset |
-| `src/components/tools/SourceSelector.tsx` | Add `multiSelect` prop, checkbox-based multi-product selection, return array |
-| `src/components/tools/AssetOutputPanel.tsx` | Wire real callbacks for set-thumbnail, add-to-gallery, navigate-to-social-posts |
-| `src/components/tools/toolsRegistry.ts` | Add `supportsModes` and `supportsMultiProduct` flags to relevant entries |
+**1. Hero Section (70-80vh, cinematic)**
+- Dark gradient background with animated glow accents
+- Left side: Large headline "AI Studio" with subtext "Create. Market. Sell. All in one place." + two CTA buttons ("Create Promo Video" as primary, "Optimize My Store" as secondary)
+- Below buttons: live stat strip showing product count, asset count, credit balance (fetched from DB)
+- Right side: Animated vertical phone-frame video preview mockup with auto-playing visual (CSS/framer-motion animation showing a thumbnail-to-promo transformation loop)
+
+**2. Flagship Tool Block — Short-Form Promo Generator**
+- Large cinematic card (not a small grid tile)
+- Dark gradient background with subtle animated grid pattern
+- Left: "Use Product" selector + quick prompt input + "Generate" button (opens PromoVideoBuilder)
+- Right: Large vertical video preview placeholder with glowing border
+- This is the primary revenue engine, visually dominant
+
+**3. Creator Control Strip**
+- Thin glassmorphism bar spanning full width
+- Shows real-time stats: Products | Assets | Content Generated | Credits
+- Fetched from DB (products count, tool_assets count, ai_usage_logs count, wallet balance)
+
+**4. Outcome-Based Sections (replacing old tab grids)**
+
+Section: "Grow My Store" (3 large cinematic cards)
+- Product Optimizer (product-description tool)
+- Sales Page Builder (sales-page-sections tool)
+- Bundle and Upsell Creator (upsell-suggestions tool)
+- Each card: dark gradient, visual preview area, title, 1-line benefit, hover glow + lift animation
+
+Section: "Create Marketing Content" (4 cards showing output visuals)
+- Carousel Generator
+- Hook and Script Generator (short-form-script)
+- Caption Pack (caption-hashtags)
+- 10 Posts from Product (social-posts-pack)
+- Each card shows a mock output visual (not just an icon)
+
+Section: "Media Utilities" (smaller clean grid, 2 rows)
+- SFX Generator, Voice Isolator, Music Splitter, Audio Cutter, etc.
+- Compact cards, supportive weight — not hero-sized
+
+**5. Recent Creations Section**
+- Horizontal scrolling gallery of the user's most recent generated assets
+- Fetched from `tool_assets` table (latest 12, images show thumbnails, audio/video show type icons)
+- Makes the page feel alive and personalized
+
+### Visual Style Rules
+- Deep charcoal backgrounds with warm gradient highlights (orange/coral accent from existing theme)
+- Glassmorphism panels with `bg-white/5 backdrop-blur-xl border border-white/10`
+- Cards: 12px radius, soft outer glow on hover (`shadow-xl shadow-primary/10`), subtle lift (`hover:-translate-y-1`)
+- Motion: framer-motion for section fade-in, card hover lift, hero parallax-like entrance
+- Primary buttons: pill-shaped with gradient background (charcoal to orange), `::before` highlight
+- No "Quick Tools" label, no "Coming Soon" spam on the main page, no equal-weight grids
+
+### New Components Created
+- `src/components/tools/studio/StudioHero.tsx` — Hero section with CTAs and stat strip
+- `src/components/tools/studio/FlagshipPromo.tsx` — Large promo generator block
+- `src/components/tools/studio/CreatorControlStrip.tsx` — Thin stats bar
+- `src/components/tools/studio/OutcomeSection.tsx` — Reusable section wrapper (title + cards)
+- `src/components/tools/studio/OutcomeCard.tsx` — Large cinematic tool card with visual preview area
+- `src/components/tools/studio/MediaUtilityGrid.tsx` — Compact utility tools grid
+- `src/components/tools/studio/RecentCreations.tsx` — Horizontal asset gallery
+
+### Files Modified
+- `src/pages/Tools.tsx` — Complete rewrite of the page layout (hero, flagship, sections, recent creations). Still handles `activeTool` state for launching tools via `ToolActiveView`.
+- `src/pages/Dashboard.tsx` — Add UsageAnalyticsWidget import and render
+
+### What Gets Removed
+- Old 3-tab layout (Quick Tools / Campaigns / Store Assistant tabs)
+- `QuickToolsGrid` and `StoreAssistantGrid` are no longer rendered on the main page (components kept for potential reuse)
+- "Coming Soon" badges on the main page cards
+- Equal-weight grid layout
+
+### What Stays
+- `ToolActiveView` — still used when a tool is launched
+- `MyAssetsDrawer` — moved into the hero section header
+- `CampaignsGrid` — campaigns are accessible via the "Create Marketing Content" section or the Flagship block
+- `PromoVideoBuilder` — launched from the Flagship block
+- `toolsRegistry` — still the source of truth for tool metadata
+
+---
+
+## Technical Notes
+
+- All new components use framer-motion for entrance animations (staggered children)
+- Stats in the hero and control strip are fetched via existing hooks (`useSubscription` for credits) and lightweight Supabase queries (product count, asset count)
+- The Recent Creations section queries `tool_assets` with `limit(12)` ordered by `created_at desc`
+- No database changes required
+- No new edge functions required
 
