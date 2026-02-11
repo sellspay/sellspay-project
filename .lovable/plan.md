@@ -1,109 +1,129 @@
 
 
-# Migrate All AI Functions from Lovable Gateway to Direct Google Gemini API
+# AI Builder Page -- Full Error Diagnostic and Fix Plan
 
-## Summary
+## Diagnostic Summary
 
-Replace the Lovable AI gateway (`ai.gateway.lovable.dev`) with direct Google Gemini API calls across all 5 edge functions. This removes the dependency on Lovable Cloud AI balance entirely -- your VibeCoder and all AI tools will run on your own Google API key.
-
----
-
-## What Changes
-
-| Component | Before | After |
-|-----------|--------|-------|
-| API endpoint | `https://ai.gateway.lovable.dev/v1/chat/completions` | `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` |
-| Auth key | `LOVABLE_API_KEY` (managed by Lovable) | `GOOGLE_GEMINI_API_KEY` (your own key) |
-| Model names | `google/gemini-3-flash-preview`, `google/gemini-2.5-flash-lite`, `openai/gpt-5.2` | `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.5-pro` |
-| Billing | Lovable Cloud balance | Your Google AI billing account |
+After a thorough investigation (browser testing, network analysis, edge function testing, database queries, and source code review), I found that the AI builder page is **mostly functional** -- all API calls return 200, the edge function generates valid code, and the streaming pipeline works end-to-end. However, there are several underlying issues causing instability and data corruption.
 
 ---
 
-## Pre-Requisite: API Key
+## Issues Found (Ranked by Severity)
 
-You will need a **Google Gemini API key** from [Google AI Studio](https://aistudio.google.com/apikey). I will securely store it as a backend secret called `GOOGLE_GEMINI_API_KEY`.
+### Issue 1: CRITICAL -- Massive Message Duplication in Database
 
----
+**What's wrong:** The same user message ("in the about section add instagram and youtube logo...") is stored **16 times** in the database. Assistant messages are also duplicated 3-6x each. This corrupts the message history, wastes database space, and causes the chat UI to show repeated entries.
 
-## Edge Functions to Update (5 total)
+**Root cause:** The `addMessage` function in `useVibecoderProjects.ts` has a UI-level deduplication guard (`dedupeConsecutiveMessages`), but nothing prevents duplicate writes to the database. When the user clicks send or the component re-renders, the same message gets inserted multiple times.
 
-### 1. `vibecoder-v2/index.ts` (Main VibeCoder)
-- Replace `LOVABLE_AI_URL` constant with Google endpoint
-- Replace `LOVABLE_API_KEY` env var with `GOOGLE_GEMINI_API_KEY`
-- Update `MODEL_CONFIG` mapping:
-  - `vibecoder-pro` -> `gemini-2.5-flash` (fast, capable)
-  - `vibecoder-flash` -> `gemini-2.5-flash-lite` (free-tier small edits)
-  - `reasoning-o1` -> `gemini-2.5-pro` (deep reasoning)
-- Update intent classifier model reference
-- Both `classifyIntent()` and `executePrompt()` fetch calls updated
+**Fix:**
+- Add a database-level deduplication guard using a debounce ref that tracks the last inserted message hash
+- Add a `UNIQUE` constraint or a `before INSERT` trigger on `vibecoder_messages` that checks for consecutive identical messages within a short time window
+- Clean up existing duplicate rows with a SQL migration
 
-### 2. `enhance-sfx-prompt/index.ts`
-- Replace gateway URL and API key references
+### Issue 2: HIGH -- `check-subscription` CORS Headers Incomplete
 
-### 3. `generate-image/index.ts`
-- Replace gateway URL and API key
-- Note: Image generation model reference may need updating depending on what model is used
-
-### 4. `storefront-generate-asset/index.ts`
-- Replace gateway URL and API key references
-
-### 5. `storefront-vibecoder/index.ts`
-- Replace gateway URL and API key across all function calls (`extractIntent`, `createPlan`, `generateOps`, `repairOps`)
-
----
-
-## Model Name Mapping
-
-Google's OpenAI-compatible endpoint uses different model names than the Lovable gateway prefix:
-
-```text
-Lovable Gateway Name         ->  Direct Google API Name
-google/gemini-3-flash-preview -> gemini-2.5-flash
-google/gemini-2.5-flash-lite  -> gemini-2.5-flash-lite
-openai/gpt-5.2               -> gemini-2.5-pro
-google/gemini-2.5-flash-image -> gemini-2.0-flash-exp (image gen)
+**What's wrong:** The `check-subscription` edge function uses a minimal CORS header set:
 ```
+"authorization, x-client-info, apikey, content-type"
+```
+Missing the required Supabase client headers (`x-supabase-client-platform`, etc.). This can cause sporadic CORS preflight failures in certain browser configurations.
+
+**Fix:** Update `check-subscription/index.ts` to use the full CORS header set matching `vibecoder-v2`.
+
+### Issue 3: MEDIUM -- `last_success_at` Never Updated
+
+**What's wrong:** The `vibecoder_projects.last_success_at` column is always NULL. After a successful code generation, nothing updates this field. This means the system can't tell which projects have had at least one successful build.
+
+**Fix:** After a successful generation (in the `onComplete` callback in `AIBuilderCanvas`), update the `last_success_at` timestamp on the project record.
+
+### Issue 4: MEDIUM -- Background Job Creates Duplicate Messages
+
+**What's wrong:** The code has TWO paths that can add assistant messages after a generation:
+1. The streaming `onComplete` callback appends an assistant message with code
+2. The background job completion handler (realtime subscription) ALSO appends a message
+
+There's a guard (`activeJobIdRef`) that's supposed to prevent this, but when streaming completes AFTER the realtime event fires, or vice versa, duplicates slip through.
+
+**Fix:** Make the message-append logic idempotent by checking if an assistant message with the same code snapshot already exists for this project before inserting.
+
+### Issue 5: LOW -- Redundant API Calls on Page Load
+
+**What's wrong:** The page makes duplicate calls on load:
+- `profiles` is fetched 4+ times with the same query
+- `has_role` RPC is called 8+ times
+- `auth/v1/user` is called 5+ times
+
+This is noisy but not breaking. It's caused by multiple components each independently fetching the same data.
+
+**Fix:** (Future optimization) Consolidate profile/role fetching into a shared context provider.
 
 ---
 
 ## Implementation Steps
 
-1. **Add Secret** - Request `GOOGLE_GEMINI_API_KEY` from you
-2. **Update all 5 edge functions** - Swap endpoint, key, and model names
-3. **Deploy all functions** - Redeploy to pick up the new config
-4. **Test** - Verify VibeCoder generates correctly with the new API
+### Step 1: Fix Message Duplication (Database + Frontend)
 
----
+**Database migration:**
+- Create a SQL function `prevent_duplicate_vibecoder_message()` that checks if the same `project_id + role + content` was inserted within the last 5 seconds
+- Add a `BEFORE INSERT` trigger on `vibecoder_messages` using this function
+- Run a cleanup query to remove existing duplicate rows (keep oldest of each group)
 
-## Technical Details
+**Frontend (`useVibecoderProjects.ts`):**
+- Add a `lastInsertRef` that stores `{hash, timestamp}` of the last DB insert
+- Before calling `supabase.from('vibecoder_messages').insert(...)`, check if the same content was just inserted within 3 seconds
+- Skip the insert if it's a duplicate
 
-### API Call Format (stays OpenAI-compatible)
+### Step 2: Fix CORS on `check-subscription`
 
-Google's Gemini API supports the OpenAI chat completions format, so the request/response shape stays identical. Only the URL, key header, and model string change:
-
+Update the CORS headers in `supabase/functions/check-subscription/index.ts` to match the full standard:
 ```typescript
-// BEFORE
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const apiKey = Deno.env.get("LOVABLE_API_KEY");
-
-// AFTER
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-const apiKey = Deno.env.get("GOOGLE_GEMINI_API_KEY");
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
 ```
 
-The `Authorization: Bearer ${apiKey}` header format remains the same -- Google's OpenAI-compatible endpoint accepts it.
+### Step 3: Update `last_success_at` on Successful Generation
 
-### No Frontend Changes Required
+In `AIBuilderCanvas.tsx`, inside the `onComplete` callback (around line 284), add:
+```typescript
+await supabase
+  .from('vibecoder_projects')
+  .update({ last_success_at: new Date().toISOString() })
+  .eq('id', generationLockRef.current || activeProjectId);
+```
 
-The frontend calls the edge functions via Supabase -- it never touches the AI gateway directly. So zero client-side changes are needed.
+### Step 4: Clean Up Duplicate Database Records
+
+Run a cleanup migration to remove duplicate messages while keeping the oldest of each group:
+```sql
+DELETE FROM vibecoder_messages
+WHERE id NOT IN (
+  SELECT MIN(id) FROM vibecoder_messages
+  GROUP BY project_id, role, content, code_snapshot IS NOT NULL
+);
+```
+
+### Step 5: Redeploy `check-subscription`
+
+Deploy the updated edge function with corrected CORS headers.
 
 ---
 
-## Risk Assessment
+## Files to Modify
 
-| Risk | Mitigation |
-|------|-----------|
-| Google rate limits differ from Lovable | Monitor 429 errors; adjust retry logic if needed |
-| Model output differences | Same underlying Gemini models, just called directly |
-| Image generation model availability | Verify `gemini-2.0-flash-exp` supports image output on direct API |
+| File | Change |
+|------|--------|
+| `src/components/ai-builder/hooks/useVibecoderProjects.ts` | Add insert debounce guard to `addMessage` |
+| `src/components/ai-builder/AIBuilderCanvas.tsx` | Add `last_success_at` update in onComplete |
+| `supabase/functions/check-subscription/index.ts` | Fix CORS headers |
+| Database migration | Add dedup trigger + cleanup query |
+
+## What This Does NOT Change
+
+- The edge function pipeline (vibecoder-v2) -- already working correctly after the Gemini migration
+- The streaming code parser (useStreamingCode) -- functioning properly
+- The agent loop -- working as designed
+- The preview rendering (Sandpack) -- no issues detected
 
