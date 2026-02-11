@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -26,7 +26,6 @@ export default function StudioLayout() {
   const { credits: creditBalance, loading: isLoadingCredits } = useSubscription();
   const { profile } = useAuth();
 
-  // Stats
   const [productCount, setProductCount] = useState(0);
   const [assetCount, setAssetCount] = useState(0);
   const [generationCount, setGenerationCount] = useState(0);
@@ -37,12 +36,10 @@ export default function StudioLayout() {
     if (toolParam) setActiveTool(toolParam);
   }, [searchParams]);
 
-  // Persist sidebar state
   useEffect(() => {
     try { localStorage.setItem("studio-sidebar-collapsed", String(sidebarCollapsed)); } catch {}
   }, [sidebarCollapsed]);
 
-  // Fetch stats
   useEffect(() => {
     if (!profile?.id) return;
     const fetchStats = async () => {
@@ -78,11 +75,14 @@ export default function StudioLayout() {
     setActiveTool(null);
   };
 
+  const sidebarWidth = sidebarCollapsed ? 56 : 200;
+
   return (
     <div className="h-screen grid overflow-hidden" style={{
-      gridTemplateColumns: sidebarCollapsed ? "64px 1fr" : "240px 1fr",
+      gridTemplateColumns: activeTool
+        ? `${sidebarWidth}px 1fr 320px`
+        : `${sidebarWidth}px 1fr`,
     }}>
-      {/* Left Sidebar */}
       <StudioSidebar
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(v => !v)}
@@ -93,37 +93,34 @@ export default function StudioLayout() {
         activeTool={activeTool}
       />
 
-      {/* Center Canvas + Right Panel */}
-      <div className="grid overflow-hidden" style={{
-        gridTemplateColumns: (activeTool || !activeTool) ? "1fr 320px" : "1fr",
-      }}>
-        {/* Center Canvas */}
-        <main className="relative overflow-y-auto custom-scrollbar bg-background">
-          {activeTool ? (
-            <ToolActiveView
-              toolId={activeTool}
-              onClose={() => setActiveTool(null)}
-              creditBalance={creditBalance}
-              isLoadingCredits={isLoadingCredits}
-              embedded
-            />
-          ) : (
-            <StudioCanvas
-              activeSection={activeSection}
-              productCount={productCount}
-              assetCount={assetCount}
-              generationCount={generationCount}
-              creditBalance={creditBalance}
-              isLoadingCredits={isLoadingCredits}
-              recentAssets={recentAssets}
-              onLaunchPromo={() => setPromoOpen(true)}
-              onLaunchTool={handleLaunch}
-              onSectionChange={handleSectionChange}
-            />
-          )}
-        </main>
+      {/* Center Canvas */}
+      <main className="relative overflow-y-auto custom-scrollbar bg-background">
+        {activeTool ? (
+          <ToolActiveView
+            toolId={activeTool}
+            onClose={() => setActiveTool(null)}
+            creditBalance={creditBalance}
+            isLoadingCredits={isLoadingCredits}
+            embedded
+          />
+        ) : (
+          <StudioCanvas
+            activeSection={activeSection}
+            productCount={productCount}
+            assetCount={assetCount}
+            generationCount={generationCount}
+            creditBalance={creditBalance}
+            isLoadingCredits={isLoadingCredits}
+            recentAssets={recentAssets}
+            onLaunchPromo={() => setPromoOpen(true)}
+            onLaunchTool={handleLaunch}
+            onSectionChange={handleSectionChange}
+          />
+        )}
+      </main>
 
-        {/* Right Context Panel — always visible */}
+      {/* Right Context Panel — only when tool active */}
+      {activeTool && (
         <AnimatePresence>
           <StudioContextPanel
             toolId={activeTool}
@@ -132,12 +129,9 @@ export default function StudioLayout() {
             isLoadingCredits={isLoadingCredits}
           />
         </AnimatePresence>
-      </div>
+      )}
 
-      {/* Promo Video Builder Dialog */}
       <PromoVideoBuilder open={promoOpen} onOpenChange={setPromoOpen} />
-
-      {/* Assets drawer (controlled) */}
       <MyAssetsDrawer
         trigger={<span className="hidden" />}
         open={assetsOpen}
