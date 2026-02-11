@@ -132,7 +132,7 @@ export default function Header() {
                       isActive('/products') ? activeNavLinkStyles : navLinkStyles
                     )}
                   >
-                    Store
+                    Marketplace
                   </Link>
                   <NavigationMenuContent>
                     <div className={cn(
@@ -201,7 +201,7 @@ export default function Header() {
                       isActive('/tools') ? activeNavLinkStyles : navLinkStyles
                     )}
                   >
-                    Tools
+                    AI Studio
                   </Link>
                   <NavigationMenuContent>
                     <div className={cn(
@@ -569,7 +569,7 @@ export default function Header() {
             <nav className="flex flex-col gap-2">
               {/* Store Section */}
               <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Store
+                Marketplace
               </div>
               {productCategories.slice(0, 4).map((item) => (
                 <Link
@@ -609,7 +609,7 @@ export default function Header() {
                   "transition-all duration-300"
                 )}
               >
-                Tools
+                AI Studio
               </Link>
               <Link
                 to="/community"
