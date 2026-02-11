@@ -18,6 +18,7 @@ interface PanelMedia {
    bg: string;
    text: string;
    headline: string[];
+   subtitle?: string;
    image?: string;
   media?: PanelMedia;
  };
@@ -44,12 +45,13 @@ const DEFAULT_STEPS: Step[] = [
      text: "#0a0a0a",
      headline: ["Generate", "Videos"],
    },
-   {
-     bg: "#50A9E7",
-     text: "#0a0a0a",
-     headline: ["Generate", "images"],
-     image: aiPanel5,
-   },
+    {
+      bg: "#50A9E7",
+      text: "#0a0a0a",
+      headline: ["Generate", "images"],
+      subtitle: "Build your store's hero in seconds with our AI image generation models. Create stunning product visuals, banners, and promotional art — no design skills needed.",
+      image: aiPanel5,
+    },
    {
     bg: "#0a0a0a",  // Matches first step for seamless loop
      text: "#ffffff",
@@ -81,6 +83,7 @@ const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
     DEFAULT_STEPS[0].headline[0],
     DEFAULT_STEPS[0].headline[1],
    ]);
+   const [activeSubtitle, setActiveSubtitle] = useState<string | undefined>(DEFAULT_STEPS[0].subtitle);
  
   const panelCount = steps.length;
    const stepDistance = isMobile ? STEP_DISTANCE_MOBILE : STEP_DISTANCE_DESKTOP;
@@ -185,9 +188,11 @@ const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
        const setHeadline = (idx: number) => {
           const line1 = steps[idx]?.headline?.[0] ?? "";
           const line2 = steps[idx]?.headline?.[1] ?? "";
+          const sub = steps[idx]?.subtitle;
          if (activeHeadlineIndexRef.current === idx) return;
          activeHeadlineIndexRef.current = idx;
          setHeadlineLines([line1, line2]);
+         setActiveSubtitle(sub);
        };
        setHeadline(0);
  
@@ -390,7 +395,7 @@ const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
             >
             <h2
                 data-headline
-                className="text-[1.5rem] sm:text-[1.75rem] md:text-[2rem] lg:text-[2.5rem] xl:text-[3rem] 2xl:text-[3.5rem] font-bold leading-[1.1] tracking-[-0.01em] opacity-90"
+                className="text-[2.5rem] sm:text-[3rem] md:text-[3.5rem] lg:text-[4.5rem] xl:text-[5.5rem] 2xl:text-[6.5rem] font-bold leading-[1.05] tracking-[-0.02em] opacity-90"
                 style={{ fontFamily: "'Inter', 'SF Pro Display', -apple-system, sans-serif" }}
               >
                <span ref={(el) => { headlineLineRefs.current[0] = el; }} className="block">
@@ -400,6 +405,15 @@ const EXIT_BUFFER = 300; // Scroll distance for smooth exit transition
                  {headlineLines[1]}
                </span>
              </h2>
+             {activeSubtitle && (
+               <p
+                 data-subtitle
+                 className="mt-3 sm:mt-4 text-sm sm:text-base lg:text-lg opacity-70 max-w-md leading-relaxed"
+                 style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}
+               >
+                 {activeSubtitle}
+               </p>
+             )}
            </div>
             <div className="lg:absolute lg:right-[2%] xl:right-[3%] lg:top-1/2 lg:-translate-y-1/2 order-2 lg:order-none w-full lg:w-auto flex justify-center lg:justify-end overflow-x-clip overflow-y-visible">
               <div
