@@ -535,7 +535,7 @@ export default function Header() {
                 </Link>
                 <Button 
                   asChild 
-                  className="h-10 px-6 text-sm font-semibold rounded-xl"
+                  className="h-10 px-6 text-sm font-semibold rounded-full"
                 >
                   <Link to="/signup">Start Free Now</Link>
                 </Button>
