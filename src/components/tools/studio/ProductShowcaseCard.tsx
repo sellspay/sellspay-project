@@ -33,6 +33,10 @@ export function ProductShowcaseCard({
             <p className="text-xs text-muted-foreground/30 mt-1">
               Select a product to begin your campaign
             </p>
+            <span className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary/10 text-primary text-xs font-semibold group-hover:bg-primary/20 transition-colors">
+              <Package className="h-3.5 w-3.5" />
+              Select Product
+            </span>
           </div>
         </div>
       </button>
