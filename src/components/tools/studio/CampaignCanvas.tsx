@@ -89,12 +89,16 @@ export function CampaignCanvas({
   // Blank mode manual fields
   const [blankName, setBlankName] = useState("");
   const [blankDescription, setBlankDescription] = useState("");
+  const [blankAudience, setBlankAudience] = useState("");
+  const [blankTags, setBlankTags] = useState("");
+  const [blankSellingPoints, setBlankSellingPoints] = useState("");
 
   const hasBlankInput = blankName.trim().length >= 2;
 
   // Build a virtual product from blank inputs
+  const parsedTags = blankTags.trim() ? blankTags.split(",").map(t => t.trim()).filter(Boolean) : null;
   const blankProduct: ProductContext | null = hasBlankInput
-    ? { id: "blank", name: blankName.trim(), description: blankDescription.trim() || null, excerpt: null, cover_image_url: null, tags: null, price_cents: null, currency: null }
+    ? { id: "blank", name: blankName.trim(), description: blankDescription.trim() || null, excerpt: blankSellingPoints.trim() || null, cover_image_url: null, tags: parsedTags, price_cents: null, currency: null }
     : null;
 
   // The effective product used downstream
@@ -210,7 +214,7 @@ export function CampaignCanvas({
           )}>
             {effectiveProduct ? <Check className="h-3 w-3" /> : "1"}
           </span>
-          <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">Select Product</p>
+          <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">Select Option</p>
         </div>
 
         {/* Source toggle */}
@@ -261,14 +265,26 @@ export function CampaignCanvas({
                 <p className="text-xs font-semibold text-foreground/70 uppercase tracking-wider">Manual Entry</p>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Product / Campaign Name *</label>
-                <Input
-                  value={blankName}
-                  onChange={e => setBlankName(e.target.value)}
-                  placeholder="e.g. Summer Beat Pack, Vocal Preset Bundle"
-                  className="bg-white/[0.03] border-white/[0.08] text-sm placeholder:text-muted-foreground/25"
-                />
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Product / Campaign Name *</label>
+                  <Input
+                    value={blankName}
+                    onChange={e => setBlankName(e.target.value)}
+                    placeholder="e.g. Summer Beat Pack"
+                    className="bg-white/[0.03] border-white/[0.08] text-sm placeholder:text-muted-foreground/25"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Target Audience</label>
+                  <Input
+                    value={blankAudience}
+                    onChange={e => setBlankAudience(e.target.value)}
+                    placeholder="e.g. Music producers, beatmakers"
+                    className="bg-white/[0.03] border-white/[0.08] text-sm placeholder:text-muted-foreground/25"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -280,6 +296,38 @@ export function CampaignCanvas({
                   rows={3}
                   className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm text-foreground placeholder:text-muted-foreground/25 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-[#FF7A1A]/30"
                 />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Key Selling Points</label>
+                  <textarea
+                    value={blankSellingPoints}
+                    onChange={e => setBlankSellingPoints(e.target.value)}
+                    placeholder="What makes this special? List the top benefits or features."
+                    rows={2}
+                    className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm text-foreground placeholder:text-muted-foreground/25 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-[#FF7A1A]/30"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Tags / Keywords</label>
+                  <Input
+                    value={blankTags}
+                    onChange={e => setBlankTags(e.target.value)}
+                    placeholder="e.g. beats, hip-hop, trap (comma separated)"
+                    className="bg-white/[0.03] border-white/[0.08] text-sm placeholder:text-muted-foreground/25"
+                  />
+                  {parsedTags && parsedTags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {parsedTags.map(tag => (
+                        <span key={tag} className="text-[9px] text-muted-foreground/50 bg-white/[0.04] px-2 py-0.5 rounded-full">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {hasBlankInput && (
