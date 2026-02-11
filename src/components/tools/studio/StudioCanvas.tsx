@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { CampaignCanvas } from "./CampaignCanvas";
+import { CampaignCanvas, type CampaignState } from "./CampaignCanvas";
 import { ListingsCanvas } from "./ListingsCanvas";
 import { SocialCanvas } from "./SocialCanvas";
 import { MediaCanvas } from "./MediaCanvas";
@@ -16,6 +16,7 @@ interface StudioCanvasProps {
   onLaunchPromo: () => void;
   onLaunchTool: (id: string) => void;
   onSectionChange?: (section: StudioSection) => void;
+  onCampaignStateChange?: (state: CampaignState) => void;
 }
 
 export function StudioCanvas(props: StudioCanvasProps) {
@@ -35,6 +36,7 @@ export function StudioCanvas(props: StudioCanvasProps) {
             onLaunchPromo={onLaunchPromo}
             onLaunchTool={onLaunchTool}
             onSectionChange={onSectionChange}
+            onCampaignStateChange={props.onCampaignStateChange}
           />
         );
       case "listings":
@@ -55,6 +57,7 @@ export function StudioCanvas(props: StudioCanvasProps) {
             onLaunchPromo={onLaunchPromo}
             onLaunchTool={onLaunchTool}
             onSectionChange={onSectionChange}
+            onCampaignStateChange={props.onCampaignStateChange}
           />
         );
     }

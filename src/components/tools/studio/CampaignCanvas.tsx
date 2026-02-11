@@ -1,14 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Video, GalleryHorizontal, MessageSquare, Hash, FileText, Mail, Play } from "lucide-react";
+import { Video, GalleryHorizontal, MessageSquare, Hash, FileText, Mail, Play, ChevronRight, Check, Package } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { RecentCreations } from "./RecentCreations";
 import { SourceSelector, type SourceMode, type ProductContext } from "@/components/tools/SourceSelector";
 import type { StudioSection } from "./StudioLayout";
 
-interface CampaignCanvasProps {
+export interface CampaignCanvasProps {
   productCount: number;
   assetCount: number;
   generationCount: number;
@@ -18,6 +17,16 @@ interface CampaignCanvasProps {
   onLaunchPromo: () => void;
   onLaunchTool: (id: string) => void;
   onSectionChange?: (section: StudioSection) => void;
+  /** Expose state for right panel */
+  onCampaignStateChange?: (state: CampaignState) => void;
+}
+
+export interface CampaignState {
+  selectedProduct: ProductContext | null;
+  selectedTemplate: typeof CAMPAIGN_TEMPLATES[number] | null;
+  selectedGoal: string | null;
+  extraDirection: string;
+  currentStep: 1 | 2 | 3;
 }
 
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07 } } };
@@ -31,7 +40,7 @@ const GOALS = [
   { id: "discount", label: "Promote discount" },
 ];
 
-const CAMPAIGN_TEMPLATES = [
+export const CAMPAIGN_TEMPLATES = [
   { id: "viral-tiktok", name: "Viral TikTok Launch", desc: "Fast cuts, bold hooks, trending audio", goal: "sales", direction: "Bold, aggressive, viral energy" },
   { id: "premium-brand", name: "Premium Brand Launch", desc: "Cinematic, elegant, trust-building", goal: "launch", direction: "Premium, elegant, aspirational" },
   { id: "discount-push", name: "Discount Push", desc: "Urgency-driven, countdown, scarcity", goal: "discount", direction: "Urgent, limited-time, scarcity" },
@@ -39,37 +48,66 @@ const CAMPAIGN_TEMPLATES = [
   { id: "new-release", name: "New Release", desc: "Teaser-reveal format, anticipation", goal: "launch", direction: "Teaser, anticipation, reveal" },
 ];
 
-const OUTPUT_PILLS = [
-  { label: "Promo Video", icon: Video },
-  { label: "Carousel", icon: GalleryHorizontal },
-  { label: "10 Hooks", icon: MessageSquare },
-  { label: "Captions + Hashtags", icon: Hash },
-  { label: "Listing Rewrite", icon: FileText },
-  { label: "Email Blast", icon: Mail },
-];
+const STEPS = [
+  { num: 1, label: "Product" },
+  { num: 2, label: "Style" },
+  { num: 3, label: "Generate" },
+] as const;
 
-const HOOKS_PREVIEW = [
-  "Stop scrolling — this changes everything.",
-  "You're losing money if you skip this.",
-  "This hack doubled my sales overnight.",
-];
+function generateProductHooks(product: ProductContext): string[] {
+  const name = product.name;
+  return [
+    `Stop scrolling — ${name} changes everything.`,
+    `You need ${name} in your life. Here's why.`,
+    `Everyone's talking about ${name}. Have you tried it yet?`,
+  ];
+}
+
+function generateProductCaption(product: ProductContext): string {
+  const desc = product.description || product.excerpt || product.name;
+  const truncated = desc.length > 120 ? desc.slice(0, 120) + "…" : desc;
+  return truncated;
+}
 
 export function CampaignCanvas({
   productCount, assetCount, generationCount,
   creditBalance, isLoadingCredits, recentAssets,
   onLaunchPromo, onLaunchTool, onSectionChange,
+  onCampaignStateChange,
 }: CampaignCanvasProps) {
   const [sourceMode, setSourceMode] = useState<SourceMode>("blank");
   const [selectedProduct, setSelectedProduct] = useState<ProductContext | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [extraDirection, setExtraDirection] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const [hookIdx, setHookIdx] = useState(0);
+  const templateRef = useRef<HTMLDivElement>(null);
 
+  const currentStep: 1 | 2 | 3 = !selectedProduct ? 1 : !selectedTemplate ? 2 : 3;
+
+  const selectedTpl = useMemo(
+    () => CAMPAIGN_TEMPLATES.find(t => t.id === selectedTemplate) || null,
+    [selectedTemplate]
+  );
+
+  // Notify parent of state changes for the right panel
   useEffect(() => {
-    const t = setInterval(() => setHookIdx(i => (i + 1) % HOOKS_PREVIEW.length), 2500);
-    return () => clearInterval(t);
-  }, []);
+    onCampaignStateChange?.({
+      selectedProduct,
+      selectedTemplate: selectedTpl,
+      selectedGoal,
+      extraDirection,
+      currentStep,
+    });
+  }, [selectedProduct, selectedTpl, selectedGoal, extraDirection, currentStep]);
+
+  // Auto-scroll to templates when product is selected
+  useEffect(() => {
+    if (selectedProduct && !selectedTemplate && templateRef.current) {
+      setTimeout(() => {
+        templateRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 300);
+    }
+  }, [selectedProduct, selectedTemplate]);
 
   const applyTemplate = (tpl: typeof CAMPAIGN_TEMPLATES[0]) => {
     setSelectedTemplate(tpl.id);
@@ -77,246 +115,249 @@ export function CampaignCanvas({
     setExtraDirection(tpl.direction);
   };
 
+  const handleProductSelect = (product: ProductContext | null) => {
+    setSelectedProduct(product);
+    if (product) setSourceMode("product");
+  };
+
+  const productHooks = selectedProduct ? generateProductHooks(selectedProduct) : [];
+  const productCaption = selectedProduct ? generateProductCaption(selectedProduct) : "";
+
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 lg:p-6 space-y-8">
       {/* Warm glow */}
       <div className="pointer-events-none fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-orange-500/[0.03] blur-[140px]" />
 
-      {/* A1: Hero */}
-      <motion.div variants={fadeUp} className="space-y-4 min-h-[200px] flex flex-col justify-center">
-        <h2 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tighter leading-[1.05]">
-          Launch a Campaign
-        </h2>
-        <p className="text-sm text-muted-foreground/70 max-w-lg">
-          Generate a complete marketing pack from your product — ready to post.
-        </p>
-
-        {/* Output pills row */}
-        <div className="flex flex-wrap gap-2 pt-1">
-          {OUTPUT_PILLS.map(pill => (
-            <div
-              key={pill.label}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
-            >
-              <pill.icon className="h-3 w-3 text-muted-foreground/40" strokeWidth={1.5} />
-              <span className="text-[11px] text-foreground/70">{pill.label}</span>
+      {/* Step Indicator */}
+      <motion.div variants={fadeUp} className="flex items-center gap-1.5">
+        {STEPS.map((step, i) => (
+          <div key={step.num} className="flex items-center gap-1.5">
+            <div className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all duration-200",
+              currentStep >= step.num
+                ? "bg-gradient-to-r from-[#FF7A1A]/20 to-[#E85C00]/10 text-foreground"
+                : "bg-white/[0.03] text-muted-foreground/30"
+            )}>
+              <span className={cn(
+                "h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-bold",
+                currentStep > step.num
+                  ? "bg-gradient-to-b from-[#FF7A1A] to-[#E85C00] text-white"
+                  : currentStep === step.num
+                    ? "ring-1 ring-[#FF7A1A]/50 text-[#FF7A1A]"
+                    : "ring-1 ring-white/[0.08] text-muted-foreground/30"
+              )}>
+                {currentStep > step.num ? <Check className="h-2.5 w-2.5" /> : step.num}
+              </span>
+              {step.label}
             </div>
-          ))}
-        </div>
+            {i < STEPS.length - 1 && (
+              <ChevronRight className={cn(
+                "h-3 w-3 transition-colors",
+                currentStep > step.num ? "text-[#FF7A1A]/40" : "text-white/[0.08]"
+              )} />
+            )}
+          </div>
+        ))}
       </motion.div>
 
-      {/* A2: Quick Launch — Product + Template + Goal + Direction */}
-      <motion.div variants={fadeUp} className="space-y-5">
-        {/* Row 1: Product + Template */}
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">Product</p>
-            <SourceSelector
-              mode={sourceMode}
-              onModeChange={setSourceMode}
-              selectedProduct={selectedProduct}
-              onProductSelect={setSelectedProduct}
-            />
-          </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">Template</p>
-            <div className="flex flex-wrap gap-2">
+      {/* Hero */}
+      <motion.div variants={fadeUp} className="space-y-2">
+        <h2 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tighter leading-[1.05]">
+          {currentStep === 1 ? "Select a Product" : currentStep === 2 ? "Choose a Style" : "Ready to Generate"}
+        </h2>
+        <p className="text-sm text-muted-foreground/70 max-w-lg">
+          {currentStep === 1
+            ? "Pick the product you want to promote. We'll build a complete marketing pack from it."
+            : currentStep === 2
+              ? "Choose a campaign style to set the tone, energy, and format of your marketing pack."
+              : "Fine-tune your settings and hit generate to create your marketing pack."}
+        </p>
+      </motion.div>
+
+      {/* Step 1: Product Selection */}
+      <motion.div variants={fadeUp} className="space-y-4">
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            "h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+            selectedProduct
+              ? "bg-gradient-to-b from-[#FF7A1A] to-[#E85C00] text-white"
+              : "ring-1 ring-[#FF7A1A]/50 text-[#FF7A1A]"
+          )}>
+            {selectedProduct ? <Check className="h-3 w-3" /> : "1"}
+          </span>
+          <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">Select Product</p>
+        </div>
+        <SourceSelector
+          mode={sourceMode}
+          onModeChange={setSourceMode}
+          selectedProduct={selectedProduct}
+          onProductSelect={handleProductSelect}
+        />
+      </motion.div>
+
+      {/* Live Preview — shows after product selection */}
+      <AnimatePresence>
+        {selectedProduct && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.35 }}
+          >
+            <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-3">Live Preview</p>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* Hooks preview — real product data */}
+              <div className="bg-white/[0.02] rounded-xl p-4 min-h-[140px] flex flex-col">
+                <p className="text-xs font-semibold text-foreground/80 mb-3">Sample Hooks</p>
+                <div className="flex-1 space-y-2">
+                  {productHooks.map((hook, i) => (
+                    <p key={i} className="text-[11px] text-foreground/60 leading-snug">
+                      {hook}
+                    </p>
+                  ))}
+                </div>
+              </div>
+
+              {/* Caption preview */}
+              <div className="bg-white/[0.02] rounded-xl p-4 min-h-[140px] flex flex-col">
+                <p className="text-xs font-semibold text-foreground/80 mb-3">Sample Caption</p>
+                <p className="text-[11px] text-foreground/60 leading-snug flex-1">{productCaption}</p>
+                <div className="flex gap-1 mt-2">
+                  {["#viral", "#launch", "#new"].map(t => (
+                    <span key={t} className="text-[8px] text-muted-foreground/30 bg-white/[0.03] px-1.5 py-0.5 rounded-full">{t}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Carousel outline */}
+              <div className="bg-white/[0.02] rounded-xl p-4 min-h-[140px] flex flex-col">
+                <p className="text-xs font-semibold text-foreground/80 mb-3">Carousel Outline</p>
+                <div className="flex-1 space-y-1.5 text-[11px] text-foreground/50">
+                  <p>Slide 1: Hook — "{productHooks[0]?.slice(0, 40)}…"</p>
+                  <p>Slide 2: Problem statement</p>
+                  <p>Slide 3: Product intro — {selectedProduct.name}</p>
+                  <p>Slide 4: Key benefits</p>
+                  <p>Slide 5: CTA + pricing</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Step 2: Campaign Style (Templates) — only visible after product selection */}
+      <AnimatePresence>
+        {selectedProduct && (
+          <motion.div
+            ref={templateRef}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="space-y-4"
+          >
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                "h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+                selectedTemplate
+                  ? "bg-gradient-to-b from-[#FF7A1A] to-[#E85C00] text-white"
+                  : "ring-1 ring-[#FF7A1A]/50 text-[#FF7A1A]"
+              )}>
+                {selectedTemplate ? <Check className="h-3 w-3" /> : "2"}
+              </span>
+              <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">Choose a Style</p>
+            </div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {CAMPAIGN_TEMPLATES.map(tpl => (
                 <button
                   key={tpl.id}
                   onClick={() => applyTemplate(tpl)}
                   className={cn(
-                    "px-3 py-1.5 rounded-full text-[11px] font-medium transition-all duration-150",
+                    "p-5 rounded-xl text-left transition-all duration-200 group relative overflow-hidden",
                     selectedTemplate === tpl.id
-                      ? "bg-gradient-to-r from-[#FF7A1A] to-[#E85C00] text-white shadow-sm"
-                      : "bg-white/[0.04] text-muted-foreground/60 hover:bg-white/[0.08] hover:text-foreground"
+                      ? "bg-white/[0.06] ring-1 ring-[#FF7A1A]/30 shadow-lg shadow-orange-500/5"
+                      : "bg-white/[0.02] hover:bg-white/[0.05] ring-1 ring-transparent hover:ring-white/[0.06]"
                   )}
                 >
-                  {tpl.name}
+                  {/* Preview area */}
+                  <div className="w-full h-[120px] rounded-lg bg-gradient-to-br from-white/[0.04] to-transparent mb-4 flex items-center justify-center relative overflow-hidden">
+                    <Play className={cn(
+                      "h-6 w-6 transition-colors",
+                      selectedTemplate === tpl.id ? "text-[#FF7A1A]/40" : "text-white/10"
+                    )} />
+                    {selectedTemplate === tpl.id && (
+                      <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-gradient-to-b from-[#FF7A1A] to-[#E85C00] flex items-center justify-center">
+                        <Check className="h-3 w-3 text-white" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold text-foreground/90">{tpl.name}</p>
+                  <p className="text-[11px] text-muted-foreground/50 mt-1 leading-snug">{tpl.desc}</p>
                 </button>
               ))}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        {/* Row 2: Goal + Direction */}
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">Goal</p>
-            <div className="flex flex-wrap gap-2">
-              {GOALS.map(g => (
-                <button
-                  key={g.id}
-                  onClick={() => {
-                    setSelectedGoal(g.id === selectedGoal ? null : g.id);
-                    setSelectedTemplate(null);
-                  }}
-                  className={cn(
-                    "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150",
-                    selectedGoal === g.id
-                      ? "bg-white/[0.10] text-foreground ring-1 ring-white/[0.12]"
-                      : "bg-white/[0.04] text-muted-foreground/60 hover:bg-white/[0.08] hover:text-foreground"
-                  )}
-                >
-                  {g.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">Extra Direction</p>
-            <Input
-              value={extraDirection}
-              onChange={e => setExtraDirection(e.target.value)}
-              placeholder="Optional: 'Make it bold and aggressive'"
-              className="bg-white/[0.03] border-border/20 text-sm"
-            />
-          </div>
-        </div>
-
-        {/* A3: Action buttons */}
-        <div className="flex items-center gap-3 pt-1">
-          <button
-            onClick={onLaunchPromo}
-            className="px-6 py-2.5 text-sm font-semibold text-white rounded-[10px] shadow-sm transition-all hover:shadow-md"
-            style={{ background: "linear-gradient(180deg, #FF7A1A 0%, #E85C00 100%)" }}
+      {/* Step 3: Goal + Direction — only after template */}
+      <AnimatePresence>
+        {selectedTemplate && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="space-y-5"
           >
-            Generate Campaign Pack
-          </button>
-          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground/60" onClick={onLaunchPromo}>
-            Plan First (Advanced)
-          </Button>
-        </div>
-      </motion.div>
+            <div className="flex items-center gap-2">
+              <span className="h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold ring-1 ring-[#FF7A1A]/50 text-[#FF7A1A]">3</span>
+              <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">Fine-tune & Generate</p>
+            </div>
 
-      {/* A4: Preview Showcase — "What you'll get" */}
-      <motion.div variants={fadeUp}>
-        <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-3">What you'll get</p>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-          {/* Promo Video — phone mockup */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[180px] flex flex-col group hover:bg-white/[0.04] transition-colors">
-            <p className="text-xs font-semibold text-foreground/80 mb-3">Promo Video</p>
-            <div className="flex-1 flex items-center justify-center">
-              <div className="relative w-[64px] h-[114px] rounded-lg bg-gradient-to-b from-white/[0.04] to-transparent overflow-hidden">
-                <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-white/[0.06]" />
-                <div className="absolute inset-x-2 bottom-3 space-y-1">
-                  <div className="h-1 w-8 rounded-full bg-white/10 animate-pulse" />
-                  <div className="h-1 w-5 rounded-full bg-white/5" />
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">Goal</p>
+                <div className="flex flex-wrap gap-2">
+                  {GOALS.map(g => (
+                    <button
+                      key={g.id}
+                      onClick={() => setSelectedGoal(g.id === selectedGoal ? null : g.id)}
+                      className={cn(
+                        "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-150",
+                        selectedGoal === g.id
+                          ? "bg-white/[0.10] text-foreground ring-1 ring-white/[0.12]"
+                          : "bg-white/[0.04] text-muted-foreground/60 hover:bg-white/[0.08] hover:text-foreground"
+                      )}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
                 </div>
-                <div className="absolute top-2 right-2">
-                  <Play className="h-3 w-3 text-white/20" />
-                </div>
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">Extra Direction</p>
+                <Input
+                  value={extraDirection}
+                  onChange={e => setExtraDirection(e.target.value)}
+                  placeholder="Optional: 'Make it bold and aggressive'"
+                  className="bg-white/[0.03] border-border/20 text-sm"
+                />
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground/40 mt-2">9:16 vertical video</p>
-          </div>
 
-          {/* Carousel — stacked slides */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[180px] flex flex-col group hover:bg-white/[0.04] transition-colors">
-            <p className="text-xs font-semibold text-foreground/80 mb-3">Carousel Post</p>
-            <div className="flex-1 flex items-center justify-center">
-              <div className="relative w-[72px] h-[72px]">
-                {[2, 1, 0].map(i => (
-                  <div
-                    key={i}
-                    className="absolute inset-0 rounded-md bg-white/[0.04] ring-1 ring-inset ring-white/[0.06]"
-                    style={{ transform: `rotate(${(i - 1) * 4}deg) translateX(${(i - 1) * 4}px)` }}
-                  />
-                ))}
-              </div>
-            </div>
-            <p className="text-[10px] text-muted-foreground/40 mt-2">5-slide swipeable</p>
-          </div>
-
-          {/* Viral Hooks — animated text */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[180px] flex flex-col group hover:bg-white/[0.04] transition-colors">
-            <p className="text-xs font-semibold text-foreground/80 mb-3">Viral Hooks</p>
-            <div className="flex-1 flex items-center">
-              <div className="space-y-2 w-full overflow-hidden">
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={hookIdx}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-[11px] text-foreground/60 leading-snug"
-                  >
-                    {HOOKS_PREVIEW[hookIdx]}
-                  </motion.p>
-                </AnimatePresence>
-                <div className="h-px w-8 bg-white/[0.06]" />
-                <p className="text-[10px] text-muted-foreground/30">+ 9 more</p>
-              </div>
-            </div>
-            <p className="text-[10px] text-muted-foreground/40 mt-2">Scroll-stopping openers</p>
-          </div>
-
-          {/* Captions Pack */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[120px] flex flex-col group hover:bg-white/[0.04] transition-colors">
-            <p className="text-xs font-semibold text-foreground/80 mb-2">Captions Pack</p>
-            <div className="flex-1 space-y-1.5">
-              <div className="h-1.5 w-full rounded-full bg-white/[0.04]" />
-              <div className="h-1.5 w-3/4 rounded-full bg-white/[0.03]" />
-              <div className="flex gap-1 mt-2">
-                {["#viral", "#sale", "#new"].map(t => (
-                  <span key={t} className="text-[8px] text-muted-foreground/30 bg-white/[0.03] px-1.5 py-0.5 rounded-full">{t}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Listing Rewrite */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[120px] flex flex-col group hover:bg-white/[0.04] transition-colors">
-            <p className="text-xs font-semibold text-foreground/80 mb-2">Listing Rewrite</p>
-            <div className="flex-1 space-y-1.5">
-              <div className="h-1.5 w-full rounded-full bg-white/[0.04]" />
-              <div className="h-1.5 w-5/6 rounded-full bg-white/[0.03]" />
-              <div className="h-1.5 w-2/3 rounded-full bg-white/[0.03]" />
-            </div>
-          </div>
-
-          {/* Email Draft */}
-          <div className="bg-white/[0.02] rounded-xl p-4 min-h-[120px] flex flex-col group hover:bg-white/[0.04] transition-colors">
-            <p className="text-xs font-semibold text-foreground/80 mb-2">Email Draft</p>
-            <div className="flex-1 space-y-1.5">
-              <div className="h-1.5 w-1/2 rounded-full bg-white/[0.04]" />
-              <div className="h-px w-full bg-white/[0.03] my-1" />
-              <div className="h-1.5 w-full rounded-full bg-white/[0.03]" />
-              <div className="h-1.5 w-4/5 rounded-full bg-white/[0.03]" />
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* A5: Campaign Templates Shelf */}
-      <motion.div variants={fadeUp}>
-        <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-3">Trending Campaign Templates</p>
-        <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
-          {CAMPAIGN_TEMPLATES.map(tpl => (
+            {/* Large Generate CTA */}
             <button
-              key={tpl.id}
-              onClick={() => applyTemplate(tpl)}
-              className={cn(
-                "shrink-0 w-[240px] p-4 rounded-xl text-left transition-all duration-150 group",
-                selectedTemplate === tpl.id
-                  ? "bg-white/[0.06] ring-1 ring-white/[0.08]"
-                  : "bg-white/[0.02] hover:bg-white/[0.05]"
-              )}
+              onClick={onLaunchPromo}
+              className="w-full py-4 text-base font-semibold text-white rounded-xl shadow-lg shadow-orange-500/10 transition-all hover:shadow-xl hover:shadow-orange-500/20"
+              style={{ background: "linear-gradient(180deg, #FF7A1A 0%, #E85C00 100%)" }}
             >
-              {/* Preview placeholder */}
-              <div className="w-full h-[100px] rounded-lg bg-gradient-to-br from-white/[0.03] to-transparent mb-3 flex items-center justify-center">
-                <Play className="h-5 w-5 text-white/10" />
-              </div>
-              <p className="text-sm font-semibold text-foreground/90">{tpl.name}</p>
-              <p className="text-[11px] text-muted-foreground/50 mt-1 leading-snug">{tpl.desc}</p>
-              <p className="text-[10px] text-orange-400/60 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                Use template
-              </p>
+              Generate Campaign Pack
             </button>
-          ))}
-        </div>
-      </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Recent Creations */}
       <motion.div variants={fadeUp}>
