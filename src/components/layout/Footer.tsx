@@ -1,18 +1,26 @@
 import { Link } from 'react-router-dom';
-import { Twitter, Instagram, Youtube } from 'lucide-react';
-import sellspayLogo from '@/assets/sellspay-s-logo.png';
+import { Twitter, Instagram, Youtube, ArrowRight } from 'lucide-react';
+import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 
-const navLinks = [
-  { name: 'Products', path: '/products' },
+const platformLinks = [
+  { name: 'Store', path: '/products' },
   { name: 'Creators', path: '/creators' },
-  { name: 'Hire Editors', path: '/hire-editors' },
+  { name: 'AI Builder', path: '/ai-builder' },
+  { name: 'Pricing', path: '/pricing' },
+];
+
+const resourceLinks = [
   { name: 'Tools', path: '/tools' },
+  { name: 'Hire Editors', path: '/hire-editors' },
+  { name: 'Community', path: '/community/updates' },
+  { name: 'FAQ', path: '/faq' },
 ];
 
 const legalLinks = [
   { name: 'Terms', path: '/terms' },
   { name: 'Privacy', path: '/privacy' },
   { name: 'Refunds', path: '/refunds' },
+  { name: 'Seller Agreement', path: '/seller-agreement' },
 ];
 
 const socialLinks = [
@@ -23,67 +31,108 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-border/30 bg-background">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        {/* Single Row Layout */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-          {/* Left: Logo */}
-          <div className="flex flex-col items-center lg:items-start gap-2">
-            <Link to="/" className="group">
-              <img 
-                src={sellspayLogo} 
-                alt="SellsPay" 
-                className="h-8 sm:h-10 w-auto opacity-80 group-hover:opacity-100 transition-opacity"
+    <footer className="relative border-t border-border/20">
+      {/* Top accent */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+
+      <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12">
+        {/* Main grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-10 py-14 sm:py-20">
+          {/* Brand column */}
+          <div className="col-span-2 sm:col-span-1 flex flex-col gap-5">
+            <Link to="/" className="inline-block w-fit group">
+              <img
+                src={sellspayLogo}
+                alt="SellsPay"
+                className="h-8 w-auto opacity-80 group-hover:opacity-100 transition-opacity"
               />
             </Link>
-            <p className="text-xs text-muted-foreground/50">
-              © {new Date().getFullYear()} SellsPay
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">
+              The all-in-one marketplace for digital creators.
             </p>
-          </div>
-
-          {/* Center: Nav + Legal Links */}
-          <div className="flex flex-col items-center gap-4">
-            <nav className="flex flex-wrap justify-center gap-6 sm:gap-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+            <div className="flex items-center gap-3 mt-1">
+              {socialLinks.map((s) => (
+                <a
+                  key={s.name}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.name}
+                  className="h-9 w-9 flex items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all duration-200"
                 >
-                  {link.name}
-                </Link>
-              ))}
-            </nav>
-            <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground/50">
-              {legalLinks.map((link, index) => (
-                <span key={link.path} className="flex items-center gap-4">
-                  <Link
-                    to={link.path}
-                    className="hover:text-muted-foreground transition-colors"
-                  >
-                    {link.name}
-                  </Link>
-                  {index < legalLinks.length - 1 && <span>·</span>}
-                </span>
+                  <s.icon className="h-4 w-4" />
+                </a>
               ))}
             </div>
           </div>
 
-          {/* Right: Social Icons */}
-          <div className="flex items-center gap-4">
-            {socialLinks.map((social) => (
-              <a
-                key={social.name}
-                href={social.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-card transition-all duration-200"
-                aria-label={social.name}
-              >
-                <social.icon className="h-4 w-4" />
-              </a>
-            ))}
+          {/* Platform */}
+          <div className="flex flex-col gap-4">
+            <h4 className="text-xs uppercase tracking-[0.15em] text-muted-foreground font-semibold">
+              Platform
+            </h4>
+            <nav className="flex flex-col gap-2.5">
+              {platformLinks.map((l) => (
+                <Link
+                  key={l.path}
+                  to={l.path}
+                  className="text-sm text-foreground/60 hover:text-foreground transition-colors duration-200 w-fit"
+                >
+                  {l.name}
+                </Link>
+              ))}
+            </nav>
           </div>
+
+          {/* Resources */}
+          <div className="flex flex-col gap-4">
+            <h4 className="text-xs uppercase tracking-[0.15em] text-muted-foreground font-semibold">
+              Resources
+            </h4>
+            <nav className="flex flex-col gap-2.5">
+              {resourceLinks.map((l) => (
+                <Link
+                  key={l.path}
+                  to={l.path}
+                  className="text-sm text-foreground/60 hover:text-foreground transition-colors duration-200 w-fit"
+                >
+                  {l.name}
+                </Link>
+              ))}
+            </nav>
+          </div>
+
+          {/* Legal */}
+          <div className="flex flex-col gap-4">
+            <h4 className="text-xs uppercase tracking-[0.15em] text-muted-foreground font-semibold">
+              Legal
+            </h4>
+            <nav className="flex flex-col gap-2.5">
+              {legalLinks.map((l) => (
+                <Link
+                  key={l.path}
+                  to={l.path}
+                  className="text-sm text-foreground/60 hover:text-foreground transition-colors duration-200 w-fit"
+                >
+                  {l.name}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-6 border-t border-border/15">
+          <p className="text-xs text-muted-foreground/40">
+            © {new Date().getFullYear()} SellsPay. All rights reserved.
+          </p>
+          <Link
+            to="/signup"
+            className="text-xs font-medium text-primary hover:text-primary/80 flex items-center gap-1.5 transition-colors"
+          >
+            Start selling today
+            <ArrowRight className="h-3 w-3" />
+          </Link>
         </div>
       </div>
     </footer>
