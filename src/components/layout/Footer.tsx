@@ -3,14 +3,14 @@ import { Twitter, Instagram, Youtube, ArrowRight } from 'lucide-react';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 
 const platformLinks = [
-  { name: 'Store', path: '/products' },
+  { name: 'Marketplace', path: '/products' },
   { name: 'Creators', path: '/creators' },
   { name: 'AI Builder', path: '/ai-builder' },
   { name: 'Pricing', path: '/pricing' },
 ];
 
 const resourceLinks = [
-  { name: 'Tools', path: '/tools' },
+  { name: 'AI Studio', path: '/tools' },
   { name: 'Hire Editors', path: '/hire-editors' },
   { name: 'Community', path: '/community/updates' },
   { name: 'FAQ', path: '/faq' },
