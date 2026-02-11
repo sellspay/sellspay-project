@@ -91,13 +91,13 @@ const ProductCard = forwardRef<HTMLAnchorElement, ProductCardProps>(function Pro
   createdAt
 }, ref) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoError, setVideoError] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
-  const [userProfileId, setUserProfileId] = useState<string | null>(null);
+  const userProfileId = profile?.id ?? null;
   const [creator, setCreator] = useState<Creator | null>(null);
 
   const thumbnail = useMemo(
@@ -137,34 +137,23 @@ const ProductCard = forwardRef<HTMLAnchorElement, ProductCardProps>(function Pro
   }, [showCreator, product.creator_id]);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) {
-        setUserProfileId(null);
+    const fetchSavedState = async () => {
+      if (!userProfileId) {
         setIsSaved(false);
         return;
       }
       
-      const { data: profile } = await supabase
-        .from("profiles")
+      const { data: saved } = await supabase
+        .from("saved_products")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("product_id", product.id)
+        .eq("user_id", userProfileId)
         .maybeSingle();
       
-      if (profile) {
-        setUserProfileId(profile.id);
-        
-        const { data: saved } = await supabase
-          .from("saved_products")
-          .select("id")
-          .eq("product_id", product.id)
-          .eq("user_id", profile.id)
-          .maybeSingle();
-        
-        setIsSaved(!!saved);
-      }
+      setIsSaved(!!saved);
     };
-    fetchUserData();
-  }, [user, product.id]);
+    fetchSavedState();
+  }, [userProfileId, product.id]);
 
   const handleSave = async (e: React.MouseEvent) => {
     e.preventDefault();

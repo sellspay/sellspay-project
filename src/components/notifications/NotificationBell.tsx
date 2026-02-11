@@ -42,45 +42,14 @@ interface AdminNotification {
 }
 
 export function NotificationBell() {
-  const { user } = useAuth();
+  const { user, isAdmin, profile } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [adminUnreadCount, setAdminUnreadCount] = useState(0);
-  const [userProfileId, setUserProfileId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const userProfileId = profile?.id ?? null;
   const [showAdminView, setShowAdminView] = useState(false);
-
-  // Check if user is admin
-  useEffect(() => {
-    if (!user) return;
-
-    const checkAdmin = async () => {
-      const { data } = await supabase.rpc("has_role", {
-        _user_id: user.id,
-        _role: "admin",
-      });
-      setIsAdmin(data === true);
-    };
-
-    checkAdmin();
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchUserProfile = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      setUserProfileId(data?.id || null);
-    };
-
-    fetchUserProfile();
-  }, [user]);
 
   useEffect(() => {
     if (!userProfileId) return;
