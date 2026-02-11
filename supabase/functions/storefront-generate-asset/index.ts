@@ -16,13 +16,13 @@ const MODEL_COSTS: Record<string, number> = {
   'kling-video': 50,     // Was 500 - Video gen
 };
 
-// Map model IDs to Lovable AI models
+// Map model IDs to Google Gemini models (direct API)
 const MODEL_MAP: Record<string, string> = {
-  'nano-banana': 'google/gemini-2.5-flash-image',
-  'flux-pro': 'google/gemini-2.5-flash-image', // Use Nano banana for now
-  'recraft-v3': 'google/gemini-2.5-flash-image',
-  'luma-ray-2': 'google/gemini-2.5-flash-image', // Placeholder
-  'kling-video': 'google/gemini-2.5-flash-image', // Placeholder
+  'nano-banana': 'gemini-2.0-flash-exp',
+  'flux-pro': 'gemini-2.0-flash-exp',
+  'recraft-v3': 'gemini-2.0-flash-exp',
+  'luma-ray-2': 'gemini-2.0-flash-exp', // Placeholder
+  'kling-video': 'gemini-2.0-flash-exp', // Placeholder
 };
 
 serve(async (req) => {
@@ -33,12 +33,12 @@ serve(async (req) => {
   try {
     const { profileId, type, prompt, spec, model = 'nano-banana' } = await req.json();
     
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!GOOGLE_GEMINI_API_KEY) {
+      throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
     }
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Supabase configuration missing");
@@ -135,13 +135,13 @@ serve(async (req) => {
     const paletteHints = spec?.palette?.length ? `, using colors: ${spec.palette.join(', ')}` : '';
     const fullPrompt = `${prompt}${styleHints}${paletteHints}. Professional, high quality, ${aspectRatio} aspect ratio.`;
 
-    const aiModel = MODEL_MAP[model] || 'google/gemini-2.5-flash-image';
+    const aiModel = MODEL_MAP[model] || 'gemini-2.0-flash-exp';
 
-    // Generate image using Lovable AI
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Generate image using Google Gemini API (direct)
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

@@ -357,13 +357,13 @@ const CREDIT_COSTS: Record<string, number> = {
   "reasoning-o1": 5, // Deep reasoning (expensive)
 };
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
-// Model Configuration Mapping - Route to different AI backends
+// Model Configuration Mapping - Route to different AI backends (Direct Google Gemini)
 const MODEL_CONFIG: Record<string, { modelId: string }> = {
-  "vibecoder-pro": { modelId: "google/gemini-3-flash-preview" },
-  "vibecoder-flash": { modelId: "google/gemini-2.5-flash-lite" },
-  "reasoning-o1": { modelId: "openai/gpt-5.2" },
+  "vibecoder-pro": { modelId: "gemini-2.5-flash" },
+  "vibecoder-flash": { modelId: "gemini-2.5-flash-lite" },
+  "reasoning-o1": { modelId: "gemini-2.5-pro" },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -1005,14 +1005,14 @@ async function classifyIntent(
       ? `\n\nCONVERSATION HISTORY (for pronoun resolution):\n${recentMessages.map((m) => `${m.role}: "${m.content}"`).join("\n")}`
       : "";
 
-  const response = await fetch(LOVABLE_AI_URL, {
+  const response = await fetch(GEMINI_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash-lite", // Fast, cheap classifier
+      model: "gemini-2.5-flash-lite", // Fast, cheap classifier
       messages: [
         { role: "system", content: INTENT_CLASSIFIER_PROMPT },
         { role: "user", content: `Context: ${contextHint}${conversationContext}\n\nCurrent user message: "${prompt}"` },
@@ -1187,7 +1187,7 @@ If the request says "change X", change ONLY X and nothing else.
   console.log(`[Executor] Using model: ${config.modelId} for intent: ${intent.intent}`);
 
   // Call the AI
-  const response = await fetch(LOVABLE_AI_URL, {
+  const response = await fetch(GEMINI_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -1224,11 +1224,11 @@ serve(async (req) => {
       jobId,
     } = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!GOOGLE_GEMINI_API_KEY) throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error("Supabase configuration missing");
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -1367,7 +1367,7 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════
     console.log(`[Stage 1] Classifying intent for: "${prompt.slice(0, 100)}..."`);
 
-    const intentResult = await classifyIntent(prompt, hasExistingCode, conversationHistory || [], LOVABLE_API_KEY);
+    const intentResult = await classifyIntent(prompt, hasExistingCode, conversationHistory || [], GOOGLE_GEMINI_API_KEY);
 
     console.log(`[Stage 1] Result: ${intentResult.intent} (${intentResult.confidence}) - ${intentResult.reasoning}`);
 
@@ -1400,7 +1400,7 @@ serve(async (req) => {
       currentCode || null,
       productsContext || null,
       model,
-      LOVABLE_API_KEY,
+      GOOGLE_GEMINI_API_KEY,
       creatorIdentity,
     );
 
