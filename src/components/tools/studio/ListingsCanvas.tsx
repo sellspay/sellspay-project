@@ -1,9 +1,6 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import {
-  Search, Eye, MousePointerClick,
-  Zap, ArrowRight,
-} from "lucide-react";
+import { Zap, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toolsRegistry } from "@/components/tools/toolsRegistry";
 
@@ -38,7 +35,7 @@ export function ListingsCanvas({ onLaunchTool }: ListingsCanvasProps) {
   []);
 
   return (
-    <motion.div variants={stagger} initial="hidden" animate="show" className="p-5 lg:p-6 space-y-6">
+    <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 lg:p-5 space-y-5">
       {/* Teal glow */}
       <div className="pointer-events-none fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-emerald-500/[0.03] blur-[140px]" />
 
@@ -67,9 +64,9 @@ export function ListingsCanvas({ onLaunchTool }: ListingsCanvasProps) {
         </div>
       </motion.div>
 
-      {/* Before/After Split — no container border */}
-      <motion.div variants={fadeUp} className="overflow-hidden rounded-xl">
-        <div className="grid lg:grid-cols-2 divide-x divide-white/[0.04]">
+      {/* Before/After Split — gap instead of divider */}
+      <motion.div variants={fadeUp}>
+        <div className="grid lg:grid-cols-2 gap-6">
           <div className="p-6 space-y-3">
             <span className="text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider">Current Listing</span>
             <div className="space-y-2">
@@ -118,7 +115,7 @@ export function ListingsCanvas({ onLaunchTool }: ListingsCanvasProps) {
         </div>
       </motion.div>
 
-      {/* Tools Grid — no heavy borders */}
+      {/* Tools Grid — no icons */}
       <motion.div variants={fadeUp} className="space-y-4">
         <p className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider">Listing Tools</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -128,14 +125,10 @@ export function ListingsCanvas({ onLaunchTool }: ListingsCanvasProps) {
               onClick={() => onLaunchTool(tool.id)}
               className="group p-5 rounded-xl text-left hover:bg-white/[0.03] transition-colors"
             >
-              <tool.icon className="h-5 w-5 text-emerald-400/50 mb-2" />
               <p className="text-sm font-semibold text-foreground">{tool.name}</p>
               <p className="text-[11px] text-muted-foreground/50 mt-1 line-clamp-2">{tool.description}</p>
               {tool.creditCost > 0 && (
-                <div className="flex items-center gap-1 mt-2">
-                  <Zap className="h-3 w-3 text-primary/40" />
-                  <span className="text-[10px] text-muted-foreground/40">{tool.creditCost} credits</span>
-                </div>
+                <span className="text-[10px] text-muted-foreground/40 mt-2 block">{tool.creditCost} credits</span>
               )}
             </button>
           ))}
