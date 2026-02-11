@@ -32,6 +32,11 @@ interface SourceSelectorProps {
   multiSelect?: boolean;
   selectedProducts?: ProductContext[];
   onProductsChange?: (products: ProductContext[]) => void;
+  /** Hide the built-in selected product display (when parent renders its own) */
+  hideSelectedDisplay?: boolean;
+  /** Expose picker open for external triggers */
+  onOpenPicker?: () => void;
+  pickerRef?: React.MutableRefObject<{ open: () => void } | null>;
 }
 
 export function SourceSelector({
@@ -42,6 +47,8 @@ export function SourceSelector({
   multiSelect = false,
   selectedProducts = [],
   onProductsChange,
+  hideSelectedDisplay = false,
+  pickerRef,
 }: SourceSelectorProps) {
   const { user, profile } = useAuth();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -49,6 +56,11 @@ export function SourceSelector({
   const [products, setProducts] = useState<ProductContext[]>([]);
   const [loading, setLoading] = useState(false);
   const [pendingSelections, setPendingSelections] = useState<ProductContext[]>([]);
+
+  // Expose openPicker to parent via ref
+  if (pickerRef) {
+    pickerRef.current = { open: () => openPicker() };
+  }
 
   const openPicker = async () => {
     if (!profile) return;
@@ -143,7 +155,7 @@ export function SourceSelector({
       </div>
 
       {/* Selected Product Display */}
-      {mode === "product" && hasSelection && (
+      {mode === "product" && hasSelection && !hideSelectedDisplay && (
         <div className="space-y-2">
           {multiSelect ? (
             selectedProducts.map((p) => (

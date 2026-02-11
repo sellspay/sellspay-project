@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { RecentCreations } from "./RecentCreations";
 import { SourceSelector, type SourceMode, type ProductContext } from "@/components/tools/SourceSelector";
+import { ProductShowcaseCard } from "./ProductShowcaseCard";
+import { ProductDetailModal } from "./ProductDetailModal";
 import type { StudioSection } from "./StudioLayout";
 
 export interface CampaignCanvasProps {
@@ -80,7 +82,9 @@ export function CampaignCanvas({
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [extraDirection, setExtraDirection] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const templateRef = useRef<HTMLDivElement>(null);
+  const pickerRef = useRef<{ open: () => void } | null>(null);
 
   const currentStep: 1 | 2 | 3 = !selectedProduct ? 1 : !selectedTemplate ? 2 : 3;
 
@@ -187,13 +191,39 @@ export function CampaignCanvas({
           </span>
           <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">Select Product</p>
         </div>
+
+        {/* Cinematic Product Showcase */}
+        <ProductShowcaseCard
+          product={selectedProduct}
+          onChangeProduct={() => {
+            setSourceMode("product");
+            pickerRef.current?.open();
+          }}
+          onViewDetails={() => setDetailModalOpen(true)}
+          onSelectProduct={() => {
+            setSourceMode("product");
+            pickerRef.current?.open();
+          }}
+        />
+
+        {/* Hidden SourceSelector — only provides the picker dialog */}
         <SourceSelector
           mode={sourceMode}
           onModeChange={setSourceMode}
           selectedProduct={selectedProduct}
           onProductSelect={handleProductSelect}
+          hideSelectedDisplay
+          pickerRef={pickerRef}
         />
       </motion.div>
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        product={selectedProduct}
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        onConfirm={() => {}}
+      />
 
       {/* Live Preview — shows after product selection */}
       <AnimatePresence>
