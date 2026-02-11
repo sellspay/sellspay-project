@@ -413,6 +413,65 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_step_index: number
+          error_message: string | null
+          id: string
+          product_context: Json | null
+          product_id: string | null
+          started_at: string | null
+          status: string
+          steps_state: Json
+          template_id: string
+          total_credits_used: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_step_index?: number
+          error_message?: string | null
+          id?: string
+          product_context?: Json | null
+          product_id?: string | null
+          started_at?: string | null
+          status?: string
+          steps_state?: Json
+          template_id: string
+          total_credits_used?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_step_index?: number
+          error_message?: string | null
+          id?: string
+          product_context?: Json | null
+          product_id?: string | null
+          started_at?: string | null
+          status?: string
+          steps_state?: Json
+          template_id?: string
+          total_credits_used?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_runs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_templates: {
         Row: {
           category: string
