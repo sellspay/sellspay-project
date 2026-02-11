@@ -86,7 +86,21 @@ export function CampaignCanvas({
   const templateRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<{ open: () => void } | null>(null);
 
-  const currentStep: 1 | 2 | 3 = !selectedProduct ? 1 : !selectedTemplate ? 2 : 3;
+  // Blank mode manual fields
+  const [blankName, setBlankName] = useState("");
+  const [blankDescription, setBlankDescription] = useState("");
+
+  const hasBlankInput = blankName.trim().length >= 2;
+
+  // Build a virtual product from blank inputs
+  const blankProduct: ProductContext | null = hasBlankInput
+    ? { id: "blank", name: blankName.trim(), description: blankDescription.trim() || null, excerpt: null, cover_image_url: null, tags: null, price_cents: null, currency: null }
+    : null;
+
+  // The effective product used downstream
+  const effectiveProduct = sourceMode === "product" ? selectedProduct : blankProduct;
+
+  const currentStep: 1 | 2 | 3 = !effectiveProduct ? 1 : !selectedTemplate ? 2 : 3;
 
   const selectedTpl = useMemo(
     () => CAMPAIGN_TEMPLATES.find(t => t.id === selectedTemplate) || null,
@@ -96,22 +110,22 @@ export function CampaignCanvas({
   // Notify parent of state changes for the right panel
   useEffect(() => {
     onCampaignStateChange?.({
-      selectedProduct,
+      selectedProduct: effectiveProduct,
       selectedTemplate: selectedTpl,
       selectedGoal,
       extraDirection,
       currentStep,
     });
-  }, [selectedProduct, selectedTpl, selectedGoal, extraDirection, currentStep]);
+  }, [effectiveProduct, selectedTpl, selectedGoal, extraDirection, currentStep]);
 
   // Auto-scroll to templates when product is selected
   useEffect(() => {
-    if (selectedProduct && !selectedTemplate && templateRef.current) {
+    if (effectiveProduct && !selectedTemplate && templateRef.current) {
       setTimeout(() => {
         templateRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 300);
     }
-  }, [selectedProduct, selectedTemplate]);
+  }, [effectiveProduct, selectedTemplate]);
 
   const applyTemplate = (tpl: typeof CAMPAIGN_TEMPLATES[0]) => {
     setSelectedTemplate(tpl.id);
@@ -124,8 +138,15 @@ export function CampaignCanvas({
     if (product) setSourceMode("product");
   };
 
-  const productHooks = selectedProduct ? generateProductHooks(selectedProduct) : [];
-  const productCaption = selectedProduct ? generateProductCaption(selectedProduct) : "";
+  const handleModeChange = (mode: SourceMode) => {
+    setSourceMode(mode);
+    if (mode === "blank") {
+      setSelectedProduct(null);
+    }
+  };
+
+  const productHooks = effectiveProduct ? generateProductHooks(effectiveProduct) : [];
+  const productCaption = effectiveProduct ? generateProductCaption(effectiveProduct) : "";
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 lg:p-6 space-y-8">
@@ -183,33 +204,118 @@ export function CampaignCanvas({
         <div className="flex items-center gap-2">
           <span className={cn(
             "h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold",
-            selectedProduct
+            effectiveProduct
               ? "bg-gradient-to-b from-[#FF7A1A] to-[#E85C00] text-white"
               : "ring-1 ring-[#FF7A1A]/50 text-[#FF7A1A]"
           )}>
-            {selectedProduct ? <Check className="h-3 w-3" /> : "1"}
+            {effectiveProduct ? <Check className="h-3 w-3" /> : "1"}
           </span>
           <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">Select Product</p>
         </div>
 
-        {/* Cinematic Product Showcase */}
-        <ProductShowcaseCard
-          product={selectedProduct}
-          onChangeProduct={() => {
-            setSourceMode("product");
-            pickerRef.current?.open();
-          }}
-          onViewDetails={() => setDetailModalOpen(true)}
-          onSelectProduct={() => {
-            setSourceMode("product");
-            pickerRef.current?.open();
-          }}
-        />
+        {/* Source toggle */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Source</span>
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            <button
+              onClick={() => handleModeChange("blank")}
+              className={cn(
+                "px-3 py-1.5 text-xs font-medium transition-colors",
+                sourceMode === "blank"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Manual
+            </button>
+            <button
+              onClick={() => {
+                handleModeChange("product");
+                pickerRef.current?.open();
+              }}
+              className={cn(
+                "px-3 py-1.5 text-xs font-medium transition-colors",
+                sourceMode === "product"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Use Product
+            </button>
+          </div>
+        </div>
+
+        {/* Blank / Manual Input Form */}
+        <AnimatePresence mode="wait">
+          {sourceMode === "blank" ? (
+            <motion.div
+              key="blank-form"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25 }}
+              className="rounded-2xl ring-1 ring-white/[0.06] bg-white/[0.02] p-5 space-y-4"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <FileText className="h-4 w-4 text-muted-foreground/40" />
+                <p className="text-xs font-semibold text-foreground/70 uppercase tracking-wider">Manual Entry</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Product / Campaign Name *</label>
+                <Input
+                  value={blankName}
+                  onChange={e => setBlankName(e.target.value)}
+                  placeholder="e.g. Summer Beat Pack, Vocal Preset Bundle"
+                  className="bg-white/[0.03] border-white/[0.08] text-sm placeholder:text-muted-foreground/25"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">Description</label>
+                <textarea
+                  value={blankDescription}
+                  onChange={e => setBlankDescription(e.target.value)}
+                  placeholder="Describe your product or campaign idea — the AI will use this to generate hooks, captions, and scripts."
+                  rows={3}
+                  className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm text-foreground placeholder:text-muted-foreground/25 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-[#FF7A1A]/30"
+                />
+              </div>
+
+              {hasBlankInput && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center gap-2 pt-1"
+                >
+                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-400/60" />
+                  <p className="text-[10px] text-emerald-400/60 font-medium">Ready — scroll down to choose a style</p>
+                </motion.div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="product-showcase"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.25 }}
+            >
+              {/* Cinematic Product Showcase */}
+              <ProductShowcaseCard
+                product={selectedProduct}
+                onChangeProduct={() => pickerRef.current?.open()}
+                onViewDetails={() => setDetailModalOpen(true)}
+                onSelectProduct={() => pickerRef.current?.open()}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Hidden SourceSelector — only provides the picker dialog */}
         <SourceSelector
           mode={sourceMode}
-          onModeChange={setSourceMode}
+          onModeChange={handleModeChange}
           selectedProduct={selectedProduct}
           onProductSelect={handleProductSelect}
           hideSelectedDisplay
@@ -227,7 +333,7 @@ export function CampaignCanvas({
 
       {/* Live Preview — shows after product selection */}
       <AnimatePresence>
-        {selectedProduct && (
+        {effectiveProduct && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -265,7 +371,7 @@ export function CampaignCanvas({
                 <div className="flex-1 space-y-1.5 text-[11px] text-foreground/50">
                   <p>Slide 1: Hook — "{productHooks[0]?.slice(0, 40)}…"</p>
                   <p>Slide 2: Problem statement</p>
-                  <p>Slide 3: Product intro — {selectedProduct.name}</p>
+                  <p>Slide 3: Product intro — {effectiveProduct.name}</p>
                   <p>Slide 4: Key benefits</p>
                   <p>Slide 5: CTA + pricing</p>
                 </div>
@@ -277,7 +383,7 @@ export function CampaignCanvas({
 
       {/* Step 2: Campaign Style (Templates) — only visible after product selection */}
       <AnimatePresence>
-        {selectedProduct && (
+        {effectiveProduct && (
           <motion.div
             ref={templateRef}
             initial={{ opacity: 0, y: 24 }}
