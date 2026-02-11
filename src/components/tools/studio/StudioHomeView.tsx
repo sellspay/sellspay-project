@@ -23,6 +23,7 @@ interface StudioHomeViewProps {
   recentAssets: any[];
   onLaunchPromo: () => void;
   onLaunchTool: (id: string) => void;
+  onSectionChange?: (section: StudioSection) => void;
   sectionTools: ToolRegistryEntry[];
 }
 
@@ -40,7 +41,7 @@ const QUICK_LAUNCH = [
 export function StudioHomeView({
   activeSection, productCount, assetCount, generationCount,
   creditBalance, isLoadingCredits, recentAssets,
-  onLaunchPromo, onLaunchTool, sectionTools,
+  onLaunchPromo, onLaunchTool, onSectionChange, sectionTools,
 }: StudioHomeViewProps) {
   const [quickPrompt, setQuickPrompt] = useState("");
 
@@ -128,6 +129,7 @@ export function StudioHomeView({
               key={q.id}
               onClick={() => {
                 if (q.id === "campaign") onLaunchPromo();
+                else onSectionChange?.(q.id as StudioSection);
               }}
               className={cn(
                 "group relative p-4 rounded-xl border border-border/20 bg-card/20 backdrop-blur-sm text-left",
