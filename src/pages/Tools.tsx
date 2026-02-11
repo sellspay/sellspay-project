@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Coins, Zap, Layers, Store } from "lucide-react";
 import { QuickToolsGrid } from "@/components/tools/QuickToolsGrid";
+import { MyAssetsDrawer } from "@/components/tools/MyAssetsDrawer";
 import { CampaignsGrid } from "@/components/tools/CampaignsGrid";
 import { StoreAssistantGrid } from "@/components/tools/StoreAssistantGrid";
 import { ToolActiveView } from "@/components/tools/ToolActiveView";
@@ -52,12 +53,15 @@ export default function Tools() {
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">AI Studio</h1>
             <p className="text-sm text-muted-foreground mt-1">Generate, create, and grow — all from one place.</p>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card">
-            <Coins className="h-4 w-4 text-amber-500" />
-            <span className="text-sm font-semibold text-foreground">
-              {isLoading ? "…" : creditBalance}
-            </span>
-            <span className="text-xs text-muted-foreground">credits</span>
+          <div className="flex items-center gap-3">
+            <MyAssetsDrawer />
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card">
+              <Coins className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-semibold text-foreground">
+                {isLoading ? "…" : creditBalance}
+              </span>
+              <span className="text-xs text-muted-foreground">credits</span>
+            </div>
           </div>
         </div>
 
