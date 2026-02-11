@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ImageIcon, Music, Video, FileText, Clock } from "lucide-react";
+import { ImageIcon, Music, Video, FileText } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface RecentAsset {
@@ -31,7 +31,6 @@ export function RecentCreations({ assets }: RecentCreationsProps) {
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
     >
-      <p className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider mb-3">Recent Creations</p>
       <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
         {assets.map((asset) => {
           const Icon = getAssetIcon(asset.asset_type);
@@ -49,10 +48,9 @@ export function RecentCreations({ assets }: RecentCreationsProps) {
               )}
               <div className="px-3 py-2 w-full">
                 <span className="text-[10px] text-muted-foreground/50 truncate block">{asset.tool_id}</span>
-                <div className="flex items-center gap-1 text-[9px] text-muted-foreground/30">
-                  <Clock className="h-2.5 w-2.5" />
+                <span className="text-[9px] text-muted-foreground/30">
                   {formatDistanceToNow(new Date(asset.created_at), { addSuffix: true })}
-                </div>
+                </span>
               </div>
             </div>
           );

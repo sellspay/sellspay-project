@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Play, Package, Layers, Zap, Rocket, Clapperboard, Image, FileText,
-  ArrowRight,
-} from "lucide-react";
+import { Play, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { RecentCreations } from "./RecentCreations";
@@ -34,10 +31,10 @@ const HOOKS = [
 ];
 
 const FEATURED_ACTIONS = [
-  { id: "campaign", label: "Launch Promo", desc: "Scroll-stopping vertical video", icon: Clapperboard, accent: "from-orange-500/20 to-transparent" },
-  { id: "social", label: "Create Carousel", desc: "Swipe-based storytelling", icon: Layers, accent: "from-blue-500/20 to-transparent" },
-  { id: "listings", label: "Upgrade Image", desc: "Before/after transformation", icon: Image, accent: "from-emerald-500/20 to-transparent" },
-  { id: "listings-opt", label: "Optimize Listing", desc: "AI-powered conversion boost", icon: FileText, accent: "from-violet-500/20 to-transparent" },
+  { id: "campaign", label: "Launch Promo", desc: "Scroll-stopping vertical video" },
+  { id: "social", label: "Create Carousel", desc: "Swipe-based storytelling" },
+  { id: "listings", label: "Upgrade Image", desc: "Before/after transformation" },
+  { id: "listings-opt", label: "Optimize Listing", desc: "AI-powered conversion boost" },
 ];
 
 export function CampaignCanvas({
@@ -54,19 +51,18 @@ export function CampaignCanvas({
   }, []);
 
   return (
-    <motion.div variants={stagger} initial="hidden" animate="show" className="p-5 lg:p-6 space-y-6">
+    <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 lg:p-5 space-y-5">
       {/* Warm orange glow */}
       <div className="pointer-events-none fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-orange-500/[0.03] blur-[140px]" />
 
-      {/* Stat strip — minimal */}
+      {/* Stat strip — minimal, no icons */}
       <motion.div variants={fadeUp} className="flex flex-wrap gap-4">
         {[
-          { icon: Package, label: "Products", value: productCount },
-          { icon: Layers, label: "Assets", value: assetCount },
-          { icon: Zap, label: "Generated", value: generationCount },
+          { label: "Products", value: productCount },
+          { label: "Assets", value: assetCount },
+          { label: "Generated", value: generationCount },
         ].map(s => (
           <div key={s.label} className="flex items-center gap-2">
-            <s.icon className="h-3 w-3 text-muted-foreground/40" />
             <span className="text-xs font-semibold text-foreground tabular-nums">{String(s.value)}</span>
             <span className="text-[10px] text-muted-foreground/50">{s.label}</span>
           </div>
@@ -76,11 +72,11 @@ export function CampaignCanvas({
       {/* Hero strip — full bleed, no container */}
       <motion.div variants={fadeUp} className="grid lg:grid-cols-[1fr_280px] gap-6 min-h-[240px]">
         <div className="space-y-5 flex flex-col justify-center">
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight leading-[1.1]">
+          <h2 className="text-5xl sm:text-6xl font-bold text-foreground tracking-tighter leading-[1.05]">
             Launch. Create.<br />Optimize.
           </h2>
           <p className="text-sm text-muted-foreground/70 max-w-md">
-            Turn any product into scroll-stopping content — deployed by AI.
+            Turn products into scroll-stopping content — instantly.
           </p>
           <div className="flex gap-2 max-w-lg">
             <Input
@@ -91,9 +87,10 @@ export function CampaignCanvas({
             />
             <button
               onClick={onLaunchPromo}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6 py-2.5 text-sm font-semibold shadow-sm transition-colors shrink-0 flex items-center gap-2"
+              className="shrink-0 px-6 py-2.5 text-sm font-semibold text-primary-foreground rounded-[10px] shadow-sm transition-all"
+              style={{ background: "linear-gradient(180deg, #FF7A1A 0%, #E85C00 100%)" }}
             >
-              <Rocket className="h-3.5 w-3.5" /> Deploy
+              Deploy
             </button>
           </div>
         </div>
@@ -128,9 +125,9 @@ export function CampaignCanvas({
         </div>
       </motion.div>
 
-      {/* Featured Actions — 2x2, no section title */}
+      {/* Featured Actions — 2x2, no icons, no gradient overlay */}
       <motion.div variants={fadeUp}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           {FEATURED_ACTIONS.map(a => (
             <button
               key={a.id}
@@ -139,18 +136,11 @@ export function CampaignCanvas({
                 else if (a.id === "listings-opt") onSectionChange?.("listings");
                 else onSectionChange?.(a.id as StudioSection);
               }}
-              className={cn(
-                "group relative p-5 rounded-xl text-left overflow-hidden min-h-[140px]",
-                "hover:bg-white/[0.03] transition-colors duration-200"
-              )}
+              className="group p-5 rounded-xl text-left min-h-[140px] hover:bg-white/[0.03] transition-colors duration-150"
             >
-              <div className={cn("absolute inset-0 rounded-xl bg-gradient-to-br opacity-40", a.accent)} />
-              <div className="relative z-10 flex flex-col h-full justify-between">
-                <a.icon className="h-6 w-6 text-foreground/30 mb-4" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{a.label}</p>
-                  <p className="text-[11px] text-muted-foreground/60 mt-1">{a.desc}</p>
-                </div>
+              <div className="flex flex-col h-full justify-end">
+                <p className="text-sm font-semibold text-foreground">{a.label}</p>
+                <p className="text-[11px] text-muted-foreground/60 mt-1">{a.desc}</p>
               </div>
             </button>
           ))}
@@ -162,7 +152,7 @@ export function CampaignCanvas({
         <p className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider mb-3">Trending</p>
         <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
           {HOOKS.map((hook, i) => (
-            <div key={i} className="shrink-0 w-[260px] p-4 rounded-xl hover:bg-white/[0.03] transition-colors">
+            <div key={i} className="shrink-0 w-[280px] p-4 rounded-xl hover:bg-white/[0.03] transition-colors">
               <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider mb-2">Trending</p>
               <p className="text-sm font-semibold text-foreground/90 leading-snug">{hook}</p>
             </div>

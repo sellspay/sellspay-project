@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Share2, MessageSquare, Hash, GalleryHorizontal, Clapperboard,
-  Zap, Heart, MessageCircle, Repeat2, Send,
+  Share2, Heart, MessageCircle, Repeat2, Send, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toolsRegistry } from "@/components/tools/toolsRegistry";
@@ -22,10 +21,10 @@ const PLATFORMS = [
 ];
 
 const CONTENT_TYPES = [
-  { id: "carousel-generator", label: "Carousel", icon: GalleryHorizontal, desc: "Multi-slide swipe posts" },
-  { id: "caption-hashtags", label: "Caption Pack", icon: Hash, desc: "Optimized captions & hashtags" },
-  { id: "social-posts-pack", label: "10 Posts", icon: MessageSquare, desc: "Full post pack from product" },
-  { id: "short-form-script", label: "Short-Form Script", icon: Clapperboard, desc: "TikTok/Reels/Shorts" },
+  { id: "carousel-generator", label: "Carousel", desc: "Multi-slide swipe posts" },
+  { id: "caption-hashtags", label: "Caption Pack", desc: "Optimized captions & hashtags" },
+  { id: "social-posts-pack", label: "10 Posts", desc: "Full post pack from product" },
+  { id: "short-form-script", label: "Short-Form Script", desc: "TikTok/Reels/Shorts" },
 ];
 
 function isComingSoon(id: string) {
@@ -53,11 +52,11 @@ export function SocialCanvas({ onLaunchTool }: SocialCanvasProps) {
   }, []);
 
   return (
-    <motion.div variants={stagger} initial="hidden" animate="show" className="p-5 lg:p-6 space-y-6">
+    <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 lg:p-5 space-y-5">
       {/* Blue/indigo glow */}
       <div className="pointer-events-none fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-indigo-500/[0.03] blur-[140px]" />
 
-      {/* Platform Strip — no borders, text weight only */}
+      {/* Platform Strip — text weight only, no bg on active */}
       <motion.div variants={fadeUp} className="flex gap-1">
         {PLATFORMS.map(p => (
           <button
@@ -66,7 +65,7 @@ export function SocialCanvas({ onLaunchTool }: SocialCanvasProps) {
             className={cn(
               "px-4 py-2 rounded-lg text-sm transition-colors",
               activePlatform === p.id
-                ? "text-foreground font-semibold bg-white/[0.04]"
+                ? "text-foreground font-semibold"
                 : "text-muted-foreground/50 hover:text-foreground/70"
             )}
           >
@@ -75,7 +74,7 @@ export function SocialCanvas({ onLaunchTool }: SocialCanvasProps) {
         ))}
       </motion.div>
 
-      {/* Content Type Shelf — no heavy borders */}
+      {/* Content Type Shelf — no icons, no min-h */}
       <motion.div variants={fadeUp}>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {CONTENT_TYPES.map(ct => {
@@ -85,12 +84,11 @@ export function SocialCanvas({ onLaunchTool }: SocialCanvasProps) {
                 key={ct.id}
                 onClick={() => !comingSoon && onLaunchTool(ct.id)}
                 disabled={comingSoon}
-                className="group relative p-5 rounded-xl text-left hover:bg-white/[0.03] transition-colors min-h-[130px] disabled:opacity-50 disabled:cursor-default"
+                className="group relative p-5 rounded-xl text-left hover:bg-white/[0.03] transition-colors disabled:opacity-50 disabled:cursor-default"
               >
                 {comingSoon && (
                   <span className="absolute top-3 right-3 text-[9px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full uppercase tracking-wider">Soon</span>
                 )}
-                <ct.icon className="h-5 w-5 text-indigo-400/40 mb-3" />
                 <p className="text-sm font-semibold text-foreground">{ct.label}</p>
                 <p className="text-[11px] text-muted-foreground/50 mt-1">{ct.desc}</p>
               </button>
@@ -99,12 +97,12 @@ export function SocialCanvas({ onLaunchTool }: SocialCanvasProps) {
         </div>
       </motion.div>
 
-      {/* Animated Post Assembly — no container border */}
+      {/* Animated Post Assembly — no container bg */}
       <motion.div variants={fadeUp} className="overflow-hidden">
         <div className="p-6">
           <p className="text-[10px] font-semibold text-indigo-400/40 uppercase tracking-wider mb-4">Live Preview</p>
           <div className="max-w-sm mx-auto">
-            <div className="rounded-xl bg-white/[0.02] p-4 space-y-3">
+            <div className="p-4 space-y-3">
               {/* Author */}
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-full bg-white/[0.05]" />
@@ -172,7 +170,7 @@ export function SocialCanvas({ onLaunchTool }: SocialCanvasProps) {
         </div>
       </motion.div>
 
-      {/* Tools Grid */}
+      {/* Tools Grid — no icons */}
       <motion.div variants={fadeUp} className="space-y-4">
         <p className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider">Social Tools</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -188,14 +186,10 @@ export function SocialCanvas({ onLaunchTool }: SocialCanvasProps) {
                 {comingSoon && (
                   <span className="absolute top-3 right-3 text-[9px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full uppercase tracking-wider">Soon</span>
                 )}
-                <tool.icon className="h-5 w-5 text-indigo-400/40 mb-2" />
                 <p className="text-sm font-semibold text-foreground">{tool.name}</p>
                 <p className="text-[11px] text-muted-foreground/50 mt-1 line-clamp-2">{tool.description}</p>
                 {tool.creditCost > 0 && (
-                  <div className="flex items-center gap-1 mt-2">
-                    <Zap className="h-3 w-3 text-primary/40" />
-                    <span className="text-[10px] text-muted-foreground/40">{tool.creditCost} credits</span>
-                  </div>
+                  <span className="text-[10px] text-muted-foreground/40 mt-2 block">{tool.creditCost} credits</span>
                 )}
               </button>
             );

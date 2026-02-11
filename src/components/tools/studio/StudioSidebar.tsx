@@ -1,8 +1,5 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import {
-  ChevronsLeft, ChevronsRight,
-} from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { StudioSection } from "./StudioLayout";
 
@@ -31,23 +28,20 @@ export function StudioSidebar({
   return (
     <TooltipProvider delayDuration={0}>
       <motion.aside
-        className="h-full flex flex-col bg-[hsl(0_0%_3%)] overflow-hidden"
-        animate={{ width: collapsed ? 56 : 200 }}
+        className="h-full flex flex-col bg-[#0F1115] overflow-hidden"
+        animate={{ width: collapsed ? 56 : 180 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
       >
-        {/* Header */}
+        {/* Toggle — thin bar */}
         <div className={cn(
-          "flex items-center h-14 px-4 shrink-0",
-          collapsed ? "justify-center" : "justify-between"
+          "flex items-center h-14 shrink-0",
+          collapsed ? "justify-center px-2" : "justify-end px-4"
         )}>
-          {!collapsed && (
-            <span className="text-sm font-semibold text-foreground/80 tracking-tight">Studio</span>
-          )}
           <button
             onClick={onToggleCollapse}
-            className="p-1 rounded-md hover:bg-white/[0.04] text-muted-foreground/50 transition-colors"
+            className="p-2 rounded-md hover:bg-white/[0.04] transition-colors"
           >
-            {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
+            <div className="w-4 h-[2px] rounded-full bg-foreground/20" />
           </button>
         </div>
 
@@ -60,14 +54,14 @@ export function StudioSidebar({
                 key={id}
                 onClick={() => onSectionChange(id)}
                 className={cn(
-                  "w-full text-left px-3 py-2 text-[13px] transition-colors relative",
+                  "w-full text-left px-3 py-2 text-[15px] font-medium transition-colors relative",
                   isActive
-                    ? "text-foreground font-semibold"
-                    : "text-muted-foreground/60 hover:text-foreground/80"
+                    ? "text-foreground"
+                    : "text-foreground/50 hover:text-foreground/80"
                 )}
               >
                 {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-full bg-primary" />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-full bg-foreground/60" />
                 )}
                 {!collapsed && <span>{label}</span>}
                 {collapsed && <span className="text-[10px]">{label.charAt(0)}</span>}
@@ -94,7 +88,7 @@ export function StudioSidebar({
           {collapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-[10px] text-muted-foreground/50 tabular-nums text-center">
+                <div className="text-[10px] text-muted-foreground/40 tabular-nums text-center">
                   {isLoadingCredits ? "…" : creditBalance}
                 </div>
               </TooltipTrigger>
@@ -104,8 +98,8 @@ export function StudioSidebar({
             </Tooltip>
           ) : (
             <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary/60" />
-              <span className="text-[11px] text-muted-foreground/50 tabular-nums">
+              <div className="h-1 w-1 rounded-full bg-foreground/20" />
+              <span className="text-[11px] text-muted-foreground/40 tabular-nums">
                 {isLoadingCredits ? "…" : `${creditBalance.toLocaleString()} credits`}
               </span>
             </div>
