@@ -42,13 +42,16 @@ interface ToolActiveViewProps {
   onClose: () => void;
   creditBalance?: number;
   isLoadingCredits?: boolean;
+  /** When true, renders in embedded canvas mode (no hero banner, slim top bar) */
+  embedded?: boolean;
 }
 
 export function ToolActiveView({ 
   toolId, 
   onClose,
   creditBalance = 0,
-  isLoadingCredits 
+  isLoadingCredits,
+  embedded = false,
 }: ToolActiveViewProps) {
   const [showIntro, setShowIntro] = useState(true);
   const [isReady, setIsReady] = useState(false);
@@ -128,12 +131,17 @@ export function ToolActiveView({
   }, []);
 
   useEffect(() => {
+    if (embedded) {
+      setShowIntro(false);
+      setIsReady(true);
+      return;
+    }
     const timer = setTimeout(() => {
       setShowIntro(false);
       setTimeout(() => setIsReady(true), 500);
     }, 1500);
     return () => clearTimeout(timer);
-  }, [toolId]);
+  }, [toolId, embedded]);
 
   if (!tool) {
     return (
@@ -150,7 +158,7 @@ export function ToolActiveView({
     <div className="min-h-screen bg-background">
       {/* Intro Animation Overlay */}
       <AnimatePresence>
-        {showIntro && (
+        {showIntro && !embedded && (
           <ToolIntroOverlay tool={tool} />
         )}
       </AnimatePresence>
@@ -158,98 +166,117 @@ export function ToolActiveView({
       {/* Main Tool Interface */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: isReady ? 1 : 0 }}
+        animate={{ opacity: (embedded || isReady) ? 1 : 0 }}
         transition={{ duration: 0.5 }}
         className="min-h-screen"
       >
-        {/* Hero Banner */}
-        <ToolHeroBanner
-          tool={tool}
-          onClose={onClose}
-          creditBalance={creditBalance}
-          isLoadingCredits={isLoadingCredits}
-        />
+        {/* Hero Banner — only in standalone mode */}
+        {embedded ? (
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30 bg-card/30 backdrop-blur-sm">
+            <Button onClick={onClose} variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </Button>
+            <div className="flex items-center gap-2">
+              <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center", `bg-gradient-to-br ${tool.gradient}`)}>
+                <Icon className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="text-sm font-semibold text-foreground">{tool.title}</span>
+            </div>
+            <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Sparkles className="w-3.5 h-3.5" />
+              {isLoadingCredits ? "…" : creditBalance} credits
+            </div>
+          </div>
+        ) : (
+          <ToolHeroBanner
+            tool={tool}
+            onClose={onClose}
+            creditBalance={creditBalance}
+            isLoadingCredits={isLoadingCredits}
+          />
+        )}
 
         {/* Tool Content */}
-        <div className="container mx-auto px-4 py-8 space-y-4">
-          {/* Context Controls */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="space-y-3"
-          >
-            {/* Source Selector */}
-            {isMultiSelect ? (
-              <SourceSelector
-                mode={sourceMode}
-                onModeChange={setSourceMode}
-                multiSelect
-                selectedProducts={selectedProducts}
-                onProductsChange={setSelectedProducts}
-              />
-            ) : (
-              <SourceSelector
-                mode={sourceMode}
-                onModeChange={setSourceMode}
-                selectedProduct={selectedProduct}
-                onProductSelect={setSelectedProduct}
-              />
-            )}
+        <div className={cn("mx-auto py-8 space-y-4", embedded ? "px-4" : "container px-4")}>
+          {/* Context Controls — hidden in embedded mode (moved to right panel) */}
+          {!embedded && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-3"
+            >
+              {/* Source Selector */}
+              {isMultiSelect ? (
+                <SourceSelector
+                  mode={sourceMode}
+                  onModeChange={setSourceMode}
+                  multiSelect
+                  selectedProducts={selectedProducts}
+                  onProductsChange={setSelectedProducts}
+                />
+              ) : (
+                <SourceSelector
+                  mode={sourceMode}
+                  onModeChange={setSourceMode}
+                  selectedProduct={selectedProduct}
+                  onProductSelect={setSelectedProduct}
+                />
+              )}
 
-            {/* Product Context Card(s) */}
-            {sourceMode === "product" && activeProducts.length > 0 && (
-              <ProductContextCard
-                products={activeProducts}
-                onRemove={handleRemoveProduct}
-                multiSelect={isMultiSelect}
-                onAddAnother={isMultiSelect ? () => {
-                  // Re-open picker handled by SourceSelector
-                  setSourceMode("product");
-                } : undefined}
-              />
-            )}
+              {/* Product Context Card(s) */}
+              {sourceMode === "product" && activeProducts.length > 0 && (
+                <ProductContextCard
+                  products={activeProducts}
+                  onRemove={handleRemoveProduct}
+                  multiSelect={isMultiSelect}
+                  onAddAnother={isMultiSelect ? () => {
+                    setSourceMode("product");
+                  } : undefined}
+                />
+              )}
 
-            {/* Mode toggles */}
-            {registryEntry?.supportsModes === "image" && (
-              <ImageToolModeToggle
-                mode={imageMode}
-                onModeChange={setImageMode}
-                keepRecognizable={keepRecognizable}
-                onKeepRecognizableChange={setKeepRecognizable}
-                variations={variations}
-                onVariationsChange={setVariations}
-              />
-            )}
-            {registryEntry?.supportsModes === "video" && (
-              <VideoToolModeToggle
-                mode={videoMode}
-                onModeChange={setVideoMode}
-                duration={videoDuration}
-                onDurationChange={setVideoDuration}
-                aspectRatio={videoAspect}
-                onAspectRatioChange={setVideoAspect}
-                style={videoStyle}
-                onStyleChange={setVideoStyle}
-                voiceoverEnabled={voiceoverEnabled}
-                onVoiceoverChange={setVoiceoverEnabled}
-              />
-            )}
+              {/* Mode toggles */}
+              {registryEntry?.supportsModes === "image" && (
+                <ImageToolModeToggle
+                  mode={imageMode}
+                  onModeChange={setImageMode}
+                  keepRecognizable={keepRecognizable}
+                  onKeepRecognizableChange={setKeepRecognizable}
+                  variations={variations}
+                  onVariationsChange={setVariations}
+                />
+              )}
+              {registryEntry?.supportsModes === "video" && (
+                <VideoToolModeToggle
+                  mode={videoMode}
+                  onModeChange={setVideoMode}
+                  duration={videoDuration}
+                  onDurationChange={setVideoDuration}
+                  aspectRatio={videoAspect}
+                  onAspectRatioChange={setVideoAspect}
+                  style={videoStyle}
+                  onStyleChange={setVideoStyle}
+                  voiceoverEnabled={voiceoverEnabled}
+                  onVoiceoverChange={setVoiceoverEnabled}
+                />
+              )}
 
-            {/* Brand Kit + Credit Estimator row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <BrandKitToggle
-                enabled={brandKitEnabled}
-                onToggle={setBrandKitEnabled}
-                onBrandKitLoaded={setBrandKitData}
-              />
-              <CreditEstimator
-                baseCost={creditCost}
-                creditBalance={creditBalance}
-                isLoading={isLoadingCredits}
+              {/* Brand Kit + Credit Estimator row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <BrandKitToggle
+                  enabled={brandKitEnabled}
+                  onToggle={setBrandKitEnabled}
+                  onBrandKitLoaded={setBrandKitData}
+                />
+                <CreditEstimator
+                  baseCost={creditCost}
+                  creditBalance={creditBalance}
+                  isLoading={isLoadingCredits}
               />
             </div>
           </motion.div>
+          )}
 
           {/* Content Moderation Banner */}
           <ContentModerationBanner result={moderationResult} onDismiss={clearModeration} />
