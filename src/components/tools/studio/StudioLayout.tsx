@@ -75,7 +75,7 @@ export default function StudioLayout() {
     setActiveTool(null);
   };
 
-  const sidebarWidth = sidebarCollapsed ? 56 : 180;
+  const sidebarWidth = sidebarCollapsed ? 56 : 200;
 
   return (
     <div className="h-screen grid overflow-hidden" style={{

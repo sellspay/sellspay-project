@@ -1,6 +1,11 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import {
+  Rocket, ListChecks, Share2, AudioLines, FolderOpen,
+  Star, Download, ArrowLeft,
+} from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useNavigate } from "react-router-dom";
 import type { StudioSection } from "./StudioLayout";
 
 interface StudioSidebarProps {
@@ -13,58 +18,99 @@ interface StudioSidebarProps {
   activeTool: string | null;
 }
 
-const NAV_ITEMS: { id: StudioSection; label: string }[] = [
-  { id: "campaign", label: "Launch Campaign" },
-  { id: "listings", label: "Upgrade Listings" },
-  { id: "social", label: "Social Factory" },
-  { id: "media", label: "Media Lab" },
-  { id: "assets", label: "My Assets" },
+const NAV_ITEMS: { id: StudioSection; label: string; icon: typeof Rocket }[] = [
+  { id: "campaign", label: "Campaign", icon: Rocket },
+  { id: "listings", label: "Listings", icon: ListChecks },
+  { id: "social", label: "Social", icon: Share2 },
+  { id: "media", label: "Media", icon: AudioLines },
+];
+
+const BOTTOM_ITEMS: { id: StudioSection; label: string; icon: typeof Star }[] = [
+  { id: "assets", label: "My Assets", icon: FolderOpen },
 ];
 
 export function StudioSidebar({
   collapsed, onToggleCollapse, activeSection, onSectionChange,
   creditBalance, isLoadingCredits, activeTool,
 }: StudioSidebarProps) {
+  const navigate = useNavigate();
+
   return (
     <TooltipProvider delayDuration={0}>
       <motion.aside
         className="h-full flex flex-col bg-[#0F1115] overflow-hidden"
-        animate={{ width: collapsed ? 56 : 180 }}
+        animate={{ width: collapsed ? 56 : 200 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
       >
-        {/* Toggle — thin bar */}
-        <div className={cn(
-          "flex items-center h-14 shrink-0",
-          collapsed ? "justify-center px-2" : "justify-end px-4"
-        )}>
-          <button
-            onClick={onToggleCollapse}
-            className="p-2 rounded-md hover:bg-white/[0.04] transition-colors"
-          >
-            <div className="w-4 h-[2px] rounded-full bg-foreground/20" />
-          </button>
+        {/* Exit Studio */}
+        <div className="shrink-0 px-3 pt-4 pb-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => navigate("/")}
+                className={cn(
+                  "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-muted-foreground/60 hover:text-foreground hover:bg-white/[0.04] transition-colors",
+                  collapsed && "justify-center"
+                )}
+              >
+                <ArrowLeft className="h-4 w-4 shrink-0" />
+                {!collapsed && <span className="font-medium">Exit Studio</span>}
+              </button>
+            </TooltipTrigger>
+            {collapsed && <TooltipContent side="right">Exit Studio</TooltipContent>}
+          </Tooltip>
         </div>
 
-        {/* Nav items — typography only */}
-        <nav className="flex-1 py-4 px-2 space-y-0.5">
-          {NAV_ITEMS.map(({ id, label }) => {
+        {/* Main nav */}
+        <nav className="flex-1 px-3 py-2 space-y-0.5">
+          {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
             const isActive = !activeTool && activeSection === id;
             const btn = (
               <button
                 key={id}
                 onClick={() => onSectionChange(id)}
                 className={cn(
-                  "w-full text-left px-3 py-2 text-[15px] font-medium transition-colors relative",
+                  "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
                   isActive
-                    ? "text-foreground"
-                    : "text-foreground/50 hover:text-foreground/80"
+                    ? "bg-white/[0.07] text-foreground font-medium"
+                    : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-white/[0.03]"
                 )}
               >
-                {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-full bg-foreground/60" />
-                )}
+                <Icon className="h-4 w-4 shrink-0" />
                 {!collapsed && <span>{label}</span>}
-                {collapsed && <span className="text-[10px]">{label.charAt(0)}</span>}
+              </button>
+            );
+
+            if (collapsed) {
+              return (
+                <Tooltip key={id}>
+                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
+                  <TooltipContent side="right">{label}</TooltipContent>
+                </Tooltip>
+              );
+            }
+            return btn;
+          })}
+
+          {/* Separator */}
+          <div className="!my-3 h-px bg-white/[0.06] mx-1" />
+
+          {/* Bottom nav items */}
+          {BOTTOM_ITEMS.map(({ id, label, icon: Icon }) => {
+            const isActive = !activeTool && activeSection === id;
+            const btn = (
+              <button
+                key={id}
+                onClick={() => onSectionChange(id)}
+                className={cn(
+                  "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
+                  isActive
+                    ? "bg-white/[0.07] text-foreground font-medium"
+                    : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-white/[0.03]"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {!collapsed && <span>{label}</span>}
               </button>
             );
 
@@ -80,9 +126,9 @@ export function StudioSidebar({
           })}
         </nav>
 
-        {/* Credit pill — minimal */}
+        {/* Credit pill */}
         <div className={cn(
-          "shrink-0 px-4 py-4",
+          "shrink-0 px-3 py-4 border-t border-white/[0.06]",
           collapsed && "flex justify-center px-2"
         )}>
           {collapsed ? (
