@@ -35,6 +35,19 @@ const HATE_PATTERNS = [
   /\b(death\s+to\s+(?:all|every))\b/i,
 ];
 
+const SEXUAL_PATTERNS = [
+  /\b(nude|naked|porn|hentai|xxx|nsfw|erotic|sexually\s+explicit)\b/i,
+  /\b(sex\s+scene|sexual\s+content|adult\s+content)\b/i,
+];
+
+const DEEPFAKE_PATTERNS = [
+  /\b(deepfake|impersonat)\b/i,
+];
+
+const DRUG_PATTERNS = [
+  /\bhow\s+to\s+(make|cook|synthesize)\s+(meth|cocaine|heroin|drugs)\b/i,
+];
+
 const SELF_HARM_PATTERNS = [
   /\b(how\s+to\s+)?(suicide|self.?harm|cut\s+myself)\b/i,
 ];
@@ -86,6 +99,30 @@ export function moderateContent(text: string): ModerationResult {
   for (const pattern of SELF_HARM_PATTERNS) {
     if (pattern.test(text)) {
       flags.push({ type: 'self_harm', severity: 'high', detail: 'Contains self-harm content' });
+      break;
+    }
+  }
+
+  // Sexual / NSFW
+  for (const pattern of SEXUAL_PATTERNS) {
+    if (pattern.test(text)) {
+      flags.push({ type: 'sexual', severity: 'high', detail: 'Contains sexually explicit content' });
+      break;
+    }
+  }
+
+  // Deepfake / impersonation
+  for (const pattern of DEEPFAKE_PATTERNS) {
+    if (pattern.test(text)) {
+      flags.push({ type: 'copyright', severity: 'high', detail: 'Deepfake or impersonation content is prohibited' });
+      break;
+    }
+  }
+
+  // Drug manufacturing
+  for (const pattern of DRUG_PATTERNS) {
+    if (pattern.test(text)) {
+      flags.push({ type: 'violence', severity: 'high', detail: 'Drug manufacturing content is prohibited' });
       break;
     }
   }

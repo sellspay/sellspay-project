@@ -107,6 +107,29 @@ serve(async (req) => {
       );
     }
 
+    // ====== CONTENT MODERATION ======
+    const BLOCKED_PATTERNS = [
+      /\b(kill|murder|slaughter|massacre)\b.*\b(people|children|humans)\b/i,
+      /\b(bomb|shoot|stab)\b.*\b(school|church|mosque|synagogue)\b/i,
+      /\bhow\s+to\s+(make|build)\s+(bomb|weapon|gun)\b/i,
+      /\b(racial\s+superiority|white\s+power|ethnic\s+cleansing)\b/i,
+      /\b(death\s+to\s+(?:all|every))\b/i,
+      /\b(how\s+to\s+)?(suicide|self.?harm|cut\s+myself)\b/i,
+      /\b(nude|naked|porn|hentai|xxx|nsfw|erotic|sexually\s+explicit)\b/i,
+      /\b(deepfake|impersonat)\b/i,
+      /\bhow\s+to\s+(make|cook|synthesize)\s+(meth|cocaine|heroin|drugs)\b/i,
+    ];
+
+    for (const pattern of BLOCKED_PATTERNS) {
+      if (pattern.test(prompt)) {
+        console.warn(`Blocked SFX prompt from user ${user.id}: policy violation`);
+        return new Response(
+          JSON.stringify({ error: "Content policy violation: your prompt contains prohibited content. Please modify and try again." }),
+          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const FAL_KEY = Deno.env.get("FAL_KEY");
     if (!FAL_KEY) {
       console.error("FAL_KEY not configured");

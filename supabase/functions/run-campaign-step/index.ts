@@ -83,6 +83,32 @@ serve(async (req) => {
       });
     }
 
+    // ====== CONTENT MODERATION (check product context for injected content) ======
+    const BLOCKED_PATTERNS = [
+      /\b(kill|murder|slaughter|massacre)\b.*\b(people|children|humans)\b/i,
+      /\b(nude|naked|porn|hentai|xxx|nsfw|erotic|sexually\s+explicit)\b/i,
+      /\b(deepfake|impersonat)\b/i,
+      /\bhow\s+to\s+(make|cook|synthesize)\s+(meth|cocaine|heroin|drugs)\b/i,
+    ];
+
+    const textToCheck = [
+      product_context?.name,
+      product_context?.description,
+      product_context?.excerpt,
+    ].filter(Boolean).join(" ");
+
+    for (const pattern of BLOCKED_PATTERNS) {
+      if (pattern.test(textToCheck)) {
+        console.warn(`Blocked campaign step from user ${userData.user.id}: policy violation`);
+        return new Response(JSON.stringify({
+          error: "Content policy violation: product context contains prohibited content.",
+        }), {
+          status: 422,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Build context from product and previous step outputs
     const productInfo = product_context
       ? `Product: ${product_context.name}\nDescription: ${product_context.description || product_context.excerpt || ""}\nTags: ${(product_context.tags || []).join(", ")}\nPrice: ${product_context.price_cents ? "$" + (product_context.price_cents / 100).toFixed(2) : "Free"}`

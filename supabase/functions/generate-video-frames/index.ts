@@ -43,6 +43,29 @@ serve(async (req) => {
       });
     }
 
+    // ====== CONTENT MODERATION (check each frame description) ======
+    const BLOCKED_PATTERNS = [
+      /\b(kill|murder|slaughter|massacre)\b.*\b(people|children|humans)\b/i,
+      /\b(bomb|shoot|stab)\b.*\b(school|church|mosque|synagogue)\b/i,
+      /\b(nude|naked|porn|hentai|xxx|nsfw|erotic|sexually\s+explicit)\b/i,
+      /\b(deepfake|impersonat)\b/i,
+      /\bhow\s+to\s+(make|cook|synthesize)\s+(meth|cocaine|heroin|drugs)\b/i,
+    ];
+
+    for (const frame of frames) {
+      const desc = frame.visual_description || "";
+      for (const pattern of BLOCKED_PATTERNS) {
+        if (pattern.test(desc)) {
+          console.warn(`Blocked video frame from user ${userId}: policy violation in frame ${frame.frame_number}`);
+          return new Response(JSON.stringify({
+            error: `Content policy violation in frame ${frame.frame_number}. Please modify the description and try again.`,
+          }), {
+            status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
     // Cost: 10 credits per frame image
     const totalCost = frames.length * 10;
 
