@@ -7,8 +7,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Video, Play, Loader2, ArrowRight, ArrowLeft, CheckCircle2,
   Clapperboard, Film, Download, Copy, Hash, Music, Clock, Eye,
-  ImageIcon, Sparkles, AlertCircle, X, Package
+  ImageIcon, Sparkles, AlertCircle, X, Package, RefreshCw, Check
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -61,6 +62,7 @@ const TEMPLATES: TemplateOption[] = [
 
 const DURATIONS = [6, 10, 15, 30, 60];
 const ASPECT_RATIOS = ["9:16", "16:9", "1:1", "4:5"];
+const FRAME_COUNTS = [1, 2, 3, 4, 5];
 
 const STEP_LABELS = [
   { label: "Product", icon: Package },
@@ -96,6 +98,7 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
   const [selectedStyle, setSelectedStyle] = useState<VideoStyle>("cinematic");
   const [duration, setDuration] = useState(15);
   const [aspectRatio, setAspectRatio] = useState("9:16");
+  const [frameCount, setFrameCount] = useState(3);
   const [includeVoiceover, setIncludeVoiceover] = useState(true);
 
   // Step 3
@@ -107,6 +110,8 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
   const [generatedFrames, setGeneratedFrames] = useState<GeneratedFrame[]>([]);
   const [isGeneratingFrames, setIsGeneratingFrames] = useState(false);
   const [frameProgress, setFrameProgress] = useState(0);
+  const [selectedForDownload, setSelectedForDownload] = useState<Set<number>>(new Set());
+  const [regeneratingFrame, setRegeneratingFrame] = useState<number | null>(null);
 
   const resetWizard = useCallback(() => {
     setStep(1);
@@ -116,6 +121,7 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
     setSelectedStyle("cinematic");
     setDuration(15);
     setAspectRatio("9:16");
+    setFrameCount(3);
     setIncludeVoiceover(true);
     setScript(null);
     setIsGenerating(false);
@@ -123,6 +129,8 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
     setGeneratedFrames([]);
     setIsGeneratingFrames(false);
     setFrameProgress(0);
+    setSelectedForDownload(new Set());
+    setRegeneratingFrame(null);
   }, []);
 
   const handleOpenChange = (open: boolean) => {
@@ -151,6 +159,7 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
           style: selectedStyle,
           includeVoiceover,
           aspectRatio,
+          frameCount,
         },
       });
 
@@ -164,7 +173,7 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
     } finally {
       setIsGenerating(false);
     }
-  }, [selectedProduct, manualDescription, duration, selectedStyle, includeVoiceover, aspectRatio]);
+  }, [selectedProduct, manualDescription, duration, selectedStyle, includeVoiceover, aspectRatio, frameCount]);
 
   // Generate frame images (Step 3 → 4)
   const generateFrameImages = useCallback(async () => {
@@ -200,9 +209,11 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
         throw new Error(data.error);
       }
 
-      setGeneratedFrames(data.frames || []);
+      const allFrames = data.frames || [];
+      setGeneratedFrames(allFrames);
+      setSelectedForDownload(new Set(allFrames.map((f: GeneratedFrame) => f.frame_number)));
       setStep(4);
-      toast.success(`${data.frames?.length || 0} frame images generated!`);
+      toast.success(`${allFrames.length} frame images generated!`);
     } catch (err) {
       console.error("Frame generation error:", err);
       toast.error("Failed to generate frame images.");
@@ -210,6 +221,50 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
       setIsGeneratingFrames(false);
     }
   }, [script, selectedStyle, aspectRatio, selectedProduct]);
+
+  // Regenerate a single frame
+  const regenerateSingleFrame = useCallback(async (frame: VideoFrame) => {
+    setRegeneratingFrame(frame.frame_number);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-video-frames", {
+        body: {
+          frames: [{
+            frame_number: frame.frame_number,
+            visual_description: frame.visual_description,
+            text_overlay: frame.text_overlay,
+          }],
+          style: selectedStyle,
+          aspectRatio,
+          productName: selectedProduct?.name || "Product",
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const newFrame = data.frames?.[0];
+      if (newFrame) {
+        setGeneratedFrames(prev =>
+          prev.map(f => f.frame_number === newFrame.frame_number ? newFrame : f)
+        );
+        toast.success(`Frame ${frame.frame_number} regenerated!`);
+      }
+    } catch (err) {
+      console.error("Frame regeneration error:", err);
+      toast.error(`Failed to regenerate frame ${frame.frame_number}.`);
+    } finally {
+      setRegeneratingFrame(null);
+    }
+  }, [selectedStyle, aspectRatio, selectedProduct]);
+
+  const toggleFrameSelection = (frameNum: number) => {
+    setSelectedForDownload(prev => {
+      const next = new Set(prev);
+      if (next.has(frameNum)) next.delete(frameNum);
+      else next.add(frameNum);
+      return next;
+    });
+  };
 
   // Copy script
   const copyScript = () => {
@@ -392,6 +447,25 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
               </div>
             </div>
 
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-foreground">Number of Frames</span>
+              <div className="flex flex-wrap gap-2">
+                {FRAME_COUNTS.map((fc) => (
+                  <button
+                    key={fc}
+                    onClick={() => setFrameCount(fc)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                      frameCount === fc
+                        ? "bg-[#FF7A1A]/10 text-[#FF7A1A] ring-1 ring-[#FF7A1A]/20"
+                        : "bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08]"
+                    )}
+                  >
+                    <ImageIcon className="h-3 w-3" /> {fc}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex items-center justify-between p-3 rounded-lg border border-white/[0.06] bg-white/[0.02]">
               <span className="text-xs font-medium text-foreground">Include AI Voiceover</span>
               <button
@@ -513,40 +587,107 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
         {/* ── Step 4: Generated Frame Images ── */}
         {step === 4 && script && (
           <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-semibold text-foreground">Generated Frames</h3>
-              <p className="text-sm text-muted-foreground">
-                {generatedFrames.length} of {script.frames.length} frames rendered
-              </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-foreground">Generated Frames</h3>
+                <p className="text-sm text-muted-foreground">
+                  {generatedFrames.length} frame{generatedFrames.length !== 1 ? "s" : ""} · Select which to download
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (selectedForDownload.size === generatedFrames.length) {
+                      setSelectedForDownload(new Set());
+                    } else {
+                      setSelectedForDownload(new Set(generatedFrames.map(f => f.frame_number)));
+                    }
+                  }}
+                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {selectedForDownload.size === generatedFrames.length ? "Deselect All" : "Select All"}
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               {script.frames.map((frame) => {
                 const generated = generatedFrames.find((g) => g.frame_number === frame.frame_number);
+                const isSelected = selectedForDownload.has(frame.frame_number);
+                const isRegenerating = regeneratingFrame === frame.frame_number;
                 return (
-                  <div key={frame.frame_number} className="rounded-lg border border-white/[0.06] overflow-hidden">
+                  <div key={frame.frame_number} className={cn(
+                    "rounded-lg border overflow-hidden transition-all",
+                    isSelected ? "border-[#FF7A1A]/40 ring-1 ring-[#FF7A1A]/20" : "border-white/[0.06]"
+                  )}>
                     {generated ? (
                       <div className="relative aspect-video bg-muted">
+                        {isRegenerating ? (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                            <Loader2 className="h-5 w-5 animate-spin text-[#FF7A1A]" />
+                          </div>
+                        ) : null}
                         <img
                           src={generated.image_url}
                           alt={`Frame ${frame.frame_number}`}
-                          className="w-full h-full object-cover"
+                          className={cn("w-full h-full object-cover", isRegenerating && "opacity-40")}
                         />
                         <div className="absolute top-1 left-1">
                           <Badge className="text-[10px] bg-black/60 text-white border-0">
                             F{frame.frame_number} · {frame.duration_seconds}s
                           </Badge>
                         </div>
+                        {/* Selection checkbox */}
+                        <button
+                          onClick={() => toggleFrameSelection(frame.frame_number)}
+                          className={cn(
+                            "absolute top-1 right-1 h-5 w-5 rounded border flex items-center justify-center transition-colors",
+                            isSelected
+                              ? "bg-[#FF7A1A] border-[#FF7A1A] text-white"
+                              : "bg-black/40 border-white/30 text-transparent hover:border-white/60"
+                          )}
+                        >
+                          {isSelected && <Check className="h-3 w-3" />}
+                        </button>
                       </div>
                     ) : (
                       <div className="aspect-video bg-white/[0.02] flex items-center justify-center">
                         <span className="text-xs text-muted-foreground">Not generated</span>
                       </div>
                     )}
-                    <div className="p-2">
+                    <div className="p-2 space-y-1.5">
                       <p className="text-[11px] text-muted-foreground line-clamp-2">{frame.visual_description}</p>
                       {frame.text_overlay && (
-                        <p className="text-[10px] font-medium text-foreground mt-1">"{frame.text_overlay}"</p>
+                        <p className="text-[10px] font-medium text-foreground">"{frame.text_overlay}"</p>
+                      )}
+                      {generated && (
+                        <div className="flex gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[10px] px-2 gap-1"
+                            disabled={isRegenerating || regeneratingFrame !== null}
+                            onClick={() => regenerateSingleFrame(frame)}
+                          >
+                            <RefreshCw className={cn("h-3 w-3", isRegenerating && "animate-spin")} />
+                            Regenerate
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[10px] px-2 gap-1"
+                            onClick={() => {
+                              const a = document.createElement("a");
+                              a.href = generated.image_url;
+                              a.download = `frame-${frame.frame_number}.png`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                            }}
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -558,8 +699,8 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
               <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
                 <ArrowLeft className="h-4 w-4 mr-2" /> Back to Script
               </Button>
-              <Button onClick={() => setStep(5)} className="flex-1 gap-2">
-                Export Assets <ArrowRight className="h-4 w-4" />
+              <Button onClick={() => setStep(5)} className="flex-1 gap-2" disabled={selectedForDownload.size === 0}>
+                Export {selectedForDownload.size} Frame{selectedForDownload.size !== 1 ? "s" : ""} <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -575,11 +716,11 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
             </div>
             <div>
               <h3 className="text-lg font-semibold text-foreground">
-                {generatedFrames.length > 0 ? "Video Assets Ready!" : "Script Ready!"}
+                {selectedForDownload.size > 0 ? "Video Assets Ready!" : "Script Ready!"}
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                {generatedFrames.length > 0
-                  ? `${generatedFrames.length} frame images + storyboard for "${script.title}"`
+                {selectedForDownload.size > 0
+                  ? `${selectedForDownload.size} selected frame${selectedForDownload.size !== 1 ? "s" : ""} + storyboard for "${script.title}"`
                   : `${script.frames.length}-frame storyboard for "${script.title}"`}
               </p>
             </div>
@@ -589,12 +730,13 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
                 <Copy className="h-4 w-4" /> Copy Full Script
               </Button>
 
-              {generatedFrames.length > 0 && (
+              {selectedForDownload.size > 0 && (
                 <Button
                   variant="outline"
                   className="w-full gap-2"
                   onClick={() => {
-                    generatedFrames.forEach((f) => {
+                    const toDownload = generatedFrames.filter(f => selectedForDownload.has(f.frame_number));
+                    toDownload.forEach((f) => {
                       const a = document.createElement("a");
                       a.href = f.image_url;
                       a.download = `${script.title.replace(/\s+/g, "-").toLowerCase()}-frame-${f.frame_number}.png`;
@@ -602,10 +744,10 @@ export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialP
                       a.click();
                       document.body.removeChild(a);
                     });
-                    toast.success(`${generatedFrames.length} frame images downloading!`);
+                    toast.success(`${toDownload.length} frame image${toDownload.length !== 1 ? "s" : ""} downloading!`);
                   }}
                 >
-                  <Download className="h-4 w-4" /> Download All Frames
+                  <Download className="h-4 w-4" /> Download {selectedForDownload.size} Frame{selectedForDownload.size !== 1 ? "s" : ""}
                 </Button>
               )}
 

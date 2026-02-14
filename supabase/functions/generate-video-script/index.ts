@@ -12,6 +12,7 @@ interface VideoScriptRequest {
   productTags?: string[];
   productPrice?: string;
   duration: number; // seconds
+  frameCount?: number;
   style: "cinematic" | "ugc" | "tutorial" | "hype" | "minimal";
   includeVoiceover: boolean;
   aspectRatio: string;
@@ -33,13 +34,14 @@ serve(async (req) => {
       productTags = [],
       productPrice,
       duration,
+      frameCount: frameCountInput,
       style,
       includeVoiceover,
       aspectRatio,
     } = body;
 
-    // Calculate frame count based on duration
-    const frameCount = Math.max(3, Math.min(8, Math.ceil(duration / 5)));
+    // Use provided frameCount or calculate based on duration
+    const frameCount = frameCountInput ?? Math.max(3, Math.min(8, Math.ceil(duration / 5)));
 
     const systemPrompt = `You are a professional video scriptwriter for product promo videos. 
 You create compelling, conversion-focused scripts with frame-by-frame breakdowns.
