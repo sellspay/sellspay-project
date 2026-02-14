@@ -94,24 +94,22 @@ serve(async (req) => {
       const prompt = `${styleHint}product promo frame for "${productName || "product"}": ${frame.visual_description}. ${frame.text_overlay ? `Text overlay: "${frame.text_overlay}". ` : ""}Professional, high quality, ${aspectRatio || "9:16"} aspect ratio. No text in the image unless specified.`;
 
       const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${GEMINI_KEY}`,
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "gemini-2.5-flash",
-            messages: [{ role: "user", content: prompt }],
-            modalities: ["image", "text"],
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseModalities: ["TEXT", "IMAGE"],
+            },
           }),
         }
       );
 
       if (!response.ok) {
-        console.error(`Frame ${frame.frame_number} generation failed: ${response.status}`);
-        // Refund remaining credits and stop
+        const errText = await response.text();
+        console.error(`Frame ${frame.frame_number} generation failed: ${response.status} - ${errText}`);
         const creditsUsed = generatedFrames.length * 10;
         if (creditsUsed > 0) {
           await supabase.rpc("deduct_credits", {
@@ -130,7 +128,10 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+      // Extract inline image data from native Gemini response
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith("image/"));
+      const imageUrl = imagePart ? `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}` : null;
 
       if (imageUrl) {
         generatedFrames.push({
