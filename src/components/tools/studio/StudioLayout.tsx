@@ -100,7 +100,7 @@ export default function StudioLayout() {
       {/* Center Canvas */}
       <main className="relative overflow-y-auto custom-scrollbar bg-background">
         {promoOpen ? (
-          <PromoVideoBuilder open={promoOpen} onOpenChange={setPromoOpen} inline />
+          <PromoVideoBuilder open={promoOpen} onOpenChange={setPromoOpen} inline initialProduct={campaignState?.selectedProduct || null} />
         ) : activeTool ? (
           <ToolActiveView
             toolId={activeTool}
