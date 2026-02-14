@@ -77,17 +77,19 @@ interface PromoVideoBuilderProps {
   onOpenChange: (open: boolean) => void;
   /** Render inline in the canvas instead of a dialog */
   inline?: boolean;
+  /** Pre-selected product from campaign canvas — skips Step 1 */
+  initialProduct?: ProductContext | null;
 }
 
-export function PromoVideoBuilder({ open, onOpenChange, inline = false }: PromoVideoBuilderProps) {
+export function PromoVideoBuilder({ open, onOpenChange, inline = false, initialProduct }: PromoVideoBuilderProps) {
   const { user } = useAuth();
 
-  // Wizard step (1-5 now: 1=product, 2=config, 3=script, 4=frames, 5=export)
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  // Wizard step — start at step 2 if product already selected
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(initialProduct ? 2 : 1);
 
   // Step 1
-  const [sourceMode, setSourceMode] = useState<SourceMode>("blank");
-  const [selectedProduct, setSelectedProduct] = useState<ProductContext | null>(null);
+  const [sourceMode, setSourceMode] = useState<SourceMode>(initialProduct ? "product" : "blank");
+  const [selectedProduct, setSelectedProduct] = useState<ProductContext | null>(initialProduct || null);
   const [manualDescription, setManualDescription] = useState("");
 
   // Step 2
