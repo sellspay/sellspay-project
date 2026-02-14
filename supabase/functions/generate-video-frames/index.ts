@@ -12,11 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GEMINI_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    if (!GEMINI_KEY) throw new Error("GOOGLE_GEMINI_API_KEY not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -86,25 +86,24 @@ serve(async (req) => {
       });
     }
 
-    // Generate images for each frame sequentially via Lovable AI gateway
+    // Generate images for each frame sequentially using direct Gemini API
     const generatedFrames: Array<{ frame_number: number; image_url: string }> = [];
 
     for (const frame of frames) {
       const styleHint = style ? `${style} cinematic style, ` : "";
       const prompt = `${styleHint}product promo frame for "${productName || "product"}": ${frame.visual_description}. ${frame.text_overlay ? `Text overlay: "${frame.text_overlay}". ` : ""}Professional, high quality, ${aspectRatio || "9:16"} aspect ratio. No text in the image unless specified.`;
 
+      // Use native Gemini generateContent API with image generation model
       const response = await fetch(
-        "https://ai.gateway.lovable.dev/v1/chat/completions",
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_KEY}`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-image",
-            messages: [{ role: "user", content: prompt }],
-            modalities: ["image", "text"],
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseModalities: ["TEXT", "IMAGE"],
+            },
           }),
         }
       );
@@ -112,27 +111,6 @@ serve(async (req) => {
       if (!response.ok) {
         const errText = await response.text();
         console.error(`Frame ${frame.frame_number} generation failed: ${response.status} - ${errText}`);
-
-        // Return rate limit / payment errors clearly
-        if (response.status === 429) {
-          return new Response(JSON.stringify({
-            error: "Rate limit exceeded. Please wait a moment and try again.",
-            partial_frames: generatedFrames,
-            credits_used: generatedFrames.length * 10,
-          }), {
-            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        if (response.status === 402) {
-          return new Response(JSON.stringify({
-            error: "AI credits exhausted. Please add funds.",
-            partial_frames: generatedFrames,
-            credits_used: generatedFrames.length * 10,
-          }), {
-            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
         const creditsUsed = generatedFrames.length * 10;
         if (creditsUsed > 0) {
           await supabase.rpc("deduct_credits", {
@@ -152,8 +130,12 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      // Extract image from Lovable AI gateway response
-      const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url || null;
+      // Extract inline image from native Gemini response
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith("image/"));
+      const imageUrl = imagePart
+        ? `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
+        : null;
 
       if (imageUrl) {
         generatedFrames.push({
