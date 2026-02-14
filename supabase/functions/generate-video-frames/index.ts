@@ -93,8 +93,9 @@ serve(async (req) => {
       const styleHint = style ? `${style} cinematic style, ` : "";
       const prompt = `${styleHint}product promo frame for "${productName || "product"}": ${frame.visual_description}. ${frame.text_overlay ? `Text overlay: "${frame.text_overlay}". ` : ""}Professional, high quality, ${aspectRatio || "9:16"} aspect ratio. No text in the image unless specified.`;
 
+      // Use native Gemini generateContent API with image generation model
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -120,6 +121,7 @@ serve(async (req) => {
         }
         return new Response(JSON.stringify({
           error: `Frame ${frame.frame_number} generation failed`,
+          detail: errText,
           partial_frames: generatedFrames,
           credits_used: creditsUsed,
         }), {
@@ -128,10 +130,12 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      // Extract inline image data from native Gemini response
+      // Extract inline image from native Gemini response
       const parts = data.candidates?.[0]?.content?.parts || [];
       const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith("image/"));
-      const imageUrl = imagePart ? `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}` : null;
+      const imageUrl = imagePart
+        ? `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
+        : null;
 
       if (imageUrl) {
         generatedFrames.push({
