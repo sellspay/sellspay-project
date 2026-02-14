@@ -99,9 +99,7 @@ export default function StudioLayout() {
 
       {/* Center Canvas */}
       <main className="relative overflow-y-auto custom-scrollbar bg-background">
-        {promoOpen ? (
-          <PromoVideoBuilder open={promoOpen} onOpenChange={setPromoOpen} inline initialProduct={campaignState?.selectedProduct || null} />
-        ) : activeTool ? (
+        {activeTool ? (
           <ToolActiveView
             toolId={activeTool}
             onClose={() => setActiveTool(null)}
@@ -147,7 +145,7 @@ export default function StudioLayout() {
         </AnimatePresence>
       )}
 
-      {/* PromoVideoBuilder is now rendered inline in the canvas above */}
+      <PromoVideoBuilder open={promoOpen} onOpenChange={setPromoOpen} initialProduct={campaignState?.selectedProduct || null} />
       <MyAssetsDrawer
         trigger={<span className="hidden" />}
         open={assetsOpen}
