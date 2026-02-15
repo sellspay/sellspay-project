@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Video, GalleryHorizontal, MessageSquare, Hash, FileText, Mail, Play, ChevronRight, Check, Package } from "lucide-react";
+import { Video, GalleryHorizontal, MessageSquare, Hash, FileText, Mail, Play, ChevronRight, Check, Package, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { RecentCreations } from "./RecentCreations";
-import { SourceSelector, type SourceMode, type ProductContext } from "@/components/tools/SourceSelector";
+import { type SourceMode, type ProductContext } from "@/components/tools/SourceSelector";
 import { ProductShowcaseCard } from "./ProductShowcaseCard";
 import { ProductDetailModal } from "./ProductDetailModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import type { StudioSection } from "./StudioLayout";
 
 export interface CampaignCanvasProps {
@@ -77,6 +79,7 @@ export function CampaignCanvas({
   onLaunchPromo, onLaunchTool, onSectionChange,
   onCampaignStateChange,
 }: CampaignCanvasProps) {
+  const { profile } = useAuth();
   const [sourceMode, setSourceMode] = useState<SourceMode>("blank");
   const [selectedProduct, setSelectedProduct] = useState<ProductContext | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
@@ -84,7 +87,12 @@ export function CampaignCanvas({
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const templateRef = useRef<HTMLDivElement>(null);
-  const pickerRef = useRef<{ open: () => void } | null>(null);
+
+  // Inline product picker state
+  const [products, setProducts] = useState<ProductContext[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [productsFetched, setProductsFetched] = useState(false);
 
   // Blank mode manual fields
   const [blankName, setBlankName] = useState("");
@@ -137,6 +145,32 @@ export function CampaignCanvas({
     setExtraDirection(tpl.direction);
   };
 
+  const fetchProducts = async () => {
+    if (productsFetched) return;
+    setProductsLoading(true);
+    let creatorId = profile?.id;
+    if (!creatorId) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profileData } = await supabase
+          .from("profiles").select("id").eq("user_id", user.id).single();
+        creatorId = profileData?.id;
+      }
+    }
+    if (creatorId) {
+      const { data } = await supabase
+        .from("products")
+        .select("id, name, description, excerpt, cover_image_url, tags, price_cents, currency")
+        .eq("creator_id", creatorId)
+        .eq("status", "published")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setProducts((data as ProductContext[]) || []);
+    }
+    setProductsFetched(true);
+    setProductsLoading(false);
+  };
+
   const handleProductSelect = (product: ProductContext | null) => {
     setSelectedProduct(product);
     if (product) setSourceMode("product");
@@ -147,7 +181,14 @@ export function CampaignCanvas({
     if (mode === "blank") {
       setSelectedProduct(null);
     }
+    if (mode === "product") {
+      fetchProducts();
+    }
   };
+
+  const filteredProducts = products.filter((p) =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase())
+  );
 
   const productHooks = effectiveProduct ? generateProductHooks(effectiveProduct) : [];
   const productCaption = effectiveProduct ? generateProductCaption(effectiveProduct) : "";
@@ -235,8 +276,6 @@ export function CampaignCanvas({
             <button
               onClick={() => {
                 handleModeChange("product");
-                // Use setTimeout to ensure ref is assigned after re-render
-                setTimeout(() => pickerRef.current?.open(), 50);
               }}
               className={cn(
                 "px-3 py-1.5 text-xs font-medium transition-colors",
@@ -344,32 +383,83 @@ export function CampaignCanvas({
             </motion.div>
           ) : (
             <motion.div
-              key="product-showcase"
+              key="product-picker"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.25 }}
             >
-              {/* Cinematic Product Showcase */}
-              <ProductShowcaseCard
-                product={selectedProduct}
-                onChangeProduct={() => pickerRef.current?.open()}
-                onViewDetails={() => setDetailModalOpen(true)}
-                onSelectProduct={() => pickerRef.current?.open()}
-              />
+              {selectedProduct ? (
+                <ProductShowcaseCard
+                  product={selectedProduct}
+                  onChangeProduct={() => setSelectedProduct(null)}
+                  onViewDetails={() => setDetailModalOpen(true)}
+                  onSelectProduct={() => setSelectedProduct(null)}
+                />
+              ) : (
+                <div className="rounded-2xl ring-1 ring-white/[0.06] bg-white/[0.02] p-5 space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Package className="h-4 w-4 text-muted-foreground/40" />
+                    <p className="text-xs font-semibold text-foreground/70 uppercase tracking-wider">Your Products</p>
+                  </div>
+
+                  {/* Search */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                    <Input
+                      placeholder="Search products…"
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      className="pl-9 bg-white/[0.03] border-white/[0.08] text-sm placeholder:text-muted-foreground/25"
+                    />
+                  </div>
+
+                  {/* Product Grid */}
+                  {productsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/40" />
+                    </div>
+                  ) : filteredProducts.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Package className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground/50">
+                        {products.length === 0 ? "No published products found" : "No products match your search"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-1">
+                      {filteredProducts.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => handleProductSelect(p)}
+                          className="group text-left rounded-xl ring-1 ring-white/[0.06] bg-white/[0.02] hover:ring-[#FF7A1A]/30 hover:bg-white/[0.04] transition-all duration-200 overflow-hidden"
+                        >
+                          <div className="aspect-[4/3] w-full overflow-hidden bg-white/[0.02]">
+                            {p.cover_image_url ? (
+                              <img src={p.cover_image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package className="h-6 w-6 text-muted-foreground/15" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-3">
+                            <p className="text-xs font-semibold text-foreground/80 truncate">{p.name}</p>
+                            {p.price_cents != null && (
+                              <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                                ${(p.price_cents / 100).toFixed(2)} {p.currency?.toUpperCase()}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Hidden SourceSelector — only provides the picker dialog */}
-        <SourceSelector
-          mode={sourceMode}
-          onModeChange={handleModeChange}
-          selectedProduct={selectedProduct}
-          onProductSelect={handleProductSelect}
-          hideSelectedDisplay
-          pickerRef={pickerRef}
-        />
       </motion.div>
 
       {/* Product Detail Modal */}
