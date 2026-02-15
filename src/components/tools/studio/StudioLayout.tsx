@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -12,6 +12,16 @@ import { StudioSidebar } from "./StudioSidebar";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioContextPanel } from "./StudioContextPanel";
 import { CampaignControlPanel } from "./CampaignControlPanel";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { CampaignState } from "./CampaignCanvas";
 
 export type StudioSection = "campaign" | "listings" | "social" | "media" | "assets";
@@ -33,7 +43,7 @@ export default function StudioLayout() {
   const [generationCount, setGenerationCount] = useState(0);
   const [recentAssets, setRecentAssets] = useState<any[]>([]);
   const [campaignState, setCampaignState] = useState<CampaignState | undefined>();
-
+  const [pendingSection, setPendingSection] = useState<StudioSection | null>(null);
   useEffect(() => {
     const toolParam = searchParams.get("tool");
     if (toolParam) setActiveTool(toolParam);
@@ -69,13 +79,31 @@ export default function StudioLayout() {
     }
   };
 
+  const hasUnsavedProgress = activeTool || promoOpen || (campaignState?.selectedProduct != null) || (campaignState?.selectedTemplate != null);
+
   const handleSectionChange = (section: StudioSection) => {
     if (section === "assets") {
       setAssetsOpen(true);
       return;
     }
+    if (section === activeSection && !activeTool) return;
+
+    if (hasUnsavedProgress) {
+      setPendingSection(section);
+      return;
+    }
     setActiveSection(section);
     setActiveTool(null);
+  };
+
+  const confirmSectionChange = () => {
+    if (pendingSection) {
+      setActiveSection(pendingSection);
+      setActiveTool(null);
+      setPromoOpen(false);
+      setCampaignState(undefined);
+      setPendingSection(null);
+    }
   };
 
   const sidebarWidth = sidebarCollapsed ? 56 : 200;
@@ -153,6 +181,23 @@ export default function StudioLayout() {
         open={assetsOpen}
         onOpenChange={setAssetsOpen}
       />
+
+      <AlertDialog open={!!pendingSection} onOpenChange={(open) => !open && setPendingSection(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave this screen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Leaving this screen will cancel your current progress. Any unsaved work will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSectionChange} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
