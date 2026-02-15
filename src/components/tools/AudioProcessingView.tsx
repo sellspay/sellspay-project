@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, X } from "lucide-react";
+import { Upload, Mic, Music, Waves, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +16,7 @@ interface AudioProcessingViewProps {
   title: string;
   description: string;
   mode: "voice" | "sfx" | "full";
-  toolId: string; // Tool identifier for credit deduction
+  toolId: string;
   trackConfig: {
     stemKey: string;
     name: string;
@@ -42,7 +42,7 @@ export function AudioProcessingView({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showOutOfCredits, setShowOutOfCredits] = useState(false);
-  const isProcessingRef = useRef(false); // Guard against double-clicks/drops
+  const isProcessingRef = useRef(false);
 
   const { deductCredits, canUseFeature, credits } = useSubscription();
 
@@ -57,23 +57,15 @@ export function AudioProcessingView({
   }, []);
 
   const processWithCreditCheck = useCallback(async (audioFile: File) => {
-    // CRITICAL: Guard against double-clicks/drops using ref (state updates are async)
     if (isProcessingRef.current) {
       console.log("Processing already in progress, ignoring duplicate request");
       return;
     }
-
-    // Check if user can use this pro tool - show dialog instead of toast
     if (!canUseFeature(toolId)) {
       setShowOutOfCredits(true);
       return;
     }
-
-    // Lock immediately with ref before async operations
     isProcessingRef.current = true;
-
-    // Process FIRST - only deduct credit on SUCCESS
-    // Credit deduction is now handled after successful processing in processAudioWithFile
     processAudioWithFile(audioFile);
   }, [canUseFeature, toolId]);
 
@@ -84,7 +76,6 @@ export function AudioProcessingView({
     if (droppedFile && droppedFile.type.startsWith("audio/")) {
       setFile(droppedFile);
       setResult(null);
-      // Check credit and process
       processWithCreditCheck(droppedFile);
     } else {
       toast.error("Please drop an audio file");
@@ -96,39 +87,24 @@ export function AudioProcessingView({
     if (selectedFile) {
       setFile(selectedFile);
       setResult(null);
-      // Check credit and process
       processWithCreditCheck(selectedFile);
     }
   };
 
   const uploadToStorage = async (file: File): Promise<string> => {
-    // Get current user for user-scoped path
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Authentication required");
-    
-    // Use user-scoped path: {user_id}/{timestamp}-{filename}
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const fileName = `${user.id}/${timestamp}-${sanitizedName}`;
-    
-    // Simulate upload progress
     const progressInterval = setInterval(() => {
       setUploadProgress((prev) => Math.min(prev + Math.random() * 15, 95));
     }, 200);
-
-    const { error } = await supabase.storage
-      .from("temp-audio")
-      .upload(fileName, file);
-
+    const { error } = await supabase.storage.from("temp-audio").upload(fileName, file);
     clearInterval(progressInterval);
     setUploadProgress(100);
-
     if (error) throw new Error(`Upload failed: ${error.message}`);
-
-    const { data: urlData } = supabase.storage
-      .from("temp-audio")
-      .getPublicUrl(fileName);
-
+    const { data: urlData } = supabase.storage.from("temp-audio").getPublicUrl(fileName);
     return urlData.publicUrl;
   };
 
@@ -136,54 +112,30 @@ export function AudioProcessingView({
     setIsProcessing(true);
     setProcessingStage("upload");
     setUploadProgress(0);
-
     try {
       const audioUrl = await uploadToStorage(audioFile);
       setProcessingStage("process");
-
-      // Use authenticated supabase.functions.invoke instead of direct fetch
       const { data: responseData, error: invokeError } = await supabase.functions.invoke("audio-stem-separation", {
-        body: {
-          audio_url: audioUrl,
-          mode,
-          output_format: "mp3",
-        },
+        body: { audio_url: audioUrl, mode, output_format: "mp3" },
       });
-
-      if (invokeError) {
-        throw new Error(invokeError.message || "Processing failed");
-      }
-
+      if (invokeError) throw new Error(invokeError.message || "Processing failed");
       console.log("Edge function response:", responseData);
-
-      if (!responseData?.success) {
-        throw new Error(responseData?.error || "Processing failed");
-      }
-
+      if (!responseData?.success) throw new Error(responseData?.error || "Processing failed");
       if (!responseData.stems || Object.keys(responseData.stems).length === 0) {
         throw new Error("No audio stems returned from processing");
       }
-
-      // SUCCESS - now deduct the credit
       const deductResult = await deductCredits(toolId as any);
       if (!deductResult.success) {
         console.warn("Credit deduction failed after successful processing:", deductResult.error);
-        // Still show the result since processing succeeded
       }
-
       setResult(responseData.stems);
-      
-      // Generate realistic BPM and Key values (simulated detection)
       const bpmValues = [85, 90, 95, 100, 105, 110, 115, 120, 125, 128, 130, 135, 140, 145, 150];
       const keyValues = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
       const modes = ["Major", "Minor"];
-      
       setDetectedBpm(bpmValues[Math.floor(Math.random() * bpmValues.length)]);
       setDetectedKey(`${keyValues[Math.floor(Math.random() * keyValues.length)]} ${modes[Math.floor(Math.random() * modes.length)]}`);
-      
       toast.success("Audio processed successfully!");
     } catch (error) {
-      // FAILED - no credit deducted (credit is only deducted on success above)
       console.error("Processing error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to process audio";
       toast.error(errorMessage);
@@ -191,7 +143,7 @@ export function AudioProcessingView({
     } finally {
       setIsProcessing(false);
       setUploadProgress(0);
-      isProcessingRef.current = false; // Reset the guard
+      isProcessingRef.current = false;
     }
   };
 
@@ -231,10 +183,8 @@ export function AudioProcessingView({
 
   const getTracks = () => {
     if (!result) return [];
-
     return trackConfig
       .map((config) => {
-        // Check primary key first, then fallback keys
         let stem = result[config.stemKey];
         if (!stem && config.fallbackKeys) {
           for (const fallbackKey of config.fallbackKeys) {
@@ -244,9 +194,7 @@ export function AudioProcessingView({
             }
           }
         }
-
         if (!stem) return null;
-
         return {
           id: config.stemKey,
           name: config.name,
@@ -264,77 +212,83 @@ export function AudioProcessingView({
     }[];
   };
 
-  // Processing Screen (Upload or AI Processing)
+  const modeIcon = mode === "voice" ? Mic : mode === "sfx" ? Waves : Music;
+  const ModeIcon = modeIcon;
+
+  // ─── Processing Screen ───
   if (isProcessing) {
+    const progress = processingStage === "upload" ? uploadProgress : undefined;
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        {/* Circular Progress */}
-        <div className="relative w-32 h-32 mb-8">
-          <svg className="w-32 h-32 transform -rotate-90">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        {/* Pulsing ring */}
+        <div className="relative w-36 h-36 mb-10">
+          {/* Outer glow ring */}
+          <div className="absolute inset-0 rounded-full border border-primary/20 animate-ping" style={{ animationDuration: '2s' }} />
+          {/* Progress ring */}
+          <svg className="w-36 h-36 transform -rotate-90" viewBox="0 0 144 144">
+            <circle cx="72" cy="72" r="64" stroke="hsl(var(--muted))" strokeWidth="2" fill="none" opacity="0.2" />
             <circle
-              cx="64"
-              cy="64"
-              r="56"
-              stroke="currentColor"
-              strokeWidth="4"
-              fill="none"
-              className="text-muted/30"
-            />
-            <circle
-              cx="64"
-              cy="64"
-              r="56"
-              stroke="currentColor"
-              strokeWidth="4"
+              cx="72" cy="72" r="64"
+              stroke="hsl(var(--primary))"
+              strokeWidth="3"
               fill="none"
               strokeLinecap="round"
-              className="text-primary transition-all duration-300"
               style={{
-                strokeDasharray: "351.86",
-                strokeDashoffset:
-                  processingStage === "upload"
-                    ? 351.86 - (351.86 * uploadProgress) / 100
-                    : 351.86 * 0.75,
-                animation:
-                  processingStage === "process"
-                    ? "spin 2s linear infinite"
-                    : "none",
+                strokeDasharray: "402.12",
+                strokeDashoffset: processingStage === "upload"
+                  ? 402.12 - (402.12 * (progress || 0)) / 100
+                  : 402.12 * 0.7,
+                animation: processingStage === "process" ? "spin 2.5s linear infinite" : "none",
                 transformOrigin: "center",
+                transition: "stroke-dashoffset 0.3s ease",
               }}
             />
           </svg>
+          {/* Center icon */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xl font-medium">
-              {processingStage === "upload" ? `${Math.round(uploadProgress)}%` : ""}
-            </span>
+            {processingStage === "upload" ? (
+              <span className="text-2xl font-semibold text-foreground">{Math.round(progress || 0)}%</span>
+            ) : (
+              <ModeIcon className="w-8 h-8 text-primary animate-pulse" />
+            )}
           </div>
         </div>
 
-        {processingStage === "upload" ? (
-          <p className="text-lg text-muted-foreground">Uploading file...</p>
-        ) : (
-          <>
-            <h2 className="text-2xl font-bold mb-3">Audio processing</h2>
-            <p className="text-muted-foreground max-w-md">
-              Artificial intelligence algorithm now works, it may take a minute.
-            </p>
-            <p className="text-muted-foreground">Please keep this page open.</p>
-            <p className="text-sm text-muted-foreground mt-6">Pending</p>
-          </>
+        <h2 className="text-xl font-semibold mb-2 text-foreground">
+          {processingStage === "upload" ? "Uploading..." : "Separating audio"}
+        </h2>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          {processingStage === "upload"
+            ? "Sending your file to the cloud"
+            : "AI is isolating each stem — this may take a minute"}
+        </p>
+        {processingStage === "process" && (
+          <p className="text-xs text-muted-foreground/60 mt-4">Keep this page open</p>
         )}
       </div>
     );
   }
 
-  // Results View
+  // ─── Results View ───
   if (result) {
     const tracks = getTracks();
     return (
-      <div className="space-y-4">
-        {/* Close button */}
-        <div className="flex justify-end">
-          <Button variant="ghost" size="icon" onClick={clearFile}>
-            <X className="w-5 h-5" />
+      <div className="space-y-6">
+        {/* Results header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <ModeIcon className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground leading-tight">{title}</h2>
+              {file?.name && (
+                <p className="text-xs text-muted-foreground truncate max-w-[240px]">{file.name}</p>
+              )}
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={clearFile} className="text-xs">
+            New File
           </Button>
         </div>
 
@@ -347,62 +301,83 @@ export function AudioProcessingView({
           bpm={detectedBpm}
           musicalKey={detectedKey}
         />
-
-        {/* Process Another */}
-        <div className="flex justify-center pt-4">
-          <Button variant="outline" onClick={clearFile}>
-            Process Another File
-          </Button>
-        </div>
       </div>
     );
   }
 
-  // Upload View
+  // ─── Upload View ───
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-2xl mx-auto">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">{title}</h1>
-        <p className="text-muted-foreground">{description}</p>
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-2">
+          <ModeIcon className="w-6 h-6 text-primary" />
+        </div>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">{title}</h1>
+        <p className="text-sm text-muted-foreground max-w-md mx-auto">{description}</p>
       </div>
 
       {/* Upload Area */}
       <div
-        className={`relative rounded-2xl transition-all cursor-pointer overflow-hidden ${
-          isDragging
-            ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
-            : ""
+        className={`group relative cursor-pointer transition-all duration-300 ${
+          isDragging ? "scale-[1.01]" : ""
         }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
       >
-        {/* Gradient border effect */}
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/20 via-border/50 to-accent/20 p-[1px]">
-          <div className="w-full h-full rounded-2xl bg-card/95" />
-        </div>
-        
-        {/* Dashed inner border */}
-        <div className={`relative m-4 border-2 border-dashed rounded-xl transition-colors ${
+        {/* Outer container with gradient border */}
+        <div className={`relative rounded-2xl p-[1px] transition-all duration-300 ${
           isDragging
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/20 hover:border-primary/40"
+            ? "bg-gradient-to-br from-primary via-primary/60 to-primary/30"
+            : "bg-gradient-to-br from-border/80 via-border/40 to-border/80 group-hover:from-primary/40 group-hover:via-primary/20 group-hover:to-primary/40"
         }`}>
-          <div className="flex flex-col items-center justify-center py-16 md:py-24 px-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/20 flex items-center justify-center mb-5">
-              <Upload className="w-7 h-7 text-primary" />
+          <div className="rounded-2xl bg-card">
+            {/* Inner dashed zone */}
+            <div className={`m-3 rounded-xl border-2 border-dashed transition-all duration-300 ${
+              isDragging
+                ? "border-primary/60 bg-primary/5"
+                : "border-muted-foreground/15 group-hover:border-primary/30 group-hover:bg-primary/[0.02]"
+            }`}>
+              <div className="flex flex-col items-center justify-center py-16 md:py-20 px-8">
+                {/* Animated icon container */}
+                <div className={`relative mb-6 transition-transform duration-300 ${isDragging ? "scale-110" : "group-hover:scale-105"}`}>
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center">
+                    <Upload className={`w-7 h-7 transition-colors duration-300 ${
+                      isDragging ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                    }`} />
+                  </div>
+                  {/* Subtle ring pulse on drag */}
+                  {isDragging && (
+                    <div className="absolute -inset-3 rounded-2xl border border-primary/30 animate-ping" style={{ animationDuration: '1.5s' }} />
+                  )}
+                </div>
+
+                <p className="text-base font-medium text-foreground mb-1">
+                  {isDragging ? "Drop it here" : "Drop your audio file"}
+                </p>
+                <p className="text-xs text-muted-foreground mb-6">
+                  or click to browse — MP3, WAV, FLAC, OGG
+                </p>
+                <Button variant="secondary" size="sm" className="px-5 text-xs pointer-events-none">
+                  Browse Files
+                </Button>
+              </div>
             </div>
-            <p className="text-lg font-semibold mb-1">Drop your audio file here</p>
-            <p className="text-sm text-muted-foreground mb-5 text-center">
-              or click to browse • MP3, WAV, FLAC, OGG supported
-            </p>
-            <Button variant="secondary" size="default" className="px-6">
-              Browse Files
-            </Button>
           </div>
         </div>
+      </div>
+
+      {/* Supported formats hint */}
+      <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground/50">
+        <span>MP3</span>
+        <span className="w-1 h-1 rounded-full bg-muted-foreground/20" />
+        <span>WAV</span>
+        <span className="w-1 h-1 rounded-full bg-muted-foreground/20" />
+        <span>FLAC</span>
+        <span className="w-1 h-1 rounded-full bg-muted-foreground/20" />
+        <span>OGG</span>
       </div>
 
       <input
@@ -413,10 +388,9 @@ export function AudioProcessingView({
         className="hidden"
       />
 
-      {/* Out of Credits Dialog */}
-      <UpgradeModal 
-        open={showOutOfCredits} 
-        onOpenChange={setShowOutOfCredits} 
+      <UpgradeModal
+        open={showOutOfCredits}
+        onOpenChange={setShowOutOfCredits}
       />
     </div>
   );
