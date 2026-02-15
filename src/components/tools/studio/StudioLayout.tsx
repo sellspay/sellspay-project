@@ -12,6 +12,7 @@ import { StudioSidebar } from "./StudioSidebar";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioContextPanel } from "./StudioContextPanel";
 import { CampaignControlPanel } from "./CampaignControlPanel";
+import { CampaignResultsDashboard } from "./CampaignResultsDashboard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import type { CampaignState } from "./CampaignCanvas";
 
 export type StudioSection = "campaign" | "listings" | "social" | "media" | "assets";
@@ -44,6 +46,12 @@ export default function StudioLayout() {
   const [recentAssets, setRecentAssets] = useState<any[]>([]);
   const [campaignState, setCampaignState] = useState<CampaignState | undefined>();
   const [pendingSection, setPendingSection] = useState<StudioSection | null>(null);
+
+  // Campaign generation state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [campaignResult, setCampaignResult] = useState<any>(null);
+  const [creditsUsed, setCreditsUsed] = useState(0);
+
   useEffect(() => {
     const toolParam = searchParams.get("tool");
     if (toolParam) setActiveTool(toolParam);
@@ -86,9 +94,9 @@ export default function StudioLayout() {
       setAssetsOpen(true);
       return;
     }
-    if (section === activeSection && !activeTool) return;
+    if (section === activeSection && !activeTool && !campaignResult) return;
 
-    if (hasUnsavedProgress) {
+    if (hasUnsavedProgress || campaignResult) {
       setPendingSection(section);
       return;
     }
@@ -102,12 +110,64 @@ export default function StudioLayout() {
       setActiveTool(null);
       setPromoOpen(false);
       setCampaignState(undefined);
+      setCampaignResult(null);
       setPendingSection(null);
     }
   };
 
+  const handleGenerate = async (outputs: string[]) => {
+    if (!campaignState?.selectedProduct || !campaignState?.selectedTemplate) return;
+
+    setIsGenerating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error("Please sign in to generate");
+        return;
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-campaign-pack`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            product: campaignState.selectedProduct,
+            outputs,
+            style: campaignState.selectedTemplate,
+            goal: campaignState.selectedGoal,
+            direction: campaignState.extraDirection,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Generation failed");
+      }
+
+      setCampaignResult(data.result);
+      setCreditsUsed(data.credits_used || outputs.length);
+      toast.success("Campaign pack generated!");
+    } catch (err: any) {
+      console.error("Campaign generation error:", err);
+      toast.error(err.message || "Failed to generate campaign pack");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleBackFromResults = () => {
+    setCampaignResult(null);
+  };
+
   const sidebarWidth = sidebarCollapsed ? 56 : 200;
-  const showRightPanel = activeTool || (!activeTool && activeSection === "campaign");
+  const showRightPanel = !campaignResult && (activeTool || (!activeTool && activeSection === "campaign"));
 
   return (
     <div className="h-screen grid overflow-hidden" style={{
@@ -127,7 +187,13 @@ export default function StudioLayout() {
 
       {/* Center Canvas */}
       <main className="relative overflow-y-auto custom-scrollbar bg-background">
-        {promoOpen ? (
+        {campaignResult ? (
+          <CampaignResultsDashboard
+            result={campaignResult}
+            creditsUsed={creditsUsed}
+            onBack={handleBackFromResults}
+          />
+        ) : promoOpen ? (
           <PromoVideoBuilder open={promoOpen} onOpenChange={setPromoOpen} inline initialProduct={campaignState?.selectedProduct || null} />
         ) : activeTool ? (
           <ToolActiveView
@@ -168,14 +234,14 @@ export default function StudioLayout() {
             <CampaignControlPanel
               creditBalance={creditBalance}
               isLoadingCredits={isLoadingCredits}
-              onGenerate={() => setPromoOpen(true)}
+              onGenerate={handleGenerate}
               campaignState={campaignState}
+              isGenerating={isGenerating}
             />
           ) : null}
         </AnimatePresence>
       )}
 
-      {/* PromoVideoBuilder rendered inline in canvas above */}
       <MyAssetsDrawer
         trigger={<span className="hidden" />}
         open={assetsOpen}
