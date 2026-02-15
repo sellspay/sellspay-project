@@ -172,7 +172,7 @@ export default function StudioLayout() {
 
   const sidebarWidth = sidebarCollapsed ? 56 : 220;
   const isHome = activeSection === "home" && !activeTool && !campaignResult;
-  const showRightPanel = !isHome && !campaignResult && (activeTool || (!activeTool && activeSection === "campaign"));
+  const showRightPanel = !isHome && !campaignResult && !activeTool && activeSection === "campaign";
 
   return (
     <div className="h-screen grid overflow-hidden" style={{
@@ -234,22 +234,13 @@ export default function StudioLayout() {
 
       {showRightPanel && (
         <AnimatePresence>
-          {activeTool ? (
-            <StudioContextPanel
-              toolId={activeTool}
-              activeSection={activeSection}
-              creditBalance={creditBalance}
-              isLoadingCredits={isLoadingCredits}
-            />
-          ) : activeSection === "campaign" ? (
-            <CampaignControlPanel
-              creditBalance={creditBalance}
-              isLoadingCredits={isLoadingCredits}
-              onGenerate={handleGenerate}
-              campaignState={campaignState}
-              isGenerating={isGenerating}
-            />
-          ) : null}
+          <CampaignControlPanel
+            creditBalance={creditBalance}
+            isLoadingCredits={isLoadingCredits}
+            onGenerate={handleGenerate}
+            campaignState={campaignState}
+            isGenerating={isGenerating}
+          />
         </AnimatePresence>
       )}
 

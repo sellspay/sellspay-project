@@ -182,11 +182,8 @@ export function ToolActiveView({
               </div>
               <span className="text-sm font-semibold text-foreground">{tool.title}</span>
             </div>
-            <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Sparkles className="w-3.5 h-3.5" />
-              {isLoadingCredits ? "…" : creditBalance} credits
-            </div>
           </div>
+        
         ) : (
           <ToolHeroBanner
             tool={tool}
