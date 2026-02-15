@@ -11,6 +11,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import type { StudioSection } from "./StudioLayout";
 
+import campaignViralTiktok from "@/assets/campaign-viral-tiktok.jpg";
+import campaignPremiumBrand from "@/assets/campaign-premium-brand.jpg";
+import campaignDiscountPush from "@/assets/campaign-discount-push.jpg";
+import campaignTrustBuilder from "@/assets/campaign-trust-builder.jpg";
+import campaignNewRelease from "@/assets/campaign-new-release.jpg";
+
+const TEMPLATE_IMAGES: Record<string, string> = {
+  "viral-tiktok": campaignViralTiktok,
+  "premium-brand": campaignPremiumBrand,
+  "discount-push": campaignDiscountPush,
+  "trust-builder": campaignTrustBuilder,
+  "new-release": campaignNewRelease,
+};
+
 export interface CampaignCanvasProps {
   productCount: number;
   assetCount: number;
@@ -556,11 +570,12 @@ export function CampaignCanvas({
                   )}
                 >
                   {/* Preview area */}
-                  <div className="w-full h-[120px] rounded-lg bg-gradient-to-br from-white/[0.04] to-transparent mb-4 flex items-center justify-center relative overflow-hidden">
-                    <Play className={cn(
-                      "h-6 w-6 transition-colors",
-                      selectedTemplate === tpl.id ? "text-[#FF7A1A]/40" : "text-white/10"
-                    )} />
+                  <div className="w-full h-[120px] rounded-lg mb-4 relative overflow-hidden">
+                    <img
+                      src={TEMPLATE_IMAGES[tpl.id]}
+                      alt={tpl.name}
+                      className="w-full h-full object-cover rounded-lg opacity-70 group-hover:opacity-90 transition-opacity duration-300"
+                    />
                     {selectedTemplate === tpl.id && (
                       <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-gradient-to-b from-[#FF7A1A] to-[#E85C00] flex items-center justify-center">
                         <Check className="h-3 w-3 text-white" />
