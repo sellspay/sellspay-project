@@ -69,13 +69,13 @@ serve(async (req) => {
 
     // If no Pro subscription, check credits
     if (!hasProSubscription) {
-      const { data: profile } = await supabaseClient
-        .from("profiles")
-        .select("id, credit_balance")
+      const { data: wallet } = await supabaseClient
+        .from("user_wallets")
+        .select("balance")
         .eq("user_id", user.id)
         .single();
 
-      if (!profile || (profile.credit_balance ?? 0) < 1) {
+      if (!wallet || (wallet.balance ?? 0) < 1) {
         return new Response(
           JSON.stringify({ error: "Insufficient credits. Please purchase credits or subscribe to Pro." }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
