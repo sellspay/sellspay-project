@@ -194,9 +194,9 @@ export function StudioSidebar({
             {collapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center justify-center gap-1">
-                    <Zap className="h-3 w-3 text-primary/50" />
-                    <span className="text-[10px] text-muted-foreground/40 tabular-nums">
+                  <div className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#FF7A1A]/10">
+                    <Zap className="h-3.5 w-3.5 text-[#FF7A1A]" />
+                    <span className="text-[11px] font-bold text-[#FF7A1A] tabular-nums">
                       {isLoadingCredits ? "…" : creditBalance}
                     </span>
                   </div>
@@ -206,11 +206,14 @@ export function StudioSidebar({
                 </TooltipContent>
               </Tooltip>
             ) : (
-              <div className="flex items-center gap-2">
-                <Zap className="h-3 w-3 text-primary/40" />
-                <span className="text-[11px] text-muted-foreground/40 tabular-nums">
-                  {isLoadingCredits ? "…" : `${creditBalance.toLocaleString()} credits`}
-                </span>
+              <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-[#FF7A1A]/10">
+                <Zap className="h-4 w-4 text-[#FF7A1A]" />
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-[#FF7A1A] tabular-nums">
+                    {isLoadingCredits ? "…" : creditBalance.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-[#FF7A1A]/50 -mt-0.5">credits</span>
+                </div>
               </div>
             )}
           </div>

@@ -58,7 +58,6 @@ export function StudioHomeView({
           { icon: Package, label: "Products", value: productCount },
           { icon: Layers, label: "Assets", value: assetCount },
           { icon: Sparkles, label: "Generated", value: generationCount },
-          { icon: Zap, label: "Credits", value: isLoadingCredits ? "…" : creditBalance },
         ].map(s => (
           <div key={s.label} className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-card/60 border border-border/30 backdrop-blur-sm">
             <s.icon className="h-3.5 w-3.5 text-primary" />

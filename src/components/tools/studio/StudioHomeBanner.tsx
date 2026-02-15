@@ -106,13 +106,6 @@ export function StudioHomeBanner({ creditBalance, isLoadingCredits, onToolSelect
                 {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
               </button>
 
-              {!isLoadingCredits && (
-                <div className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm">
-                  <Zap className="h-3 w-3 text-[#FF7A1A]" />
-                  <span className="text-xs font-semibold text-white/80 tabular-nums">{creditBalance.toLocaleString()}</span>
-                  <span className="text-[10px] text-white/40">credits</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
