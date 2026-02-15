@@ -63,16 +63,35 @@ export function SourceSelector({
   }
 
   const openPicker = async () => {
-    if (!profile) return;
     setPickerOpen(true);
     setLoading(true);
     if (multiSelect) {
       setPendingSelections([...selectedProducts]);
     }
+    
+    // Use profile if available, otherwise try fetching user session directly
+    let creatorId = profile?.id;
+    if (!creatorId) {
+      const { data: { user: sessionUser } } = await supabase.auth.getUser();
+      if (sessionUser) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", sessionUser.id)
+          .single();
+        creatorId = profileData?.id;
+      }
+    }
+    
+    if (!creatorId) {
+      setLoading(false);
+      return;
+    }
+    
     const { data } = await supabase
       .from("products")
       .select("id, name, description, excerpt, cover_image_url, tags, price_cents, currency")
-      .eq("creator_id", profile.id)
+      .eq("creator_id", creatorId)
       .eq("status", "published")
       .order("created_at", { ascending: false })
       .limit(50);

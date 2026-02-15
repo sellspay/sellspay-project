@@ -235,7 +235,8 @@ export function CampaignCanvas({
             <button
               onClick={() => {
                 handleModeChange("product");
-                pickerRef.current?.open();
+                // Use setTimeout to ensure ref is assigned after re-render
+                setTimeout(() => pickerRef.current?.open(), 50);
               }}
               className={cn(
                 "px-3 py-1.5 text-xs font-medium transition-colors",
