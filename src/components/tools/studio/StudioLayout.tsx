@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -9,29 +9,25 @@ import { ToolActiveView } from "@/components/tools/ToolActiveView";
 import { PromoVideoBuilder } from "@/components/tools/PromoVideoBuilder";
 import { MyAssetsDrawer } from "@/components/tools/MyAssetsDrawer";
 import { StudioSidebar } from "./StudioSidebar";
+import { StudioHomeBanner } from "./StudioHomeBanner";
 import { StudioCanvas } from "./StudioCanvas";
 import { StudioContextPanel } from "./StudioContextPanel";
 import { CampaignControlPanel } from "./CampaignControlPanel";
 import { CampaignResultsDashboard } from "./CampaignResultsDashboard";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import type { CampaignState } from "./CampaignCanvas";
 
-export type StudioSection = "campaign" | "listings" | "social" | "media" | "assets";
+export type StudioSection = "home" | "campaign" | "listings" | "social" | "media" | "assets";
 
 export default function StudioLayout() {
   const [searchParams] = useSearchParams();
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<StudioSection>("campaign");
+  const [activeSection, setActiveSection] = useState<StudioSection>("home");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem("studio-sidebar-collapsed") === "true"; } catch { return false; }
   });
@@ -47,7 +43,6 @@ export default function StudioLayout() {
   const [campaignState, setCampaignState] = useState<CampaignState | undefined>();
   const [pendingSection, setPendingSection] = useState<StudioSection | null>(null);
 
-  // Campaign generation state
   const [isGenerating, setIsGenerating] = useState(false);
   const [campaignResult, setCampaignResult] = useState<any>(null);
   const [creditsUsed, setCreditsUsed] = useState(0);
@@ -85,6 +80,20 @@ export default function StudioLayout() {
     } else {
       setActiveTool(toolId);
     }
+    // Leave home when a tool is selected
+    if (activeSection === "home") {
+      setActiveSection("campaign");
+    }
+  };
+
+  const handleGoHome = () => {
+    if (hasUnsavedProgress || campaignResult) {
+      setPendingSection("home");
+      return;
+    }
+    setActiveSection("home");
+    setActiveTool(null);
+    setCampaignResult(null);
   };
 
   const hasUnsavedProgress = activeTool || promoOpen || (campaignState?.selectedProduct != null) || (campaignState?.selectedTemplate != null);
@@ -146,10 +155,7 @@ export default function StudioLayout() {
       );
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Generation failed");
-      }
+      if (!response.ok) throw new Error(data.error || "Generation failed");
 
       setCampaignResult(data.result);
       setCreditsUsed(data.credits_used || outputs.length);
@@ -162,12 +168,11 @@ export default function StudioLayout() {
     }
   };
 
-  const handleBackFromResults = () => {
-    setCampaignResult(null);
-  };
+  const handleBackFromResults = () => setCampaignResult(null);
 
-  const sidebarWidth = sidebarCollapsed ? 56 : 200;
-  const showRightPanel = !campaignResult && (activeTool || (!activeTool && activeSection === "campaign"));
+  const sidebarWidth = sidebarCollapsed ? 56 : 220;
+  const isHome = activeSection === "home" && !activeTool && !campaignResult;
+  const showRightPanel = !isHome && !campaignResult && (activeTool || (!activeTool && activeSection === "campaign"));
 
   return (
     <div className="h-screen grid overflow-hidden" style={{
@@ -183,11 +188,18 @@ export default function StudioLayout() {
         creditBalance={creditBalance}
         isLoadingCredits={isLoadingCredits}
         activeTool={activeTool}
+        onToolSelect={handleLaunch}
+        onGoHome={handleGoHome}
       />
 
-      {/* Center Canvas */}
       <main className="relative overflow-y-auto custom-scrollbar bg-background">
-        {campaignResult ? (
+        {isHome ? (
+          <StudioHomeBanner
+            creditBalance={creditBalance}
+            isLoadingCredits={isLoadingCredits}
+            onToolSelect={handleLaunch}
+          />
+        ) : campaignResult ? (
           <CampaignResultsDashboard
             result={campaignResult}
             creditsUsed={creditsUsed}
@@ -220,7 +232,6 @@ export default function StudioLayout() {
         )}
       </main>
 
-      {/* Right Panel */}
       {showRightPanel && (
         <AnimatePresence>
           {activeTool ? (

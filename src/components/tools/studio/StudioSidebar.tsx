@@ -1,49 +1,54 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
-  Rocket, ListChecks, Share2, AudioLines, FolderOpen,
-  Star, Download, ArrowLeft,
+  ArrowLeft, Home, Zap, Sparkles, ChevronDown, ChevronRight, FolderOpen,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
-import type { StudioSection } from "./StudioLayout";
+import { useState } from "react";
+import { toolsRegistry, SUBCATEGORY_LABELS, type ToolSubcategory } from "@/components/tools/toolsRegistry";
 
 interface StudioSidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
-  activeSection: StudioSection;
-  onSectionChange: (s: StudioSection) => void;
+  activeSection: string;
+  onSectionChange: (s: string) => void;
   creditBalance: number;
   isLoadingCredits: boolean;
   activeTool: string | null;
+  onToolSelect: (toolId: string) => void;
+  onGoHome: () => void;
 }
 
-const NAV_ITEMS: { id: StudioSection; label: string; icon: typeof Rocket }[] = [
-  { id: "campaign", label: "Campaign", icon: Rocket },
-  { id: "listings", label: "Listings", icon: ListChecks },
-  { id: "social", label: "Social", icon: Share2 },
-  { id: "media", label: "Media", icon: AudioLines },
-];
-
-const BOTTOM_ITEMS: { id: StudioSection; label: string; icon: typeof Star }[] = [
-  { id: "assets", label: "My Assets", icon: FolderOpen },
-];
+const SUBCATEGORY_ORDER: ToolSubcategory[] = ["media_creation", "store_growth", "social_content", "utility"];
 
 export function StudioSidebar({
   collapsed, onToggleCollapse, activeSection, onSectionChange,
-  creditBalance, isLoadingCredits, activeTool,
+  creditBalance, isLoadingCredits, activeTool, onToolSelect, onGoHome,
 }: StudioSidebarProps) {
   const navigate = useNavigate();
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    media_creation: true,
+    store_growth: true,
+    social_content: false,
+    utility: false,
+  });
+
+  const toggleGroup = (group: string) => {
+    setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
+  };
+
+  const quickTools = toolsRegistry.filter(t => t.category === "quick_tool" && t.isActive);
 
   return (
     <TooltipProvider delayDuration={0}>
       <motion.aside
         className="h-full flex flex-col bg-[#0F1115] overflow-hidden"
-        animate={{ width: collapsed ? 56 : 200 }}
+        animate={{ width: collapsed ? 56 : 220 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
       >
         {/* Exit Studio */}
-        <div className="shrink-0 px-3 pt-4 pb-2">
+        <div className="shrink-0 px-3 pt-4 pb-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -61,95 +66,154 @@ export function StudioSidebar({
           </Tooltip>
         </div>
 
-        {/* Main nav */}
-        <nav className="flex-1 px-3 py-2 space-y-0.5">
-          {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
-            const isActive = !activeTool && activeSection === id;
-            const btn = (
+        {/* Home button */}
+        <div className="shrink-0 px-3 pb-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
               <button
-                key={id}
-                onClick={() => onSectionChange(id)}
+                onClick={onGoHome}
                 className={cn(
                   "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
-                isActive
+                  !activeTool && activeSection === "home"
                     ? "bg-gradient-to-r from-[#FF7A1A] to-[#E85C00] text-white font-medium shadow-sm"
-                    : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-white/[0.03]"
+                    : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-white/[0.03]",
+                  collapsed && "justify-center"
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0" />
-                {!collapsed && <span>{label}</span>}
+                <Home className="h-4 w-4 shrink-0" />
+                {!collapsed && <span>Home</span>}
               </button>
-            );
+            </TooltipTrigger>
+            {collapsed && <TooltipContent side="right">Home</TooltipContent>}
+          </Tooltip>
+        </div>
 
-            if (collapsed) {
-              return (
-                <Tooltip key={id}>
-                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                  <TooltipContent side="right">{label}</TooltipContent>
-                </Tooltip>
-              );
-            }
-            return btn;
-          })}
+        <div className="h-px bg-white/[0.06] mx-3" />
 
-          {/* Separator */}
-          <div className="!my-3 h-px bg-white/[0.06] mx-1" />
+        {/* Tool groups */}
+        <nav className="flex-1 overflow-y-auto custom-scrollbar px-2 py-2 space-y-1">
+          {SUBCATEGORY_ORDER.map(subcat => {
+            const tools = quickTools
+              .filter(t => t.subcategory === subcat)
+              .sort((a, b) => a.sortOrder - b.sortOrder);
+            if (!tools.length) return null;
 
-          {/* Bottom nav items */}
-          {BOTTOM_ITEMS.map(({ id, label, icon: Icon }) => {
-            const isActive = !activeTool && activeSection === id;
-            const btn = (
-              <button
-                key={id}
-                onClick={() => onSectionChange(id)}
-                className={cn(
-                  "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-gradient-to-r from-[#FF7A1A] to-[#E85C00] text-white font-medium shadow-sm"
-                    : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-white/[0.03]"
+            const isExpanded = expandedGroups[subcat] ?? false;
+
+            return (
+              <div key={subcat}>
+                {!collapsed ? (
+                  <button
+                    onClick={() => toggleGroup(subcat)}
+                    className="flex items-center gap-1.5 w-full px-2 py-1.5 text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider hover:text-muted-foreground/60 transition-colors"
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3 shrink-0" />
+                    )}
+                    {SUBCATEGORY_LABELS[subcat]}
+                  </button>
+                ) : (
+                  <div className="h-px bg-white/[0.04] mx-1 my-1.5" />
                 )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {!collapsed && <span>{label}</span>}
-              </button>
-            );
 
-            if (collapsed) {
-              return (
-                <Tooltip key={id}>
-                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                  <TooltipContent side="right">{label}</TooltipContent>
-                </Tooltip>
-              );
-            }
-            return btn;
+                {(isExpanded || collapsed) && (
+                  <div className="space-y-0.5">
+                    {tools.map(tool => {
+                      const Icon = tool.icon;
+                      const isActive = activeTool === tool.id || activeTool === tool.legacyRoute;
+
+                      const btn = (
+                        <button
+                          key={tool.id}
+                          onClick={() => onToolSelect(tool.id)}
+                          className={cn(
+                            "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-[13px] transition-colors",
+                            isActive
+                              ? "bg-gradient-to-r from-[#FF7A1A] to-[#E85C00] text-white font-medium shadow-sm"
+                              : "text-muted-foreground/50 hover:text-foreground/80 hover:bg-white/[0.03]",
+                            collapsed && "justify-center"
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          {!collapsed && (
+                            <span className="truncate flex-1 text-left">{tool.name}</span>
+                          )}
+                          {!collapsed && tool.isPro && (
+                            <Sparkles className="h-3 w-3 text-primary/60 shrink-0" />
+                          )}
+                          {!collapsed && tool.comingSoon && (
+                            <span className="text-[8px] text-muted-foreground/30 uppercase font-bold shrink-0">Soon</span>
+                          )}
+                        </button>
+                      );
+
+                      if (collapsed) {
+                        return (
+                          <Tooltip key={tool.id}>
+                            <TooltipTrigger asChild>{btn}</TooltipTrigger>
+                            <TooltipContent side="right">{tool.name}</TooltipContent>
+                          </Tooltip>
+                        );
+                      }
+                      return <div key={tool.id}>{btn}</div>;
+                    })}
+                  </div>
+                )}
+              </div>
+            );
           })}
         </nav>
 
-        {/* Credit pill */}
-        <div className={cn(
-          "shrink-0 px-3 py-4 border-t border-white/[0.06]",
-          collapsed && "flex justify-center px-2"
-        )}>
-          {collapsed ? (
+        {/* Assets + Credits */}
+        <div className="shrink-0 border-t border-white/[0.06]">
+          <div className="px-3 py-2">
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="text-[10px] text-muted-foreground/40 tabular-nums text-center">
-                  {isLoadingCredits ? "…" : creditBalance}
-                </div>
+                <button
+                  onClick={() => onSectionChange("assets")}
+                  className={cn(
+                    "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
+                    "text-muted-foreground/50 hover:text-foreground/80 hover:bg-white/[0.03]",
+                    collapsed && "justify-center"
+                  )}
+                >
+                  <FolderOpen className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span>My Assets</span>}
+                </button>
               </TooltipTrigger>
-              <TooltipContent side="right">
-                {isLoadingCredits ? "Loading…" : `${creditBalance.toLocaleString()} credits`}
-              </TooltipContent>
+              {collapsed && <TooltipContent side="right">My Assets</TooltipContent>}
             </Tooltip>
-          ) : (
-            <div className="flex items-center gap-2">
-              <div className="h-1 w-1 rounded-full bg-foreground/20" />
-              <span className="text-[11px] text-muted-foreground/40 tabular-nums">
-                {isLoadingCredits ? "…" : `${creditBalance.toLocaleString()} credits`}
-              </span>
-            </div>
-          )}
+          </div>
+
+          <div className={cn(
+            "px-3 py-3 border-t border-white/[0.06]",
+            collapsed && "flex justify-center px-2"
+          )}>
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center justify-center gap-1">
+                    <Zap className="h-3 w-3 text-primary/50" />
+                    <span className="text-[10px] text-muted-foreground/40 tabular-nums">
+                      {isLoadingCredits ? "…" : creditBalance}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {isLoadingCredits ? "Loading…" : `${creditBalance.toLocaleString()} credits`}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Zap className="h-3 w-3 text-primary/40" />
+                <span className="text-[11px] text-muted-foreground/40 tabular-nums">
+                  {isLoadingCredits ? "…" : `${creditBalance.toLocaleString()} credits`}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </motion.aside>
     </TooltipProvider>
