@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
-  ArrowLeft, Home, Zap, Sparkles, ChevronDown, ChevronRight, FolderOpen,
+  ArrowLeft, Home, Sparkles, ChevronDown, ChevronRight, FolderOpen,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
@@ -194,8 +194,7 @@ export function StudioSidebar({
             {collapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#FF7A1A]/10">
-                    <Zap className="h-3.5 w-3.5 text-[#FF7A1A]" />
+                  <div className="flex items-center justify-center px-2 py-1.5 rounded-lg bg-[#FF7A1A]/10">
                     <span className="text-[11px] font-bold text-[#FF7A1A] tabular-nums">
                       {isLoadingCredits ? "…" : creditBalance}
                     </span>
@@ -206,14 +205,11 @@ export function StudioSidebar({
                 </TooltipContent>
               </Tooltip>
             ) : (
-              <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-[#FF7A1A]/10">
-                <Zap className="h-4 w-4 text-[#FF7A1A]" />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-[#FF7A1A] tabular-nums">
-                    {isLoadingCredits ? "…" : creditBalance.toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-[#FF7A1A]/50 -mt-0.5">credits</span>
-                </div>
+              <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[#FF7A1A]/10">
+                <span className="text-[11px] font-medium text-[#FF7A1A]/60">Credits</span>
+                <span className="text-sm font-bold text-[#FF7A1A] tabular-nums">
+                  {isLoadingCredits ? "…" : creditBalance.toLocaleString()}
+                </span>
               </div>
             )}
           </div>
