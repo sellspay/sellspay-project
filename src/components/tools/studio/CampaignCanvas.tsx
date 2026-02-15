@@ -160,7 +160,6 @@ export function CampaignCanvas({
   };
 
   const fetchProducts = async () => {
-    if (productsFetched) return;
     setProductsLoading(true);
     let creatorId = profile?.id;
     if (!creatorId) {
@@ -180,10 +179,17 @@ export function CampaignCanvas({
         .order("created_at", { ascending: false })
         .limit(50);
       setProducts((data as ProductContext[]) || []);
+      setProductsFetched(true);
     }
-    setProductsFetched(true);
     setProductsLoading(false);
   };
+
+  // Auto-fetch products when profile becomes available
+  useEffect(() => {
+    if (profile?.id && !productsFetched) {
+      fetchProducts();
+    }
+  }, [profile?.id]);
 
   const handleProductSelect = (product: ProductContext | null) => {
     setSelectedProduct(product);
