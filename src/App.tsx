@@ -31,6 +31,7 @@ const Discord = lazy(() => import("./pages/community/Discord"));
 const Spotlight = lazy(() => import("./pages/community/Spotlight"));
 const Updates = lazy(() => import("./pages/community/Updates"));
 const FAQ = lazy(() => import("./pages/FAQ"));
+const Support = lazy(() => import("./pages/Support"));
 const HireProfessionals = lazy(() => import("./pages/HireProfessionals"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Notifications = lazy(() => import("./pages/Notifications"));
@@ -122,6 +123,7 @@ const App = () => (
               <Route path="/community/discord" element={<MainLayout><Discord /></MainLayout>} />
               <Route path="/community/spotlight" element={<MainLayout><Spotlight /></MainLayout>} />
               <Route path="/faq" element={<MainLayout><FAQ /></MainLayout>} />
+              <Route path="/support" element={<MainLayout><Support /></MainLayout>} />
               <Route path="/hire-professionals" element={<MainLayout><HireProfessionals /></MainLayout>} />
               <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
               <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
