@@ -206,7 +206,7 @@ export default function Community() {
       {/* Minimal top bar with filter dropdown + search icon */}
       <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/30">
         <div className="mx-auto max-w-[680px] px-6 flex items-center justify-between h-12">
-          <span className="text-sm font-semibold text-foreground">Threads</span>
+          <span className="text-xl font-bold text-foreground" style={{ fontFamily: "'Caveat', cursive" }}>Threads</span>
           <Button
             variant="ghost"
             size="icon"
