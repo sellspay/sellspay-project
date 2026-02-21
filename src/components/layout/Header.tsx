@@ -300,7 +300,7 @@ export default function Header() {
                 {user && (
                 <NavigationMenuItem>
                   <Link 
-                    to="/hire-editors" 
+                    to="/hire-professionals" 
                     className={cn(
                       "relative inline-flex h-9 items-center justify-center px-5 text-xs font-semibold tracking-wide",
                       "text-white/90 rounded-full transition-all duration-500 overflow-hidden",
@@ -556,7 +556,7 @@ export default function Header() {
                 { to: '/creators', icon: Users, label: 'Creators' },
                 { to: '/studio', icon: Wand2, label: 'AI Studio' },
                 { to: '/community', icon: MessageSquare, label: 'Community' },
-                { to: '/hire-editors', icon: Mic, label: 'Hire Professionals' },
+                { to: '/hire-professionals', icon: Mic, label: 'Hire Professionals' },
                 ...(!user ? [{ to: '/pricing', icon: DollarSign, label: 'Pricing' }] : []),
               ].map((item) => (
                 <Link
