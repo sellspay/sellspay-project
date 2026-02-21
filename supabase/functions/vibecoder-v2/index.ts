@@ -362,7 +362,7 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/
 // Model Configuration Mapping - Route to different AI backends (Direct Google Gemini)
 const MODEL_CONFIG: Record<string, { modelId: string }> = {
   "vibecoder-pro": { modelId: "gemini-2.5-flash" },
-  "vibecoder-flash": { modelId: "gemini-2.5-flash-lite" },
+  "vibecoder-flash": { modelId: "gemini-2.5-flash" },
   "reasoning-o1": { modelId: "gemini-2.5-pro" },
 };
 
@@ -1208,7 +1208,7 @@ If the request says "change X", change ONLY X and nothing else.
   const config = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
 
   // Determine max tokens based on intent
-  const maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : 8000;
+  const maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : 65000;
 
   console.log(`[Executor] Using model: ${config.modelId} for intent: ${intent.intent}`);
 
@@ -1571,7 +1571,14 @@ serve(async (req) => {
           const validation = validateOutputIntegrity(codeResult);
           if (!validation.isValid) {
             validationError = validation;
-            jobStatus = "needs_continuation";
+            // Hard fail if missing export default AND sentinel — don't attempt patching
+            const hasExportDefault = /export\s+default\s/.test(codeResult);
+            if (!hasExportDefault && !codeResult.includes("// --- VIBECODER_COMPLETE ---")) {
+              jobStatus = "failed";
+              console.error(`[Job ${jobId}] Truncation detected: missing export default + sentinel. Hard failing.`);
+            } else {
+              jobStatus = "needs_continuation";
+            }
           }
         }
 
