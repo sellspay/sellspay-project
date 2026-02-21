@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/lib/auth";
@@ -25,8 +25,9 @@ import type { CampaignState } from "./CampaignCanvas";
 export type StudioSection = "home" | "campaign" | "listings" | "social" | "media" | "assets";
 
 export default function StudioLayout() {
-  const [searchParams] = useSearchParams();
-  const [activeTool, setActiveTool] = useState<string | null>(null);
+  const { toolId: routeToolId } = useParams<{ toolId?: string }>();
+  const navigate = useNavigate();
+  const [activeTool, setActiveTool] = useState<string | null>(routeToolId || null);
   const [activeSection, setActiveSection] = useState<StudioSection>("home");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem("studio-sidebar-collapsed") === "true"; } catch { return false; }
@@ -48,9 +49,11 @@ export default function StudioLayout() {
   const [creditsUsed, setCreditsUsed] = useState(0);
 
   useEffect(() => {
-    const toolParam = searchParams.get("tool");
-    if (toolParam) setActiveTool(toolParam);
-  }, [searchParams]);
+    if (routeToolId) {
+      setActiveTool(routeToolId);
+      if (activeSection === "home") setActiveSection("campaign");
+    }
+  }, [routeToolId]);
 
   useEffect(() => {
     try { localStorage.setItem("studio-sidebar-collapsed", String(sidebarCollapsed)); } catch {}
@@ -75,12 +78,9 @@ export default function StudioLayout() {
 
   const handleLaunch = (toolId: string) => {
     const entry = toolsRegistry.find(t => t.id === toolId);
-    if (entry?.legacyRoute) {
-      setActiveTool(entry.legacyRoute);
-    } else {
-      setActiveTool(toolId);
-    }
-    // Leave home when a tool is selected
+    const resolvedId = entry?.legacyRoute || toolId;
+    setActiveTool(resolvedId);
+    navigate(`/studio/${resolvedId}`, { replace: true });
     if (activeSection === "home") {
       setActiveSection("campaign");
     }
@@ -94,6 +94,7 @@ export default function StudioLayout() {
     setActiveSection("home");
     setActiveTool(null);
     setCampaignResult(null);
+    navigate("/studio", { replace: true });
   };
 
   const hasUnsavedProgress = activeTool || promoOpen || (campaignState?.selectedProduct != null) || (campaignState?.selectedTemplate != null);

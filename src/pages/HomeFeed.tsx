@@ -40,10 +40,10 @@ interface Thread {
 }
 
 const AI_TOOLS = [
-  { name: 'Vocal Isolator', description: 'Extract vocals from any track', icon: '🎤', path: '/tools/vocal-isolator', color: 'from-purple-500/20 to-purple-600/5' },
-  { name: 'Music Splitter', description: 'Separate stems instantly', icon: '🎵', path: '/tools/music-splitter', color: 'from-blue-500/20 to-blue-600/5' },
-  { name: 'SFX Generator', description: 'Create custom sound effects', icon: '🔊', path: '/tools/sfx-generator', color: 'from-emerald-500/20 to-emerald-600/5' },
-  { name: 'Video Editor', description: 'AI-powered video tools', icon: '🎬', path: '/tools/video-editor', color: 'from-orange-500/20 to-orange-600/5' },
+  { name: 'Vocal Isolator', description: 'Extract vocals from any track', icon: '🎤', path: '/studio/voice-isolator', color: 'from-purple-500/20 to-purple-600/5' },
+  { name: 'Music Splitter', description: 'Separate stems instantly', icon: '🎵', path: '/studio/music-splitter', color: 'from-blue-500/20 to-blue-600/5' },
+  { name: 'SFX Generator', description: 'Create custom sound effects', icon: '🔊', path: '/studio/sfx-generator', color: 'from-emerald-500/20 to-emerald-600/5' },
+  { name: 'Video Editor', description: 'AI-powered video tools', icon: '🎬', path: '/studio/video-editor', color: 'from-orange-500/20 to-orange-600/5' },
 ];
 
 export default function HomeFeed() {
@@ -196,7 +196,7 @@ export default function HomeFeed() {
               <Sparkles className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold text-foreground">AI Studio</h2>
             </div>
-            <Link to="/tools" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+            <Link to="/studio" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
               All tools <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>

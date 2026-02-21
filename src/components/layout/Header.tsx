@@ -45,11 +45,11 @@ const productCategories = [
 
 // Tools dropdown items
 const toolsItems = [
-  { name: 'Music Splitter', path: '/tools?tool=music-splitter', description: 'Separate vocals & stems' },
-  { name: 'Voice Isolator', path: '/tools?tool=voice-isolator', description: 'Extract voice from audio' },
-  { name: 'SFX Generator', path: '/tools?tool=sfx-generator', description: 'AI-powered sound effects' },
-  { name: 'Audio Converter', path: '/tools?tool=audio-converter', description: 'Convert audio formats' },
-  { name: 'Waveform Generator', path: '/tools?tool=waveform-generator', description: 'Create audio waveforms' },
+  { name: 'Music Splitter', path: '/studio/music-splitter', description: 'Separate vocals & stems' },
+  { name: 'Voice Isolator', path: '/studio/voice-isolator', description: 'Extract voice from audio' },
+  { name: 'SFX Generator', path: '/studio/sfx-generator', description: 'AI-powered sound effects' },
+  { name: 'Audio Converter', path: '/studio/audio-converter', description: 'Convert audio formats' },
+  { name: 'Waveform Generator', path: '/studio/waveform-generator', description: 'Create audio waveforms' },
 ];
 
 // Community dropdown items
@@ -199,10 +199,10 @@ export default function Header() {
                 {/* Tools - Click to navigate, hover for dropdown */}
                 <NavigationMenuItem>
                   <Link 
-                    to="/tools"
+                    to="/studio"
                     className={cn(
                       "inline-flex h-10 items-center justify-center",
-                      isActive('/tools') ? activeNavLinkStyles : navLinkStyles
+                      isActive('/studio') ? activeNavLinkStyles : navLinkStyles
                     )}
                   >
                     AI Studio
@@ -583,7 +583,7 @@ export default function Header() {
               {[
                 { to: '/products', icon: Package, label: 'Marketplace' },
                 { to: '/creators', icon: Users, label: 'Creators' },
-                { to: '/tools', icon: Wand2, label: 'AI Studio' },
+                { to: '/studio', icon: Wand2, label: 'AI Studio' },
                 { to: '/community', icon: MessageSquare, label: 'Community' },
                 { to: '/hire-editors', icon: Mic, label: 'Hire Editors' },
                 { to: '/pricing', icon: DollarSign, label: 'Pricing' },
