@@ -6,7 +6,7 @@ import { CategoryCard } from '@/components/home/CategoryCard';
 import { ProductCarousel } from '@/components/home/ProductCarousel';
 import { Reveal } from '@/components/home/Reveal';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight, Play } from 'lucide-react';
+import { Sparkles, ArrowRight, Play, Music, Palette, Video, BookOpen, Code, Image, Layers, FileText, Package, Mic, Shapes, Brush, MonitorSmartphone, PenTool, Camera, Gamepad2, Presentation } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -70,11 +70,34 @@ const CATEGORY_CARDS = [
   },
 ];
 
+const BROWSE_CATEGORIES = [
+  { label: 'Presets', value: 'preset', icon: Palette },
+  { label: 'LUTs', value: 'lut', icon: Video },
+  { label: 'Sound Effects', value: 'sfx', icon: Music },
+  { label: 'Music', value: 'music', icon: Mic },
+  { label: 'Templates', value: 'template', icon: Layers },
+  { label: 'Courses', value: 'course', icon: BookOpen },
+  { label: 'Tutorials', value: 'tutorial', icon: Presentation },
+  { label: 'Digital Art', value: 'digital_art', icon: Brush },
+  { label: 'SaaS', value: 'saas', icon: Code },
+  { label: 'Software', value: 'software', icon: MonitorSmartphone },
+  { label: 'Plugins', value: 'plugin', icon: Package },
+  { label: '3D Assets', value: '3d_asset', icon: Shapes },
+  { label: 'UI Kits', value: 'ui_kit', icon: PenTool },
+  { label: 'Mockups', value: 'mockup', icon: Image },
+  { label: 'Photography', value: 'photography', icon: Camera },
+  { label: 'eBooks', value: 'ebook', icon: FileText },
+  { label: 'Illustrations', value: 'illustration', icon: Brush },
+  { label: 'Motion Graphics', value: 'motion_graphics', icon: Gamepad2 },
+  { label: 'Overlays', value: 'overlay', icon: Layers },
+  { label: 'Fonts', value: 'font', icon: PenTool },
+];
+
 export default function HomeFeed() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
-  const [newReleases, setNewReleases] = useState<Product[]>([]);
+  
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -144,7 +167,6 @@ export default function HomeFeed() {
       }
 
       setTrendingProducts(trendingData);
-      setNewReleases((newRes.data || []) as Product[]);
 
       // Process recently viewed
       if (viewedRes.data && viewedRes.data.length > 0) {
@@ -221,15 +243,33 @@ export default function HomeFeed() {
         </div>
       </Reveal>
 
-      {/* New Releases Carousel */}
+      {/* Browse by Category */}
       <Reveal>
-        <div className="pb-8">
-          <ProductCarousel
-            title="New Releases"
-            products={newReleases}
-            viewAllLink="/products?sort=newest"
-          />
-        </div>
+        <section className="px-6 sm:px-8 lg:px-10 pb-8">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">Browse by Category</h2>
+            <Link to="/products" className="text-sm text-primary hover:underline flex items-center gap-1">
+              View all <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {BROWSE_CATEGORIES.map(cat => {
+              const Icon = cat.icon;
+              return (
+                <Link
+                  key={cat.value}
+                  to={`/products?type=${cat.value}`}
+                  className="group flex flex-col items-center gap-2.5 p-4 rounded-xl border border-border/40 bg-card hover:border-primary/40 hover:bg-primary/5 transition-all duration-200"
+                >
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground text-center">{cat.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
       </Reveal>
 
       {/* Recently Viewed Carousel */}
