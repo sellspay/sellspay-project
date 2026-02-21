@@ -357,7 +357,7 @@ End with: ${VIBECODER_COMPLETE_SENTINEL}`;
       // Still truncated after single retry - hard fail, no more chaining
       if (isTruncated(merged)) {
         console.error('[GhostFixer] ❌ Still truncated after retry - hard failing');
-        const reason = 'Generation exceeded safe limits. Please simplify your request or break it into smaller parts.';
+        const reason = 'Code generation was incomplete after retry. Please simplify your request or break it into smaller parts.';
         setState(prev => ({ ...prev, isFixing: false, error: reason }));
         onFixFailure?.(reason);
         return null;
