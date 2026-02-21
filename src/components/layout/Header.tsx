@@ -302,13 +302,19 @@ export default function Header() {
                   <Link 
                     to="/hire-editors" 
                     className={cn(
-                      "inline-flex h-9 items-center justify-center px-4 text-xs font-medium tracking-wide",
-                      "text-foreground rounded-full transition-all duration-300",
-                      "border border-white/20 hover:border-white/40",
-                      "bg-white/[0.06] hover:bg-white/[0.1]",
-                      "backdrop-blur-md",
-                      "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12),inset_0_-1px_0_0_rgba(255,255,255,0.05),0_0_0_1px_rgba(255,255,255,0.05)]",
-                      "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2),inset_0_-1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(255,255,255,0.1),0_4px_12px_rgba(0,0,0,0.2)]"
+                      "relative inline-flex h-9 items-center justify-center px-5 text-xs font-semibold tracking-wide",
+                      "text-white/90 rounded-full transition-all duration-500 overflow-hidden",
+                      "bg-gradient-to-b from-white/[0.14] via-white/[0.06] to-white/[0.02]",
+                      "backdrop-blur-xl backdrop-saturate-150",
+                      "border border-white/[0.15]",
+                      "shadow-[0_0_1px_0_rgba(255,255,255,0.3)_inset,0_1px_1px_0_rgba(255,255,255,0.15)_inset,0_-1px_1px_0_rgba(255,255,255,0.05)_inset,0_2px_8px_-2px_rgba(0,0,0,0.5),0_0_20px_-6px_rgba(255,255,255,0.08)]",
+                      "before:absolute before:inset-0 before:rounded-full before:bg-gradient-to-b before:from-white/[0.18] before:via-transparent before:to-transparent before:h-[50%] before:pointer-events-none",
+                      "after:absolute after:inset-[1px] after:rounded-full after:bg-gradient-to-t after:from-white/[0.04] after:via-transparent after:to-transparent after:pointer-events-none",
+                      "hover:bg-gradient-to-b hover:from-white/[0.2] hover:via-white/[0.1] hover:to-white/[0.04]",
+                      "hover:border-white/[0.25]",
+                      "hover:shadow-[0_0_1px_0_rgba(255,255,255,0.4)_inset,0_1px_2px_0_rgba(255,255,255,0.2)_inset,0_-1px_1px_0_rgba(255,255,255,0.08)_inset,0_4px_16px_-4px_rgba(0,0,0,0.6),0_0_30px_-8px_rgba(255,255,255,0.12)]",
+                      "hover:text-white",
+                      "active:scale-[0.97]"
                     )}
                   >
                     Hire Professionals
