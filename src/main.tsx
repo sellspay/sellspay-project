@@ -49,6 +49,10 @@ window.addEventListener(
       if (/Should have a queue\. This is likely a bug in React/i.test(msg)) {
         event.preventDefault();
       }
+      // Suppress Supabase AbortError from StrictMode double-mounts
+      if (reason?.name === 'AbortError' || /signal is aborted/i.test(msg)) {
+        event.preventDefault();
+      }
     } catch {
       // ignore
     }
