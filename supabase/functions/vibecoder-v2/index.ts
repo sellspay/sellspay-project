@@ -1444,10 +1444,11 @@ serve(async (req) => {
     // JOB-BASED PROCESSING: If jobId is provided, process in background
     // and write results to database (allows user to leave and return)
     // ════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════
+    // UNIFIED STREAMING: Always SSE stream + optional DB write
+    // ════════════════════════════════════════════════════════════
     if (jobId) {
-      console.log(`[Job ${jobId}] Starting background processing...`);
-
-      // Mark job as running
+      console.log(`[Job ${jobId}] Starting streaming + job processing...`);
       await supabase
         .from("ai_generation_jobs")
         .update({
@@ -1456,334 +1457,46 @@ serve(async (req) => {
           progress_logs: ["Starting AI generation..."],
         })
         .eq("id", jobId);
-
-      // Collect the full response
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullContent = "";
-      let buffer = "";
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          // Process complete lines
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-
-            if (!trimmed || trimmed.startsWith(":")) continue;
-            if (!trimmed.startsWith("data: ")) continue;
-
-            const jsonStr = trimmed.slice(6).trim();
-            if (jsonStr === "[DONE]") continue;
-
-            try {
-              const parsed = JSON.parse(jsonStr);
-              const content = parsed.choices?.[0]?.delta?.content;
-
-              if (content) {
-                fullContent += content;
-              }
-            } catch (e) {
-              // Incomplete JSON, will be completed in next chunk
-            }
-          }
-        }
-
-        // Process any remaining buffer
-        if (buffer.trim()) {
-          const trimmed = buffer.trim();
-          if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
-            try {
-              const parsed = JSON.parse(trimmed.slice(6));
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                fullContent += content;
-              }
-            } catch (e) {
-              // Ignore
-            }
-          }
-        }
-
-        console.log(`[Job ${jobId}] Generation complete, content length: ${fullContent.length}`);
-
-        // --- START OF REPLACEMENT ---
-        let codeResult = null;
-        let summary = null;
-        let planResult = null;
-
-        // 1. Extract Plan if present
-        if (fullContent.includes('"type": "plan"') || fullContent.includes('"type":"plan"')) {
-          try {
-            const jsonMatch = fullContent.match(/\{[\s\S]*"type"\s*:\s*"plan"[\s\S]*\}/);
-            if (jsonMatch) {
-              planResult = JSON.parse(jsonMatch[0]);
-              
-              // COMPLEXITY GUARD: If plan has >6 phases or complexity is "high", don't execute
-              const phases = planResult?.phases || planResult?.steps || [];
-              const complexity = planResult?.complexity;
-              if (phases.length > 6 || complexity === "high") {
-                console.warn(`[Job ${jobId}] Complexity guard triggered: ${phases.length} phases, complexity=${complexity}`);
-                await supabase.from("ai_generation_jobs").update({
-                  status: "needs_user_action",
-                  completed_at: new Date().toISOString(),
-                  plan_result: planResult,
-                  summary: "This request is too complex for a single generation. Please break it into 2-3 smaller requests.",
-                  terminal_reason: "complexity_guard",
-                  validation_report: { complexity_guard: true, phase_count: phases.length },
-                }).eq("id", jobId);
-
-                return new Response(JSON.stringify({ success: false, jobId, status: "needs_user_action", reason: "complexity_guard" }), {
-                  headers: { ...corsHeaders, "Content-Type": "application/json" },
-                });
-              }
-            }
-          } catch (e) {
-            console.error(`[Job ${jobId}] Failed to parse plan:`, e);
-          }
-        }
-
-        // 2. Extract Code and Summary
-        if (fullContent.includes("/// BEGIN_CODE ///")) {
-          const codeMatch = fullContent.split("/// BEGIN_CODE ///");
-          if (codeMatch.length > 1) {
-            // Cleans up the sentinel and trailing markers
-            codeResult = codeMatch[1].split("// --- VIBECODER_COMPLETE ---")[0].trim();
-            codeResult = codeResult.replace(/\/\/\/\s*END_CODE\s*\/\/\//g, "").trim();
-          }
-          summary = codeMatch[0].replace("/// TYPE: CODE ///", "").trim();
-        } else if (fullContent.includes("/// TYPE: CHAT ///")) {
-          summary = fullContent.replace("/// TYPE: CHAT ///", "").trim();
-        } else {
-          summary = fullContent;
-        }
-
-        // ═══════════════════════════════════════════════════════════
-        // VALIDATION GATES: truncation → intent → no-op → completion
-        // ═══════════════════════════════════════════════════════════
-        let validationError = null;
-        let jobStatus = "completed";
-        let terminalReason = "all_gates_passed";
-        const validationReport: Record<string, unknown> = {
-          generated_code_length: codeResult?.length ?? 0,
-          truncation_detected: false,
-          no_op_detected: false,
-          intent_ok: true,
-          terminal_reason: "",
-        };
-
-        if (codeResult) {
-          // Diagnostic logging before any gate
-          const diagnostics = {
-            intent: intentResult.intent,
-            promptLength: prompt.length,
-            codeContextLength: currentCode?.length ?? 0,
-            generatedLength: codeResult.length,
-            hasExportDefault: /export\s+default\s/.test(codeResult),
-            hasSentinel: codeResult.includes(VIBECODER_COMPLETE_SENTINEL),
-            bracketBalance: (codeResult.match(/[({[]/g) ?? []).length - (codeResult.match(/[)\]}]/g) ?? []).length,
-          };
-          console.log(`[Job ${jobId}] VALIDATION_INPUT:`, JSON.stringify(diagnostics));
-
-          // GATE 1: Structured validation (intent-aware)
-          const structuralError = getValidationError(codeResult, intentResult.intent);
-          if (structuralError) {
-            validationError = { errorType: structuralError.type, errorMessage: structuralError.message };
-            jobStatus = "failed";
-            terminalReason = structuralError.type.toLowerCase();
-            validationReport.truncation_detected = true;
-            console.error(`[Job ${jobId}] GATE 1 FAIL: ${structuralError.type} | ${structuralError.message} | Code length: ${codeResult.length}`);
-          }
-
-          // GATE 2: No-op detection
-          if (!validationError && isNoOp(currentCode, codeResult)) {
-            validationReport.no_op_detected = true;
-            console.warn(`[Job ${jobId}] GATE 2 WARN: No-op detected — output matches input`);
-            // Don't hard-fail on no-op, but flag it. Intent validator will catch if it's wrong.
-          }
-
-          // GATE 3: Intent validation (only if not truncated)
-          if (!validationError) {
-            try {
-              const intentResult = await validateIntent(prompt, codeResult, GOOGLE_GEMINI_API_KEY);
-              validationReport.intent_ok = intentResult.implements_request;
-              
-              if (!intentResult.implements_request) {
-                console.warn(`[Job ${jobId}] GATE 3 FAIL: Intent check failed. Missing:`, intentResult.missing_requirements);
-                
-                // Update attempt counter
-                await supabase
-                  .from("ai_generation_jobs")
-                  .update({ intent_check_attempts: 1 })
-                  .eq("id", jobId);
-
-                jobStatus = "needs_user_action";
-                terminalReason = "intent_check_failed";
-                validationReport.missing_requirements = intentResult.missing_requirements;
-              }
-            } catch (e) {
-              console.warn(`[Job ${jobId}] Intent validation error (non-fatal):`, e);
-            }
-          }
-        }
-
-        validationReport.terminal_reason = terminalReason;
-
-        if (codeResult && summary && !validationError && jobStatus === "completed") {
-          try {
-            const dataCheck = await checkDataAvailability(supabase, userId, prompt);
-            if (dataCheck && (dataCheck.needsSubscriptionPlans || dataCheck.needsProducts)) {
-              const guidance = generateDataGuidance(dataCheck);
-              if (guidance) summary = summary + guidance;
-            }
-          } catch (e) {
-            console.warn(`[Job ${jobId}] Data check failed:`, e);
-          }
-        }
-
-        // 3. THE MANUAL RECOVERY FIX (The Blank Screen Fix)
-        // Forces the design into your project even if database triggers are broken
-        if (codeResult && !validationError && jobStatus === "completed") {
-          const { data: jobData } = await supabase
-            .from("ai_generation_jobs")
-            .select("project_id")
-            .eq("id", jobId)
-            .single();
-          if (jobData?.project_id) {
-            const filesWrapper = { "App.tsx": codeResult };
-            await supabase.from("vibecoder_projects").update({ files: filesWrapper }).eq("id", jobData.project_id);
-            await supabase.from("project_versions").insert({
-              project_id: jobData.project_id,
-              files_snapshot: filesWrapper,
-              version_label: "Manual Recovery Save",
-            });
-          }
-        }
-
-        // 4. Finalize Job Status with validation report
-        const updatePayload: Record<string, unknown> = {
-          status: jobStatus,
-          completed_at: new Date().toISOString(),
-          code_result: (validationError || jobStatus !== "completed") ? null : codeResult,
-          summary: summary?.slice(0, 8000),
-          plan_result: planResult,
-          validation_report: validationReport,
-          terminal_reason: terminalReason,
-          progress_logs: validationError
-            ? ["Starting AI generation...", "Processing response...", `⚠️ ${validationError.errorType}`]
-            : jobStatus === "needs_user_action"
-            ? ["Starting AI generation...", "Processing response...", "⚠️ Intent check failed — user action needed"]
-            : ["Starting AI generation...", "Processing response...", "✅ All validation gates passed"],
-        };
-
-        if (validationError) {
-          updatePayload.error_message = JSON.stringify({
-            type: validationError.errorType,
-            message: validationError.errorMessage,
-          });
-        }
-
-        await supabase.from("ai_generation_jobs").update(updatePayload).eq("id", jobId);
-        console.log(`[Job ${jobId}] Job ${jobStatus} | Reason: ${terminalReason}`);
-
-        return new Response(
-          JSON.stringify({
-            success: !validationError,
-            jobId,
-            status: jobStatus,
-            validationError: validationError
-              ? {
-                  type: validationError.errorType,
-                  message: validationError.errorMessage,
-                }
-              : undefined,
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        );
-      } catch (e) {
-        console.error(`[Job ${jobId}] Processing error:`, e);
-
-        // Mark job as failed
-        await supabase
-          .from("ai_generation_jobs")
-          .update({
-            status: "failed",
-            completed_at: new Date().toISOString(),
-            error_message: e instanceof Error ? e.message : "Unknown error",
-            progress_logs: [
-              "Starting AI generation...",
-              "Error occurred",
-              e instanceof Error ? e.message : "Unknown error",
-            ],
-          })
-          .eq("id", jobId);
-
-        return new Response(
-          JSON.stringify({
-            success: false,
-            jobId,
-            error: e instanceof Error ? e.message : "Unknown error",
-          }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        );
-      }
     }
 
-    // ════════════════════════════════════════════════════════════
-    // STREAMING MODE: Original behavior when no jobId (for real-time UI)
-    // ════════════════════════════════════════════════════════════
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 
-    // ════════════════════════════════════════════════════════════
-    // STRUCTURED SSE STREAMING: Parse AI output into phase-based events
-    // ════════════════════════════════════════════════════════════
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
         let buffer = "";
         let fullContent = "";
         
-        // Heartbeat: prevent "stuck" perception during model response wait
+        // Heartbeat: prevent "stuck" perception
         const heartbeatInterval = setInterval(() => {
           try {
             const payload = `event: heartbeat\ndata: ${JSON.stringify({ t: Date.now() })}\n\n`;
             controller.enqueue(encoder.encode(payload));
           } catch {
-            // Controller may be closed
             clearInterval(heartbeatInterval);
           }
         }, 10_000);
         
-        // Hard timeout: 60s for the entire stream
+        // Hard timeout: 90s for job-backed, 60s otherwise
+        const timeoutMs = jobId ? 90_000 : 60_000;
         const streamTimeout = setTimeout(() => {
-          console.error("[Streaming] Hard timeout reached (60s)");
+          console.error("[Streaming] Hard timeout reached");
           const payload = `event: error\ndata: ${JSON.stringify({ message: "Generation timed out. Please retry with a simpler request." })}\n\n`;
           try {
             controller.enqueue(encoder.encode(payload));
             controller.close();
           } catch { /* already closed */ }
           clearInterval(heartbeatInterval);
-        }, 60_000);
+        }, timeoutMs);
         
-        // Track which section we're currently in
+        // Track structured sections
         let currentSection: 'none' | 'analysis' | 'plan' | 'code' | 'summary' = 'none';
         let analysisEmitted = false;
         let planEmitted = false;
         let codePhaseEmitted = false;
         let summaryEmitted = false;
+        let lastCodeEmitLength = 0;
         
         // Helper to emit structured SSE events
         const emitEvent = (eventType: string, data: any) => {
@@ -1794,10 +1507,8 @@ serve(async (req) => {
         // Emit initial analyzing phase
         emitEvent('phase', { phase: 'analyzing' });
         
-        // Helper to process accumulated content and emit structured events
+        // Process accumulated content and emit structured events
         const processContent = () => {
-          // Detect section transitions by scanning fullContent
-          
           // === ANALYSIS === section
           if (!analysisEmitted && fullContent.includes('=== ANALYSIS ===')) {
             const analysisStart = fullContent.indexOf('=== ANALYSIS ===') + '=== ANALYSIS ==='.length;
@@ -1821,7 +1532,6 @@ serve(async (req) => {
             if (planEnd < 0) planEnd = fullContent.length;
             
             const planText = fullContent.substring(planStart, planEnd).trim();
-            // Extract bullet items from the plan
             const items = planText
               .split('\n')
               .map((line: string) => line.replace(/^[-*•]\s*/, '').replace(/^(Step\s+\d+:\s*)/i, '').trim())
@@ -1839,15 +1549,18 @@ serve(async (req) => {
             codePhaseEmitted = true;
           }
           
-          // Stream code chunks (raw text for existing parser compatibility)
+          // Stream code chunks as DELTAS (not full content each time)
           if (codePhaseEmitted) {
             const codeStart = fullContent.indexOf('=== CODE ===') + '=== CODE ==='.length;
             let codeEnd = fullContent.indexOf('=== SUMMARY ===');
             if (codeEnd < 0) codeEnd = fullContent.length;
             
             const codeSection = fullContent.substring(codeStart, codeEnd);
-            // Emit the code section as raw text for backward compatibility with useStreamingCode parser
-            emitEvent('code_chunk', { content: codeSection });
+            const newContent = codeSection.substring(lastCodeEmitLength);
+            if (newContent.length > 0) {
+              emitEvent('code_chunk', { content: newContent, total: codeSection.length });
+              lastCodeEmitLength = codeSection.length;
+            }
           }
           
           // === SUMMARY === section
@@ -1870,7 +1583,6 @@ serve(async (req) => {
 
             buffer += decoder.decode(value, { stream: true });
 
-            // Process complete lines from Gemini SSE
             const lines = buffer.split("\n");
             buffer = lines.pop() || "";
 
@@ -1888,20 +1600,19 @@ serve(async (req) => {
                 if (content) {
                   fullContent += content;
                   
-                  // Also emit raw text for backward compatibility
-                  // (useStreamingCode still uses raw accumulation for code extraction)
+                  // Emit raw token for backward compatibility
                   emitEvent('raw', { content });
                   
                   // Process structured sections
                   processContent();
                 }
               } catch (e) {
-                // Incomplete JSON, will be completed in next chunk
+                // Incomplete JSON
               }
             }
           }
 
-          // Process any remaining buffer
+          // Process remaining buffer
           if (buffer.trim()) {
             const trimmed = buffer.trim();
             if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
@@ -1919,13 +1630,199 @@ serve(async (req) => {
             }
           }
           
-          // Final: if no structured sections detected, emit complete anyway
+          // Final: emit complete if no summary section detected
           if (!summaryEmitted) {
             emitEvent('phase', { phase: 'complete' });
+          }
+
+          // ════════════════════════════════════════════════════════
+          // JOB FINALIZATION: Write results to DB (if job-backed)
+          // ════════════════════════════════════════════════════════
+          if (jobId) {
+            console.log(`[Job ${jobId}] Stream complete, finalizing. Content length: ${fullContent.length}`);
+
+            let codeResult = null;
+            let summary = null;
+            let planResult = null;
+
+            // 1. Extract Plan if present
+            if (fullContent.includes('"type": "plan"') || fullContent.includes('"type":"plan"')) {
+              try {
+                const jsonMatch = fullContent.match(/\{[\s\S]*"type"\s*:\s*"plan"[\s\S]*\}/);
+                if (jsonMatch) {
+                  planResult = JSON.parse(jsonMatch[0]);
+                  const phases = planResult?.phases || planResult?.steps || [];
+                  const complexity = planResult?.complexity;
+                  if (phases.length > 6 || complexity === "high") {
+                    console.warn(`[Job ${jobId}] Complexity guard triggered`);
+                    await supabase.from("ai_generation_jobs").update({
+                      status: "needs_user_action",
+                      completed_at: new Date().toISOString(),
+                      plan_result: planResult,
+                      summary: "This request is too complex for a single generation. Please break it into 2-3 smaller requests.",
+                      terminal_reason: "complexity_guard",
+                      validation_report: { complexity_guard: true, phase_count: phases.length },
+                    }).eq("id", jobId);
+                    return; // Stream already sent to client
+                  }
+                }
+              } catch (e) {
+                console.error(`[Job ${jobId}] Failed to parse plan:`, e);
+              }
+            }
+
+            // 2. Extract Code and Summary
+            if (fullContent.includes("/// BEGIN_CODE ///")) {
+              const codeMatch = fullContent.split("/// BEGIN_CODE ///");
+              if (codeMatch.length > 1) {
+                codeResult = codeMatch[1].split("// --- VIBECODER_COMPLETE ---")[0].trim();
+                codeResult = codeResult.replace(/\/\/\/\s*END_CODE\s*\/\/\//g, "").trim();
+              }
+              summary = codeMatch[0].replace("/// TYPE: CODE ///", "").trim();
+            } else if (fullContent.includes("/// TYPE: CHAT ///")) {
+              summary = fullContent.replace("/// TYPE: CHAT ///", "").trim();
+            } else {
+              summary = fullContent;
+            }
+
+            // ═══════════════════════════════════════════════════════
+            // VALIDATION GATES
+            // ═══════════════════════════════════════════════════════
+            let validationError = null;
+            let jobStatus = "completed";
+            let terminalReason = "all_gates_passed";
+            const validationReport: Record<string, unknown> = {
+              generated_code_length: codeResult?.length ?? 0,
+              truncation_detected: false,
+              no_op_detected: false,
+              intent_ok: true,
+              terminal_reason: "",
+            };
+
+            if (codeResult) {
+              const diagnostics = {
+                intent: intentResult.intent,
+                promptLength: prompt.length,
+                codeContextLength: currentCode?.length ?? 0,
+                generatedLength: codeResult.length,
+                hasExportDefault: /export\s+default\s/.test(codeResult),
+                hasSentinel: codeResult.includes(VIBECODER_COMPLETE_SENTINEL),
+                bracketBalance: (codeResult.match(/[({[]/g) ?? []).length - (codeResult.match(/[)\]}]/g) ?? []).length,
+              };
+              console.log(`[Job ${jobId}] VALIDATION_INPUT:`, JSON.stringify(diagnostics));
+
+              // GATE 1: Structural validation
+              const structuralError = getValidationError(codeResult, intentResult.intent);
+              if (structuralError) {
+                validationError = { errorType: structuralError.type, errorMessage: structuralError.message };
+                jobStatus = "failed";
+                terminalReason = structuralError.type.toLowerCase();
+                validationReport.truncation_detected = true;
+                console.error(`[Job ${jobId}] GATE 1 FAIL: ${structuralError.type}`);
+              }
+
+              // GATE 2: No-op detection
+              if (!validationError && isNoOp(currentCode, codeResult)) {
+                validationReport.no_op_detected = true;
+                console.warn(`[Job ${jobId}] GATE 2 WARN: No-op detected`);
+              }
+
+              // GATE 3: Intent validation
+              if (!validationError) {
+                try {
+                  const intentCheck = await validateIntent(prompt, codeResult, GOOGLE_GEMINI_API_KEY);
+                  validationReport.intent_ok = intentCheck.implements_request;
+                  
+                  if (!intentCheck.implements_request) {
+                    console.warn(`[Job ${jobId}] GATE 3 FAIL: Intent check failed`);
+                    await supabase
+                      .from("ai_generation_jobs")
+                      .update({ intent_check_attempts: 1 })
+                      .eq("id", jobId);
+                    jobStatus = "needs_user_action";
+                    terminalReason = "intent_check_failed";
+                    validationReport.missing_requirements = intentCheck.missing_requirements;
+                  }
+                } catch (e) {
+                  console.warn(`[Job ${jobId}] Intent validation error (non-fatal):`, e);
+                }
+              }
+            }
+
+            validationReport.terminal_reason = terminalReason;
+
+            if (codeResult && summary && !validationError && jobStatus === "completed") {
+              try {
+                const dataCheck = await checkDataAvailability(supabase, userId, prompt);
+                if (dataCheck && (dataCheck.needsSubscriptionPlans || dataCheck.needsProducts)) {
+                  const guidance = generateDataGuidance(dataCheck);
+                  if (guidance) summary = summary + guidance;
+                }
+              } catch (e) {
+                console.warn(`[Job ${jobId}] Data check failed:`, e);
+              }
+            }
+
+            // Manual Recovery Fix
+            if (codeResult && !validationError && jobStatus === "completed") {
+              const { data: jobData } = await supabase
+                .from("ai_generation_jobs")
+                .select("project_id")
+                .eq("id", jobId)
+                .single();
+              if (jobData?.project_id) {
+                const filesWrapper = { "App.tsx": codeResult };
+                await supabase.from("vibecoder_projects").update({ files: filesWrapper }).eq("id", jobData.project_id);
+                await supabase.from("project_versions").insert({
+                  project_id: jobData.project_id,
+                  files_snapshot: filesWrapper,
+                  version_label: "Manual Recovery Save",
+                });
+              }
+            }
+
+            // Finalize Job Status
+            const updatePayload: Record<string, unknown> = {
+              status: jobStatus,
+              completed_at: new Date().toISOString(),
+              code_result: (validationError || jobStatus !== "completed") ? null : codeResult,
+              summary: summary?.slice(0, 8000),
+              plan_result: planResult,
+              validation_report: validationReport,
+              terminal_reason: terminalReason,
+              progress_logs: validationError
+                ? ["Starting AI generation...", "Processing response...", `⚠️ ${validationError.errorType}`]
+                : jobStatus === "needs_user_action"
+                ? ["Starting AI generation...", "Processing response...", "⚠️ Intent check failed — user action needed"]
+                : ["Starting AI generation...", "Processing response...", "✅ All validation gates passed"],
+            };
+
+            if (validationError) {
+              updatePayload.error_message = JSON.stringify({
+                type: validationError.errorType,
+                message: validationError.errorMessage,
+              });
+            }
+
+            await supabase.from("ai_generation_jobs").update(updatePayload).eq("id", jobId);
+            console.log(`[Job ${jobId}] Job ${jobStatus} | Reason: ${terminalReason}`);
           }
         } catch (e) {
           console.error("Stream processing error:", e);
           emitEvent('error', { message: e instanceof Error ? e.message : 'Stream error' });
+
+          // If job-backed, mark as failed
+          if (jobId) {
+            await supabase
+              .from("ai_generation_jobs")
+              .update({
+                status: "failed",
+                completed_at: new Date().toISOString(),
+                error_message: e instanceof Error ? e.message : "Unknown error",
+                progress_logs: ["Starting AI generation...", "Error occurred", e instanceof Error ? e.message : "Unknown error"],
+              })
+              .eq("id", jobId);
+          }
         } finally {
           clearInterval(heartbeatInterval);
           clearTimeout(streamTimeout);
