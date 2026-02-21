@@ -303,12 +303,6 @@ export default function Community() {
             </p>
           </Reveal>
 
-          <Reveal delay={400}>
-            {/* Navigation */}
-            <div className="flex justify-center mb-6 sm:mb-8 overflow-x-auto">
-              <CommunityNav />
-            </div>
-          </Reveal>
         </div>
 
         {/* Scroll Indicator - Hidden on mobile */}

@@ -111,10 +111,6 @@ export default function Updates() {
               <span className="text-foreground font-medium"> SellsPay.</span>
           </p>
 
-          {/* Navigation */}
-          <div className="flex justify-center mb-6 sm:mb-8 overflow-x-auto">
-            <CommunityNav />
-          </div>
         </div>
 
         {/* Scroll Indicator - Hidden on mobile */}
