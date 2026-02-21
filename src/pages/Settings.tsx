@@ -740,7 +740,7 @@ export default function Settings() {
         </div>
 
         {/* Main Content */}
-        <main className="flex-1 min-h-screen px-4 md:px-8 py-8 md:pt-8 pt-28 max-w-4xl">
+        <main className="flex-1 min-h-screen px-4 md:px-8 lg:px-12 py-8 md:pt-8 pt-28">
           <div className="hidden md:block mb-8">
             <h1 className="text-2xl font-bold text-foreground">Settings</h1>
             <p className="text-sm text-muted-foreground mt-1">Manage your account preferences and profile.</p>
