@@ -65,12 +65,14 @@ export function ReferralDialog({ open, onOpenChange }: ReferralDialogProps) {
             Earn 100+ credits
           </div>
 
-          {/* Blob image */}
-          <img
-            src={referralBlob}
-            alt=""
-            className="absolute top-4 right-6 w-28 h-28 object-contain pointer-events-none"
-          />
+        {/* Blob image */}
+        <img
+          src={referralBlob}
+          alt=""
+          aria-hidden="true"
+          className="absolute -top-2 right-2 w-36 h-36 object-contain pointer-events-none select-none"
+          style={{ filter: 'drop-shadow(0 0 20px rgba(255, 120, 50, 0.3))' }}
+        />
 
           {/* Title */}
           <h2 className="text-[28px] font-bold text-white leading-tight">
