@@ -73,6 +73,9 @@ serve(async (req) => {
         reply_to: userEmail ?? undefined,
         subject: `[Support Ticket] ${subject.trim()}`,
         html: `
+          <div style="text-align:center;margin-bottom:24px;">
+            <img src="https://cdpfchadvvfdupkgzeiy.supabase.co/storage/v1/object/public/site-assets/email-logo-blue.png?v=1" width="80" height="80" alt="SellsPay" style="display:inline-block;border:0;outline:none;text-decoration:none;" />
+          </div>
           <h2>New Support Ticket</h2>
           <p><strong>From:</strong> ${userEmail ?? "Anonymous"}</p>
           <p><strong>Category:</strong> ${category || "Uncategorized"}</p>
@@ -90,6 +93,9 @@ serve(async (req) => {
           to: [userEmail],
           subject: `We received your ticket: ${subject.trim()}`,
           html: `
+            <div style="text-align:center;margin-bottom:24px;">
+              <img src="https://cdpfchadvvfdupkgzeiy.supabase.co/storage/v1/object/public/site-assets/email-logo-blue.png?v=1" width="80" height="80" alt="SellsPay" style="display:inline-block;border:0;outline:none;text-decoration:none;" />
+            </div>
             <h2>We've received your support request</h2>
             <p>Hi there,</p>
             <p>Thanks for reaching out. We've received your ticket and will get back to you within 24 hours (primarily on weekdays).</p>
