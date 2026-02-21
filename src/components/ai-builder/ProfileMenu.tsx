@@ -2,10 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { 
-  User, Settings, CreditCard, LogOut, ChevronRight, Zap 
+  User, Settings, LogOut, ChevronRight, Zap, LayoutDashboard, Plus, Wand2, Sparkles 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LowCreditWarning, LOW_CREDIT_THRESHOLD } from "./LowCreditWarning";
 import { CreditTopUpDialog } from "./CreditTopUpDialog";
 
 interface ProfileMenuProps {
@@ -181,44 +180,41 @@ export function ProfileMenu({
             </div>
           </div>
 
-          {/* Credit Wallet Section */}
-          <div className="px-4 py-3 border-b border-zinc-800">
+          {/* Credit Wallet Section - clicks to /billing */}
+          <button
+            onClick={() => handleNavigate('/billing')}
+            className="w-full px-4 py-3 border-b border-zinc-800 hover:bg-zinc-800/50 transition-colors text-left"
+          >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Zap size={14} className="text-violet-400" />
-                <span className="text-sm text-zinc-400">Credits</span>
-              </div>
-              <div className="flex items-center gap-2">
+              <span className="text-sm text-zinc-400">Credits</span>
+              <div className="flex items-center gap-1.5">
                 <span className="text-sm font-bold text-white tabular-nums">
                   {userCredits.toLocaleString()}
                 </span>
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setTopUpOpen(true);
-                  }}
-                  className="text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
-                >
-                  Top Up →
-                </button>
+                <span className="text-xs text-zinc-500">left</span>
+                <ChevronRight size={14} className="text-zinc-600" />
               </div>
             </div>
-
-            {/* Low Credit Warning */}
-            {userCredits < LOW_CREDIT_THRESHOLD && (
-              <LowCreditWarning
-                credits={userCredits}
-                onClick={() => {
-                  setIsOpen(false);
-                  setTopUpOpen(true);
-                }}
-                className="mt-2"
-              />
-            )}
-          </div>
+            <p className="text-xs text-zinc-500 flex items-center gap-1.5 mt-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
+              {subscriptionTier && subscriptionTier !== 'browser'
+                ? "Using subscription credits"
+                : "Using free credits"}
+            </p>
+          </button>
 
           {/* Navigation Links */}
           <div className="p-2">
+            <MenuItem 
+              icon={LayoutDashboard} 
+              label="Dashboard" 
+              onClick={() => handleNavigate('/dashboard')}
+            />
+            <MenuItem 
+              icon={Plus} 
+              label="Create Product" 
+              onClick={() => handleNavigate('/create-product')}
+            />
             <MenuItem 
               icon={User} 
               label="My Profile" 
@@ -229,11 +225,20 @@ export function ProfileMenu({
               label="Settings" 
               onClick={() => handleNavigate('/settings')}
             />
-            <MenuItem 
-              icon={CreditCard} 
-              label="Billing" 
-              onClick={() => handleNavigate('/billing')}
-            />
+          </div>
+
+          {/* AI Builder */}
+          <div className="p-2 border-t border-zinc-800">
+            <button
+              onClick={() => handleNavigate('/ai-builder')}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors rounded-lg group"
+            >
+              <div className="flex items-center gap-2.5">
+                <Wand2 size={15} />
+                <span>AI Builder</span>
+              </div>
+              <Sparkles size={14} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+            </button>
           </div>
 
           {/* Sign Out */}
