@@ -21,12 +21,6 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
 import Tools from "./pages/Tools";
-import AudioCutter from "./pages/tools/AudioCutter";
-import AudioRecorder from "./pages/tools/AudioRecorder";
-import AudioJoiner from "./pages/tools/AudioJoiner";
-import VideoToAudio from "./pages/tools/VideoToAudio";
-import AudioConverter from "./pages/tools/AudioConverter";
-import WaveformGenerator from "./pages/tools/WaveformGenerator";
 import Community from "./pages/Community";
 import Discord from "./pages/community/Discord";
 import Spotlight from "./pages/community/Spotlight";
@@ -112,14 +106,12 @@ const App = () => (
             {/* Instagram-style profile route: /@username */}
             <Route path="/:atUsername" element={<AtUsernameRoute />} />
             
-            {/* Tools */}
+            {/* Studio */}
+            <Route path="/studio" element={<Tools />} />
+            <Route path="/studio/:toolId" element={<Tools />} />
+            {/* Legacy /tools redirects */}
             <Route path="/tools" element={<Tools />} />
-            <Route path="/tools/audio-cutter" element={<MainLayout><AudioCutter /></MainLayout>} />
-            <Route path="/tools/audio-recorder" element={<MainLayout><AudioRecorder /></MainLayout>} />
-            <Route path="/tools/audio-joiner" element={<MainLayout><AudioJoiner /></MainLayout>} />
-            <Route path="/tools/video-to-audio" element={<MainLayout><VideoToAudio /></MainLayout>} />
-            <Route path="/tools/audio-converter" element={<MainLayout><AudioConverter /></MainLayout>} />
-            <Route path="/tools/waveform-generator" element={<MainLayout><WaveformGenerator /></MainLayout>} />
+            <Route path="/tools/*" element={<Tools />} />
             
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
