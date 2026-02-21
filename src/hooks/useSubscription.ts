@@ -197,23 +197,28 @@ export function useSubscription() {
   }, [user, state, broadcastSubscription]);
 
   const canUseFeature = useCallback((feature: 'vibecoder' | 'imageGen' | 'videoGen' | string): boolean => {
-    // Map tool IDs to features
-    const toolToFeature: Record<string, keyof SubscriptionCapabilities> = {
-      'sfx-generator': 'vibecoder',
-      'voice-isolator': 'vibecoder',
-      'sfx-isolator': 'vibecoder',
-      'music-splitter': 'vibecoder',
-      'nano-banana': 'vibecoder',
+    // Map tool IDs to credit cost keys
+    const toolToCostKey: Record<string, keyof typeof CREDIT_COSTS> = {
+      'sfx-generator': 'sfx_gen',
+      'voice-isolator': 'voice_isolator',
+      'sfx-isolator': 'sfx_isolator',
+      'music-splitter': 'music_splitter',
+      'nano-banana': 'sfx_gen',
     };
 
-    const mappedFeature = toolToFeature[feature] || feature;
-    
-    if (mappedFeature === 'vibecoder') return state.capabilities.vibecoder;
-    if (mappedFeature === 'imageGen') return state.capabilities.imageGen;
-    if (mappedFeature === 'videoGen') return state.capabilities.videoGen;
+    const costKey = toolToCostKey[feature];
+    if (costKey) {
+      // Credit-gated tools: allow if user has enough credits
+      return state.credits >= CREDIT_COSTS[costKey];
+    }
+
+    // Capability-gated features (plan-based)
+    if (feature === 'vibecoder') return state.capabilities.vibecoder;
+    if (feature === 'imageGen') return state.capabilities.imageGen;
+    if (feature === 'videoGen') return state.capabilities.videoGen;
     
     return false;
-  }, [state.capabilities]);
+  }, [state.capabilities, state.credits]);
 
   const hasCredits = useCallback((amount: number = 1): boolean => {
     return state.credits >= amount;
