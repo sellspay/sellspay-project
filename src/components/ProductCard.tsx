@@ -223,7 +223,7 @@ const ProductCard = forwardRef<HTMLAnchorElement, ProductCardProps>(function Pro
       onMouseLeave={handleMouseLeave}
     >
       {/* STRAIGHT EDGES - No rounded corners, tight borders */}
-      <div className="relative overflow-hidden bg-card border-0 h-full">
+      <div className="relative overflow-hidden bg-card border-0 h-full transition-all duration-300 group-hover:shadow-xl group-hover:shadow-primary/10 group-hover:-translate-y-1">
         {/* Media Container - Edge to edge, no gaps */}
         <div className={`relative ${isLarge ? 'aspect-[4/5]' : 'aspect-[4/5]'} overflow-hidden`}>
           {/* Video Preview */}

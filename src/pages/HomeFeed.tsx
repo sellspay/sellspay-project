@@ -307,18 +307,23 @@ export default function HomeFeed() {
                 {categoryProducts.map((product) => {
                   const cat = BROWSE_CATEGORIES.find(c => c.value === product.product_type);
                   return (
-                    <Link
+                    <div
                       key={product.id}
-                      to={`/products?type=${product.product_type}`}
-                      className="flex-none w-[200px] sm:w-[220px] relative group"
+                      className="flex-none w-[200px] sm:w-[220px] relative cursor-pointer group/catcard"
+                      onClick={() => navigate(`/products?type=${product.product_type}`)}
                     >
-                      <ProductCard product={product} showType={true} showCreator={true} />
+                      <div className="pointer-events-none">
+                        <ProductCard product={product} showType={false} showCreator={false} />
+                      </div>
+                      {/* Category label at bottom over the gradient */}
                       {cat && (
-                        <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded bg-primary text-primary-foreground text-[10px] font-semibold uppercase tracking-wider">
+                        <div className="absolute bottom-3 left-3 z-10 px-2.5 py-1 rounded bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider shadow-lg group-hover/catcard:bg-primary/90 transition-colors">
                           {cat.label}
                         </div>
                       )}
-                    </Link>
+                      {/* Hover overlay */}
+                      <div className="absolute inset-0 border-2 border-transparent group-hover/catcard:border-primary/50 transition-all duration-200 pointer-events-none" />
+                    </div>
                   );
                 })}
               </div>
