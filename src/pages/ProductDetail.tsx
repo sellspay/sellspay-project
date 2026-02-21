@@ -193,6 +193,9 @@ export default function ProductDetail() {
   // Featured Products
   const [featuredProducts, setFeaturedProducts] = useState<RelatedProduct[]>([]);
   
+  // Seller's other products (for sidebar)
+  const [sellerProducts, setSellerProducts] = useState<RelatedProduct[]>([]);
+  
   // Comments
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentCount, setCommentCount] = useState(0);
@@ -499,6 +502,7 @@ export default function ProductDetail() {
       // Fetch related products (same creator or same type)
       fetchRelatedProducts(productData.creator_id, productData.product_type, productData.id);
       fetchFeaturedProducts(productData.id);
+      fetchSellerProducts(productData.creator_id, productData.id);
       // Download limit is now handled by useDownloadLimitCountdown hook
     } catch (error) {
       console.error("Error fetching product:", error);
@@ -542,6 +546,23 @@ export default function ProductDetail() {
       setFeaturedProducts(data || []);
     } catch (error) {
       console.error("Error fetching featured products:", error);
+    }
+  };
+
+  const fetchSellerProducts = async (creatorId: string | null, excludeId: string) => {
+    if (!creatorId) return;
+    try {
+      const { data } = await supabase
+        .from("products")
+        .select("id, name, cover_image_url, youtube_url, preview_video_url, price_cents, currency")
+        .eq("status", "published")
+        .eq("creator_id", creatorId)
+        .neq("id", excludeId)
+        .limit(6);
+      
+      setSellerProducts(data || []);
+    } catch (error) {
+      console.error("Error fetching seller products:", error);
     }
   };
 
@@ -1341,7 +1362,7 @@ export default function ProductDetail() {
   const displayedComments = showAllComments ? comments : comments.slice(0, 4);
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto">
       {/* Back Button & Owner Actions */}
       <div className="flex items-center justify-between mb-4">
         <Button variant="ghost" size="sm" asChild>
@@ -1384,7 +1405,7 @@ export default function ProductDetail() {
         )}
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_340px] gap-8">
+      <div className="grid lg:grid-cols-[1fr_380px] gap-8">
         {/* Main Content - Left Side */}
         <div className="space-y-6">
           {/* Media - Larger */}
@@ -2025,31 +2046,36 @@ export default function ProductDetail() {
 
         {/* Sidebar - Right Side */}
         <div className="space-y-6">
-          {/* Creator Card */}
+          {/* Creator Card - Enlarged */}
           {product.creator && (
-            <Card className="bg-card">
-              <CardContent className="p-6 text-center">
-                <Avatar className="w-16 h-16 mx-auto mb-3">
+            <Card className="bg-card border-border">
+              <CardContent className="p-8 text-center">
+                <Avatar className="w-24 h-24 mx-auto mb-4 ring-2 ring-border">
                   <AvatarImage src={product.creator.avatar_url || undefined} />
-                  <AvatarFallback>
+                  <AvatarFallback className="text-2xl">
                     {product.creator.username?.[0]?.toUpperCase() || "?"}
                   </AvatarFallback>
                 </Avatar>
-                <h3 className="font-semibold flex items-center justify-center gap-1">
+                <h3 className="text-lg font-bold flex items-center justify-center gap-1">
                   @{product.creator.username || "unknown"}
                   {product.creator.verified && (
                     <VerifiedBadge size="sm" isOwner={isCreatorAdmin} />
                   )}
                 </h3>
+                {product.creator.full_name && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {product.creator.full_name}
+                  </p>
+                )}
                 {product.creator.bio && (
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                  <p className="text-sm text-muted-foreground mt-2 line-clamp-3">
                     {product.creator.bio}
                   </p>
                 )}
                 
-                {/* Subscription Badge - Compact, premium design */}
+                {/* Subscription Badge */}
                 {!isOwner && !hasPurchased && !hasActiveSubscription && planBenefits.length > 0 && (
-                  <div className="mt-4 flex justify-center">
+                  <div className="mt-5 flex justify-center">
                     <SubscriptionBadge
                       creatorId={product.creator.id}
                       creatorName={product.creator.username || 'creator'}
@@ -2060,7 +2086,7 @@ export default function ProductDetail() {
                   </div>
                 )}
                 
-                <Button asChild className="w-full mt-4" variant="outline">
+                <Button asChild className="w-full mt-5" variant="outline" size="lg">
                   <Link to={`/@${product.creator.username}`}>
                     View Profile
                   </Link>
@@ -2069,6 +2095,62 @@ export default function ProductDetail() {
             </Card>
           )}
 
+          {/* More from this Seller */}
+          {sellerProducts.length > 0 && product.creator && (
+            <div>
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-3">
+                More from @{product.creator.username}
+              </h3>
+              <div className="space-y-3">
+                {sellerProducts.map((prod) => {
+                  const thumbnail = prod.cover_image_url || getYouTubeThumbnail(prod.youtube_url);
+                  return (
+                    <Link 
+                      key={prod.id} 
+                      to={`/product/${prod.id}`}
+                      className="group flex gap-3 rounded-lg border border-border bg-card p-2 hover:border-primary/40 transition-all duration-200"
+                    >
+                      <div className="w-20 h-14 rounded-md overflow-hidden flex-shrink-0 bg-muted">
+                        {thumbnail ? (
+                          <img 
+                            src={thumbnail} 
+                            alt={prod.name} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              if (target.src.includes('hqdefault')) {
+                                target.src = target.src.replace('hqdefault', 'default');
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Play className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{prod.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatPrice(prod.price_cents, null, prod.currency)}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+              <Button 
+                asChild 
+                variant="ghost" 
+                size="sm" 
+                className="w-full mt-3 text-primary"
+              >
+                <Link to={`/@${product.creator.username}`}>
+                  View all products →
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
