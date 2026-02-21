@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth";
 import MainLayout from "@/components/layout/MainLayout";
 import { UsernameSetupDialog } from "@/components/auth/UsernameSetupDialog";
+import ScrollToTop from "@/components/ScrollToTop";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import OAuthCallback from "./pages/OAuthCallback";
@@ -72,6 +73,7 @@ const App = () => (
         <Sonner />
         <UsernameSetupDialog />
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             {/* Auth pages without layout */}
             <Route path="/login" element={<Login />} />
