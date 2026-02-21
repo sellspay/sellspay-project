@@ -1,122 +1,164 @@
 
+# AI Builder Architecture Upgrade: Planner-Builder-Reporter Pattern
 
-# Campaign Canvas Redesign — Marketing Pack Generator
+## What's Changing
 
-Transform Campaign from a vague "Deploy" page into a clear **Marketing Pack Generator** that shows users exactly what they get.
+Your AI builder currently streams raw tokens from Gemini and shows a generic "Building for Xs" log. The AI already returns structured sections (`/// TYPE: CODE ///`, `/// BEGIN_CODE ///`, `[LOG: ...]`), but the frontend doesn't parse them into visible phases. This upgrade surfaces the AI's reasoning, plan, and summary as real chat messages -- making it feel conversational and premium.
 
----
-
-## Current State
-
-The Campaign canvas has a generic hero ("Launch. Create. Optimize."), a freeform text input, a "Deploy" button, generic featured action cards, and a trending hooks shelf. It doesn't communicate what the campaign actually generates.
-
-## New Structure
-
-### Section 1: Hero with Clear Value Proposition
-
-**Replace** the current headline and input area with:
-
-- Headline: `Launch a Campaign in 60 Seconds.`
-- Subtext: `Generate a complete content pack for your product — ready to post.`
-- Below that, a "This campaign will generate:" list showing 6 deliverables as minimal icon+text rows (Video, Carousel, Hooks, Captions, Listing Rewrite, Email Draft) using thin lucide icons
-- No emoji anywhere
-
-### Section 2: Product + Goal Selector (Primary Action)
-
-Replace the freeform "Describe your campaign..." input with structured controls:
-
-- **Product Selector**: Reuse the existing `SourceSelector` component (already used in PromoVideoBuilder and CampaignRunner) to select a product
-- **Goal Selector**: 5 pill buttons in a flex-wrap row:
-  - "Get more sales" / "Get more traffic" / "Build trust" / "Launch new product" / "Promote discount"
-- **Optional text input**: "Extra direction (optional)" -- single line, subtle
-- **Primary CTA**: `Generate Campaign Pack` button (orange gradient, rounded-[10px])
-- **Secondary CTA**: `Plan First (Advanced)` button (ghost variant) -- opens the existing `PromoVideoBuilder` dialog as the "planner" flow
-
-### Section 3: Campaign Templates Shelf
-
-Replace the current "Trending" hooks shelf with a **Campaign Templates** horizontal scroll:
-
-- 5 template cards: "Viral TikTok Launch", "Premium Brand Launch", "Discount Push", "Trust Builder", "New Release"
-- Each card: name + short description + subtle "Use Template" hover state
-- Selecting a template pre-fills the goal + extra direction fields
-- Cards styled with `bg-white/[0.02]` default, `bg-white/[0.05]` on hover, no borders
-
-### Section 4: Example Pack Preview Grid
-
-Replace the featured actions 2x2 grid with a **pack preview** showing what gets generated:
-
-- 2-row, 3-column grid of preview cards:
-  - Row 1: "Promo Video" (9:16 phone mockup with animated bars), "Carousel" (stacked slides visual), "Viral Hooks" (scrolling text preview)
-  - Row 2: "Captions Pack", "Listing Rewrite", "Email Draft"
-- Each card: title + subtle animated placeholder content (reuse existing animation patterns)
-- These are static previews -- not interactive, just showing what the output looks like
-
-### Section 5: Recent Creations (keep)
-
-Keep the existing `RecentCreations` component at the bottom, unchanged.
-
-### Remove
-
-- "Trending" hooks shelf (replaced by templates)
-- Featured Actions 2x2 grid (replaced by pack preview)
-- Stat strip at the top (move into sidebar or remove -- sidebar already shows credits)
-- "Recommended" section at bottom (the pack preview makes the value obvious)
-- The animated phone preview on the right side of the hero (replaced by the pack preview grid below)
-
----
-
-## Technical Details
-
-### Files Modified
-
-| File | Changes |
-|------|---------|
-| `CampaignCanvas.tsx` | Full rewrite of the canvas content. New sections: hero, product+goal selector, template shelf, pack preview grid. Import `SourceSelector` and `ProductContextCard` from existing tool components. Add state for `selectedGoal`, `selectedTemplate`, `extraDirection`, `sourceMode`, `selectedProduct`. Wire "Generate Campaign Pack" to open `CampaignRunner` with a dynamically built step list based on goal. Wire "Plan First" to `onLaunchPromo` (opens PromoVideoBuilder). |
-| `StudioCanvas.tsx` | Pass `onLaunchPromo` and products data through to CampaignCanvas (already done). No changes needed. |
-| `StudioLayout.tsx` | No changes needed -- `PromoVideoBuilder` dialog already wired. |
-
-### New Constants in CampaignCanvas
+## Current Flow (What Users See)
 
 ```text
-GOALS = [
-  { id: "sales", label: "Get more sales" },
-  { id: "traffic", label: "Get more traffic" },
-  { id: "trust", label: "Build trust" },
-  { id: "launch", label: "Launch new product" },
-  { id: "discount", label: "Promote discount" },
-]
-
-CAMPAIGN_TEMPLATES = [
-  { id: "viral-tiktok", name: "Viral TikTok Launch", desc: "Fast cuts, bold hooks, trending audio", goal: "sales", direction: "Bold, aggressive, viral energy" },
-  { id: "premium-brand", name: "Premium Brand Launch", desc: "Cinematic, elegant, trust-building", goal: "launch", direction: "Premium, elegant, aspirational" },
-  { id: "discount-push", name: "Discount Push", desc: "Urgency-driven, countdown, scarcity", goal: "discount", direction: "Urgent, limited-time, scarcity" },
-  { id: "trust-builder", name: "Trust Builder", desc: "Testimonial-style, proof-focused", goal: "trust", direction: "Authentic, proof-heavy, relatable" },
-  { id: "new-release", name: "New Release", desc: "Teaser-reveal format, anticipation", goal: "launch", direction: "Teaser, anticipation, reveal" },
-]
-
-PACK_ITEMS = [
-  { label: "Promo Video", desc: "9:16 vertical video", icon: Video },
-  { label: "Carousel Post", desc: "5-slide swipeable", icon: GalleryHorizontal },
-  { label: "10 Viral Hooks", desc: "Scroll-stopping openers", icon: MessageSquare },
-  { label: "Captions Pack", desc: "With optimized hashtags", icon: Hash },
-  { label: "Listing Rewrite", desc: "SEO-optimized copy", icon: FileText },
-  { label: "Email Draft", desc: "Ready-to-send blast", icon: Mail },
-]
+User sends prompt
+  -> "Thinking..." dot
+  -> "Building for 42s" with hidden execution log
+  -> AI message appears all at once when done
 ```
 
-### Component Interface Changes
+## New Flow (What Users Will See)
 
-`CampaignCanvasProps` adds:
-- No new props needed -- `onLaunchPromo` already opens the PromoVideoBuilder (used for "Plan First")
-- The "Generate Campaign Pack" button will open a `CampaignRunner` dialog inline (imported directly into CampaignCanvas) with dynamically assembled steps based on the selected goal
+```text
+User sends prompt
+  -> "Analyzing your request..." (phase badge)
+  -> Analysis text streams into chat as it arrives
+  -> Plan checklist appears with component list
+  -> "Generating code..." (progress bar pulses)
+  -> Code streams into Sandpack live
+  -> Summary confirmation appears
+  -> "Build successful" badge
+```
 
-### Pack Preview Grid
+---
 
-Static preview cards using existing animation patterns:
-- Promo Video card: reuse the animated phone mockup (already exists in current hero)
-- Carousel card: 3 stacked rectangles with slight rotation
-- Hooks card: 3 text lines fading in/out (reuse HOOKS array animation)
-- Other cards: simple icon + placeholder bars
+## Technical Implementation
 
-All cards use `bg-white/[0.02]` background, no borders, `rounded-xl`.
+### 1. Edge Function: Structured SSE Events (vibecoder-v2)
 
+**Current:** The streaming path (lines 1661-1728) strips SSE framing and sends raw text tokens. The frontend has to guess where sections start.
+
+**Change:** Emit structured SSE events with `event:` types instead of raw text. This lets the frontend know exactly what phase the AI is in.
+
+New streaming output format:
+```
+event: phase
+data: {"phase": "analyzing"}
+
+event: text
+data: {"content": "I see the issue with your ProductGrid..."}
+
+event: phase  
+data: {"phase": "planning"}
+
+event: plan
+data: {"items": ["Fix onClick handler", "Add route param", "Update imports"]}
+
+event: phase
+data: {"phase": "building"}
+
+event: code_chunk
+data: {"content": "import React from..."}
+
+event: phase
+data: {"phase": "complete"}
+
+event: summary
+data: {"content": "Fixed the View Asset button routing."}
+```
+
+The edge function will parse the `=== ANALYSIS ===` / `=== PLAN ===` / `=== CODE ===` / `=== SUMMARY ===` sections (or the existing `/// TYPE: CODE ///` / `/// BEGIN_CODE ///` markers) as they stream in and emit the appropriate event types.
+
+### 2. System Prompt Update (CODE_EXECUTOR_PROMPT)
+
+Add structured section markers to the existing prompt so Gemini returns content in parseable phases:
+
+```
+Before writing code, structure your response with these sections:
+
+=== ANALYSIS ===
+(1-2 sentences explaining what you found and what needs to change)
+
+=== PLAN ===
+- Step 1: description
+- Step 2: description
+
+=== CODE ===
+/// BEGIN_CODE ///
+<full React file>
+// --- VIBECODER_COMPLETE ---
+
+=== SUMMARY ===
+(1 sentence confirmation of what was updated)
+```
+
+This is additive -- it wraps the existing `/// TYPE: CODE ///` / `/// BEGIN_CODE ///` markers with analysis and summary sections.
+
+### 3. Frontend: useStreamingCode.ts Upgrade
+
+**Current:** Detects `/// TYPE: CODE ///`, `/// TYPE: CHAT ///`, `/// TYPE: PLAN ///` markers and switches mode. Code chunks update Sandpack. Logs are extracted via regex.
+
+**Change:** Parse the new SSE event types. Add callbacks for each phase:
+
+- `onAnalysis(text: string)` -- streams analysis text into chat
+- `onPlanItems(items: string[])` -- shows checklist UI
+- `onCodeChunk(code: string)` -- existing behavior, updates Sandpack
+- `onSummary(text: string)` -- shows completion message
+- `onPhaseChange(phase: string)` -- updates the progress indicator
+
+The SSE parsing will switch from raw text accumulation to event-type-based routing.
+
+### 4. Frontend: VibecoderChat.tsx -- Phase-Based UI
+
+Replace the single `LiveThought` component with a phase-aware rendering system:
+
+- **Analyzing phase:** Shows a streaming text bubble (like an assistant typing) with the analysis content
+- **Planning phase:** Shows a checklist card with the plan items, each getting a checkmark as building progresses  
+- **Building phase:** Shows compact progress indicator (existing LiveThought style but with "Generating code..." label)
+- **Complete phase:** Shows a summary badge with confirmation text
+
+Each phase appears as a new element in the chat scroll area, creating a conversational flow.
+
+### 5. New Component: StreamingPhaseCard
+
+A new component that renders differently based on the current phase:
+
+- `phase="analyzing"` -- Text streaming with typing cursor
+- `phase="planning"` -- Checklist with animated items
+- `phase="building"` -- Compact progress bar with code icon
+- `phase="complete"` -- Green success badge with summary
+
+### 6. AgentProgress.tsx -- Deprecation
+
+The current `AgentProgress` component (terminal-style log viewer) will be kept but hidden by default. It becomes the "advanced view" accessible via a toggle, while the new phase-based UI is the primary experience.
+
+### 7. useAgentLoop.ts -- Real Phase Mapping
+
+**Current:** Fakes steps with `delay()` calls (planning 300ms, reading 300ms, etc.) before Gemini even responds.
+
+**Change:** Map phases to real SSE events. Remove the fake delays. The `startAgent` function will:
+1. Immediately show "Analyzing..." when the request is sent
+2. Transition to "Planning..." when the `phase: planning` SSE event arrives
+3. Transition to "Building..." when `phase: building` arrives
+4. Transition to "Complete" when `phase: complete` arrives
+
+No more simulated steps -- every phase transition comes from real AI output.
+
+---
+
+## Files To Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `supabase/functions/vibecoder-v2/index.ts` | Modify | Add structured SSE events to streaming path + update system prompt |
+| `src/components/ai-builder/useStreamingCode.ts` | Modify | Parse SSE event types, add phase callbacks |
+| `src/components/ai-builder/StreamingPhaseCard.tsx` | Create | New phase-aware UI component |
+| `src/components/ai-builder/VibecoderChat.tsx` | Modify | Replace LiveThought with phase-based rendering |
+| `src/hooks/useAgentLoop.ts` | Modify | Remove fake delays, map to real SSE phases |
+| `src/components/ai-builder/LiveThought.tsx` | Keep | Becomes expandable "advanced log" within phase cards |
+
+## What This Does NOT Change
+
+- Sandpack rendering (untouched)
+- Ghost Fixer / Healer Protocol (untouched)
+- Job-based background processing path (untouched -- only the streaming path changes)
+- Intent classifier (untouched)
+- Credit system (untouched)
+- Architect Mode / Plan approval flow (untouched)
