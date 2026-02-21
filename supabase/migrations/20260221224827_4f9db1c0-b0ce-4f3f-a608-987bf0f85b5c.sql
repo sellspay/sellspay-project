@@ -1,0 +1,2 @@
+ALTER TABLE public.ai_generation_jobs DROP CONSTRAINT ai_generation_jobs_status_check;
+ALTER TABLE public.ai_generation_jobs ADD CONSTRAINT ai_generation_jobs_status_check CHECK (status IN ('pending', 'running', 'completed', 'failed', 'cancelled', 'needs_continuation'));
