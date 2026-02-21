@@ -62,7 +62,7 @@ const SERVICE_LABELS: Record<string, string> = {
 };
 
 const CATEGORIES = [
-  { id: 'all', label: 'All Editors' },
+  { id: 'all', label: 'All Professionals' },
   { id: 'video-editing', label: 'Video Editing' },
   { id: 'motion-graphics', label: 'Motion Graphics' },
   { id: 'color-grading', label: 'Color Grading' },
@@ -202,11 +202,11 @@ export default function HireEditors() {
           <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground mb-4 sm:mb-6 leading-tight">
             Hire Top{' '}
             <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-              Video Editors
+              Professionals
             </span>
           </h1>
           <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 sm:mb-10 px-2">
-            Find skilled editors, motion designers, and creative professionals 
+            Find skilled professionals — editors, designers, motion artists, and more — 
             ready to bring your vision to life.
           </p>
           
@@ -303,7 +303,7 @@ export default function HireEditors() {
               className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-primary-foreground shadow-lg shadow-primary/25 h-12 px-8 rounded-xl"
             >
               <Users className="w-4 h-4 mr-2" />
-              Apply to be an Editor
+              Apply as a Professional
             </Button>
           )}
         </div>
@@ -317,7 +317,7 @@ export default function HireEditors() {
               <Users className="w-4 h-4" />
               <span className="text-sm">
                 <span className="font-semibold text-foreground">{filteredEditors.length}</span>
-                {' '}editors available
+                {' '}professionals available
               </span>
             </div>
             {searchQuery && (
@@ -357,10 +357,10 @@ export default function HireEditors() {
               <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-muted/50 flex items-center justify-center">
                 <Users className="w-10 h-10 text-muted-foreground/50" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">No editors found</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">No professionals found</h3>
               <p className="text-muted-foreground max-w-md mx-auto">
                 {searchQuery || selectedCategory !== 'all' 
-                  ? "Try adjusting your search or filters to find more editors."
+                  ? "Try adjusting your search or filters to find more professionals."
                   : "Be the first to join our community of creative professionals."
                 }
               </p>
@@ -387,7 +387,7 @@ export default function HireEditors() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                            @{editor.username || 'editor'}
+                            @{editor.username || 'professional'}
                           </h3>
                           {editor.verified && <VerifiedBadge size="sm" isOwner={editor.isAdmin} />}
                         </div>

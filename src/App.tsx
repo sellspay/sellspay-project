@@ -92,6 +92,7 @@ const App = () => (
             <Route path="/community/discord" element={<MainLayout><Discord /></MainLayout>} />
             <Route path="/community/spotlight" element={<MainLayout><Spotlight /></MainLayout>} />
             <Route path="/faq" element={<MainLayout><FAQ /></MainLayout>} />
+            <Route path="/hire-professionals" element={<MainLayout><HireEditors /></MainLayout>} />
             <Route path="/hire-editors" element={<MainLayout><HireEditors /></MainLayout>} />
             <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
             <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />

@@ -11,7 +11,7 @@ const platformLinks = [
 
 const resourceLinks = [
   { name: 'AI Studio', path: '/studio' },
-  { name: 'Hire Editors', path: '/hire-editors' },
+  { name: 'Hire Professionals', path: '/hire-professionals' },
   { name: 'Community', path: '/community/updates' },
   { name: 'FAQ', path: '/faq' },
 ];
