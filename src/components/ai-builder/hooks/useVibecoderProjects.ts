@@ -87,10 +87,9 @@ export function useVibecoderProjects() {
           if (activeProjectId !== urlProjectId) {
             setActiveProjectId(urlProjectId);
           }
-        } else if (data && data.length > 0 && !activeProjectId) {
-          // Otherwise auto-select most recent project
-          setActiveProjectId(data[0].id);
         }
+        // Otherwise, do NOT auto-select — let the user land on the doorway screen
+        // where they can pick a recent project or start fresh.
       }
       setLoading(false);
     };
