@@ -122,7 +122,7 @@ export function StreamingPhaseCard({ data, className }: StreamingPhaseCardProps)
           </motion.div>
         )}
 
-        {/* BUILDING PHASE: Compact progress */}
+        {/* BUILDING PHASE: Phase pill + spinner (no fake progress bar) */}
         {phase === 'building' && (
           <motion.div
             key="building"
@@ -137,15 +137,11 @@ export function StreamingPhaseCard({ data, className }: StreamingPhaseCardProps)
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-xs text-foreground/80 font-medium">Generating code...</p>
+                <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/15 text-orange-400 rounded border border-orange-500/30 font-medium uppercase tracking-wider">
+                  Building
+                </span>
+                <Loader2 size={12} className="text-orange-400 animate-spin" />
                 <span className="text-[10px] text-muted-foreground/60">{elapsedSeconds}s</span>
-              </div>
-              <div className="mt-2 h-1 bg-muted/30 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-gradient-to-r from-orange-500 to-violet-500 rounded-full"
-                  animate={{ width: ['20%', '80%', '40%', '90%', '60%'] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                />
               </div>
             </div>
           </motion.div>

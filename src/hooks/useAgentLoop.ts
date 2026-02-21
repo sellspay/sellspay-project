@@ -115,6 +115,8 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       analyzing: 'analyzing',
       planning: 'planning',
       building: 'building',
+      validating: 'building',    // show as building until validated
+      repairing: 'building',     // show as building during repair
       complete: 'complete',
     };
     const streamPhase = phaseMap[phase] || 'analyzing';

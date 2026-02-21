@@ -202,18 +202,18 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // 🔧 GHOST FIXER: Auto-recovery for truncated AI outputs
   // This hook detects missing completion sentinels and triggers continuation
   const ghostFixer = useGhostFixer({
-    maxRetries: 3,
+    maxRetries: 1,
     onFixAttempt: (attempt) => {
-      console.log(`[GhostFixer] Auto-fixing truncated code (attempt ${attempt}/3)...`);
-      toast.info(`Auto-recovering code... (attempt ${attempt}/3)`);
+      console.log(`[GhostFixer] Generation was interrupted; retrying... (attempt ${attempt}/1)`);
+      toast.info('Generation was interrupted; retrying with full regeneration...');
     },
     onFixSuccess: (mergedCode) => {
-      console.log('[GhostFixer] ✅ Code patched after truncation');
-      toast.success('Code patched after truncation. Re-send your request if it wasn\'t fully completed.', { duration: 6000 });
+      console.log('[GhostFixer] ✅ Full regeneration successful');
+      toast.success('Code regenerated successfully.', { duration: 6000 });
     },
     onFixFailure: (reason) => {
       console.error('[GhostFixer] ❌ Recovery failed:', reason);
-      toast.error(`Could not recover code: ${reason}`);
+      toast.error(reason, { duration: 8000 });
     }
   });
   
@@ -556,17 +556,28 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
 
   const handleJobError = useCallback((job: GenerationJob) => {
     console.error('[BackgroundGen] Job failed:', job.error_message);
-    const msg = job.error_message || 'Unknown error';
-    toast.error(`Generation failed: ${msg}`);
+    
+    // Handle needs_user_action (intent check failed, complexity guard, etc.)
+    if (job.status === 'needs_user_action') {
+      const reason = (job as any).terminal_reason || 'unknown';
+      const msg = job.summary || 'This request may be too complex. Please simplify or break it into smaller parts.';
+      toast.error(msg, { duration: 8000 });
+      if (activeProjectId) {
+        addMessage('assistant', `⚠️ ${msg}`, undefined, activeProjectId);
+      }
+    } else {
+      const msg = job.error_message || 'Unknown error';
+      toast.error(`Generation failed: ${msg}`);
+    }
 
     const isActiveRun = activeJobIdRef.current === job.id;
     if (isActiveRun) {
       setLiveSteps([]);
       generationLockRef.current = null;
       activeJobIdRef.current = null;
-      onStreamingError(msg);
+      onStreamingError(job.error_message || 'Generation failed');
     }
-  }, [onStreamingError]);
+  }, [onStreamingError, activeProjectId, addMessage]);
 
   const {
     currentJob,

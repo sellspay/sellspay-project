@@ -89,11 +89,13 @@ export type Database = {
       ai_generation_jobs: {
         Row: {
           ai_prompt: string | null
+          build_attempts: number
           code_result: string | null
           completed_at: string | null
           created_at: string
           error_message: string | null
           id: string
+          intent_check_attempts: number
           is_plan_mode: boolean | null
           model_id: string | null
           plan_result: Json | null
@@ -103,16 +105,20 @@ export type Database = {
           started_at: string | null
           status: string
           summary: string | null
+          terminal_reason: string | null
           updated_at: string
           user_id: string
+          validation_report: Json | null
         }
         Insert: {
           ai_prompt?: string | null
+          build_attempts?: number
           code_result?: string | null
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
+          intent_check_attempts?: number
           is_plan_mode?: boolean | null
           model_id?: string | null
           plan_result?: Json | null
@@ -122,16 +128,20 @@ export type Database = {
           started_at?: string | null
           status?: string
           summary?: string | null
+          terminal_reason?: string | null
           updated_at?: string
           user_id: string
+          validation_report?: Json | null
         }
         Update: {
           ai_prompt?: string | null
+          build_attempts?: number
           code_result?: string | null
           completed_at?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
+          intent_check_attempts?: number
           is_plan_mode?: boolean | null
           model_id?: string | null
           plan_result?: Json | null
@@ -141,8 +151,10 @@ export type Database = {
           started_at?: string | null
           status?: string
           summary?: string | null
+          terminal_reason?: string | null
           updated_at?: string
           user_id?: string
+          validation_report?: Json | null
         }
         Relationships: [
           {

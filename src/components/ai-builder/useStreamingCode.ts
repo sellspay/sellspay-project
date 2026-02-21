@@ -652,6 +652,23 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         }
       }
 
+      // ═══════════════════════════════════════════════════════════
+      // TERMINAL EVENT CHECK: If structured SSE was used but no terminal
+      // event was received, treat as failure
+      // ═══════════════════════════════════════════════════════════
+      if (isStructuredSSE && !rawStream.includes('/// TYPE:')) {
+        // We were in structured SSE mode - check if we got a terminal event
+        // The phase callbacks would have fired 'complete' or 'error'
+        // If neither fired and stream ended, it's an unexpected close
+        const gotCompletePhase = rawStream.length === 0; // raw is empty when structured SSE handled everything
+        if (!gotCompletePhase && rawStream.trim().length < 50) {
+          const err = new Error('Stream ended unexpectedly. Please retry.');
+          setState(prev => ({ ...prev, isStreaming: false, error: err.message }));
+          options.onError?.(err);
+          return lastGoodCodeRef.current;
+        }
+      }
+
       if (mode === 'chat') {
         const chatText = rawStream.replace('/// TYPE: CHAT ///', '').trim();
         setState(prev => ({ ...prev, isStreaming: false }));

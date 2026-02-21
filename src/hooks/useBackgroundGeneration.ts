@@ -8,7 +8,7 @@ export interface GenerationJob {
   user_id: string;
   prompt: string;
   ai_prompt: string | null;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'needs_continuation';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'needs_continuation' | 'needs_user_action' | 'validating' | 'repairing';
   code_result: string | null;
   summary: string | null;
   plan_result: any | null;
@@ -154,14 +154,14 @@ export function useBackgroundGeneration({
                 
                 if (data) {
                   const freshJob = data as GenerationJob;
-                  if (freshJob.status === 'completed' || freshJob.status === 'needs_continuation') {
+                  if (freshJob.status === 'completed') {
                     const jobKey = `${freshJob.id}_${freshJob.status}`;
                     if (!processedJobsRef.current.has(jobKey)) {
                       processedJobsRef.current.add(jobKey);
                       setCurrentJob(freshJob);
                       onJobCompleteRef.current?.(freshJob);
                     }
-                  } else if (freshJob.status === 'failed') {
+                  } else if (freshJob.status === 'failed' || freshJob.status === 'needs_user_action') {
                     setCurrentJob(freshJob);
                     onJobErrorRef.current?.(freshJob);
                   } else {
@@ -183,10 +183,17 @@ export function useBackgroundGeneration({
             // Only fire completion/error callbacks ONCE per job
             const jobKey = `${job.id}_${job.status}`;
             if (!processedJobsRef.current.has(jobKey)) {
-              // 'needs_continuation' is treated as a special completion that triggers Healer
-              if (job.status === 'completed' || job.status === 'needs_continuation') {
+              if (job.status === 'completed') {
                 processedJobsRef.current.add(jobKey);
                 onJobCompleteRef.current?.(job);
+              } else if (job.status === 'needs_continuation') {
+                // Treat needs_continuation as a failure — no silent patching
+                processedJobsRef.current.add(jobKey);
+                onJobCompleteRef.current?.(job);
+              } else if (job.status === 'needs_user_action') {
+                // Intent check failed — user needs to simplify/clarify
+                processedJobsRef.current.add(jobKey);
+                onJobErrorRef.current?.(job);
               } else if (job.status === 'failed') {
                 processedJobsRef.current.add(jobKey);
                 onJobErrorRef.current?.(job);
