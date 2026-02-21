@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { X, Loader2, Link2, ImagePlus, Crown, Lock, Image, Smile, List, MapPin, MoreHorizontal, Copy } from 'lucide-react';
+import { X, Loader2, Link2, ImagePlus, Crown, Lock, Image, List, MapPin, MoreHorizontal, Copy, Clock, ArrowLeft, FileText } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { GifPicker } from '@/components/comments/GifPicker';
+import { EmojiPicker } from '@/components/community/thread-composer/EmojiPicker';
+import { PollCreator, type PollData } from '@/components/community/thread-composer/PollCreator';
+import { LocationPicker } from '@/components/community/thread-composer/LocationPicker';
+import { ReplyOptions, type ReplySettings } from '@/components/community/thread-composer/ReplyOptions';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -50,6 +60,14 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
   const [promotionUrl, setPromotionUrl] = useState('');
   const [promotionImageUrl, setPromotionImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [poll, setPoll] = useState<PollData | null>(null);
+  const [location, setLocation] = useState<string | null>(null);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [replySettings, setReplySettings] = useState<ReplySettings>({ whoCanReply: 'anyone', reviewReplies: false });
+  const [view, setView] = useState<'compose' | 'drafts' | 'text-attachment'>('compose');
+  const [textAttachment, setTextAttachment] = useState('');
+  const [isAiLabeled, setIsAiLabeled] = useState(false);
+  const [isPaidPartnership, setIsPaidPartnership] = useState(false);
 
   const { data: profile } = useQuery({
     queryKey: ['profile', user?.id],
@@ -89,15 +107,62 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
     }
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    setContent(prev => prev + emoji);
+  };
+
+  const togglePoll = () => {
+    if (poll) {
+      setPoll(null);
+    } else {
+      setPoll({ options: ['', ''], duration: '24h' });
+    }
+  };
+
+  const resetState = () => {
+    setContent('');
+    setGifUrl(null);
+    setCategory('discussion');
+    setPromotionUrl('');
+    setPromotionImageUrl('');
+    setPoll(null);
+    setLocation(null);
+    setTextAttachment('');
+    setIsAiLabeled(false);
+    setIsPaidPartnership(false);
+    setReplySettings({ whoCanReply: 'anyone', reviewReplies: false });
+    setView('compose');
+  };
+
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!profile?.id) throw new Error('Must be logged in');
       if (!content.trim()) throw new Error('Content is required');
       if (!canPostThreads) throw new Error('Subscription required');
-      const imageUrl = category === 'promotion' ? promotionImageUrl || null : null;
+
+      let finalContent = content.trim();
+      if (category === 'promotion' && promotionUrl) {
+        finalContent += `\n\n🔗 ${promotionUrl}`;
+      }
+      if (location) {
+        finalContent += `\n\n📍 ${location}`;
+      }
+      if (textAttachment) {
+        finalContent += `\n\n${textAttachment}`;
+      }
+      if (poll) {
+        const pollOptions = poll.options.filter(o => o.trim());
+        if (pollOptions.length >= 2) {
+          finalContent += `\n\n📊 Poll (${poll.duration}):\n${pollOptions.map((o, i) => `${i + 1}. ${o}`).join('\n')}`;
+        }
+      }
+      if (isAiLabeled) finalContent = `[AI Generated] ${finalContent}`;
+      if (isPaidPartnership) finalContent = `[Paid Partnership] ${finalContent}`;
+
+      const imageUrl = category === 'promotion' ? promotionImageUrl || null : (promotionImageUrl || null);
       const { error } = await supabase.from('threads').insert({
         author_id: profile.id,
-        content: category === 'promotion' && promotionUrl ? `${content.trim()}\n\n🔗 ${promotionUrl}` : content.trim(),
+        content: finalContent,
         category,
         gif_url: gifUrl,
         image_url: imageUrl,
@@ -105,11 +170,7 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
       if (error) throw error;
     },
     onSuccess: () => {
-      setContent('');
-      setGifUrl(null);
-      setCategory('discussion');
-      setPromotionUrl('');
-      setPromotionImageUrl('');
+      resetState();
       queryClient.invalidateQueries({ queryKey: ['threads'] });
       queryClient.invalidateQueries({ queryKey: ['threads-count'] });
       toast.success('Thread posted');
@@ -165,28 +226,123 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
     );
   }
 
+  // Drafts view
+  if (view === 'drafts') {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="bg-card border-border/50 sm:max-w-[520px] rounded-2xl p-0 gap-0 [&>button]:hidden max-h-[80vh] flex flex-col">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setView('compose')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h2 className="text-sm font-bold text-foreground flex-1 text-center pr-8">Drafts</h2>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+            <div className="inline-flex p-4 rounded-2xl bg-muted/30 mb-4">
+              <FileText className="h-10 w-10 text-muted-foreground/40" />
+            </div>
+            <h3 className="text-base font-medium text-muted-foreground mb-1">No drafts yet</h3>
+            <p className="text-sm text-muted-foreground/60">Your drafts will appear here.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Text attachment view
+  if (view === 'text-attachment') {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="bg-card border-border/50 sm:max-w-[520px] rounded-2xl p-0 gap-0 [&>button]:hidden max-h-[80vh] flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setView('compose')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h2 className="text-sm font-bold text-foreground">Text attachment</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-sm font-semibold text-primary"
+              onClick={() => setView('compose')}
+            >
+              Done
+            </Button>
+          </div>
+          <div className="flex-1 p-4">
+            <Textarea
+              placeholder="Say even more..."
+              value={textAttachment}
+              onChange={(e) => setTextAttachment(e.target.value)}
+              autoFocus
+              className="min-h-[200px] resize-none border-0 p-0 text-[15px] leading-relaxed focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/40 bg-transparent"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) resetState(); onOpenChange(v); }}>
       <DialogContent className="bg-card border-border/50 sm:max-w-[520px] rounded-2xl p-0 gap-0 [&>button]:hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => { resetState(); onOpenChange(false); }}>
             <X className="h-5 w-5" />
           </Button>
           <h2 className="text-sm font-bold text-foreground">New thread</h2>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setView('drafts')}>
               <Copy className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 bg-popover border-border/50 shadow-lg">
+                <DropdownMenuItem onClick={() => { setIsAiLabeled(!isAiLabeled); }} className="text-sm cursor-pointer">
+                  {isAiLabeled ? '✓ ' : ''}Add AI label
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setIsPaidPartnership(!isPaidPartnership); }} className="text-sm cursor-pointer">
+                  {isPaidPartnership ? '✓ ' : ''}Mark as paid partnership
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-sm cursor-pointer flex items-center justify-between" onClick={() => toast.info('Scheduling coming soon')}>
+                  Schedule...
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
+        {/* Labels bar */}
+        {(isAiLabeled || isPaidPartnership || location) && (
+          <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3">
+            {isAiLabeled && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-[11px] text-muted-foreground">
+                AI Generated
+                <button onClick={() => setIsAiLabeled(false)} className="hover:text-foreground"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {isPaidPartnership && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-[11px] text-muted-foreground">
+                Paid Partnership
+                <button onClick={() => setIsPaidPartnership(false)} className="hover:text-foreground"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {location && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-[11px] text-muted-foreground">
+                📍 {location}
+                <button onClick={() => setLocation(null)} className="hover:text-foreground"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Compose area */}
         <div className="px-4 py-4">
-          {/* Author + topic row */}
           <div className="flex items-start gap-3">
             <div className="flex flex-col items-center gap-2">
               <Avatar className="h-9 w-9 ring-1 ring-border/50 shrink-0">
@@ -231,6 +387,24 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
                 </div>
               )}
 
+              {/* Image preview */}
+              {promotionImageUrl && !gifUrl && (
+                <div className="relative inline-block mt-2">
+                  <img src={promotionImageUrl} alt="Upload" className="max-h-36 rounded-xl border border-border/30" />
+                  <Button variant="secondary" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-card border border-border/50 shadow-md hover:bg-destructive hover:text-destructive-foreground" onClick={() => setPromotionImageUrl('')}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Text attachment preview */}
+              {textAttachment && (
+                <div className="mt-2 p-2.5 rounded-lg bg-muted/30 border border-border/30">
+                  <p className="text-xs text-muted-foreground line-clamp-2">{textAttachment}</p>
+                  <button onClick={() => setView('text-attachment')} className="text-xs text-primary mt-1">Edit attachment</button>
+                </div>
+              )}
+
               {/* Promotion fields */}
               {category === 'promotion' && (
                 <div className="mt-3 space-y-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
@@ -242,39 +416,50 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
                     <Label htmlFor="promo-url-dialog" className="text-xs text-muted-foreground">Link URL</Label>
                     <Input id="promo-url-dialog" type="url" placeholder="https://..." value={promotionUrl} onChange={(e) => setPromotionUrl(e.target.value)} className="h-9 bg-background/50 border-border/50 rounded-lg text-sm" />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Cover Image (optional)</Label>
-                    {promotionImageUrl ? (
-                      <div className="relative inline-block">
-                        <img src={promotionImageUrl} alt="Cover" className="max-h-28 rounded-lg border border-border/30" />
-                        <Button variant="secondary" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => setPromotionImageUrl('')}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button type="button" variant="outline" size="sm" className="h-8 rounded-lg border-dashed text-xs" disabled={isUploadingImage} onClick={() => document.getElementById('promo-image-dialog')?.click()}>
-                        {isUploadingImage ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5 mr-1.5" />}
-                        Upload
-                      </Button>
-                    )}
-                    <input id="promo-image-dialog" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                  </div>
                 </div>
+              )}
+
+              {/* Poll */}
+              {poll && (
+                <PollCreator poll={poll} onChange={setPoll} onRemove={() => setPoll(null)} />
               )}
 
               {/* Media toolbar */}
               <div className="flex items-center gap-1 mt-3">
-                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground" onClick={() => document.getElementById('promo-image-dialog')?.click()}>
-                  <Image className="h-4 w-4" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                  onClick={() => document.getElementById('thread-image-upload')?.click()}
+                  disabled={isUploadingImage}
+                >
+                  {isUploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image className="h-4 w-4" />}
                 </Button>
+                <input id="thread-image-upload" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 <GifPicker onSelect={(url) => setGifUrl(url)} />
-                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground">
-                  <Smile className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground">
+                <EmojiPicker onSelect={handleEmojiSelect} />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("h-7 w-7 rounded-full text-muted-foreground hover:text-foreground", poll && "text-primary")}
+                  onClick={togglePoll}
+                >
                   <List className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                  onClick={() => setView('text-attachment')}
+                >
+                  <FileText className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("h-7 w-7 rounded-full text-muted-foreground hover:text-foreground", location && "text-primary")}
+                  onClick={() => setLocationOpen(true)}
+                >
                   <MapPin className="h-4 w-4" />
                 </Button>
               </div>
@@ -295,7 +480,8 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-border/30">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <ReplyOptions settings={replySettings} onChange={setReplySettings} />
             {content.length > 0 && (
               <span className={cn("text-xs font-medium", content.length > MAX_LENGTH * 0.9 ? "text-destructive" : "text-muted-foreground")}>
                 {content.length}/{MAX_LENGTH}
@@ -312,6 +498,9 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
           </Button>
         </div>
       </DialogContent>
+
+      {/* Location picker dialog */}
+      <LocationPicker open={locationOpen} onOpenChange={setLocationOpen} onSelect={setLocation} />
     </Dialog>
   );
 }
