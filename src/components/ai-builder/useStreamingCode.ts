@@ -607,6 +607,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       let sseBuffer = '';
       let currentEventType = '';
       let isStructuredSSE = false;
+      // Accumulate code_chunk deltas for live preview during streaming
+      let streamingCodeBuffer = '';
 
       const processSSELine = (line: string) => {
         if (line.startsWith('event: ')) {
@@ -638,8 +640,18 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                 case 'raw':
                   rawStream += data.content;
                   break;
-                case 'code_chunk':
+                case 'code_chunk': {
+                  // Accumulate code deltas and update preview in real-time
+                  streamingCodeBuffer += (data.content || '');
+                  // Try to extract clean code and update preview if valid
+                  const cleanChunk = extractCodeFromRaw(streamingCodeBuffer);
+                  if (cleanChunk && isLikelyCompleteTsx(cleanChunk)) {
+                    lastGoodCodeRef.current = cleanChunk;
+                    setState(prev => ({ ...prev, code: cleanChunk }));
+                    options.onChunk?.(cleanChunk);
+                  }
                   break;
+                }
                 case 'error':
                   console.error('[useStreamingCode] SSE error:', data.message);
                   break;
