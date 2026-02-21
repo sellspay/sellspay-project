@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Loader2, MessageSquare, SearchX, Plus, Search } from 'lucide-react';
+import { Loader2, MessageSquare, SearchX, Plus, Search, ChevronDown, Check } from 'lucide-react';
 import { ThreadCard } from '@/components/community/ThreadCard';
 import { NewThreadDialog } from '@/components/community/NewThreadDialog';
 import { ThreadSearchPanel } from '@/components/community/ThreadSearchPanel';
@@ -8,6 +8,7 @@ import { ThreadReplyDialog } from '@/components/community/ThreadReplyDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const THREADS_PER_PAGE = 20;
 
@@ -42,6 +43,8 @@ export default function Community() {
   const [newThreadOpen, setNewThreadOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFeed, setActiveFeed] = useState<'for_you' | 'following'>('for_you');
+  const [feedOpen, setFeedOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { data: profile } = useQuery({
@@ -185,10 +188,43 @@ export default function Community() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Minimal top bar */}
+      {/* Feed selector top bar */}
       <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/30">
         <div className="mx-auto max-w-[680px] px-6 flex items-center justify-between h-12">
-          <span className="text-xl font-bold text-foreground" style={{ fontFamily: "'Caveat', cursive" }}>Threads</span>
+          <Popover open={feedOpen} onOpenChange={setFeedOpen}>
+            <PopoverTrigger asChild>
+              <button className="flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-foreground/80 transition-colors">
+                {activeFeed === 'for_you' ? 'For you' : 'Following'}
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              sideOffset={8}
+              className="w-56 p-0 rounded-xl bg-popover border border-border shadow-xl"
+            >
+              <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+                <span className="text-sm font-semibold text-foreground">Feeds</span>
+                <Plus className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="pb-1">
+                <button
+                  onClick={() => { setActiveFeed('for_you'); setFeedOpen(false); }}
+                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors"
+                >
+                  <span className={activeFeed === 'for_you' ? 'text-foreground font-medium' : 'text-muted-foreground'}>For you</span>
+                  {activeFeed === 'for_you' && <Check className="h-4 w-4 text-primary" />}
+                </button>
+                <button
+                  onClick={() => { setActiveFeed('following'); setFeedOpen(false); }}
+                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors"
+                >
+                  <span className={activeFeed === 'following' ? 'text-foreground font-medium' : 'text-muted-foreground'}>Following</span>
+                  {activeFeed === 'following' && <Check className="h-4 w-4 text-primary" />}
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button
             variant="ghost"
             size="icon"
