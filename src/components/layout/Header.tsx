@@ -4,8 +4,6 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -375,170 +373,136 @@ export default function Header() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent 
                   align="end" 
-                  className={cn(
-                    "w-60 p-2",
-                    "bg-card border border-border",
-                    "shadow-xl shadow-black/30",
-                    "rounded-xl"
-                  )}
+                  className="w-72 p-0 bg-[#0F1115] border-border/50 rounded-2xl overflow-hidden shadow-2xl shadow-black/60"
                 >
-                  <div className={cn(
-                    "flex items-center gap-3 p-3 mb-2 rounded-lg",
-                    "bg-muted/50"
-                  )}>
-                    <Avatar className="h-11 w-11 ring-2 ring-primary/20 shadow-lg">
-                      <AvatarImage src={avatarUrl || undefined} className="rounded-full" />
-                      <AvatarFallback className="bg-primary/20 text-primary font-semibold rounded-full">
-                        {(username || user.email)?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-foreground">{fullName || username || 'User'}</span>
-                      <span className="text-xs text-muted-foreground truncate max-w-[140px]">{user.email}</span>
+                  {/* User identity + tier badge */}
+                  <div className="px-4 py-3 border-b border-border/30">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg overflow-hidden border border-border shrink-0 bg-primary/20 flex items-center justify-center">
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-bold text-primary">
+                            {(username || "U").slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold text-foreground truncate">{username || fullName || "User"}</span>
+                      {(() => {
+                        const tier = plan;
+                        if (tier === 'agency') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">Agency</span>;
+                        if (tier === 'creator') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30">Pro</span>;
+                        if (tier === 'basic') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Basic</span>;
+                        return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">Free</span>;
+                      })()}
                     </div>
                   </div>
 
-                  {/* Credit Wallet Display */}
-                  <div className="px-3 py-2.5">
+                  {/* Credit wallet with progress bar */}
+                  <div className="px-4 py-3 border-b border-border/30 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Zap size={14} className="text-primary" />
-                        <span className="text-sm font-bold text-foreground tabular-nums">
-                          {creditsLoading ? '...' : credits.toLocaleString()}
-                        </span>
-                        <span className="text-xs text-muted-foreground">credits</span>
-                      </div>
+                      <span className="text-sm font-medium text-foreground">Credits</span>
                       <button
-                        onClick={() => setTopUpOpen(true)}
-                        className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                        onClick={() => navigate("/pricing")}
+                        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
                       >
-                        Get More
+                        <span className="font-bold text-foreground tabular-nums">
+                          {creditsLoading ? "…" : credits.toLocaleString()}
+                        </span>
+                        <span className="text-muted-foreground">left</span>
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
                       </button>
                     </div>
-                    
-                    {/* Low Credit Warning */}
-                    {!creditsLoading && credits < LOW_CREDIT_THRESHOLD && (
-                      <LowCreditWarning
-                        credits={credits}
-                        onClick={() => setTopUpOpen(true)}
-                        className="mt-2"
-                      />
+                    {!creditsLoading && (
+                      <>
+                        <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all duration-500"
+                            style={{ width: `${Math.min(100, (credits / Math.max(credits, 100)) * 100)}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
+                          {plan && plan !== 'browser'
+                            ? "Using subscription credits"
+                            : "Using free credits"}
+                        </p>
+                      </>
                     )}
                   </div>
-                  
-                  <DropdownMenuSeparator className="bg-border my-1" />
-                  
-                  {(isCreator || isSeller) && (
-                    <DropdownMenuItem asChild className={cn(
-                      "rounded-lg px-3 py-2.5 cursor-pointer",
-                      "hover:bg-muted",
-                      "focus:bg-muted"
-                    )}>
-                      <Link to="/dashboard" className="flex items-center gap-3">
-                        <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Dashboard</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  {(isCreator || isSeller) && (
-                    <DropdownMenuItem asChild className={cn(
-                      "rounded-lg px-3 py-2.5 cursor-pointer",
-                      "hover:bg-muted",
-                      "focus:bg-muted"
-                    )}>
-                      <Link to="/create-product" className="flex items-center gap-3">
-                        <Plus className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Create Product</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  {(isCreator || isSeller || isAdmin) && (
-                    <DropdownMenuItem asChild className={cn(
-                      "rounded-lg px-3 py-2.5 cursor-pointer",
-                      "hover:bg-muted",
-                      "focus:bg-muted"
-                    )}>
-                      <Link to="/subscription-plans" className="flex items-center gap-3">
-                        <CreditCard className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Subscription Plans</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem asChild className={cn(
-                    "rounded-lg px-3 py-2.5 cursor-pointer",
-                    "hover:bg-muted",
-                    "focus:bg-muted"
-                  )}>
-                    <Link to="/profile" className="flex items-center gap-3">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Profile</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className={cn(
-                    "rounded-lg px-3 py-2.5 cursor-pointer",
-                    "hover:bg-muted",
-                    "focus:bg-muted"
-                  )}>
-                    <Link to="/settings" className="flex items-center gap-3">
-                      <Settings className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuSeparator className="bg-border my-1" />
-                  
-                  {/* AI Builder - Always visible for logged-in users */}
-                  <DropdownMenuItem asChild className={cn(
-                    "rounded-lg px-3 py-2.5 cursor-pointer",
-                    "hover:bg-primary/10",
-                    "focus:bg-primary/10"
-                  )}>
-                    <Link to="/ai-builder" className="flex items-center gap-3">
-                      <Wand2 className="h-4 w-4 text-primary" />
-                      <span className="font-medium text-primary">AI Builder</span>
-                      <Crown className="h-3 w-3 text-primary/60 ml-auto" />
-                    </Link>
-                  </DropdownMenuItem>
-                  
-                  {/* Become a Seller - Only visible for non-sellers */}
-                  {!isSeller && (
-                    <DropdownMenuItem asChild className={cn(
-                      "rounded-lg px-3 py-2.5 cursor-pointer",
-                      "hover:bg-muted",
-                      "focus:bg-muted"
-                    )}>
-                      <Link to="/onboarding/seller-agreement" className="flex items-center gap-3">
-                        <Store className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Become a Seller</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  
-                  <DropdownMenuSeparator className="bg-border my-1" />
-                  
-                  {isAdmin && (
-                    <DropdownMenuItem asChild className={cn(
-                      "rounded-lg px-3 py-2.5 cursor-pointer",
-                      "hover:bg-muted",
-                      "focus:bg-muted"
-                    )}>
-                      <Link to="/admin" className="flex items-center gap-3">
-                        <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Admin</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator className="bg-border my-1" />
-                  <DropdownMenuItem
-                    onClick={() => signOut()} 
-                    className={cn(
-                      "rounded-lg px-3 py-2.5 cursor-pointer text-destructive",
-                      "hover:bg-destructive/10"
+
+                  {/* Get free credits */}
+                  <div className="px-4 py-2.5 border-b border-border/30">
+                    <button
+                      onClick={() => setTopUpOpen(true)}
+                      className="flex items-center gap-2.5 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+                    >
+                      <Zap className="h-4 w-4" />
+                      <span>Get more credits</span>
+                    </button>
+                  </div>
+
+                  {/* Nav links */}
+                  <div className="py-1.5">
+                    {(isCreator || isSeller) && (
+                      <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                        <LayoutDashboard className="h-4 w-4" />
+                        <span>Dashboard</span>
+                      </button>
                     )}
-                  >
-                    <LogOut className="h-4 w-4 mr-3" />
-                    <span className="font-medium">Sign Out</span>
-                  </DropdownMenuItem>
+                    {(isCreator || isSeller) && (
+                      <button onClick={() => navigate("/create-product")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                        <Plus className="h-4 w-4" />
+                        <span>Create Product</span>
+                      </button>
+                    )}
+                    <button onClick={() => navigate("/profile")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                      <User className="h-4 w-4" />
+                      <span>My Profile</span>
+                    </button>
+                    <button onClick={() => navigate("/settings")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                      <Settings className="h-4 w-4" />
+                      <span>Settings</span>
+                    </button>
+                    {(isCreator || isSeller || isAdmin) && (
+                      <button onClick={() => navigate("/subscription-plans")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                        <CreditCard className="h-4 w-4" />
+                        <span>Billing</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* AI Builder & Seller */}
+                  <div className="border-t border-border/30 py-1.5">
+                    <button onClick={() => navigate("/ai-builder")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-primary hover:bg-primary/10 transition-colors font-medium">
+                      <Wand2 className="h-4 w-4" />
+                      <span>AI Builder</span>
+                      <Crown className="h-3 w-3 text-primary/60 ml-auto" />
+                    </button>
+                    {!isSeller && (
+                      <button onClick={() => navigate("/onboarding/seller-agreement")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                        <Store className="h-4 w-4" />
+                        <span>Become a Seller</span>
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button onClick={() => navigate("/admin")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                        <ShieldCheck className="h-4 w-4" />
+                        <span>Admin</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Sign out */}
+                  <div className="border-t border-border/30 py-1.5">
+                    <button
+                      onClick={() => signOut()}
+                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
