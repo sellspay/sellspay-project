@@ -3284,6 +3284,7 @@ export type Database = {
           code_snapshot: string | null
           content: string | null
           created_at: string
+          files_snapshot: Json | null
           id: string
           project_id: string
           rating: number | null
@@ -3293,6 +3294,7 @@ export type Database = {
           code_snapshot?: string | null
           content?: string | null
           created_at?: string
+          files_snapshot?: Json | null
           id?: string
           project_id: string
           rating?: number | null
@@ -3302,6 +3304,7 @@ export type Database = {
           code_snapshot?: string | null
           content?: string | null
           created_at?: string
+          files_snapshot?: Json | null
           id?: string
           project_id?: string
           rating?: number | null
@@ -3320,6 +3323,7 @@ export type Database = {
       vibecoder_projects: {
         Row: {
           created_at: string
+          files: Json | null
           id: string
           is_broken: boolean | null
           last_edited_at: string
@@ -3331,6 +3335,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          files?: Json | null
           id?: string
           is_broken?: boolean | null
           last_edited_at?: string
@@ -3342,6 +3347,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          files?: Json | null
           id?: string
           is_broken?: boolean | null
           last_edited_at?: string
