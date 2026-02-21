@@ -51,7 +51,12 @@ export function EmojiPicker({ onSelect }: EmojiPickerProps) {
           <Smile className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-0 bg-popover border-border/50 shadow-xl rounded-xl" align="start" side="top">
+      <PopoverContent 
+        className="w-72 p-0 bg-popover border-border/50 shadow-xl rounded-xl" 
+        align="start" 
+        side="top"
+        onWheel={(e) => e.stopPropagation()}
+      >
         {/* Category tabs */}
         <div className="flex items-center gap-1 px-2 pt-2 pb-1 border-b border-border/30 overflow-x-auto">
           {EMOJI_CATEGORIES.map((cat, i) => (
@@ -74,7 +79,7 @@ export function EmojiPicker({ onSelect }: EmojiPickerProps) {
           <span className="text-xs font-semibold text-foreground">{EMOJI_CATEGORIES[activeTab].name}</span>
         </div>
         {/* Emoji grid */}
-        <div className="grid grid-cols-8 gap-0.5 px-2 pb-2 max-h-52 overflow-y-auto">
+        <div className="grid grid-cols-8 gap-0.5 px-2 pb-2 max-h-52 overflow-y-auto overscroll-contain" style={{ scrollbarWidth: 'thin' }}>
           {EMOJI_CATEGORIES[activeTab].emojis.map((emoji, i) => (
             <button
               key={`${emoji}-${i}`}
