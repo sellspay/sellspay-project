@@ -403,7 +403,7 @@ export default function Header() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-foreground">Credits</span>
                       <button
-                        onClick={() => navigate("/pricing")}
+                        onClick={() => navigate("/billing")}
                         className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
                       >
                         <span className="font-bold text-foreground tabular-nums">
@@ -431,16 +431,6 @@ export default function Header() {
                     )}
                   </div>
 
-                  {/* Get free credits */}
-                  <div className="px-4 py-2.5 border-b border-border/30">
-                    <button
-                      onClick={() => setTopUpOpen(true)}
-                      className="flex items-center gap-2.5 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
-                    >
-                      <Zap className="h-4 w-4" />
-                      <span>Get more credits</span>
-                    </button>
-                  </div>
 
                   {/* Nav links */}
                   <div className="py-1.5">
@@ -464,20 +454,18 @@ export default function Header() {
                       <Settings className="h-4 w-4" />
                       <span>Settings</span>
                     </button>
-                    {(isCreator || isSeller || isAdmin) && (
-                      <button onClick={() => navigate("/billing")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
-                        <CreditCard className="h-4 w-4" />
-                        <span>Billing</span>
-                      </button>
-                    )}
                   </div>
 
                   {/* AI Builder & Seller */}
                   <div className="border-t border-border/30 py-1.5">
-                    <button onClick={() => navigate("/ai-builder")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-primary hover:bg-primary/10 transition-colors font-medium">
-                      <Wand2 className="h-4 w-4" />
-                      <span>AI Builder</span>
-                      <Crown className="h-3 w-3 text-primary/60 ml-auto" />
+                    <button onClick={() => navigate("/ai-builder")} className="flex items-center justify-between w-full px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors rounded-md group">
+                      <div className="flex items-center gap-2.5">
+                        <Wand2 className="h-4 w-4" />
+                        <span>AI Builder</span>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                        <Sparkles className="h-3.5 w-3.5" />
+                      </div>
                     </button>
                     {!isSeller && (
                       <button onClick={() => navigate("/onboarding/seller-agreement")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
