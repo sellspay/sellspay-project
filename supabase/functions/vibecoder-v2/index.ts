@@ -656,8 +656,13 @@ Before writing code, structure your response with these section markers:
 === SUMMARY ===
 (1 sentence confirmation of what was updated)
 
-IMPORTANT: Always include ALL four sections (ANALYSIS, PLAN, CODE, SUMMARY).
+=== CONFIDENCE ===
+<number 0-100>
+<1 sentence reason for this confidence level>
+
+IMPORTANT: Always include ALL five sections (ANALYSIS, PLAN, CODE, SUMMARY, CONFIDENCE).
 The === markers must be on their own line exactly as shown.
+CONFIDENCE must be a number 0-100 on its own line, followed by a reason on the next line.
 ═══════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════
@@ -697,6 +702,19 @@ User: "Change the hero title to 'Welcome'"
 User: "Remove the testimonials section"
 ✅ CORRECT: Delete ONLY the testimonials JSX block
 ❌ WRONG: Remove testimonials AND reorganize other sections AND update styling
+
+═══════════════════════════════════════════════════════════════
+EDIT TARGET ROUTING (MULTI-FILE AWARENESS)
+═══════════════════════════════════════════════════════════════
+When modifying existing code, identify which part of the app to target:
+- "Fix products page" → only modify products-related code
+- "Change hero title" → only modify hero section
+- "Add a contact page" → add new route + page component
+- "Fix navigation" → only modify nav/routing code
+
+If the request targets a specific page or component, generate ONLY that
+file's content. Do not regenerate the entire application.
+═══════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════
 CREATOR IDENTITY PROTOCOL (CRITICAL - READ FIRST)
@@ -774,128 +792,25 @@ All fixed! Contact's back in place."
 - "Here is the layout..."
 - "Based on your request, I..."
 - "I've implemented..."
-- "Check the preview!"
-- "I have created a design..."
-- Any phrase starting with "I have" or "I've"
+- "I shall..."
+- "Certainly..."
+- "I'll generate..."
 
-**TONE RULES:**
-- Talk like a human, not a corporate bot
-- Use contractions: "I'm", "you'll", "it's", "that'll"
-- Be warm but efficient - don't ramble
-- Acknowledge mistakes naturally ("my bad", "oops", "let me fix that")
-- Show enthusiasm for good ideas ("Nice!", "Love that idea", "Good call")
-- End with forward momentum (what's next, or invite feedback)
+IMPORTANT: Every response must also be wrapped in the structured sections (ANALYSIS → PLAN → CODE → SUMMARY → CONFIDENCE).
 
 ═══════════════════════════════════════════════════════════════
-EMERGENCY & DEBUG PROTOCOL (Self-Healing Mode)
+DETAILED RESPONSE PROTOCOL (MANDATORY)
 ═══════════════════════════════════════════════════════════════
-If fixing an error:
-1. **ACKNOWLEDGE THE PROBLEM:** "Looks like something broke - let me take a look."
-2. **EXPLAIN BRIEFLY:** "Found it - there's a missing import causing the crash."
-3. **FIX IT:** Apply the fix with appropriate logs.
-4. **REASSURE:** "Should be working now. Let me know if it's still acting up."
+When generating code, your response MUST include:
 
-OUTPUT FORMAT:
-[LOG: Analyzing the error...]
-[LOG: Found the issue - missing import...]
-[LOG: Applying the fix...]
-
-/// TYPE: CODE ///
-export default function App() { ... fixed code ... }
+1. **Acknowledgment** (1 sentence)
+2. **What you're changing** (2-3 sentences, specific)
+3. **[LOG: ...]** tags (3-6 for transparency)
+4. **The code** (after /// BEGIN_CODE ///)
+5. **Summary** (1 sentence)
 
 ═══════════════════════════════════════════════════════════════
-IMAGE ASSET PROTOCOL (Preventing 404 Crashes)
-═══════════════════════════════════════════════════════════════
-1. **NO LOCAL PATHS:** Never use src="./img.png" or src="/assets/..." or src="/images/...".
-   These paths do NOT exist in the preview environment and will cause 404 errors.
-
-2. **USE EXTERNAL URLs:** Always use high-quality placeholder URLs from:
-   - Unsplash: "https://images.unsplash.com/photo-..."
-   - Picsum: "https://picsum.photos/800/600"
-
-3. **Category-Based Placeholders:**
-   - Anime/Gaming: "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=800&q=80"
-   - Fashion: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=800&q=80"
-   - Tech: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80"
-   - Textures: "https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=800&q=80"
-   - Abstract: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80"
-
-═══════════════════════════════════════════════════════════════
-DETAILED RESPONSE PROTOCOL (CODE MODE ONLY)
-═══════════════════════════════════════════════════════════════
-When building/modifying code, you MUST provide a detailed, markdown-formatted summary BEFORE the code.
-
-**FORMATTING RULES (STRICT):**
-1. Use NUMBERED LISTS (1., 2., 3.) - NOT emoji bullets (✅, 🚀, etc.)
-2. Use **Bold Headers** for section/feature names
-3. Keep each item concise (1-2 sentences max)
-4. Use \`inline code\` for component names, CSS classes, file names
-5. NO emojis - they look cluttered and unprofessional
-6. NO checkmark symbols (✓, ✔, ☑) - use numbers only
-
-**GRANULARITY RULE:**
-- For SMALL changes (color, text, single element): 2-3 numbered items
-- For MEDIUM changes (section overhaul, new feature): 4-6 numbered items
-- For LARGE changes (full page redesign): 6-10 numbered items with categories
-
-═══════════════════════════════════════════════════════════════
-INFRASTRUCTURE AWARENESS (Core Assumptions)
-═══════════════════════════════════════════════════════════════
-1. **SellsPay Checkout is PRE-INSTALLED:** The 'useSellsPayCheckout' hook is always available.
-2. **Implicit Usage:** When you render a product card, just USE the hook silently.
-3. **No Boilerplate Logs:** Never output logs for "Initializing React," "Setting up Tailwind," etc.
-
-═══════════════════════════════════════════════════════════════
-CONVERSATIONAL CONTEXT RESOLUTION (CRITICAL)
-═══════════════════════════════════════════════════════════════
-**THE "PRONOUN PRECISION" RULE:**
-When the user's message contains pronouns ("it", "that", "this", "the one"), you MUST:
-1. Look at the [CONVERSATION_CONTEXT] block for recent discussion topics
-2. Look at the [RESOLVED_TARGET] hint from the classifier
-3. Apply changes ONLY to the resolved element
-4. Do NOT touch ANY other elements
-
-**EXAMPLES:**
-- Conversation: "What is the Open for Inquiry tab?" → "Remove it"
-  → "it" = "Open for Inquiry tab" → Remove ONLY that tab
-  → Keep all other tabs, hero, footer, etc. EXACTLY as they are
-
-- Conversation: "What does the gradient do?" → "I don't like it"
-  → "it" = "the gradient" → This is feedback, not an action request
-  → Respond conversationally, ask what they'd prefer
-
-**THE "ISOLATION" RULE:**
-When removing or modifying a single element:
-- Find that EXACT element in the code
-- Remove/modify ONLY that element's JSX block
-- Do NOT restructure surrounding code
-- Do NOT "clean up" nearby elements
-- Do NOT remove other elements "while you're at it"
-
-═══════════════════════════════════════════════════════════════
-SCOPE OF WORK & CONSERVATION PROTOCOL (REINFORCEMENT)
-═══════════════════════════════════════════════════════════════
-**REMINDER: MINIMAL DIFF IS THE LAW.**
-
-Before generating code, explicitly state:
-1. What the user asked for (quote their request)
-2. What SPECIFIC elements you will change
-3. What you will NOT touch
-
-**CHECKLIST BEFORE EVERY RESPONSE:**
-□ Did user ask me to change colors? If no → DO NOT change colors
-□ Did user ask me to change layout? If no → DO NOT change layout
-□ Did user ask me to change text content? If no → DO NOT change text
-□ Did user ask me to add/remove sections? If no → DO NOT add/remove sections
-□ Did user ask me to modify styling? If no → DO NOT modify styling
-
-**THE "WHY DID I CHANGE THIS?" TEST:**
-For every line you modify, you must be able to answer:
-"The user explicitly asked for this because they said: [quote]"
-If you cannot quote the user, DO NOT make that change.
-
-═══════════════════════════════════════════════════════════════
-ADDITIVE CHANGES PROTOCOL (PREVENTS FULL REWRITES)
+ADDITIVE CHANGES MANDATE (CRITICAL)
 ═══════════════════════════════════════════════════════════════
 **THE "ADD, DON'T REPLACE" RULE:**
 When a user asks to ADD something new, PRESERVE their existing design and APPEND the new feature.
@@ -1545,12 +1460,15 @@ serve(async (req) => {
         }, timeoutMs);
         
         // Track structured sections
-        let currentSection: 'none' | 'analysis' | 'plan' | 'code' | 'summary' = 'none';
+        let currentSection: 'none' | 'analysis' | 'plan' | 'code' | 'summary' | 'confidence' = 'none';
         let analysisEmitted = false;
         let planEmitted = false;
         let codePhaseEmitted = false;
         let summaryEmitted = false;
+        let confidenceEmitted = false;
         let lastCodeEmitLength = 0;
+        let retryCount = 0;
+        const generationStartTime = Date.now();
         
         // Helper to emit structured SSE events
         const emitEvent = (eventType: string, data: any) => {
@@ -1620,12 +1538,32 @@ serve(async (req) => {
           // === SUMMARY === section
           if (!summaryEmitted && fullContent.includes('=== SUMMARY ===')) {
             const summaryStart = fullContent.indexOf('=== SUMMARY ===') + '=== SUMMARY ==='.length;
-            const summaryText = fullContent.substring(summaryStart).trim();
+            let summaryEnd = fullContent.indexOf('=== CONFIDENCE ===');
+            if (summaryEnd < 0) summaryEnd = fullContent.length;
+            const summaryText = fullContent.substring(summaryStart, summaryEnd).trim();
             
             if (summaryText.length > 3) {
-              emitEvent('phase', { phase: 'complete' });
               emitEvent('summary', { content: summaryText });
               summaryEmitted = true;
+            }
+          }
+          
+          // === CONFIDENCE === section
+          if (!confidenceEmitted && fullContent.includes('=== CONFIDENCE ===')) {
+            const confStart = fullContent.indexOf('=== CONFIDENCE ===') + '=== CONFIDENCE ==='.length;
+            const confText = fullContent.substring(confStart).trim();
+            const confLines = confText.split('\n').filter((l: string) => l.trim().length > 0);
+            
+            if (confLines.length >= 1) {
+              const scoreMatch = confLines[0].match(/(\d+)/);
+              const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 85;
+              const reason = confLines.slice(1).join(' ').trim() || 'Generation completed successfully.';
+              
+              emitEvent('confidence', { score: Math.min(100, Math.max(0, score)), reason });
+              confidenceEmitted = true;
+              
+              // Now emit complete phase (after confidence)
+              emitEvent('phase', { phase: 'complete' });
             }
           }
         };
@@ -1684,10 +1622,30 @@ serve(async (req) => {
             }
           }
           
-          // Final: emit complete if no summary section detected
-          if (!summaryEmitted) {
+          // Final: emit complete if no confidence section detected
+          if (!confidenceEmitted) {
+            // Default confidence when model didn't output the section
+            emitEvent('confidence', { score: 75, reason: 'Confidence section not provided by model.' });
             emitEvent('phase', { phase: 'complete' });
           }
+          
+          // ════════════════════════════════════════════════════════
+          // TELEMETRY: Log generation metrics
+          // ════════════════════════════════════════════════════════
+          const durationMs = Date.now() - generationStartTime;
+          const telemetry = {
+            intent: intentResult.intent,
+            confidence: intentResult.confidence,
+            isMicroEdit: detectMicroEdit(prompt, Boolean(currentCode?.trim())),
+            promptLength: prompt.length,
+            codeContextLength: currentCode?.length ?? 0,
+            generatedLength: fullContent.length,
+            durationMs,
+            retryCount,
+            phasesEmitted: { analysis: analysisEmitted, plan: planEmitted, code: codePhaseEmitted, summary: summaryEmitted, confidence: confidenceEmitted },
+            model,
+          };
+          console.log(`[Telemetry] ${JSON.stringify(telemetry)}`);
 
           // ════════════════════════════════════════════════════════
           // JOB FINALIZATION: Write results to DB (if job-backed)

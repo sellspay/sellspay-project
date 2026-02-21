@@ -227,6 +227,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onAnalysis?: (text: string) => void;
     onPlanItems?: (items: string[]) => void;
     onStreamSummary?: (text: string) => void;
+    onConfidence?: (score: number, reason: string) => void;
   }>({});
 
   // Streaming code state
@@ -246,6 +247,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onAnalysis: (text) => phaseCallbacksRef.current.onAnalysis?.(text),
     onPlanItems: (items) => phaseCallbacksRef.current.onPlanItems?.(items),
     onStreamSummary: (text) => phaseCallbacksRef.current.onStreamSummary?.(text),
+    onConfidence: (score, reason) => phaseCallbacksRef.current.onConfidence?.(score, reason),
     // 🛑 RACE CONDITION GUARD: Check if generation should be discarded
     shouldAbort: () => {
       if (generationLockRef.current && generationLockRef.current !== activeProjectId) {
@@ -453,11 +455,14 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onAnalysis,
     onPlanItems,
     onStreamSummary,
+    onConfidence,
     streamPhase,
     analysisText,
     planItems,
     completedPlanItems,
     summaryText,
+    confidenceScore,
+    confidenceReason,
   } = useAgentLoop({
     onStreamCode: streamCode,
     onComplete: () => {
@@ -467,7 +472,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   });
 
   // Wire phase callbacks ref now that useAgentLoop is initialized
-  phaseCallbacksRef.current = { onPhaseChange, onAnalysis, onPlanItems, onStreamSummary };
+  phaseCallbacksRef.current = { onPhaseChange, onAnalysis, onPlanItems, onStreamSummary, onConfidence };
 
   // 🔄 BACKGROUND GENERATION: Jobs that persist even if user leaves
   // Track processed jobs to prevent duplicate message additions
@@ -1646,6 +1651,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                   planItems,
                   completedPlanItems,
                   summaryText,
+                  confidenceScore: confidenceScore ?? undefined,
+                  confidenceReason,
                 }}
               />
             </div>

@@ -9,12 +9,15 @@ interface AgentState {
   error?: string;
   lockedProjectId: string | null;
   generationStartTime: number | null;
-  // NEW: Phase-based streaming state
+  // Phase-based streaming state
   streamPhase: StreamPhase;
   analysisText: string;
   planItems: string[];
   completedPlanItems: number;
   summaryText: string;
+  // Confidence scoring
+  confidenceScore: number | null;
+  confidenceReason: string;
 }
 
 interface UseAgentLoopOptions {
@@ -34,6 +37,8 @@ const INITIAL_STATE: AgentState = {
   planItems: [],
   completedPlanItems: 0,
   summaryText: '',
+  confidenceScore: null,
+  confidenceReason: '',
 };
 
 function createFreshState(): AgentState {
@@ -84,6 +89,8 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       planItems: [],
       completedPlanItems: 0,
       summaryText: '',
+      confidenceScore: null,
+      confidenceReason: '',
     });
 
     try {
@@ -147,6 +154,11 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
   /** Called when SSE emits summary text */
   const onStreamSummary = useCallback((text: string) => {
     setState(prev => ({ ...prev, summaryText: text }));
+  }, []);
+
+  /** Called when SSE emits confidence scoring */
+  const onConfidence = useCallback((score: number, reason: string) => {
+    setState(prev => ({ ...prev, confidenceScore: score, confidenceReason: reason }));
   }, []);
 
   // ═══════════════════════════════════════════════════════════
@@ -244,21 +256,24 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
     // Scorched Earth pattern
     mountProject,
     unmountProject,
-    // NEW: Phase-based callbacks
+    // Phase-based callbacks
     onPhaseChange,
     onAnalysis,
     onPlanItems,
     onStreamSummary,
+    onConfidence,
     // Expose individual pieces
     agentStep: state.step,
     agentLogs: state.logs,
     isAgentRunning: state.isRunning,
     lockedProjectId: state.lockedProjectId,
-    // NEW: Phase streaming data
+    // Phase streaming data
     streamPhase: state.streamPhase,
     analysisText: state.analysisText,
     planItems: state.planItems,
     completedPlanItems: state.completedPlanItems,
     summaryText: state.summaryText,
+    confidenceScore: state.confidenceScore,
+    confidenceReason: state.confidenceReason,
   };
 }

@@ -11,6 +11,8 @@ export interface StreamingPhaseData {
   completedPlanItems?: number;
   summaryText?: string;
   elapsedSeconds?: number;
+  confidenceScore?: number;
+  confidenceReason?: string;
 }
 
 interface StreamingPhaseCardProps {
@@ -19,7 +21,7 @@ interface StreamingPhaseCardProps {
 }
 
 export function StreamingPhaseCard({ data, className }: StreamingPhaseCardProps) {
-  const { phase, analysisText, planItems, completedPlanItems = 0, summaryText, elapsedSeconds = 0 } = data;
+  const { phase, analysisText, planItems, completedPlanItems = 0, summaryText, elapsedSeconds = 0, confidenceScore, confidenceReason } = data;
 
   if (phase === 'idle') return null;
 
@@ -164,8 +166,8 @@ export function StreamingPhaseCard({ data, className }: StreamingPhaseCardProps)
           </motion.div>
         )}
 
-        {/* COMPLETE PHASE: Success badge */}
-        {phase === 'complete' && summaryText && (
+        {/* COMPLETE PHASE: Success badge + Confidence */}
+        {phase === 'complete' && (summaryText || confidenceScore !== undefined) && (
           <motion.div
             key="complete"
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -185,8 +187,27 @@ export function StreamingPhaseCard({ data, className }: StreamingPhaseCardProps)
                 {elapsedSeconds > 0 && (
                   <span className="text-[10px] text-muted-foreground/50">{elapsedSeconds}s</span>
                 )}
+                {confidenceScore !== undefined && (
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded border font-medium",
+                    confidenceScore >= 80
+                      ? "bg-green-500/15 text-green-400 border-green-500/30"
+                      : confidenceScore >= 60
+                      ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                      : "bg-red-500/15 text-red-400 border-red-500/30"
+                  )}>
+                    {confidenceScore}% confident
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-foreground/70 leading-relaxed">{summaryText}</p>
+              {summaryText && (
+                <p className="text-xs text-foreground/70 leading-relaxed">{summaryText}</p>
+              )}
+              {confidenceScore !== undefined && confidenceScore < 60 && confidenceReason && (
+                <p className="text-[10px] text-amber-400/70 mt-1 italic">
+                  ⚠️ {confidenceReason} — Consider reviewing changes.
+                </p>
+              )}
             </div>
           </motion.div>
         )}
