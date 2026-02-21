@@ -198,7 +198,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(null);
           setUser(null);
         }
-      } catch (err) {
+      } catch (err: any) {
+        // Silently ignore AbortError — happens when React StrictMode double-mounts
+        if (err?.name === 'AbortError' || err?.message?.includes('signal is aborted')) {
+          console.log('[Auth] Request aborted (StrictMode remount), ignoring');
+          return;
+        }
         console.error('[Auth] Initialization error:', err);
         if (isMounted) {
           setSession(null);
