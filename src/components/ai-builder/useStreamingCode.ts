@@ -388,6 +388,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         const jsonData = await response.json().catch(() => ({}));
         console.log('[useStreamingCode] Job status:', jsonData);
         setState(prev => ({ ...prev, isStreaming: false }));
+        // Notify phase system that we're in background mode (building via job)
+        options.onPhaseChange?.('building');
         return lastGoodCodeRef.current;
       }
 
