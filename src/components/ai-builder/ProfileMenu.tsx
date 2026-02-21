@@ -242,7 +242,7 @@ export function ProfileMenu({
             <MenuItem 
               icon={HelpCircle} 
               label="Help Center" 
-              onClick={() => handleNavigate('/faq')}
+              onClick={() => handleNavigate('/support')}
             />
             <MenuItem 
               icon={LogOut} 
