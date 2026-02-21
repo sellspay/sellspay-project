@@ -20,7 +20,7 @@ import {
   Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, 
   CreditCard, Loader2, Package, Sparkles, Store, Crown,
   Wand2, Music, FileVideo, Film, Headphones, ArrowRight, Zap,
-  ShoppingCart, Home, Users, Mic, MessageSquare, DollarSign
+  ShoppingCart, Home, Users, Mic, MessageSquare, DollarSign, Search
 } from 'lucide-react';
 import { useState } from 'react';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -110,9 +110,16 @@ export default function Header() {
       
       <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          {/* Left side: Logo + Main Nav */}
-          <div className="flex items-center gap-8">
-            {/* Logo */}
+          {/* Mobile: Search icon on far left */}
+          <div className="lg:hidden flex items-center">
+            <Link to="/products?search=true" className="p-2 text-foreground/70 hover:text-foreground transition-colors">
+              <Search className="h-5 w-5" />
+            </Link>
+          </div>
+
+          {/* Left side: Logo + Main Nav (desktop) */}
+          <div className="hidden lg:flex items-center gap-8">
+            {/* Logo - desktop */}
             <Link to="/" className="flex items-center shrink-0 group">
               <img 
                 src={sellspayLogo} 
@@ -310,6 +317,13 @@ export default function Header() {
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
+          </div>
+
+          {/* Mobile: Centered Logo */}
+          <div className="lg:hidden absolute left-1/2 -translate-x-1/2">
+            <Link to="/" className="flex items-center">
+              <img src={sellspayLogo} alt="SellsPay" className="h-8 w-auto" />
+            </Link>
           </div>
 
           {/* Right Side */}
@@ -534,11 +548,11 @@ export default function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="hidden lg:flex items-center gap-3">
                 <Link 
                   to="/login" 
                   className={cn(
-                    "hidden sm:inline-flex h-10 items-center justify-center",
+                    "inline-flex h-10 items-center justify-center",
                     navLinkStyles
                   )}
                 >
@@ -553,21 +567,16 @@ export default function Header() {
               </div>
             )}
 
-            {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "lg:hidden h-10 w-10 rounded-xl",
-                "bg-gradient-to-b from-white/10 to-transparent",
-                "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_8px_rgba(0,0,0,0.2)]",
-                "border border-white/10",
-                "hover:from-white/15 hover:to-white/5"
-              )}
+            {/* Mobile: Cart + Hamburger (plain icons, no box) */}
+            <Link to="/cart" className="lg:hidden p-2 text-foreground/70 hover:text-foreground transition-colors">
+              <ShoppingCart className="h-5 w-5" />
+            </Link>
+            <button
+              className="lg:hidden p-2 text-foreground/70 hover:text-foreground transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
+            </button>
           </div>
         </div>
 
