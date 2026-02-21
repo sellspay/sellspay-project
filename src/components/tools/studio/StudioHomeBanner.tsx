@@ -76,10 +76,10 @@ export function StudioHomeBanner({ creditBalance, isLoadingCredits, onToolSelect
           {/* Content overlay */}
           <div className="absolute inset-0 flex flex-col justify-end p-6 lg:p-8">
             <div className="flex items-center gap-2 mb-3">
-              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#FF7A1A] to-[#E85C00] flex items-center justify-center">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#4B8BF5] to-[#2563EB] flex items-center justify-center">
                 <Sparkles className="h-3.5 w-3.5 text-white" />
               </div>
-              <span className="text-[11px] font-bold text-[#FF7A1A] uppercase tracking-widest">AI Studio</span>
+              <span className="text-[11px] font-bold text-primary uppercase tracking-widest">AI Studio</span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight leading-[1.1] max-w-lg">
@@ -127,16 +127,16 @@ export function StudioHomeBanner({ creditBalance, isLoadingCredits, onToolSelect
                 onClick={() => onToolSelect(tool.id)}
                 className={cn(
                   "group relative p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] text-left",
-                  "hover:-translate-y-1 hover:shadow-xl hover:shadow-[#FF7A1A]/5 hover:border-[#FF7A1A]/20",
+                  "hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20",
                   "transition-all duration-200"
                 )}
               >
-                <Icon className="h-5 w-5 text-[#FF7A1A]/70 mb-2.5" />
+                <Icon className="h-5 w-5 text-primary/70 mb-2.5" />
                 <p className="text-xs font-semibold text-foreground leading-tight">{tool.name}</p>
                 <p className="text-[10px] text-muted-foreground/40 mt-1 line-clamp-2">{tool.description}</p>
                 {tool.creditCost > 0 && (
                   <div className="flex items-center gap-1 mt-2">
-                    <Zap className="h-2.5 w-2.5 text-[#FF7A1A]/50" />
+                    <Zap className="h-2.5 w-2.5 text-primary/50" />
                     <span className="text-[9px] text-muted-foreground/30">{tool.creditCost} credits</span>
                   </div>
                 )}
@@ -173,16 +173,16 @@ export function StudioHomeBanner({ creditBalance, isLoadingCredits, onToolSelect
                       onClick={() => onToolSelect(tool.id)}
                       className={cn(
                         "group flex items-center gap-3 p-3 rounded-xl border border-white/[0.04] bg-white/[0.01] text-left",
-                        "hover:bg-white/[0.03] hover:border-[#FF7A1A]/15 transition-all duration-150"
+                        "hover:bg-white/[0.03] hover:border-primary/15 transition-all duration-150"
                       )}
                     >
-                      <div className="h-9 w-9 rounded-lg bg-white/[0.04] flex items-center justify-center shrink-0 group-hover:bg-[#FF7A1A]/10 transition-colors">
-                        <Icon className="h-4 w-4 text-muted-foreground/50 group-hover:text-[#FF7A1A]/70 transition-colors" />
+                      <div className="h-9 w-9 rounded-lg bg-white/[0.04] flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                        <Icon className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary/70 transition-colors" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-sm font-medium text-foreground/80 truncate">{tool.name}</p>
-                          {tool.isPro && <Sparkles className="h-3 w-3 text-[#FF7A1A]/50 shrink-0" />}
+                          {tool.isPro && <Sparkles className="h-3 w-3 text-primary/50 shrink-0" />}
                           {tool.comingSoon && <span className="text-[7px] font-bold text-muted-foreground/25 uppercase shrink-0">Soon</span>}
                         </div>
                         <p className="text-[11px] text-muted-foreground/35 truncate">{tool.description}</p>

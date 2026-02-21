@@ -93,8 +93,8 @@ export function ProductDetailModal({
                 onConfirm();
                 onOpenChange(false);
               }}
-              className="mt-6 w-full py-3.5 text-sm font-semibold text-white rounded-xl shadow-lg shadow-orange-500/10 transition-all hover:shadow-xl hover:shadow-orange-500/20"
-              style={{ background: "linear-gradient(180deg, #FF7A1A 0%, #E85C00 100%)" }}
+              className="mt-6 w-full py-3.5 text-sm font-semibold text-white rounded-xl shadow-lg shadow-primary/10 transition-all hover:shadow-xl hover:shadow-primary/20"
+              style={{ background: "linear-gradient(180deg, #4B8BF5 0%, #2563EB 100%)" }}
             >
               Use This Product For Campaign
             </button>

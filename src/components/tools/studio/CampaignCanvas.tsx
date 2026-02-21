@@ -215,8 +215,8 @@ export function CampaignCanvas({
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="p-4 lg:p-6 space-y-8">
-      {/* Warm glow */}
-      <div className="pointer-events-none fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-orange-500/[0.03] blur-[140px]" />
+      {/* Cool glow */}
+      <div className="pointer-events-none fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-primary/[0.03] blur-[140px]" />
 
       {/* Step Indicator */}
       <motion.div variants={fadeUp} className="flex items-center gap-1.5">
@@ -225,15 +225,15 @@ export function CampaignCanvas({
             <div className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all duration-200",
               currentStep >= step.num
-                ? "bg-gradient-to-r from-[#FF7A1A]/20 to-[#E85C00]/10 text-foreground"
+                ? "bg-gradient-to-r from-primary/20 to-primary/10 text-foreground"
                 : "bg-white/[0.03] text-muted-foreground/30"
             )}>
               <span className={cn(
                 "h-4 w-4 rounded-full flex items-center justify-center text-[9px] font-bold",
                 currentStep > step.num
-                  ? "bg-gradient-to-b from-[#FF7A1A] to-[#E85C00] text-white"
+                  ? "bg-gradient-to-b from-[#4B8BF5] to-[#2563EB] text-white"
                   : currentStep === step.num
-                    ? "ring-1 ring-[#FF7A1A]/50 text-[#FF7A1A]"
+                    ? "ring-1 ring-primary/50 text-primary"
                     : "ring-1 ring-white/[0.08] text-muted-foreground/30"
               )}>
                 {currentStep > step.num ? <Check className="h-2.5 w-2.5" /> : step.num}
@@ -243,7 +243,7 @@ export function CampaignCanvas({
             {i < STEPS.length - 1 && (
               <ChevronRight className={cn(
                 "h-3 w-3 transition-colors",
-                currentStep > step.num ? "text-[#FF7A1A]/40" : "text-white/[0.08]"
+                currentStep > step.num ? "text-primary/40" : "text-white/[0.08]"
               )} />
             )}
           </div>
@@ -270,8 +270,8 @@ export function CampaignCanvas({
           <span className={cn(
             "h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold",
             effectiveProduct
-              ? "bg-gradient-to-b from-[#FF7A1A] to-[#E85C00] text-white"
-              : "ring-1 ring-[#FF7A1A]/50 text-[#FF7A1A]"
+              ? "bg-gradient-to-b from-[#4B8BF5] to-[#2563EB] text-white"
+              : "ring-1 ring-primary/50 text-primary"
           )}>
             {effectiveProduct ? <Check className="h-3 w-3" /> : "1"}
           </span>
@@ -354,7 +354,7 @@ export function CampaignCanvas({
                   onChange={e => setBlankDescription(e.target.value)}
                   placeholder="Describe your product or campaign idea — the AI will use this to generate hooks, captions, and scripts."
                   rows={3}
-                  className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm text-foreground placeholder:text-muted-foreground/25 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-[#FF7A1A]/30"
+                  className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm text-foreground placeholder:text-muted-foreground/25 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-primary/30"
                 />
               </div>
 
@@ -366,7 +366,7 @@ export function CampaignCanvas({
                     onChange={e => setBlankSellingPoints(e.target.value)}
                     placeholder="What makes this special? List the top benefits or features."
                     rows={2}
-                    className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm text-foreground placeholder:text-muted-foreground/25 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-[#FF7A1A]/30"
+                    className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] text-sm text-foreground placeholder:text-muted-foreground/25 px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
 
@@ -452,7 +452,7 @@ export function CampaignCanvas({
                         <button
                           key={p.id}
                           onClick={() => handleProductSelect(p)}
-                          className="group text-left rounded-xl ring-1 ring-white/[0.06] bg-white/[0.02] hover:ring-[#FF7A1A]/30 hover:bg-white/[0.04] transition-all duration-200 overflow-hidden"
+                          className="group text-left rounded-xl ring-1 ring-white/[0.06] bg-white/[0.02] hover:ring-primary/30 hover:bg-white/[0.04] transition-all duration-200 overflow-hidden"
                         >
                           <div className="aspect-[4/3] w-full overflow-hidden bg-white/[0.02]">
                             {p.cover_image_url ? (
@@ -555,8 +555,8 @@ export function CampaignCanvas({
               <span className={cn(
                 "h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold",
                 selectedTemplate
-                  ? "bg-gradient-to-b from-[#FF7A1A] to-[#E85C00] text-white"
-                  : "ring-1 ring-[#FF7A1A]/50 text-[#FF7A1A]"
+                  ? "bg-gradient-to-b from-[#4B8BF5] to-[#2563EB] text-white"
+                  : "ring-1 ring-primary/50 text-primary"
               )}>
                 {selectedTemplate ? <Check className="h-3 w-3" /> : "2"}
               </span>
@@ -571,7 +571,7 @@ export function CampaignCanvas({
                   className={cn(
                     "p-5 rounded-xl text-left transition-all duration-200 group relative overflow-hidden",
                     selectedTemplate === tpl.id
-                      ? "bg-white/[0.06] ring-1 ring-[#FF7A1A]/30 shadow-lg shadow-orange-500/5"
+                      ? "bg-white/[0.06] ring-1 ring-primary/30 shadow-lg shadow-primary/5"
                       : "bg-white/[0.02] hover:bg-white/[0.05] ring-1 ring-transparent hover:ring-white/[0.06]"
                   )}
                 >
@@ -583,7 +583,7 @@ export function CampaignCanvas({
                       className="w-full h-full object-cover rounded-lg opacity-70 group-hover:opacity-90 transition-opacity duration-300"
                     />
                     {selectedTemplate === tpl.id && (
-                      <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-gradient-to-b from-[#FF7A1A] to-[#E85C00] flex items-center justify-center">
+                      <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-gradient-to-b from-[#4B8BF5] to-[#2563EB] flex items-center justify-center">
                         <Check className="h-3 w-3 text-white" />
                       </div>
                     )}
@@ -608,7 +608,7 @@ export function CampaignCanvas({
             className="space-y-5"
           >
             <div className="flex items-center gap-2">
-              <span className="h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold ring-1 ring-[#FF7A1A]/50 text-[#FF7A1A]">3</span>
+              <span className="h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold ring-1 ring-primary/50 text-primary">3</span>
               <p className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">Fine-tune & Generate</p>
             </div>
 

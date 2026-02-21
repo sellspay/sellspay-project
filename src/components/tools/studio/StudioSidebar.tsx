@@ -75,7 +75,7 @@ export function StudioSidebar({
                 className={cn(
                   "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
                   !activeTool && activeSection === "home"
-                    ? "bg-gradient-to-r from-[#FF7A1A] to-[#E85C00] text-white font-medium shadow-sm"
+                    ? "bg-gradient-to-r from-[#4B8BF5] to-[#2563EB] text-white font-medium shadow-sm"
                     : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-white/[0.03]",
                   collapsed && "justify-center"
                 )}
@@ -131,7 +131,7 @@ export function StudioSidebar({
                           className={cn(
                             "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-[13px] transition-colors",
                             isActive
-                              ? "bg-gradient-to-r from-[#FF7A1A] to-[#E85C00] text-white font-medium shadow-sm"
+                              ? "bg-gradient-to-r from-[#4B8BF5] to-[#2563EB] text-white font-medium shadow-sm"
                               : "text-muted-foreground/50 hover:text-foreground/80 hover:bg-white/[0.03]",
                             collapsed && "justify-center"
                           )}
@@ -194,8 +194,8 @@ export function StudioSidebar({
             {collapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center justify-center px-2 py-1.5 rounded-lg bg-[#FF7A1A]/10">
-                    <span className="text-[11px] font-bold text-[#FF7A1A] tabular-nums">
+                  <div className="flex items-center justify-center px-2 py-1.5 rounded-lg bg-primary/10">
+                    <span className="text-[11px] font-bold text-primary tabular-nums">
                       {isLoadingCredits ? "…" : creditBalance}
                     </span>
                   </div>
@@ -205,9 +205,9 @@ export function StudioSidebar({
                 </TooltipContent>
               </Tooltip>
             ) : (
-              <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[#FF7A1A]/10">
-                <span className="text-[11px] font-medium text-[#FF7A1A]/60">Credits</span>
-                <span className="text-sm font-bold text-[#FF7A1A] tabular-nums">
+              <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-primary/10">
+                <span className="text-[11px] font-medium text-primary/60">Credits</span>
+                <span className="text-sm font-bold text-primary tabular-nums">
                   {isLoadingCredits ? "…" : creditBalance.toLocaleString()}
                 </span>
               </div>

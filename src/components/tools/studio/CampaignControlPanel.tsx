@@ -66,7 +66,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
         {/* Status */}
         <div className={cn(
           "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
-          isReady ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
+          isReady ? "bg-emerald-500/10 text-emerald-400" : "bg-primary/10 text-primary"
         )}>
           {isReady ? (
             <>
@@ -137,7 +137,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
                 <div className={cn(
                   "h-4 w-4 rounded border flex items-center justify-center transition-colors",
                   enabledOutputs.has(opt.id)
-                    ? "bg-gradient-to-b from-[#FF7A1A] to-[#E85C00] border-transparent"
+                    ? "bg-gradient-to-b from-[#4B8BF5] to-[#2563EB] border-transparent"
                     : "border-white/[0.12] bg-transparent"
                 )}>
                   {enabledOutputs.has(opt.id) && <Check className="h-2.5 w-2.5 text-white" />}
@@ -174,7 +174,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
               ? "text-white hover:shadow-md cursor-pointer"
               : "text-white/40 cursor-not-allowed opacity-50"
           )}
-          style={{ background: "linear-gradient(180deg, #FF7A1A 0%, #E85C00 100%)" }}
+          style={{ background: "linear-gradient(180deg, #4B8BF5 0%, #2563EB 100%)" }}
         >
           {isGenerating ? (
             <>

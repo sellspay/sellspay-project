@@ -176,7 +176,7 @@ export default function StudioLayout() {
   const showRightPanel = !isHome && !campaignResult && !activeTool && activeSection === "campaign";
 
   return (
-    <div className="h-screen grid overflow-hidden" style={{
+    <div className="studio-layout h-screen grid overflow-hidden" style={{
       gridTemplateColumns: showRightPanel
         ? `${sidebarWidth}px 1fr 320px`
         : `${sidebarWidth}px 1fr`,
