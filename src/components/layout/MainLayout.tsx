@@ -16,7 +16,6 @@ export default function MainLayout({ children, hideFooter = false }: MainLayoutP
       <main className="flex-1 pt-16">{children}</main>
       {!hideFooter && (
         <>
-          <PreFooterBanner />
           <Footer />
         </>
       )}
