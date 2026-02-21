@@ -46,7 +46,7 @@ export default function Spotlight() {
         .from('public_profiles')
         .select('user_id, is_owner')
         .in('user_id', userIds);
-      
+
       const adminUserIds = new Set<string>(
         (profilesWithOwner || []).filter((p: any) => p.is_owner).map((p: any) => p.user_id)
       );
@@ -56,7 +56,6 @@ export default function Spotlight() {
           supabase.from('products').select('id', { count: 'exact', head: true }).eq('creator_id', s.profile_id),
           supabase.from('followers').select('id', { count: 'exact', head: true }).eq('following_id', s.profile_id),
         ]);
-
         return {
           id: s.id,
           headline: s.headline,
@@ -78,7 +77,6 @@ export default function Spotlight() {
           followers_count: followersResult.count || 0,
         };
       }));
-
       return spotlightsWithData as SpotlightCreator[];
     },
   });
@@ -88,114 +86,114 @@ export default function Spotlight() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Compact Header */}
-      <section className="border-b border-border/40 bg-background">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 pt-12 sm:pt-16 pb-8 sm:pb-10">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-xl bg-amber-500/10">
-              <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
-            </div>
-            <span className="text-sm font-medium text-amber-500 tracking-wide uppercase">Celebrating Excellence</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight mb-2">
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.03] to-transparent pointer-events-none" />
+        <div className="relative mx-auto max-w-3xl px-6 pt-20 sm:pt-28 pb-14 sm:pb-20 text-center">
+          <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-muted-foreground mb-5">
+            Celebrating Excellence
+          </p>
+          <h1 className="text-4xl sm:text-5xl font-semibold text-foreground tracking-tight leading-[1.1]">
             Creator Spotlight
           </h1>
-          <p className="text-muted-foreground text-base sm:text-lg mb-6">
+          <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
             Discover the inspiring journeys of creators who've made an impact.
           </p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="rounded-xl border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
-            onClick={() => setNominateDialogOpen(true)}
-          >
-            <Crown className="h-4 w-4 mr-2" />
-            Nominate a Creator
-          </Button>
+          <div className="mt-8">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full text-xs h-9 px-5 border-border/60 text-muted-foreground hover:text-foreground"
+              onClick={() => setNominateDialogOpen(true)}
+            >
+              <Crown className="h-3.5 w-3.5 mr-2" />
+              Nominate a Creator
+            </Button>
+          </div>
         </div>
+        <div className="h-px bg-gradient-to-r from-transparent via-border/60 to-transparent" />
       </section>
 
       {/* Featured Creator */}
       {isLoading ? (
-        <section className="py-16 px-4 sm:px-6">
-          <div className="mx-auto max-w-4xl flex justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <section className="py-20 px-6">
+          <div className="flex justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         </section>
       ) : featuredCreator ? (
-        <section className="py-8 sm:py-12 px-4 sm:px-6">
-          <div className="mx-auto max-w-4xl">
-            <div className="text-sm font-medium text-amber-500 mb-4 flex items-center gap-2">
-              <Trophy className="h-4 w-4" />
+        <section className="py-12 sm:py-20 px-6">
+          <div className="mx-auto max-w-3xl">
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-primary mb-8">
               Featured Creator
-            </div>
+            </p>
 
-            <div className="border border-border/40 rounded-2xl overflow-hidden bg-card/50">
-              <div className="h-1 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500" />
-              
-              <div className="grid md:grid-cols-3 gap-0">
-                <div className="p-6 sm:p-8 md:col-span-2">
-                  <div className="flex items-center gap-4 mb-6">
-                    <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 border-amber-500/30">
+            <div className="border border-border/40 rounded-2xl overflow-hidden">
+              <div className="h-px bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+
+              <div className="grid md:grid-cols-5 gap-0">
+                {/* Main content */}
+                <div className="p-8 sm:p-10 md:col-span-3">
+                  <div className="flex items-center gap-5 mb-8">
+                    <Avatar className="h-20 w-20 border border-border/50">
                       <AvatarImage src={featuredCreator.profile?.avatar_url || ''} />
-                      <AvatarFallback className="text-xl bg-amber-500/10 text-amber-500">
+                      <AvatarFallback className="text-xl bg-muted text-foreground">
                         {featuredCreator.profile?.full_name?.charAt(0) || '?'}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+                        <h2 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
                           {featuredCreator.profile?.full_name}
                         </h2>
                         {featuredCreator.profile?.verified && (
                           <VerifiedBadge size="md" isOwner={featuredCreator.profile?.isAdmin} />
                         )}
                       </div>
-                      <p className="text-muted-foreground">@{featuredCreator.profile?.username}</p>
+                      <p className="text-sm text-muted-foreground">@{featuredCreator.profile?.username}</p>
                     </div>
                   </div>
 
-                  <h3 className="text-lg font-semibold text-foreground mb-3">
+                  <h3 className="text-lg font-medium text-foreground mb-3 leading-snug">
                     {featuredCreator.headline}
                   </h3>
-                  <p className="text-muted-foreground leading-relaxed mb-6">
+                  <p className="text-muted-foreground leading-relaxed mb-8 text-[15px]">
                     {featuredCreator.story}
                   </p>
 
                   {featuredCreator.achievement && (
-                    <Badge variant="secondary" className="bg-amber-500/10 text-amber-500 border-0 mb-6">
-                      <Trophy className="h-3.5 w-3.5 mr-1.5" />
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-0 mb-8 text-xs">
+                      <Trophy className="h-3 w-3 mr-1.5" />
                       {featuredCreator.achievement}
                     </Badge>
                   )}
 
-                  <div className="flex gap-6 mb-6 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-semibold text-foreground">{featuredCreator.products_count}</span>
-                      <span className="text-muted-foreground">Products</span>
+                  <div className="flex gap-8 mb-8 text-sm">
+                    <div>
+                      <span className="text-lg font-semibold text-foreground">{featuredCreator.products_count}</span>
+                      <span className="text-muted-foreground ml-1.5">Products</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-semibold text-foreground">{featuredCreator.followers_count.toLocaleString()}</span>
-                      <span className="text-muted-foreground">Followers</span>
+                    <div>
+                      <span className="text-lg font-semibold text-foreground">{featuredCreator.followers_count.toLocaleString()}</span>
+                      <span className="text-muted-foreground ml-1.5">Followers</span>
                     </div>
                   </div>
 
                   {featuredCreator.profile?.username && (
-                    <Button size="sm" className="rounded-xl" asChild>
+                    <Button variant="outline" size="sm" className="rounded-full h-9 px-5 text-xs" asChild>
                       <Link to={`/@${featuredCreator.profile.username}`}>
                         Visit Profile
-                        <ChevronRight className="ml-1 h-4 w-4" />
+                        <ChevronRight className="ml-1 h-3.5 w-3.5" />
                       </Link>
                     </Button>
                   )}
                 </div>
 
+                {/* Quote panel */}
                 {featuredCreator.quote && (
-                  <div className="p-6 sm:p-8 bg-muted/20 flex flex-col justify-center border-t md:border-t-0 md:border-l border-border/40">
-                    <Quote className="h-8 w-8 text-muted-foreground/30 mb-4" />
-                    <blockquote className="text-foreground italic leading-relaxed">
+                  <div className="p-8 sm:p-10 md:col-span-2 flex flex-col justify-center border-t md:border-t-0 md:border-l border-border/40 bg-muted/[0.04]">
+                    <Quote className="h-8 w-8 text-border mb-6" />
+                    <blockquote className="text-foreground/90 italic leading-relaxed text-[15px]">
                       "{featuredCreator.quote}"
                     </blockquote>
                   </div>
@@ -208,19 +206,21 @@ export default function Spotlight() {
 
       {/* Past Spotlights */}
       {pastSpotlights.length > 0 && (
-        <section className="py-8 sm:py-12 px-4 sm:px-6">
-          <div className="mx-auto max-w-4xl">
-            <h2 className="text-xl font-semibold text-foreground mb-6">Past Spotlights</h2>
+        <section className="py-12 sm:py-16 px-6">
+          <div className="mx-auto max-w-3xl">
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground mb-8">
+              Past Spotlights
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {pastSpotlights.map((spotlight) => (
                 <div
                   key={spotlight.id}
-                  className="group border border-border/40 rounded-2xl p-6 bg-card/30 hover:border-border/60 transition-all cursor-pointer"
+                  className="group border border-border/40 rounded-2xl p-6 sm:p-7 hover:border-border/70 transition-all cursor-pointer"
                   onClick={() => setExpandedStory(expandedStory === spotlight.id ? null : spotlight.id)}
                 >
                   <div className="flex items-start gap-4">
-                    <Avatar className="h-12 w-12 border border-border/50">
+                    <Avatar className="h-11 w-11 border border-border/40 shrink-0">
                       <AvatarImage src={spotlight.profile?.avatar_url || ''} />
                       <AvatarFallback className="bg-muted text-foreground text-sm">
                         {spotlight.profile?.full_name?.charAt(0) || '?'}
@@ -229,21 +229,21 @@ export default function Spotlight() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <h3 className="font-semibold text-foreground truncate">
+                        <h3 className="font-medium text-foreground truncate text-sm">
                           {spotlight.profile?.full_name}
                         </h3>
                         {spotlight.profile?.verified && (
                           <VerifiedBadge size="sm" isOwner={spotlight.profile?.isAdmin} />
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">@{spotlight.profile?.username}</p>
+                      <p className="text-xs text-muted-foreground mb-3">@{spotlight.profile?.username}</p>
                       <p className="text-sm font-medium text-foreground mb-2">{spotlight.headline}</p>
 
                       {expandedStory === spotlight.id ? (
                         <>
                           <p className="text-sm text-muted-foreground mb-3 leading-relaxed">{spotlight.story}</p>
                           {spotlight.quote && (
-                            <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/50 pl-3 mb-3">
+                            <blockquote className="text-xs italic text-muted-foreground border-l-2 border-border pl-3 mb-3">
                               "{spotlight.quote}"
                             </blockquote>
                           )}
@@ -253,8 +253,8 @@ export default function Spotlight() {
                       )}
 
                       {spotlight.achievement && (
-                        <Badge variant="secondary" className="mt-3 text-xs bg-amber-500/10 text-amber-500 border-0">
-                          <Star className="h-3 w-3 mr-1 fill-amber-500" />
+                        <Badge variant="secondary" className="mt-3 text-xs bg-primary/10 text-primary border-0">
+                          <Star className="h-3 w-3 mr-1" />
                           {spotlight.achievement}
                         </Badge>
                       )}
@@ -262,14 +262,14 @@ export default function Spotlight() {
                   </div>
 
                   {spotlight.profile?.username && (
-                    <div className="mt-4 pt-4 border-t border-border/30 flex justify-between items-center">
+                    <div className="mt-5 pt-4 border-t border-border/30 flex justify-between items-center">
                       <div className="flex gap-4 text-xs text-muted-foreground">
                         <span>{spotlight.products_count} products</span>
                         <span>{spotlight.followers_count.toLocaleString()} followers</span>
                       </div>
-                      <Button variant="ghost" size="sm" className="text-xs h-8" asChild onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="sm" className="text-xs h-7 px-3 text-muted-foreground hover:text-foreground" asChild onClick={(e) => e.stopPropagation()}>
                         <Link to={`/@${spotlight.profile.username}`}>
-                          View Profile
+                          View
                           <ChevronRight className="ml-1 h-3 w-3" />
                         </Link>
                       </Button>
@@ -282,21 +282,24 @@ export default function Spotlight() {
         </section>
       )}
 
-      {/* Simple CTA */}
-      <section className="py-12 sm:py-16 px-4 sm:px-6 border-t border-border/40">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-3">Want to Be Featured?</h2>
-          <p className="text-muted-foreground mb-6">
-            Start your creator journey today and you could be our next spotlight creator.
+      {/* CTA */}
+      <section className="py-16 sm:py-24 px-6">
+        <div className="h-px bg-gradient-to-r from-transparent via-border/60 to-transparent mb-16 sm:mb-24" />
+        <div className="mx-auto max-w-md text-center">
+          <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
+            Want to Be Featured?
+          </h2>
+          <p className="text-muted-foreground mb-8 leading-relaxed">
+            Start your creator journey today and you could be our next spotlight.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button size="sm" className="rounded-xl" asChild>
+            <Button size="sm" className="rounded-full h-9 px-6 text-xs" asChild>
               <Link to="/settings">
                 Become a Creator
-                <ChevronRight className="ml-1 h-4 w-4" />
+                <ChevronRight className="ml-1 h-3.5 w-3.5" />
               </Link>
             </Button>
-            <Button size="sm" variant="outline" className="rounded-xl" asChild>
+            <Button size="sm" variant="outline" className="rounded-full h-9 px-6 text-xs border-border/60" asChild>
               <Link to="/community/discord">Join the Community</Link>
             </Button>
           </div>

@@ -54,7 +54,6 @@ export default function Community() {
     setCurrentPage(1);
   }, [activeCategory, searchQuery]);
 
-  // Fetch user profile
   const { data: profile } = useQuery({
     queryKey: ['profile', user?.id],
     queryFn: async () => {
@@ -65,25 +64,18 @@ export default function Community() {
     enabled: !!user?.id,
   });
 
-  // Fetch total count for pagination
   const { data: totalCount = 0 } = useQuery({
     queryKey: ['threads-count', activeCategory, searchQuery],
     queryFn: async () => {
       let query = supabase.from('threads').select('id', { count: 'exact', head: true });
-
-      // Category filtering
       if (activeCategory === 'all') {
-        // "All" feed excludes promotions
         query = query.neq('category', 'promotion');
       } else {
         query = query.eq('category', activeCategory);
       }
-
-      // Search filtering (also excludes promotions)
       if (searchQuery) {
         query = query.neq('category', 'promotion').ilike('content', `%${searchQuery}%`);
       }
-
       const { count, error } = await query;
       if (error) throw error;
       return count || 0;
@@ -109,25 +101,19 @@ export default function Community() {
         .order('created_at', { ascending: false })
         .range(start, end);
 
-      // Category filtering
       if (activeCategory === 'all') {
-        // "All" feed excludes promotions
         query = query.neq('category', 'promotion');
       } else {
         query = query.eq('category', activeCategory);
       }
-
-      // Search filtering (also excludes promotions)
       if (searchQuery) {
         query = query.neq('category', 'promotion').ilike('content', `%${searchQuery}%`);
       }
 
       const { data: threadsData, error } = await query;
       if (error) throw error;
-
       if (!threadsData || threadsData.length === 0) return [];
 
-      // Fetch authors from public_profiles view (accessible to all users including anonymous)
       const authorIds = [...new Set(threadsData.map((t) => t.author_id))];
       const { data: authorsData } = await supabase
         .from('public_profiles')
@@ -136,30 +122,20 @@ export default function Community() {
 
       const authorsMap = new Map(authorsData?.map((a) => [a.id, a]) || []);
 
-      // Fetch likes counts
       const threadIds = threadsData.map((t) => t.id);
-      const { data: likesData } = await supabase
-        .from('thread_likes')
-        .select('thread_id')
-        .in('thread_id', threadIds);
+      const { data: likesData } = await supabase.from('thread_likes').select('thread_id').in('thread_id', threadIds);
+      const { data: repliesData } = await supabase.from('thread_replies').select('thread_id').in('thread_id', threadIds);
 
       const likesCountMap = new Map<string, number>();
       likesData?.forEach((like) => {
         likesCountMap.set(like.thread_id, (likesCountMap.get(like.thread_id) || 0) + 1);
       });
 
-      // Fetch replies counts
-      const { data: repliesData } = await supabase
-        .from('thread_replies')
-        .select('thread_id')
-        .in('thread_id', threadIds);
-
       const repliesCountMap = new Map<string, number>();
       repliesData?.forEach((reply) => {
         repliesCountMap.set(reply.thread_id, (repliesCountMap.get(reply.thread_id) || 0) + 1);
       });
 
-      // Check if current user liked threads
       let userLikesSet = new Set<string>();
       if (profile?.id) {
         const { data: userLikes } = await supabase
@@ -180,21 +156,13 @@ export default function Community() {
     },
   });
 
-  // Subscribe to realtime updates
   useEffect(() => {
     const channel = supabase
       .channel('threads-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'threads' }, () => {
-        refetch();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'thread_replies' }, () => {
-        refetch();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'threads' }, () => refetch())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'thread_replies' }, () => refetch())
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [refetch]);
 
   const handleReplyClick = (thread: Thread) => {
@@ -208,95 +176,82 @@ export default function Community() {
 
   const handleCategoryChange = useCallback((category: string) => {
     setActiveCategory(category);
-    setSearchQuery(''); // Clear search when switching categories
+    setSearchQuery('');
   }, []);
 
-  // Generate page numbers to show
   const getPageNumbers = () => {
     const pages: number[] = [];
     const maxVisible = 5;
-    
     if (totalPages <= maxVisible) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else if (currentPage <= 3) {
+      for (let i = 1; i <= Math.min(maxVisible, totalPages); i++) pages.push(i);
+    } else if (currentPage >= totalPages - 2) {
+      for (let i = Math.max(1, totalPages - maxVisible + 1); i <= totalPages; i++) pages.push(i);
     } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= Math.min(maxVisible, totalPages); i++) pages.push(i);
-      } else if (currentPage >= totalPages - 2) {
-        for (let i = Math.max(1, totalPages - maxVisible + 1); i <= totalPages; i++) pages.push(i);
-      } else {
-        for (let i = currentPage - 2; i <= currentPage + 2; i++) pages.push(i);
-      }
+      for (let i = currentPage - 2; i <= currentPage + 2; i++) pages.push(i);
     }
-    
     return pages;
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Compact Header */}
-      <section className="border-b border-border/40 bg-background">
-        <div className="mx-auto max-w-2xl px-4 sm:px-6 pt-12 sm:pt-16 pb-8 sm:pb-10">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <MessageSquare className="h-5 w-5 text-primary" />
-            </div>
-            <span className="text-sm font-medium text-primary tracking-wide uppercase">Community</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight mb-2">
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.03] to-transparent pointer-events-none" />
+        <div className="relative mx-auto max-w-[680px] px-6 pt-20 sm:pt-28 pb-14 sm:pb-20 text-center">
+          <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-muted-foreground mb-5">
+            Community
+          </p>
+          <h1 className="text-4xl sm:text-5xl font-semibold text-foreground tracking-tight leading-[1.1]">
             Threads
           </h1>
-          <p className="text-muted-foreground text-base sm:text-lg">
+          <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-md mx-auto leading-relaxed">
             Ask questions, share your work, and connect with creators.
           </p>
         </div>
+        <div className="h-px bg-gradient-to-r from-transparent via-border/60 to-transparent" />
       </section>
 
-      {/* Content */}
-      <section className="py-6 sm:py-8 px-4 sm:px-6">
-        <div className="mx-auto max-w-2xl space-y-5">
-          {/* Thread Composer */}
+      {/* Feed */}
+      <section className="py-8 sm:py-12 px-6">
+        <div className="mx-auto max-w-[680px] space-y-6">
           <ThreadComposer />
 
-          {/* Search Bar */}
-          <ThreadSearch onSearchChange={handleSearchChange} />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1">
+              <ThreadSearch onSearchChange={handleSearchChange} />
+            </div>
+          </div>
 
-          {/* Category Filter */}
           <div className="flex justify-center">
             <CategoryFilter activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
           </div>
 
-          {/* Search Results Info */}
           {searchQuery && (
-            <div className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-sm text-muted-foreground">
               {totalCount > 0 ? (
-                <span>Found <span className="font-medium text-foreground">{totalCount}</span> thread{totalCount !== 1 ? 's' : ''} matching "<span className="font-medium text-foreground">{searchQuery}</span>"</span>
+                <>Found <span className="font-medium text-foreground">{totalCount}</span> thread{totalCount !== 1 ? 's' : ''} matching "<span className="font-medium text-foreground">{searchQuery}</span>"</>
               ) : (
-                <span>No threads found matching "<span className="font-medium text-foreground">{searchQuery}</span>"</span>
+                <>No threads found matching "<span className="font-medium text-foreground">{searchQuery}</span>"</>
               )}
-            </div>
+            </p>
           )}
 
-          {/* Threads List */}
           {isLoading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex justify-center py-20">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : threads.length === 0 ? (
-            <div className="text-center py-16 px-6 border border-border/40 rounded-2xl bg-muted/10">
-              <div className="inline-flex p-4 rounded-2xl bg-muted/30 mb-4">
-                {searchQuery ? (
-                  <SearchX className="h-8 w-8 text-muted-foreground" />
-                ) : (
-                  <MessageSquare className="h-8 w-8 text-muted-foreground" />
-                )}
+            <div className="text-center py-20">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full border border-border/50 mb-5">
+                {searchQuery ? <SearchX className="h-6 w-6 text-muted-foreground" /> : <MessageSquare className="h-6 w-6 text-muted-foreground" />}
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-1">
+              <h3 className="text-base font-medium text-foreground mb-1">
                 {searchQuery ? 'No matches found' : 'No threads yet'}
               </h3>
-              <p className="text-muted-foreground text-sm">
-                {searchQuery 
-                  ? 'Try adjusting your search or browse all threads' 
-                  : 'Be the first to start a conversation!'}
+              <p className="text-sm text-muted-foreground">
+                {searchQuery ? 'Try adjusting your search or browse all threads' : 'Be the first to start a conversation.'}
               </p>
             </div>
           ) : (
@@ -307,9 +262,8 @@ export default function Community() {
             </div>
           )}
 
-          {/* Pagination */}
           {totalPages > 1 && !isLoading && threads.length > 0 && (
-            <div className="pt-6">
+            <div className="pt-8">
               <Pagination>
                 <PaginationContent className="gap-1">
                   <PaginationItem>
@@ -318,19 +272,13 @@ export default function Community() {
                       className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                     />
                   </PaginationItem>
-                  
                   {getPageNumbers().map((pageNum) => (
                     <PaginationItem key={pageNum}>
-                      <PaginationLink
-                        onClick={() => setCurrentPage(pageNum)}
-                        isActive={currentPage === pageNum}
-                        className="cursor-pointer"
-                      >
+                      <PaginationLink onClick={() => setCurrentPage(pageNum)} isActive={currentPage === pageNum} className="cursor-pointer">
                         {pageNum}
                       </PaginationLink>
                     </PaginationItem>
                   ))}
-                  
                   <PaginationItem>
                     <PaginationNext
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
@@ -339,16 +287,14 @@ export default function Community() {
                   </PaginationItem>
                 </PaginationContent>
               </Pagination>
-              
-              <div className="text-center mt-3 text-sm text-muted-foreground">
+              <p className="text-center mt-3 text-xs text-muted-foreground">
                 Page {currentPage} of {totalPages}
-              </div>
+              </p>
             </div>
           )}
         </div>
       </section>
 
-      {/* Reply Dialog */}
       <ThreadReplyDialog thread={selectedThread} open={replyDialogOpen} onOpenChange={setReplyDialogOpen} />
     </div>
   );
