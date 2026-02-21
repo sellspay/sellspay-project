@@ -594,7 +594,6 @@ export default function Header() {
                 { to: '/community', icon: MessageSquare, label: 'Community' },
                 { to: '/hire-editors', icon: Mic, label: 'Hire Editors' },
                 { to: '/pricing', icon: DollarSign, label: 'Pricing' },
-                { to: '/cart', icon: ShoppingCart, label: 'Cart' },
               ].map((item) => (
                 <Link
                   key={item.to}
