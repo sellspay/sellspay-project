@@ -6,6 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -18,7 +19,7 @@ import {
   Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, 
   CreditCard, Loader2, Package, Sparkles, Store, Crown,
   Wand2, Music, FileVideo, Film, Headphones, ArrowRight, Zap,
-  ShoppingCart, Home, Users, Mic, MessageSquare, DollarSign, Search, HelpCircle
+  ShoppingCart, Home, Users, Mic, MessageSquare, DollarSign, Search, HelpCircle, ChevronDown
 } from 'lucide-react';
 import { useState } from 'react';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -52,9 +53,11 @@ const toolsItems = [
 
 // Community dropdown items
 const communityItems = [
+  { name: 'Threads', path: '/community', description: 'Community discussions' },
   { name: 'Updates', path: '/community/updates', description: 'Platform news & updates' },
   { name: 'Spotlight', path: '/community/spotlight', description: 'Featured creators' },
-  { name: 'Discord', path: '/community/discord', description: 'Join our community' },
+  { name: 'Discord', path: '/community/discord', description: 'Join our Discord' },
+  { name: 'FAQ', path: '/faq', description: 'Frequently asked questions' },
 ];
 
 // Premium nav link styles
@@ -238,49 +241,53 @@ export default function Header() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
 
-                {/* Community Dropdown */}
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger className={cn(
-                    "h-10 px-4 text-sm font-light tracking-wide bg-transparent rounded-lg",
-                    "text-foreground/60 hover:text-foreground",
-                    "data-[state=open]:text-foreground",
-                    "transition-all duration-300",
-                    "font-[system-ui,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]"
-                  )}>
-                    Community
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <div className={cn(
-                      "w-[280px] p-4",
+                {/* Community Dropdown - Click-based */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className={cn(
+                      "h-10 px-4 text-sm font-light tracking-wide bg-transparent rounded-lg inline-flex items-center gap-1",
+                      "text-foreground/60 hover:text-foreground",
+                      "transition-all duration-300",
+                      "font-[system-ui,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]"
+                    )}>
+                      Community
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    sideOffset={8}
+                    className={cn(
+                      "w-[280px] p-4 z-50",
                       "bg-card border border-border",
                       "shadow-xl shadow-black/30",
                       "rounded-xl"
-                    )}>
-                      <div className="grid gap-1">
-                        {communityItems.map((item) => (
-                          <Link
-                            key={item.path}
-                            to={item.path}
-                            className={cn(
-                              "flex items-center justify-between p-3 rounded-lg transition-all duration-200 group",
-                              "hover:bg-muted"
-                            )}
-                          >
-                            <div>
-                              <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                                {item.name}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {item.description}
-                              </div>
+                    )}
+                  >
+                    <div className="grid gap-1">
+                      {communityItems.map((item) => (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={cn(
+                            "flex items-center justify-between p-3 rounded-lg transition-all duration-200 group",
+                            "hover:bg-muted"
+                          )}
+                        >
+                          <div>
+                            <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                              {item.name}
                             </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
-                          </Link>
-                        ))}
-                      </div>
+                            <div className="text-xs text-muted-foreground">
+                              {item.description}
+                            </div>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary group-hover:translate-x-1 transition-all duration-300" />
+                        </Link>
+                      ))}
                     </div>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
+                  </PopoverContent>
+                </Popover>
 
                 {/* Divider with 3D effect */}
                 <div className={cn(
