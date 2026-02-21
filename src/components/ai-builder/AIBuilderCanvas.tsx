@@ -462,43 +462,52 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     // HEALER PROTOCOL: Handle 'needs_continuation' status
     // ═══════════════════════════════════════════════════════════════
     // If the backend detected truncation, auto-trigger Ghost Fixer
-    if (job.status === 'needs_continuation' && job.error_message) {
+    if (job.status === 'needs_continuation') {
       console.log('[BackgroundGen] 🔧 Healer Protocol: Job needs continuation');
       
-      try {
-        const validationError = JSON.parse(job.error_message);
-        const partialCode = validationError.partialCode;
-        
-        if (partialCode && ghostFixer) {
-          toast.info('Auto-healing truncated code...', { duration: 3000 });
+      let recovered = false;
+      
+      if (job.error_message) {
+        try {
+          const validationError = JSON.parse(job.error_message);
+          const partialCode = validationError.partialCode;
           
-          // Trigger Ghost Fixer with the partial code
-          const recoveredCode = await ghostFixer.triggerContinuation(partialCode, job.prompt);
-          
-          if (recoveredCode) {
-            console.log('[BackgroundGen] ✅ Ghost Fixer recovered code');
-            setCode(recoveredCode);
+          if (partialCode && ghostFixer) {
+            toast.info('Auto-healing truncated code...', { duration: 3000 });
             
-            // Add success message
-            if (activeProjectId) {
-              await addMessage('assistant', '✅ Code recovered successfully after truncation.', recoveredCode, activeProjectId);
-            }
-          } else {
-            console.warn('[BackgroundGen] ⚠️ Ghost Fixer could not recover code');
-            toast.error('Auto-recovery failed. You may need to retry the generation.');
+            // Trigger Ghost Fixer with the partial code
+            const recoveredCode = await ghostFixer.triggerContinuation(partialCode, job.prompt);
             
-            // Still show the partial code so user can see progress
-            if (partialCode) {
-              setCode(partialCode);
+            if (recoveredCode) {
+              console.log('[BackgroundGen] ✅ Ghost Fixer recovered code');
+              setCode(recoveredCode);
+              recovered = true;
+              
+              // Add success message
+              if (activeProjectId) {
+                await addMessage('assistant', '✅ Code recovered successfully after truncation.', recoveredCode, activeProjectId);
+              }
+            } else {
+              console.warn('[BackgroundGen] ⚠️ Ghost Fixer could not recover code');
+              // Still show the partial code so user can see progress
+              if (partialCode) {
+                setCode(partialCode);
+              }
             }
           }
+        } catch (e) {
+          console.error('[BackgroundGen] Failed to parse validation error:', e);
         }
-      } catch (e) {
-        console.error('[BackgroundGen] Failed to parse validation error:', e);
-        toast.error('Failed to recover from truncation');
+      }
+      
+      if (!recovered) {
+        toast.error('Generation was truncated. Please try again with a simpler request.');
+        if (activeProjectId) {
+          await addMessage('assistant', '⚠️ The AI response was cut short. Try breaking your request into smaller steps.', undefined, activeProjectId);
+        }
       }
 
-      // Clear state even on continuation failure
+      // ALWAYS clear state on continuation (prevents stuck building state)
       if (isActiveRun) {
         setLiveSteps([]);
         pendingSummaryRef.current = '';
@@ -1596,9 +1605,18 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 onSendMessage={handleSendMessage}
                 onGenerateAsset={handleGenerateAsset}
                 isStreaming={isStreaming || isAgentRunning}
-                onCancel={() => {
+                onCancel={async () => {
                   cancelStream();
                   cancelAgent();
+                  cancelJob();
+                  forceResetStreaming();
+                  generationLockRef.current = null;
+                  activeJobIdRef.current = null;
+                  setLiveSteps([]);
+                  // Add a cancellation message to chat without deleting history
+                  if (activeProjectId) {
+                    await addMessage('assistant', '🛑 Request cancelled. Your previous work is preserved — you can continue from where you left off.', undefined, activeProjectId);
+                  }
                 }}
                 messages={messages}
                 messagesLoading={messagesLoading}
