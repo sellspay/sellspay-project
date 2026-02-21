@@ -19,6 +19,7 @@ import { CreatorFollowDialog } from "@/components/product/CreatorFollowDialog";
 import { createNotification, checkFollowCooldown } from "@/lib/notifications";
 import { getFileTypeIcon, getFileTypeLabel } from "@/lib/fileTypeIcons";
 import { SubscriptionPromotion } from "@/components/product/SubscriptionPromotion";
+import SubscribeDialog from "@/components/profile/SubscribeDialog";
 import { SubscriptionBadge } from "@/components/product/SubscriptionBadge";
 import { useProductViewTracking } from "@/hooks/useViewTracking";
 import { PaymentMethodDialog } from "@/components/checkout/PaymentMethodDialog";
@@ -155,6 +156,8 @@ export default function ProductDetail() {
   const [isSaved, setIsSaved] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showSubscribeDialog, setShowSubscribeDialog] = useState(false);
+  const [pendingSubscribeAfterFollow, setPendingSubscribeAfterFollow] = useState(false);
   
   // Download progress hook
   const { 
@@ -1050,6 +1053,12 @@ export default function ProductDetail() {
       setIsFollowingCreator(true);
       setShowFollowDialog(false);
       toast.success(`You're now following @${product.creator.username}!`);
+      
+      // If user was trying to subscribe, open subscribe dialog now
+      if (pendingSubscribeAfterFollow) {
+        setPendingSubscribeAfterFollow(false);
+        setTimeout(() => setShowSubscribeDialog(true), 300);
+      }
 
       // Create notification for the creator
       // Fetch actor username for proper redirect (use public view to bypass RLS)
@@ -1450,14 +1459,25 @@ export default function ProductDetail() {
                       }
                     </Button>
                   ) : isSubscriptionOnly ? (
-                    // Subscription-only product - cannot buy, must subscribe
+                    // Subscription-only product - click to open subscribe dialog (with follow check)
                     <Button 
-                      variant="outline"
-                      className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
-                      disabled
+                      className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 text-white"
+                      onClick={() => {
+                        if (!user) {
+                          const currentPath = window.location.pathname + window.location.search;
+                          navigate(`/login?next=${encodeURIComponent(currentPath)}`);
+                          return;
+                        }
+                        if (!isFollowingCreator && !isOwner && product?.creator) {
+                          setPendingSubscribeAfterFollow(true);
+                          setShowFollowDialog(true);
+                          return;
+                        }
+                        setShowSubscribeDialog(true);
+                      }}
                     >
                       <Crown className="w-4 h-4 mr-2" />
-                      Subscribers Only
+                      Subscribe to Access
                     </Button>
                   ) : isFollowingCreator || !product.creator ? (
                     product.pricing_type === "free" ? (
@@ -1562,18 +1582,13 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Subscription Promotion Banner */}
-          {!isOwner && !hasPurchased && !hasActiveSubscription && planBenefits.length > 0 && product.creator && (
-            <SubscriptionPromotion
+          {/* Subscribe Dialog */}
+          {product.creator && (
+            <SubscribeDialog
+              open={showSubscribeDialog}
+              onOpenChange={setShowSubscribeDialog}
               creatorId={product.creator.id}
               creatorName={product.creator.username || 'creator'}
-              productName={product.name}
-              productPriceCents={product.price_cents}
-              productCurrency={product.currency}
-              planBenefits={planBenefits}
-              isSubscriptionOnly={isSubscriptionOnly}
-              hasActiveSubscription={hasActiveSubscription}
-              activeSubscriptionPlanId={activeSubscriptionPlanId}
             />
           )}
 

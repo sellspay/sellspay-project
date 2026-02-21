@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Check, CreditCard, Sparkles } from 'lucide-react';
+import { Loader2, Check, CreditCard, Sparkles, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface SubscriptionPlan {
   id: string;
@@ -25,26 +26,43 @@ interface SubscribeDialogProps {
 }
 
 export default function SubscribeDialog({ open, onOpenChange, creatorId, creatorName }: SubscribeDialogProps) {
-  const { user } = useAuth();
+  const { user, profile: authProfile } = useAuth();
   const navigate = useNavigate();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState<string | null>(null);
   const [activeSubscriptions, setActiveSubscriptions] = useState<string[]>([]);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [showFollowOverlay, setShowFollowOverlay] = useState(false);
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+
+  const userProfileId = authProfile?.id || null;
 
   useEffect(() => {
     if (open) {
       fetchPlans();
       if (user) {
         fetchActiveSubscriptions();
+        checkFollowStatus();
       }
     }
   }, [open, creatorId, user]);
 
+  const checkFollowStatus = async () => {
+    if (!userProfileId) return;
+    const { data } = await supabase
+      .from('followers')
+      .select('id')
+      .eq('follower_id', userProfileId)
+      .eq('following_id', creatorId)
+      .maybeSingle();
+    setIsFollowing(!!data);
+  };
+
   const fetchPlans = async () => {
     setLoading(true);
     try {
-      // Fetch active plans for this creator
       const { data: plansData, error } = await supabase
         .from('creator_subscription_plans')
         .select('id, name, description, price_cents, currency')
@@ -54,7 +72,6 @@ export default function SubscribeDialog({ open, onOpenChange, creatorId, creator
 
       if (error) throw error;
 
-      // Get product counts for each plan
       const plansWithCounts = await Promise.all(
         (plansData || []).map(async (plan) => {
           const { count } = await supabase
@@ -100,15 +117,45 @@ export default function SubscribeDialog({ open, onOpenChange, creatorId, creator
     }
   };
 
-  const handleSubscribe = async (planId: string) => {
+  const handleFollowThenSubscribe = async () => {
+    if (!userProfileId) return;
+    setFollowLoading(true);
+    try {
+      const { error } = await supabase
+        .from('followers')
+        .insert({ follower_id: userProfileId, following_id: creatorId });
+      if (error) throw error;
+      setIsFollowing(true);
+      setShowFollowOverlay(false);
+      toast.success(`You're now following @${creatorName}!`);
+      // Now proceed with the pending subscription
+      if (pendingPlanId) {
+        handleSubscribe(pendingPlanId, true);
+        setPendingPlanId(null);
+      }
+    } catch (error) {
+      console.error('Error following creator:', error);
+      toast.error('Failed to follow creator');
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  const handleSubscribe = async (planId: string, skipFollowCheck = false) => {
     if (!user) {
       navigate('/login');
       return;
     }
 
+    // Check follow status before allowing subscribe
+    if (!skipFollowCheck && !isFollowing) {
+      setPendingPlanId(planId);
+      setShowFollowOverlay(true);
+      return;
+    }
+
     setSubscribing(planId);
     try {
-      // Call edge function to create checkout session
       const { data, error } = await supabase.functions.invoke('create-subscription-checkout', {
         body: { plan_id: planId },
       });
@@ -135,8 +182,38 @@ export default function SubscribeDialog({ open, onOpenChange, creatorId, creator
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { setShowFollowOverlay(false); onOpenChange(v); }}>
       <DialogContent className="sm:max-w-lg">
+        {/* Follow overlay */}
+        {showFollowOverlay && (
+          <div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center p-6">
+            <UserPlus className="w-12 h-12 text-primary mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Follow Required</h3>
+            <p className="text-sm text-muted-foreground text-center mb-6 max-w-xs">
+              You need to follow <span className="font-semibold text-foreground">@{creatorName}</span> before subscribing to their plans.
+            </p>
+            <Button
+              onClick={handleFollowThenSubscribe}
+              disabled={followLoading}
+              size="lg"
+              className="w-full max-w-xs"
+            >
+              {followLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <UserPlus className="w-4 h-4 mr-2" />
+              )}
+              Follow @{creatorName}
+            </Button>
+            <button
+              onClick={() => { setShowFollowOverlay(false); setPendingPlanId(null); }}
+              className="mt-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
