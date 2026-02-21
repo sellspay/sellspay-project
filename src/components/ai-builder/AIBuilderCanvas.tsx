@@ -1634,6 +1634,13 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 onApprovePlan={handleApprovePlan}
                 onRejectPlan={handleRejectPlan}
                 canUndo={canUndo()}
+                streamPhaseData={{
+                  phase: streamPhase,
+                  analysisText,
+                  planItems,
+                  completedPlanItems,
+                  summaryText,
+                }}
               />
             </div>
           </div>

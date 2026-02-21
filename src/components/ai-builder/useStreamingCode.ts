@@ -35,6 +35,11 @@ interface UseStreamingCodeOptions {
   shouldAbort?: () => boolean;
   getProductsContext?: () => Promise<ProductContext[]>;
   getConversationHistory?: () => Array<{role: string; content: string}>;
+  // NEW: Phase-based streaming callbacks
+  onPhaseChange?: (phase: string) => void;
+  onAnalysis?: (text: string) => void;
+  onPlanItems?: (items: string[]) => void;
+  onStreamSummary?: (text: string) => void;
 }
 
 interface ProductContext {
@@ -430,15 +435,19 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           return '';
         }
 
-        // Strip the completion sentinel from the code part (it's a marker, not app code)
         let cleaned = codePart
           .replace(LOG_PATTERN, '')
           .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
           .replace(/\n?```\s*$/i, '')
           .trim();
 
-        // Strip sentinel if present
         cleaned = stripCompleteSentinel(cleaned);
+        
+        // Strip summary section markers if they bled into code
+        const summaryIdx = cleaned.indexOf('=== SUMMARY ===');
+        if (summaryIdx >= 0) {
+          cleaned = cleaned.substring(0, summaryIdx).trim();
+        }
 
         if (looksLikeJson(cleaned)) {
           console.warn('[useStreamingCode] Cleaned code looks like JSON - returning empty');
@@ -470,6 +479,12 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       };
 
       const extractSummaryFromRaw = (raw: string): string => {
+        // Try new structured format first
+        const structuredIdx = raw.indexOf('=== SUMMARY ===');
+        if (structuredIdx >= 0) {
+          return raw.substring(structuredIdx + '=== SUMMARY ==='.length).trim();
+        }
+        
         const typeIdx = raw.indexOf('/// TYPE: CODE ///');
         if (typeIdx < 0) {
           return '';
@@ -508,13 +523,81 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         return cleaned;
       };
 
+      // ═══════════════════════════════════════════════════════════
+      // STRUCTURED SSE PARSER: Handle event-typed SSE from edge function
+      // ═══════════════════════════════════════════════════════════
+      let sseBuffer = '';
+      let currentEventType = '';
+      let isStructuredSSE = false;
+
+      const processSSELine = (line: string) => {
+        if (line.startsWith('event: ')) {
+          currentEventType = line.slice(7).trim();
+          isStructuredSSE = true;
+          return;
+        }
+        
+        if (line.startsWith('data: ')) {
+          const dataStr = line.slice(6).trim();
+          
+          if (isStructuredSSE && currentEventType) {
+            try {
+              const data = JSON.parse(dataStr);
+              
+              switch (currentEventType) {
+                case 'phase':
+                  options.onPhaseChange?.(data.phase);
+                  break;
+                case 'text':
+                  options.onAnalysis?.(data.content);
+                  break;
+                case 'plan':
+                  options.onPlanItems?.(data.items);
+                  break;
+                case 'summary':
+                  options.onStreamSummary?.(data.content);
+                  break;
+                case 'raw':
+                  rawStream += data.content;
+                  break;
+                case 'code_chunk':
+                  break;
+                case 'error':
+                  console.error('[useStreamingCode] SSE error:', data.message);
+                  break;
+              }
+            } catch {
+              rawStream += dataStr;
+            }
+            currentEventType = '';
+            return;
+          }
+          
+          // Fallback: not structured SSE, treat as raw text
+          rawStream += dataStr;
+        }
+      };
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        rawStream += chunk;
+        sseBuffer += chunk;
 
+        const sseLines = sseBuffer.split('\n');
+        sseBuffer = sseLines.pop() || '';
+
+        for (const line of sseLines) {
+          const trimmed = line.trim();
+          if (trimmed === '') {
+            currentEventType = '';
+            continue;
+          }
+          processSSELine(trimmed);
+        }
+
+        // Extract logs from raw stream (backward compat)
         const logMatches = rawStream.matchAll(LOG_PATTERN);
         for (const match of logMatches) {
           const logText = match[1].trim();
