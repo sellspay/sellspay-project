@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const DiscordIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -98,6 +99,7 @@ export default function Support() {
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFiles = useCallback((newFiles: FileList | File[]) => {
     const valid = Array.from(newFiles).filter(f => {
@@ -114,7 +116,7 @@ export default function Support() {
     setFiles(prev => [...prev, ...valid].slice(0, 5));
   }, []);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!subject.trim()) {
       toast.error('Subject is required');
       return;
@@ -123,13 +125,23 @@ export default function Support() {
       toast.error('Message is required');
       return;
     }
-    // For now, show success — real submission would go to an edge function
-    toast.success('Support ticket submitted! We\'ll get back to you within 24 hours.');
-    setDialogOpen(false);
-    setSubject('');
-    setCategory('');
-    setMessage('');
-    setFiles([]);
+    setIsSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('submit-support-ticket', {
+        body: { subject, category, message },
+      });
+      if (error) throw error;
+      toast.success('Support ticket submitted! We\'ll get back to you within 24 hours.');
+      setDialogOpen(false);
+      setSubject('');
+      setCategory('');
+      setMessage('');
+      setFiles([]);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to submit ticket. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -418,9 +430,10 @@ export default function Support() {
             </button>
             <button
               onClick={handleSubmit}
-              className="px-5 py-2 text-sm font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
+              disabled={isSubmitting}
+              className="px-5 py-2 text-sm font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50"
             >
-              Submit
+              {isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
           </div>
         </DialogContent>
