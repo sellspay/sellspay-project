@@ -194,7 +194,7 @@ YOUR FIRST OUTPUT MUST: Ensure you close any open function calls or expressions.
    * Build a continuation prompt for the AI with string-safety awareness
    */
   const buildContinuationPrompt = useCallback((truncatedCode: string, originalPrompt?: string): string => {
-    const contextTail = getContextTail(truncatedCode, 400);
+    const contextTail = getContextTail(truncatedCode, 600);
     const truncationType = detectTruncationType(truncatedCode);
     const stringSafetyInstruction = getStringSafetyInstruction(truncationType);
     const lines = truncatedCode.trim().split('\n');
@@ -210,15 +210,17 @@ LAST 400 CHARACTERS OF YOUR PREVIOUS OUTPUT:
 ${contextTail}
 \`\`\`
 
+${originalPrompt ? `ORIGINAL USER REQUEST: "${originalPrompt}"
+You MUST finish implementing this request fully. Do NOT just close syntax and stop.` : ''}
+
 CRITICAL INSTRUCTIONS:
 1. Continue EXACTLY from the cutoff point - do not repeat any code
 2. If truncation was mid-string, your FIRST characters must close that string/tag
-3. Complete the remaining code logically
-4. End with: ${VIBECODER_COMPLETE_SENTINEL}
-5. Do NOT include the "/// TYPE: CODE ///" or "/// BEGIN_CODE ///" markers
-6. Just output the remaining code that completes the file
-
-${originalPrompt ? `Original request was: ${originalPrompt}` : ''}`;
+3. COMPLETE THE FULL FEATURE the user asked for - closing syntax alone is NOT enough
+4. All remaining components, handlers, and UI must be fully implemented
+5. End with: ${VIBECODER_COMPLETE_SENTINEL}
+6. Do NOT include the "/// TYPE: CODE ///" or "/// BEGIN_CODE ///" markers
+7. Just output the remaining code that completes the file`;
   }, [getContextTail, detectTruncationType, getStringSafetyInstruction]);
 
   /**
