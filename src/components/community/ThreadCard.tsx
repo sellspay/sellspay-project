@@ -329,7 +329,7 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
           </div>
 
           {/* Content */}
-          <p className="text-foreground whitespace-pre-wrap break-words leading-relaxed text-lg" style={{ fontFamily: "'Caveat', cursive" }}>{displayContent}</p>
+          <p className="text-foreground whitespace-pre-wrap break-words leading-relaxed text-[15px]">{displayContent}</p>
           {contentTooLong && !showFullContent && (
             <button
               onClick={() => setShowFullContent(true)}
