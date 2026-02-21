@@ -4,6 +4,8 @@ import { AnimatePresence } from "framer-motion";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { dispatchAuthGate, AUTH_GATE_EVENT } from "@/utils/authGateEvent";
+import { SignUpPromoDialog } from "@/components/tools/SignUpPromoDialog";
 import { toolsRegistry } from "@/components/tools/toolsRegistry";
 import { ToolActiveView } from "@/components/tools/ToolActiveView";
 import { PromoVideoBuilder } from "@/components/tools/PromoVideoBuilder";
@@ -47,6 +49,14 @@ export default function StudioLayout() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [campaignResult, setCampaignResult] = useState<any>(null);
   const [creditsUsed, setCreditsUsed] = useState(0);
+  const [showSignUpPromo, setShowSignUpPromo] = useState(false);
+
+  // Listen for auth gate events from tool components
+  useEffect(() => {
+    const handler = () => setShowSignUpPromo(true);
+    window.addEventListener(AUTH_GATE_EVENT, handler);
+    return () => window.removeEventListener(AUTH_GATE_EVENT, handler);
+  }, []);
 
   useEffect(() => {
     if (routeToolId) {
@@ -132,7 +142,7 @@ export default function StudioLayout() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
-        toast.error("Please sign in to generate");
+        dispatchAuthGate();
         return;
       }
 
@@ -267,6 +277,8 @@ export default function StudioLayout() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SignUpPromoDialog open={showSignUpPromo} onOpenChange={setShowSignUpPromo} />
     </div>
   );
 }
