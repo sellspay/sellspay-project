@@ -19,7 +19,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, 
   CreditCard, Loader2, Package, Sparkles, Store, Crown,
-  Wand2, Music, FileVideo, Film, Headphones, ArrowRight, Zap
+  Wand2, Music, FileVideo, Film, Headphones, ArrowRight, Zap,
+  ShoppingCart, Home, Users, Mic, MessageSquare, DollarSign
 } from 'lucide-react';
 import { useState } from 'react';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -324,7 +325,17 @@ export default function Header() {
               Pricing
             </Link>
 
-
+            {/* Cart Button - Always visible */}
+            <Button
+              variant="ghost"
+              size="icon"
+              asChild
+              className="h-10 w-10 rounded-xl text-foreground/70 hover:text-foreground hover:bg-white/5"
+            >
+              <Link to="/cart">
+                <ShoppingCart className="h-5 w-5" />
+              </Link>
+            </Button>
             {/* Editor Chat Icon */}
             {user && <EditorChatIcon />}
 
@@ -563,81 +574,40 @@ export default function Header() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className={cn(
-            "lg:hidden py-5 animate-fade-in",
+            "lg:hidden py-4 animate-fade-in",
             "border-t border-white/10"
           )}>
-            <nav className="flex flex-col gap-2">
-              {/* Store Section */}
-              <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Marketplace
-              </div>
-              {productCategories.slice(0, 4).map((item) => (
+            <nav className="flex flex-col gap-1 px-2">
+              {[
+                { to: '/products', icon: Package, label: 'Marketplace' },
+                { to: '/creators', icon: Users, label: 'Creators' },
+                { to: '/tools', icon: Wand2, label: 'AI Studio' },
+                { to: '/community', icon: MessageSquare, label: 'Community' },
+                { to: '/hire-editors', icon: Mic, label: 'Hire Editors' },
+                { to: '/pricing', icon: DollarSign, label: 'Pricing' },
+                { to: '/cart', icon: ShoppingCart, label: 'Cart' },
+              ].map((item) => (
                 <Link
-                  key={item.path}
-                  to={item.path}
+                  key={item.to}
+                  to={item.to}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    "mx-3 px-4 py-3 text-sm font-medium text-foreground rounded-xl",
-                    "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                    "transition-all duration-300"
+                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all",
+                    isActive(item.to)
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground/70 hover:bg-white/5 hover:text-foreground"
                   )}
                 >
-                  {item.name}
+                  <item.icon className="h-5 w-5" />
+                  {item.label}
                 </Link>
               ))}
-              
-              <div className="h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent my-2 mx-6" />
-              
-              {/* Other Links */}
-              <Link
-                to="/creators"
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "mx-3 px-4 py-3 text-sm font-medium text-foreground rounded-xl",
-                  "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                  "transition-all duration-300"
-                )}
-              >
-                Creators
-              </Link>
-              <Link
-                to="/tools"
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "mx-3 px-4 py-3 text-sm font-medium text-foreground rounded-xl",
-                  "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                  "transition-all duration-300"
-                )}
-              >
-                AI Studio
-              </Link>
-              <Link
-                to="/community"
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "mx-3 px-4 py-3 text-sm font-medium text-foreground rounded-xl",
-                  "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                  "transition-all duration-300"
-                )}
-              >
-                Community
-              </Link>
-              <Link
-                to="/pricing"
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "mx-3 px-4 py-3 text-sm font-medium text-foreground rounded-xl",
-                  "hover:bg-gradient-to-r hover:from-white/[0.08] hover:to-transparent",
-                  "transition-all duration-300"
-                )}
-              >
-                Pricing
-              </Link>
 
               {/* Mobile Credit Display */}
               {user && (
-                <div className="mx-3 px-4 py-3 rounded-xl bg-muted/50 border border-border">
-                  <div className="flex items-center justify-between">
+                <>
+                  <div className="h-px bg-border my-2 mx-4" />
+                  <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-muted/50">
                     <div className="flex items-center gap-2">
                       <Zap size={14} className="text-primary" />
                       <span className="text-sm font-bold text-foreground tabular-nums">
@@ -646,45 +616,28 @@ export default function Header() {
                       <span className="text-xs text-muted-foreground">credits</span>
                     </div>
                     <button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        setTopUpOpen(true);
-                      }}
+                      onClick={() => { setMobileMenuOpen(false); setTopUpOpen(true); }}
                       className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
                     >
                       Get More
                     </button>
                   </div>
-                  {!creditsLoading && credits < LOW_CREDIT_THRESHOLD && (
-                    <LowCreditWarning
-                      credits={credits}
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        setTopUpOpen(true);
-                      }}
-                      variant="compact"
-                      className="mt-2"
-                    />
-                  )}
-                </div>
+                </>
               )}
-              
-              <div className="h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent my-2 mx-6" />
-              
-              <Link
-                to="/hire-editors"
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "mx-3 py-3 text-sm font-semibold text-center text-primary rounded-xl",
-                  "bg-gradient-to-b from-primary/20 to-primary/10",
-                  "border border-primary/30",
-                  "shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]",
-                  "transition-all duration-300",
-                  "hover:from-primary/30 hover:to-primary/15"
-                )}
-              >
-                Hire Editors →
-              </Link>
+
+              {!user && (
+                <>
+                  <div className="h-px bg-border my-2 mx-4" />
+                  <div className="flex gap-2 px-4">
+                    <Button variant="outline" asChild className="flex-1 rounded-xl">
+                      <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Sign In</Link>
+                    </Button>
+                    <Button asChild className="flex-1 rounded-xl">
+                      <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>Sign Up</Link>
+                    </Button>
+                  </div>
+                </>
+              )}
             </nav>
           </div>
         )}

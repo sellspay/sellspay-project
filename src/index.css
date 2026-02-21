@@ -13,36 +13,36 @@
 
 @layer base {
   :root {
-    /* Premium Dark Theme - Soft Coral/Terracotta Accent */
-    --background: 0 0% 2.5%;
-    --foreground: 30 5% 96%;
-    --card: 0 0% 5%;
-    --card-foreground: 30 5% 96%;
-    --popover: 0 0% 5%;
-    --popover-foreground: 30 5% 96%;
-    /* Soft Coral - Warm, Modern & Inviting */
-    --primary: 12 76% 61%;
+    /* Premium Dark Theme - Electric Blue Accent */
+    --background: 220 15% 3%;
+    --foreground: 210 10% 96%;
+    --card: 220 15% 6%;
+    --card-foreground: 210 10% 96%;
+    --popover: 220 15% 6%;
+    --popover-foreground: 210 10% 96%;
+    /* Electric Blue - Clean, Bold & Professional */
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 20 5% 9%;
-    --secondary-foreground: 30 5% 85%;
-    --muted: 20 5% 10%;
-    --muted-foreground: 20 5% 50%;
-    --accent: 20 10% 9%;
-    --accent-foreground: 30 5% 96%;
+    --secondary: 220 14% 10%;
+    --secondary-foreground: 210 10% 85%;
+    --muted: 220 14% 11%;
+    --muted-foreground: 220 10% 50%;
+    --accent: 220 14% 10%;
+    --accent-foreground: 210 10% 96%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 20 5% 12%;
-    --input: 20 5% 12%;
-    --ring: 12 76% 61%;
+    --border: 220 10% 13%;
+    --input: 220 10% 13%;
+    --ring: 217 91% 60%;
     --radius: 0.75rem;
-    --sidebar-background: 0 0% 3.5%;
-    --sidebar-foreground: 30 5% 96%;
-    --sidebar-primary: 12 76% 61%;
+    --sidebar-background: 220 15% 4%;
+    --sidebar-foreground: 210 10% 96%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 20 5% 9%;
-    --sidebar-accent-foreground: 30 5% 96%;
-    --sidebar-border: 20 5% 10%;
-    --sidebar-ring: 12 76% 61%;
+    --sidebar-accent: 220 14% 10%;
+    --sidebar-accent-foreground: 210 10% 96%;
+    --sidebar-border: 220 10% 11%;
+    --sidebar-ring: 217 91% 60%;
     
     /* Hero Light Background Mode - Vibrant Purple Accent */
     --hero-text: 220 15% 20%;
@@ -337,8 +337,8 @@ body[style*="margin-right"] {
 /* Premium Button Styles - Controlled Gradient */
 .btn-premium {
   position: relative;
-  background: linear-gradient(180deg, #FF7A1A 0%, #E85C00 100%);
-  border: 1px solid rgba(255, 122, 26, 0.2);
+  background: linear-gradient(180deg, #4B8BF5 0%, #2563EB 100%);
+  border: 1px solid rgba(75, 139, 245, 0.2);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   color: hsl(0 0% 100%);
   transition: all 0.15s ease;
