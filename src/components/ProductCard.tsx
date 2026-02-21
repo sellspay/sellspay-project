@@ -258,15 +258,15 @@ const ProductCard = forwardRef<HTMLAnchorElement, ProductCardProps>(function Pro
           ) : null}
 
           {/* Price Badge - Top Left */}
-          <div className={`absolute top-3 left-3 flex items-center gap-1.5 backdrop-blur-md border transition-all duration-300 ${
+          <div className={`absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-md shadow-lg transition-all duration-300 ${
             isSubscriptionOnly
-              ? 'bg-violet-500/30 border-violet-400/40 text-violet-200 px-2.5 py-1'
+              ? 'bg-violet-600 text-white px-3 py-1.5'
               : isFree 
-                ? 'bg-emerald-500/30 border-emerald-400/40 text-emerald-200 px-2.5 py-1' 
-                : 'bg-black/60 border-white/20 text-white px-2.5 py-1'
-          } text-xs font-semibold tracking-wide`}>
-            {isFree && !isSubscriptionOnly && (
-              <span className="w-1.5 h-1.5 bg-emerald-400" />
+                ? 'bg-emerald-500 text-white px-3 py-1.5' 
+                : 'bg-white text-black px-3 py-1.5'
+          } text-xs font-bold`}>
+            {isSubscriptionOnly && (
+              <Crown className="h-3 w-3" />
             )}
             <span className="uppercase tracking-wider">
               {formatPrice(product.price_cents, product.currency, product.pricing_type, Boolean(product.included_in_subscription))}
@@ -303,9 +303,9 @@ const ProductCard = forwardRef<HTMLAnchorElement, ProductCardProps>(function Pro
             </button>
           )}
 
-          {/* Product Type Badge */}
+          {/* Product Type Badge - Above bottom info */}
           {showType && product.product_type && (
-            <div className="absolute bottom-3 left-3 bg-black/60 border border-white/20 backdrop-blur-md px-2.5 py-1 text-xs font-medium text-white/90 tracking-wide">
+            <div className="absolute bottom-[4.5rem] left-3 z-10 bg-white/90 text-black rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest shadow-md">
               {productTypeLabels[product.product_type] || product.product_type}
             </div>
           )}
