@@ -68,6 +68,8 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
   const [textAttachment, setTextAttachment] = useState('');
   const [isAiLabeled, setIsAiLabeled] = useState(false);
   const [isPaidPartnership, setIsPaidPartnership] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState<Date | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const { data: profile } = useQuery({
     queryKey: ['profile', user?.id],
@@ -130,6 +132,8 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
     setTextAttachment('');
     setIsAiLabeled(false);
     setIsPaidPartnership(false);
+    setScheduledDate(null);
+    setScheduleOpen(false);
     setReplySettings({ whoCanReply: 'anyone', reviewReplies: false });
     setView('compose');
   };
@@ -312,15 +316,26 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52 bg-popover border-border/50 shadow-lg">
-                <DropdownMenuItem onClick={() => { setIsAiLabeled(!isAiLabeled); }} className="text-sm cursor-pointer">
-                  {isAiLabeled ? '✓ ' : ''}Add AI label
+                <DropdownMenuItem
+                  onSelect={(e) => { e.preventDefault(); setIsAiLabeled(!isAiLabeled); }}
+                  className="text-sm cursor-pointer flex items-center justify-between"
+                >
+                  Add AI label
+                  {isAiLabeled && <span className="text-primary font-bold">✓</span>}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setIsPaidPartnership(!isPaidPartnership); }} className="text-sm cursor-pointer">
-                  {isPaidPartnership ? '✓ ' : ''}Mark as paid partnership
+                <DropdownMenuItem
+                  onSelect={(e) => { e.preventDefault(); setIsPaidPartnership(!isPaidPartnership); }}
+                  className="text-sm cursor-pointer flex items-center justify-between"
+                >
+                  Mark as paid partnership
+                  {isPaidPartnership && <span className="text-primary font-bold">✓</span>}
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-sm cursor-pointer flex items-center justify-between" onClick={() => toast.info('Scheduling coming soon')}>
-                  Schedule...
-                  <Clock className="h-4 w-4 text-muted-foreground" />
+                <DropdownMenuItem
+                  className="text-sm cursor-pointer flex items-center justify-between"
+                  onSelect={(e) => { e.preventDefault(); setScheduleOpen(true); }}
+                >
+                  {scheduledDate ? `Scheduled: ${scheduledDate.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : 'Schedule...'}
+                  <Clock className={cn("h-4 w-4", scheduledDate ? "text-primary" : "text-muted-foreground")} />
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -328,24 +343,30 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
         </div>
 
         {/* Labels bar */}
-        {(isAiLabeled || isPaidPartnership || location) && (
+        {(isAiLabeled || isPaidPartnership || location || scheduledDate) && (
           <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3">
             {isAiLabeled && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-[11px] text-muted-foreground">
-                AI Generated
-                <button onClick={() => setIsAiLabeled(false)} className="hover:text-foreground"><X className="h-3 w-3" /></button>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/15 text-[11px] font-semibold text-blue-400 border border-blue-500/20">
+                🤖 AI Generated
+                <button onClick={() => setIsAiLabeled(false)} className="hover:text-blue-200 ml-0.5"><X className="h-3 w-3" /></button>
               </span>
             )}
             {isPaidPartnership && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-[11px] text-muted-foreground">
-                Paid Partnership
-                <button onClick={() => setIsPaidPartnership(false)} className="hover:text-foreground"><X className="h-3 w-3" /></button>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/15 text-[11px] font-semibold text-amber-400 border border-amber-500/20">
+                💰 Paid Partnership
+                <button onClick={() => setIsPaidPartnership(false)} className="hover:text-amber-200 ml-0.5"><X className="h-3 w-3" /></button>
               </span>
             )}
             {location && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-500/15 text-[11px] font-semibold text-green-400 border border-green-500/20">
                 📍 {location}
-                <button onClick={() => setLocation(null)} className="hover:text-foreground"><X className="h-3 w-3" /></button>
+                <button onClick={() => setLocation(null)} className="hover:text-green-200 ml-0.5"><X className="h-3 w-3" /></button>
+              </span>
+            )}
+            {scheduledDate && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-500/15 text-[11px] font-semibold text-purple-400 border border-purple-500/20">
+                🕐 {scheduledDate.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                <button onClick={() => setScheduledDate(null)} className="hover:text-purple-200 ml-0.5"><X className="h-3 w-3" /></button>
               </span>
             )}
           </div>
@@ -504,13 +525,53 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
             onClick={() => createMutation.mutate()}
             className="rounded-xl px-5 h-9 text-sm font-semibold"
           >
-            {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Post'}
+            {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : scheduledDate ? 'Schedule' : 'Post'}
           </Button>
         </div>
       </DialogContent>
 
       {/* Location picker dialog */}
       <LocationPicker open={locationOpen} onOpenChange={setLocationOpen} onSelect={setLocation} />
+
+      {/* Schedule dialog */}
+      <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
+        <DialogContent className="bg-card border-border/50 sm:max-w-[340px] rounded-2xl p-0 gap-0 [&>button]:hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setScheduleOpen(false)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h2 className="text-sm font-bold text-foreground">Schedule post</h2>
+            <div className="w-8" />
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Date & time</Label>
+              <Input
+                type="datetime-local"
+                min={new Date().toISOString().slice(0, 16)}
+                value={scheduledDate ? new Date(scheduledDate.getTime() - scheduledDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+                onChange={(e) => setScheduledDate(e.target.value ? new Date(e.target.value) : null)}
+                className="h-10 bg-background/50 border-border/50 rounded-lg text-sm"
+              />
+            </div>
+            <div className="flex gap-2">
+              {scheduledDate && (
+                <Button variant="outline" size="sm" className="flex-1 rounded-lg" onClick={() => { setScheduledDate(null); setScheduleOpen(false); }}>
+                  Remove
+                </Button>
+              )}
+              <Button
+                size="sm"
+                className="flex-1 rounded-lg"
+                disabled={!scheduledDate}
+                onClick={() => setScheduleOpen(false)}
+              >
+                Set schedule
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
