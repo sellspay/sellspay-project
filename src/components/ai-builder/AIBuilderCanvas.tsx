@@ -1431,74 +1431,18 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     });
   };
 
-  // === DOORWAY: If no active project, show the magical prompt-first screen ===
-  // - Fresh users: full-screen doorway (no sidebar)
-  // - Existing users clicking "New project": doorway inside the editor frame
+  // === DOORWAY: If no active project, ALWAYS show the magical prompt-first screen ===
+  // - Fresh users (no projects): full-screen doorway
+  // - Returning users (has projects): full-screen doorway with recent projects carousel
   if (!activeProjectId) {
-    if (projects.length === 0) {
-      return (
-        <LovableHero
-          onStart={heroOnStart}
-          userName={username ?? 'Creator'}
-          variant="fullscreen"
-        />
-      );
-    }
-
     return (
-      <div className="h-screen w-full bg-background flex overflow-hidden p-2">
-        <ProjectSidebar
-          projects={projects}
-          activeProjectId={activeProjectId}
-          loading={projectsLoading}
-          onSelectProject={selectProject}
-          onCreateProject={handleCreateProject}
-          onDeleteProject={handleDeleteProject}
-          onRenameProject={handleRenameProject}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        />
-
-        <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border overflow-hidden bg-background">
-          <VibecoderHeader
-            projectName={undefined}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            deviceMode={deviceMode}
-            setDeviceMode={setDeviceMode}
-            onRefresh={handleRefresh}
-            onPublish={handlePublish}
-            isPublished={isPublished}
-            isPublishing={publishing}
-            isEmpty={true}
-            username={username}
-            currentPath={previewPath}
-            onNavigate={setPreviewPath}
-            pages={detectedPages}
-            onRegenerate={(tweak) => {
-              handleSendMessage(`Refine the current design: ${tweak}`);
-            }}
-            isGenerating={isStreaming}
-            avatarUrl={userAvatarUrl}
-            userCredits={userCredits}
-            subscriptionTier={subscriptionTier}
-            onSignOut={handleSignOut}
-          />
-
-          <div className="flex-1 min-h-0">
-            <LovableHero
-              onStart={heroOnStart}
-              userName={username ?? 'Creator'}
-              variant="embedded"
-              onBack={() => {
-                if (projects[0]) selectProject(projects[0].id);
-              }}
-              recentProjects={projects}
-              onSelectProject={selectProject}
-            />
-          </div>
-        </div>
-      </div>
+      <LovableHero
+        onStart={heroOnStart}
+        userName={username ?? 'Creator'}
+        variant="fullscreen"
+        recentProjects={projects}
+        onSelectProject={selectProject}
+      />
     );
   }
 
