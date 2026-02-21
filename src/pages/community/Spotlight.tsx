@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Star, Users, Package, Quote, ChevronRight, Sparkles, Crown, ArrowRight, Trophy } from 'lucide-react';
+import { Star, Users, Package, Quote, ChevronRight, Crown, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { NominateCreatorDialog } from '@/components/community/NominateCreatorDialog';
-import { Reveal } from '@/components/home/Reveal';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 
 interface SpotlightCreator {
   id: string;
@@ -34,23 +34,13 @@ export default function Spotlight() {
   const [expandedStory, setExpandedStory] = useState<string | null>(null);
   const [nominateDialogOpen, setNominateDialogOpen] = useState(false);
 
-  // Fetch ONLY manually selected spotlights from creator_spotlights table
   const { data: spotlights = [], isLoading } = useQuery({
     queryKey: ['creator-spotlights'],
     queryFn: async () => {
-      // Use SECURITY DEFINER function to bypass RLS and get spotlight data
       const { data: spotlightsData, error } = await supabase.rpc('get_active_spotlights' as any);
-      
-      if (error) {
-        console.error('Spotlight fetch error:', error);
-        return [];
-      }
-      
-      if (!spotlightsData || spotlightsData.length === 0) {
-        return [];
-      }
+      if (error) { console.error('Spotlight fetch error:', error); return []; }
+      if (!spotlightsData || spotlightsData.length === 0) return [];
 
-      // Build owner lookup from public_profiles (which now includes is_owner)
       const userIds = spotlightsData.map((s: any) => s.profile_user_id).filter(Boolean);
       const { data: profilesWithOwner } = await supabase
         .from('public_profiles')
@@ -61,7 +51,6 @@ export default function Spotlight() {
         (profilesWithOwner || []).filter((p: any) => p.is_owner).map((p: any) => p.user_id)
       );
 
-      // Get products and followers counts
       const spotlightsWithData = await Promise.all(spotlightsData.map(async (s: any) => {
         const [productsResult, followersResult] = await Promise.all([
           supabase.from('products').select('id', { count: 'exact', head: true }).eq('creator_id', s.profile_id),
@@ -98,378 +87,222 @@ export default function Spotlight() {
   const pastSpotlights = spotlights.slice(1);
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Hero Section - Immersive Premium Design */}
-      <section className="relative min-h-[60vh] sm:min-h-[80vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Layered Background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 via-background to-background" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(45_100%_50%/0.2),transparent)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,hsl(var(--primary)/0.15),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,hsl(45_100%_50%/0.1),transparent_50%)]" />
-
-        {/* Floating Orbs - Hidden on mobile */}
-        <div className="hidden sm:block absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/20 rounded-full blur-[128px] animate-pulse" />
-        <div className="hidden sm:block absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="hidden sm:block absolute top-1/2 right-1/3 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '2s' }} />
-
-        {/* Grid Pattern Overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(hsl(45_100%_50%/0.02)_1px,transparent_1px),linear-gradient(90deg,hsl(45_100%_50%/0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-
-        <div className="relative z-10 mx-auto max-w-5xl text-center px-2">
-          <Reveal>
-            {/* Floating Badge */}
-            <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-amber-500/10 border border-amber-500/20 backdrop-blur-sm mb-6 sm:mb-8 hover:bg-amber-500/15 hover:border-amber-500/30 transition-all duration-300 cursor-default">
-              <div className="relative">
-                <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500" />
-                <div className="absolute inset-0 animate-ping">
-                  <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 opacity-50" />
-                </div>
-              </div>
-              <span className="text-xs sm:text-sm font-medium bg-gradient-to-r from-amber-500 to-amber-300 bg-clip-text text-transparent">
-                Celebrating Excellence
-              </span>
+    <div className="min-h-screen bg-background">
+      {/* Compact Header */}
+      <section className="border-b border-border/40 bg-background">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 pt-12 sm:pt-16 pb-8 sm:pb-10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 rounded-xl bg-amber-500/10">
+              <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
             </div>
-          </Reveal>
-
-          <Reveal delay={100}>
-            {/* Icon - Floating Style */}
-            <div className="mb-6 sm:mb-10 flex justify-center">
-              <div className="relative group">
-                {/* Glow layers */}
-                <div className="absolute inset-0 blur-[40px] sm:blur-[60px] bg-amber-500/50 rounded-full scale-125 sm:scale-150 group-hover:scale-[1.75] transition-transform duration-700" />
-                <div className="absolute inset-0 blur-2xl sm:blur-3xl bg-gradient-to-br from-amber-500 to-amber-600 opacity-40 rounded-full scale-110 sm:scale-125 group-hover:opacity-60 transition-all duration-500" />
-
-                {/* Main Icon Container */}
-                <div className="relative bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl shadow-amber-500/30 group-hover:shadow-amber-500/50 transition-all duration-500 group-hover:scale-105">
-                  <Star className="h-10 w-10 sm:h-16 sm:w-16 text-white fill-white drop-shadow-lg" />
-                </div>
-              </div>
-            </div>
-          </Reveal>
-
-          <Reveal delay={200}>
-            <h1 className="text-3xl sm:text-5xl lg:text-7xl font-bold text-foreground mb-4 sm:mb-6 tracking-tight">
-              Creator{' '}
-              <span className="relative inline-block">
-                <span className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 bg-clip-text text-transparent bg-[length:200%_auto] animate-[gradient_3s_linear_infinite]">
-                  Spotlight
-                </span>
-                <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-amber-400/20 blur-lg opacity-50" />
-              </span>
-            </h1>
-          </Reveal>
-
-          <Reveal delay={300}>
-            <p className="text-base sm:text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto mb-8 sm:mb-12 leading-relaxed px-2">
-              Discover the inspiring journeys of creators who've built successful businesses
-              <span className="text-foreground font-medium"> and made an impact in our community.</span>
-            </p>
-          </Reveal>
-
-          <Reveal delay={400}>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-              <Button
-                size="lg"
-                className="group relative bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-6 sm:px-10 py-5 sm:py-7 text-base sm:text-lg font-semibold rounded-xl sm:rounded-2xl shadow-2xl shadow-amber-500/30 hover:shadow-amber-500/50 transition-all duration-500 hover:scale-105 overflow-hidden w-full sm:w-auto"
-                onClick={() => setNominateDialogOpen(true)}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                <Crown className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5" />
-                Nominate a Creator
-                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </div>
-          </Reveal>
-        </div>
-
-        {/* Scroll Indicator - Hidden on mobile */}
-        <div className="hidden sm:block absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex items-start justify-center p-2">
-            <div className="w-1 h-2 bg-muted-foreground/50 rounded-full animate-pulse" />
+            <span className="text-sm font-medium text-amber-500 tracking-wide uppercase">Celebrating Excellence</span>
           </div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight mb-2">
+            Creator Spotlight
+          </h1>
+          <p className="text-muted-foreground text-base sm:text-lg mb-6">
+            Discover the inspiring journeys of creators who've made an impact.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="rounded-xl border-amber-500/30 text-amber-500 hover:bg-amber-500/10"
+            onClick={() => setNominateDialogOpen(true)}
+          >
+            <Crown className="h-4 w-4 mr-2" />
+            Nominate a Creator
+          </Button>
         </div>
       </section>
 
-      {/* Featured Creator - Premium Design */}
+      {/* Featured Creator */}
       {isLoading ? (
-        <section className="relative py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-          <div className="relative mx-auto max-w-5xl text-center">
-            <p className="text-muted-foreground">Loading featured creator...</p>
+        <section className="py-16 px-4 sm:px-6">
+          <div className="mx-auto max-w-4xl flex justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         </section>
       ) : featuredCreator ? (
-        <section className="relative py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-          {/* Section Divider Gradient */}
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
+        <section className="py-8 sm:py-12 px-4 sm:px-6">
+          <div className="mx-auto max-w-4xl">
+            <div className="text-sm font-medium text-amber-500 mb-4 flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              Featured Creator
+            </div>
 
-          {/* Background Effects - Hidden on mobile */}
-          <div className="absolute inset-0 bg-gradient-to-b from-background via-amber-500/5 to-background" />
-          <div className="hidden sm:block absolute left-0 top-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-[128px]" />
-
-          <div className="relative mx-auto max-w-5xl">
-            <Reveal>
-              <div className="text-center mb-8 sm:mb-12">
-                <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-amber-500/10 border border-amber-500/20 mb-4 sm:mb-6">
-                  <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500 fill-amber-500" />
-                  <span className="text-xs sm:text-sm font-medium text-amber-500">Featured Creator</span>
-                </div>
-              </div>
-            </Reveal>
-
-            <div className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-primary/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                <div className="relative bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl border border-border/50 rounded-3xl overflow-hidden hover:border-amber-500/30 transition-all duration-500">
-                  {/* Gradient line at top */}
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500" />
-
-                  <div className="grid md:grid-cols-3 gap-0">
-                    {/* Creator Info */}
-                    <div className="p-6 sm:p-10 md:p-12 md:col-span-2">
-                      <div className="flex items-center gap-3 sm:gap-5 mb-6 sm:mb-8">
-                        <div className="relative">
-                          <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-amber-500/50 to-amber-400/50 blur" />
-                          <Avatar className="relative h-16 w-16 sm:h-24 sm:w-24 border-4 border-amber-500/30">
-                            <AvatarImage src={featuredCreator.profile?.avatar_url || ''} />
-                            <AvatarFallback className="text-xl sm:text-3xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 text-amber-500">
-                              {featuredCreator.profile?.full_name?.charAt(0) || '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 sm:gap-3 mb-1">
-                            <h2 className="text-xl sm:text-3xl font-bold text-foreground">
-                              {featuredCreator.profile?.full_name}
-                            </h2>
-                            {featuredCreator.profile?.verified && (
-                              <VerifiedBadge size="md" isOwner={featuredCreator.profile?.isAdmin} />
-                            )}
-                          </div>
-                          <p className="text-muted-foreground text-sm sm:text-lg">@{featuredCreator.profile?.username}</p>
-                        </div>
+            <div className="border border-border/40 rounded-2xl overflow-hidden bg-card/50">
+              <div className="h-1 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500" />
+              
+              <div className="grid md:grid-cols-3 gap-0">
+                <div className="p-6 sm:p-8 md:col-span-2">
+                  <div className="flex items-center gap-4 mb-6">
+                    <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 border-amber-500/30">
+                      <AvatarImage src={featuredCreator.profile?.avatar_url || ''} />
+                      <AvatarFallback className="text-xl bg-amber-500/10 text-amber-500">
+                        {featuredCreator.profile?.full_name?.charAt(0) || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+                          {featuredCreator.profile?.full_name}
+                        </h2>
+                        {featuredCreator.profile?.verified && (
+                          <VerifiedBadge size="md" isOwner={featuredCreator.profile?.isAdmin} />
+                        )}
                       </div>
-
-                      <h3 className="text-lg sm:text-2xl font-bold text-foreground mb-3 sm:mb-4">
-                        {featuredCreator.headline}
-                      </h3>
-
-                      <p className="text-muted-foreground leading-relaxed text-sm sm:text-lg mb-6 sm:mb-8">
-                        {featuredCreator.story}
-                      </p>
-
-                      {featuredCreator.achievement && (
-                        <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-500/10 border border-amber-500/20 mb-6 sm:mb-8">
-                          <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
-                          <span className="font-semibold text-amber-500 text-sm sm:text-base">{featuredCreator.achievement}</span>
-                        </div>
-                      )}
-
-                      <div className="flex flex-wrap gap-4 sm:gap-8 mb-6 sm:mb-8">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
-                            <Package className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
-                          </div>
-                          <div>
-                            <span className="text-lg sm:text-2xl font-bold text-foreground">{featuredCreator.products_count}</span>
-                            <p className="text-xs sm:text-sm text-muted-foreground">Products</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div className="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
-                            <Users className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
-                          </div>
-                          <div>
-                            <span className="text-lg sm:text-2xl font-bold text-foreground">{featuredCreator.followers_count.toLocaleString()}</span>
-                            <p className="text-xs sm:text-sm text-muted-foreground">Followers</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {featuredCreator.profile?.username && (
-                        <Button
-                          size="lg"
-                          className="rounded-lg sm:rounded-xl bg-gradient-to-r from-primary to-primary/90 shadow-lg shadow-primary/25 w-full sm:w-auto"
-                          asChild
-                        >
-                          <Link to={`/@${featuredCreator.profile.username}`}>
-                            Visit Profile
-                            <ChevronRight className="ml-2 h-5 w-5" />
-                          </Link>
-                        </Button>
-                      )}
+                      <p className="text-muted-foreground">@{featuredCreator.profile?.username}</p>
                     </div>
-
-                    {/* Quote Section */}
-                    {featuredCreator.quote && (
-                      <div className="p-6 sm:p-10 md:p-12 bg-gradient-to-br from-amber-500/10 to-amber-500/5 flex flex-col justify-center border-t md:border-t-0 md:border-l border-amber-500/20">
-                        <Quote className="h-8 w-8 sm:h-12 sm:w-12 text-amber-500/30 mb-4 sm:mb-6" />
-                        <blockquote className="text-base sm:text-xl text-foreground italic leading-relaxed">
-                          "{featuredCreator.quote}"
-                        </blockquote>
-                      </div>
-                    )}
                   </div>
+
+                  <h3 className="text-lg font-semibold text-foreground mb-3">
+                    {featuredCreator.headline}
+                  </h3>
+                  <p className="text-muted-foreground leading-relaxed mb-6">
+                    {featuredCreator.story}
+                  </p>
+
+                  {featuredCreator.achievement && (
+                    <Badge variant="secondary" className="bg-amber-500/10 text-amber-500 border-0 mb-6">
+                      <Trophy className="h-3.5 w-3.5 mr-1.5" />
+                      {featuredCreator.achievement}
+                    </Badge>
+                  )}
+
+                  <div className="flex gap-6 mb-6 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold text-foreground">{featuredCreator.products_count}</span>
+                      <span className="text-muted-foreground">Products</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold text-foreground">{featuredCreator.followers_count.toLocaleString()}</span>
+                      <span className="text-muted-foreground">Followers</span>
+                    </div>
+                  </div>
+
+                  {featuredCreator.profile?.username && (
+                    <Button size="sm" className="rounded-xl" asChild>
+                      <Link to={`/@${featuredCreator.profile.username}`}>
+                        Visit Profile
+                        <ChevronRight className="ml-1 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  )}
                 </div>
+
+                {featuredCreator.quote && (
+                  <div className="p-6 sm:p-8 bg-muted/20 flex flex-col justify-center border-t md:border-t-0 md:border-l border-border/40">
+                    <Quote className="h-8 w-8 text-muted-foreground/30 mb-4" />
+                    <blockquote className="text-foreground italic leading-relaxed">
+                      "{featuredCreator.quote}"
+                    </blockquote>
+                  </div>
+                )}
               </div>
             </div>
+          </div>
         </section>
       ) : null}
 
-      {/* Past Spotlights Grid - Premium Design */}
+      {/* Past Spotlights */}
       {pastSpotlights.length > 0 && (
-        <section className="relative py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-          {/* Background */}
-          <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/30 to-background" />
-          <div className="hidden sm:block absolute right-0 top-1/3 w-80 h-80 bg-primary/10 rounded-full blur-[100px]" />
+        <section className="py-8 sm:py-12 px-4 sm:px-6">
+          <div className="mx-auto max-w-4xl">
+            <h2 className="text-xl font-semibold text-foreground mb-6">Past Spotlights</h2>
 
-          <div className="relative mx-auto max-w-6xl">
-            <Reveal>
-              <div className="text-center mb-8 sm:mb-12">
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4">Past Spotlights</h2>
-                <p className="text-muted-foreground text-sm sm:text-lg">Creators who've made their mark</p>
-              </div>
-            </Reveal>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {pastSpotlights.map((spotlight) => (
+                <div
+                  key={spotlight.id}
+                  className="group border border-border/40 rounded-2xl p-6 bg-card/30 hover:border-border/60 transition-all cursor-pointer"
+                  onClick={() => setExpandedStory(expandedStory === spotlight.id ? null : spotlight.id)}
+                >
+                  <div className="flex items-start gap-4">
+                    <Avatar className="h-12 w-12 border border-border/50">
+                      <AvatarImage src={spotlight.profile?.avatar_url || ''} />
+                      <AvatarFallback className="bg-muted text-foreground text-sm">
+                        {spotlight.profile?.full_name?.charAt(0) || '?'}
+                      </AvatarFallback>
+                    </Avatar>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-              {pastSpotlights.map((spotlight, index) => (
-                <Reveal key={spotlight.id} delay={index * 100}>
-                  <div
-                    className="group relative cursor-pointer"
-                    onClick={() => setExpandedStory(expandedStory === spotlight.id ? null : spotlight.id)}
-                  >
-                    {/* Glow effect */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                    <div className="relative bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl border border-border/50 rounded-3xl p-8 hover:border-primary/30 transition-all duration-500 group-hover:-translate-y-1">
-                      <div className="flex items-start gap-5">
-                        <div className="relative shrink-0">
-                          <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary/50 to-accent/50 opacity-0 group-hover:opacity-100 blur transition-opacity duration-500" />
-                          <Avatar className="relative h-16 w-16 border-2 border-border/50 group-hover:border-primary/50 transition-colors">
-                            <AvatarImage src={spotlight.profile?.avatar_url || ''} />
-                            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-foreground font-semibold">
-                              {spotlight.profile?.full_name?.charAt(0) || '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold text-foreground text-lg truncate">
-                              {spotlight.profile?.full_name}
-                            </h3>
-                            {spotlight.profile?.verified && (
-                              <VerifiedBadge size="sm" isOwner={spotlight.profile?.isAdmin} />
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">@{spotlight.profile?.username}</p>
-                          <p className="font-semibold text-foreground mb-3">{spotlight.headline}</p>
-
-                          {expandedStory === spotlight.id ? (
-                            <>
-                              <p className="text-muted-foreground mb-4 leading-relaxed">{spotlight.story}</p>
-                              {spotlight.quote && (
-                                <blockquote className="text-sm italic text-muted-foreground border-l-2 border-primary/50 pl-4 mb-4">
-                                  "{spotlight.quote}"
-                                </blockquote>
-                              )}
-                            </>
-                          ) : (
-                            <p className="text-muted-foreground line-clamp-2">{spotlight.story}</p>
-                          )}
-
-                          {spotlight.achievement && (
-                            <Badge variant="secondary" className="mt-4 bg-gradient-to-r from-amber-500/20 to-amber-500/10 text-amber-500 border-0">
-                              <Star className="h-3 w-3 mr-1 fill-amber-500" />
-                              {spotlight.achievement}
-                            </Badge>
-                          )}
-                        </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h3 className="font-semibold text-foreground truncate">
+                          {spotlight.profile?.full_name}
+                        </h3>
+                        {spotlight.profile?.verified && (
+                          <VerifiedBadge size="sm" isOwner={spotlight.profile?.isAdmin} />
+                        )}
                       </div>
+                      <p className="text-sm text-muted-foreground mb-2">@{spotlight.profile?.username}</p>
+                      <p className="text-sm font-medium text-foreground mb-2">{spotlight.headline}</p>
 
-                      {spotlight.profile?.username && (
-                        <div className="mt-6 pt-6 border-t border-border/30 flex justify-between items-center">
-                          <div className="flex gap-6 text-sm text-muted-foreground">
-                            <span className="font-medium">{spotlight.products_count} products</span>
-                            <span className="font-medium">{spotlight.followers_count.toLocaleString()} followers</span>
-                          </div>
-                          <Button variant="ghost" size="sm" className="rounded-xl hover:bg-primary/10" asChild onClick={(e) => e.stopPropagation()}>
-                            <Link to={`/@${spotlight.profile.username}`}>
-                              View Profile
-                              <ChevronRight className="ml-1 h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </div>
+                      {expandedStory === spotlight.id ? (
+                        <>
+                          <p className="text-sm text-muted-foreground mb-3 leading-relaxed">{spotlight.story}</p>
+                          {spotlight.quote && (
+                            <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/50 pl-3 mb-3">
+                              "{spotlight.quote}"
+                            </blockquote>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground line-clamp-2">{spotlight.story}</p>
+                      )}
+
+                      {spotlight.achievement && (
+                        <Badge variant="secondary" className="mt-3 text-xs bg-amber-500/10 text-amber-500 border-0">
+                          <Star className="h-3 w-3 mr-1 fill-amber-500" />
+                          {spotlight.achievement}
+                        </Badge>
                       )}
                     </div>
                   </div>
-                </Reveal>
+
+                  {spotlight.profile?.username && (
+                    <div className="mt-4 pt-4 border-t border-border/30 flex justify-between items-center">
+                      <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span>{spotlight.products_count} products</span>
+                        <span>{spotlight.followers_count.toLocaleString()} followers</span>
+                      </div>
+                      <Button variant="ghost" size="sm" className="text-xs h-8" asChild onClick={(e) => e.stopPropagation()}>
+                        <Link to={`/@${spotlight.profile.username}`}>
+                          View Profile
+                          <ChevronRight className="ml-1 h-3 w-3" />
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </div>
         </section>
       )}
 
-      {/* CTA Section - Premium Design */}
-      <section className="relative py-24 px-4 sm:px-6 lg:px-8">
-        {/* Section Divider */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
-
-        {/* Background Effects */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[128px]" />
-
-        <div className="relative mx-auto max-w-3xl text-center">
-          <Reveal>
-            <div className="relative group inline-block mb-8">
-              <div className="absolute inset-0 blur-[40px] bg-primary/40 rounded-full group-hover:scale-125 transition-transform duration-500" />
-              <div className="relative bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-5 shadow-2xl shadow-primary/30">
-                <Sparkles className="h-10 w-10 text-primary-foreground" />
-              </div>
-            </div>
-          </Reveal>
-
-          <Reveal delay={100}>
-            <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-6">
-              Want to Be Featured?
-            </h2>
-          </Reveal>
-
-          <Reveal delay={200}>
-            <p className="text-xl text-muted-foreground mb-10 leading-relaxed">
-              Start your creator journey today. Build your store, grow your audience,
-              and you could be our next spotlight creator.
-            </p>
-          </Reveal>
-
-          <Reveal delay={300}>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                size="lg"
-                className="group relative bg-gradient-to-r from-primary to-primary/90 px-8 py-7 text-lg font-semibold rounded-2xl shadow-2xl shadow-primary/30 hover:shadow-primary/50 transition-all duration-500 hover:scale-105 overflow-hidden"
-                asChild
-              >
-                <Link to="/settings">
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                  Become a Creator
-                  <ChevronRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="px-8 py-7 text-lg rounded-2xl border-border/50 hover:border-primary/50 hover:bg-primary/5"
-                asChild
-              >
-                <Link to="/community/discord">
-                  Join the Community
-                </Link>
-              </Button>
-            </div>
-          </Reveal>
+      {/* Simple CTA */}
+      <section className="py-12 sm:py-16 px-4 sm:px-6 border-t border-border/40">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-2xl font-bold text-foreground mb-3">Want to Be Featured?</h2>
+          <p className="text-muted-foreground mb-6">
+            Start your creator journey today and you could be our next spotlight creator.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button size="sm" className="rounded-xl" asChild>
+              <Link to="/settings">
+                Become a Creator
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button size="sm" variant="outline" className="rounded-xl" asChild>
+              <Link to="/community/discord">Join the Community</Link>
+            </Button>
+          </div>
         </div>
       </section>
 
-      {/* Nominate Creator Dialog */}
       <NominateCreatorDialog open={nominateDialogOpen} onOpenChange={setNominateDialogOpen} />
     </div>
   );
