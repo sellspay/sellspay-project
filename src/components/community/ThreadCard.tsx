@@ -231,31 +231,19 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
   return (
     <div
       className={cn(
-        "group relative rounded-3xl border border-border/40 bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl p-6 transition-all duration-500 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1 overflow-hidden",
-        thread.is_pinned && "border-primary/40 bg-gradient-to-br from-primary/10 via-card/70 to-card/50"
+        "group relative px-1 py-3 transition-all duration-300 overflow-hidden",
+        thread.is_pinned && "bg-primary/[0.03]"
       )}
     >
-      {/* Premium Glow Effect on Hover */}
-      <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-      
-      {/* Subtle gradient line at top */}
-      <div className={cn(
-        "absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500",
-        categoryStyle.gradient && `via-${categoryStyle.gradient.split(' ')[0].replace('from-', '')}`
-      )} style={{ backgroundImage: `linear-gradient(to right, transparent, hsl(var(--primary) / 0.5), transparent)` }} />
-
-      <div className="relative flex gap-4">
+      <div className="relative flex gap-3.5">
         {/* Avatar with ring */}
         <Link to={thread.author?.username ? `/@${thread.author.username}` : '#'} className="shrink-0">
-          <div className="relative">
-            <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary/50 to-accent/50 opacity-0 group-hover:opacity-100 blur transition-opacity duration-500" />
-            <Avatar className="relative h-12 w-12 ring-2 ring-border/50 hover:ring-primary/50 transition-all">
-              <AvatarImage src={thread.author?.avatar_url || ''} />
-              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-foreground font-semibold">
-                {thread.author?.full_name?.charAt(0) || thread.author?.username?.charAt(0) || '?'}
-              </AvatarFallback>
-            </Avatar>
-          </div>
+          <Avatar className="h-10 w-10 ring-1 ring-border/40 hover:ring-primary/40 transition-all">
+            <AvatarImage src={thread.author?.avatar_url || ''} />
+            <AvatarFallback className="bg-muted text-foreground font-semibold text-sm">
+              {thread.author?.full_name?.charAt(0) || thread.author?.username?.charAt(0) || '?'}
+            </AvatarFallback>
+          </Avatar>
         </Link>
 
         {/* Content */}

@@ -1,13 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, MessageSquare, SearchX } from 'lucide-react';
+import { Loader2, MessageSquare, SearchX, Plus, Search, ChevronDown } from 'lucide-react';
 import { ThreadCard } from '@/components/community/ThreadCard';
-import { ThreadComposer } from '@/components/community/ThreadComposer';
-import { CategoryFilter } from '@/components/community/CategoryFilter';
+import { NewThreadDialog } from '@/components/community/NewThreadDialog';
+import { ThreadSearchPanel } from '@/components/community/ThreadSearchPanel';
 import { ThreadReplyDialog } from '@/components/community/ThreadReplyDialog';
-import { ThreadSearch } from '@/components/community/ThreadSearch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Pagination,
   PaginationContent,
@@ -16,8 +22,18 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import { cn } from '@/lib/utils';
 
 const THREADS_PER_PAGE = 20;
+
+const FILTER_OPTIONS = [
+  { id: 'all', label: 'For you' },
+  { id: 'help', label: 'Help & Advice' },
+  { id: 'showcase', label: 'Showcase' },
+  { id: 'discussion', label: 'Discussion' },
+  { id: 'promotion', label: 'Promotion' },
+  { id: 'feedback', label: 'Feedback' },
+];
 
 interface ThreadAuthor {
   id: string;
@@ -47,6 +63,8 @@ export default function Community() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
+  const [newThreadOpen, setNewThreadOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -177,7 +195,10 @@ export default function Community() {
   const handleCategoryChange = useCallback((category: string) => {
     setActiveCategory(category);
     setSearchQuery('');
+    setSearchOpen(false);
   }, []);
+
+  const activeFilterLabel = FILTER_OPTIONS.find(f => f.id === activeCategory)?.label || 'For you';
 
   const getPageNumbers = () => {
     const pages: number[] = [];
@@ -196,40 +217,58 @@ export default function Community() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.03] to-transparent pointer-events-none" />
-        <div className="relative mx-auto max-w-[680px] px-6 pt-20 sm:pt-28 pb-14 sm:pb-20 text-center">
-          <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-muted-foreground mb-5">
-            Community
-          </p>
-          <h1 className="text-4xl sm:text-5xl font-semibold text-foreground tracking-tight leading-[1.1]">
-            Threads
-          </h1>
-          <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-md mx-auto leading-relaxed">
-            Ask questions, share your work, and connect with creators.
-          </p>
+      {/* Minimal top bar with filter dropdown + search icon */}
+      <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/30">
+        <div className="mx-auto max-w-[680px] px-6 flex items-center justify-between h-12">
+          {/* Filter dropdown — centered */}
+          <div className="flex-1" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-primary transition-colors">
+                {activeFilterLabel}
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-44 bg-card/95 backdrop-blur-xl border-border/50">
+              {FILTER_OPTIONS.map(opt => (
+                <DropdownMenuItem
+                  key={opt.id}
+                  onClick={() => handleCategoryChange(opt.id)}
+                  className={cn(
+                    "text-sm cursor-pointer",
+                    activeCategory === opt.id && "text-primary font-semibold"
+                  )}
+                >
+                  {opt.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <div className="flex-1 flex justify-end">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              onClick={() => setSearchOpen(!searchOpen)}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <div className="h-px bg-gradient-to-r from-transparent via-border/60 to-transparent" />
-      </section>
+      </div>
 
       {/* Feed */}
-      <section className="py-8 sm:py-12 px-6">
-        <div className="mx-auto max-w-[680px] space-y-6">
-          <ThreadComposer />
-
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex-1">
-              <ThreadSearch onSearchChange={handleSearchChange} />
+      <section className="py-4 sm:py-6 px-6">
+        <div className="mx-auto max-w-[680px] space-y-1">
+          {/* Search panel (collapsible) */}
+          {searchOpen && (
+            <div className="pb-4">
+              <ThreadSearchPanel open={searchOpen} onOpenChange={setSearchOpen} onSearchChange={handleSearchChange} />
             </div>
-          </div>
-
-          <div className="flex justify-center">
-            <CategoryFilter activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
-          </div>
+          )}
 
           {searchQuery && (
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-sm text-muted-foreground pb-3">
               {totalCount > 0 ? (
                 <>Found <span className="font-medium text-foreground">{totalCount}</span> thread{totalCount !== 1 ? 's' : ''} matching "<span className="font-medium text-foreground">{searchQuery}</span>"</>
               ) : (
@@ -255,9 +294,11 @@ export default function Community() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="divide-y divide-border/30">
               {threads.map((thread) => (
-                <ThreadCard key={thread.id} thread={thread} onReplyClick={handleReplyClick} />
+                <div key={thread.id} className="py-1">
+                  <ThreadCard thread={thread} onReplyClick={handleReplyClick} />
+                </div>
               ))}
             </div>
           )}
@@ -294,6 +335,17 @@ export default function Community() {
           )}
         </div>
       </section>
+
+      {/* Floating + button (bottom-right) */}
+      <button
+        onClick={() => setNewThreadOpen(true)}
+        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-105 transition-all duration-200 flex items-center justify-center"
+      >
+        <Plus className="h-7 w-7" />
+      </button>
+
+      {/* New Thread Dialog */}
+      <NewThreadDialog open={newThreadOpen} onOpenChange={setNewThreadOpen} />
 
       <ThreadReplyDialog thread={selectedThread} open={replyDialogOpen} onOpenChange={setReplyDialogOpen} />
     </div>
