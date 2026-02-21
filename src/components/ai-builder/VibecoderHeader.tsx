@@ -260,7 +260,7 @@ export function VibecoderHeader({
           ) : (
             <Eye className="w-4 h-4" />
           )}
-          {isPublished ? 'Update' : 'Publish'}
+          Publish
         </Button>
 
         {/* Visual Divider */}

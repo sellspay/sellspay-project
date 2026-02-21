@@ -339,10 +339,25 @@ export function LovableHero({
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-                        <span className="text-2xl font-bold text-zinc-600">
-                          {project.name.charAt(0).toUpperCase()}
-                        </span>
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black relative overflow-hidden">
+                        {/* Simulated storefront hero preview */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-orange-500/10 via-transparent to-transparent" />
+                        <div className="absolute top-2 left-0 right-0 flex justify-center">
+                          <div className="h-1 w-16 rounded-full bg-orange-500/30" />
+                        </div>
+                        <div className="z-10 text-center px-3">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-400/70 mb-1">
+                            WELCOME TO
+                          </div>
+                          <div className="text-sm font-extrabold text-white/80 leading-tight">
+                            MY STORE
+                          </div>
+                        </div>
+                        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
+                          {['Projects', 'About', 'FAQ'].map(tab => (
+                            <span key={tab} className="text-[6px] uppercase tracking-wider text-zinc-500 font-medium">{tab}</span>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
