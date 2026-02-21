@@ -3,6 +3,7 @@ import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
 
 interface AIStorefrontRendererProps {
   profileId: string;
@@ -120,6 +121,7 @@ export function AIStorefrontRenderer({ profileId }: AIStorefrontRendererProps) {
         theme="dark"
         files={{
           '/App.tsx': finalCode,
+          ...VIBECODER_STDLIB,
         }}
         customSetup={{
           dependencies: {
