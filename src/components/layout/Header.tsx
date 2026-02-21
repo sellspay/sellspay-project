@@ -342,17 +342,19 @@ export default function Header() {
               Pricing
             </Link>
 
-            {/* Cart Button - Desktop only */}
-            <Button
-              variant="ghost"
-              size="icon"
-              asChild
-              className="hidden lg:inline-flex h-10 w-10 rounded-xl text-foreground/70 hover:text-foreground hover:bg-white/5"
-            >
-              <Link to="/cart">
-                <ShoppingCart className="h-5 w-5" />
-              </Link>
-            </Button>
+            {/* Cart Button - Desktop only, logged in only */}
+            {user && (
+              <Button
+                variant="ghost"
+                size="icon"
+                asChild
+                className="hidden lg:inline-flex h-10 w-10 rounded-xl text-foreground/70 hover:text-foreground hover:bg-white/5"
+              >
+                <Link to="/cart">
+                  <ShoppingCart className="h-5 w-5" />
+                </Link>
+              </Button>
+            )}
             {/* Editor Chat Icon */}
             {user && <EditorChatIcon />}
 
@@ -574,9 +576,11 @@ export default function Header() {
             <Link to="/products?search=true" className="lg:hidden p-2 text-foreground/70 hover:text-foreground transition-colors">
               <Search className="h-5 w-5" />
             </Link>
-            <Link to="/cart" className="lg:hidden p-2 text-foreground/70 hover:text-foreground transition-colors">
-              <ShoppingCart className="h-5 w-5" />
-            </Link>
+            {user && (
+              <Link to="/cart" className="lg:hidden p-2 text-foreground/70 hover:text-foreground transition-colors">
+                <ShoppingCart className="h-5 w-5" />
+              </Link>
+            )}
           </div>
         </div>
 
