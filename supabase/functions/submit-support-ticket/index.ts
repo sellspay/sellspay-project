@@ -62,12 +62,14 @@ serve(async (req) => {
       throw new Error("Failed to save ticket");
     }
 
-    // Send email notification to team
+    // Send email notifications
     if (resendKey) {
       const resend = new Resend(resendKey);
+
+      // 1. Notify team
       await resend.emails.send({
         from: "SellsPay Support <noreply@sellspay.com>",
-        to: ["support@sellspay.com"],
+        to: ["vizual90@gmail.com"],
         subject: `[Support Ticket] ${subject.trim()}`,
         html: `
           <h2>New Support Ticket</h2>
@@ -78,6 +80,27 @@ serve(async (req) => {
           <p>${message.replace(/\n/g, "<br />")}</p>
         `,
       });
+
+      // 2. Send confirmation to the user
+      if (userEmail) {
+        await resend.emails.send({
+          from: "SellsPay Support <noreply@sellspay.com>",
+          to: [userEmail],
+          subject: `We received your ticket: ${subject.trim()}`,
+          html: `
+            <h2>We've received your support request</h2>
+            <p>Hi there,</p>
+            <p>Thanks for reaching out. We've received your ticket and will get back to you within 24 hours (primarily on weekdays).</p>
+            <hr />
+            <p><strong>Subject:</strong> ${subject}</p>
+            <p><strong>Category:</strong> ${category || "Uncategorized"}</p>
+            <p><strong>Your message:</strong></p>
+            <p>${message.replace(/\n/g, "<br />")}</p>
+            <hr />
+            <p style="color: #888; font-size: 12px;">This is an automated confirmation from SellsPay Support. Please do not reply to this email.</p>
+          `,
+        });
+      }
     }
 
     return new Response(JSON.stringify({ success: true }), {
