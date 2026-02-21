@@ -113,29 +113,6 @@ export default function AuthMediaCarousel({ media = DEFAULT_MEDIA, overlayConten
           </div>
         )}
 
-        {/* Progress dots */}
-        {media.length > 1 && (
-          <div className="flex gap-2 mt-6">
-            {media.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  if (timerRef.current) clearTimeout(timerRef.current);
-                  setIsTransitioning(true);
-                  setTimeout(() => {
-                    setCurrentIndex(index);
-                    setIsTransitioning(false);
-                  }, 400);
-                }}
-                className={`h-1 rounded-full transition-all duration-500 ${
-                  index === currentIndex
-                    ? 'w-8 bg-primary'
-                    : 'w-4 bg-white/30 hover:bg-white/50'
-                }`}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
