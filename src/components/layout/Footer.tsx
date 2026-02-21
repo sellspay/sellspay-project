@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Twitter, Instagram, Youtube, ArrowRight } from 'lucide-react';
-import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
+import sellspayLogo from '@/assets/sellspay-logo-optimized.webp';
 
 const platformLinks = [
   { name: 'Marketplace', path: '/products' },
