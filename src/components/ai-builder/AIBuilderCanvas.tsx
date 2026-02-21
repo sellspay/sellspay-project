@@ -1491,9 +1491,10 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               userName={username ?? 'Creator'}
               variant="embedded"
               onBack={() => {
-                // Return to the most recently edited project (first in list)
                 if (projects[0]) selectProject(projects[0].id);
               }}
+              recentProjects={projects}
+              onSelectProject={selectProject}
             />
           </div>
         </div>
