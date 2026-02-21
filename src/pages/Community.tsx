@@ -229,7 +229,7 @@ export default function Community() {
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-44 bg-card/95 backdrop-blur-xl border-border/50">
+            <DropdownMenuContent align="center" className="w-48 bg-popover backdrop-blur-xl border-border/50 shadow-lg">
               {FILTER_OPTIONS.map(opt => (
                 <DropdownMenuItem
                   key={opt.id}

@@ -232,7 +232,7 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
     <div
       className={cn(
         "group relative px-1 py-3 transition-all duration-300 overflow-hidden",
-        thread.is_pinned && "bg-primary/[0.03]"
+        thread.is_pinned && "bg-muted/40"
       )}
     >
       <div className="relative flex gap-3.5">
@@ -281,7 +281,7 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 bg-card/95 backdrop-blur-xl border-border/50">
+              <DropdownMenuContent align="end" className="w-44 bg-popover backdrop-blur-xl border-border/50 shadow-lg">
                 {/* Pin/Unpin - Owner only */}
                 {isAppOwner && (
                   <DropdownMenuItem
