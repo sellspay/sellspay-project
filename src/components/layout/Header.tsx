@@ -318,16 +318,18 @@ export default function Header() {
 
           {/* Right Side */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Pricing Link - Desktop only */}
-            <Link 
-              to="/pricing" 
-              className={cn(
-                "hidden lg:inline-flex h-10 items-center justify-center",
-                isActive('/pricing') ? activeNavLinkStyles : navLinkStyles
-              )}
-            >
-              Pricing
-            </Link>
+            {/* Pricing Link - Desktop only, guests only */}
+            {!user && (
+              <Link 
+                to="/pricing" 
+                className={cn(
+                  "hidden lg:inline-flex h-10 items-center justify-center",
+                  isActive('/pricing') ? activeNavLinkStyles : navLinkStyles
+                )}
+              >
+                Pricing
+              </Link>
+            )}
 
             {/* Cart Button - Desktop only, logged in only */}
             {user && (
@@ -532,7 +534,7 @@ export default function Header() {
                 { to: '/studio', icon: Wand2, label: 'AI Studio' },
                 { to: '/community', icon: MessageSquare, label: 'Community' },
                 { to: '/hire-editors', icon: Mic, label: 'Hire Editors' },
-                { to: '/pricing', icon: DollarSign, label: 'Pricing' },
+                ...(!user ? [{ to: '/pricing', icon: DollarSign, label: 'Pricing' }] : []),
               ].map((item) => (
                 <Link
                   key={item.to}

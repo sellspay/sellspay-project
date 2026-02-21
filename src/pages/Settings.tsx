@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -99,10 +98,22 @@ interface SocialLink {
   url: string;
 }
 
+// Sidebar nav items
+const SIDEBAR_ITEMS = [
+  { id: 'profile', label: 'Profile', icon: User, section: 'Account' },
+  { id: 'socials', label: 'Social Links', icon: ExternalLink, section: 'Account' },
+  { id: 'connections', label: 'Connections', icon: Link2, section: 'Account' },
+  { id: 'notifications', label: 'Notifications', icon: Bell, section: 'Account' },
+  { id: 'security', label: 'Security', icon: Shield, section: 'Account' },
+  { id: 'billing', label: 'Payouts', icon: CreditCard, section: 'Seller' },
+  { id: 'seller-email', label: 'Seller Email', icon: Mail, section: 'Seller' },
+];
+
 export default function Settings() {
   const { user, signOut, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile');
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -186,7 +197,6 @@ export default function Settings() {
     if (stripeStatus === "success") {
       toast.success("Stripe account connected! It may take a moment for your status to update.");
       window.history.replaceState({}, "", "/settings");
-      // Refresh profile to get updated Stripe status
       if (user) fetchProfile();
     } else if (stripeStatus === "refresh") {
       toast.info("Please complete your Stripe onboarding");
@@ -226,20 +236,16 @@ export default function Settings() {
         setMfaEnabled(data.mfa_enabled || false);
         setCreatorLaunchEmails(data.email_notifications_enabled !== false);
         
-        // Username change tracking
         setLastUsernameChangedAt((data as Record<string, unknown>).last_username_changed_at as string | null);
         setPreviousUsername((data as Record<string, unknown>).previous_username as string | null);
         setPreviousUsernameAvailableAt((data as Record<string, unknown>).previous_username_available_at as string | null);
         
-        // Seller mode & country for hybrid payments
         setSellerMode((data as Record<string, unknown>).seller_mode as "CONNECT" | "MOR" | null);
         setSellerCountryCode((data as Record<string, unknown>).seller_country_code as string | null);
         
-        // Storefront mode
         const storefrontMode = (data as Record<string, unknown>).active_storefront_mode as 'free' | 'ai' || 'free';
         setActiveStorefrontMode(storefrontMode);
         
-        // Check if AI storefront exists
         const { data: aiLayout } = await supabase
           .from('ai_storefront_layouts')
           .select('is_published')
@@ -247,7 +253,6 @@ export default function Settings() {
           .maybeSingle();
         setHasAIStorefront(!!aiLayout?.is_published);
         
-        // Load social links
         if (data.social_links && typeof data.social_links === 'object') {
           const links = data.social_links as Record<string, string>;
           const loadedLinks: SocialLink[] = Object.entries(links)
@@ -256,9 +261,6 @@ export default function Settings() {
           setSocialLinks(loadedLinks);
         }
       }
-      
-      // Stripe status is now fetched by PayoutMethodSelector via check-payoneer-status
-      // to avoid duplicate API calls
     } catch (error) {
       console.error("Error fetching profile:", error);
     } finally {
@@ -270,9 +272,7 @@ export default function Settings() {
     setCheckingStripeStatus(true);
     try {
       const { data, error } = await supabase.functions.invoke("check-connect-status");
-      
       if (error) throw error;
-      
       if (data?.onboarding_complete) {
         setStripeOnboardingComplete(true);
         toast.success("Stripe account verified and connected!");
@@ -290,13 +290,8 @@ export default function Settings() {
     if (!profileId) return;
     setSwitchingAccountType(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_seller: false })
-        .eq('id', profileId);
-      
+      const { error } = await supabase.from('profiles').update({ is_seller: false }).eq('id', profileId);
       if (error) throw error;
-      
       setIsSeller(false);
       toast.success('Your account is now a buyer account.');
     } catch (error) {
@@ -308,13 +303,11 @@ export default function Settings() {
   };
 
   const handleSwitchToSeller = () => {
-    // Redirect to the full seller agreement flow instead of directly updating
     navigate('/onboarding/seller-agreement');
   };
 
   const handleChangePassword = async () => {
     if (!user?.email) return;
-    
     setSendingPasswordReset(true);
     try {
       const { error } = await resetPassword(user.email);
@@ -330,15 +323,9 @@ export default function Settings() {
 
   const handleToggle2FA = async () => {
     if (mfaEnabled) {
-      // Disable 2FA
       try {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ mfa_enabled: false })
-          .eq('id', profileId);
-        
+        const { error } = await supabase.from('profiles').update({ mfa_enabled: false }).eq('id', profileId);
         if (error) throw error;
-        
         setMfaEnabled(false);
         toast.success('Two-factor authentication disabled.');
       } catch (error) {
@@ -346,7 +333,6 @@ export default function Settings() {
         toast.error('Failed to disable 2FA.');
       }
     } else {
-      // Start 2FA enable flow - send OTP first
       setShow2FADialog(true);
       setOtpSent(false);
       setOtpCode("");
@@ -355,21 +341,14 @@ export default function Settings() {
 
   const handleSendOtpFor2FA = async () => {
     if (!user?.email || !user?.id) return;
-    
     setSendingOtp(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-verification-otp", {
         body: { email: user.email, userId: user.id }
       });
-      
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      
-      // Store the verification token for stateless 2FA
-      if (data?.verificationToken) {
-        setVerificationToken(data.verificationToken);
-      }
-      
+      if (data?.verificationToken) setVerificationToken(data.verificationToken);
       setOtpSent(true);
       toast.success('Verification code sent to your email.');
     } catch (error) {
@@ -382,29 +361,17 @@ export default function Settings() {
 
   const handleVerify2FA = async () => {
     if (!user?.id || !otpCode || otpCode.length !== 6) return;
-    
     if (!verificationToken) {
       toast.error('Please request a new verification code');
       return;
     }
-    
     setVerifyingOtp(true);
     try {
       const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { 
-          userId: user.id, 
-          code: otpCode,
-          verificationToken,
-          purpose: 'enable_mfa'
-        }
+        body: { userId: user.id, code: otpCode, verificationToken, purpose: 'enable_mfa' }
       });
-      
       if (error) throw new Error(error.message || 'Failed to verify code');
-      if (!data?.success) {
-        throw new Error(data?.error || 'Invalid verification code');
-      }
-      
-      // The edge function already updates mfa_enabled, just update local state
+      if (!data?.success) throw new Error(data?.error || 'Invalid verification code');
       setMfaEnabled(true);
       setShow2FADialog(false);
       setOtpCode("");
@@ -429,33 +396,23 @@ export default function Settings() {
   };
 
   const handleSendEmailChangeOtp = async () => {
-    if (!user?.email || !user?.id) return;
-    
-    // Validate new email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!newEmail || !emailRegex.test(newEmail)) {
-      toast.error('Please enter a valid email address');
-      return;
-    }
-    
+    if (!user?.email || !user?.id || !newEmail) return;
     if (newEmail.toLowerCase() === user.email.toLowerCase()) {
       toast.error('New email must be different from current email');
       return;
     }
-    
     setSendingEmailOtp(true);
     try {
-      // Send OTP to ORIGINAL email for verification
-      const { error } = await supabase.functions.invoke("send-verification-otp", {
-        body: { email: user.email, userId: user.id }
+      const { data, error } = await supabase.functions.invoke("send-verification-otp", {
+        body: { email: user.email, userId: user.id, newEmail }
       });
-      
       if (error) throw error;
-      
+      if (data?.error) throw new Error(data.error);
+      if (data?.verificationToken) setVerificationToken(data.verificationToken);
       setEmailOtpSent(true);
       toast.success('Verification code sent to your current email.');
     } catch (error) {
-      console.error('Error sending OTP:', error);
+      console.error('Error sending email change OTP:', error);
       toast.error('Failed to send verification code.');
     } finally {
       setSendingEmailOtp(false);
@@ -464,33 +421,22 @@ export default function Settings() {
 
   const handleVerifyEmailChange = async () => {
     if (!user?.id || !emailOtpCode || emailOtpCode.length !== 6 || !newEmail) return;
-    
+    if (!verificationToken) {
+      toast.error('Please request a new verification code');
+      return;
+    }
     setVerifyingEmailChange(true);
     try {
-      // Verify OTP
       const { data, error } = await supabase.functions.invoke("verify-otp", {
-        body: { userId: user.id, code: emailOtpCode, purpose: 'login' }
+        body: { userId: user.id, code: emailOtpCode, verificationToken, purpose: 'change_email', newEmail }
       });
-      
-      if (error) throw new Error(error.message || 'Verification failed');
-      if (!data?.success) {
-        throw new Error(data?.error || 'Invalid verification code');
-      }
-      
-      // Update email in Supabase Auth
-      const { error: updateError } = await supabase.auth.updateUser({
-        email: newEmail
-      });
-      
-      if (updateError) throw updateError;
-      
-      toast.success('Email updated! Please check your new email for a confirmation link.');
+      if (error) throw new Error(error.message || 'Failed to verify code');
+      if (!data?.success) throw new Error(data?.error || 'Invalid verification code');
+      toast.success('Email updated successfully! You may need to log in again.');
       setShowEmailChangeDialog(false);
-      setNewEmail("");
-      setEmailOtpCode("");
-      setEmailOtpSent(false);
+      setVerificationToken(null);
     } catch (error) {
-      console.error('Error changing email:', error);
+      console.error('Error verifying email change:', error);
       const message = error instanceof Error ? error.message : 'Failed to change email.';
       toast.error(message);
     } finally {
@@ -498,248 +444,121 @@ export default function Settings() {
     }
   };
 
-  // Username change helpers
-  const canChangeUsername = (): { allowed: boolean; reason?: string; daysRemaining?: number } => {
-    if (!lastUsernameChangedAt) return { allowed: true };
-    
-    const lastChanged = new Date(lastUsernameChangedAt);
-    const now = new Date();
-    const daysSinceChange = Math.floor((now.getTime() - lastChanged.getTime()) / (1000 * 60 * 60 * 24));
-    const daysRemaining = 60 - daysSinceChange;
-    
-    if (daysRemaining > 0) {
-      return { 
-        allowed: false, 
-        reason: `You can change your username again in ${daysRemaining} days`,
-        daysRemaining 
-      };
-    }
-    
-    return { allowed: true };
-  };
-
-  const canRevertToPreviousUsername = (): boolean => {
-    if (!previousUsername || !previousUsernameAvailableAt) return false;
-    return new Date() < new Date(previousUsernameAvailableAt);
-  };
-
-  const handleRevertUsername = async () => {
-    if (!previousUsername || !user) return;
-    
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          username: previousUsername,
-          previous_username: null,
-          previous_username_available_at: null,
-          // Don't update last_username_changed_at when reverting
-        } as Record<string, unknown>)
-        .eq("user_id", user.id);
-      
-      if (error) throw error;
-      
-      setUsername(previousUsername);
-      setOriginalUsername(previousUsername);
-      setPreviousUsername(null);
-      setPreviousUsernameAvailableAt(null);
-      toast.success('Username reverted successfully!');
-    } catch (error) {
-      console.error('Error reverting username:', error);
-      toast.error('Failed to revert username');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleDeleteAccount = async () => {
-    if (!user) return;
-    
     setDeletingAccount(true);
     try {
-      // Delete profile (cascades to related data)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('user_id', user.id);
-      
-      if (profileError) throw profileError;
-      
-      // Sign out
+      const { error } = await supabase.functions.invoke("delete-account");
+      if (error) throw error;
+      toast.success("Account deleted. We're sorry to see you go.");
       await signOut();
-      toast.success('Your account has been deleted.');
-      navigate('/');
+      navigate("/");
     } catch (error) {
-      console.error('Error deleting account:', error);
-      toast.error('Failed to delete account. Please contact support.');
+      console.error("Error deleting account:", error);
+      toast.error("Failed to delete account. Please contact support.");
     } finally {
       setDeletingAccount(false);
     }
   };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-
-    // Create a local URL for the cropper
-    const imageUrl = URL.createObjectURL(file);
-    setAvatarToCrop(imageUrl);
-    setShowAvatarCropper(true);
-    
-    // Reset input so same file can be selected again
-    e.target.value = '';
+  // Username change logic
+  const canChangeUsername = () => {
+    if (!lastUsernameChangedAt) return { allowed: true };
+    const lastChanged = new Date(lastUsernameChangedAt);
+    const daysSince = (Date.now() - lastChanged.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSince < 60) {
+      const daysRemaining = Math.ceil(60 - daysSince);
+      return { allowed: false, reason: `You can change your username again in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}.` };
+    }
+    return { allowed: true };
   };
 
-  const handleAvatarCropComplete = async (croppedBlob: Blob) => {
+  const canRevertToPreviousUsername = () => {
+    if (!previousUsername || !previousUsernameAvailableAt) return false;
+    return new Date(previousUsernameAvailableAt) > new Date();
+  };
+
+  const handleRevertUsername = async () => {
+    if (!previousUsername) return;
+    setUsername(previousUsername);
+  };
+
+  // Avatar handling
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    setAvatarToCrop(objectUrl);
+    setShowAvatarCropper(true);
+  };
+
+  const handleAvatarCropComplete = async (blob: Blob) => {
     if (!user) return;
-
     setUploadingAvatar(true);
+    setShowAvatarCropper(false);
+    if (avatarToCrop) { URL.revokeObjectURL(avatarToCrop); setAvatarToCrop(null); }
     try {
-      const path = `avatars/${user.id}/${Date.now()}.jpg`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from("product-media")
-        .upload(path, croppedBlob, {
-          contentType: 'image/jpeg',
-        });
-
+      const ext = 'png';
+      const path = `avatars/${user.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("product-media").upload(path, blob, { contentType: 'image/png' });
       if (uploadError) throw uploadError;
-
-      const { data: publicUrl } = supabase.storage
-        .from("product-media")
-        .getPublicUrl(path);
-
+      const { data: publicUrl } = supabase.storage.from("product-media").getPublicUrl(path);
       setAvatarUrl(publicUrl.publicUrl);
-      toast.success("Avatar uploaded!");
+      toast.success("Avatar updated!");
     } catch (error) {
       console.error("Error uploading avatar:", error);
       toast.error("Failed to upload avatar");
     } finally {
       setUploadingAvatar(false);
-      // Clean up the object URL
-      if (avatarToCrop) {
-        URL.revokeObjectURL(avatarToCrop);
-        setAvatarToCrop(null);
-      }
     }
   };
 
+  // Banner handling
   const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-
-    const isVideo = file.type.startsWith('video/');
-    const maxSize = 100 * 1024 * 1024; // 100MB
-    
-    // Validate file size
-    if (file.size > maxSize) {
-      toast.error("File too large. Maximum size is 100MB.");
-      return;
-    }
-
-    // Validate video duration if it's a video
-    if (isVideo) {
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      
-      const durationCheck = new Promise<boolean>((resolve) => {
-        video.onloadedmetadata = () => {
-          URL.revokeObjectURL(video.src);
-          if (video.duration > 5) {
-            toast.error("Video too long. Maximum duration is 5 seconds.");
-            resolve(false);
-          } else {
-            resolve(true);
-          }
-        };
-        video.onerror = () => {
-          URL.revokeObjectURL(video.src);
-          toast.error("Could not read video file.");
-          resolve(false);
-        };
-      });
-      
-      video.src = URL.createObjectURL(file);
-      const isValid = await durationCheck;
-      if (!isValid) return;
-    }
-
     setUploadingBanner(true);
     try {
       const ext = file.name.split(".").pop();
       const path = `banners/${user.id}/${Date.now()}.${ext}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from("product-media")
-        .upload(path, file);
-
+      const { error: uploadError } = await supabase.storage.from("product-media").upload(path, file);
       if (uploadError) throw uploadError;
-
-      const { data: publicUrl } = supabase.storage
-        .from("product-media")
-        .getPublicUrl(path);
-
-      // For videos, skip position editor and set directly
+      const { data: publicUrl } = supabase.storage.from("product-media").getPublicUrl(path);
+      const isVideo = file.type.startsWith('video/');
       if (isVideo) {
         setBannerUrl(publicUrl.publicUrl);
-        toast.success("Animated banner uploaded!");
+        toast.success("Video banner uploaded!");
       } else {
-        // Show position editor for images
         setPendingBannerUrl(publicUrl.publicUrl);
         setShowBannerPositionEditor(true);
-        toast.success("Banner uploaded! Now position it.");
       }
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("Error uploading banner:", error);
-      const message = error instanceof Error ? error.message : "Failed to upload banner";
-      toast.error(message);
+      toast.error("Failed to upload banner");
     } finally {
       setUploadingBanner(false);
     }
   };
-  
+
   const handleBannerPositionConfirm = (positionY: number) => {
     setBannerPositionY(positionY);
-    if (pendingBannerUrl) {
-      setBannerUrl(pendingBannerUrl);
-      setPendingBannerUrl(null);
-    }
+    if (pendingBannerUrl) { setBannerUrl(pendingBannerUrl); setPendingBannerUrl(null); }
     setShowBannerPositionEditor(false);
     toast.success("Banner position saved!");
   };
   
-  const handleBannerPositionCancel = () => {
-    setPendingBannerUrl(null);
-    setShowBannerPositionEditor(false);
-  };
-  
-  const handleEditBannerPosition = () => {
-    if (bannerUrl) {
-      setPendingBannerUrl(bannerUrl);
-      setShowBannerPositionEditor(true);
-    }
-  };
+  const handleBannerPositionCancel = () => { setPendingBannerUrl(null); setShowBannerPositionEditor(false); };
+  const handleEditBannerPosition = () => { if (bannerUrl) { setPendingBannerUrl(bannerUrl); setShowBannerPositionEditor(true); } };
 
   const handleBackgroundChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-
     setUploadingBackground(true);
     try {
       const ext = file.name.split(".").pop();
       const path = `backgrounds/${user.id}/${Date.now()}.${ext}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from("product-media")
-        .upload(path, file);
-
+      const { error: uploadError } = await supabase.storage.from("product-media").upload(path, file);
       if (uploadError) throw uploadError;
-
-      const { data: publicUrl } = supabase.storage
-        .from("product-media")
-        .getPublicUrl(path);
-
+      const { data: publicUrl } = supabase.storage.from("product-media").getPublicUrl(path);
       setBackgroundUrl(publicUrl.publicUrl);
       toast.success("Background uploaded!");
     } catch (error) {
@@ -750,102 +569,51 @@ export default function Settings() {
     }
   };
 
-  const removeBackground = () => {
-    setBackgroundUrl(null);
-    toast.success("Background removed");
-  };
-
-  const removeAvatar = () => {
-    setAvatarUrl(null);
-    toast.success("Avatar removed");
-  };
-
-  const removeBanner = () => {
-    setBannerUrl(null);
-    toast.success("Banner removed");
-  };
+  const removeBackground = () => { setBackgroundUrl(null); toast.success("Background removed"); };
+  const removeAvatar = () => { setAvatarUrl(null); toast.success("Avatar removed"); };
+  const removeBanner = () => { setBannerUrl(null); toast.success("Banner removed"); };
 
   const saveProfile = async () => {
     if (!user) return;
-    
     setSaving(true);
     try {
       const usernameChanged = username.toLowerCase() !== originalUsername.toLowerCase();
-      
-      // Check if username is being changed
       if (usernameChanged) {
-        // Check 60-day restriction
         const usernameCheck = canChangeUsername();
-        if (!usernameCheck.allowed) {
-          toast.error(usernameCheck.reason || 'Cannot change username yet');
-          setSaving(false);
-          return;
-        }
-        
-        // Check username availability using the new v2 function that checks reserved names
-        const { data: available } = await supabase
-          .rpc("is_username_available_v2", { p_username: username });
-        
-        if (!available) {
-          toast.error("Username is already taken or reserved");
-          setSaving(false);
-          return;
-        }
+        if (!usernameCheck.allowed) { toast.error(usernameCheck.reason || 'Cannot change username yet'); setSaving(false); return; }
+        const { data: available } = await supabase.rpc("is_username_available_v2", { p_username: username });
+        if (!available) { toast.error("Username is already taken or reserved"); setSaving(false); return; }
       }
-
-      // Build social_links object from the socialLinks array
       const socialLinksObj: Record<string, string> = {};
       socialLinks.forEach(link => {
         if (link.url.trim()) {
           const detected = detectSocialPlatform(link.url);
-          if (detected) {
-            socialLinksObj[detected.platform] = link.url.trim();
-          }
+          if (detected) socialLinksObj[detected.platform] = link.url.trim();
         }
       });
-
-      // Build update object
       const updateData: Record<string, unknown> = {
-        full_name: fullName,
-        username,
-        bio,
-        avatar_url: avatarUrl,
-        banner_url: bannerUrl,
-        banner_position_y: bannerPositionY,
-        background_url: backgroundUrl,
-        social_links: socialLinksObj,
+        full_name: fullName, username, bio, avatar_url: avatarUrl,
+        banner_url: bannerUrl, banner_position_y: bannerPositionY,
+        background_url: backgroundUrl, social_links: socialLinksObj,
       };
-      
-      // If username changed, update tracking fields
       if (usernameChanged && originalUsername) {
         updateData.last_username_changed_at = new Date().toISOString();
         updateData.previous_username = originalUsername;
-        // 14 days from now
-        const availableAt = new Date();
-        availableAt.setDate(availableAt.getDate() + 14);
+        const availableAt = new Date(); availableAt.setDate(availableAt.getDate() + 14);
         updateData.previous_username_available_at = availableAt.toISOString();
       }
-
-      const { error } = await supabase
-        .from("profiles")
-        .update(updateData)
-        .eq("user_id", user.id);
-
+      const { error } = await supabase.from("profiles").update(updateData).eq("user_id", user.id);
       if (error) throw error;
-      
       if (usernameChanged) {
         setLastUsernameChangedAt(new Date().toISOString());
         setPreviousUsername(originalUsername);
-        const availableAt = new Date();
-        availableAt.setDate(availableAt.getDate() + 14);
+        const availableAt = new Date(); availableAt.setDate(availableAt.getDate() + 14);
         setPreviousUsernameAvailableAt(availableAt.toISOString());
         setOriginalUsername(username);
         toast.success("Profile saved! Your old username will be reserved for 14 days.");
       } else {
         toast.success("Profile saved!");
       }
-      
-      // Redirect to profile page
       navigate(`/@${username || 'profile'}`);
     } catch (error) {
       console.error("Error saving profile:", error);
@@ -855,49 +623,29 @@ export default function Settings() {
     }
   };
 
-  // Show the guide dialog first when user clicks "Connect Stripe"
-  const handleConnectStripeClick = () => {
-    setShowStripeGuide(true);
-  };
+  const handleConnectStripeClick = () => { setShowStripeGuide(true); };
 
-  // Actually perform the Stripe connect after user reads the guide
-  // Fetch the onboarding URL first; only then navigate (no blank popup windows)
   const handleConnectStripe = async () => {
     setConnectingStripe(true);
-    // Keep dialog open until we have the URL
-    
     try {
       const { data, error } = await supabase.functions.invoke("create-connect-account");
-
       if (error) throw error;
-
-      if (data?.url) {
-        // Close dialog first, then navigate
-        setShowStripeGuide(false);
-        toast.info("Redirecting to Stripe...");
-        window.location.assign(data.url);
-      } else {
-        setShowStripeGuide(false);
-        throw new Error("No onboarding URL returned");
-      }
+      if (data?.url) { setShowStripeGuide(false); toast.info("Redirecting to Stripe..."); window.location.assign(data.url); }
+      else { setShowStripeGuide(false); throw new Error("No onboarding URL returned"); }
     } catch (error) {
       setShowStripeGuide(false);
       console.error("Stripe connect error:", error);
-      const message = error instanceof Error ? error.message : "Failed to connect Stripe";
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : "Failed to connect Stripe");
     } finally {
       setConnectingStripe(false);
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
-  };
+  const handleSignOut = async () => { await signOut(); navigate("/"); };
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -905,895 +653,510 @@ export default function Settings() {
 
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold mb-4">Sign In Required</h1>
-        <p className="text-muted-foreground mb-8">
-          Please sign in to access settings.
-        </p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4">
+        <h1 className="text-2xl font-bold mb-4 text-foreground">Sign In Required</h1>
+        <p className="text-muted-foreground mb-8">Please sign in to access settings.</p>
         <Button onClick={() => navigate("/login")}>Sign In</Button>
       </div>
     );
   }
 
+  // Group sidebar items by section
+  const sections = SIDEBAR_ITEMS.reduce((acc, item) => {
+    if (!acc[item.section]) acc[item.section] = [];
+    acc[item.section].push(item);
+    return acc;
+  }, {} as Record<string, typeof SIDEBAR_ITEMS>);
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-8">Settings</h1>
+    <div className="min-h-screen bg-background">
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className="hidden md:flex flex-col w-60 min-h-screen border-r border-border bg-card/30 pt-6 px-3 shrink-0 sticky top-0 self-start">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 px-3"
+          >
+            ← Go back
+          </button>
 
-      <Tabs defaultValue="profile" className="space-y-8">
-        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 gap-1 h-auto p-1">
-          <TabsTrigger value="profile" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
-            <User className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline">Profile</span>
-          </TabsTrigger>
-          <TabsTrigger value="connections" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
-            <Link2 className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline">Connections</span>
-          </TabsTrigger>
-          <TabsTrigger value="socials" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
-            <ExternalLink className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline">Socials</span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
-            <Bell className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline">Notifications</span>
-          </TabsTrigger>
-          <TabsTrigger value="security" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
-            <Shield className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline">Security</span>
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
-            <CreditCard className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline">Billing</span>
-          </TabsTrigger>
-          <TabsTrigger value="seller-email" className="gap-1.5 sm:gap-2 py-2.5 sm:py-1.5">
-            <Mail className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline">Email</span>
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Profile Tab */}
-        <TabsContent value="profile">
-          <Card className="bg-card/50">
-            <CardHeader className="flex flex-row items-start justify-between">
-              <div>
-                <CardTitle>Profile Information</CardTitle>
-                <CardDescription>
-                  Update your profile information visible to other users.
-                </CardDescription>
-              </div>
-              <Button onClick={saveProfile} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Avatar */}
-              <div className="flex items-center gap-6">
-                <div className="relative">
-                  <Avatar className="w-20 h-20">
-                    <AvatarImage src={avatarUrl || undefined} />
-                    <AvatarFallback className="text-2xl">
-                      {fullName?.[0] || username?.[0] || user.email?.[0] || "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  {uploadingAvatar && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-full">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    </div>
+          {Object.entries(sections).map(([section, items]) => (
+            <div key={section} className="mb-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-3 mb-1.5">
+                {section}
+              </p>
+              {items.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors",
+                    activeTab === item.id
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label>
-                    <Button variant="outline" asChild className="cursor-pointer" disabled={uploadingAvatar}>
-                      <span>
-                        {uploadingAvatar ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Upload className="w-4 h-4 mr-2" />
-                        )}
-                        {uploadingAvatar ? "Uploading..." : "Change Avatar"}
-                      </span>
-                    </Button>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      className="hidden"
-                      disabled={uploadingAvatar}
-                    />
-                  </label>
-                  {avatarUrl && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={removeAvatar}
-                    >
-                      <X className="w-4 h-4 mr-1" />
-                      Remove
-                    </Button>
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    JPG, PNG or GIF. Max 2MB.
-                  </p>
-                </div>
-              </div>
+                >
+                  <item.icon className="w-4 h-4 shrink-0" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ))}
 
-              {/* Banner Upload */}
-              <div>
-                <Label className="mb-2 block">Profile Banner</Label>
-                
-                {/* Banner Position Editor Dialog - Full Screen Modal */}
-                <Dialog open={showBannerPositionEditor && !!pendingBannerUrl} onOpenChange={(open) => {
-                  if (!open) handleBannerPositionCancel();
-                }}>
-                  <DialogContent className="max-w-4xl w-[95vw]">
-                    <DialogHeader>
-                      <DialogTitle>Position Your Banner</DialogTitle>
-                      <DialogDescription>
-                        Drag the image to adjust which part is visible on your profile
-                      </DialogDescription>
-                    </DialogHeader>
-                    {pendingBannerUrl && (
-                      <BannerPositionEditor
-                        imageUrl={pendingBannerUrl}
-                        onConfirm={handleBannerPositionConfirm}
-                        onCancel={handleBannerPositionCancel}
-                        initialPositionY={bannerPositionY}
-                      />
-                    )}
-                  </DialogContent>
-                </Dialog>
-                
-                <div className="relative rounded-lg overflow-hidden border border-border">
-                  {uploadingBanner ? (
-                    <div className="w-full h-24 bg-muted flex items-center justify-center">
-                      <div className="flex flex-col items-center gap-2 text-primary">
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        <span className="text-sm font-medium">Processing banner...</span>
-                      </div>
-                    </div>
-                  ) : bannerUrl ? (
-                    <div className="relative w-full h-24 overflow-hidden">
-                      {bannerUrl.match(/\.(mp4|webm|mov|ogg)$/i) ? (
-                        <video
-                          src={bannerUrl}
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                          className="w-full h-full object-cover"
-                          style={{
-                            objectPosition: `center ${bannerPositionY}%`,
-                          }}
-                        />
-                      ) : (
-                        <img
-                          src={bannerUrl}
-                          alt="Profile banner"
-                          className="w-full h-full object-cover"
-                          style={{
-                            objectPosition: `center ${bannerPositionY}%`,
-                          }}
-                        />
-                      )}
-                      <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
-                        <label className="cursor-pointer">
-                          <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
-                            <Upload className="w-4 h-4" />
-                            Change
-                          </span>
-                          <input
-                            type="file"
-                            accept="image/*,video/mp4,video/webm,video/mov"
-                            onChange={handleBannerChange}
-                            className="hidden"
-                          />
-                        </label>
-                        {!bannerUrl.match(/\.(mp4|webm|mov|ogg)$/i) && (
-                          <Button 
-                            variant="secondary" 
-                            size="sm"
-                            onClick={handleEditBannerPosition}
-                            className="text-white bg-white/20 hover:bg-white/30"
-                          >
-                            <Move className="w-4 h-4 mr-1" />
-                            Reposition
-                          </Button>
-                        )}
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={removeBanner}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <label className="cursor-pointer block">
-                      <div className="w-full h-24 bg-gradient-to-br from-primary/40 to-accent/30 flex items-center justify-center hover:from-primary/50 hover:to-accent/40 transition-colors">
-                        <div className="flex items-center gap-2 text-white/80">
-                          <Upload className="w-5 h-5" />
-                          <span className="text-sm font-medium">Upload Banner</span>
-                        </div>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*,video/mp4,video/webm,video/mov"
-                        onChange={handleBannerChange}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Images: 2560x1440px recommended. Videos: Max 5 seconds, 100MB.
-                </p>
-              </div>
+          {/* Sign Out at bottom */}
+          <div className="mt-auto pb-6 pt-4 border-t border-border">
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </button>
+          </div>
+        </aside>
 
-              {/* Profile Background (Steam-style) */}
-              <div>
-                <Label className="mb-2 block">Profile Background</Label>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Add a full-page background image to your profile (like Steam profiles)
-                </p>
-                <div className="relative rounded-lg overflow-hidden border border-border">
-                  {backgroundUrl ? (
-                    <div className="relative">
-                      <img
-                        src={backgroundUrl}
-                        alt="Profile background"
-                        className="w-full h-32 object-cover"
-                      />
-                      <div className="absolute inset-0 bg-background/60" />
-                    </div>
-                  ) : (
-                    <div className="w-full h-32 bg-muted flex items-center justify-center">
-                      <span className="text-muted-foreground text-sm">No background set</span>
-                    </div>
-                  )}
-                  {uploadingBackground ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                      <div className="flex items-center gap-2 text-primary">
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span className="text-sm">Uploading...</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
-                      <label className="cursor-pointer">
-                        <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md">
-                          <Upload className="w-4 h-4" />
-                          {backgroundUrl ? "Change" : "Upload"}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleBackgroundChange}
-                          className="hidden"
-                        />
-                      </label>
-                      {backgroundUrl && (
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={removeBackground}
-                        >
-                          Remove
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Recommended: 1920x1080px or larger. JPG, PNG. This will appear behind your entire profile.
-                </p>
-              </div>
+        {/* Mobile Tab Selector */}
+        <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
+          <div className="flex items-center gap-3 mb-3">
+            <button onClick={() => navigate(-1)} className="text-sm text-muted-foreground">←</button>
+            <h1 className="text-lg font-bold text-foreground">Settings</h1>
+          </div>
+          <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+            {SIDEBAR_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  "shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                  activeTab === item.id
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
+        {/* Main Content */}
+        <main className="flex-1 min-h-screen px-4 md:px-8 py-8 md:pt-8 pt-28 max-w-4xl">
+          <div className="hidden md:block mb-8">
+            <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+            <p className="text-sm text-muted-foreground mt-1">Manage your account preferences and profile.</p>
+          </div>
 
-              <Separator />
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="John Doe"
-                    className="mt-2"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="username">Username</Label>
-                  <div className="flex mt-2">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-sm">
-                      @
-                    </span>
-                    <Input
-                      id="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                      placeholder="johndoe"
-                      className="rounded-l-none"
-                      disabled={!canChangeUsername().allowed}
-                    />
+          {/* Profile Tab */}
+          {activeTab === 'profile' && (
+            <div className="space-y-6">
+              <Card className="bg-card/50">
+                <CardHeader className="flex flex-row items-start justify-between">
+                  <div>
+                    <CardTitle>Profile Information</CardTitle>
+                    <CardDescription>Update your profile information visible to other users.</CardDescription>
                   </div>
-                  {!canChangeUsername().allowed && (
-                    <p className="text-sm text-amber-500 mt-2">
-                      {canChangeUsername().reason}
-                    </p>
-                  )}
-                  {canRevertToPreviousUsername() && previousUsername && (
-                    <div className="mt-2 p-3 rounded-lg border border-border bg-muted/30">
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Your previous username <span className="font-medium text-foreground">@{previousUsername}</span> is reserved until {new Date(previousUsernameAvailableAt!).toLocaleDateString()}.
-                      </p>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleRevertUsername}
-                        disabled={saving}
-                      >
-                        Revert to @{previousUsername}
-                      </Button>
-                    </div>
-                  )}
-                  {lastUsernameChangedAt && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Usernames can only be changed once every 60 days.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Tell us about yourself..."
-                  rows={4}
-                  className="mt-2"
-                />
-              </div>
-
-              <div>
-                <Label>Email</Label>
-                <div className="flex items-center gap-3 mt-2">
-                  <Input
-                    value={user.email || ""}
-                    disabled
-                    className="bg-muted flex-1"
-                  />
-                  <Button variant="outline" onClick={handleStartEmailChange}>
-                    Change Email
+                  <Button onClick={saveProfile} disabled={saving}>
+                    {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Save Changes
                   </Button>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  A verification code will be sent to your current email address.
-                </p>
-              </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Avatar */}
+                  <div className="flex items-center gap-6">
+                    <div className="relative">
+                      <Avatar className="w-20 h-20">
+                        <AvatarImage src={avatarUrl || undefined} />
+                        <AvatarFallback className="text-2xl">
+                          {fullName?.[0] || username?.[0] || user.email?.[0] || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      {uploadingAvatar && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-full">
+                          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label>
+                        <Button variant="outline" asChild className="cursor-pointer" disabled={uploadingAvatar}>
+                          <span>
+                            {uploadingAvatar ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                            {uploadingAvatar ? "Uploading..." : "Change Avatar"}
+                          </span>
+                        </Button>
+                        <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" disabled={uploadingAvatar} />
+                      </label>
+                      {avatarUrl && (
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={removeAvatar}>
+                          <X className="w-4 h-4 mr-1" /> Remove
+                        </Button>
+                      )}
+                      <p className="text-sm text-muted-foreground">JPG, PNG or GIF. Max 2MB.</p>
+                    </div>
+                  </div>
 
-            </CardContent>
-          </Card>
-          
-          {/* Storefront Mode Toggle */}
-          {isSeller && profileId && (
-            <StorefrontModeToggle
-              profileId={profileId}
-              username={username}
-              currentMode={activeStorefrontMode}
-              hasAIStorefront={hasAIStorefront}
-              onModeChange={(newMode) => setActiveStorefrontMode(newMode)}
-            />
+                  {/* Banner Upload */}
+                  <div>
+                    <Label className="mb-2 block">Profile Banner</Label>
+                    <Dialog open={showBannerPositionEditor && !!pendingBannerUrl} onOpenChange={(open) => { if (!open) handleBannerPositionCancel(); }}>
+                      <DialogContent className="max-w-4xl w-[95vw]">
+                        <DialogHeader>
+                          <DialogTitle>Position Your Banner</DialogTitle>
+                          <DialogDescription>Drag the image to adjust which part is visible on your profile</DialogDescription>
+                        </DialogHeader>
+                        {pendingBannerUrl && (
+                          <BannerPositionEditor imageUrl={pendingBannerUrl} onConfirm={handleBannerPositionConfirm} onCancel={handleBannerPositionCancel} initialPositionY={bannerPositionY} />
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                    <div className="relative rounded-lg overflow-hidden border border-border">
+                      {uploadingBanner ? (
+                        <div className="w-full h-24 bg-muted flex items-center justify-center">
+                          <div className="flex flex-col items-center gap-2 text-primary"><Loader2 className="w-6 h-6 animate-spin" /><span className="text-sm font-medium">Processing banner...</span></div>
+                        </div>
+                      ) : bannerUrl ? (
+                        <div className="relative w-full h-24 overflow-hidden">
+                          {bannerUrl.match(/\.(mp4|webm|mov|ogg)$/i) ? (
+                            <video src={bannerUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" style={{ objectPosition: `center ${bannerPositionY}%` }} />
+                          ) : (
+                            <img src={bannerUrl} alt="Profile banner" className="w-full h-full object-cover" style={{ objectPosition: `center ${bannerPositionY}%` }} />
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
+                            <label className="cursor-pointer">
+                              <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md"><Upload className="w-4 h-4" />Change</span>
+                              <input type="file" accept="image/*,video/mp4,video/webm,video/mov" onChange={handleBannerChange} className="hidden" />
+                            </label>
+                            {!bannerUrl.match(/\.(mp4|webm|mov|ogg)$/i) && (
+                              <Button variant="secondary" size="sm" onClick={handleEditBannerPosition} className="text-white bg-white/20 hover:bg-white/30"><Move className="w-4 h-4 mr-1" />Reposition</Button>
+                            )}
+                            <Button variant="destructive" size="sm" onClick={removeBanner}>Remove</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <label className="cursor-pointer block">
+                          <div className="w-full h-24 bg-gradient-to-br from-primary/40 to-accent/30 flex items-center justify-center hover:from-primary/50 hover:to-accent/40 transition-colors">
+                            <div className="flex items-center gap-2 text-white/80"><Upload className="w-5 h-5" /><span className="text-sm font-medium">Upload Banner</span></div>
+                          </div>
+                          <input type="file" accept="image/*,video/mp4,video/webm,video/mov" onChange={handleBannerChange} className="hidden" />
+                        </label>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">Images: 2560x1440px recommended. Videos: Max 5 seconds, 100MB.</p>
+                  </div>
+
+                  {/* Profile Background */}
+                  <div>
+                    <Label className="mb-2 block">Profile Background</Label>
+                    <p className="text-sm text-muted-foreground mb-3">Add a full-page background image to your profile</p>
+                    <div className="relative rounded-lg overflow-hidden border border-border">
+                      {backgroundUrl ? (
+                        <div className="relative"><img src={backgroundUrl} alt="Profile background" className="w-full h-32 object-cover" /><div className="absolute inset-0 bg-background/60" /></div>
+                      ) : (
+                        <div className="w-full h-32 bg-muted flex items-center justify-center"><span className="text-muted-foreground text-sm">No background set</span></div>
+                      )}
+                      {uploadingBackground ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/80"><div className="flex items-center gap-2 text-primary"><Loader2 className="w-5 h-5 animate-spin" /><span className="text-sm">Uploading...</span></div></div>
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
+                          <label className="cursor-pointer">
+                            <span className="text-white text-sm flex items-center gap-2 bg-primary/80 hover:bg-primary px-3 py-1.5 rounded-md"><Upload className="w-4 h-4" />{backgroundUrl ? "Change" : "Upload"}</span>
+                            <input type="file" accept="image/*" onChange={handleBackgroundChange} className="hidden" />
+                          </label>
+                          {backgroundUrl && <Button variant="destructive" size="sm" onClick={removeBackground}>Remove</Button>}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">Recommended: 1920x1080px or larger.</p>
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <Label htmlFor="fullName">Full Name</Label>
+                      <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" className="mt-2" />
+                    </div>
+                    <div>
+                      <Label htmlFor="username">Username</Label>
+                      <div className="flex mt-2">
+                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-muted text-muted-foreground text-sm">@</span>
+                        <Input id="username" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} placeholder="johndoe" className="rounded-l-none" disabled={!canChangeUsername().allowed} />
+                      </div>
+                      {!canChangeUsername().allowed && <p className="text-sm text-amber-500 mt-2">{canChangeUsername().reason}</p>}
+                      {canRevertToPreviousUsername() && previousUsername && (
+                        <div className="mt-2 p-3 rounded-lg border border-border bg-muted/30">
+                          <p className="text-sm text-muted-foreground mb-2">Your previous username <span className="font-medium text-foreground">@{previousUsername}</span> is reserved until {new Date(previousUsernameAvailableAt!).toLocaleDateString()}.</p>
+                          <Button variant="outline" size="sm" onClick={handleRevertUsername} disabled={saving}>Revert to @{previousUsername}</Button>
+                        </div>
+                      )}
+                      {lastUsernameChangedAt && <p className="text-xs text-muted-foreground mt-2">Usernames can only be changed once every 60 days.</p>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell us about yourself..." rows={4} className="mt-2" />
+                  </div>
+
+                  <div>
+                    <Label>Email</Label>
+                    <div className="flex items-center gap-3 mt-2">
+                      <Input value={user.email || ""} disabled className="bg-muted flex-1" />
+                      <Button variant="outline" onClick={handleStartEmailChange}>Change Email</Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">A verification code will be sent to your current email address.</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {isSeller && profileId && (
+                <StorefrontModeToggle profileId={profileId} username={username} currentMode={activeStorefrontMode} hasAIStorefront={hasAIStorefront} onModeChange={(newMode) => setActiveStorefrontMode(newMode)} />
+              )}
+            </div>
           )}
-        </TabsContent>
 
-        {/* Connections Tab */}
-        <TabsContent value="connections">
-          <ConnectionsTab />
-        </TabsContent>
+          {/* Connections Tab */}
+          {activeTab === 'connections' && <ConnectionsTab />}
 
-        {/* Notifications Tab */}
-        <TabsContent value="notifications">
-          <Card className="bg-card/50">
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>
-                Manage how you receive notifications.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Email Notifications</p>
-                  <p className="text-sm text-muted-foreground">
-                    Receive email notifications for important updates
-                  </p>
+          {/* Socials Tab */}
+          {activeTab === 'socials' && (
+            <Card className="bg-card/50">
+              <CardHeader>
+                <CardTitle>Social Links</CardTitle>
+                <CardDescription>Add your social media links. We'll automatically detect the platform and show the icon on your profile.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {socialLinks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No social links added yet. Click below to add one.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {socialLinks.map((link) => {
+                      const detected = detectSocialPlatform(link.url);
+                      return (
+                        <div key={link.id} className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                            {detected ? detected.icon : <Link2 className="w-5 h-5" />}
+                          </div>
+                          <Input value={link.url} onChange={(e) => setSocialLinks(prev => prev.map(l => l.id === link.id ? { ...l, url: e.target.value } : l))} placeholder="Paste your social media URL..." className="flex-1" />
+                          <Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive" onClick={() => setSocialLinks(prev => prev.filter(l => l.id !== link.id))}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {(() => {
+                  const usedPlatforms = socialLinks.map(link => detectSocialPlatform(link.url)?.platform).filter(Boolean);
+                  const allPlatformsUsed = usedPlatforms.length >= 4;
+                  return (
+                    <>
+                      <button onClick={() => { if (!allPlatformsUsed) setSocialLinks(prev => [...prev, { id: crypto.randomUUID(), url: '' }]); }} disabled={allPlatformsUsed}
+                        className={cn("text-sm font-medium flex items-center gap-1 transition-colors", allPlatformsUsed ? "text-muted-foreground cursor-not-allowed" : "text-primary hover:text-primary/80")}>
+                        <Plus className="w-4 h-4" /> {allPlatformsUsed ? 'All platforms linked' : 'Add social link'}
+                      </button>
+                      {usedPlatforms.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {['instagram', 'youtube', 'twitter', 'tiktok'].map(platform => {
+                            const isUsed = usedPlatforms.includes(platform);
+                            return (
+                              <Badge key={platform} variant={isUsed ? "default" : "outline"} className={cn("text-xs capitalize", isUsed ? "bg-primary/20 text-primary border-primary/30" : "text-muted-foreground")}>
+                                {platform === 'twitter' ? 'X' : platform} {isUsed && <span className="ml-1">✓</span>}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+
+                <Separator className="my-4" />
+                <p className="text-xs text-muted-foreground">Supported platforms: Instagram, YouTube, X (Twitter), TikTok. One link per platform.</p>
+                <Button onClick={saveProfile} disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Save Changes
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Notifications Tab */}
+          {activeTab === 'notifications' && (
+            <Card className="bg-card/50">
+              <CardHeader>
+                <CardTitle>Notification Preferences</CardTitle>
+                <CardDescription>Manage how you receive notifications.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div><p className="font-medium">Email Notifications</p><p className="text-sm text-muted-foreground">Receive email notifications for important updates</p></div>
+                  <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
                 </div>
-                <Switch
-                  checked={emailNotifications}
-                  onCheckedChange={setEmailNotifications}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Creator Launch Emails</p>
-                  <p className="text-sm text-muted-foreground">
-                    Get notified via email when creators you follow launch new products
-                  </p>
-                </div>
-                <Switch
-                  checked={creatorLaunchEmails}
-                  onCheckedChange={async (checked) => {
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div><p className="font-medium">Creator Launch Emails</p><p className="text-sm text-muted-foreground">Get notified via email when creators you follow launch new products</p></div>
+                  <Switch checked={creatorLaunchEmails} onCheckedChange={async (checked) => {
                     setCreatorLaunchEmails(checked);
                     setSavingNotifications(true);
                     try {
-                      const { error } = await supabase
-                        .from('profiles')
-                        .update({ email_notifications_enabled: checked })
-                        .eq('id', profileId);
+                      const { error } = await supabase.from('profiles').update({ email_notifications_enabled: checked }).eq('id', profileId);
                       if (error) throw error;
                       toast.success(checked ? 'Creator launch emails enabled' : 'Creator launch emails disabled');
-                    } catch (error) {
-                      console.error('Error updating notification preferences:', error);
-                      toast.error('Failed to update preferences');
-                      setCreatorLaunchEmails(!checked);
-                    } finally {
-                      setSavingNotifications(false);
-                    }
-                  }}
-                  disabled={savingNotifications}
-                />
-              </div>
+                    } catch (error) { console.error('Error:', error); toast.error('Failed to update preferences'); setCreatorLaunchEmails(!checked); }
+                    finally { setSavingNotifications(false); }
+                  }} disabled={savingNotifications} />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div><p className="font-medium">Sales Notifications</p><p className="text-sm text-muted-foreground">Get notified when someone purchases your product</p></div>
+                  <Switch checked={salesNotifications} onCheckedChange={setSalesNotifications} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-              <Separator />
-
-              <div className="flex items-center justify-between">
+          {/* Security Tab */}
+          {activeTab === 'security' && (
+            <Card className="bg-card/50">
+              <CardHeader>
+                <CardTitle>Security Settings</CardTitle>
+                <CardDescription>Manage your account security and sessions.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
                 <div>
-                  <p className="font-medium">Sales Notifications</p>
-                  <p className="text-sm text-muted-foreground">
-                    Get notified when someone purchases your product
-                  </p>
+                  <h3 className="font-medium mb-2">Change Password</h3>
+                  <p className="text-sm text-muted-foreground mb-4">We'll send a password reset link to your email address.</p>
+                  <Button variant="outline" onClick={handleChangePassword} disabled={sendingPasswordReset}>
+                    {sendingPasswordReset && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    {sendingPasswordReset ? 'Sending...' : 'Change Password'}
+                  </Button>
                 </div>
-                <Switch
-                  checked={salesNotifications}
-                  onCheckedChange={setSalesNotifications}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Security Tab */}
-        <TabsContent value="security">
-          <Card className="bg-card/50">
-            <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-              <CardDescription>
-                Manage your account security and sessions.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h3 className="font-medium mb-2">Change Password</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  We'll send a password reset link to your email address.
-                </p>
-                <Button 
-                  variant="outline" 
-                  onClick={handleChangePassword}
-                  disabled={sendingPasswordReset}
-                >
-                  {sendingPasswordReset && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {sendingPasswordReset ? 'Sending...' : 'Change Password'}
-                </Button>
-              </div>
-
-              <Separator />
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium">Two-Factor Authentication</h3>
-                  {mfaEnabled && (
-                    <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Enabled
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {mfaEnabled 
-                    ? 'Your account is protected with two-factor authentication.'
-                    : 'Add an extra layer of security to your account.'}
-                </p>
-                <Button 
-                  variant={mfaEnabled ? "outline" : "default"} 
-                  onClick={handleToggle2FA}
-                >
-                  {mfaEnabled ? 'Disable 2FA' : 'Enable 2FA'}
-                </Button>
-              </div>
-
-              <Separator />
-
-              {/* Account Type Section */}
-              <div>
-                <h3 className="font-medium mb-2">Account Type</h3>
-                <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">
-                  <div className="flex-1">
-                    <p className="font-medium">
-                      {isSeller ? 'Seller Account' : 'Buyer Account'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {isSeller 
-                        ? 'You can create and sell products on the platform.'
-                        : 'You can purchase and save products.'}
-                    </p>
+                <Separator />
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium">Two-Factor Authentication</h3>
+                    {mfaEnabled && <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-400"><CheckCircle className="w-3 h-3 mr-1" />Enabled</Badge>}
                   </div>
-                  {isSeller ? (
-                    <Button 
-                      variant="outline" 
-                      onClick={handleSwitchToBuyer}
-                      disabled={switchingAccountType}
-                    >
-                      {switchingAccountType ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Switching...</>
-                      ) : (
-                        'Switch to Buyer'
-                      )}
-                    </Button>
-                  ) : (
-                    <Button 
-                      variant="default" 
-                      onClick={handleSwitchToSeller}
-                      disabled={switchingAccountType}
-                    >
-                      {switchingAccountType ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Switching...</>
-                      ) : (
-                        'Become a Seller'
-                      )}
-                    </Button>
-                  )}
+                  <p className="text-sm text-muted-foreground mb-4">{mfaEnabled ? 'Your account is protected with two-factor authentication.' : 'Add an extra layer of security to your account.'}</p>
+                  <Button variant={mfaEnabled ? "outline" : "default"} onClick={handleToggle2FA}>{mfaEnabled ? 'Disable 2FA' : 'Enable 2FA'}</Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {isSeller 
-                    ? 'Switching to a buyer account will hide your store tab. Your products will remain but won\'t be visible until you switch back.'
-                    : 'Becoming a seller lets you create and sell products on the platform.'}
-                </p>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h3 className="font-medium mb-2 text-destructive flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Danger Zone
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Permanently delete your account and all associated data. This action cannot be undone.
-                </p>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive">Delete Account</Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your
-                        account and remove all your data including products, purchases,
-                        and profile information from our servers.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={handleDeleteAccount}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        disabled={deletingAccount}
-                      >
-                        {deletingAccount ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</>
-                        ) : (
-                          'Delete Account'
-                        )}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 2FA Dialog */}
-          <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
-                <DialogDescription>
-                  {otpSent 
-                    ? 'Enter the 6-digit code sent to your email to enable 2FA.'
-                    : 'We\'ll send a verification code to your email to confirm your identity.'}
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4 py-4">
-                {!otpSent ? (
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-4">
-                      A verification code will be sent to: <span className="font-medium text-foreground">{user?.email}</span>
-                    </p>
-                    <Button onClick={handleSendOtpFor2FA} disabled={sendingOtp}>
-                      {sendingOtp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      {sendingOtp ? 'Sending...' : 'Send Verification Code'}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex justify-center">
-                      <InputOTP 
-                        value={otpCode} 
-                        onChange={setOtpCode} 
-                        maxLength={6}
-                      >
-                        <InputOTPGroup>
-                          <InputOTPSlot index={0} />
-                          <InputOTPSlot index={1} />
-                          <InputOTPSlot index={2} />
-                          <InputOTPSlot index={3} />
-                          <InputOTPSlot index={4} />
-                          <InputOTPSlot index={5} />
-                        </InputOTPGroup>
-                      </InputOTP>
+                <Separator />
+                <div>
+                  <h3 className="font-medium mb-2">Account Type</h3>
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">
+                    <div className="flex-1">
+                      <p className="font-medium">{isSeller ? 'Seller Account' : 'Buyer Account'}</p>
+                      <p className="text-sm text-muted-foreground">{isSeller ? 'You can create and sell products.' : 'You can purchase and save products.'}</p>
                     </div>
-                    
-                    <div className="flex flex-col gap-2">
-                      <Button 
-                        onClick={handleVerify2FA} 
-                        disabled={verifyingOtp || otpCode.length !== 6}
-                        className="w-full"
-                      >
-                        {verifyingOtp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {verifyingOtp ? 'Verifying...' : 'Enable 2FA'}
+                    {isSeller ? (
+                      <Button variant="outline" onClick={handleSwitchToBuyer} disabled={switchingAccountType}>
+                        {switchingAccountType ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Switching...</> : 'Switch to Buyer'}
                       </Button>
-                      
-                      <Button 
-                        variant="ghost" 
-                        onClick={handleSendOtpFor2FA} 
-                        disabled={sendingOtp}
-                        className="text-sm"
-                      >
-                        {sendingOtp ? 'Sending...' : 'Resend Code'}
+                    ) : (
+                      <Button variant="default" onClick={handleSwitchToSeller} disabled={switchingAccountType}>
+                        {switchingAccountType ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Switching...</> : 'Become a Seller'}
                       </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-        </TabsContent>
-
-        {/* Billing Tab */}
-        <TabsContent value="billing">
-          <Card className="bg-card/50">
-            <CardHeader>
-              <CardTitle>Billing & Payments</CardTitle>
-              <CardDescription>
-                Manage your payout methods to receive payments for your products and services.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Seller Mode Indicator - shows CONNECT vs MOR based on country */}
-              {isSeller && (
-                <SellerModeIndicator
-                  sellerMode={sellerMode}
-                  countryCode={sellerCountryCode}
-                  onModeChange={(mode) => setSellerMode(mode)}
-                />
-              )}
-              
-              {/* Payout Method Selector */}
-              <PayoutMethodSelector
-                stripeConnected={!!stripeAccountId}
-                stripeOnboardingComplete={stripeOnboardingComplete}
-                onConnectStripe={handleConnectStripeClick}
-                connectingStripe={connectingStripe}
-                checkingStripeStatus={checkingStripeStatus}
-                onCheckStripeStatus={checkStripeStatus}
-                onStripeDisconnected={() => {
-                  setStripeAccountId(null);
-                  setStripeOnboardingComplete(false);
-                }}
-                onStripeStatusLoaded={(connected, complete) => {
-                  setStripeAccountId(connected ? "connected" : null);
-                  setStripeOnboardingComplete(complete);
-                }}
-                sellerMode={sellerMode}
-              />
-              
-              {/* Stripe Onboarding Guide Dialog */}
-              <StripeOnboardingGuide
-                open={showStripeGuide}
-                onOpenChange={setShowStripeGuide}
-                onContinue={handleConnectStripe}
-                isLoading={connectingStripe}
-              />
-
-              <Separator />
-
-              <div>
-                <h3 className="font-medium mb-4">Transaction History</h3>
-                <div className="text-center py-8 text-muted-foreground">
-                  <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No transactions yet</p>
-                  <p className="text-sm mt-2">Your sales will appear here once you start selling.</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Socials Tab */}
-        <TabsContent value="socials">
-          <Card className="bg-card/50">
-            <CardHeader>
-              <CardTitle>Social Links</CardTitle>
-              <CardDescription>
-                Add your social media links. We'll automatically detect the platform and show the icon on your profile.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {socialLinks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No social links added yet. Click below to add one.</p>
-              ) : (
-                <div className="space-y-3">
-                  {socialLinks.map((link) => {
-                    const detected = detectSocialPlatform(link.url);
-                    return (
-                      <div key={link.id} className="flex items-center gap-3">
-                        {/* Platform icon or generic link icon */}
-                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
-                          {detected ? detected.icon : <Link2 className="w-5 h-5" />}
-                        </div>
-                        
-                        {/* URL input */}
-                        <Input
-                          value={link.url}
-                          onChange={(e) => {
-                            setSocialLinks(prev => 
-                              prev.map(l => l.id === link.id ? { ...l, url: e.target.value } : l)
-                            );
-                          }}
-                          placeholder="Paste your social media URL..."
-                          className="flex-1"
-                        />
-                        
-                        {/* Remove button */}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => {
-                            setSocialLinks(prev => prev.filter(l => l.id !== link.id));
-                          }}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Add new row button - Issue #6 fix: enforce one link per platform */}
-              {(() => {
-                const usedPlatforms = socialLinks
-                  .map(link => detectSocialPlatform(link.url)?.platform)
-                  .filter(Boolean);
-                const allPlatformsUsed = usedPlatforms.length >= 4;
-                
-                return (
-                  <>
-                    <button
-                      onClick={() => {
-                        if (!allPlatformsUsed) {
-                          setSocialLinks(prev => [...prev, { id: crypto.randomUUID(), url: '' }]);
-                        }
-                      }}
-                      disabled={allPlatformsUsed}
-                      className={cn(
-                        "text-sm font-medium flex items-center gap-1 transition-colors",
-                        allPlatformsUsed 
-                          ? "text-muted-foreground cursor-not-allowed" 
-                          : "text-primary hover:text-primary/80"
-                      )}
-                    >
-                      <Plus className="w-4 h-4" />
-                      {allPlatformsUsed ? 'All platforms linked' : 'Add social link'}
-                    </button>
-                    
-                    {/* Show which platforms are already used */}
-                    {usedPlatforms.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {['instagram', 'youtube', 'twitter', 'tiktok'].map(platform => {
-                          const isUsed = usedPlatforms.includes(platform);
-                          return (
-                            <Badge 
-                              key={platform} 
-                              variant={isUsed ? "default" : "outline"}
-                              className={cn(
-                                "text-xs capitalize",
-                                isUsed ? "bg-primary/20 text-primary border-primary/30" : "text-muted-foreground"
-                              )}
-                            >
-                              {platform === 'twitter' ? 'X' : platform}
-                              {isUsed && <span className="ml-1">✓</span>}
-                            </Badge>
-                          );
-                        })}
-                      </div>
                     )}
-                  </>
-                );
-              })()}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">{isSeller ? 'Switching to a buyer account will hide your store tab.' : 'Becoming a seller lets you create and sell products.'}</p>
+                </div>
+                <Separator />
+                <div>
+                  <h3 className="font-medium mb-2 text-destructive flex items-center gap-2"><AlertTriangle className="w-4 h-4" />Danger Zone</h3>
+                  <p className="text-sm text-muted-foreground mb-4">Permanently delete your account and all associated data.</p>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild><Button variant="destructive">Delete Account</Button></AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>This action cannot be undone. This will permanently delete your account and all data.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deletingAccount}>
+                          {deletingAccount ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</> : 'Delete Account'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-              <Separator className="my-4" />
+          {/* Billing/Payouts Tab */}
+          {activeTab === 'billing' && (
+            <Card className="bg-card/50">
+              <CardHeader>
+                <CardTitle>Payouts & Payments</CardTitle>
+                <CardDescription>Manage your payout methods to receive payments for your products and services.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {isSeller && <SellerModeIndicator sellerMode={sellerMode} countryCode={sellerCountryCode} onModeChange={(mode) => setSellerMode(mode)} />}
+                <PayoutMethodSelector
+                  stripeConnected={!!stripeAccountId} stripeOnboardingComplete={stripeOnboardingComplete}
+                  onConnectStripe={handleConnectStripeClick} connectingStripe={connectingStripe}
+                  checkingStripeStatus={checkingStripeStatus} onCheckStripeStatus={checkStripeStatus}
+                  onStripeDisconnected={() => { setStripeAccountId(null); setStripeOnboardingComplete(false); }}
+                  onStripeStatusLoaded={(connected, complete) => { setStripeAccountId(connected ? "connected" : null); setStripeOnboardingComplete(complete); }}
+                  sellerMode={sellerMode}
+                />
+                <StripeOnboardingGuide open={showStripeGuide} onOpenChange={setShowStripeGuide} onContinue={handleConnectStripe} isLoading={connectingStripe} />
+                <Separator />
+                <div>
+                  <h3 className="font-medium mb-4">Transaction History</h3>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No transactions yet</p>
+                    <p className="text-sm mt-2">Your sales will appear here once you start selling.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-              <p className="text-xs text-muted-foreground">
-                Supported platforms: Instagram, YouTube, X (Twitter), TikTok. One link per platform.
-              </p>
+          {/* Seller Email Tab */}
+          {activeTab === 'seller-email' && <SellerEmailSettings userId={user.id} isSeller={isSeller} />}
+        </main>
+      </div>
 
-              <Button onClick={saveProfile} disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Seller Email Tab */}
-        <TabsContent value="seller-email">
-          <SellerEmailSettings userId={user.id} isSeller={isSeller} />
-        </TabsContent>
-      </Tabs>
-
-      {/* Sign Out */}
-      <Card className="bg-card/50 mt-8">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Sign Out</p>
-              <p className="text-sm text-muted-foreground">
-                Sign out of your account on this device.
-              </p>
-            </div>
-            <Button variant="outline" onClick={handleSignOut}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
+      {/* 2FA Dialog */}
+      <Dialog open={show2FADialog} onOpenChange={setShow2FADialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
+            <DialogDescription>{otpSent ? 'Enter the 6-digit code sent to your email to enable 2FA.' : "We'll send a verification code to your email to confirm your identity."}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {!otpSent ? (
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-4">A verification code will be sent to: <span className="font-medium text-foreground">{user?.email}</span></p>
+                <Button onClick={handleSendOtpFor2FA} disabled={sendingOtp}>{sendingOtp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{sendingOtp ? 'Sending...' : 'Send Verification Code'}</Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex justify-center">
+                  <InputOTP value={otpCode} onChange={setOtpCode} maxLength={6}>
+                    <InputOTPGroup><InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} /></InputOTPGroup>
+                  </InputOTP>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button onClick={handleVerify2FA} disabled={verifyingOtp || otpCode.length !== 6} className="w-full">{verifyingOtp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{verifyingOtp ? 'Verifying...' : 'Enable 2FA'}</Button>
+                  <Button variant="ghost" onClick={handleSendOtpFor2FA} disabled={sendingOtp} className="text-sm">{sendingOtp ? 'Sending...' : 'Resend Code'}</Button>
+                </div>
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
-      {/* Avatar Cropper Dialog */}
+      {/* Avatar Cropper */}
       {avatarToCrop && (
         <AvatarCropper
           open={showAvatarCropper}
-          onOpenChange={(open) => {
-            setShowAvatarCropper(open);
-            if (!open && avatarToCrop) {
-              URL.revokeObjectURL(avatarToCrop);
-              setAvatarToCrop(null);
-            }
-          }}
+          onOpenChange={(open) => { setShowAvatarCropper(open); if (!open && avatarToCrop) { URL.revokeObjectURL(avatarToCrop); setAvatarToCrop(null); } }}
           imageSrc={avatarToCrop}
           onCropComplete={handleAvatarCropComplete}
         />
@@ -1804,92 +1167,32 @@ export default function Settings() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Change Email Address</DialogTitle>
-            <DialogDescription>
-              {emailOtpSent 
-                ? 'Enter the 6-digit code sent to your current email to verify your identity.'
-                : 'Enter your new email address. We\'ll send a verification code to your current email for security.'}
-            </DialogDescription>
+            <DialogDescription>{emailOtpSent ? 'Enter the 6-digit code sent to your current email.' : "Enter your new email address."}</DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4 py-4">
             {!emailOtpSent ? (
               <div className="space-y-4">
-                <div>
-                  <Label>Current Email</Label>
-                  <Input
-                    value={user?.email || ""}
-                    disabled
-                    className="mt-2 bg-muted"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="newEmail">New Email Address</Label>
-                  <Input
-                    id="newEmail"
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value.trim())}
-                    placeholder="newemail@example.com"
-                    className="mt-2"
-                  />
-                </div>
-                <Button 
-                  onClick={handleSendEmailChangeOtp} 
-                  disabled={sendingEmailOtp || !newEmail}
-                  className="w-full"
-                >
-                  {sendingEmailOtp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {sendingEmailOtp ? 'Sending...' : 'Send Verification Code'}
+                <div><Label>Current Email</Label><Input value={user?.email || ""} disabled className="mt-2 bg-muted" /></div>
+                <div><Label htmlFor="newEmail">New Email Address</Label><Input id="newEmail" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value.trim())} placeholder="newemail@example.com" className="mt-2" /></div>
+                <Button onClick={handleSendEmailChangeOtp} disabled={sendingEmailOtp || !newEmail} className="w-full">
+                  {sendingEmailOtp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{sendingEmailOtp ? 'Sending...' : 'Send Verification Code'}
                 </Button>
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-sm text-muted-foreground text-center">
-                  Verification code sent to: <span className="font-medium text-foreground">{user?.email}</span>
-                </p>
+                <p className="text-sm text-muted-foreground text-center">Verification code sent to: <span className="font-medium text-foreground">{user?.email}</span></p>
                 <div className="flex justify-center">
-                  <InputOTP 
-                    value={emailOtpCode} 
-                    onChange={setEmailOtpCode} 
-                    maxLength={6}
-                  >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
+                  <InputOTP value={emailOtpCode} onChange={setEmailOtpCode} maxLength={6}>
+                    <InputOTPGroup><InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} /></InputOTPGroup>
                   </InputOTP>
                 </div>
-                
                 <div className="space-y-2">
-                  <Button 
-                    onClick={handleVerifyEmailChange} 
-                    disabled={verifyingEmailChange || emailOtpCode.length !== 6}
-                    className="w-full"
-                  >
-                    {verifyingEmailChange && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    {verifyingEmailChange ? 'Changing Email...' : 'Verify & Change Email'}
+                  <Button onClick={handleVerifyEmailChange} disabled={verifyingEmailChange || emailOtpCode.length !== 6} className="w-full">
+                    {verifyingEmailChange && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{verifyingEmailChange ? 'Changing Email...' : 'Verify & Change Email'}
                   </Button>
-                  
                   <div className="flex justify-between">
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => setEmailOtpSent(false)}
-                      className="text-sm"
-                    >
-                      ← Change email address
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      onClick={handleSendEmailChangeOtp} 
-                      disabled={sendingEmailOtp}
-                      className="text-sm"
-                    >
-                      {sendingEmailOtp ? 'Sending...' : 'Resend Code'}
-                    </Button>
+                    <Button variant="ghost" onClick={() => setEmailOtpSent(false)} className="text-sm">← Change email address</Button>
+                    <Button variant="ghost" onClick={handleSendEmailChangeOtp} disabled={sendingEmailOtp} className="text-sm">{sendingEmailOtp ? 'Sending...' : 'Resend Code'}</Button>
                   </div>
                 </div>
               </div>
