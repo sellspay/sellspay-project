@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Loader2, MessageSquare, SearchX, Plus, Search } from 'lucide-react';
 import { ThreadCard } from '@/components/community/ThreadCard';
 import { NewThreadDialog } from '@/components/community/NewThreadDialog';
@@ -8,18 +8,8 @@ import { ThreadReplyDialog } from '@/components/community/ThreadReplyDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
-
 
 const THREADS_PER_PAGE = 20;
-
 
 interface ThreadAuthor {
   id: string;
@@ -51,12 +41,8 @@ export default function Community() {
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
   const [newThreadOpen, setNewThreadOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeCategory, searchQuery]);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { data: profile } = useQuery({
     queryKey: ['profile', user?.id],
@@ -68,98 +54,111 @@ export default function Community() {
     enabled: !!user?.id,
   });
 
-  const { data: totalCount = 0 } = useQuery({
-    queryKey: ['threads-count', activeCategory, searchQuery],
-    queryFn: async () => {
-      let query = supabase.from('threads').select('id', { count: 'exact', head: true });
-      if (activeCategory === 'all') {
-        query = query.neq('category', 'promotion');
-      } else {
-        query = query.eq('category', activeCategory);
-      }
-      if (searchQuery) {
-        query = query.neq('category', 'promotion').ilike('content', `%${searchQuery}%`);
-      }
-      const { count, error } = await query;
-      if (error) throw error;
-      return count || 0;
-    },
-  });
+  const fetchThreadsPage = useCallback(async ({ pageParam = 0 }: { pageParam?: number }) => {
+    const start = pageParam * THREADS_PER_PAGE;
+    const end = start + THREADS_PER_PAGE - 1;
 
-  const totalPages = Math.ceil(totalCount / THREADS_PER_PAGE);
+    let query = supabase
+      .from('threads')
+      .select('*')
+      .order('is_pinned', { ascending: false })
+      .order('created_at', { ascending: false })
+      .range(start, end);
+
+    if (activeCategory === 'all') {
+      query = query.neq('category', 'promotion');
+    } else {
+      query = query.eq('category', activeCategory);
+    }
+    if (searchQuery) {
+      query = query.neq('category', 'promotion').ilike('content', `%${searchQuery}%`);
+    }
+
+    const { data: threadsData, error } = await query;
+    if (error) throw error;
+    if (!threadsData || threadsData.length === 0) return { threads: [], nextPage: undefined };
+
+    const authorIds = [...new Set(threadsData.map((t) => t.author_id))];
+    const { data: authorsData } = await supabase
+      .from('public_profiles')
+      .select('id, username, full_name, avatar_url, verified')
+      .in('id', authorIds);
+
+    const authorsMap = new Map(authorsData?.map((a) => [a.id, a]) || []);
+
+    const threadIds = threadsData.map((t) => t.id);
+    const { data: likesData } = await supabase.from('thread_likes').select('thread_id').in('thread_id', threadIds);
+    const { data: repliesData } = await supabase.from('thread_replies').select('thread_id').in('thread_id', threadIds);
+
+    const likesCountMap = new Map<string, number>();
+    likesData?.forEach((like) => {
+      likesCountMap.set(like.thread_id, (likesCountMap.get(like.thread_id) || 0) + 1);
+    });
+
+    const repliesCountMap = new Map<string, number>();
+    repliesData?.forEach((reply) => {
+      repliesCountMap.set(reply.thread_id, (repliesCountMap.get(reply.thread_id) || 0) + 1);
+    });
+
+    let userLikesSet = new Set<string>();
+    if (profile?.id) {
+      const { data: userLikes } = await supabase
+        .from('thread_likes')
+        .select('thread_id')
+        .eq('user_id', profile.id)
+        .in('thread_id', threadIds);
+      userLikesSet = new Set(userLikes?.map((l) => l.thread_id) || []);
+    }
+
+    const threads = threadsData.map((thread) => ({
+      ...thread,
+      author: authorsMap.get(thread.author_id),
+      likes_count: likesCountMap.get(thread.id) || 0,
+      replies_count: repliesCountMap.get(thread.id) || 0,
+      is_liked: userLikesSet.has(thread.id),
+    })) as Thread[];
+
+    return {
+      threads,
+      nextPage: threadsData.length === THREADS_PER_PAGE ? pageParam + 1 : undefined,
+    };
+  }, [activeCategory, searchQuery, profile?.id]);
 
   const {
-    data: threads = [],
+    data,
     isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     refetch,
-  } = useQuery({
-    queryKey: ['threads', activeCategory, currentPage, searchQuery],
-    queryFn: async () => {
-      const start = (currentPage - 1) * THREADS_PER_PAGE;
-      const end = start + THREADS_PER_PAGE - 1;
-
-      let query = supabase
-        .from('threads')
-        .select('*')
-        .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: false })
-        .range(start, end);
-
-      if (activeCategory === 'all') {
-        query = query.neq('category', 'promotion');
-      } else {
-        query = query.eq('category', activeCategory);
-      }
-      if (searchQuery) {
-        query = query.neq('category', 'promotion').ilike('content', `%${searchQuery}%`);
-      }
-
-      const { data: threadsData, error } = await query;
-      if (error) throw error;
-      if (!threadsData || threadsData.length === 0) return [];
-
-      const authorIds = [...new Set(threadsData.map((t) => t.author_id))];
-      const { data: authorsData } = await supabase
-        .from('public_profiles')
-        .select('id, username, full_name, avatar_url, verified')
-        .in('id', authorIds);
-
-      const authorsMap = new Map(authorsData?.map((a) => [a.id, a]) || []);
-
-      const threadIds = threadsData.map((t) => t.id);
-      const { data: likesData } = await supabase.from('thread_likes').select('thread_id').in('thread_id', threadIds);
-      const { data: repliesData } = await supabase.from('thread_replies').select('thread_id').in('thread_id', threadIds);
-
-      const likesCountMap = new Map<string, number>();
-      likesData?.forEach((like) => {
-        likesCountMap.set(like.thread_id, (likesCountMap.get(like.thread_id) || 0) + 1);
-      });
-
-      const repliesCountMap = new Map<string, number>();
-      repliesData?.forEach((reply) => {
-        repliesCountMap.set(reply.thread_id, (repliesCountMap.get(reply.thread_id) || 0) + 1);
-      });
-
-      let userLikesSet = new Set<string>();
-      if (profile?.id) {
-        const { data: userLikes } = await supabase
-          .from('thread_likes')
-          .select('thread_id')
-          .eq('user_id', profile.id)
-          .in('thread_id', threadIds);
-        userLikesSet = new Set(userLikes?.map((l) => l.thread_id) || []);
-      }
-
-      return threadsData.map((thread) => ({
-        ...thread,
-        author: authorsMap.get(thread.author_id),
-        likes_count: likesCountMap.get(thread.id) || 0,
-        replies_count: repliesCountMap.get(thread.id) || 0,
-        is_liked: userLikesSet.has(thread.id),
-      })) as Thread[];
-    },
+  } = useInfiniteQuery({
+    queryKey: ['threads-infinite', activeCategory, searchQuery, profile?.id],
+    queryFn: fetchThreadsPage,
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 0,
   });
 
+  const threads = data?.pages.flatMap((p) => p.threads) ?? [];
+
+  // Intersection observer for infinite scroll
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Realtime updates
   useEffect(() => {
     const channel = supabase
       .channel('threads-realtime')
@@ -184,26 +183,9 @@ export default function Community() {
     setSearchOpen(false);
   }, []);
 
-  
-
-  const getPageNumbers = () => {
-    const pages: number[] = [];
-    const maxVisible = 5;
-    if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else if (currentPage <= 3) {
-      for (let i = 1; i <= Math.min(maxVisible, totalPages); i++) pages.push(i);
-    } else if (currentPage >= totalPages - 2) {
-      for (let i = Math.max(1, totalPages - maxVisible + 1); i <= totalPages; i++) pages.push(i);
-    } else {
-      for (let i = currentPage - 2; i <= currentPage + 2; i++) pages.push(i);
-    }
-    return pages;
-  };
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Minimal top bar with filter dropdown + search icon */}
+      {/* Minimal top bar */}
       <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/30">
         <div className="mx-auto max-w-[680px] px-6 flex items-center justify-between h-12">
           <span className="text-xl font-bold text-foreground" style={{ fontFamily: "'Caveat', cursive" }}>Threads</span>
@@ -221,7 +203,6 @@ export default function Community() {
       {/* Feed */}
       <section className="py-4 sm:py-6 px-6">
         <div className="mx-auto max-w-[680px] space-y-1">
-          {/* Search panel (collapsible) */}
           {searchOpen && (
             <div className="pb-4">
               <ThreadSearchPanel open={searchOpen} onOpenChange={setSearchOpen} onSearchChange={handleSearchChange} activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
@@ -230,8 +211,8 @@ export default function Community() {
 
           {searchQuery && (
             <p className="text-center text-sm text-muted-foreground pb-3">
-              {totalCount > 0 ? (
-                <>Found <span className="font-medium text-foreground">{totalCount}</span> thread{totalCount !== 1 ? 's' : ''} matching "<span className="font-medium text-foreground">{searchQuery}</span>"</>
+              {threads.length > 0 ? (
+                <>Found threads matching "<span className="font-medium text-foreground">{searchQuery}</span>"</>
               ) : (
                 <>No threads found matching "<span className="font-medium text-foreground">{searchQuery}</span>"</>
               )}
@@ -264,40 +245,16 @@ export default function Community() {
             </div>
           )}
 
-          {totalPages > 1 && !isLoading && threads.length > 0 && (
-            <div className="pt-8">
-              <Pagination>
-                <PaginationContent className="gap-1">
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                    />
-                  </PaginationItem>
-                  {getPageNumbers().map((pageNum) => (
-                    <PaginationItem key={pageNum}>
-                      <PaginationLink onClick={() => setCurrentPage(pageNum)} isActive={currentPage === pageNum} className="cursor-pointer">
-                        {pageNum}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-              <p className="text-center mt-3 text-xs text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </p>
-            </div>
-          )}
+          {/* Infinite scroll sentinel */}
+          <div ref={loadMoreRef} className="py-6 flex justify-center">
+            {isFetchingNextPage && (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            )}
+          </div>
         </div>
       </section>
 
-      {/* Floating + button (bottom-right) */}
+      {/* Floating + button */}
       <button
         onClick={() => setNewThreadOpen(true)}
         className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-105 transition-all duration-200 flex items-center justify-center"
@@ -305,9 +262,7 @@ export default function Community() {
         <Plus className="h-7 w-7" />
       </button>
 
-      {/* New Thread Dialog */}
       <NewThreadDialog open={newThreadOpen} onOpenChange={setNewThreadOpen} />
-
       <ThreadReplyDialog thread={selectedThread} open={replyDialogOpen} onOpenChange={setReplyDialogOpen} />
     </div>
   );
