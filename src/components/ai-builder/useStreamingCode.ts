@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-
+import type { ProjectFiles } from './VibecoderPreview';
 /**
  * Completion sentinel that MUST be present in every AI-generated code block.
  * If missing, the output is considered truncated.
@@ -55,7 +55,82 @@ type StreamMode = 'detecting' | 'chat' | 'code' | 'plan';
 interface StreamingState {
   isStreaming: boolean;
   code: string;
+  /** Multi-file map. When populated, takes precedence over `code` in the preview. */
+  files: ProjectFiles;
   error: string | null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MULTI-FILE PARSER: Extract file map from BEGIN_FILES format
+// ═══════════════════════════════════════════════════════════════
+const BEGIN_FILES_MARKER = '/// BEGIN_FILES ///';
+const END_FILES_MARKER = '/// END_FILES ///';
+const FILE_MARKER_PATTERN = /\/\/\/\s*FILE:\s*(.+?)\s*\/\/\//g;
+
+/**
+ * Parse multi-file output format:
+ * /// BEGIN_FILES ///
+ * /// FILE: /App.tsx ///
+ * <code>
+ * /// FILE: /pages/Home.tsx ///
+ * <code>
+ * /// END_FILES ///
+ */
+export function parseMultiFileOutput(raw: string): ProjectFiles | null {
+  if (!raw.includes(BEGIN_FILES_MARKER)) return null;
+  
+  const beginIdx = raw.indexOf(BEGIN_FILES_MARKER);
+  const endIdx = raw.indexOf(END_FILES_MARKER);
+  const content = endIdx >= 0 
+    ? raw.substring(beginIdx + BEGIN_FILES_MARKER.length, endIdx) 
+    : raw.substring(beginIdx + BEGIN_FILES_MARKER.length);
+  
+  const files: ProjectFiles = {};
+  const fileMatches: Array<{ path: string; index: number }> = [];
+  
+  let match;
+  const pattern = /\/\/\/\s*FILE:\s*(.+?)\s*\/\/\//g;
+  while ((match = pattern.exec(content)) !== null) {
+    fileMatches.push({ path: match[1].trim(), index: match.index + match[0].length });
+  }
+  
+  if (fileMatches.length === 0) return null;
+  
+  for (let i = 0; i < fileMatches.length; i++) {
+    const start = fileMatches[i].index;
+    const end = i + 1 < fileMatches.length 
+      ? content.lastIndexOf('///', fileMatches[i + 1].index - 1) 
+      : content.length;
+    
+    let fileCode = content.substring(start, end).trim();
+    // Strip sentinel and code fences
+    fileCode = fileCode
+      .replace(/\/\/\s*---\s*VIBECODER_COMPLETE\s*---/g, '')
+      .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
+      .replace(/\n?```\s*$/i, '')
+      .trim();
+    
+    if (fileCode) {
+      const path = fileMatches[i].path.startsWith('/') ? fileMatches[i].path : `/${fileMatches[i].path}`;
+      files[path] = fileCode;
+    }
+  }
+  
+  return Object.keys(files).length > 0 ? files : null;
+}
+
+/**
+ * Convert legacy single-file code to a files map
+ */
+export function codeToFiles(code: string): ProjectFiles {
+  return { '/App.tsx': code };
+}
+
+/**
+ * Extract App.tsx from a files map (backward compat)
+ */
+export function filesToCode(files: ProjectFiles): string {
+  return files['/App.tsx'] || files['App.tsx'] || '';
 }
 
 const DEFAULT_CODE = `export default function App() {
@@ -317,6 +392,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   const [state, setState] = useState<StreamingState>({
     isStreaming: false,
     code: DEFAULT_CODE,
+    files: {},
     error: null,
   });
 
@@ -756,6 +832,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     setState({
       isStreaming: false,
       code: DEFAULT_CODE,
+      files: {},
       error: null,
     });
   }, []);
@@ -775,7 +852,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     }
 
     lastGoodCodeRef.current = codeWithoutSentinel;
-    setState(prev => ({ ...prev, code: codeWithoutSentinel, error: null }));
+    setState(prev => ({ ...prev, code: codeWithoutSentinel, files: codeToFiles(codeWithoutSentinel), error: null }));
+  }, []);
+
+  /** Set multi-file project map directly */
+  const setFiles = useCallback((files: ProjectFiles) => {
+    const appCode = filesToCode(files);
+    if (appCode) {
+      lastGoodCodeRef.current = stripCompleteSentinel(appCode);
+    }
+    setState(prev => ({ ...prev, files, code: appCode || prev.code, error: null }));
   }, []);
 
   const forceResetStreaming = useCallback(() => {
@@ -792,6 +878,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     cancelStream,
     resetCode,
     setCode,
+    setFiles,
     forceResetStreaming,
     DEFAULT_CODE,
   };

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke';
 import { hasCompleteSentinel } from '../useStreamingCode';
+import type { ProjectFiles } from '../VibecoderPreview';
 
 export interface VibecoderProject {
   id: string;
@@ -19,9 +20,10 @@ export interface VibecoderMessage {
   role: 'user' | 'assistant' | 'system';
   content: string | null;
   code_snapshot: string | null;
+  /** Multi-file snapshot (jsonb). Takes precedence over code_snapshot when present. */
+  files_snapshot: Record<string, string> | null;
   rating: number;
   created_at: string;
-  // Policy violation metadata (local-only, not persisted)
   meta_data?: {
     type?: 'policy_violation' | string;
     category?: string;
@@ -253,7 +255,8 @@ export function useVibecoderProjects() {
     role: 'user' | 'assistant' | 'system',
     content: string | null,
     codeSnapshot?: string | null,
-    forProjectId?: string // Explicit project ID for race condition safety
+    forProjectId?: string,
+    filesSnapshot?: ProjectFiles | null,
   ) => {
     const targetProjectId = forProjectId || activeProjectId;
     if (!targetProjectId) return null;
@@ -283,6 +286,7 @@ export function useVibecoderProjects() {
           role,
           content,
           code_snapshot: codeSnapshot ?? null,
+          files_snapshot: filesSnapshot ?? null,
           rating: 0,
           created_at: new Date().toISOString(),
         };
@@ -296,6 +300,7 @@ export function useVibecoderProjects() {
         role,
         content,
         code_snapshot: codeSnapshot ?? null,
+        files_snapshot: filesSnapshot ?? null,
         rating: 0,
         created_at: new Date().toISOString(),
       };
@@ -309,7 +314,8 @@ export function useVibecoderProjects() {
         role,
         content,
         code_snapshot: codeSnapshot ?? null,
-      })
+        files_snapshot: filesSnapshot ?? null,
+      } as any)
       .select()
       .single();
 
@@ -365,16 +371,36 @@ export function useVibecoderProjects() {
     return true;
   }, []);
 
-  // Get last code snapshot (for undo)
+  // Get last code snapshot (for undo) - checks files_snapshot first, falls back to code_snapshot
   const getLastCodeSnapshot = useCallback(() => {
-    const withCode = messages.filter(m => m.code_snapshot);
-    return withCode.length > 0 ? withCode[withCode.length - 1].code_snapshot : null;
+    const withCode = messages.filter(m => m.code_snapshot || m.files_snapshot);
+    if (withCode.length === 0) return null;
+    const last = withCode[withCode.length - 1];
+    // If files_snapshot exists, extract App.tsx from it
+    if (last.files_snapshot && typeof last.files_snapshot === 'object') {
+      const files = last.files_snapshot as Record<string, string>;
+      return files['/App.tsx'] || files['App.tsx'] || last.code_snapshot;
+    }
+    return last.code_snapshot;
+  }, [messages]);
+
+  /** Get the last files snapshot (multi-file map). Returns null for legacy single-file projects. */
+  const getLastFilesSnapshot = useCallback((): ProjectFiles | null => {
+    const withFiles = messages.filter(m => m.files_snapshot && typeof m.files_snapshot === 'object' && Object.keys(m.files_snapshot).length > 0);
+    if (withFiles.length === 0) return null;
+    return withFiles[withFiles.length - 1].files_snapshot as ProjectFiles;
   }, [messages]);
 
   // Get previous code snapshot (for undo)
   const getPreviousCodeSnapshot = useCallback(() => {
-    const withCode = messages.filter(m => m.code_snapshot);
-    return withCode.length > 1 ? withCode[withCode.length - 2].code_snapshot : null;
+    const withCode = messages.filter(m => m.code_snapshot || m.files_snapshot);
+    if (withCode.length < 2) return null;
+    const prev = withCode[withCode.length - 2];
+    if (prev.files_snapshot && typeof prev.files_snapshot === 'object') {
+      const files = prev.files_snapshot as Record<string, string>;
+      return files['/App.tsx'] || files['App.tsx'] || prev.code_snapshot;
+    }
+    return prev.code_snapshot;
   }, [messages]);
 
   // Restore to a specific message version (time travel)
@@ -516,6 +542,7 @@ export function useVibecoderProjects() {
     addMessage,
     rateMessage,
     getLastCodeSnapshot,
+    getLastFilesSnapshot,
     getPreviousCodeSnapshot,
     restoreToVersion,
     refreshMessages,

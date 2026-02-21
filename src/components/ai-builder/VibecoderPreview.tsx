@@ -10,8 +10,14 @@ import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
 import type { ViewMode } from './types/generation';
 import { useSuppressPreviewNoise } from './hooks/useSuppressPreviewNoise';
 
+/** Map of file paths to file contents (multi-file mode). */
+export type ProjectFiles = Record<string, string>;
+
 interface VibecoderPreviewProps {
-  code: string;
+  /** Single-file code (legacy / backward compat). Ignored when `files` is provided. */
+  code?: string;
+  /** Multi-file project map. Takes precedence over `code`. */
+  files?: ProjectFiles;
   isStreaming?: boolean;
   showLoadingOverlay?: boolean;
   onError?: (error: string) => void;
@@ -311,12 +317,14 @@ ReadyDetector.displayName = 'ReadyDetector';
 // Memoized Sandpack component to prevent unnecessary re-renders during streaming
 const SandpackRenderer = memo(function SandpackRenderer({ 
   code, 
+  projectFiles,
   onError,
   onReady,
   viewMode = 'preview',
   isStreaming = false,
 }: { 
-  code: string; 
+  code?: string; 
+  projectFiles?: ProjectFiles;
   onError?: (error: string) => void;
   onReady?: () => void;
   viewMode?: ViewMode;
@@ -324,35 +332,48 @@ const SandpackRenderer = memo(function SandpackRenderer({
 }) {
   // Wrap the code in proper structure, including the standard library
   // NUCLEAR: Also inject iframe-silence.js and iframe-silence.css
-  const files = useMemo(() => ({
-    // Standard library (hooks, utils) - always available to prevent crashes
-    ...Object.fromEntries(
-      Object.entries(VIBECODER_STDLIB).map(([path, content]) => [
-        path,
-        { code: content, hidden: true }
-      ])
-    ),
-    // The AI-generated code
-    '/App.tsx': {
-      code,
-      active: true,
-    },
-    // Entry point with NUCLEAR error suppression
-    '/index.tsx': {
-      code: `import "./styles/error-silence.css";
+  // Build the Sandpack file map from either `projectFiles` (multi-file) or `code` (legacy single-file)
+  const files = useMemo(() => {
+    // --- Project files (AI-generated) ---
+    const generatedFiles: Record<string, { code: string; active?: boolean }> = {};
+
+    if (projectFiles && Object.keys(projectFiles).length > 0) {
+      // Multi-file mode: spread all project files into Sandpack
+      for (const [path, content] of Object.entries(projectFiles)) {
+        const sandpackPath = path.startsWith('/') ? path : `/${path}`;
+        generatedFiles[sandpackPath] = {
+          code: content,
+          active: sandpackPath === '/App.tsx',
+        };
+      }
+    } else if (code) {
+      // Legacy single-file mode
+      generatedFiles['/App.tsx'] = { code, active: true };
+    }
+
+    return {
+      // Standard library (hooks, utils) - always available to prevent crashes
+      ...Object.fromEntries(
+        Object.entries(VIBECODER_STDLIB).map(([path, content]) => [
+          path,
+          { code: content, hidden: true }
+        ])
+      ),
+      // AI-generated files
+      ...generatedFiles,
+      // Entry point with NUCLEAR error suppression
+      '/index.tsx': {
+        code: `import "./styles/error-silence.css";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 
 // NUCLEAR ERROR SILENCE PROTOCOL
 (function() {
-  // 1. Freeze-safe error handler - NEVER touch error.message
   const safeHandler = () => true;
   window.onerror = safeHandler;
   window.onunhandledrejection = (e) => { try { e.preventDefault(); } catch {} return true; };
   
-  // 2. Patch console to silently drop errors
-  const noop = () => {};
   const origError = console.error;
   console.error = (...args) => {
     const str = args.join(' ');
@@ -360,7 +381,6 @@ import App from "./App";
     origError.apply(console, args);
   };
 
-  // 3. Nuke any overlay element immediately
   const nukeOverlays = () => {
     const dangerous = document.querySelectorAll(
       '#react-error-overlay, [class*="error"], [class*="Error"], .sp-error, [style*="position: fixed"][style*="z-index"]'
@@ -371,7 +391,6 @@ import App from "./App";
     });
   };
 
-  // 4. MutationObserver to catch overlays the instant they appear
   const observer = new MutationObserver((mutations) => {
     for (const m of mutations) {
       m.addedNodes.forEach(node => {
@@ -389,17 +408,16 @@ import App from "./App";
   });
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
-  // 5. Run nuker immediately and periodically
   nukeOverlays();
   setInterval(nukeOverlays, 100);
 })();
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);`,
-      hidden: true,
-    },
-    '/styles/error-silence.css': {
-      code: `#react-error-overlay,[class*="error-overlay"],[class*="ErrorOverlay"],
+        hidden: true,
+      },
+      '/styles/error-silence.css': {
+        code: `#react-error-overlay,[class*="error-overlay"],[class*="ErrorOverlay"],
 .sp-error,.sp-error-overlay,.sp-error-message,
 div[style*="position: fixed"][style*="z-index: 9999"],
 div[style*="background-color: red"],div[style*="background: red"] {
@@ -407,9 +425,10 @@ div[style*="background-color: red"],div[style*="background: red"] {
   pointer-events:none!important;width:0!important;height:0!important;
   position:absolute!important;left:-99999px!important;z-index:-99999!important;
 }`,
-      hidden: true,
-    },
-  }), [code]);
+        hidden: true,
+      },
+    };
+  }, [code, projectFiles]);
 
   return (
     <div className="h-full w-full flex flex-col" style={{ height: '100%' }}>
@@ -432,6 +451,7 @@ div[style*="background-color: red"],div[style*="background: red"] {
             'framer-motion': '^11.0.0',
             'clsx': 'latest',
             'tailwind-merge': 'latest',
+            'react-router-dom': '^6.30.0',
           },
         }}
       >
@@ -465,24 +485,27 @@ div[style*="background-color: red"],div[style*="background: red"] {
 
 export function VibecoderPreview({
   code,
+  files,
   isStreaming = false,
   onError,
   onReady,
   viewMode = 'preview',
 }: VibecoderPreviewProps) {
   // NUCLEAR ERROR SILENCE PROTOCOL - Layer 4: Parent Window Suppression
-  // Prevents Sandpack/react-error-overlay from taking over the whole UI,
-  // and suppresses the noisy repeated console errors from frozen SyntaxError objects.
   useSuppressPreviewNoise(true);
 
   return (
     <div className="h-full w-full relative bg-background flex flex-col">
-      {/* NUCLEAR CSS Fix - Inject global styles to force Sandpack height AND hide all error UI */}
       <style>{SANDPACK_HEIGHT_FIX}</style>
-
-      {/* Sandpack preview/code - no loading overlay, just renders directly */}
       <div className="h-full w-full flex-1 min-h-0">
-        <SandpackRenderer code={code} onError={onError} onReady={onReady} viewMode={viewMode} isStreaming={isStreaming} />
+        <SandpackRenderer
+          code={code}
+          projectFiles={files}
+          onError={onError}
+          onReady={onReady}
+          viewMode={viewMode}
+          isStreaming={isStreaming}
+        />
       </div>
     </div>
   );

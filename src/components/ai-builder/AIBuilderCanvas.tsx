@@ -173,6 +173,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     addMessage,
     rateMessage,
     getLastCodeSnapshot,
+    getLastFilesSnapshot,
     getPreviousCodeSnapshot,
     restoreToVersion,
     canUndo,
@@ -231,11 +232,13 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Streaming code state
   const { 
     code, 
+    files,
     isStreaming, 
     streamCode, 
     cancelStream, 
     resetCode,
     setCode,
+    setFiles,
     forceResetStreaming,
     DEFAULT_CODE 
   } = useStreamingCode({
@@ -1547,6 +1550,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                     <VibecoderPreview
                       key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
                       code={code}
+                      files={Object.keys(files).length > 0 ? files : undefined}
                       isStreaming={isStreaming}
                       showLoadingOverlay={false}
                       onReady={() => {
