@@ -58,6 +58,10 @@ export function useBackgroundGeneration({
     onJobErrorRef.current = onJobError;
   }, [onJobUpdate, onJobComplete, onJobError]);
 
+  // Stale job timeout ref
+  const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const STALE_JOB_TIMEOUT_MS = 120_000; // 2 minutes
+
   // Subscribe to realtime updates for this project's jobs
   useEffect(() => {
     if (!projectId) {
@@ -88,8 +92,23 @@ export function useBackgroundGeneration({
         if (jobs && jobs.length > 0) {
           const job = jobs[0] as GenerationJob;
           console.log('[BackgroundGen] Found existing job:', job.id, job.status);
-          setCurrentJob(job);
-          onJobUpdateRef.current?.(job);
+          
+          // Check if this job is already stale on mount
+          const jobAge = Date.now() - new Date(job.updated_at || job.created_at).getTime();
+          if (jobAge > STALE_JOB_TIMEOUT_MS) {
+            console.warn('[BackgroundGen] Found stale job on mount, force-failing:', job.id);
+            await supabase
+              .from('ai_generation_jobs')
+              .update({ status: 'failed', error_message: 'Generation timed out', completed_at: new Date().toISOString() })
+              .eq('id', job.id)
+              .eq('status', job.status); // only update if status hasn't changed
+            const failedJob = { ...job, status: 'failed' as const, error_message: 'Generation timed out' };
+            setCurrentJob(failedJob);
+            onJobErrorRef.current?.(failedJob);
+          } else {
+            setCurrentJob(job);
+            onJobUpdateRef.current?.(job);
+          }
         }
       } catch (e) {
         console.error('[BackgroundGen] Error:', e);
@@ -119,6 +138,48 @@ export function useBackgroundGeneration({
             setCurrentJob(job);
             onJobUpdateRef.current?.(job);
 
+            // Reset stale timer on every update
+            if (staleTimerRef.current) clearTimeout(staleTimerRef.current);
+
+            // Start stale timer for active jobs
+            if (job.status === 'pending' || job.status === 'running') {
+              staleTimerRef.current = setTimeout(async () => {
+                console.warn('[BackgroundGen] Job stale, polling DB for final status:', job.id);
+                // Poll DB one last time - maybe the realtime event was missed
+                const { data } = await supabase
+                  .from('ai_generation_jobs')
+                  .select('*')
+                  .eq('id', job.id)
+                  .single();
+                
+                if (data) {
+                  const freshJob = data as GenerationJob;
+                  if (freshJob.status === 'completed' || freshJob.status === 'needs_continuation') {
+                    const jobKey = `${freshJob.id}_${freshJob.status}`;
+                    if (!processedJobsRef.current.has(jobKey)) {
+                      processedJobsRef.current.add(jobKey);
+                      setCurrentJob(freshJob);
+                      onJobCompleteRef.current?.(freshJob);
+                    }
+                  } else if (freshJob.status === 'failed') {
+                    setCurrentJob(freshJob);
+                    onJobErrorRef.current?.(freshJob);
+                  } else {
+                    // Still running/pending after timeout — force fail
+                    console.error('[BackgroundGen] Job timed out, force-failing:', job.id);
+                    await supabase
+                      .from('ai_generation_jobs')
+                      .update({ status: 'failed', error_message: 'Generation timed out', completed_at: new Date().toISOString() })
+                      .eq('id', job.id)
+                      .eq('status', freshJob.status);
+                    const failedJob = { ...freshJob, status: 'failed' as const, error_message: 'Generation timed out' };
+                    setCurrentJob(failedJob);
+                    onJobErrorRef.current?.(failedJob);
+                  }
+                }
+              }, STALE_JOB_TIMEOUT_MS);
+            }
+
             // Only fire completion/error callbacks ONCE per job
             const jobKey = `${job.id}_${job.status}`;
             if (!processedJobsRef.current.has(jobKey)) {
@@ -140,6 +201,7 @@ export function useBackgroundGeneration({
 
     return () => {
       channel.unsubscribe();
+      if (staleTimerRef.current) clearTimeout(staleTimerRef.current);
     };
   }, [projectId]); // Only re-subscribe when projectId changes
 
