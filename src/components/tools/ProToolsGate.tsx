@@ -24,20 +24,6 @@ export function ProToolsGate({
   // The auth check happens at generation time inside each tool
   return (
     <div>
-      {isProTool && user && (
-        <div className="mb-4 flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-orange-500/5 border border-amber-500/20">
-          <div className="flex items-center gap-2">
-            <Coins className="w-4 h-4 text-amber-500" />
-            <span className="text-sm">
-              <span className="font-semibold text-amber-500">{creditBalance}</span>
-              <span className="text-muted-foreground"> credits available</span>
-            </span>
-          </div>
-          <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/30">
-            1 credit per use
-          </Badge>
-        </div>
-      )}
       {children}
       <SignUpPromoDialog open={showPromo} onOpenChange={setShowPromo} />
     </div>
