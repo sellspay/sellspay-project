@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply, Bookmark, Flame, TrendingUp, Crown, Pin } from "lucide-react";
+import { ArrowLeft, Play, Download, Share2, Heart, MessageCircle, Calendar, Loader2, Pencil, Trash2, FileIcon, Send, Lock, ChevronDown, ChevronUp, UserPlus, Reply, Bookmark, Flame, TrendingUp, Crown, Pin, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,6 +27,7 @@ import { useFileDownloadProgress } from "@/hooks/useFileDownloadProgress";
 import { DownloadProgressOverlay } from "@/components/product/DownloadProgressOverlay";
 import { useDownloadLimitCountdown } from "@/hooks/useDownloadLimitCountdown";
 import { AttachmentsSection } from "@/components/product/AttachmentsSection";
+import { useCart } from "@/hooks/useCart";
 
 interface Product {
   id: string;
@@ -159,6 +160,9 @@ export default function ProductDetail() {
   const [showSubscribeDialog, setShowSubscribeDialog] = useState(false);
   const [pendingSubscribeAfterFollow, setPendingSubscribeAfterFollow] = useState(false);
   
+  // Cart hook
+  const { isInCart, toggleCart, loading: cartLoading } = useCart();
+
   // Download progress hook
   const { 
     isDownloading: isDownloadingWithProgress, 
@@ -1579,6 +1583,26 @@ export default function ProductDetail() {
               <Button variant="outline" size="sm" onClick={handleShare}>
                 <Share2 className="w-4 h-4" />
               </Button>
+              {/* Add to Cart */}
+              {!isOwner && !hasPurchased && product.pricing_type !== 'free' && (
+                <Button
+                  variant={isInCart(product.id) ? "default" : "outline"}
+                  size="sm"
+                  className="gap-2"
+                  disabled={cartLoading}
+                  onClick={() => {
+                    if (!user) {
+                      const currentPath = window.location.pathname + window.location.search;
+                      navigate(`/login?next=${encodeURIComponent(currentPath)}`);
+                      return;
+                    }
+                    toggleCart(product.id);
+                  }}
+                >
+                  <ShoppingCart className={`w-4 h-4 ${isInCart(product.id) ? "fill-primary-foreground" : ""}`} />
+                  {isInCart(product.id) ? "In Cart" : "Add to Cart"}
+                </Button>
+              )}
             </div>
           </div>
 
