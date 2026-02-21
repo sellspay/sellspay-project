@@ -5,7 +5,8 @@ import { useAuth } from '@/lib/auth';
 import { CategoryCard } from '@/components/home/CategoryCard';
 import { ProductCarousel } from '@/components/home/ProductCarousel';
 import { Reveal } from '@/components/home/Reveal';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sparkles, ArrowRight, Play } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -74,7 +75,6 @@ export default function HomeFeed() {
   const { user, profile } = useAuth();
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
   const [newReleases, setNewReleases] = useState<Product[]>([]);
-  const [freeProducts, setFreeProducts] = useState<Product[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -87,36 +87,23 @@ export default function HomeFeed() {
     if (!user) return;
 
     const fetchAll = async () => {
-      // Parallel fetches for speed
-      const [trendingRes, newRes, freeRes, viewedRes, catImagesRes] = await Promise.all([
-        // Trending (most liked in 14 days)
+      const [trendingRes, newRes, viewedRes, catImagesRes] = await Promise.all([
         supabase
           .from('product_likes')
           .select('product_id')
           .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()),
-        // New releases
         supabase
           .from('products')
           .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, subscription_access, price_cents, currency, youtube_url, tags, created_at, creator_id')
           .eq('status', 'published')
           .order('created_at', { ascending: false })
           .limit(20),
-        // Free products
-        supabase
-          .from('products')
-          .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, subscription_access, price_cents, currency, youtube_url, tags, created_at, creator_id')
-          .eq('status', 'published')
-          .or('price_cents.is.null,price_cents.eq.0')
-          .order('created_at', { ascending: false })
-          .limit(20),
-        // Recently viewed
         supabase
           .from('product_views')
           .select('product_id')
           .eq('viewer_id', user.id)
           .order('created_at', { ascending: false })
           .limit(20),
-        // Category card images - grab one product image per type
         supabase
           .from('products')
           .select('product_type, cover_image_url')
@@ -150,7 +137,6 @@ export default function HomeFeed() {
         trendingData = data || [];
       }
 
-      // Fallback: fill with recent if not enough trending
       if (trendingData.length < 6) {
         const existingIds = new Set(trendingData.map(p => p.id));
         const filler = (newRes.data || []).filter(p => !existingIds.has(p.id));
@@ -159,7 +145,6 @@ export default function HomeFeed() {
 
       setTrendingProducts(trendingData);
       setNewReleases((newRes.data || []) as Product[]);
-      setFreeProducts((freeRes.data || []) as Product[]);
 
       // Process recently viewed
       if (viewedRes.data && viewedRes.data.length > 0) {
@@ -182,7 +167,6 @@ export default function HomeFeed() {
   const enrichedCategories = CATEGORY_CARDS.map(cat => ({
     ...cat,
     items: cat.items.map(item => {
-      // Try to match a product type from the label
       const typeMap: Record<string, string> = {
         'Color Presets': 'preset', 'LUTs': 'lut', 'SFX Packs': 'sfx',
         'Music': 'music', 'Templates': 'template', 'Project Files': 'project_file',
@@ -210,7 +194,7 @@ export default function HomeFeed() {
         </h1>
       </div>
 
-      {/* Category Cards Grid - Amazon style */}
+      {/* Category Cards Grid */}
       <Reveal>
         <section className="px-6 sm:px-8 lg:px-10 pb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -248,19 +232,6 @@ export default function HomeFeed() {
         </div>
       </Reveal>
 
-      {/* Free Downloads Carousel */}
-      {freeProducts.length > 0 && (
-        <Reveal>
-          <div className="pb-8">
-            <ProductCarousel
-              title="Free Downloads"
-              products={freeProducts}
-              viewAllLink="/products?pricing=free"
-            />
-          </div>
-        </Reveal>
-      )}
-
       {/* Recently Viewed Carousel */}
       {recentlyViewed.length > 0 && (
         <Reveal>
@@ -273,24 +244,41 @@ export default function HomeFeed() {
         </Reveal>
       )}
 
-      {/* AI Studio Banner */}
+      {/* AI Studio Banner — big cinematic video banner */}
       <Reveal>
         <section className="px-6 sm:px-8 lg:px-10 pb-8">
           <Link
             to="/studio"
-            className="block rounded-lg border border-border/40 bg-card p-6 hover:border-primary/30 transition-all group"
+            className="group relative block w-full overflow-hidden rounded-xl border border-border/40"
+            style={{ aspectRatio: '21/7' }}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-foreground text-sm">AI Studio</h3>
-                  <p className="text-xs text-muted-foreground">Vocal isolation, stem splitting, SFX generation & more</p>
-                </div>
+            {/* Video background — user can add a video later */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-primary/10" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_hsl(var(--background))_100%)]" />
+
+            {/* Content overlay */}
+            <div className="relative z-10 flex flex-col items-center justify-center h-full gap-4 sm:gap-5">
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <span className="text-xs sm:text-sm font-medium uppercase tracking-[0.2em] text-primary">
+                  AI-Powered
+                </span>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-foreground tracking-tight text-center">
+                AI Studio
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground text-center max-w-md px-4">
+                Vocal isolation, stem splitting, SFX generation & more
+              </p>
+              <Button
+                className="mt-1 sm:mt-2 px-8 h-11 sm:h-12 text-sm sm:text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+                asChild
+              >
+                <span>
+                  Open Studio
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              </Button>
             </div>
           </Link>
         </section>
