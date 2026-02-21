@@ -155,7 +155,7 @@ export function LovableHero({
   return (
     <div className={(variant === 'embedded'
       ? "h-full"
-      : "h-screen") + " w-full relative overflow-hidden bg-black flex flex-col items-center justify-center p-4"}
+      : "h-screen") + " w-full relative overflow-y-auto bg-black flex flex-col items-center p-4 " + (recentProjects.length > 0 ? "justify-start pt-[15vh]" : "justify-center")}
     >
       
       {/* Background Image - Full opacity for 4K quality */}
