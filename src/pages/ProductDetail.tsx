@@ -1341,10 +1341,10 @@ export default function ProductDetail() {
   const displayedComments = showAllComments ? comments : comments.slice(0, 4);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto">
       {/* Back Button & Owner Actions */}
-      <div className="flex items-center justify-between mb-6">
-        <Button variant="ghost" asChild>
+      <div className="flex items-center justify-between mb-4">
+        <Button variant="ghost" size="sm" asChild>
           <Link to="/products">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -1384,11 +1384,11 @@ export default function ProductDetail() {
         )}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
+      <div className="grid lg:grid-cols-[1fr_340px] gap-8">
         {/* Main Content - Left Side */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Media */}
-          <div className="rounded-xl overflow-hidden bg-card border border-border">
+        <div className="space-y-6">
+          {/* Media - Larger */}
+          <div className="rounded-2xl overflow-hidden bg-card border border-border shadow-lg">
             {embedUrl ? (
               <div className="aspect-video">
                 <iframe
@@ -1418,17 +1418,18 @@ export default function ProductDetail() {
             )}
           </div>
 
-          {/* Title & Meta with Download Button */}
+          {/* Title & Meta with Action Buttons */}
           <div>
-            <div className="flex items-start justify-between gap-4 mb-3">
-              <h1 className="text-2xl font-bold">{product.name}</h1>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+              <h1 className="text-3xl font-bold tracking-tight">{product.name}</h1>
               
-              {/* Primary Action Button - Right next to title */}
+              {/* Primary Action + Cart grouped together */}
               {!isOwner && (
-                <div className="flex-shrink-0">
-                  {/* User has purchased */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Primary Action Button */}
                   {hasPurchased ? (
                     <Button 
+                      size="lg"
                       className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600"
                       onClick={handleDownload}
                       disabled={downloading || downloadLimitInfo?.isLocked}
@@ -1446,8 +1447,8 @@ export default function ProductDetail() {
                       }
                     </Button>
                   ) : hasActiveSubscription ? (
-                    // User has active subscription to this creator
                     <Button 
+                      size="lg"
                       className="bg-gradient-to-r from-primary to-accent"
                       onClick={handleDownload}
                       disabled={downloading || downloadLimitInfo?.isLocked}
@@ -1463,8 +1464,8 @@ export default function ProductDetail() {
                       }
                     </Button>
                   ) : isSubscriptionOnly ? (
-                    // Subscription-only product - click to open subscribe dialog (with follow check)
                     <Button 
+                      size="lg"
                       className="bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 text-white"
                       onClick={() => {
                         if (!user) {
@@ -1483,48 +1484,68 @@ export default function ProductDetail() {
                       <Crown className="w-4 h-4 mr-2" />
                       Subscribe to Access
                     </Button>
-                  ) : isFollowingCreator || !product.creator ? (
-                    product.pricing_type === "free" ? (
-                      <Button 
-                        className="bg-gradient-to-r from-primary to-accent"
-                        onClick={handleDownload}
-                        disabled={downloading || downloadLimitInfo?.isLocked}
-                      >
-                        {downloading ? (
+                  ) : product.pricing_type === "free" ? (
+                    <Button 
+                      size="lg"
+                      className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600"
+                      onClick={handleAccessClick}
+                      disabled={downloading || downloadLimitInfo?.isLocked}
+                    >
+                      {downloading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4 mr-2" />
+                      )}
+                      {downloadLimitInfo?.isLocked 
+                        ? `Limit (${getCountdownString()})` 
+                        : downloadLimitInfo 
+                          ? `Free (${downloadLimitInfo.remaining}/2)`
+                          : 'Download Free'
+                      }
+                    </Button>
+                  ) : product.price_cents ? (
+                    <Button 
+                      size="lg"
+                      className="bg-gradient-to-r from-primary to-accent"
+                      onClick={handleAccessClick}
+                      disabled={purchasing}
+                    >
+                      {purchasing ? (
+                        <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Download className="w-4 h-4 mr-2" />
-                        )}
-                        {downloadLimitInfo?.isLocked 
-                          ? `Limit (${getCountdownString()})` 
-                          : downloadLimitInfo 
-                            ? `Free (${downloadLimitInfo.remaining}/2)`
-                            : 'Download Free'
-                        }
-                      </Button>
-                    ) : (
-                      <Button 
-                        className="bg-gradient-to-r from-primary to-accent"
-                        onClick={handleAccessClick}
-                        disabled={purchasing}
-                      >
-                        {purchasing ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>Buy {formatPrice(product.price_cents, product.pricing_type, product.currency)}</>
-                        )}
-                      </Button>
-                    )
+                          Processing...
+                        </>
+                      ) : (
+                        <>Buy {formatPrice(product.price_cents, product.pricing_type, product.currency)}</>
+                      )}
+                    </Button>
                   ) : (
                     <Button 
+                      size="lg"
                       className="bg-gradient-to-r from-primary to-accent"
                       onClick={handleAccessClick}
                     >
                       <Lock className="w-4 h-4 mr-2" />
                       Get Access
+                    </Button>
+                  )}
+
+                  {/* Add to Cart - Right next to action button */}
+                  {!hasPurchased && product.pricing_type !== 'free' && (
+                    <Button
+                      variant={isInCart(product.id) ? "default" : "outline"}
+                      size="lg"
+                      disabled={cartLoading}
+                      onClick={() => {
+                        if (!user) {
+                          const currentPath = window.location.pathname + window.location.search;
+                          navigate(`/login?next=${encodeURIComponent(currentPath)}`);
+                          return;
+                        }
+                        toggleCart(product.id);
+                      }}
+                    >
+                      <ShoppingCart className={`w-4 h-4 ${isInCart(product.id) ? "fill-primary-foreground" : ""}`} />
                     </Button>
                   )}
                 </div>
@@ -1583,26 +1604,6 @@ export default function ProductDetail() {
               <Button variant="outline" size="sm" onClick={handleShare}>
                 <Share2 className="w-4 h-4" />
               </Button>
-              {/* Add to Cart */}
-              {!isOwner && !hasPurchased && product.pricing_type !== 'free' && (
-                <Button
-                  variant={isInCart(product.id) ? "default" : "outline"}
-                  size="sm"
-                  className="gap-2"
-                  disabled={cartLoading}
-                  onClick={() => {
-                    if (!user) {
-                      const currentPath = window.location.pathname + window.location.search;
-                      navigate(`/login?next=${encodeURIComponent(currentPath)}`);
-                      return;
-                    }
-                    toggleCart(product.id);
-                  }}
-                >
-                  <ShoppingCart className={`w-4 h-4 ${isInCart(product.id) ? "fill-primary-foreground" : ""}`} />
-                  {isInCart(product.id) ? "In Cart" : "Add to Cart"}
-                </Button>
-              )}
             </div>
           </div>
 
@@ -2068,107 +2069,117 @@ export default function ProductDetail() {
             </Card>
           )}
 
-          {/* Related Products */}
-          {relatedProducts.length > 0 && (
-            <Card className="bg-card">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-4">Related Products</h3>
-                <div className="space-y-3">
-                  {relatedProducts.slice(0, 5).map((prod) => {
-                    const thumbnail = prod.cover_image_url || getYouTubeThumbnail(prod.youtube_url);
-                    return (
-                      <Link 
-                        key={prod.id} 
-                        to={`/product/${prod.id}`}
-                        className="flex items-center gap-3 hover:bg-secondary/30 rounded-lg p-2 -mx-2 transition-colors"
-                      >
-                        {thumbnail ? (
-                          <img 
-                            src={thumbnail} 
-                            alt={prod.name} 
-                            className="w-12 h-12 rounded object-cover flex-shrink-0"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              if (target.src.includes('hqdefault')) {
-                                target.src = target.src.replace('hqdefault', 'default');
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
-                            <Play className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{prod.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatPrice(prod.price_cents, null, prod.currency)}
-                          </p>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Featured Products */}
-          {featuredProducts.length > 0 && (
-            <Card className="bg-card border-primary/20">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-orange-500" />
-                  Featured Products
-                </h3>
-                <div className="space-y-3">
-                  {featuredProducts.map((prod) => {
-                    const thumbnail = prod.cover_image_url || getYouTubeThumbnail(prod.youtube_url);
-                    return (
-                      <Link 
-                        key={prod.id} 
-                        to={`/product/${prod.id}`}
-                        className="flex items-center gap-3 hover:bg-secondary/30 rounded-lg p-2 -mx-2 transition-colors"
-                      >
-                        {thumbnail ? (
-                          <img 
-                            src={thumbnail} 
-                            alt={prod.name} 
-                            className="w-12 h-12 rounded object-cover flex-shrink-0"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              if (target.src.includes('hqdefault')) {
-                                target.src = target.src.replace('hqdefault', 'default');
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
-                            <Play className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{prod.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatPrice(prod.price_cents, null, prod.currency)}
-                          </p>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-                <Button 
-                  variant="ghost" 
-                  className="w-full mt-4 text-primary hover:text-primary/80"
-                  onClick={() => navigate('/products?featured=true')}
-                >
-                  View More Featured
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
+
+      {/* Related Products - Full-width horizontal grid */}
+      {relatedProducts.length > 0 && (
+        <div className="mt-12">
+          <h3 className="text-xl font-bold mb-6">Related Products</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {relatedProducts.slice(0, 5).map((prod) => {
+              const thumbnail = prod.cover_image_url || getYouTubeThumbnail(prod.youtube_url);
+              return (
+                <Link 
+                  key={prod.id} 
+                  to={`/product/${prod.id}`}
+                  className="group block overflow-hidden rounded-xl border border-border bg-card hover:border-primary/40 transition-all duration-300 hover:shadow-lg"
+                >
+                  <div className="aspect-[4/3] overflow-hidden">
+                    {thumbnail ? (
+                      <img 
+                        src={thumbnail} 
+                        alt={prod.name} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src.includes('hqdefault')) {
+                            target.src = target.src.replace('hqdefault', 'default');
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <Play className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{prod.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatPrice(prod.price_cents, null, prod.currency)}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Featured Products - Full-width horizontal grid */}
+      {featuredProducts.length > 0 && (
+        <div className="mt-12 mb-4">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <Flame className="w-5 h-5 text-amber-500" />
+              Featured Products
+            </h3>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-primary hover:text-primary/80"
+              onClick={() => navigate('/products?featured=true')}
+            >
+              View All
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {featuredProducts.slice(0, 10).map((prod) => {
+              const thumbnail = prod.cover_image_url || getYouTubeThumbnail(prod.youtube_url);
+              return (
+                <Link 
+                  key={prod.id} 
+                  to={`/product/${prod.id}`}
+                  className="group block overflow-hidden rounded-xl border border-amber-500/20 bg-card hover:border-amber-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/5"
+                >
+                  <div className="aspect-[4/3] overflow-hidden relative">
+                    {thumbnail ? (
+                      <img 
+                        src={thumbnail} 
+                        alt={prod.name} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src.includes('hqdefault')) {
+                            target.src = target.src.replace('hqdefault', 'default');
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <Play className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="absolute top-2 right-2">
+                      <Badge className="bg-amber-500/90 text-amber-950 border-0 text-[10px] px-1.5 py-0.5">
+                        <Crown className="w-2.5 h-2.5 mr-0.5" />
+                        Featured
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{prod.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatPrice(prod.price_cents, null, prod.currency)}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Follow Creator Dialog - Enhanced */}
       <CreatorFollowDialog
