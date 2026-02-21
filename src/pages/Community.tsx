@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, MessageSquare, SearchX, Plus, Search, ChevronDown } from 'lucide-react';
+import { Loader2, MessageSquare, SearchX, Plus, Search } from 'lucide-react';
 import { ThreadCard } from '@/components/community/ThreadCard';
 import { NewThreadDialog } from '@/components/community/NewThreadDialog';
 import { ThreadSearchPanel } from '@/components/community/ThreadSearchPanel';
@@ -9,12 +9,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   Pagination,
   PaginationContent,
   PaginationItem,
@@ -22,18 +16,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { cn } from '@/lib/utils';
+
 
 const THREADS_PER_PAGE = 20;
 
-const FILTER_OPTIONS = [
-  { id: 'all', label: 'For you' },
-  { id: 'help', label: 'Help & Advice' },
-  { id: 'showcase', label: 'Showcase' },
-  { id: 'discussion', label: 'Discussion' },
-  { id: 'promotion', label: 'Promotion' },
-  { id: 'feedback', label: 'Feedback' },
-];
 
 interface ThreadAuthor {
   id: string;
@@ -198,7 +184,7 @@ export default function Community() {
     setSearchOpen(false);
   }, []);
 
-  const activeFilterLabel = FILTER_OPTIONS.find(f => f.id === activeCategory)?.label || 'For you';
+  
 
   const getPageNumbers = () => {
     const pages: number[] = [];
@@ -220,40 +206,15 @@ export default function Community() {
       {/* Minimal top bar with filter dropdown + search icon */}
       <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-xl border-b border-border/30">
         <div className="mx-auto max-w-[680px] px-6 flex items-center justify-between h-12">
-          {/* Filter dropdown — centered */}
-          <div className="flex-1" />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-primary transition-colors">
-                {activeFilterLabel}
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-48 bg-popover backdrop-blur-xl border-border/50 shadow-lg">
-              {FILTER_OPTIONS.map(opt => (
-                <DropdownMenuItem
-                  key={opt.id}
-                  onClick={() => handleCategoryChange(opt.id)}
-                  className={cn(
-                    "text-sm cursor-pointer",
-                    activeCategory === opt.id && "text-primary font-semibold"
-                  )}
-                >
-                  {opt.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <div className="flex-1 flex justify-end">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full"
-              onClick={() => setSearchOpen(!searchOpen)}
-            >
-              <Search className="h-4 w-4" />
-            </Button>
-          </div>
+          <span className="text-sm font-semibold text-foreground">Threads</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full"
+            onClick={() => setSearchOpen(!searchOpen)}
+          >
+            <Search className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
