@@ -640,6 +640,32 @@ const CODE_EXECUTOR_PROMPT = `You are an expert E-commerce UI/UX Designer buildi
 Your job is to BUILD or MODIFY the user's personal storefront.
 
 ═══════════════════════════════════════════════════════════════
+STRUCTURED RESPONSE FORMAT (CRITICAL - NEW)
+═══════════════════════════════════════════════════════════════
+Before writing code, structure your response with these section markers:
+
+=== ANALYSIS ===
+(1-2 sentences explaining what you found and what needs to change)
+
+=== PLAN ===
+- Step 1: description
+- Step 2: description
+
+=== CODE ===
+/// TYPE: CODE ///
+<your markdown summary and [LOG:] tags>
+/// BEGIN_CODE ///
+<full React TSX file>
+// --- VIBECODER_COMPLETE ---
+
+=== SUMMARY ===
+(1 sentence confirmation of what was updated)
+
+IMPORTANT: Always include ALL four sections (ANALYSIS, PLAN, CODE, SUMMARY).
+The === markers must be on their own line exactly as shown.
+═══════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════
 █████ MINIMAL DIFF PROTOCOL (HIGHEST PRIORITY - READ FIRST) █████
 ═══════════════════════════════════════════════════════════════
 **YOU ARE STRICTLY FORBIDDEN FROM CHANGING ANYTHING NOT EXPLICITLY REQUESTED.**
@@ -1658,9 +1684,99 @@ serve(async (req) => {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 
+    // ════════════════════════════════════════════════════════════
+    // STRUCTURED SSE STREAMING: Parse AI output into phase-based events
+    // ════════════════════════════════════════════════════════════
     const stream = new ReadableStream({
       async start(controller) {
+        const encoder = new TextEncoder();
         let buffer = "";
+        let fullContent = "";
+        
+        // Track which section we're currently in
+        let currentSection: 'none' | 'analysis' | 'plan' | 'code' | 'summary' = 'none';
+        let analysisEmitted = false;
+        let planEmitted = false;
+        let codePhaseEmitted = false;
+        let summaryEmitted = false;
+        
+        // Helper to emit structured SSE events
+        const emitEvent = (eventType: string, data: any) => {
+          const payload = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
+          controller.enqueue(encoder.encode(payload));
+        };
+        
+        // Emit initial analyzing phase
+        emitEvent('phase', { phase: 'analyzing' });
+        
+        // Helper to process accumulated content and emit structured events
+        const processContent = () => {
+          // Detect section transitions by scanning fullContent
+          
+          // === ANALYSIS === section
+          if (!analysisEmitted && fullContent.includes('=== ANALYSIS ===')) {
+            const analysisStart = fullContent.indexOf('=== ANALYSIS ===') + '=== ANALYSIS ==='.length;
+            let analysisEnd = fullContent.indexOf('=== PLAN ===');
+            if (analysisEnd < 0) analysisEnd = fullContent.indexOf('=== CODE ===');
+            if (analysisEnd < 0) analysisEnd = fullContent.length;
+            
+            const analysisText = fullContent.substring(analysisStart, analysisEnd).trim();
+            if (analysisText.length > 5) {
+              emitEvent('text', { content: analysisText });
+              analysisEmitted = true;
+            }
+          }
+          
+          // === PLAN === section
+          if (!planEmitted && fullContent.includes('=== PLAN ===')) {
+            emitEvent('phase', { phase: 'planning' });
+            
+            const planStart = fullContent.indexOf('=== PLAN ===') + '=== PLAN ==='.length;
+            let planEnd = fullContent.indexOf('=== CODE ===');
+            if (planEnd < 0) planEnd = fullContent.length;
+            
+            const planText = fullContent.substring(planStart, planEnd).trim();
+            // Extract bullet items from the plan
+            const items = planText
+              .split('\n')
+              .map((line: string) => line.replace(/^[-*•]\s*/, '').replace(/^(Step\s+\d+:\s*)/i, '').trim())
+              .filter((line: string) => line.length > 2);
+            
+            if (items.length > 0) {
+              emitEvent('plan', { items });
+              planEmitted = true;
+            }
+          }
+          
+          // === CODE === section
+          if (!codePhaseEmitted && fullContent.includes('=== CODE ===')) {
+            emitEvent('phase', { phase: 'building' });
+            codePhaseEmitted = true;
+          }
+          
+          // Stream code chunks (raw text for existing parser compatibility)
+          if (codePhaseEmitted) {
+            const codeStart = fullContent.indexOf('=== CODE ===') + '=== CODE ==='.length;
+            let codeEnd = fullContent.indexOf('=== SUMMARY ===');
+            if (codeEnd < 0) codeEnd = fullContent.length;
+            
+            const codeSection = fullContent.substring(codeStart, codeEnd);
+            // Emit the code section as raw text for backward compatibility with useStreamingCode parser
+            emitEvent('code_chunk', { content: codeSection });
+          }
+          
+          // === SUMMARY === section
+          if (!summaryEmitted && fullContent.includes('=== SUMMARY ===')) {
+            const summaryStart = fullContent.indexOf('=== SUMMARY ===') + '=== SUMMARY ==='.length;
+            const summaryText = fullContent.substring(summaryStart).trim();
+            
+            if (summaryText.length > 3) {
+              emitEvent('phase', { phase: 'complete' });
+              emitEvent('summary', { content: summaryText });
+              summaryEmitted = true;
+            }
+          }
+        };
 
         try {
           while (true) {
@@ -1669,13 +1785,12 @@ serve(async (req) => {
 
             buffer += decoder.decode(value, { stream: true });
 
-            // Process complete lines
+            // Process complete lines from Gemini SSE
             const lines = buffer.split("\n");
             buffer = lines.pop() || "";
 
             for (const line of lines) {
               const trimmed = line.trim();
-
               if (!trimmed || trimmed.startsWith(":")) continue;
               if (!trimmed.startsWith("data: ")) continue;
 
@@ -1685,9 +1800,15 @@ serve(async (req) => {
               try {
                 const parsed = JSON.parse(jsonStr);
                 const content = parsed.choices?.[0]?.delta?.content;
-
                 if (content) {
-                  controller.enqueue(new TextEncoder().encode(content));
+                  fullContent += content;
+                  
+                  // Also emit raw text for backward compatibility
+                  // (useStreamingCode still uses raw accumulation for code extraction)
+                  emitEvent('raw', { content });
+                  
+                  // Process structured sections
+                  processContent();
                 }
               } catch (e) {
                 // Incomplete JSON, will be completed in next chunk
@@ -1703,15 +1824,23 @@ serve(async (req) => {
                 const parsed = JSON.parse(trimmed.slice(6));
                 const content = parsed.choices?.[0]?.delta?.content;
                 if (content) {
-                  controller.enqueue(new TextEncoder().encode(content));
+                  fullContent += content;
+                  emitEvent('raw', { content });
+                  processContent();
                 }
               } catch (e) {
                 // Ignore
               }
             }
           }
+          
+          // Final: if no structured sections detected, emit complete anyway
+          if (!summaryEmitted) {
+            emitEvent('phase', { phase: 'complete' });
+          }
         } catch (e) {
           console.error("Stream processing error:", e);
+          emitEvent('error', { message: e instanceof Error ? e.message : 'Stream error' });
         } finally {
           controller.close();
         }

@@ -8,6 +8,7 @@ import { ChatInputBar, type AIModel } from './ChatInputBar';
 import { useUserCredits } from '@/hooks/useUserCredits';
 import { type AgentStep } from './AgentProgress';
 import { LiveThought } from './LiveThought';
+import { StreamingPhaseCard, type StreamPhase, type StreamingPhaseData } from './StreamingPhaseCard';
 import { PlanApprovalCard } from './PlanApprovalCard';
 import type { PlanData } from './useStreamingCode';
 import { type StylePreset, generateStylePrompt } from './stylePresets';
@@ -42,6 +43,8 @@ interface VibecoderChatProps {
   onRejectPlan?: () => void;
   // NEW: Undo capability
   canUndo?: boolean;
+  // NEW: Streaming phase data
+  streamPhaseData?: StreamingPhaseData;
 }
 
 // Live Building Card - shows steps as they stream in
@@ -152,6 +155,7 @@ export function VibecoderChat({
   onApprovePlan,
   onRejectPlan,
   canUndo = false,
+  streamPhaseData,
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -332,8 +336,16 @@ export function VibecoderChat({
               />
             )}
             
-            {/* 🔴 LIVE THOUGHT: Show real-time AI thinking/logs during streaming */}
-            {(isStreaming || isAgentMode) && (
+            {/* 🔴 STREAMING PHASE CARD: New phase-based UI (primary experience) */}
+            {(isStreaming || isAgentMode) && streamPhaseData && streamPhaseData.phase !== 'idle' && (
+              <StreamingPhaseCard 
+                data={streamPhaseData}
+                className="mt-4"
+              />
+            )}
+            
+            {/* 🔴 LIVE THOUGHT: Fallback when no structured phase data available */}
+            {(isStreaming || isAgentMode) && (!streamPhaseData || streamPhaseData.phase === 'idle') && (
               <LiveThought 
                 logs={agentLogs.length > 0 ? agentLogs : liveSteps}
                 isThinking={isStreaming}
