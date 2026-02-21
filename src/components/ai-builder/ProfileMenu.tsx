@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { 
-  User, Settings, LogOut, ChevronRight, Zap, LayoutDashboard, Plus, Wand2, Sparkles 
+  User, Settings, LogOut, ChevronRight, Zap, LayoutDashboard, Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreditTopUpDialog } from "./CreditTopUpDialog";
@@ -231,13 +231,9 @@ export function ProfileMenu({
           <div className="p-2 border-t border-zinc-800">
             <button
               onClick={() => handleNavigate('/ai-builder')}
-              className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors rounded-lg group"
+              className="w-full px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors rounded-lg text-left"
             >
-              <div className="flex items-center gap-2.5">
-                <Wand2 size={15} />
-                <span>AI Builder</span>
-              </div>
-              <Sparkles size={14} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+              AI Builder
             </button>
           </div>
 
