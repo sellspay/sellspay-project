@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { Copy, Check, Zap, Sparkles, MessageSquare, Link2 } from "lucide-react";
-import {
-  Dialog, DialogContent,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -56,94 +54,103 @@ export function ReferralDialog({ open, onOpenChange }: ReferralDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] bg-[#0F1115] border-white/10 p-0 gap-0 overflow-hidden rounded-2xl">
-        {/* Hero section */}
-        <div className="relative px-6 pt-6 pb-4">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 text-white text-sm font-medium mb-4">
-            Earn 100+ credits
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          className="fixed left-[50%] top-[50%] z-50 w-full max-w-[400px] translate-x-[-50%] translate-y-[-50%] rounded-2xl border border-white/[0.08] shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] overflow-hidden"
+          style={{ backgroundColor: '#1A1A1F', colorScheme: 'dark' }}
+        >
+          {/* Close button */}
+          <DialogPrimitive.Close className="absolute right-4 top-4 z-10 rounded-sm text-white/40 hover:text-white/70 transition-opacity focus:outline-none">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+
+          {/* Hero section with blob */}
+          <div className="relative px-6 pt-6 pb-5 overflow-hidden">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/[0.08] text-white/90 text-[13px] font-medium mb-5">
+              Earn 100+ credits
+            </div>
+
+            {/* Blob image */}
+            <div className="absolute -top-4 -right-4 w-40 h-40 pointer-events-none">
+              <img
+                src={referralBlob}
+                alt=""
+                aria-hidden="true"
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            {/* Title */}
+            <h2 className="text-[26px] font-bold text-white leading-tight tracking-tight">
+              Spread the love
+            </h2>
+            <p className="text-white/40 text-[13px] mt-1">and earn free credits</p>
           </div>
 
-        {/* Blob image */}
-        <img
-          src={referralBlob}
-          alt=""
-          aria-hidden="true"
-          className="absolute -top-2 right-2 w-36 h-36 object-contain pointer-events-none select-none"
-          style={{ filter: 'drop-shadow(0 0 20px rgba(255, 120, 50, 0.3))' }}
-        />
+          {/* How it works */}
+          <div className="px-6 pb-5 space-y-4">
+            <p className="text-white/50 text-[13px] font-medium">How it works:</p>
 
-          {/* Title */}
-          <h2 className="text-[28px] font-bold text-white leading-tight">
-            Spread the love
-          </h2>
-          <p className="text-white/50 text-sm mt-1">and earn free credits</p>
-        </div>
-
-        {/* How it works */}
-        <div className="px-6 py-5 space-y-4">
-          <p className="text-white/60 text-sm font-medium">How it works:</p>
-
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <Zap className="h-4 w-4 text-white/70 mt-0.5 shrink-0" />
-              <p className="text-white text-sm">Share your invite link</p>
+            <div className="space-y-3.5">
+              <div className="flex items-center gap-3">
+                <Zap className="h-[15px] w-[15px] text-white/50 shrink-0" />
+                <p className="text-white/90 text-[13px]">Share your invite link</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-[15px] w-[15px] text-white/50 shrink-0" />
+                <p className="text-white/90 text-[13px]">
+                  They sign up and get <span className="font-semibold text-white">extra 10 credits</span>
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <MessageSquare className="h-[15px] w-[15px] text-white/50 shrink-0" />
+                <p className="text-white/90 text-[13px]">
+                  You get <span className="font-semibold text-white">100 credits</span> once they subscribe to a paid plan
+                </p>
+              </div>
             </div>
-            <div className="flex items-start gap-3">
-              <Sparkles className="h-4 w-4 text-white/70 mt-0.5 shrink-0" />
-              <p className="text-white text-sm">
-                They sign up and get <span className="font-bold">extra 10 credits</span>
+          </div>
+
+          {/* Stats */}
+          {referralStats.total > 0 && (
+            <div className="px-6 pb-3">
+              <p className="text-white/40 text-[13px]">
+                {referralStats.total} signed up, {referralStats.rewarded} converted
               </p>
             </div>
-            <div className="flex items-start gap-3">
-              <MessageSquare className="h-4 w-4 text-white/70 mt-0.5 shrink-0" />
-              <p className="text-white text-sm">
-                You get <span className="font-bold">100 credits</span> once they subscribe to a paid plan
-              </p>
+          )}
+
+          {/* Link + Copy button */}
+          <div className="px-6 pb-4">
+            <div className="flex items-center bg-white/[0.04] border border-white/[0.08] rounded-xl overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2.5 flex-1 min-w-0">
+                <Link2 className="h-3.5 w-3.5 text-white/30 shrink-0" />
+                <span className="text-white/50 text-[12px] truncate font-mono">
+                  {referralLink || "Loading..."}
+                </span>
+              </div>
+              <button
+                onClick={handleCopy}
+                disabled={!referralLink}
+                className="shrink-0 px-4 py-2.5 text-[13px] font-medium text-white/90 bg-white/[0.08] hover:bg-white/[0.14] border-l border-white/[0.08] transition-colors disabled:opacity-40"
+              >
+                {copied ? "Copied!" : "Copy link"}
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Stats */}
-        {referralStats.total > 0 && (
-          <div className="px-6 pb-3">
-            <p className="text-white/50 text-sm">
-              {referralStats.total} signed up, {referralStats.rewarded} converted
-            </p>
+          {/* Footer */}
+          <div className="px-6 pb-5 text-center">
+            <button className="text-white/25 text-[11px] hover:text-white/40 transition-colors underline underline-offset-2">
+              View Terms and Conditions
+            </button>
           </div>
-        )}
-
-        {/* Link section */}
-        <div className="px-6 pb-4">
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
-            <Link2 className="h-4 w-4 text-white/40 shrink-0" />
-            <span className="text-white/70 text-sm truncate flex-1 font-mono">
-              {referralLink || "Loading..."}
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleCopy}
-              disabled={!referralLink}
-              className="shrink-0 bg-white/10 hover:bg-white/20 text-white border-0 rounded-lg text-sm px-4"
-            >
-              {copied ? (
-                <><Check className="h-3.5 w-3.5 mr-1.5" /> Copied</>
-              ) : (
-                <><Copy className="h-3.5 w-3.5 mr-1.5" /> Copy link</>
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 pb-5 text-center">
-          <button className="text-white/30 text-xs hover:text-white/50 transition-colors underline underline-offset-2">
-            View Terms and Conditions
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
