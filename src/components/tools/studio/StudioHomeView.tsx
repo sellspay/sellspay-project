@@ -32,7 +32,7 @@ const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transi
 
 // Quick-launch cards for the home canvas
 const QUICK_LAUNCH = [
-  { id: "campaign", label: "Launch Campaign", desc: "Create scroll-stopping promos", icon: Flame, gradient: "from-orange-500/20 to-red-500/10" },
+  { id: "campaign", label: "Launch Campaign", desc: "Create scroll-stopping promos", icon: Flame, gradient: "from-primary/20 to-blue-600/10" },
   { id: "listings", label: "Upgrade Listings", desc: "AI-optimized product pages", icon: TrendingUp, gradient: "from-emerald-500/20 to-teal-500/10" },
   { id: "social", label: "Social Factory", desc: "Content for every platform", icon: Share2, gradient: "from-blue-500/20 to-indigo-500/10" },
   { id: "media", label: "Media Lab", desc: "Audio & media utilities", icon: AudioLines, gradient: "from-purple-500/20 to-pink-500/10" },
@@ -147,7 +147,7 @@ export function StudioHomeView({
         </div>
       </motion.div>
 
-      {/* Section-specific tool cards (when section has active tools) */}
+      {/* Section-specific tool cards */}
       {sectionTools.length > 0 && (
         <motion.div variants={fadeUp} className="space-y-4">
           <h3 className="text-lg font-bold text-foreground">Available Tools</h3>

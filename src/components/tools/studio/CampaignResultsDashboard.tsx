@@ -29,9 +29,9 @@ const OUTPUT_META: Record<string, { label: string; icon: React.ElementType; colo
   hooks: { label: "Hooks", icon: MessageSquare, color: "text-violet-400" },
   captions: { label: "Captions & Hashtags", icon: Hash, color: "text-blue-400" },
   carousel: { label: "Carousel Plan", icon: GalleryHorizontal, color: "text-emerald-400" },
-  listing_rewrite: { label: "Listing Rewrite", icon: FileText, color: "text-amber-400" },
+  listing_rewrite: { label: "Listing Rewrite", icon: FileText, color: "text-sky-400" },
   email_draft: { label: "Email Draft", icon: Mail, color: "text-rose-400" },
-  promo_video: { label: "Promo Video Script", icon: Video, color: "text-orange-400" },
+  promo_video: { label: "Promo Video Script", icon: Video, color: "text-primary" },
 };
 
 function CopyButton({ text }: { text: string }) {
@@ -233,7 +233,7 @@ export function CampaignResultsDashboard({ result, creditsUsed, onBack }: Campai
             {/* Hook */}
             <div className="p-3 rounded-lg bg-white/[0.02]">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[10px] bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full font-medium">HOOK</span>
+                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">HOOK</span>
                 <span className="text-[10px] text-muted-foreground/30">{result.promo_video.hook.duration_seconds}s</span>
               </div>
               <p className="text-sm text-foreground/80">{result.promo_video.hook.text}</p>

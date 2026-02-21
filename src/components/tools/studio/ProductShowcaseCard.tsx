@@ -129,7 +129,7 @@ export function ProductShowcaseCard({
 
         <button
           onClick={onViewDetails}
-          className="flex items-center gap-1.5 text-xs text-[#FF7A1A]/70 hover:text-[#FF7A1A] transition-colors font-medium"
+          className="flex items-center gap-1.5 text-xs text-primary/70 hover:text-primary transition-colors font-medium"
         >
           View Full Details
           <ExternalLink className="h-3 w-3" />
