@@ -2,13 +2,14 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Home, Sparkles, ChevronDown, ChevronRight, FolderOpen,
-  User, Settings, CreditCard, LogOut, Zap,
+  User, Settings, CreditCard, LogOut, Zap, Gift, ChevronRight as ChevRight,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { toolsRegistry, SUBCATEGORY_LABELS, type ToolSubcategory } from "@/components/tools/toolsRegistry";
 
 interface StudioSidebarProps {
@@ -30,6 +31,7 @@ export function StudioSidebar({
   creditBalance, isLoadingCredits, activeTool, onToolSelect, onGoHome,
 }: StudioSidebarProps) {
   const { user, profile, signOut } = useAuth();
+  const { plan } = useSubscription();
   const navigate = useNavigate();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     media_creation: true,
@@ -256,23 +258,88 @@ export function StudioSidebar({
                     </button>
                   )}
                 </PopoverTrigger>
-                <PopoverContent side="right" align="end" sideOffset={8} className="w-64 p-0 bg-[#0F1115] border-border rounded-xl overflow-hidden">
-                  {/* User info */}
-                  <div className="px-4 py-3 border-b border-border">
-                    <p className="text-sm font-semibold text-foreground truncate">{profile?.username || "Creator"}</p>
+                <PopoverContent side="right" align="end" sideOffset={8} className="w-72 p-0 bg-[#0F1115] border-border/50 rounded-2xl overflow-hidden shadow-2xl shadow-black/60">
+                  {/* Back to dashboard link */}
+                  <div className="px-4 py-3 border-b border-border/30">
+                    <button
+                      onClick={() => navigate("/")}
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      <span>Go to Dashboard</span>
+                    </button>
                   </div>
-                  {/* Credits */}
-                  <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-xs text-muted-foreground">Credits</span>
+
+                  {/* User identity + tier badge */}
+                  <div className="px-4 py-3 border-b border-border/30">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg overflow-hidden border border-border shrink-0 bg-primary/20 flex items-center justify-center">
+                        {profile?.avatar_url ? (
+                          <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-bold text-primary">
+                            {(profile?.username || "U").slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold text-foreground truncate">{profile?.username || "Creator"}</span>
+                      {(() => {
+                        const tier = plan;
+                        if (tier === 'agency') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">Agency</span>;
+                        if (tier === 'creator') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30">Pro</span>;
+                        if (tier === 'basic') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Basic</span>;
+                        return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">Free</span>;
+                      })()}
                     </div>
-                    <span className="text-sm font-bold text-foreground tabular-nums">
-                      {isLoadingCredits ? "…" : creditBalance.toLocaleString()}
-                    </span>
                   </div>
+
+                  {/* Credit wallet with progress bar */}
+                  <div className="px-4 py-3 border-b border-border/30 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">Credits</span>
+                      <button
+                        onClick={() => navigate("/pricing")}
+                        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <span className="font-bold text-foreground tabular-nums">
+                          {isLoadingCredits ? "…" : creditBalance.toLocaleString()}
+                        </span>
+                        <span className="text-muted-foreground">left</span>
+                        <ChevRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
+                    {/* Progress bar */}
+                    {!isLoadingCredits && (
+                      <>
+                        <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all duration-500"
+                            style={{ width: `${Math.min(100, (creditBalance / Math.max(creditBalance, 100)) * 100)}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
+                          {plan && plan !== 'browser'
+                            ? "Using subscription credits"
+                            : "Using free credits"}
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Get free credits */}
+                  <div className="px-4 py-2.5 border-b border-border/30">
+                    <button
+                      onClick={() => navigate("/pricing")}
+                      className="flex items-center gap-2.5 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+                    >
+                      <Gift className="h-4 w-4" />
+                      <span>Get free credits</span>
+                    </button>
+                  </div>
+
                   {/* Nav links */}
-                  <div className="py-1">
+                  <div className="py-1.5">
                     {[
                       { icon: User, label: "My Profile", path: "/profile" },
                       { icon: Settings, label: "Settings", path: "/settings" },
@@ -288,8 +355,9 @@ export function StudioSidebar({
                       </button>
                     ))}
                   </div>
+
                   {/* Sign out */}
-                  <div className="border-t border-border py-1">
+                  <div className="border-t border-border/30 py-1.5">
                     <button
                       onClick={() => signOut()}
                       className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
