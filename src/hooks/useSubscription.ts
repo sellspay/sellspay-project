@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
@@ -23,14 +24,16 @@ export interface SubscriptionState {
 }
 
 // Credit costs for different actions
+// Must match LEGACY_CREDIT_COSTS in deduct-ai-credits edge function
 export const CREDIT_COSTS = {
-  vibecoder_gen: 25,
-  image_gen: 100,
-  video_gen: 500,
-  sfx_gen: 25,
-  voice_isolator: 25,
-  sfx_isolator: 25,
-  music_splitter: 25,
+  vibecoder_gen: 3,
+  vibecoder_flash: 0,
+  image_gen: 10,
+  video_gen: 50,
+  sfx_gen: 5,
+  voice_isolator: 5,
+  sfx_isolator: 5,
+  music_splitter: 5,
 } as const;
 
 // AI-powered tools that require credits
@@ -300,6 +303,44 @@ export function useSubscription() {
     window.addEventListener("subscription:changed", handler);
     return () => window.removeEventListener("subscription:changed", handler);
   }, [user]);
+
+  // Real-time wallet balance sync — updates credits immediately on DB change
+  useEffect(() => {
+    if (!user || isPrivileged) return;
+
+    let channel: RealtimeChannel | null = null;
+
+    const setup = () => {
+      channel = supabase
+        .channel(`wallet-sync-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'user_wallets',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            if (payload.new && 'balance' in payload.new) {
+              const newBalance = payload.new.balance as number;
+              setState(prev => {
+                const updated = { ...prev, credits: newBalance };
+                subscriptionCache = { userId: user.id, state: updated, timestamp: Date.now() };
+                return updated;
+              });
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    setup();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [user?.id, isPrivileged]);
 
   return {
     // State
