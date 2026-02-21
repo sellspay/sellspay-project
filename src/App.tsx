@@ -31,6 +31,7 @@ import Dashboard from "./pages/Dashboard";
 import Notifications from "./pages/Notifications";
 import SubscriptionPlans from "./pages/SubscriptionPlans";
 import Pricing from "./pages/Pricing";
+import Billing from "./pages/Billing";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Refunds from "./pages/Refunds";
@@ -96,6 +97,7 @@ const App = () => (
             <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
             <Route path="/subscription-plans" element={<SubscriptionPlans />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/billing" element={<Billing />} />
             <Route path="/terms" element={<MainLayout><Terms /></MainLayout>} />
             <Route path="/privacy" element={<MainLayout><Privacy /></MainLayout>} />
             <Route path="/refunds" element={<MainLayout><Refunds /></MainLayout>} />

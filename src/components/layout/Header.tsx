@@ -465,7 +465,7 @@ export default function Header() {
                       <span>Settings</span>
                     </button>
                     {(isCreator || isSeller || isAdmin) && (
-                      <button onClick={() => navigate("/subscription-plans")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                      <button onClick={() => navigate("/billing")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
                         <CreditCard className="h-4 w-4" />
                         <span>Billing</span>
                       </button>

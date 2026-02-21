@@ -346,7 +346,7 @@ export function StudioSidebar({
                     {[
                       { icon: User, label: "My Profile", path: "/profile" },
                       { icon: Settings, label: "Settings", path: "/settings" },
-                      { icon: CreditCard, label: "Billing", path: "/pricing" },
+                      { icon: CreditCard, label: "Billing", path: "/billing" },
                     ].map(item => (
                       <button
                         key={item.path}
