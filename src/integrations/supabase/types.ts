@@ -1656,6 +1656,7 @@ export type Database = {
           platform_fee_percent: number | null
           previous_username: string | null
           previous_username_available_at: string | null
+          referral_code: string | null
           seller_contract_signed_at: string | null
           seller_country_code: string | null
           seller_kyc_status: string | null
@@ -1712,6 +1713,7 @@ export type Database = {
           platform_fee_percent?: number | null
           previous_username?: string | null
           previous_username_available_at?: string | null
+          referral_code?: string | null
           seller_contract_signed_at?: string | null
           seller_country_code?: string | null
           seller_kyc_status?: string | null
@@ -1768,6 +1770,7 @@ export type Database = {
           platform_fee_percent?: number | null
           previous_username?: string | null
           previous_username_available_at?: string | null
+          referral_code?: string | null
           seller_contract_signed_at?: string | null
           seller_country_code?: string | null
           seller_kyc_status?: string | null
@@ -2073,6 +2076,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          qualified_at: string | null
+          referral_code: string
+          referred_id: string
+          referred_ip: string | null
+          referrer_id: string
+          reward_credits: number
+          rewarded_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          qualified_at?: string | null
+          referral_code: string
+          referred_id: string
+          referred_ip?: string | null
+          referrer_id: string
+          reward_credits?: number
+          rewarded_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          qualified_at?: string | null
+          referral_code?: string
+          referred_id?: string
+          referred_ip?: string | null
+          referrer_id?: string
+          reward_credits?: number
+          rewarded_at?: string | null
+          status?: string
+        }
+        Relationships: []
       }
       saved_products: {
         Row: {
@@ -3533,6 +3575,7 @@ export type Database = {
           safety_buffer_cents: number
         }[]
       }
+      check_referral_ip_abuse: { Args: { p_ip: string }; Returns: boolean }
       deduct_credits: {
         Args: { p_action: string; p_amount: number; p_user_id: string }
         Returns: boolean
@@ -3640,6 +3683,10 @@ export type Database = {
       mark_seller_email_verified: {
         Args: { p_user_id: string }
         Returns: boolean
+      }
+      process_referral_reward: {
+        Args: { p_referred_user_id: string }
+        Returns: Json
       }
       release_held_funds: { Args: never; Returns: number }
       restore_project_version: {

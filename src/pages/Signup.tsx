@@ -92,10 +92,23 @@ export default function Signup() {
       const { data: { user: newUser } } = await supabase.auth.getUser();
       if (newUser) {
         await supabase.from('profiles').update({ username: cleanUsername, full_name: fullName.trim() }).eq('user_id', newUser.id);
+        
+        // Process referral if ref code in URL
+        const params = new URLSearchParams(location.search);
+        const refCode = params.get('ref');
+        if (refCode) {
+          try {
+            await supabase.functions.invoke('process-referral-signup', {
+              body: { referral_code: refCode },
+            });
+          } catch (refErr) {
+            console.warn('Referral processing failed:', refErr);
+          }
+        }
       }
       toast({ title: 'Account created!', description: 'Welcome to SellsPay.' });
-      const params = new URLSearchParams(location.search);
-      const next = params.get('next');
+      const params2 = new URLSearchParams(location.search);
+      const next = params2.get('next');
       navigate(next || '/');
     } catch (err: any) {
       const msg = String(err?.message || '');

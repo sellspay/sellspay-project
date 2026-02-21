@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { ReferralDialog } from "@/components/studio/ReferralDialog";
 import { useAuth } from "@/lib/auth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toolsRegistry, SUBCATEGORY_LABELS, type ToolSubcategory } from "@/components/tools/toolsRegistry";
@@ -39,6 +40,7 @@ export function StudioSidebar({
     social_content: false,
     utility: false,
   });
+  const [referralOpen, setReferralOpen] = useState(false);
 
   const toggleGroup = (group: string) => {
     setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
@@ -47,6 +49,7 @@ export function StudioSidebar({
   const quickTools = toolsRegistry.filter(t => t.category === "quick_tool" && t.isActive);
 
   return (
+    <>
     <TooltipProvider delayDuration={0}>
       <motion.aside
         className="h-full flex flex-col bg-[#0F1115] overflow-hidden"
@@ -330,7 +333,7 @@ export function StudioSidebar({
                   {/* Get free credits */}
                   <div className="px-4 py-2.5 border-b border-border/30">
                     <button
-                      onClick={() => navigate("/pricing")}
+                      onClick={() => setReferralOpen(true)}
                       className="flex items-center gap-2.5 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
                     >
                       <Gift className="h-4 w-4" />
@@ -373,5 +376,8 @@ export function StudioSidebar({
         </div>
       </motion.aside>
     </TooltipProvider>
+
+    <ReferralDialog open={referralOpen} onOpenChange={setReferralOpen} />
+    </>
   );
 }
