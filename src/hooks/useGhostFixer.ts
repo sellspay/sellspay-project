@@ -194,34 +194,27 @@ YOUR FIRST OUTPUT MUST: Ensure you close any open function calls or expressions.
    * Build a continuation prompt for the AI with string-safety awareness
    */
   const buildContinuationPrompt = useCallback((truncatedCode: string, originalPrompt?: string): string => {
-    const contextTail = getContextTail(truncatedCode, 600);
-    const truncationType = detectTruncationType(truncatedCode);
-    const stringSafetyInstruction = getStringSafetyInstruction(truncationType);
-    const lines = truncatedCode.trim().split('\n');
-    
-    return `[HEALER_MODE: AUTO_RESUME]
-Your previous generation was TRUNCATED at approximately line ${lines.length}.
-ERROR TYPE: ${truncationType}
+    return `[HEALER_MODE: FULL_REGENERATION]
 
-${stringSafetyInstruction}
+The previous generation was truncated or invalid.
 
-LAST 400 CHARACTERS OF YOUR PREVIOUS OUTPUT:
+User request: "${originalPrompt || 'Unknown'}"
+
+Previous code (before change):
 \`\`\`
-${contextTail}
+${truncatedCode.slice(0, 2000)}
 \`\`\`
 
-${originalPrompt ? `ORIGINAL USER REQUEST: "${originalPrompt}"
-You MUST finish implementing this request fully. Do NOT just close syntax and stop.` : ''}
+Task:
+- Produce a COMPLETE working single-file React component
+- Fully implement the user's request
+- Preserve unrelated existing behavior
+- Ensure compilation (balanced braces, valid JSX)
+- MUST include \`export default\`
 
-CRITICAL INSTRUCTIONS:
-1. Continue EXACTLY from the cutoff point - do not repeat any code
-2. If truncation was mid-string, your FIRST characters must close that string/tag
-3. COMPLETE THE FULL FEATURE the user asked for - closing syntax alone is NOT enough
-4. All remaining components, handlers, and UI must be fully implemented
-5. End with: ${VIBECODER_COMPLETE_SENTINEL}
-6. Do NOT include the "/// TYPE: CODE ///" or "/// BEGIN_CODE ///" markers
-7. Just output the remaining code that completes the file`;
-  }, [getContextTail, detectTruncationType, getStringSafetyInstruction]);
+Return ONLY the final code. No markdown fences. No explanations.
+End with: ${VIBECODER_COMPLETE_SENTINEL}`;
+  }, []);
 
   /**
    * Merge continuation onto the truncated code

@@ -219,6 +219,100 @@ function generateDataGuidance(result: DataAvailabilityResult): string {
 
 const VIBECODER_COMPLETE_SENTINEL = "// --- VIBECODER_COMPLETE ---";
 
+// ═══════════════════════════════════════════════════════════════
+// TRUNCATION DETECTION: Hard fail, no patching
+// ═══════════════════════════════════════════════════════════════
+
+function looksTruncated(code: string): boolean {
+  if (!code || code.trim().length < 50) return false;
+  
+  // Must include export default
+  if (!/export\s+default\s/.test(code)) return true;
+  
+  // Bracket balance check
+  const opens = (code.match(/[({[]/g) ?? []).length;
+  const closes = (code.match(/[)\]}]/g) ?? []).length;
+  if (closes < opens - 2) return true;
+  
+  // Too short to be a real component
+  if (code.length < 300) return true;
+  
+  // Missing sentinel
+  if (!code.includes(VIBECODER_COMPLETE_SENTINEL)) return true;
+  
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NO-OP DETECTOR: Catches "silent failure" where output matches input
+// ═══════════════════════════════════════════════════════════════
+
+function isNoOp(prev: string | null, next: string): boolean {
+  if (!prev) return false;
+  const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
+  const a = normalize(prev);
+  const b = normalize(next);
+  if (a === b) return true;
+  const delta = Math.abs(a.length - b.length) / Math.max(a.length, 1);
+  return delta < 0.01;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INTENT VALIDATOR: Cheap AI check — did output match request?
+// ═══════════════════════════════════════════════════════════════
+
+async function validateIntent(
+  userPrompt: string,
+  generatedCode: string,
+  apiKey: string,
+): Promise<{ implements_request: boolean; missing_requirements: string[] }> {
+  try {
+    const response = await fetch(GEMINI_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gemini-2.5-flash-lite",
+        messages: [
+          {
+            role: "system",
+            content: `You are a strict code reviewer. Answer ONLY valid JSON.`,
+          },
+          {
+            role: "user",
+            content: `User request: "${userPrompt}"\n\nGenerated code (first 3000 chars):\n${generatedCode.slice(0, 3000)}\n\nDoes this code implement the user's request? Answer ONLY valid JSON:\n{"implements_request": boolean, "missing_requirements": string[]}`,
+          },
+        ],
+        max_tokens: 300,
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("[IntentValidator] API call failed, defaulting to pass");
+      return { implements_request: true, missing_requirements: [] };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || "";
+    const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+    return {
+      implements_request: parsed.implements_request ?? true,
+      missing_requirements: parsed.missing_requirements ?? [],
+    };
+  } catch (e) {
+    console.warn("[IntentValidator] Parse error, defaulting to pass:", e);
+    return { implements_request: true, missing_requirements: [] };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEGACY VALIDATION (kept for backward compat but simplified)
+// ═══════════════════════════════════════════════════════════════
+
 type TruncationType =
   | "TRUNCATION_DETECTED"
   | "OPEN_DOUBLE_QUOTE"
@@ -236,114 +330,19 @@ interface ValidationResult {
   contextTail?: string;
 }
 
-/**
- * Validates AI output integrity before saving to database.
- * Returns structured error info for the Ghost Fixer to use.
- */
 function validateOutputIntegrity(code: string): ValidationResult {
   if (!code || code.trim().length < 20) {
-    return { isValid: true }; // Too short to validate meaningfully
+    return { isValid: true };
   }
 
-  const trimmed = code.trim();
-  const lines = trimmed.split("\n");
-
-  // 1. Check for completion sentinel (primary truncation indicator)
-  if (!trimmed.includes(VIBECODER_COMPLETE_SENTINEL)) {
-    console.log("[Healer] Missing completion sentinel - likely truncated");
+  // Use the new looksTruncated as primary check
+  if (looksTruncated(code)) {
     return {
       isValid: false,
       errorType: "TRUNCATION_DETECTED",
-      errorMessage: "AI output missing completion sentinel - likely truncated",
-      truncationLine: lines.length,
-      contextTail: trimmed.slice(-400),
-    };
-  }
-
-  // 2. Check for unterminated strings in last 5 lines
-  const lastLines = lines.slice(-5).join("\n");
-
-  // Count quotes (excluding escaped ones)
-  const doubleQuotes = (lastLines.match(/(?<!\\)"/g) || []).length;
-  const singleQuotes = (lastLines.match(/(?<!\\)'/g) || []).length;
-  const templateLiterals = (lastLines.match(/(?<!\\)`/g) || []).length;
-
-  if (doubleQuotes % 2 !== 0) {
-    console.log("[Healer] Unterminated double-quote string detected");
-    return {
-      isValid: false,
-      errorType: "OPEN_DOUBLE_QUOTE",
-      errorMessage: "Unterminated double-quote string in last 5 lines",
-      truncationLine: lines.length,
-      contextTail: trimmed.slice(-400),
-    };
-  }
-
-  if (singleQuotes % 2 !== 0) {
-    console.log("[Healer] Unterminated single-quote string detected");
-    return {
-      isValid: false,
-      errorType: "OPEN_SINGLE_QUOTE",
-      errorMessage: "Unterminated single-quote string in last 5 lines",
-      truncationLine: lines.length,
-      contextTail: trimmed.slice(-400),
-    };
-  }
-
-  if (templateLiterals % 2 !== 0) {
-    console.log("[Healer] Unterminated template literal detected");
-    return {
-      isValid: false,
-      errorType: "OPEN_TEMPLATE_LITERAL",
-      errorMessage: "Unterminated template literal in last 5 lines",
-      truncationLine: lines.length,
-      contextTail: trimmed.slice(-400),
-    };
-  }
-
-  // 3. Check for unclosed JSX tags (< without matching >)
-  const lastLine = lines[lines.length - 1] || "";
-  const openTagMatch = lastLine.match(/<(\w+)[^>]*$/);
-  if (openTagMatch) {
-    console.log("[Healer] Unclosed JSX tag detected:", openTagMatch[1]);
-    return {
-      isValid: false,
-      errorType: "OPEN_JSX_TAG",
-      errorMessage: `Unclosed JSX tag: <${openTagMatch[1]}`,
-      truncationLine: lines.length,
-      contextTail: trimmed.slice(-400),
-    };
-  }
-
-  // 4. Check brace balance (simplified - just check last 20 lines)
-  const recentCode = lines.slice(-20).join("\n");
-  const openBraces = (recentCode.match(/\{/g) || []).length;
-  const closeBraces = (recentCode.match(/\}/g) || []).length;
-
-  // Allow some imbalance since we're only checking recent lines
-  if (openBraces > closeBraces + 3) {
-    console.log("[Healer] Unbalanced braces detected:", openBraces, "vs", closeBraces);
-    return {
-      isValid: false,
-      errorType: "UNBALANCED_BRACES",
-      errorMessage: `Unbalanced braces in last 20 lines: ${openBraces} open, ${closeBraces} close`,
-      truncationLine: lines.length,
-      contextTail: trimmed.slice(-400),
-    };
-  }
-
-  // 5. Check parenthesis balance
-  const openParens = (recentCode.match(/\(/g) || []).length;
-  const closeParens = (recentCode.match(/\)/g) || []).length;
-
-  if (openParens > closeParens + 3) {
-    console.log("[Healer] Unbalanced parentheses detected:", openParens, "vs", closeParens);
-    return {
-      isValid: false,
-      errorType: "UNBALANCED_PARENS",
-      errorMessage: `Unbalanced parentheses in last 20 lines: ${openParens} open, ${closeParens} close`,
-      truncationLine: lines.length,
-      contextTail: trimmed.slice(-400),
+      errorMessage: "Code failed truncation check (missing export default, unbalanced brackets, or missing sentinel)",
+      truncationLine: code.split("\n").length,
+      contextTail: code.slice(-400),
     };
   }
 
@@ -1540,7 +1539,28 @@ serve(async (req) => {
         if (fullContent.includes('"type": "plan"') || fullContent.includes('"type":"plan"')) {
           try {
             const jsonMatch = fullContent.match(/\{[\s\S]*"type"\s*:\s*"plan"[\s\S]*\}/);
-            if (jsonMatch) planResult = JSON.parse(jsonMatch[0]);
+            if (jsonMatch) {
+              planResult = JSON.parse(jsonMatch[0]);
+              
+              // COMPLEXITY GUARD: If plan has >6 phases or complexity is "high", don't execute
+              const phases = planResult?.phases || planResult?.steps || [];
+              const complexity = planResult?.complexity;
+              if (phases.length > 6 || complexity === "high") {
+                console.warn(`[Job ${jobId}] Complexity guard triggered: ${phases.length} phases, complexity=${complexity}`);
+                await supabase.from("ai_generation_jobs").update({
+                  status: "needs_user_action",
+                  completed_at: new Date().toISOString(),
+                  plan_result: planResult,
+                  summary: "This request is too complex for a single generation. Please break it into 2-3 smaller requests.",
+                  terminal_reason: "complexity_guard",
+                  validation_report: { complexity_guard: true, phase_count: phases.length },
+                }).eq("id", jobId);
+
+                return new Response(JSON.stringify({ success: false, jobId, status: "needs_user_action", reason: "complexity_guard" }), {
+                  headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+            }
           } catch (e) {
             console.error(`[Job ${jobId}] Failed to parse plan:`, e);
           }
@@ -1562,27 +1582,64 @@ serve(async (req) => {
         }
 
         // ═══════════════════════════════════════════════════════════
-        // HEALER & DATA CHECK: Logic integrated before the manual save
+        // VALIDATION GATES: truncation → intent → no-op → completion
         // ═══════════════════════════════════════════════════════════
         let validationError = null;
         let jobStatus = "completed";
+        let terminalReason = "all_gates_passed";
+        const validationReport: Record<string, unknown> = {
+          generated_code_length: codeResult?.length ?? 0,
+          truncation_detected: false,
+          no_op_detected: false,
+          intent_ok: true,
+          terminal_reason: "",
+        };
 
         if (codeResult) {
-          const validation = validateOutputIntegrity(codeResult);
-          if (!validation.isValid) {
-            validationError = validation;
-            // Hard fail if missing export default AND sentinel — don't attempt patching
-            const hasExportDefault = /export\s+default\s/.test(codeResult);
-            if (!hasExportDefault && !codeResult.includes("// --- VIBECODER_COMPLETE ---")) {
-              jobStatus = "failed";
-              console.error(`[Job ${jobId}] Truncation detected: missing export default + sentinel. Hard failing.`);
-            } else {
-              jobStatus = "needs_continuation";
+          // GATE 1: Truncation detection (hard fail, no patching)
+          if (looksTruncated(codeResult)) {
+            validationError = { errorType: "TRUNCATION_DETECTED", errorMessage: "Generation exceeded safe limits. Please simplify your request." };
+            jobStatus = "failed";
+            terminalReason = "truncation_detected";
+            validationReport.truncation_detected = true;
+            console.error(`[Job ${jobId}] GATE 1 FAIL: Truncation detected. Code length: ${codeResult.length}`);
+          }
+
+          // GATE 2: No-op detection
+          if (!validationError && isNoOp(currentCode, codeResult)) {
+            validationReport.no_op_detected = true;
+            console.warn(`[Job ${jobId}] GATE 2 WARN: No-op detected — output matches input`);
+            // Don't hard-fail on no-op, but flag it. Intent validator will catch if it's wrong.
+          }
+
+          // GATE 3: Intent validation (only if not truncated)
+          if (!validationError) {
+            try {
+              const intentResult = await validateIntent(prompt, codeResult, GOOGLE_GEMINI_API_KEY);
+              validationReport.intent_ok = intentResult.implements_request;
+              
+              if (!intentResult.implements_request) {
+                console.warn(`[Job ${jobId}] GATE 3 FAIL: Intent check failed. Missing:`, intentResult.missing_requirements);
+                
+                // Update attempt counter
+                await supabase
+                  .from("ai_generation_jobs")
+                  .update({ intent_check_attempts: 1 })
+                  .eq("id", jobId);
+
+                jobStatus = "needs_user_action";
+                terminalReason = "intent_check_failed";
+                validationReport.missing_requirements = intentResult.missing_requirements;
+              }
+            } catch (e) {
+              console.warn(`[Job ${jobId}] Intent validation error (non-fatal):`, e);
             }
           }
         }
 
-        if (codeResult && summary && !validationError) {
+        validationReport.terminal_reason = terminalReason;
+
+        if (codeResult && summary && !validationError && jobStatus === "completed") {
           try {
             const dataCheck = await checkDataAvailability(supabase, userId, prompt);
             if (dataCheck && (dataCheck.needsSubscriptionPlans || dataCheck.needsProducts)) {
@@ -1596,7 +1653,7 @@ serve(async (req) => {
 
         // 3. THE MANUAL RECOVERY FIX (The Blank Screen Fix)
         // Forces the design into your project even if database triggers are broken
-        if (codeResult && !validationError) {
+        if (codeResult && !validationError && jobStatus === "completed") {
           const { data: jobData } = await supabase
             .from("ai_generation_jobs")
             .select("project_id")
@@ -1613,29 +1670,31 @@ serve(async (req) => {
           }
         }
 
-        // 4. Finalize Job Status
-        const updatePayload = {
+        // 4. Finalize Job Status with validation report
+        const updatePayload: Record<string, unknown> = {
           status: jobStatus,
           completed_at: new Date().toISOString(),
-          code_result: validationError ? null : codeResult,
+          code_result: (validationError || jobStatus !== "completed") ? null : codeResult,
           summary: summary?.slice(0, 8000),
           plan_result: planResult,
+          validation_report: validationReport,
+          terminal_reason: terminalReason,
           progress_logs: validationError
             ? ["Starting AI generation...", "Processing response...", `⚠️ ${validationError.errorType}`]
-            : ["Starting AI generation...", "Processing response...", "Generation complete!"],
+            : jobStatus === "needs_user_action"
+            ? ["Starting AI generation...", "Processing response...", "⚠️ Intent check failed — user action needed"]
+            : ["Starting AI generation...", "Processing response...", "✅ All validation gates passed"],
         };
 
         if (validationError) {
           updatePayload.error_message = JSON.stringify({
             type: validationError.errorType,
             message: validationError.errorMessage,
-            partialCode: codeResult,
           });
         }
 
         await supabase.from("ai_generation_jobs").update(updatePayload).eq("id", jobId);
-        console.log(`[Job ${jobId}] Job ${jobStatus}`);
-        // --- END OF REPLACEMENT ---
+        console.log(`[Job ${jobId}] Job ${jobStatus} | Reason: ${terminalReason}`);
 
         return new Response(
           JSON.stringify({
@@ -1699,6 +1758,28 @@ serve(async (req) => {
         const encoder = new TextEncoder();
         let buffer = "";
         let fullContent = "";
+        
+        // Heartbeat: prevent "stuck" perception during model response wait
+        const heartbeatInterval = setInterval(() => {
+          try {
+            const payload = `event: heartbeat\ndata: ${JSON.stringify({ t: Date.now() })}\n\n`;
+            controller.enqueue(encoder.encode(payload));
+          } catch {
+            // Controller may be closed
+            clearInterval(heartbeatInterval);
+          }
+        }, 10_000);
+        
+        // Hard timeout: 60s for the entire stream
+        const streamTimeout = setTimeout(() => {
+          console.error("[Streaming] Hard timeout reached (60s)");
+          const payload = `event: error\ndata: ${JSON.stringify({ message: "Generation timed out. Please retry with a simpler request." })}\n\n`;
+          try {
+            controller.enqueue(encoder.encode(payload));
+            controller.close();
+          } catch { /* already closed */ }
+          clearInterval(heartbeatInterval);
+        }, 60_000);
         
         // Track which section we're currently in
         let currentSection: 'none' | 'analysis' | 'plan' | 'code' | 'summary' = 'none';
@@ -1849,6 +1930,8 @@ serve(async (req) => {
           console.error("Stream processing error:", e);
           emitEvent('error', { message: e instanceof Error ? e.message : 'Stream error' });
         } finally {
+          clearInterval(heartbeatInterval);
+          clearTimeout(streamTimeout);
           controller.close();
         }
       },
