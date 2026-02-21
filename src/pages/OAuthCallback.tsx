@@ -42,9 +42,25 @@ export default function OAuthCallback() {
           return;
         }
 
-        const next = localStorage.getItem("postAuthRedirect") || "/";
+        const next = localStorage.getItem("postAuthRedirect");
         localStorage.removeItem("postAuthRedirect");
-        navigate(next, { replace: true });
+        
+        if (next && next !== '/') {
+          navigate(next, { replace: true });
+        } else {
+          // Default to profile page
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (authUser) {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('username')
+              .eq('user_id', authUser.id)
+              .single();
+            navigate(prof?.username ? `/@${prof.username}` : '/', { replace: true });
+          } else {
+            navigate('/', { replace: true });
+          }
+        }
       } catch (e) {
         console.error("[OAuthCallback] error:", e);
         navigate("/login", { replace: true });

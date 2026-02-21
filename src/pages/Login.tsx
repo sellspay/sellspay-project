@@ -56,7 +56,20 @@ export default function Login() {
     if (user && !showMfaVerification && !checkingMfa) {
       const params = new URLSearchParams(location.search);
       const next = params.get('next');
-      navigate(next || '/');
+      if (next) {
+        navigate(next);
+      } else {
+        // No specific destination — go to profile
+        const fetchAndRedirect = async () => {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('user_id', user.id)
+            .single();
+          navigate(prof?.username ? `/@${prof.username}` : '/');
+        };
+        fetchAndRedirect();
+      }
     }
   }, [user, navigate, location.search, showMfaVerification, checkingMfa]);
 
