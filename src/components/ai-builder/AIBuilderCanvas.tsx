@@ -483,55 +483,17 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     console.log('[BackgroundGen] Job completed:', job.id, { isActiveRun, status: job.status });
 
     // ═══════════════════════════════════════════════════════════════
-    // HEALER PROTOCOL: Handle 'needs_continuation' status
+    // TRUNCATION HANDLING: Hard fail — no silent patching
     // ═══════════════════════════════════════════════════════════════
-    // If the backend detected truncation, auto-trigger Ghost Fixer
     if (job.status === 'needs_continuation') {
-      console.log('[BackgroundGen] 🔧 Healer Protocol: Job needs continuation');
+      console.warn('[BackgroundGen] ❌ Job truncated — no auto-recovery');
       
-      let recovered = false;
-      
-      if (job.error_message) {
-        try {
-          const validationError = JSON.parse(job.error_message);
-          const partialCode = validationError.partialCode;
-          
-          if (partialCode && ghostFixer) {
-            toast.info('Auto-healing truncated code...', { duration: 3000 });
-            
-            // Trigger Ghost Fixer with the partial code
-            const recoveredCode = await ghostFixer.triggerContinuation(partialCode, job.prompt);
-            
-            if (recoveredCode) {
-              console.log('[BackgroundGen] ✅ Ghost Fixer recovered code');
-              setCode(recoveredCode);
-              recovered = true;
-              
-              // Add success message
-              if (activeProjectId) {
-                await addMessage('assistant', '⚠️ Code was truncated and patched. Your request may not be fully complete — please re-send it to finish.', recoveredCode, activeProjectId);
-              }
-            } else {
-              console.warn('[BackgroundGen] ⚠️ Ghost Fixer could not recover code');
-              // Still show the partial code so user can see progress
-              if (partialCode) {
-                setCode(partialCode);
-              }
-            }
-          }
-        } catch (e) {
-          console.error('[BackgroundGen] Failed to parse validation error:', e);
-        }
-      }
-      
-      if (!recovered) {
-        toast.error('Generation was truncated. Please try again with a simpler request.');
-        if (activeProjectId) {
-          await addMessage('assistant', '⚠️ The AI response was cut short. Try breaking your request into smaller steps.', undefined, activeProjectId);
-        }
+      toast.error('Code was too complex for one generation. Please re-send with a simpler request.', { duration: 6000 });
+      if (activeProjectId) {
+        await addMessage('assistant', '⚠️ Generation exceeded safe limits. Please simplify your request or break it into smaller parts.', undefined, activeProjectId);
       }
 
-      // ALWAYS clear state on continuation (prevents stuck building state)
+      // Clear state — no Ghost Fixer, no silent retry
       if (isActiveRun) {
         setLiveSteps([]);
         pendingSummaryRef.current = '';

@@ -39,7 +39,7 @@ interface UseGhostFixerOptions {
  * Merge: Stitch continuation onto existing code.
  */
 export function useGhostFixer(options: UseGhostFixerOptions = {}) {
-  const { maxRetries = 3, onFixAttempt, onFixSuccess, onFixFailure } = options;
+  const { maxRetries = 1, onFixAttempt, onFixSuccess, onFixFailure } = options;
   
   const [state, setState] = useState<GhostFixerState>({
     isFixing: false,
@@ -361,16 +361,19 @@ CRITICAL INSTRUCTIONS:
         return merged;
       }
       
-      // Still truncated - check if we should retry
-      if (isTruncated(merged) && attemptNum < maxRetries) {
-        console.log('[GhostFixer] Merged result still truncated - retrying...');
-        // Recursive retry (this will increment the counter)
-        return triggerContinuation(merged, originalPrompt);
+      // Still truncated after single retry - hard fail, no more chaining
+      if (isTruncated(merged)) {
+        console.error('[GhostFixer] ❌ Still truncated after retry - hard failing');
+        const reason = 'Generation exceeded safe limits. Please simplify your request or break it into smaller parts.';
+        setState(prev => ({ ...prev, isFixing: false, error: reason }));
+        onFixFailure?.(reason);
+        return null;
       }
       
-      // If we're out of retries but have something, return it anyway
-      console.log('[GhostFixer] ⚠️ Max retries reached, returning best effort');
+      // Merged result looks complete even without sentinel
+      console.log('[GhostFixer] ✅ Merged result appears complete');
       setState(prev => ({ ...prev, isFixing: false }));
+      onFixSuccess?.(merged);
       return merged;
       
     } catch (error) {
