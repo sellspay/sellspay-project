@@ -113,17 +113,21 @@ const productTypeLabels: Record<string, string> = {
 // Helper to generate YouTube thumbnail URL
 const getYouTubeThumbnail = (youtubeUrl: string | null): string | null => {
   if (!youtubeUrl) return null;
-  let videoId = youtubeUrl;
+  let videoId = youtubeUrl.trim();
   if (youtubeUrl.includes('youtube.com/watch')) {
-    const url = new URL(youtubeUrl);
-    videoId = url.searchParams.get('v') || youtubeUrl;
+    try { videoId = new URL(youtubeUrl).searchParams.get('v') || youtubeUrl; } catch { /* noop */ }
   } else if (youtubeUrl.includes('youtu.be/')) {
     videoId = youtubeUrl.split('youtu.be/')[1]?.split('?')[0] || youtubeUrl;
   } else if (youtubeUrl.includes('youtube.com/embed/')) {
     videoId = youtubeUrl.split('embed/')[1]?.split('?')[0] || youtubeUrl;
   }
   videoId = videoId.split('?')[0].split('&')[0];
-  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  // If it looks like a valid 11-char YouTube video ID, use it directly
+  if (/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  }
+  // Otherwise it might be an unrecognized format
+  return null;
 };
 
 // UUID regex for checking if idOrSlug is a UUID
