@@ -18,7 +18,7 @@ import {
   Menu, X, User, Settings, LogOut, ShieldCheck, Plus, LayoutDashboard, 
   CreditCard, Loader2, Package, Sparkles, Store, Crown,
   Wand2, Music, FileVideo, Film, Headphones, ArrowRight, Zap,
-  ShoppingCart, Home, Users, Mic, MessageSquare, DollarSign, Search
+  ShoppingCart, Home, Users, Mic, MessageSquare, DollarSign, Search, HelpCircle
 } from 'lucide-react';
 import { useState } from 'react';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -477,8 +477,15 @@ export default function Header() {
                     )}
                   </div>
 
-                  {/* Sign out */}
+                  {/* Help Center & Sign out */}
                   <div className="border-t border-border/30 py-1.5">
+                    <button
+                      onClick={() => navigate("/faq")}
+                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                      <span>Help Center</span>
+                    </button>
                     <button
                       onClick={() => signOut()}
                       className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"

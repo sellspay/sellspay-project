@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { 
-  User, Settings, LogOut, ChevronRight, Zap, LayoutDashboard, Plus
+  User, Settings, LogOut, ChevronRight, Zap, LayoutDashboard, Plus, HelpCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreditTopUpDialog } from "./CreditTopUpDialog";
@@ -237,8 +237,13 @@ export function ProfileMenu({
             </button>
           </div>
 
-          {/* Sign Out */}
+          {/* Help Center & Sign Out */}
           <div className="p-2 border-t border-zinc-800">
+            <MenuItem 
+              icon={HelpCircle} 
+              label="Help Center" 
+              onClick={() => handleNavigate('/faq')}
+            />
             <MenuItem 
               icon={LogOut} 
               label="Sign Out" 
