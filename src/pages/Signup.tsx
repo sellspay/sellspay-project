@@ -135,13 +135,11 @@ export default function Signup() {
       </div>
 
       {/* Right Half — Form */}
-      <div className="w-full lg:w-1/2 flex flex-col min-h-screen overflow-y-auto">
+      <div className="w-full lg:w-1/2 flex flex-col min-h-screen overflow-y-auto relative">
         {/* Back to home */}
-        <div className="p-6">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            ← Home
-          </Link>
-        </div>
+        <Link to="/" className="absolute top-6 left-6 text-sm text-muted-foreground hover:text-foreground transition-colors z-10">
+          ← Home
+        </Link>
 
         <div className="flex-1 flex items-center justify-center px-6 sm:px-12 lg:px-16 py-8">
           <div className="w-full max-w-[420px]">
