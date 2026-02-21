@@ -1,173 +1,123 @@
 
 
-# Pipeline Rebuild: Deterministic Execution with Validation Gates
+# Fix: Structured Error Reporting + Small Edit Bypass
 
-This is a full rebuild of the AI generation pipeline from "hope it works" to "provably correct." The plan implements the blueprint in 4 phases, each deployable independently.
+## Problem
+
+The system currently masks every failure behind one generic message: "Generation exceeded safe limits." The actual logs show the model IS generating code (27,870 chars) but gets rejected because `looksTruncated()` requires a sentinel marker (`// --- VIBECODER_COMPLETE ---`) that the model often doesn't emit, especially for simple FIX intents.
+
+A "fix the click handler" request generates valid code, but the sentinel check kills it.
 
 ---
 
-## Phase 1: Stop Lying / Stop Hanging (Backend + Frontend)
+## Changes
 
-### 1A. Edge Function: Structured SSE with Terminal Events + Heartbeats
+### 1. Replace Generic Error with Structured Error Codes
 
 **File: `supabase/functions/vibecoder-v2/index.ts`**
 
-Rewrite the streaming section (lines 1697-1854) to:
+Replace the single "exceeded safe limits" message in the validation gate (line 1601) with specific error codes:
 
-- Emit structured events: `phase`, `plan`, `code_begin`, `code_chunk`, `code_end`, `validation`, `complete`, `error`, `heartbeat`
-- Add `AbortController` with hard timeouts: 20s for plan calls, 60s for build calls
-- Every stream MUST end with exactly one terminal event (`complete`, `error`, or `needs_user_action`)
-- Send heartbeats every 10s during model response wait
-- Add `code_hash` (simple MD5/length hash) to `code_end` event for injection verification
-- If stream closes without terminal event, frontend treats as failure
+- `MISSING_EXPORT_DEFAULT` -- code lacks `export default`
+- `BRACKET_IMBALANCE` -- unbalanced `{}()[]`
+- `CODE_TOO_SHORT` -- under 300 chars
+- `MISSING_SENTINEL` -- no completion marker (weakest signal)
+- `MODEL_EMPTY_RESPONSE` -- model returned nothing
+- `INTENT_VALIDATION_FAILURE` -- intent check said no
+- `COMPLEXITY_GUARD` -- plan too complex
+- `NO_OP` -- output matches input
 
-### 1B. Edge Function: Truncation Detection (No Patching)
+Each error code gets a user-facing message that tells the user what actually happened.
 
-Add `looksTruncated()` function that checks:
-- Missing `export default`
-- Bracket imbalance
-- Code under 300 chars
-- Missing sentinel
+### 2. Add Diagnostic Logging Before Every Failure
 
-If truncated:
-- Do NOT save partial code to project
-- Do NOT set `needs_continuation`
-- Set job status to `failed` with message: "Generation exceeded safe limits. Please simplify your request."
+**File: `supabase/functions/vibecoder-v2/index.ts`**
 
-### 1C. Frontend: Replace Fake Progress Bar with Phase Pill
+Before every failure path, log:
+```
+FAILURE_REASON, PROMPT_LENGTH, CODE_CONTEXT_LENGTH, GENERATED_LENGTH, INTENT, MODEL_USED
+```
 
-**File: `src/components/ai-builder/StreamingPhaseCard.tsx`**
+This replaces debugging blind with structured observability.
 
-Replace the indeterminate progress bar (lines 143-150) with a simple phase pill + spinner dot. Remove the animated width trick `animate={{ width: ['20%', '80%', '40%', '90%', '60%'] }}` which is a visual lie.
+### 3. Small Edit Bypass: Skip Sentinel Check for FIX Intent
 
-### 1D. Frontend: Honest Healer Messaging
+**File: `supabase/functions/vibecoder-v2/index.ts`**
+
+The key fix: `looksTruncated()` currently requires the sentinel for ALL intents. For FIX intent (simple fixes like click handlers, routes, navigation):
+
+- Skip the sentinel check entirely
+- Only check for `export default` and bracket balance
+- These are the structural checks that actually matter
+
+This means a FIX intent that produces valid, compilable code with `export default` and balanced brackets will pass -- even without the sentinel marker the model often forgets to include.
+
+Refactor `looksTruncated()` to accept an `intent` parameter:
+
+```
+function looksTruncated(code: string, intent?: string): boolean
+```
+
+When `intent === "FIX"`:
+- Check `export default` (required)
+- Check bracket balance (required)
+- Check minimum length (required)
+- Skip sentinel check (not required for small edits)
+
+### 4. Update Frontend Error Display
 
 **File: `src/components/ai-builder/AIBuilderCanvas.tsx`**
 
-- When healer runs, show: "Generation was interrupted; retrying..."
-- Never show "Recovered successfully" unless intent check passes
-- If stream closes without terminal event, show error + Retry button
+Parse the structured error from the job's `error_message` field and show the specific error code + message instead of the generic "exceeded safe limits" string. For example:
 
-### 1E. Frontend: Handle Missing Terminal Events
+- `MISSING_EXPORT_DEFAULT`: "Generated code was incomplete (missing component export). Please retry."
+- `BRACKET_IMBALANCE`: "Generated code has syntax issues. Please retry with a simpler request."
+- `MISSING_SENTINEL`: "Generation may have been cut short. Retrying might help."
 
-**File: `src/components/ai-builder/useStreamingCode.ts`**
-
-After reader loop ends, check if any terminal event (`complete`/`error`) was received. If not, fire `onError` with "Stream ended unexpectedly. Please retry."
-
----
-
-## Phase 2: Stop "Compiles But Didn't Do Request" (Intent Validation)
-
-### 2A. Edge Function: Intent Validator Prompt
-
-Add a new function `validateIntent()` in the edge function that calls Gemini with a cheap, low-token prompt:
-
-```
-You are a strict code reviewer.
-User request: "{USER_PROMPT}"
-Generated code: {GENERATED_CODE}
-Answer ONLY valid JSON:
-{
-  "implements_request": boolean,
-  "missing_requirements": string[]
-}
-```
-
-### 2B. Edge Function: No-Op Detector
-
-Add `isNoOp()` function that normalizes whitespace and compares previous vs generated code. If delta is less than 1%, flag as no-op.
-
-### 2C. Edge Function: Gate Completion on Intent
-
-In the job processing path (lines 1564-1638):
-1. After code extraction, run `looksTruncated()`
-2. If not truncated, run `validateIntent()` 
-3. If `implements_request === false` AND `build_attempts < 2`, retry builder with missing requirements appended
-4. If still fails, set `needs_user_action` with guidance
-5. Only set `completed` when all gates pass
-
-### 2D. Add Attempt Counters to Job Table
-
-Database migration to add columns to `ai_generation_jobs`:
-- `build_attempts` (integer, default 0)
-- `intent_check_attempts` (integer, default 0)
-- `validation_report` (jsonb, nullable)
-- `terminal_reason` (text, nullable)
-
----
-
-## Phase 3: Kill Truncation at the Source
-
-### 3A. Edge Function: Complexity Guard
-
-If planner detects more than 6 phases or complexity is "high":
-- Do not execute in one shot
-- Return `needs_user_action` with suggestion to split into 2-3 smaller requests
-- Provide specific split suggestions based on the plan phases
-
-### 3B. Ghost Fixer: Intent-Oriented Healer
+### 5. Update Ghost Fixer Message
 
 **File: `src/hooks/useGhostFixer.ts`**
 
-Replace the continuation prompt (lines 196-223) with an intent-oriented healer that produces a COMPLETE file, not a syntax patch:
-
-```
-The previous generation was truncated.
-User request: "{USER_PROMPT}"
-Previous code (before change): {PREVIOUS_CODE}
-Produce a COMPLETE working single-file React component.
-Fully implement the request.
-Return ONLY the final code.
-```
-
-### 3C. Ghost Fixer: Hard Cap at 1 Retry
-
-Already done (maxRetries = 1), but ensure the AIBuilderCanvas also passes `maxRetries: 1` (currently passing 3 on line 205).
+Replace the generic "exceeded safe limits" string (line 360) with the specific error reason from the failed attempt.
 
 ---
 
-## Phase 4: Premium UX (Plan Card + Observability)
+## Technical Details
 
-### 4A. Plan Card with Manual Approval
+### Edge Function Changes (`supabase/functions/vibecoder-v2/index.ts`)
 
-Update the plan response flow so that when the planner returns a plan:
-- Show a card with title, overview, phases with risk badges, and affected areas
-- Buttons: "Approve and Execute", "Edit Plan", "Cancel"
-- No code generation until user clicks Approve
-- Store approved plan in the job record
+**`looksTruncated()` (lines 226-244):** Add `intent` parameter. When intent is `FIX`, skip sentinel check on line 241.
 
-### 4B. Execution Checklist
+**Validation gate (lines 1598-1606):** Replace the single `looksTruncated()` call with a detailed check that returns the specific failure reason. Log diagnostic data before setting failure status.
 
-During execution, show a real-time checklist:
-- "Generating code" (spinner while building)
-- "Validating changes" (spinner during intent check)
-- "Preview updated" (check when Sandpack confirms)
+**Add diagnostic logging (lines 1598-1606):** Before the gate, log:
+```typescript
+console.log(`[Job ${jobId}] VALIDATION_INPUT:`, {
+  intent: intentResult.intent,
+  promptLength: prompt.length,
+  codeContextLength: currentCode?.length ?? 0,
+  generatedLength: codeResult?.length ?? 0,
+  hasExportDefault: /export\s+default\s/.test(codeResult),
+  hasSentinel: codeResult.includes(VIBECODER_COMPLETE_SENTINEL),
+  bracketBalance: (codeResult.match(/[({[]/g) ?? []).length - (codeResult.match(/[)\]}]/g) ?? []).length,
+});
+```
 
-### 4C. Observability Logging
+**Pass intent to looksTruncated (line 1600):** Change from `looksTruncated(codeResult)` to `looksTruncated(codeResult, intentResult.intent)`.
 
-Add structured logging to each job:
-- `generated_code_length`
-- `truncation_detected` (boolean)
-- `no_op_detected` (boolean)  
-- `intent_ok` (boolean)
-- `attempt_counts` (json)
-- `time_per_phase_ms` (json)
-- `terminal_reason` (text)
+### Frontend Changes (`src/components/ai-builder/AIBuilderCanvas.tsx`)
 
-This data goes into the existing `validation_report` jsonb column.
+**Lines 486-494 and 558-563:** Parse `job.error_message` JSON for `type` field and display the corresponding user-friendly message instead of the hardcoded generic string.
+
+### Ghost Fixer Changes (`src/hooks/useGhostFixer.ts`)
+
+**Line 360:** Replace hardcoded string with dynamic reason from the validation failure.
 
 ---
 
-## Technical Summary
+## What This Fixes
 
-| File | Changes |
-|------|---------|
-| `supabase/functions/vibecoder-v2/index.ts` | Structured SSE, heartbeats, AbortController timeouts, truncation blocker, intent validator, no-op detector, complexity guard |
-| `src/hooks/useGhostFixer.ts` | Intent-oriented healer prompt, hard 1-retry cap |
-| `src/hooks/useAgentLoop.ts` | New phase states (validating, repairing, needs_user_action) |
-| `src/hooks/useBackgroundGeneration.ts` | Handle new job statuses, terminal event detection |
-| `src/components/ai-builder/useStreamingCode.ts` | Structured SSE parser for new events, missing-terminal detection |
-| `src/components/ai-builder/AIBuilderCanvas.tsx` | Fix maxRetries=3 to 1, honest messaging, plan approval flow |
-| `src/components/ai-builder/StreamingPhaseCard.tsx` | Replace fake bar with phase pill, add checklist |
-| Database migration | Add attempt counters + validation columns to ai_generation_jobs |
-
+- A simple "fix click handler" request that generates 27,870 chars of valid code will no longer be rejected just because it's missing a sentinel marker
+- Users see exactly why something failed instead of a generic message
+- Logs show the actual failure branch, prompt size, and code size for every failure
+- FIX intent gets a fast path that skips unnecessary gates
