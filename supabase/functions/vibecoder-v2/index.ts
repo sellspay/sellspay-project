@@ -223,24 +223,44 @@ const VIBECODER_COMPLETE_SENTINEL = "// --- VIBECODER_COMPLETE ---";
 // TRUNCATION DETECTION: Hard fail, no patching
 // ═══════════════════════════════════════════════════════════════
 
-function looksTruncated(code: string): boolean {
-  if (!code || code.trim().length < 50) return false;
-  
-  // Must include export default
-  if (!/export\s+default\s/.test(code)) return true;
-  
-  // Bracket balance check
+/**
+ * Detailed truncation check that returns a specific error code.
+ * For FIX intent, skips sentinel check (model often omits it for small edits).
+ */
+function getValidationError(code: string, intent?: string): { type: string; message: string } | null {
+  if (!code || code.trim().length < 50) {
+    return { type: "MODEL_EMPTY_RESPONSE", message: "AI returned no usable code. Please retry." };
+  }
+
+  if (!/export\s+default\s/.test(code)) {
+    return { type: "MISSING_EXPORT_DEFAULT", message: "Generated code was incomplete (missing component export). Please retry." };
+  }
+
   const opens = (code.match(/[({[]/g) ?? []).length;
   const closes = (code.match(/[)\]}]/g) ?? []).length;
-  if (closes < opens - 2) return true;
-  
-  // Too short to be a real component
-  if (code.length < 300) return true;
-  
-  // Missing sentinel
-  if (!code.includes(VIBECODER_COMPLETE_SENTINEL)) return true;
-  
-  return false;
+  if (closes < opens - 2) {
+    return { type: "BRACKET_IMBALANCE", message: "Generated code has syntax issues (unbalanced brackets). Please retry with a simpler request." };
+  }
+
+  if (code.length < 300) {
+    return { type: "CODE_TOO_SHORT", message: "Generated code was too short to be a valid component. Please retry." };
+  }
+
+  // FIX intent: skip sentinel check — structural checks above are sufficient
+  if (intent === "FIX") {
+    return null; // passes all structural gates
+  }
+
+  if (!code.includes(VIBECODER_COMPLETE_SENTINEL)) {
+    return { type: "MISSING_SENTINEL", message: "Generation may have been cut short. Retrying might help." };
+  }
+
+  return null;
+}
+
+// Legacy wrapper for backwards compat
+function looksTruncated(code: string, intent?: string): boolean {
+  return getValidationError(code, intent) !== null;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1596,13 +1616,26 @@ serve(async (req) => {
         };
 
         if (codeResult) {
-          // GATE 1: Truncation detection (hard fail, no patching)
-          if (looksTruncated(codeResult)) {
-            validationError = { errorType: "TRUNCATION_DETECTED", errorMessage: "Generation exceeded safe limits. Please simplify your request." };
+          // Diagnostic logging before any gate
+          const diagnostics = {
+            intent: intentResult.intent,
+            promptLength: prompt.length,
+            codeContextLength: currentCode?.length ?? 0,
+            generatedLength: codeResult.length,
+            hasExportDefault: /export\s+default\s/.test(codeResult),
+            hasSentinel: codeResult.includes(VIBECODER_COMPLETE_SENTINEL),
+            bracketBalance: (codeResult.match(/[({[]/g) ?? []).length - (codeResult.match(/[)\]}]/g) ?? []).length,
+          };
+          console.log(`[Job ${jobId}] VALIDATION_INPUT:`, JSON.stringify(diagnostics));
+
+          // GATE 1: Structured validation (intent-aware)
+          const structuralError = getValidationError(codeResult, intentResult.intent);
+          if (structuralError) {
+            validationError = { errorType: structuralError.type, errorMessage: structuralError.message };
             jobStatus = "failed";
-            terminalReason = "truncation_detected";
+            terminalReason = structuralError.type.toLowerCase();
             validationReport.truncation_detected = true;
-            console.error(`[Job ${jobId}] GATE 1 FAIL: Truncation detected. Code length: ${codeResult.length}`);
+            console.error(`[Job ${jobId}] GATE 1 FAIL: ${structuralError.type} | ${structuralError.message} | Code length: ${codeResult.length}`);
           }
 
           // GATE 2: No-op detection

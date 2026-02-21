@@ -488,9 +488,9 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     if (job.status === 'needs_continuation') {
       console.warn('[BackgroundGen] ❌ Job truncated — no auto-recovery');
       
-      toast.error('Code was too complex for one generation. Please re-send with a simpler request.', { duration: 6000 });
+      toast.error('Code generation was interrupted. Please retry with a simpler request.', { duration: 6000 });
       if (activeProjectId) {
-        await addMessage('assistant', '⚠️ Generation exceeded safe limits. Please simplify your request or break it into smaller parts.', undefined, activeProjectId);
+        await addMessage('assistant', '⚠️ Code generation was interrupted. Please simplify your request or break it into smaller parts.', undefined, activeProjectId);
       }
 
       // Clear state — no Ghost Fixer, no silent retry
@@ -557,17 +557,22 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const handleJobError = useCallback((job: GenerationJob) => {
     console.error('[BackgroundGen] Job failed:', job.error_message);
     
+    // Parse structured error if available
+    let userMessage = job.error_message || 'Unknown error';
+    try {
+      const parsed = JSON.parse(userMessage);
+      if (parsed?.message) userMessage = parsed.message;
+    } catch { /* not JSON, use as-is */ }
+
     // Handle needs_user_action (intent check failed, complexity guard, etc.)
     if (job.status === 'needs_user_action') {
-      const reason = (job as any).terminal_reason || 'unknown';
       const msg = job.summary || 'This request may be too complex. Please simplify or break it into smaller parts.';
       toast.error(msg, { duration: 8000 });
       if (activeProjectId) {
         addMessage('assistant', `⚠️ ${msg}`, undefined, activeProjectId);
       }
     } else {
-      const msg = job.error_message || 'Unknown error';
-      toast.error(`Generation failed: ${msg}`);
+      toast.error(userMessage, { duration: 6000 });
     }
 
     const isActiveRun = activeJobIdRef.current === job.id;
