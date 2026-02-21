@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { UpdateCard } from '@/components/community/UpdateCard';
@@ -29,7 +29,6 @@ export default function Updates() {
         .select('*')
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
-
       if (error) throw error;
       return data as PlatformUpdate[];
     },
@@ -38,18 +37,11 @@ export default function Updates() {
   useEffect(() => {
     const channel = supabase
       .channel('platform-updates-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'platform_updates' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['platform-updates'] });
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_updates' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['platform-updates'] });
+      })
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
   const pinnedUpdates = updates?.filter((u) => u.is_pinned) || [];
@@ -57,35 +49,34 @@ export default function Updates() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Compact Header */}
-      <section className="border-b border-border/40 bg-background">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 pt-12 sm:pt-16 pb-8 sm:pb-10">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-xl bg-amber-500/10">
-              <Megaphone className="h-5 w-5 text-amber-400" />
-            </div>
-            <span className="text-sm font-medium text-amber-400 tracking-wide uppercase">Official</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight mb-2">
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.03] to-transparent pointer-events-none" />
+        <div className="relative mx-auto max-w-[720px] px-6 pt-20 sm:pt-28 pb-14 sm:pb-20 text-center">
+          <p className="text-[11px] font-medium uppercase tracking-[0.25em] text-muted-foreground mb-5">
+            Official
+          </p>
+          <h1 className="text-4xl sm:text-5xl font-semibold text-foreground tracking-tight leading-[1.1]">
             Platform Updates
           </h1>
-          <p className="text-muted-foreground text-base sm:text-lg">
+          <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
             Stay informed about the latest changes and announcements from
-            <span className="text-foreground font-medium"> SellsPay.</span>
+            <span className="text-foreground font-medium"> SellsPay</span>.
           </p>
         </div>
+        <div className="h-px bg-gradient-to-r from-transparent via-border/60 to-transparent" />
       </section>
 
       {/* Content */}
-      <section className="py-6 sm:py-8 px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto space-y-6">
+      <section className="py-8 sm:py-12 px-6">
+        <div className="max-w-[720px] mx-auto space-y-8">
           {isOwner && <UpdateComposer />}
 
-          {/* Pinned Updates */}
+          {/* Pinned */}
           {pinnedUpdates.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-amber-400 text-sm font-medium">
-                <Pin className="h-4 w-4" />
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground">
+                <Pin className="h-3.5 w-3.5" />
                 Pinned
               </div>
               {pinnedUpdates.map((update) => (
@@ -94,31 +85,29 @@ export default function Updates() {
             </div>
           )}
 
-          {/* Regular Updates */}
+          {/* All */}
           {isLoading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="flex justify-center py-20">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : regularUpdates.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {pinnedUpdates.length > 0 && (
-                <div className="text-muted-foreground text-sm font-medium pt-2">
+                <p className="text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground pt-4">
                   All Updates
-                </div>
+                </p>
               )}
               {regularUpdates.map((update) => (
                 <UpdateCard key={update.id} update={update} isOwner={isOwner} />
               ))}
             </div>
           ) : pinnedUpdates.length === 0 ? (
-            <div className="text-center py-16 px-6 border border-border/40 rounded-2xl bg-muted/10">
-              <div className="inline-flex p-4 rounded-2xl bg-muted/30 mb-4">
-                <Megaphone className="h-8 w-8 text-muted-foreground" />
+            <div className="text-center py-20">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full border border-border/50 mb-5">
+                <Megaphone className="h-6 w-6 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-1">No Updates Yet</h3>
-              <p className="text-muted-foreground text-sm">
-                Check back soon for platform announcements.
-              </p>
+              <h3 className="text-base font-medium text-foreground mb-1">No Updates Yet</h3>
+              <p className="text-sm text-muted-foreground">Check back soon for announcements.</p>
             </div>
           ) : null}
         </div>
