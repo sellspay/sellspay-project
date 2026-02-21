@@ -263,7 +263,7 @@ export default function Community() {
           {/* Search panel (collapsible) */}
           {searchOpen && (
             <div className="pb-4">
-              <ThreadSearchPanel open={searchOpen} onOpenChange={setSearchOpen} onSearchChange={handleSearchChange} />
+              <ThreadSearchPanel open={searchOpen} onOpenChange={setSearchOpen} onSearchChange={handleSearchChange} activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
             </div>
           )}
 
