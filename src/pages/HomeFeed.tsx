@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
@@ -6,7 +6,8 @@ import { CategoryCard } from '@/components/home/CategoryCard';
 import { ProductCarousel } from '@/components/home/ProductCarousel';
 import { Reveal } from '@/components/home/Reveal';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight, Play, Music, Palette, Video, BookOpen, Code, Image, Layers, FileText, Package, Mic, Shapes, Brush, MonitorSmartphone, PenTool, Camera, Gamepad2, Presentation } from 'lucide-react';
+import { Sparkles, ArrowRight, Play, Music, Palette, Video, BookOpen, Code, Image, Layers, FileText, Package, Mic, Shapes, Brush, MonitorSmartphone, PenTool, Camera, Gamepad2, Presentation, ChevronLeft, ChevronRight } from 'lucide-react';
+import ProductCard from '@/components/ProductCard';
 
 interface Product {
   id: string;
@@ -97,10 +98,13 @@ export default function HomeFeed() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
-  
+  const [categoryProducts, setCategoryProducts] = useState<Product[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollCatLeft, setCanScrollCatLeft] = useState(false);
+  const [canScrollCatRight, setCanScrollCatRight] = useState(true);
 
   useEffect(() => {
     document.title = 'SellsPay — Home';
@@ -167,6 +171,19 @@ export default function HomeFeed() {
       }
 
       setTrendingProducts(trendingData);
+
+      // Fetch one product per category for "Browse by Category" row
+      const allPublished = (newRes.data || []) as Product[];
+      const seenTypes = new Set<string>();
+      const catProds: Product[] = [];
+      for (const cat of BROWSE_CATEGORIES) {
+        const match = allPublished.find(p => p.product_type === cat.value && !seenTypes.has(cat.value));
+        if (match) {
+          seenTypes.add(cat.value);
+          catProds.push(match);
+        }
+      }
+      setCategoryProducts(catProds);
 
       // Process recently viewed
       if (viewedRes.data && viewedRes.data.length > 0) {
@@ -243,34 +260,72 @@ export default function HomeFeed() {
         </div>
       </Reveal>
 
-      {/* Browse by Category */}
-      <Reveal>
-        <section className="px-6 sm:px-8 lg:px-10 pb-8">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">Browse by Category</h2>
-            <Link to="/products" className="text-sm text-primary hover:underline flex items-center gap-1">
-              View all <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {BROWSE_CATEGORIES.map(cat => {
-              const Icon = cat.icon;
-              return (
-                <Link
-                  key={cat.value}
-                  to={`/products?type=${cat.value}`}
-                  className="group flex flex-col items-center gap-2.5 p-4 rounded-xl border border-border/40 bg-card hover:border-primary/40 hover:bg-primary/5 transition-all duration-200"
+      {/* Browse by Category — single horizontal row of product cards */}
+      {categoryProducts.length > 0 && (
+        <Reveal>
+          <section className="relative pb-8">
+            <div className="flex items-center justify-between px-6 sm:px-8 lg:px-10 mb-3">
+              <h2 className="text-lg font-bold text-foreground tracking-tight">Browse by Category</h2>
+              <Link to="/products" className="text-xs text-primary hover:underline flex items-center gap-1">
+                View all <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="relative group/catcarousel">
+              {canScrollCatLeft && (
+                <button
+                  onClick={() => {
+                    categoryScrollRef.current?.scrollBy({ left: -(categoryScrollRef.current.clientWidth * 0.75), behavior: 'smooth' });
+                  }}
+                  className="absolute left-1 top-1/2 -translate-y-1/2 z-10 h-20 w-10 bg-card/90 border border-border/50 rounded-md flex items-center justify-center text-foreground hover:bg-card transition-colors shadow-lg opacity-0 group-hover/catcarousel:opacity-100"
                 >
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <Icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <span className="text-sm font-medium text-foreground text-center">{cat.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      </Reveal>
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              )}
+              {canScrollCatRight && (
+                <button
+                  onClick={() => {
+                    categoryScrollRef.current?.scrollBy({ left: categoryScrollRef.current.clientWidth * 0.75, behavior: 'smooth' });
+                  }}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 z-10 h-20 w-10 bg-card/90 border border-border/50 rounded-md flex items-center justify-center text-foreground hover:bg-card transition-colors shadow-lg opacity-0 group-hover/catcarousel:opacity-100"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              )}
+
+              <div
+                ref={categoryScrollRef}
+                className="flex gap-[2px] overflow-x-auto scrollbar-hide px-6 sm:px-8 lg:px-10"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                onScroll={() => {
+                  const el = categoryScrollRef.current;
+                  if (!el) return;
+                  setCanScrollCatLeft(el.scrollLeft > 4);
+                  setCanScrollCatRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+                }}
+              >
+                {categoryProducts.map((product) => {
+                  const cat = BROWSE_CATEGORIES.find(c => c.value === product.product_type);
+                  return (
+                    <Link
+                      key={product.id}
+                      to={`/products?type=${product.product_type}`}
+                      className="flex-none w-[200px] sm:w-[220px] relative group"
+                    >
+                      <ProductCard product={product} showType={true} showCreator={true} />
+                      {cat && (
+                        <div className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded bg-primary text-primary-foreground text-[10px] font-semibold uppercase tracking-wider">
+                          {cat.label}
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        </Reveal>
+      )}
 
       {/* Recently Viewed Carousel */}
       {recentlyViewed.length > 0 && (
