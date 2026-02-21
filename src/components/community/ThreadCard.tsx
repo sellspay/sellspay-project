@@ -232,8 +232,8 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
   return (
     <div
       className={cn(
-        "group relative px-1 py-3 transition-all duration-300 overflow-hidden",
-        thread.is_pinned && "bg-muted/40"
+        "group relative px-5 py-5 transition-all duration-300 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-md my-3",
+        thread.is_pinned && "bg-white/[0.06] border-white/[0.1]"
       )}
     >
       <div className="relative flex gap-3.5">
