@@ -150,24 +150,34 @@ export function NewThreadDialog({ open, onOpenChange }: NewThreadDialogProps) {
       if (textAttachment) {
         finalContent += `\n\n${textAttachment}`;
       }
-      if (poll) {
-        const pollOptions = poll.options.filter(o => o.trim());
-        if (pollOptions.length >= 2) {
-          finalContent += `\n\n📊 Poll (${poll.duration}):\n${pollOptions.map((o, i) => `${i + 1}. ${o}`).join('\n')}`;
-        }
-      }
       if (isAiLabeled) finalContent = `[AI Generated] ${finalContent}`;
       if (isPaidPartnership) finalContent = `[Paid Partnership] ${finalContent}`;
 
-      const imageUrl = category === 'promotion' ? promotionImageUrl || null : (promotionImageUrl || null);
-      const { error } = await supabase.from('threads').insert({
+      const imageUrl = promotionImageUrl || null;
+      const { data: threadData, error } = await supabase.from('threads').insert({
         author_id: profile.id,
         content: finalContent,
         category,
         gif_url: gifUrl,
         image_url: imageUrl,
-      });
+      }).select('id').single();
       if (error) throw error;
+
+      // Create poll if present
+      if (poll && threadData) {
+        const pollOptions = poll.options.filter(o => o.trim());
+        if (pollOptions.length >= 2) {
+          const durationMs = poll.duration === '24h' ? 86400000 : poll.duration === '3d' ? 259200000 : 604800000;
+          const expiresAt = new Date(Date.now() + durationMs).toISOString();
+          const { error: pollError } = await supabase.from('thread_polls').insert({
+            thread_id: threadData.id,
+            options: pollOptions,
+            duration: poll.duration,
+            expires_at: expiresAt,
+          });
+          if (pollError) throw pollError;
+        }
+      }
     },
     onSuccess: () => {
       resetState();

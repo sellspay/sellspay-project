@@ -2692,6 +2692,73 @@ export type Database = {
           },
         ]
       }
+      thread_poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_index: number
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_index: number
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_index?: number
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "thread_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thread_polls: {
+        Row: {
+          created_at: string
+          duration: string
+          expires_at: string
+          id: string
+          options: string[]
+          thread_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration?: string
+          expires_at: string
+          id?: string
+          options: string[]
+          thread_id: string
+        }
+        Update: {
+          created_at?: string
+          duration?: string
+          expires_at?: string
+          id?: string
+          options?: string[]
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_polls_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thread_replies: {
         Row: {
           author_id: string

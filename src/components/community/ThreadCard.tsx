@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { ThreadPoll } from '@/components/community/ThreadPoll';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { Heart, MessageCircle, MoreHorizontal, Trash2, Flag, Pin, ExternalLink } from 'lucide-react';
@@ -395,6 +396,9 @@ export function ThreadCard({ thread, onReplyClick }: ThreadCardProps) {
               />
             </div>
           )}
+
+          {/* Poll */}
+          <ThreadPoll threadId={thread.id} profileId={profile?.id || null} />
 
           {/* Actions - Premium Style */}
           <div className="flex items-center gap-2 mt-5 -ml-3">
