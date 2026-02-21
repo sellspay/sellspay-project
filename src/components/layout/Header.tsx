@@ -61,22 +61,15 @@ const communityItems = [
 
 // Premium nav link styles
 const navLinkStyles = cn(
-  "relative px-4 py-2 text-sm font-medium text-foreground/70",
+  "relative px-4 py-2 text-sm font-light tracking-wide text-foreground/60",
   "rounded-lg transition-all duration-300",
   "hover:text-foreground",
-  "before:absolute before:inset-0 before:rounded-lg before:opacity-0",
-  "before:bg-gradient-to-b before:from-white/10 before:to-transparent",
-  "before:transition-opacity before:duration-300",
-  "hover:before:opacity-100",
-  "after:absolute after:inset-[1px] after:rounded-[7px] after:opacity-0",
-  "after:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.2)]",
-  "hover:after:opacity-100 after:transition-opacity after:duration-300"
+  "font-[system-ui,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]"
 );
 
 const activeNavLinkStyles = cn(
   navLinkStyles,
-  "text-foreground bg-white/5",
-  "shadow-[inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.2)]"
+  "text-foreground"
 );
 
 export default function Header() {
@@ -250,12 +243,11 @@ export default function Header() {
                 {/* Community Dropdown */}
                 <NavigationMenuItem>
                   <NavigationMenuTrigger className={cn(
-                    "h-10 px-4 text-sm font-medium bg-transparent rounded-lg",
-                    "text-foreground/70 hover:text-foreground",
-                    "data-[state=open]:text-foreground data-[state=open]:bg-white/5",
+                    "h-10 px-4 text-sm font-light tracking-wide bg-transparent rounded-lg",
+                    "text-foreground/60 hover:text-foreground",
+                    "data-[state=open]:text-foreground",
                     "transition-all duration-300",
-                    "hover:bg-gradient-to-b hover:from-white/10 hover:to-transparent",
-                    "data-[state=open]:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),inset_0_-1px_0_rgba(0,0,0,0.3)]"
+                    "font-[system-ui,'Segoe_UI',Roboto,Helvetica,Arial,sans-serif]"
                   )}>
                     Community
                   </NavigationMenuTrigger>
@@ -299,25 +291,22 @@ export default function Header() {
                   "shadow-[1px_0_0_rgba(0,0,0,0.3)]"
                 )} />
 
-                {/* Hire Editors - Premium Standout */}
+                {/* Hire Editors - Only for signed-in users */}
+                {user && (
                 <NavigationMenuItem>
                   <Link 
                     to="/hire-editors" 
                     className={cn(
-                      "inline-flex h-10 items-center justify-center px-5 text-sm font-semibold",
-                      "text-primary rounded-xl transition-all duration-300",
-                      "bg-gradient-to-b from-primary/20 to-primary/10",
-                      "shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_2px_8px_rgba(0,0,0,0.2)]",
-                      "border border-primary/30",
-                      "hover:from-primary/30 hover:to-primary/15",
-                      "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_12px_rgba(0,0,0,0.3)]",
-                      "hover:border-primary/40"
+                      "inline-flex h-9 items-center justify-center px-4 text-xs font-medium tracking-wide",
+                      "text-foreground rounded-full transition-all duration-300",
+                      "border border-border hover:border-foreground/30",
+                      "hover:bg-white/5"
                     )}
                   >
                     Hire Editors
-                    <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </NavigationMenuItem>
+                )}
               </NavigationMenuList>
             </NavigationMenu>
           </div>
