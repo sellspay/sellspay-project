@@ -312,16 +312,31 @@ export default function HomeFeed() {
                       className="flex-none w-[200px] sm:w-[220px] relative cursor-pointer group/catcard"
                       onClick={() => navigate(`/products?type=${product.product_type}`)}
                     >
-                      <div className="pointer-events-none">
-                        <ProductCard product={product} showType={false} showCreator={false} />
+                      {/* Product image only — no badges */}
+                      <div className="relative aspect-[4/5] overflow-hidden">
+                        {product.cover_image_url ? (
+                          <img
+                            src={product.cover_image_url}
+                            alt={cat?.label || product.name}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover/catcard:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex items-center justify-center">
+                            {cat && <cat.icon className="h-10 w-10 text-muted-foreground" />}
+                          </div>
+                        )}
+                        {/* Dark gradient at bottom */}
+                        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                        {/* Category label centered at bottom */}
+                        {cat && (
+                          <div className="absolute bottom-4 inset-x-0 flex justify-center z-10">
+                            <span className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider shadow-lg">
+                              {cat.label}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      {/* Category label at bottom over the gradient */}
-                      {cat && (
-                        <div className="absolute bottom-3 left-3 z-10 px-2.5 py-1 rounded bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider shadow-lg group-hover/catcard:bg-primary/90 transition-colors">
-                          {cat.label}
-                        </div>
-                      )}
-                      {/* Hover overlay */}
+                      {/* Hover border */}
                       <div className="absolute inset-0 border-2 border-transparent group-hover/catcard:border-primary/50 transition-all duration-200 pointer-events-none" />
                     </div>
                   );
