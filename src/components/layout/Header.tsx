@@ -342,12 +342,12 @@ export default function Header() {
               Pricing
             </Link>
 
-            {/* Cart Button - Always visible */}
+            {/* Cart Button - Desktop only */}
             <Button
               variant="ghost"
               size="icon"
               asChild
-              className="h-10 w-10 rounded-xl text-foreground/70 hover:text-foreground hover:bg-white/5"
+              className="hidden lg:inline-flex h-10 w-10 rounded-xl text-foreground/70 hover:text-foreground hover:bg-white/5"
             >
               <Link to="/cart">
                 <ShoppingCart className="h-5 w-5" />
