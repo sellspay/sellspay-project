@@ -151,7 +151,8 @@ export function ConnectionsTab() {
         const { data, error } = await supabase.functions.invoke("initiate-discord-login", {
           body: { 
             returnTo: "/settings?tab=connections",
-            linkAccount: true, // Flag to indicate we're linking, not signing in
+            linkAccount: true,
+            origin: window.location.origin,
           },
         });
         

@@ -40,6 +40,7 @@ serve(async (req) => {
     // Get the origin for redirect after login
     const body = await req.json().catch(() => ({}));
     const returnTo = body.returnTo || "/";
+    const origin = body.origin || "https://sellspay.com";
     const linkAccount = body.linkAccount || false;
     
     let linkingUserId: string | null = null;
@@ -82,8 +83,8 @@ serve(async (req) => {
       timestamp: Date.now(),
       nonce: crypto.randomUUID(),
       linkAccount,
-      // CRITICAL: Include the user ID when linking so callback knows WHO to link
       linkingUserId,
+      origin,
     };
     const state = btoa(JSON.stringify(stateData));
 
