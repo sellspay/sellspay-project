@@ -69,7 +69,7 @@ serve(async (req) => {
       // 1. Notify team
       await resend.emails.send({
         from: "SellsPay Support <noreply@sellspay.com>",
-        to: ["vizual90@gmail.com"],
+        to: ["sellspay@gmail.com"],
         subject: `[Support Ticket] ${subject.trim()}`,
         html: `
           <h2>New Support Ticket</h2>
