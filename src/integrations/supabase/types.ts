@@ -2089,6 +2089,7 @@ export type Database = {
           reward_credits: number
           rewarded_at: string | null
           status: string
+          subscription_rewarded_at: string | null
         }
         Insert: {
           created_at?: string
@@ -2101,6 +2102,7 @@ export type Database = {
           reward_credits?: number
           rewarded_at?: string | null
           status?: string
+          subscription_rewarded_at?: string | null
         }
         Update: {
           created_at?: string
@@ -2113,6 +2115,7 @@ export type Database = {
           reward_credits?: number
           rewarded_at?: string | null
           status?: string
+          subscription_rewarded_at?: string | null
         }
         Relationships: []
       }
@@ -3685,6 +3688,10 @@ export type Database = {
         Returns: boolean
       }
       process_referral_reward: {
+        Args: { p_referred_user_id: string }
+        Returns: Json
+      }
+      process_referral_subscription_reward: {
         Args: { p_referred_user_id: string }
         Returns: Json
       }

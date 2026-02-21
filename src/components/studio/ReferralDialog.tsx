@@ -103,7 +103,7 @@ export function ReferralDialog({ open, onOpenChange }: ReferralDialogProps) {
               <div className="flex items-center gap-3">
                 <Sparkles className="h-[15px] w-[15px] text-white/50 shrink-0" />
                 <p className="text-white/90 text-[13px]">
-                  They sign up and get <span className="font-semibold text-white">extra 10 credits</span>
+                  You both get <span className="font-semibold text-white">10 credits</span> when they use all their credits
                 </p>
               </div>
               <div className="flex items-center gap-3">
