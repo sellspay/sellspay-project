@@ -8,6 +8,7 @@ import { AuthProvider } from "@/lib/auth";
 import MainLayout from "@/components/layout/MainLayout";
 import { UsernameSetupDialog } from "@/components/auth/UsernameSetupDialog";
 import ScrollToTop from "@/components/ScrollToTop";
+import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import { Loader2 } from "lucide-react";
 
 // Lazy-loaded pages — prevents massive bundle from crashing the preview
@@ -45,7 +46,17 @@ const SellerAgreement = lazy(() => import("./pages/SellerAgreement"));
 const ProhibitedItems = lazy(() => import("./pages/ProhibitedItems"));
 const Cart = lazy(() => import("./pages/Cart"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function PageLoader() {
   return (
@@ -78,6 +89,7 @@ function AtUsernameRoute() {
 }
 
 const App = () => (
+  <GlobalErrorBoundary>
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
@@ -141,6 +153,7 @@ const App = () => (
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
+  </GlobalErrorBoundary>
 );
 
 export default App;
