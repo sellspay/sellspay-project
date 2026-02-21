@@ -1,123 +1,234 @@
 
-
-# Fix: Structured Error Reporting + Small Edit Bypass
+# Modular Multi-File Builder Architecture
 
 ## Problem
 
-The system currently masks every failure behind one generic message: "Generation exceeded safe limits." The actual logs show the model IS generating code (27,870 chars) but gets rejected because `looksTruncated()` requires a sentinel marker (`// --- VIBECODER_COMPLETE ---`) that the model often doesn't emit, especially for simple FIX intents.
+Every generation regenerates the entire storefront as a single `App.tsx` (8,000-20,000+ chars). Even "fix click handler" rewrites the Navbar, Hero, Footer, Products, About, and routing. This causes:
 
-A "fix the click handler" request generates valid code, but the sentinel check kills it.
+- Truncation failures (output too large)
+- Massive token waste per edit
+- False-positive safe-limit rejections
+- Slow generation for trivial changes
+
+## Architecture Change
+
+Switch from single-file monolith to multi-file project structure where the AI only regenerates the file that changed.
+
+```text
+Current:                          Target:
+/App.tsx (3000+ lines)    -->     /App.tsx (~30 lines, routing only)
+                                  /components/Navbar.tsx
+                                  /pages/Home.tsx
+                                  /pages/Products.tsx
+                                  /pages/About.tsx
+                                  /pages/Contact.tsx
+                                  /components/Footer.tsx
+```
+
+## Constraints to Work Within
+
+- **Static UI mandate**: No `useState`/`useEffect` in generated code (except `useSellsPayCheckout`)
+- **Sandpack environment**: Must inject all files into Sandpack provider
+- **Existing data model**: `vibecoder_messages.code_snapshot` is a single text column; `project_versions.files_snapshot` is already jsonb
+- The system currently passes a single `currentCode` string to the edge function
 
 ---
 
-## Changes
+## Phase 1: Multi-File Storage Layer
 
-### 1. Replace Generic Error with Structured Error Codes
+### 1A. Update `vibecoder_projects` schema
 
-**File: `supabase/functions/vibecoder-v2/index.ts`**
+Add a `files` column (jsonb) to store the full file map:
 
-Replace the single "exceeded safe limits" message in the validation gate (line 1601) with specific error codes:
-
-- `MISSING_EXPORT_DEFAULT` -- code lacks `export default`
-- `BRACKET_IMBALANCE` -- unbalanced `{}()[]`
-- `CODE_TOO_SHORT` -- under 300 chars
-- `MISSING_SENTINEL` -- no completion marker (weakest signal)
-- `MODEL_EMPTY_RESPONSE` -- model returned nothing
-- `INTENT_VALIDATION_FAILURE` -- intent check said no
-- `COMPLEXITY_GUARD` -- plan too complex
-- `NO_OP` -- output matches input
-
-Each error code gets a user-facing message that tells the user what actually happened.
-
-### 2. Add Diagnostic Logging Before Every Failure
-
-**File: `supabase/functions/vibecoder-v2/index.ts`**
-
-Before every failure path, log:
-```
-FAILURE_REASON, PROMPT_LENGTH, CODE_CONTEXT_LENGTH, GENERATED_LENGTH, INTENT, MODEL_USED
+```sql
+ALTER TABLE vibecoder_projects 
+  ADD COLUMN IF NOT EXISTS files jsonb DEFAULT '{}';
 ```
 
-This replaces debugging blind with structured observability.
+The edge function already writes to this column (line 1661: `{ "App.tsx": codeResult }`), but the column doesn't exist in the schema yet. This migration makes it real.
 
-### 3. Small Edit Bypass: Skip Sentinel Check for FIX Intent
+### 1B. Update `vibecoder_messages` to support multi-file snapshots
 
-**File: `supabase/functions/vibecoder-v2/index.ts`**
+Add a `files_snapshot` jsonb column alongside the existing `code_snapshot` text column (backward compatible):
 
-The key fix: `looksTruncated()` currently requires the sentinel for ALL intents. For FIX intent (simple fixes like click handlers, routes, navigation):
-
-- Skip the sentinel check entirely
-- Only check for `export default` and bracket balance
-- These are the structural checks that actually matter
-
-This means a FIX intent that produces valid, compilable code with `export default` and balanced brackets will pass -- even without the sentinel marker the model often forgets to include.
-
-Refactor `looksTruncated()` to accept an `intent` parameter:
-
-```
-function looksTruncated(code: string, intent?: string): boolean
+```sql
+ALTER TABLE vibecoder_messages 
+  ADD COLUMN IF NOT EXISTS files_snapshot jsonb;
 ```
 
-When `intent === "FIX"`:
-- Check `export default` (required)
-- Check bracket balance (required)
-- Check minimum length (required)
-- Skip sentinel check (not required for small edits)
-
-### 4. Update Frontend Error Display
-
-**File: `src/components/ai-builder/AIBuilderCanvas.tsx`**
-
-Parse the structured error from the job's `error_message` field and show the specific error code + message instead of the generic "exceeded safe limits" string. For example:
-
-- `MISSING_EXPORT_DEFAULT`: "Generated code was incomplete (missing component export). Please retry."
-- `BRACKET_IMBALANCE`: "Generated code has syntax issues. Please retry with a simpler request."
-- `MISSING_SENTINEL`: "Generation may have been cut short. Retrying might help."
-
-### 5. Update Ghost Fixer Message
-
-**File: `src/hooks/useGhostFixer.ts`**
-
-Replace the generic "exceeded safe limits" string (line 360) with the specific error reason from the failed attempt.
+When populated, `files_snapshot` takes precedence. When null, fall back to `code_snapshot` (legacy single-file).
 
 ---
 
-## Technical Details
+## Phase 2: Sandpack Multi-File Rendering
 
-### Edge Function Changes (`supabase/functions/vibecoder-v2/index.ts`)
+### 2A. Update `VibecoderPreview.tsx`
 
-**`looksTruncated()` (lines 226-244):** Add `intent` parameter. When intent is `FIX`, skip sentinel check on line 241.
+Change the props from `code: string` to `files: Record<string, string>`.
 
-**Validation gate (lines 1598-1606):** Replace the single `looksTruncated()` call with a detailed check that returns the specific failure reason. Log diagnostic data before setting failure status.
+The `SandpackRenderer` `files` memo changes from:
 
-**Add diagnostic logging (lines 1598-1606):** Before the gate, log:
 ```typescript
-console.log(`[Job ${jobId}] VALIDATION_INPUT:`, {
-  intent: intentResult.intent,
-  promptLength: prompt.length,
-  codeContextLength: currentCode?.length ?? 0,
-  generatedLength: codeResult?.length ?? 0,
-  hasExportDefault: /export\s+default\s/.test(codeResult),
-  hasSentinel: codeResult.includes(VIBECODER_COMPLETE_SENTINEL),
-  bracketBalance: (codeResult.match(/[({[]/g) ?? []).length - (codeResult.match(/[)\]}]/g) ?? []).length,
-});
+'/App.tsx': { code, active: true }
 ```
 
-**Pass intent to looksTruncated (line 1600):** Change from `looksTruncated(codeResult)` to `looksTruncated(codeResult, intentResult.intent)`.
+To:
 
-### Frontend Changes (`src/components/ai-builder/AIBuilderCanvas.tsx`)
+```typescript
+// Spread all project files into Sandpack
+...Object.fromEntries(
+  Object.entries(projectFiles).map(([path, content]) => [
+    path.startsWith('/') ? path : `/${path}`,
+    { code: content, active: path.includes('App') }
+  ])
+)
+```
 
-**Lines 486-494 and 558-563:** Parse `job.error_message` JSON for `type` field and display the corresponding user-friendly message instead of the hardcoded generic string.
+### 2B. Update `AIBuilderCanvas.tsx`
 
-### Ghost Fixer Changes (`src/hooks/useGhostFixer.ts`)
-
-**Line 360:** Replace hardcoded string with dynamic reason from the validation failure.
+Replace the single `code` string state with a `files: Record<string, string>` state. The `useStreamingCode` hook returns a files map instead of a single string. The canvas passes the full map to `VibecoderPreview`.
 
 ---
 
-## What This Fixes
+## Phase 3: Targeted File Generation (Edge Function)
 
-- A simple "fix click handler" request that generates 27,870 chars of valid code will no longer be rejected just because it's missing a sentinel marker
-- Users see exactly why something failed instead of a generic message
-- Logs show the actual failure branch, prompt size, and code size for every failure
-- FIX intent gets a fast path that skips unnecessary gates
+### 3A. Add `edit_target` to the generation pipeline
+
+The intent classifier already returns `resolved_target`. Extend it to also return `edit_target_file`:
+
+```json
+{
+  "intent": "MODIFY",
+  "resolved_target": "Products section",
+  "edit_target_file": "pages/Products.tsx"
+}
+```
+
+### 3B. File-Scoped Code Generation
+
+When `edit_target_file` is set:
+
+- Send ONLY that file's content as `currentCode` (not the entire project)
+- Instruct the model: "Return ONLY the updated file. File path: /pages/Products.tsx"
+- Response is smaller, faster, and never hits truncation
+
+When `edit_target_file` is null (full build or ambiguous):
+
+- Send App.tsx + all files as context
+- Model returns the full file map
+
+### 3C. Update the system prompt for multi-file output
+
+For full builds (BUILD intent, no existing code), the model outputs:
+
+```
+/// TYPE: CODE ///
+<summary>
+/// BEGIN_FILES ///
+/// FILE: /App.tsx ///
+<routing code>
+/// FILE: /pages/Home.tsx ///
+<home page code>
+/// FILE: /pages/Products.tsx ///
+<products page code>
+/// FILE: /components/Navbar.tsx ///
+<navbar code>
+/// END_FILES ///
+// --- VIBECODER_COMPLETE ---
+```
+
+For targeted edits (MODIFY/FIX with `edit_target_file`), the model outputs the normal single-file format but only for that one file.
+
+### 3D. Update the code extraction logic
+
+In the edge function (lines 1554-1566), add a `BEGIN_FILES` parser that splits the output into a file map:
+
+```typescript
+if (fullContent.includes("/// BEGIN_FILES ///")) {
+  const fileMap = parseMultiFileOutput(fullContent);
+  // Merge with existing project files (only overwrite changed files)
+  const mergedFiles = { ...existingFiles, ...fileMap };
+  // Save to vibecoder_projects.files
+}
+```
+
+---
+
+## Phase 4: Transitional Migration
+
+### 4A. Legacy single-file backward compatibility
+
+- If `vibecoder_projects.files` is empty/null, fall back to reading from `code_snapshot` in messages (current behavior)
+- When loading a legacy project, auto-migrate: wrap existing single-file code as `{ "App.tsx": code }`
+- All new generations write to the `files` jsonb column
+
+### 4B. Routing in Sandpack
+
+Even though the static UI mandate bans `useState`/`useEffect`, routing via `react-router-dom` is declarative and stateless. The generated `App.tsx` uses:
+
+```tsx
+import { BrowserRouter, Routes, Route } from "react-router-dom"
+// ... page imports
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/products" element={<Products />} />
+      </Routes>
+      <Footer />
+    </BrowserRouter>
+  )
+}
+```
+
+This requires adding `react-router-dom` to Sandpack's `customSetup.dependencies`.
+
+### 4C. Update `useVibecoderProjects` hook
+
+- `getLastCodeSnapshot()` returns the files map (from `files_snapshot` jsonb, falling back to wrapping `code_snapshot`)
+- `addMessage()` accepts an optional `filesSnapshot` parameter
+- Undo/restore operates on the files map
+
+---
+
+## Phase 5: Frontend Hook Changes
+
+### 5A. `useStreamingCode.ts`
+
+- Parse `BEGIN_FILES` format from SSE stream
+- Maintain a `files` state map instead of single `code` string
+- For targeted edits, merge the returned file into the existing map
+- Expose `files`, `setFiles`, `setFileContent(path, code)` instead of `code`, `setCode`
+
+### 5B. `useGhostFixer.ts`
+
+- When healing, send only the broken file (identified by the validation error), not the whole project
+- Healer prompt changes to: "Produce a COMPLETE file for: /pages/Products.tsx"
+
+### 5C. Page Navigator
+
+The existing `parseRoutesFromCode` in `routeParser.ts` works on App.tsx to detect routes. This continues working since App.tsx still contains the Route definitions.
+
+---
+
+## Technical Summary
+
+| Layer | Current | After |
+|-------|---------|-------|
+| Storage | `code_snapshot` (text, single file) | `files_snapshot` (jsonb, file map) + backward compat |
+| Edge Function Input | `currentCode` (full monolith) | `currentFiles` + `editTargetFile` |
+| Edge Function Output | Single code block | `BEGIN_FILES` multi-file or single targeted file |
+| Sandpack | `{ '/App.tsx': code }` | `{ '/App.tsx': routing, '/pages/Home.tsx': home, ... }` |
+| Generation scope | Always full file | Targeted file when possible |
+| Token usage per edit | 8,000-20,000+ | 500-3,000 (single file) |
+
+## Impact
+
+- **Truncation**: Virtually eliminated for edits (target file is 200-800 lines, not 3000+)
+- **Token cost**: 5-10x reduction for modifications
+- **Speed**: Faster generation (smaller output)
+- **Reliability**: Validation gates rarely trigger on small files
+- **User experience**: Edits feel instant instead of rebuilding everything
