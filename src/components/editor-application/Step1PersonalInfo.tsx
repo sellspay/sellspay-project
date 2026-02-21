@@ -48,7 +48,7 @@ export default function Step1PersonalInfo({ formData, updateFormData, avatarUrl 
         <Label htmlFor="aboutMe">About Me *</Label>
         <Textarea
           id="aboutMe"
-          placeholder="Tell potential clients about yourself, your experience, and what makes you stand out as an editor..."
+          placeholder="Tell potential clients about yourself, your experience, and what makes you stand out as a professional..."
           value={formData.aboutMe}
           onChange={(e) => updateFormData({ aboutMe: e.target.value })}
           rows={5}

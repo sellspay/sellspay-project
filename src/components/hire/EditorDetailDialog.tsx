@@ -73,7 +73,7 @@ export default function EditorDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="sr-only">Editor Profile</DialogTitle>
+          <DialogTitle className="sr-only">Professional Profile</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -88,7 +88,7 @@ export default function EditorDetailDialog({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-xl font-bold text-foreground">
-                  @{editor.username || 'editor'}
+                  @{editor.username || 'professional'}
                 </h2>
                 {editor.verified && <VerifiedBadge size="md" isOwner={editor.isAdmin} />}
               </div>

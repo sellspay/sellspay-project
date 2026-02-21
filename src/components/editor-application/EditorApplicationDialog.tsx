@@ -166,7 +166,7 @@ export default function EditorApplicationDialog({ open, onOpenChange }: EditorAp
           return;
         }
         if (existingApp.status === 'approved') {
-          toast.error('You are already an approved editor');
+          toast.error('You are already an approved professional');
           return;
         }
       }
@@ -203,7 +203,7 @@ export default function EditorApplicationDialog({ open, onOpenChange }: EditorAp
       const { createAdminNotification } = await import('@/lib/notifications');
       await createAdminNotification({
         type: 'editor_application',
-        message: `New editor application from @${profileData?.username || 'Unknown'}`,
+        message: `New professional application from @${profileData?.username || 'Unknown'}`,
         applicantId: profile.id,
         applicationType: 'editor',
         redirectUrl: '/admin',
@@ -231,7 +231,7 @@ export default function EditorApplicationDialog({ open, onOpenChange }: EditorAp
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Apply as an Editor</DialogTitle>
+          <DialogTitle className="text-2xl">Apply as a Professional</DialogTitle>
         </DialogHeader>
 
         {/* Loading State */}
@@ -266,9 +266,9 @@ export default function EditorApplicationDialog({ open, onOpenChange }: EditorAp
               <Clock className="w-8 h-8 text-green-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold">Already an Editor</h3>
+              <h3 className="text-lg font-semibold">Already a Professional</h3>
               <p className="text-muted-foreground mt-2">
-                You're already an approved editor! Visit your profile to manage your editor settings.
+                You're already an approved professional! Visit your profile to manage your settings.
               </p>
             </div>
             <Button variant="outline" onClick={handleClose}>

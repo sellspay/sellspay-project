@@ -364,9 +364,9 @@ export function EditorApplicationCard({ profileId }: EditorApplicationCardProps)
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Editor Application</AlertDialogTitle>
+                   <AlertDialogTitle>Delete Professional Application</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently delete your editor application and remove you from the Hire Editors page. This action cannot be undone.
+                    This will permanently delete your professional application and remove you from the Hire Professionals page. This action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

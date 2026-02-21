@@ -57,7 +57,7 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
 
   const handleHire = async () => {
     if (!user) {
-      toast.error('Please sign in to hire an editor');
+      toast.error('Please sign in to hire a professional');
       return;
     }
 
@@ -109,10 +109,10 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
           <DialogHeader className="relative p-6 pb-4">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              <DialogTitle className="text-xl">Hire Editor</DialogTitle>
+              <DialogTitle className="text-xl">Hire Professional</DialogTitle>
             </div>
             <DialogDescription>
-              Book hours with this editor for your project.
+              Book hours with this professional for your project.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -127,7 +127,7 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <p className="font-semibold text-foreground">{editor.full_name || editor.username || 'Editor'}</p>
+              <p className="font-semibold text-foreground">{editor.full_name || editor.username || 'Professional'}</p>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
                 <DollarSign className="h-3.5 w-3.5" />
                 ${hourlyRate.toFixed(2)} / hour
@@ -141,7 +141,7 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
               <Users className="h-5 w-5 text-amber-500" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                  Editor is currently busy
+                  Professional is currently busy
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {queueLength} booking{queueLength > 1 ? 's' : ''} in queue • You'll be position {queueLength + 1}
@@ -167,7 +167,7 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">Private 1-on-1 Chat</p>
                   <p className="text-xs text-muted-foreground">
-                    Exclusive direct messaging with your editor, stays open for 7 days after project completion
+                    Exclusive direct messaging with your professional, stays open for 7 days after project completion
                   </p>
                 </div>
               </div>
@@ -191,7 +191,7 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">Secure Payment</p>
                   <p className="text-xs text-muted-foreground">
-                    Protected transaction with instant editor notification upon payment
+                    Protected transaction with instant professional notification upon payment
                   </p>
                 </div>
               </div>
@@ -211,7 +211,7 @@ export default function HireEditorModal({ open, onOpenChange, editor }: HireEdit
               </li>
               <li className="flex gap-2">
                 <span className="font-bold text-primary">2.</span>
-                <span>{queueLength > 0 ? "You'll be added to the queue and notified when it's your turn" : "Your editor is immediately notified and your chat opens"}</span>
+                <span>{queueLength > 0 ? "You'll be added to the queue and notified when it's your turn" : "Your professional is immediately notified and your chat opens"}</span>
               </li>
               <li className="flex gap-2">
                 <span className="font-bold text-primary">3.</span>
