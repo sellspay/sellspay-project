@@ -1,234 +1,149 @@
 
-# Modular Multi-File Builder Architecture
 
-## Problem
+# Visible Cognitive Streaming: Wire the Backend to the Frontend
 
-Every generation regenerates the entire storefront as a single `App.tsx` (8,000-20,000+ chars). Even "fix click handler" rewrites the Navbar, Hero, Footer, Products, About, and routing. This causes:
+## Root Cause
 
-- Truncation failures (output too large)
-- Massive token waste per edit
-- False-positive safe-limit rejections
-- Slow generation for trivial changes
+The structured SSE streaming code in the edge function (lines 1750-1934) is **dead code**. It only executes when no `jobId` is provided. But the frontend **always** creates a job via `createJob()`, so every request takes the job-based path (lines 1447-1741) which:
 
-## Architecture Change
+1. Collects the entire AI response silently into `fullContent`
+2. Writes it to the database when done
+3. Returns a JSON response
 
-Switch from single-file monolith to multi-file project structure where the AI only regenerates the file that changed.
+The user sees nothing during generation because the structured SSE events (`phase`, `text`, `plan`, `code_chunk`, `summary`) **never fire**.
+
+The `StreamingPhaseCard` component exists and renders beautifully -- it just never receives data.
+
+## Solution
+
+Merge the two paths: when a `jobId` is present, **stream structured SSE events to the client AND write results to the database at the end**. This gives users live cognitive transparency while preserving persistence.
+
+## Changes
+
+### 1. Edge Function: Unified Streaming + Job Path
+
+**File: `supabase/functions/vibecoder-v2/index.ts`**
+
+Replace the current split architecture (job path at line 1447 vs streaming path at line 1744) with a single unified path that:
+
+- Always returns an SSE stream to the client (never a JSON response)
+- Parses structured sections (`=== ANALYSIS ===`, `=== PLAN ===`, `=== CODE ===`, `=== SUMMARY ===`) in real-time
+- Emits phase events, analysis text, plan items, code chunks, and summary as they arrive
+- When a `jobId` is present, also writes the final results to the database after the stream completes
+- Keeps the heartbeat and timeout logic
+
+The key structural change:
 
 ```text
-Current:                          Target:
-/App.tsx (3000+ lines)    -->     /App.tsx (~30 lines, routing only)
-                                  /components/Navbar.tsx
-                                  /pages/Home.tsx
-                                  /pages/Products.tsx
-                                  /pages/About.tsx
-                                  /pages/Contact.tsx
-                                  /components/Footer.tsx
+BEFORE:
+  if (jobId) {
+    // Collect silently, write to DB, return JSON
+  } else {
+    // Stream SSE events
+  }
+
+AFTER:
+  // Always stream SSE events
+  // If jobId exists, also write to DB when stream ends
 ```
 
-## Constraints to Work Within
+The stream processing logic (parsing `=== ANALYSIS ===` markers, emitting events) stays the same as the existing streaming path. The DB write logic (validation gates, code extraction, job status update) from the job path gets moved into the stream's `finally` block.
 
-- **Static UI mandate**: No `useState`/`useEffect` in generated code (except `useSellsPayCheckout`)
-- **Sandpack environment**: Must inject all files into Sandpack provider
-- **Existing data model**: `vibecoder_messages.code_snapshot` is a single text column; `project_versions.files_snapshot` is already jsonb
-- The system currently passes a single `currentCode` string to the edge function
+### 2. Frontend: Handle SSE Even for Job-Backed Runs
 
----
+**File: `src/components/ai-builder/useStreamingCode.ts`**
 
-## Phase 1: Multi-File Storage Layer
-
-### 1A. Update `vibecoder_projects` schema
-
-Add a `files` column (jsonb) to store the full file map:
-
-```sql
-ALTER TABLE vibecoder_projects 
-  ADD COLUMN IF NOT EXISTS files jsonb DEFAULT '{}';
-```
-
-The edge function already writes to this column (line 1661: `{ "App.tsx": codeResult }`), but the column doesn't exist in the schema yet. This migration makes it real.
-
-### 1B. Update `vibecoder_messages` to support multi-file snapshots
-
-Add a `files_snapshot` jsonb column alongside the existing `code_snapshot` text column (backward compatible):
-
-```sql
-ALTER TABLE vibecoder_messages 
-  ADD COLUMN IF NOT EXISTS files_snapshot jsonb;
-```
-
-When populated, `files_snapshot` takes precedence. When null, fall back to `code_snapshot` (legacy single-file).
-
----
-
-## Phase 2: Sandpack Multi-File Rendering
-
-### 2A. Update `VibecoderPreview.tsx`
-
-Change the props from `code: string` to `files: Record<string, string>`.
-
-The `SandpackRenderer` `files` memo changes from:
+Currently, when the response is JSON (job-backed), the hook bails out early (line 462-469):
 
 ```typescript
-'/App.tsx': { code, active: true }
-```
-
-To:
-
-```typescript
-// Spread all project files into Sandpack
-...Object.fromEntries(
-  Object.entries(projectFiles).map(([path, content]) => [
-    path.startsWith('/') ? path : `/${path}`,
-    { code: content, active: path.includes('App') }
-  ])
-)
-```
-
-### 2B. Update `AIBuilderCanvas.tsx`
-
-Replace the single `code` string state with a `files: Record<string, string>` state. The `useStreamingCode` hook returns a files map instead of a single string. The canvas passes the full map to `VibecoderPreview`.
-
----
-
-## Phase 3: Targeted File Generation (Edge Function)
-
-### 3A. Add `edit_target` to the generation pipeline
-
-The intent classifier already returns `resolved_target`. Extend it to also return `edit_target_file`:
-
-```json
-{
-  "intent": "MODIFY",
-  "resolved_target": "Products section",
-  "edit_target_file": "pages/Products.tsx"
+if (isJsonResponse) {
+  setState(prev => ({ ...prev, isStreaming: false }));
+  options.onPhaseChange?.('building');
+  return lastGoodCodeRef.current;
 }
 ```
 
-### 3B. File-Scoped Code Generation
+Since the edge function will now always return SSE (even for job-backed runs), this JSON bailout path becomes the fallback rather than the norm. The existing SSE parser at lines 604-657 already handles all the structured events correctly -- it just never ran because the response was always JSON.
 
-When `edit_target_file` is set:
+No changes needed here -- the existing code already handles SSE correctly. The only change is the edge function response format.
 
-- Send ONLY that file's content as `currentCode` (not the entire project)
-- Instruct the model: "Return ONLY the updated file. File path: /pages/Products.tsx"
-- Response is smaller, faster, and never hits truncation
+### 3. Frontend: Allow Phase Data During Job-Backed Runs
 
-When `edit_target_file` is null (full build or ambiguous):
+**File: `src/components/ai-builder/AIBuilderCanvas.tsx`**
 
-- Send App.tsx + all files as context
-- Model returns the full file map
+The `onStreamingComplete` callback currently skips message appending for job-backed runs (line 302-306). This is correct and stays the same -- the job completion handler adds the final message. But the phase events (analysis, plan, building, complete) should flow through regardless of whether the run is job-backed.
 
-### 3C. Update the system prompt for multi-file output
+This already works because `phaseCallbacksRef` is wired independently of the job system. No changes needed.
 
-For full builds (BUILD intent, no existing code), the model outputs:
+### 4. Edge Function: Incremental Code Streaming
 
-```
-/// TYPE: CODE ///
-<summary>
-/// BEGIN_FILES ///
-/// FILE: /App.tsx ///
-<routing code>
-/// FILE: /pages/Home.tsx ///
-<home page code>
-/// FILE: /pages/Products.tsx ///
-<products page code>
-/// FILE: /components/Navbar.tsx ///
-<navbar code>
-/// END_FILES ///
-// --- VIBECODER_COMPLETE ---
-```
+Instead of emitting the entire code section on every chunk (current behavior at line 1850), emit only the new delta. This makes the code tab update incrementally rather than re-sending the full code on every token.
 
-For targeted edits (MODIFY/FIX with `edit_target_file`), the model outputs the normal single-file format but only for that one file.
+Track the last emitted code position and only send new content:
 
-### 3D. Update the code extraction logic
+```text
+let lastCodeEmitLength = 0;
 
-In the edge function (lines 1554-1566), add a `BEGIN_FILES` parser that splits the output into a file map:
-
-```typescript
-if (fullContent.includes("/// BEGIN_FILES ///")) {
-  const fileMap = parseMultiFileOutput(fullContent);
-  // Merge with existing project files (only overwrite changed files)
-  const mergedFiles = { ...existingFiles, ...fileMap };
-  // Save to vibecoder_projects.files
+// In the code_chunk emission:
+const newContent = codeSection.substring(lastCodeEmitLength);
+if (newContent.length > 0) {
+  emitEvent('code_chunk', { content: newContent, total: codeSection.length });
+  lastCodeEmitLength = codeSection.length;
 }
 ```
 
+### 5. Edge Function: Job DB Write in Stream Cleanup
+
+Move the job finalization logic (validation gates, code extraction, DB writes from lines 1517-1694) into the stream's `finally` block. This runs after all SSE events have been sent, ensuring:
+
+- The user sees live phases during generation
+- The job record gets the final results for persistence
+- If the user leaves mid-stream, the job still gets written to DB
+
 ---
 
-## Phase 4: Transitional Migration
+## What Users Will See
 
-### 4A. Legacy single-file backward compatibility
+```text
+User sends "Fix the click handler on Products"
 
-- If `vibecoder_projects.files` is empty/null, fall back to reading from `code_snapshot` in messages (current behavior)
-- When loading a legacy project, auto-migrate: wrap existing single-file code as `{ "App.tsx": code }`
-- All new generations write to the `files` jsonb column
+  [Analysis phase - live streaming]
+  "Checking the Products section click handler..."
 
-### 4B. Routing in Sandpack
+  [Plan phase - checklist appears]
+  - Locate Products click handler
+  - Add navigation to /products route
+  - Verify click binding
 
-Even though the static UI mandate bans `useState`/`useEffect`, routing via `react-router-dom` is declarative and stateless. The generated `App.tsx` uses:
+  [Building phase - code streams live]
+  (code appears incrementally in the Code tab)
 
-```tsx
-import { BrowserRouter, Routes, Route } from "react-router-dom"
-// ... page imports
-
-export default function App() {
-  return (
-    <BrowserRouter>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/products" element={<Products />} />
-      </Routes>
-      <Footer />
-    </BrowserRouter>
-  )
-}
+  [Complete phase - success badge]
+  "Products click handler now routes correctly to /products."
 ```
 
-This requires adding `react-router-dom` to Sandpack's `customSetup.dependencies`.
+Instead of the current experience:
 
-### 4C. Update `useVibecoderProjects` hook
+```text
+User sends "Fix the click handler on Products"
 
-- `getLastCodeSnapshot()` returns the files map (from `files_snapshot` jsonb, falling back to wrapping `code_snapshot`)
-- `addMessage()` accepts an optional `filesSnapshot` parameter
-- Undo/restore operates on the files map
-
----
-
-## Phase 5: Frontend Hook Changes
-
-### 5A. `useStreamingCode.ts`
-
-- Parse `BEGIN_FILES` format from SSE stream
-- Maintain a `files` state map instead of single `code` string
-- For targeted edits, merge the returned file into the existing map
-- Expose `files`, `setFiles`, `setFileContent(path, code)` instead of `code`, `setCode`
-
-### 5B. `useGhostFixer.ts`
-
-- When healing, send only the broken file (identified by the validation error), not the whole project
-- Healer prompt changes to: "Produce a COMPLETE file for: /pages/Products.tsx"
-
-### 5C. Page Navigator
-
-The existing `parseRoutesFromCode` in `routeParser.ts` works on App.tsx to detect routes. This continues working since App.tsx still contains the Route definitions.
-
----
+  "Generating code..."
+  (silence for 10-30 seconds)
+  (result appears or error)
+```
 
 ## Technical Summary
 
-| Layer | Current | After |
-|-------|---------|-------|
-| Storage | `code_snapshot` (text, single file) | `files_snapshot` (jsonb, file map) + backward compat |
-| Edge Function Input | `currentCode` (full monolith) | `currentFiles` + `editTargetFile` |
-| Edge Function Output | Single code block | `BEGIN_FILES` multi-file or single targeted file |
-| Sandpack | `{ '/App.tsx': code }` | `{ '/App.tsx': routing, '/pages/Home.tsx': home, ... }` |
-| Generation scope | Always full file | Targeted file when possible |
-| Token usage per edit | 8,000-20,000+ | 500-3,000 (single file) |
+| Aspect | Before | After |
+|--------|--------|-------|
+| Job-backed requests | JSON response, no SSE | SSE stream + DB write on completion |
+| Phase events | Dead code (never fires) | Live streaming to `StreamingPhaseCard` |
+| Code visibility | Nothing until complete | Incremental code chunks |
+| DB persistence | Same | Same (writes in `finally` block) |
+| Fallback | Still works if job creation fails | Same |
 
-## Impact
+## Files Modified
 
-- **Truncation**: Virtually eliminated for edits (target file is 200-800 lines, not 3000+)
-- **Token cost**: 5-10x reduction for modifications
-- **Speed**: Faster generation (smaller output)
-- **Reliability**: Validation gates rarely trigger on small files
-- **User experience**: Edits feel instant instead of rebuilding everything
+1. `supabase/functions/vibecoder-v2/index.ts` -- Merge job + streaming paths into unified SSE stream
+2. No frontend changes needed -- the existing SSE parser and `StreamingPhaseCard` already handle everything correctly
+
