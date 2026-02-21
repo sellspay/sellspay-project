@@ -111,7 +111,10 @@ export default function HomeFeed() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     const fetchAll = async () => {
       try {
