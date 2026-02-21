@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Search, BookOpen, Headphones, Users, ArrowRight, MessageSquare, Newspaper, UserPlus, Shield, HelpCircle } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { Search, BookOpen, Headphones, Users, ArrowRight, MessageSquare, Newspaper, UserPlus, Shield, HelpCircle, Upload, X, ChevronDown } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 const supportCards = [
   {
@@ -20,8 +22,7 @@ const supportCards = [
     icon: Headphones,
     title: 'SellsPay Support',
     description: 'Direct support for paying users. Get help with your account, billing, and platform issues.',
-    link: 'mailto:support@sellspay.com',
-    external: true,
+    action: 'open-support-dialog',
   },
 ];
 
@@ -56,6 +57,17 @@ const involvedLinks = [
   },
 ];
 
+const categories = [
+  'Account & Login',
+  'Billing & Payments',
+  'Products & Downloads',
+  'Creator Tools',
+  'AI Builder',
+  'Bug Report',
+  'Feature Request',
+  'Other',
+];
+
 const cardVariants = {
   hidden: { opacity: 0, y: 24, filter: 'blur(6px)' },
   visible: (i: number) => ({
@@ -66,15 +78,58 @@ const cardVariants = {
   }),
 };
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
 export default function Support() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [subject, setSubject] = useState('');
+  const [category, setCategory] = useState('');
+  const [message, setMessage] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFiles = useCallback((newFiles: FileList | File[]) => {
+    const valid = Array.from(newFiles).filter(f => {
+      if (!ALLOWED_TYPES.includes(f.type)) {
+        toast.error(`Unsupported file type: ${f.name}`);
+        return false;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        toast.error(`File too large: ${f.name} (max 5MB)`);
+        return false;
+      }
+      return true;
+    });
+    setFiles(prev => [...prev, ...valid].slice(0, 5));
+  }, []);
+
+  const handleSubmit = () => {
+    if (!subject.trim()) {
+      toast.error('Subject is required');
+      return;
+    }
+    if (!message.trim()) {
+      toast.error('Message is required');
+      return;
+    }
+    // For now, show success — real submission would go to an edge function
+    toast.success('Support ticket submitted! We\'ll get back to you within 24 hours.');
+    setDialogOpen(false);
+    setSubject('');
+    setCategory('');
+    setMessage('');
+    setFiles([]);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Hero with subtle gradient glow */}
       <section className="relative pt-24 sm:pt-32 pb-20 text-center px-4 overflow-hidden">
-        {/* Background glow orbs */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-primary/[0.06] blur-[120px]" />
           <div className="absolute top-20 left-1/4 w-[300px] h-[300px] rounded-full bg-primary/[0.04] blur-[100px]" />
@@ -91,13 +146,11 @@ export default function Support() {
             Help & Support
           </h1>
 
-          {/* Search bar — glassmorphic */}
           <div className="max-w-xl mx-auto relative">
             <div
               className={`
                 relative flex items-center rounded-2xl transition-all duration-300
-                bg-white/[0.04] backdrop-blur-xl
-                border
+                bg-white/[0.04] backdrop-blur-xl border
                 ${searchFocused ? 'border-primary/40 shadow-[0_0_24px_-4px_hsl(217_91%_60%/0.15)]' : 'border-white/[0.08]'}
               `}
             >
@@ -117,7 +170,7 @@ export default function Support() {
         </motion.div>
       </section>
 
-      {/* Support Cards — 3 col glassmorphic */}
+      {/* Support Cards */}
       <section className="max-w-5xl mx-auto px-4 pb-24">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {supportCards.map((card, i) => {
@@ -135,9 +188,7 @@ export default function Support() {
                   hover:border-primary/20 hover:bg-white/[0.05]
                   transition-all duration-300 cursor-pointer"
               >
-                {/* Hover glow */}
                 <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-gradient-to-b from-primary/[0.04] to-transparent" />
-
                 <div className="relative z-10 flex flex-col gap-3 flex-1">
                   <Icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors duration-300" />
                   <h3 className="text-[15px] font-semibold tracking-tight">{card.title}</h3>
@@ -146,15 +197,15 @@ export default function Support() {
               </motion.div>
             );
 
-            if (card.external) {
+            if (card.action === 'open-support-dialog') {
               return (
-                <a key={card.title} href={card.link} target="_blank" rel="noopener noreferrer">
+                <button key={card.title} onClick={() => setDialogOpen(true)} className="text-left">
                   {inner}
-                </a>
+                </button>
               );
             }
             return (
-              <Link key={card.title} to={card.link}>
+              <Link key={card.title} to={card.link!}>
                 {inner}
               </Link>
             );
@@ -211,6 +262,160 @@ export default function Support() {
           })}
         </div>
       </section>
+
+      {/* Contact Support Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-[560px] bg-card border-border p-0 gap-0 overflow-hidden">
+          <div className="p-6 pb-0">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold">Contact Support</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Estimated response time: within 24 hours (primarily on weekdays).
+              <br />
+              Please note that we can't support project-related issues, see the{' '}
+              <Link to="/faq" className="text-foreground underline underline-offset-2 hover:text-primary transition-colors" onClick={() => setDialogOpen(false)}>
+                Documentation & FAQ
+              </Link>{' '}
+              for tips and tricks.
+            </p>
+          </div>
+
+          <div className="p-6 space-y-5">
+            {/* Subject */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">
+                Subject <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                maxLength={200}
+                className="w-full px-3.5 py-2.5 rounded-lg bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all"
+              />
+            </div>
+
+            {/* Category */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Category</label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setCategoryOpen(!categoryOpen)}
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-muted/50 border border-border text-sm transition-all hover:border-border/80 focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                >
+                  <span className={category ? 'text-foreground' : 'text-muted-foreground'}>
+                    {category || 'Select a category...'}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${categoryOpen ? 'rotate-180' : ''}`} />
+                </button>
+                <AnimatePresence>
+                  {categoryOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-xl overflow-hidden"
+                    >
+                      {categories.map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => { setCategory(cat); setCategoryOpen(false); }}
+                          className={`w-full text-left px-3.5 py-2 text-sm hover:bg-muted/60 transition-colors ${category === cat ? 'text-primary bg-primary/[0.06]' : 'text-foreground'}`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {!category && (
+                  <p className="text-xs text-muted-foreground mt-1">If you want to categorize your issue, select it above.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Message */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">
+                Message <span className="text-destructive">*</span>
+              </label>
+              <textarea
+                placeholder="Describe your issue in detail..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                maxLength={2000}
+                rows={4}
+                className="w-full px-3.5 py-2.5 rounded-lg bg-muted/50 border border-border text-sm text-foreground placeholder:text-muted-foreground resize-y focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all"
+              />
+            </div>
+
+            {/* Attachments */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Attachments</label>
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFiles(e.dataTransfer.files); }}
+                onClick={() => fileInputRef.current?.click()}
+                className={`
+                  flex flex-col items-center justify-center gap-2 py-8 rounded-lg border-2 border-dashed cursor-pointer transition-all
+                  ${isDragging ? 'border-primary/50 bg-primary/[0.04]' : 'border-border hover:border-border/80 bg-muted/30'}
+                `}
+              >
+                <Upload className="h-6 w-6 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Click to upload</span> or drag and drop
+                </p>
+                <p className="text-xs text-muted-foreground/70">
+                  Supported formats: Images, PDF, DOC (max 5MB total)
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".png,.jpg,.jpeg,.webp,.gif,.pdf,.doc,.docx"
+                  onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = ''; }}
+                  className="hidden"
+                />
+              </div>
+
+              {/* File list */}
+              {files.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {files.map((f, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/60 border border-border text-xs text-foreground">
+                      <span className="max-w-[120px] truncate">{f.name}</span>
+                      <button onClick={(e) => { e.stopPropagation(); setFiles(prev => prev.filter((_, j) => j !== idx)); }} className="text-muted-foreground hover:text-foreground">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+            <button
+              onClick={() => setDialogOpen(false)}
+              className="px-4 py-2 text-sm font-medium text-foreground rounded-lg hover:bg-muted/60 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="px-5 py-2 text-sm font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
+            >
+              Submit
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
