@@ -641,9 +641,13 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   rawStream += data.content;
                   break;
                 case 'code_chunk': {
-                  // Accumulate code deltas and update preview in real-time
+                  // Accumulate code deltas for live preview during streaming
                   streamingCodeBuffer += (data.content || '');
-                  // Try to extract clean code and update preview if valid
+                  // Progressive preview: show partial code immediately (no completeness gate during streaming)
+                  if (streamingCodeBuffer.length > 100) {
+                    setState(prev => ({ ...prev, code: streamingCodeBuffer }));
+                  }
+                  // Also try to extract clean code for last-good-ref
                   const cleanChunk = extractCodeFromRaw(streamingCodeBuffer);
                   if (cleanChunk && isLikelyCompleteTsx(cleanChunk)) {
                     lastGoodCodeRef.current = cleanChunk;
@@ -652,9 +656,13 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   }
                   break;
                 }
-                case 'error':
-                  console.error('[useStreamingCode] SSE error:', data.message);
+                case 'error': {
+                  const errorCode = data.code || 'UNKNOWN';
+                  const errorMsg = data.message || 'An error occurred';
+                  console.error(`[useStreamingCode] SSE error [${errorCode}]:`, errorMsg);
+                  options.onError?.(new Error(`[${errorCode}] ${errorMsg}`));
                   break;
+                }
               }
             } catch {
               rawStream += dataStr;

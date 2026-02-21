@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, CheckCircle2, Code2, Brain, ListChecks, Sparkles } from 'lucide-react';
+import { Loader2, CheckCircle2, Code2, Brain, ListChecks, Sparkles, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type StreamPhase = 'analyzing' | 'planning' | 'building' | 'complete' | 'idle';
+export type StreamPhase = 'analyzing' | 'planning' | 'building' | 'retrying' | 'complete' | 'idle';
 
 export interface StreamingPhaseData {
   phase: StreamPhase;
@@ -122,8 +122,8 @@ export function StreamingPhaseCard({ data, className }: StreamingPhaseCardProps)
           </motion.div>
         )}
 
-        {/* BUILDING PHASE: Phase pill + spinner (no fake progress bar) */}
-        {phase === 'building' && (
+        {/* BUILDING PHASE: Phase pill + spinner */}
+        {(phase === 'building' || phase === 'retrying') && (
           <motion.div
             key="building"
             initial={{ opacity: 0, y: 10 }}
@@ -131,18 +131,35 @@ export function StreamingPhaseCard({ data, className }: StreamingPhaseCardProps)
             className="flex gap-3"
           >
             <div className="flex-shrink-0 mt-1">
-              <div className="w-7 h-7 rounded-full bg-orange-500/20 border border-orange-500/50 flex items-center justify-center shadow-[0_0_12px_rgba(249,115,22,0.4)]">
-                <Code2 size={13} className="text-orange-400 animate-pulse" />
+              <div className={cn(
+                "w-7 h-7 rounded-full border flex items-center justify-center",
+                phase === 'retrying'
+                  ? "bg-amber-500/20 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
+                  : "bg-orange-500/20 border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.4)]"
+              )}>
+                {phase === 'retrying' ? (
+                  <RefreshCw size={13} className="text-amber-400 animate-spin" />
+                ) : (
+                  <Code2 size={13} className="text-orange-400 animate-pulse" />
+                )}
               </div>
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/15 text-orange-400 rounded border border-orange-500/30 font-medium uppercase tracking-wider">
-                  Building
+                <span className={cn(
+                  "text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider",
+                  phase === 'retrying'
+                    ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                    : "bg-orange-500/15 text-orange-400 border-orange-500/30"
+                )}>
+                  {phase === 'retrying' ? 'Retrying' : 'Building'}
                 </span>
-                <Loader2 size={12} className="text-orange-400 animate-spin" />
+                <Loader2 size={12} className={phase === 'retrying' ? "text-amber-400 animate-spin" : "text-orange-400 animate-spin"} />
                 <span className="text-[10px] text-muted-foreground/60">{elapsedSeconds}s</span>
               </div>
+              {phase === 'retrying' && (
+                <p className="text-xs text-amber-400/70 mt-1">Code was incomplete, retrying generation...</p>
+              )}
             </div>
           </motion.div>
         )}
