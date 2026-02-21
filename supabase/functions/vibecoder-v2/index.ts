@@ -333,42 +333,6 @@ async function validateIntent(
 // LEGACY VALIDATION (kept for backward compat but simplified)
 // ═══════════════════════════════════════════════════════════════
 
-type TruncationType =
-  | "TRUNCATION_DETECTED"
-  | "OPEN_DOUBLE_QUOTE"
-  | "OPEN_SINGLE_QUOTE"
-  | "OPEN_TEMPLATE_LITERAL"
-  | "OPEN_JSX_TAG"
-  | "UNBALANCED_BRACES"
-  | "UNBALANCED_PARENS";
-
-interface ValidationResult {
-  isValid: boolean;
-  errorType?: TruncationType;
-  errorMessage?: string;
-  truncationLine?: number;
-  contextTail?: string;
-}
-
-function validateOutputIntegrity(code: string): ValidationResult {
-  if (!code || code.trim().length < 20) {
-    return { isValid: true };
-  }
-
-  // Use the new looksTruncated as primary check
-  if (looksTruncated(code)) {
-    return {
-      isValid: false,
-      errorType: "TRUNCATION_DETECTED",
-      errorMessage: "Code failed truncation check (missing export default, unbalanced brackets, or missing sentinel)",
-      truncationLine: code.split("\n").length,
-      contextTail: code.slice(-400),
-    };
-  }
-
-  return { isValid: true };
-}
-
 // Fair Pricing Economy (8x reduction from original)
 const CREDIT_COSTS: Record<string, number> = {
   "vibecoder-pro": 3, // Premium model
