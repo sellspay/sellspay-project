@@ -114,6 +114,7 @@ export default function HomeFeed() {
     if (!user) return;
 
     const fetchAll = async () => {
+      try {
       const [trendingRes, newRes, viewedRes, catImagesRes] = await Promise.all([
         supabase
           .from('product_likes')
@@ -196,7 +197,11 @@ export default function HomeFeed() {
         setRecentlyViewed(viewedProducts || []);
       }
 
-      setLoading(false);
+      } catch (err) {
+        console.error('HomeFeed fetchAll error:', err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchAll();
