@@ -221,6 +221,14 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Ref to hold setCode function for Ghost Fixer callback
   const setCodeRef = useRef<((code: string) => void) | null>(null);
   
+  // Ref to bridge phase callbacks (useAgentLoop declared after useStreamingCode)
+  const phaseCallbacksRef = useRef<{
+    onPhaseChange?: (phase: string) => void;
+    onAnalysis?: (text: string) => void;
+    onPlanItems?: (items: string[]) => void;
+    onStreamSummary?: (text: string) => void;
+  }>({});
+
   // Streaming code state
   const { 
     code, 
@@ -232,6 +240,10 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     forceResetStreaming,
     DEFAULT_CODE 
   } = useStreamingCode({
+    onPhaseChange: (phase) => phaseCallbacksRef.current.onPhaseChange?.(phase),
+    onAnalysis: (text) => phaseCallbacksRef.current.onAnalysis?.(text),
+    onPlanItems: (items) => phaseCallbacksRef.current.onPlanItems?.(items),
+    onStreamSummary: (text) => phaseCallbacksRef.current.onStreamSummary?.(text),
     // 🛑 RACE CONDITION GUARD: Check if generation should be discarded
     shouldAbort: () => {
       if (generationLockRef.current && generationLockRef.current !== activeProjectId) {
@@ -434,6 +446,16 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     lockedProjectId,
     mountProject: mountAgentProject,
     unmountProject: unmountAgentProject,
+    // Phase streaming
+    onPhaseChange,
+    onAnalysis,
+    onPlanItems,
+    onStreamSummary,
+    streamPhase,
+    analysisText,
+    planItems,
+    completedPlanItems,
+    summaryText,
   } = useAgentLoop({
     onStreamCode: streamCode,
     onComplete: () => {
@@ -441,6 +463,9 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     },
     getActiveProjectId: () => activeProjectId,
   });
+
+  // Wire phase callbacks ref now that useAgentLoop is initialized
+  phaseCallbacksRef.current = { onPhaseChange, onAnalysis, onPlanItems, onStreamSummary };
 
   // 🔄 BACKGROUND GENERATION: Jobs that persist even if user leaves
   // Track processed jobs to prevent duplicate message additions
