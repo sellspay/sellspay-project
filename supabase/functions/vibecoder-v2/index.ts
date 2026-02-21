@@ -227,7 +227,7 @@ const VIBECODER_COMPLETE_SENTINEL = "// --- VIBECODER_COMPLETE ---";
  * Detailed truncation check that returns a specific error code.
  * For FIX intent, skips sentinel check (model often omits it for small edits).
  */
-function getValidationError(code: string, intent?: string): { type: string; message: string } | null {
+function getValidationError(code: string, _intent?: string): { type: string; message: string } | null {
   if (!code || code.trim().length < 50) {
     return { type: "MODEL_EMPTY_RESPONSE", message: "AI returned no usable code. Please retry." };
   }
@@ -239,22 +239,15 @@ function getValidationError(code: string, intent?: string): { type: string; mess
   const opens = (code.match(/[({[]/g) ?? []).length;
   const closes = (code.match(/[)\]}]/g) ?? []).length;
   if (closes < opens - 2) {
-    return { type: "BRACKET_IMBALANCE", message: "Generated code has syntax issues (unbalanced brackets). Please retry with a simpler request." };
+    return { type: "MODEL_TRUNCATED", message: "Generated code appears truncated (unbalanced brackets). Retrying..." };
   }
 
   if (code.length < 300) {
     return { type: "CODE_TOO_SHORT", message: "Generated code was too short to be a valid component. Please retry." };
   }
 
-  // FIX intent: skip sentinel check — structural checks above are sufficient
-  if (intent === "FIX") {
-    return null; // passes all structural gates
-  }
-
-  if (!code.includes(VIBECODER_COMPLETE_SENTINEL)) {
-    return { type: "MISSING_SENTINEL", message: "Generation may have been cut short. Retrying might help." };
-  }
-
+  // Sentinel check REMOVED — structural checks above are sufficient
+  // The sentinel was brittle and caused false MISSING_SENTINEL failures
   return null;
 }
 
@@ -467,6 +460,25 @@ CRITICAL RULES:
 
 // ═══════════════════════════════════════════════════════════════
 // STAGE 0: COMPLEXITY DETECTION (Force Architect Mode)
+// ═══════════════════════════════════════════════════════════════
+// MICRO-EDIT DETECTION: Skip heavy planning for small surgical changes
+// ═══════════════════════════════════════════════════════════════
+
+const MICRO_EDIT_KEYWORDS = [
+  "click", "button", "route", "navigate", "redirect", "onclick",
+  "href", "link", "typo", "text", "color", "font", "size",
+  "title", "rename", "change the", "fix the", "update the",
+  "remove the", "add a", "swap", "replace the",
+];
+
+function detectMicroEdit(prompt: string, hasExistingCode: boolean): boolean {
+  if (!hasExistingCode) return false; // New builds are never micro-edits
+  const lower = prompt.toLowerCase();
+  const wordCount = prompt.split(/\s+/).filter((w) => w.length > 0).length;
+  if (wordCount > 25) return false; // Long prompts are not micro-edits
+  return MICRO_EDIT_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Detects complex builds that should AUTOMATICALLY trigger Plan Mode
 // to prevent 500+ line one-shot outputs that cause truncation crashes
@@ -1115,6 +1127,47 @@ async function executeIntent(
       break;
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // INTENT-SPECIFIC PROMPT SPECIALIZATION
+  // ═══════════════════════════════════════════════════════════════
+  let intentInjection = "";
+  if (intent.intent === "FIX") {
+    intentInjection = `
+═══════════════════════════════════════════════════════════════
+🔧 FIX MODE: SURGICAL PRECISION REQUIRED
+═══════════════════════════════════════════════════════════════
+Focus ONLY on correcting the reported issue.
+Do NOT redesign, restyle, or reorganize unrelated sections.
+Your ANALYSIS should identify the root cause.
+Your PLAN should list only the fix steps.
+Keep changes minimal and targeted.
+═══════════════════════════════════════════════════════════════
+`;
+  } else if (intent.intent === "MODIFY") {
+    intentInjection = `
+═══════════════════════════════════════════════════════════════
+✏️ MODIFY MODE: PRESERVE EXISTING DESIGN
+═══════════════════════════════════════════════════════════════
+Preserve ALL existing layout, styling, and structure unless
+the modification explicitly requires changes.
+Your diff should be minimal. Only change what was asked.
+═══════════════════════════════════════════════════════════════
+`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // MICRO-EDIT OPTIMIZATION
+  // ═══════════════════════════════════════════════════════════════
+  const isMicro = detectMicroEdit(prompt, Boolean(currentCode?.trim()));
+  let microInjection = "";
+  if (isMicro) {
+    console.log(`[Executor] 🔬 Micro-edit detected — reducing token budget`);
+    microInjection = `
+This is a MICRO-EDIT. Keep your ANALYSIS and PLAN sections to 1-2 lines each.
+Focus on the BUILD section. This is a small, surgical change.
+`;
+  }
+
   // Build messages array
   const messages: Array<{ role: string; content: string }> = [{ role: "system", content: systemPrompt }];
 
@@ -1177,12 +1230,12 @@ If the request says "change X", change ONLY X and nothing else.
     if (currentCode?.trim()) {
       messages.push({
         role: "user",
-        content: `${creatorInjection}${productsInjection}${resolvedTargetContext}${minimalDiffReminder}Here is the current code:\n\n${currentCode}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
+        content: `${intentInjection}${microInjection}${creatorInjection}${productsInjection}${resolvedTargetContext}${minimalDiffReminder}Here is the current code:\n\n${currentCode}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
       });
     } else {
       messages.push({
         role: "user",
-        content: `${creatorInjection}${productsInjection}Create a complete storefront with this description: ${prompt}`,
+        content: `${intentInjection}${creatorInjection}${productsInjection}Create a complete storefront with this description: ${prompt}`,
       });
     }
   }
@@ -1190,10 +1243,11 @@ If the request says "change X", change ONLY X and nothing else.
   // Get model config
   const config = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
 
-  // Determine max tokens based on intent
-  const maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : 65000;
+  // Determine max tokens based on intent + micro-edit
+  let maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : 65000;
+  if (isMicro) maxTokens = 16000;
 
-  console.log(`[Executor] Using model: ${config.modelId} for intent: ${intent.intent}`);
+  console.log(`[Executor] Using model: ${config.modelId} for intent: ${intent.intent}${isMicro ? ' (micro-edit, 16k tokens)' : ''}`);
 
   // Call the AI
   const response = await fetch(GEMINI_API_URL, {
@@ -1482,7 +1536,7 @@ serve(async (req) => {
         const timeoutMs = jobId ? 90_000 : 60_000;
         const streamTimeout = setTimeout(() => {
           console.error("[Streaming] Hard timeout reached");
-          const payload = `event: error\ndata: ${JSON.stringify({ message: "Generation timed out. Please retry with a simpler request." })}\n\n`;
+          const payload = `event: error\ndata: ${JSON.stringify({ code: "STREAM_TIMEOUT", message: "Generation timed out. Please retry with a simpler request." })}\n\n`;
           try {
             controller.enqueue(encoder.encode(payload));
             controller.close();
@@ -1671,8 +1725,30 @@ serve(async (req) => {
               }
             }
 
-            // 2. Extract Code and Summary
-            if (fullContent.includes("/// BEGIN_CODE ///")) {
+            // 2. Extract Code and Summary — prefer structured === CODE === section
+            if (fullContent.includes("=== CODE ===")) {
+              const codeStart = fullContent.indexOf("=== CODE ===") + "=== CODE ===".length;
+              let codeEnd = fullContent.indexOf("=== SUMMARY ===");
+              if (codeEnd < 0) codeEnd = fullContent.length;
+              codeResult = fullContent.substring(codeStart, codeEnd)
+                .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
+                .replace(/\n?```\s*$/i, '')
+                .replace(/\/\/\s*---\s*VIBECODER_COMPLETE\s*---/g, '')
+                .trim();
+              
+              // Extract summary from === SUMMARY === section
+              if (fullContent.includes("=== SUMMARY ===")) {
+                summary = fullContent.substring(fullContent.indexOf("=== SUMMARY ===") + "=== SUMMARY ===".length).trim();
+              } else {
+                // Fall back to analysis text
+                const analysisIdx = fullContent.indexOf("=== ANALYSIS ===");
+                if (analysisIdx >= 0) {
+                  const aEnd = fullContent.indexOf("=== PLAN ===");
+                  summary = fullContent.substring(analysisIdx + "=== ANALYSIS ===".length, aEnd > 0 ? aEnd : codeStart).trim();
+                }
+              }
+            } else if (fullContent.includes("/// BEGIN_CODE ///")) {
+              // Legacy fallback
               const codeMatch = fullContent.split("/// BEGIN_CODE ///");
               if (codeMatch.length > 1) {
                 codeResult = codeMatch[1].split("// --- VIBECODER_COMPLETE ---")[0].trim();
@@ -1706,7 +1782,6 @@ serve(async (req) => {
                 codeContextLength: currentCode?.length ?? 0,
                 generatedLength: codeResult.length,
                 hasExportDefault: /export\s+default\s/.test(codeResult),
-                hasSentinel: codeResult.includes(VIBECODER_COMPLETE_SENTINEL),
                 bracketBalance: (codeResult.match(/[({[]/g) ?? []).length - (codeResult.match(/[)\]}]/g) ?? []).length,
               };
               console.log(`[Job ${jobId}] VALIDATION_INPUT:`, JSON.stringify(diagnostics));
@@ -1714,6 +1789,8 @@ serve(async (req) => {
               // GATE 1: Structural validation
               const structuralError = getValidationError(codeResult, intentResult.intent);
               if (structuralError) {
+                // Emit structured error to frontend
+                emitEvent('error', { code: structuralError.type, message: structuralError.message });
                 validationError = { errorType: structuralError.type, errorMessage: structuralError.message };
                 jobStatus = "failed";
                 terminalReason = structuralError.type.toLowerCase();
@@ -1809,7 +1886,7 @@ serve(async (req) => {
           }
         } catch (e) {
           console.error("Stream processing error:", e);
-          emitEvent('error', { message: e instanceof Error ? e.message : 'Stream error' });
+          emitEvent('error', { code: "STREAM_ERROR", message: e instanceof Error ? e.message : 'Stream error' });
 
           // If job-backed, mark as failed
           if (jobId) {
