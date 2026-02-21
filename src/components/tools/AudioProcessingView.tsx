@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AudioWaveformPlayer } from "./AudioWaveformPlayer";
 import { useSubscription } from "@/hooks/useSubscription";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { dispatchAuthGate } from "@/utils/authGateEvent";
 
 interface StemResult {
   url: string;
@@ -93,7 +94,7 @@ export function AudioProcessingView({
 
   const uploadToStorage = async (file: File): Promise<string> => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Authentication required");
+    if (!user) { dispatchAuthGate(); throw new Error("Authentication required"); }
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const fileName = `${user.id}/${timestamp}-${sanitizedName}`;
