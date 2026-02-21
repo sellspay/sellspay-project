@@ -40,6 +40,7 @@ interface UseStreamingCodeOptions {
   onAnalysis?: (text: string) => void;
   onPlanItems?: (items: string[]) => void;
   onStreamSummary?: (text: string) => void;
+  onConfidence?: (score: number, reason: string) => void;
 }
 
 interface ProductContext {
@@ -661,6 +662,12 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   const errorMsg = data.message || 'An error occurred';
                   console.error(`[useStreamingCode] SSE error [${errorCode}]:`, errorMsg);
                   options.onError?.(new Error(`[${errorCode}] ${errorMsg}`));
+                  break;
+                }
+                case 'confidence': {
+                  const score = data.score ?? 75;
+                  const reason = data.reason || '';
+                  options.onConfidence?.(score, reason);
                   break;
                 }
               }
