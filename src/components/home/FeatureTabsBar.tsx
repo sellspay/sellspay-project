@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Image, Video, Music, Sparkles, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -71,6 +71,18 @@ export function FeatureTabsBar() {
   const [activeTab, setActiveTab] = useState(0);
   const navigate = useNavigate();
   const active = tabs[activeTab];
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleTabClick = useCallback((i: number) => {
+    setActiveTab(i);
+    // Scroll the clicked button to center on mobile
+    const container = scrollRef.current;
+    if (!container) return;
+    const button = container.children[i] as HTMLElement;
+    if (!button) return;
+    const scrollLeft = button.offsetLeft - container.offsetWidth / 2 + button.offsetWidth / 2;
+    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+  }, []);
 
   return (
     <section className="py-20 sm:py-28 lg:py-32">
@@ -82,13 +94,16 @@ export function FeatureTabsBar() {
           </h2>
         </div>
 
-        {/* Tab buttons row */}
-        <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide mb-12 sm:mb-16">
+        {/* Tab buttons row — horizontally scrollable */}
+        <div
+          ref={scrollRef}
+          className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide mb-12 sm:mb-16 snap-x snap-mandatory scroll-px-6 -mx-6 px-6"
+        >
           {tabs.map((tab, i) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(i)}
-              className={`flex items-center gap-2.5 px-5 py-3 rounded-full border text-sm font-medium whitespace-nowrap transition-all duration-300 ${
+              onClick={() => handleTabClick(i)}
+              className={`flex items-center gap-2.5 px-5 py-3 rounded-full border text-sm font-medium whitespace-nowrap transition-all duration-300 snap-center shrink-0 ${
                 i === activeTab
                   ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20'
                   : 'bg-transparent text-muted-foreground border-primary/40 hover:border-primary/70 hover:text-foreground'
