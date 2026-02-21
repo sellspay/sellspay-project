@@ -232,7 +232,7 @@ export function ProfileMenu({
             <MenuItem 
               icon={CreditCard} 
               label="Billing" 
-              onClick={() => handleNavigate('/pricing')}
+              onClick={() => handleNavigate('/billing')}
             />
           </div>
 
