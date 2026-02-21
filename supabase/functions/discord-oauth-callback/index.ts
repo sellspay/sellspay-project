@@ -16,8 +16,8 @@ serve(async (req) => {
     const error = url.searchParams.get("error");
     const errorDescription = url.searchParams.get("error_description");
 
-    // Redirect URL for the frontend
-    const frontendUrl = "https://sellspay.com";
+    // Default frontend URL, overridden by state.origin if present
+    let frontendUrl = "https://sellspay.com";
 
     if (error) {
       logStep("OAuth error from Discord", { error, errorDescription });
@@ -36,13 +36,21 @@ serve(async (req) => {
       nonce: string; 
       linkAccount?: boolean;
       linkingUserId?: string | null;
+      origin?: string;
     };
     try {
       stateData = JSON.parse(atob(state));
+      
+      // Use origin from state if provided (allows preview URLs)
+      if (stateData.origin) {
+        frontendUrl = stateData.origin;
+      }
+      
       logStep("State decoded", { 
         returnTo: stateData.returnTo, 
         linkAccount: stateData.linkAccount,
-        hasLinkingUserId: !!stateData.linkingUserId 
+        hasLinkingUserId: !!stateData.linkingUserId,
+        frontendUrl,
       });
       
       // Check if state is expired (10 minutes)

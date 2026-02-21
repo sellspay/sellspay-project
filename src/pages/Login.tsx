@@ -235,7 +235,7 @@ export default function Login() {
       const params = new URLSearchParams(location.search);
       const returnTo = params.get('next') || '/';
       const { data, error } = await supabase.functions.invoke('initiate-discord-login', {
-        body: { returnTo }
+        body: { returnTo, origin: window.location.origin }
       });
       if (error) throw error;
       if (data?.notConfigured) { setError('Discord login is not yet configured.'); return; }
