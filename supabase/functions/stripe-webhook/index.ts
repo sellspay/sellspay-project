@@ -322,6 +322,30 @@ serve(async (req) => {
             } else {
               logStep("Subscription tier updated", { tier, email: session.customer_email });
             }
+
+            // Process referral subscription reward (100 credits to referrer)
+            try {
+              // Look up user_id from profiles via private.user_pii email
+              const { data: subscriberProfile } = await supabaseAdmin
+                .from("profiles")
+                .select("user_id")
+                .eq("subscription_stripe_id", session.subscription)
+                .maybeSingle();
+
+              // Fallback: get user_id via metadata if available
+              const subscriberUserId = subscriberProfile?.user_id || metadata.user_id;
+
+              if (subscriberUserId) {
+                const { data: refSubResult } = await supabaseAdmin.rpc('process_referral_subscription_reward', {
+                  p_referred_user_id: subscriberUserId,
+                });
+                if (refSubResult?.rewarded) {
+                  logStep("Referral subscription reward triggered", refSubResult);
+                }
+              }
+            } catch (refErr) {
+              logStep("Referral subscription reward check failed (non-critical)", { error: String(refErr) });
+            }
           }
         }
 
