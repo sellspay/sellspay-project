@@ -70,6 +70,7 @@ serve(async (req) => {
       await resend.emails.send({
         from: "SellsPay Support <noreply@sellspay.com>",
         to: ["sellspay@gmail.com"],
+        reply_to: userEmail ?? undefined,
         subject: `[Support Ticket] ${subject.trim()}`,
         html: `
           <h2>New Support Ticket</h2>
@@ -78,6 +79,7 @@ serve(async (req) => {
           <p><strong>Subject:</strong> ${subject}</p>
           <hr />
           <p>${message.replace(/\n/g, "<br />")}</p>
+          <p style="margin-top: 24px; color: #888; font-size: 12px;">Hit Reply to respond directly to this user.</p>
         `,
       });
 
