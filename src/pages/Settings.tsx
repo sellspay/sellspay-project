@@ -672,7 +672,7 @@ export default function Settings() {
     <div className="min-h-screen bg-background">
       <div className="flex">
         {/* Sidebar */}
-        <aside className="hidden md:flex flex-col w-60 min-h-screen border-r border-border bg-card/30 pt-6 px-3 shrink-0 sticky top-0 self-start">
+        <aside className="hidden md:flex flex-col w-60 min-h-screen border-r border-border bg-background pt-6 px-3 shrink-0 sticky top-0 self-start">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 px-3"
