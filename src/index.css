@@ -202,9 +202,11 @@ html {
   overflow-y: scroll;
 }
 
-/* Studio layout manages its own scrolling — suppress the html scrollbar */
-html:has(.studio-layout) {
-  overflow-y: hidden;
+/* Studio layout manages its own scrolling — suppress both html & body scrollbar */
+html:has(.studio-layout),
+html:has(.studio-layout) body {
+  overflow-y: hidden !important;
+  height: 100vh;
 }
 
 html, body {

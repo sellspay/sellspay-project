@@ -2,10 +2,13 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, Home, Sparkles, ChevronDown, ChevronRight, FolderOpen,
+  User, Settings, CreditCard, LogOut, Zap,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { toolsRegistry, SUBCATEGORY_LABELS, type ToolSubcategory } from "@/components/tools/toolsRegistry";
 
 interface StudioSidebarProps {
@@ -26,6 +29,7 @@ export function StudioSidebar({
   collapsed, onToggleCollapse, activeSection, onSectionChange,
   creditBalance, isLoadingCredits, activeTool, onToolSelect, onGoHome,
 }: StudioSidebarProps) {
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     media_creation: true,
@@ -166,7 +170,7 @@ export function StudioSidebar({
           })}
         </nav>
 
-        {/* Assets + Credits */}
+        {/* Bottom section: Auth-aware */}
         <div className="shrink-0 border-t border-white/[0.06]">
           <div className="px-3 py-2">
             <Tooltip>
@@ -191,26 +195,111 @@ export function StudioSidebar({
             "px-3 py-3 border-t border-white/[0.06]",
             collapsed && "flex justify-center px-2"
           )}>
-            {collapsed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center justify-center px-2 py-1.5 rounded-lg bg-primary/10">
-                    <span className="text-[11px] font-bold text-primary tabular-nums">
-                      {isLoadingCredits ? "…" : creditBalance}
+            {!user ? (
+              /* Guest: Start Free button */
+              collapsed ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => navigate("/signup")}
+                      className="flex items-center justify-center w-full px-2 py-1.5 rounded-lg bg-primary text-primary-foreground"
+                    >
+                      <Zap className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Start Now for Free</TooltipContent>
+                </Tooltip>
+              ) : (
+                <button
+                  onClick={() => navigate("/signup")}
+                  className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  <Zap className="h-4 w-4" />
+                  Start Now for Free
+                </button>
+              )
+            ) : (
+              /* Signed in: Profile popover */
+              <Popover>
+                <PopoverTrigger asChild>
+                  {collapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="w-8 h-8 rounded-full overflow-hidden border border-border hover:ring-2 hover:ring-primary/40 transition-all mx-auto block">
+                          {profile?.avatar_url ? (
+                            <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-primary/20 flex items-center justify-center">
+                              <span className="text-[10px] font-bold text-primary">
+                                {(profile?.username || "U").slice(0, 2).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">Profile</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-muted-foreground/70 hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                      <div className="w-7 h-7 rounded-full overflow-hidden border border-border shrink-0">
+                        {profile?.avatar_url ? (
+                          <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-primary/20 flex items-center justify-center">
+                            <span className="text-[9px] font-bold text-primary">
+                              {(profile?.username || "U").slice(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <span className="truncate flex-1 text-left font-medium">{profile?.username || "Creator"}</span>
+                    </button>
+                  )}
+                </PopoverTrigger>
+                <PopoverContent side="right" align="end" sideOffset={8} className="w-64 p-0 bg-[#0F1115] border-border rounded-xl overflow-hidden">
+                  {/* User info */}
+                  <div className="px-4 py-3 border-b border-border">
+                    <p className="text-sm font-semibold text-foreground truncate">{profile?.username || "Creator"}</p>
+                  </div>
+                  {/* Credits */}
+                  <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-xs text-muted-foreground">Credits</span>
+                    </div>
+                    <span className="text-sm font-bold text-foreground tabular-nums">
+                      {isLoadingCredits ? "…" : creditBalance.toLocaleString()}
                     </span>
                   </div>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  {isLoadingCredits ? "Loading…" : `${creditBalance.toLocaleString()} credits`}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-primary/10">
-                <span className="text-[11px] font-medium text-primary/60">Credits</span>
-                <span className="text-sm font-bold text-primary tabular-nums">
-                  {isLoadingCredits ? "…" : creditBalance.toLocaleString()}
-                </span>
-              </div>
+                  {/* Nav links */}
+                  <div className="py-1">
+                    {[
+                      { icon: User, label: "My Profile", path: "/profile" },
+                      { icon: Settings, label: "Settings", path: "/settings" },
+                      { icon: CreditCard, label: "Billing", path: "/pricing" },
+                    ].map(item => (
+                      <button
+                        key={item.path}
+                        onClick={() => navigate(item.path)}
+                        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Sign out */}
+                  <div className="border-t border-border py-1">
+                    <button
+                      onClick={() => signOut()}
+                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         </div>
