@@ -296,7 +296,7 @@ export default function Header() {
                   "shadow-[1px_0_0_rgba(0,0,0,0.3)]"
                 )} />
 
-                {/* Hire Editors - Only for signed-in users */}
+                {/* Hire Professionals - Only for signed-in users */}
                 {user && (
                 <NavigationMenuItem>
                   <Link 
@@ -304,11 +304,14 @@ export default function Header() {
                     className={cn(
                       "inline-flex h-9 items-center justify-center px-4 text-xs font-medium tracking-wide",
                       "text-foreground rounded-full transition-all duration-300",
-                      "border border-border hover:border-foreground/30",
-                      "hover:bg-white/5"
+                      "border border-white/20 hover:border-white/40",
+                      "bg-white/[0.06] hover:bg-white/[0.1]",
+                      "backdrop-blur-md",
+                      "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12),inset_0_-1px_0_0_rgba(255,255,255,0.05),0_0_0_1px_rgba(255,255,255,0.05)]",
+                      "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2),inset_0_-1px_0_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(255,255,255,0.1),0_4px_12px_rgba(0,0,0,0.2)]"
                     )}
                   >
-                    Hire Editors
+                    Hire Professionals
                   </Link>
                 </NavigationMenuItem>
                 )}
@@ -547,7 +550,7 @@ export default function Header() {
                 { to: '/creators', icon: Users, label: 'Creators' },
                 { to: '/studio', icon: Wand2, label: 'AI Studio' },
                 { to: '/community', icon: MessageSquare, label: 'Community' },
-                { to: '/hire-editors', icon: Mic, label: 'Hire Editors' },
+                { to: '/hire-editors', icon: Mic, label: 'Hire Professionals' },
                 ...(!user ? [{ to: '/pricing', icon: DollarSign, label: 'Pricing' }] : []),
               ].map((item) => (
                 <Link
