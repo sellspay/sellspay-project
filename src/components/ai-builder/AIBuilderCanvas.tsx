@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { AIBuilderOnboarding, useAIBuilderOnboarding } from './AIBuilderOnboarding';
+import { useAIBuilderOnboarding } from './AIBuilderOnboarding';
 import { VibecoderPreview } from './VibecoderPreview';
 import { VibecoderChat } from './VibecoderChat';
 import { ProjectSidebar } from './ProjectSidebar';
@@ -43,7 +43,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const [userCredits, setUserCredits] = useState(0);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
 
@@ -592,10 +592,10 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     return parseRoutesFromCode(code);
   }, [code]);
 
-  // Show onboarding on first visit
+  // Auto-complete onboarding silently (skip dialog)
   useEffect(() => {
     if (!loading && needsOnboarding) {
-      setShowOnboarding(true);
+      completeOnboarding();
     }
   }, [loading, needsOnboarding]);
 
@@ -1398,19 +1398,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
   // NOTE: isProjectTransitioning is now handled INSIDE the content area below,
   // NOT here. This ensures the sidebar stays visible during project switches.
 
-  // Show onboarding modal for first-time users
-  if (showOnboarding) {
-    return (
-      <AIBuilderOnboarding
-        profileId={profileId}
-        onConfirm={() => {
-          completeOnboarding();
-          setShowOnboarding(false);
-        }}
-        onCancel={() => navigate(-1)}
-      />
-    );
-  }
 
   const isEmpty = code === DEFAULT_CODE;
   // canUndo is now a function from useVibecoderProjects (includes sentinel safety check)
