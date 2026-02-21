@@ -13,6 +13,7 @@ import { Reveal } from '@/components/home/Reveal';
 import ProductCard from '@/components/ProductCard';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ChevronLeft, ChevronRight, Sparkles, Flame } from 'lucide-react';
+import HomeFeed from './HomeFeed';
 
 interface Product {
   id: string;
@@ -50,7 +51,13 @@ export default function Home() {
     document.title = 'SellsPay';
   }, []);
 
+  // Only fetch landing page data for guests
   useEffect(() => {
+    if (user) {
+      setLoading(false);
+      return;
+    }
+
     async function fetchProducts() {
       const { data, error } = await supabase
         .from('products')
@@ -137,29 +144,22 @@ export default function Home() {
     }
 
     fetchProducts();
-  }, []);
+  }, [user]);
 
+  // Signed-in users see the feed
+  if (user) {
+    return <HomeFeed />;
+  }
+
+  // Guests see the landing page
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
       <HeroSection />
-
-      {/* Sliding Logos Banner */}
       <SlidingBanner />
-
-      {/* Tabbed Feature Section */}
       <FeatureTabsBar />
-
-      {/* AI Tools Reveal */}
       <AIToolsReveal />
-
-      {/* AI Studio Promo Section */}
       <AIStudioPromo />
-
-      {/* Value Propositions */}
       <ValueProps />
-
-      {/* MASSIVE Content Grid - Featured Products */}
       <Reveal>
         <MassiveProductGrid 
           products={featuredWithStats} 
@@ -167,8 +167,6 @@ export default function Home() {
           loading={loading} 
         />
       </Reveal>
-
-      {/* Featured Creators */}
       <FeaturedCreators />
     </div>
   );
@@ -184,7 +182,6 @@ interface MassiveProductGridProps {
 function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGridProps) {
   const navigate = useNavigate();
   
-  // Show featured products or fall back to all products
   const displayProducts = products.length > 0 ? products : allProducts.slice(0, 12);
   
   if (loading) {
@@ -203,7 +200,6 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
 
   return (
     <section className="py-20 sm:py-28 lg:py-36">
-      {/* Section Header - Full width, editorial */}
       <div className="px-6 sm:px-8 lg:px-12 mb-14 sm:mb-20">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
           <div>
@@ -225,7 +221,6 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
         </div>
       </div>
 
-      {/* EDGE-TO-EDGE Masonry-style Grid - ZERO gaps, straight edges */}
       <div className="px-0">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-[2px]">
           {displayProducts.slice(0, 12).map((product, index) => (
@@ -251,7 +246,6 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
         </div>
       </div>
 
-      {/* Load More CTA - Clean, no glow */}
       <div className="text-center mt-16 sm:mt-20 px-6">
         <Button 
           onClick={() => navigate('/products')} 
@@ -264,4 +258,3 @@ function MassiveProductGrid({ products, allProducts, loading }: MassiveProductGr
     </section>
   );
 }
-
