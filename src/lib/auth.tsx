@@ -134,26 +134,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Auth state listener
   useEffect(() => {
-    // Check if this is a new browser session and user didn't want to be remembered
-    const tempSession = sessionStorage.getItem('tempSession');
-    const wasRemembered = localStorage.getItem('rememberMe') === 'true';
-    
-    // If tempSession flag exists in a previous session but not in current sessionStorage,
-    // it means browser was closed and reopened - clear the session
-    if (!wasRemembered && !tempSession && localStorage.getItem('supabase.auth.token')) {
-      // Session should be cleared - user didn't want to be remembered
-      supabase.auth.signOut();
-    }
+    let isMounted = true;
     
     // Set up auth state listener FIRST (before getSession)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        if (!isMounted) return;
         console.log('[Auth] State change:', event);
         
-        // Handle token refresh failures - this happens when server restarts invalidate sessions
+        // Handle token refresh failures
         if (event === 'TOKEN_REFRESHED' && !session) {
           console.log('[Auth] Token refresh failed, clearing stale session');
-          await supabase.auth.signOut();
+          supabase.auth.signOut();
           setSession(null);
           setUser(null);
           setProfile(null);
@@ -168,8 +160,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         
         if (session?.user) {
-          // Defer profile fetch to avoid blocking auth state
-          setTimeout(() => fetchProfile(session.user.id), 0);
+          // Defer profile fetch to avoid deadlocks in auth callback
+          setTimeout(() => {
+            if (isMounted) fetchProfile(session.user.id);
+          }, 0);
         } else {
           setProfile(null);
           setIsAdmin(false);
@@ -178,47 +172,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Get initial session and validate it
+    // Get initial session
     const initializeAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
         
-        // If there's a session, verify it's still valid by checking with the server
         if (session) {
-          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          // Validate session with the server
+          const { data: { user: validUser }, error: userError } = await supabase.auth.getUser();
+          if (!isMounted) return;
           
-          if (userError || !user) {
-            // Session is stale/invalid - clear it
+          if (userError || !validUser) {
             console.log('[Auth] Stale session detected, signing out:', userError?.message);
             await supabase.auth.signOut();
+            if (!isMounted) return;
             setSession(null);
             setUser(null);
-            setLoading(false);
-            return;
+          } else {
+            setSession(session);
+            setUser(validUser);
+            fetchProfile(validUser.id);
           }
-          
-          // Session is valid
-          setSession(session);
-          setUser(user);
-          fetchProfile(user.id);
         } else {
           setSession(null);
           setUser(null);
         }
       } catch (err) {
         console.error('[Auth] Initialization error:', err);
-        // On any error, clear potentially corrupted state
-        await supabase.auth.signOut();
-        setSession(null);
-        setUser(null);
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     initializeAuth();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   // Real-time profile subscription
