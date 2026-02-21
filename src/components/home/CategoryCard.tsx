@@ -14,7 +14,7 @@ interface CategoryCardProps {
 
 export function CategoryCard({ title, items, footerLink }: CategoryCardProps) {
   return (
-    <div className="bg-card border border-border/40 rounded-lg p-5 flex flex-col h-full">
+    <div className="bg-card border border-border/40 rounded-lg p-5 flex flex-col h-full hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
       <h3 className="text-base font-bold text-foreground mb-3 tracking-tight">{title}</h3>
       <div className="grid grid-cols-2 gap-3 flex-1">
         {items.slice(0, 4).map((item) => (
