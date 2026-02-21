@@ -4,13 +4,23 @@ import { ArrowRight, Plus, ArrowLeft, Mic, Zap, CreditCard } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
+import { formatDistanceToNow } from "date-fns";
 import heroBg from "@/assets/hero-aurora-bg.jpg";
+
+interface RecentProject {
+  id: string;
+  name: string;
+  thumbnail_url: string | null;
+  last_edited_at: string;
+}
 
 interface LovableHeroProps {
   onStart: (prompt: string, isPlanMode?: boolean) => void;
   userName?: string;
   variant?: 'fullscreen' | 'embedded';
   onBack?: () => void;
+  recentProjects?: RecentProject[];
+  onSelectProject?: (projectId: string) => void;
 }
 
 export function LovableHero({
@@ -18,6 +28,8 @@ export function LovableHero({
   userName = "Creator",
   variant = 'fullscreen',
   onBack,
+  recentProjects = [],
+  onSelectProject,
 }: LovableHeroProps) {
   const [prompt, setPrompt] = useState("");
   const [isPlanMode, setIsPlanMode] = useState(false);
@@ -305,6 +317,46 @@ export function LovableHero({
             )} 
           />
         </div>
+
+        {/* Recent Projects Section */}
+        {recentProjects.length > 0 && onSelectProject && (
+          <div className="w-full max-w-4xl mt-14 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-500">
+            <div className="flex items-center justify-between mb-4 px-1">
+              <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-widest">Recent Projects</h3>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+              {recentProjects.slice(0, 6).map((project) => (
+                <button
+                  key={project.id}
+                  onClick={() => onSelectProject(project.id)}
+                  className="flex-shrink-0 w-64 group text-left"
+                >
+                  <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-white/10 bg-zinc-900 mb-2.5 transition-all group-hover:border-white/25 group-hover:shadow-lg group-hover:shadow-orange-500/5">
+                    {project.thumbnail_url ? (
+                      <img
+                        src={project.thumbnail_url}
+                        alt={project.name}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
+                        <span className="text-2xl font-bold text-zinc-600">
+                          {project.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">
+                    {project.name}
+                  </p>
+                  <p className="text-[11px] text-zinc-600 mt-0.5">
+                    {formatDistanceToNow(new Date(project.last_edited_at), { addSuffix: true })}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Subscription/Credits Gate Modal */}
