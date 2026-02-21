@@ -242,13 +242,18 @@ export default function Login() {
         <AuthMediaCarousel />
       </div>
 
+      {/* Home button overlaying the media section */}
+      <Link
+        to="/"
+        className="absolute top-6 left-6 text-sm text-white/70 hover:text-white transition-colors z-30 hidden lg:block"
+      >
+        ← Home
+      </Link>
+
       {/* Right Half — Form */}
       <div className="w-full lg:w-1/2 flex flex-col min-h-screen overflow-y-auto relative">
-        {/* Back to home */}
-        <Link
-          to="/"
-          className="absolute top-6 left-6 text-sm text-muted-foreground hover:text-foreground transition-colors z-10"
-        >
+        {/* Mobile-only home link */}
+        <Link to="/" className="absolute top-6 left-6 text-sm text-muted-foreground hover:text-foreground transition-colors z-10 lg:hidden">
           ← Home
         </Link>
 
