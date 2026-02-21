@@ -339,7 +339,7 @@ export function ChatInterface({
             message={msg}
             onRate={(rating) => onRateMessage(msg.id, rating)}
             onRestoreCode={msg.code_snapshot ? () => onRestoreToVersion(msg.id) : undefined}
-            canRestore={index < messages.length - 1 && !!msg.code_snapshot && canUndo}
+            canRestore={!!msg.code_snapshot && (canUndo || index < messages.length - 1)}
             isStreaming={msg.id === streamingMessageId}
             isLatestCodeMessage={isLatestCodeMessage && canUndo}
           />
