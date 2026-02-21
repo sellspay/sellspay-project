@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import hireProfessionalsHero from '@/assets/hire-professionals-hero.png';
 import { Search, Filter, MapPin, Globe, Clock, Sparkles, Users, ChevronDown, X, Youtube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -187,10 +188,11 @@ export default function HireProfessionals() {
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="relative py-12 sm:py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Background gradient effects */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-        <div className="hidden sm:block absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-        <div className="hidden sm:block absolute top-20 right-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
+        {/* Hero background image */}
+        <div className="absolute inset-0">
+          <img src={hireProfessionalsHero} alt="" className="w-full h-full object-cover object-center" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
+        </div>
         
         <div className="relative mx-auto max-w-4xl text-center">
           {/* Badge */}
