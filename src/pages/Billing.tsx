@@ -5,7 +5,9 @@ import { Check, Crown, Loader2, Zap, ExternalLink, CreditCard } from "lucide-rea
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { CreditTopUpDialog } from "@/components/ai-builder/CreditTopUpDialog";
+import { PlanCards } from "@/components/billing/PlanCards";
 import { useState } from "react";
+import { toast } from "sonner";
 
 const PLAN_META: Record<string, { label: string; color: string; credits: number }> = {
   browser: { label: "Free", color: "text-zinc-400", credits: 0 },
@@ -28,6 +30,23 @@ export default function Billing() {
   const maxCredits = meta.credits || Math.max(credits, 100);
   const creditPercent = Math.min(100, (credits / maxCredits) * 100);
 
+  const handleSubscribe = async (tierId: 'basic' | 'creator' | 'agency') => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    const result = await startCheckout(tierId);
+    if (result?.error) {
+      toast.error(result.error);
+    }
+  };
+
+  const handleManage = () => {
+    if (isPremium) {
+      openCustomerPortal();
+    }
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -41,7 +60,7 @@ export default function Billing() {
   return (
     <MainLayout>
       <div className="min-h-screen bg-background text-foreground pt-24 pb-20 px-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
 
           {/* Page Header */}
           <div className="mb-8">
@@ -52,7 +71,7 @@ export default function Billing() {
           </div>
 
           {/* Current Plan + Credits Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
 
             {/* Current Plan Card */}
             <div className="bg-card border border-border rounded-2xl p-6 flex flex-col justify-between">
@@ -77,13 +96,15 @@ export default function Billing() {
                 </div>
               </div>
 
-              <button
-                onClick={() => isPremium ? openCustomerPortal() : navigate("/pricing")}
-                className="mt-auto text-sm font-medium text-foreground bg-muted hover:bg-muted/80 px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-2 w-fit"
-              >
-                {isPremium ? "Manage Subscription" : "View Plans"}
-                <ExternalLink size={14} />
-              </button>
+              {isPremium && (
+                <button
+                  onClick={() => openCustomerPortal()}
+                  className="mt-auto text-sm font-medium text-foreground bg-muted hover:bg-muted/80 px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-2 w-fit"
+                >
+                  Manage Subscription
+                  <ExternalLink size={14} />
+                </button>
+              )}
             </div>
 
             {/* Credits Remaining Card */}
@@ -124,18 +145,20 @@ export default function Billing() {
                 )}
               </div>
 
-              <button
-                onClick={() => setTopUpOpen(true)}
-                className="text-sm font-medium border border-border hover:bg-muted px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-2"
-              >
-                <CreditCard size={14} />
-                Top up credits
-              </button>
+              {isPremium && (
+                <button
+                  onClick={() => setTopUpOpen(true)}
+                  className="text-sm font-medium border border-border hover:bg-muted px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-2"
+                >
+                  <CreditCard size={14} />
+                  Top up credits
+                </button>
+              )}
             </div>
           </div>
 
           {/* Capabilities Summary */}
-          <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+          <div className="bg-card border border-border rounded-2xl p-6 mb-8">
             <h2 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">Your capabilities</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
@@ -160,23 +183,15 @@ export default function Billing() {
             </div>
           </div>
 
-          {/* Upgrade CTA (only if not on agency) */}
-          {plan !== "agency" && (
-            <div className="bg-card border border-border rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="font-semibold text-foreground">Want more power?</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Upgrade your plan to unlock more AI capabilities, higher credit limits, and lower fees.
-                </p>
-              </div>
-              <button
-                onClick={() => navigate("/pricing")}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
-              >
-                View Plans
-              </button>
-            </div>
-          )}
+          {/* All Plans */}
+          <div className="mb-8">
+            <h2 className="text-lg font-bold mb-4">All Plans</h2>
+            <PlanCards
+              currentPlan={plan}
+              onSubscribe={handleSubscribe}
+              onManage={handleManage}
+            />
+          </div>
         </div>
       </div>
 
