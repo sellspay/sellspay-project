@@ -93,7 +93,6 @@ const App = () => (
             <Route path="/community/spotlight" element={<MainLayout><Spotlight /></MainLayout>} />
             <Route path="/faq" element={<MainLayout><FAQ /></MainLayout>} />
             <Route path="/hire-professionals" element={<MainLayout><HireProfessionals /></MainLayout>} />
-            <Route path="/hire-editors" element={<MainLayout><HireProfessionals /></MainLayout>} />
             <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
             <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
             <Route path="/subscription-plans" element={<SubscriptionPlans />} />
