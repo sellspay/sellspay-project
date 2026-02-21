@@ -467,12 +467,14 @@ export function useVibecoderProjects() {
     return { messageId: last.id, code: last.code_snapshot! };
   }, [messages]);
 
-  // CAN UNDO: Check if undo is possible (at least 2 valid code snapshots)
+  // CAN UNDO: Check if undo is possible (at least 2 code snapshots)
+  // Note: We no longer require the sentinel because recovered/patched code
+  // may not have it, and users still need to be able to revert.
   const canUndo = useCallback((): boolean => {
     const withValidCode = messages.filter(m => 
       m.role === 'assistant' && 
       m.code_snapshot && 
-      hasCompleteSentinel(m.code_snapshot)
+      m.code_snapshot.trim().length > 50
     );
     return withValidCode.length >= 2;
   }, [messages]);
