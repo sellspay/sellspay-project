@@ -110,11 +110,14 @@ export default function Header() {
       
       <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          {/* Mobile: Search icon on far left */}
+          {/* Mobile: Hamburger on far left */}
           <div className="lg:hidden flex items-center">
-            <Link to="/products?search=true" className="p-2 text-foreground/70 hover:text-foreground transition-colors">
-              <Search className="h-5 w-5" />
-            </Link>
+            <button
+              className="p-2 text-foreground/70 hover:text-foreground transition-colors"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
 
           {/* Left side: Logo + Main Nav (desktop) */}
@@ -567,16 +570,13 @@ export default function Header() {
               </div>
             )}
 
-            {/* Mobile: Cart + Hamburger (plain icons, no box) */}
+            {/* Mobile: Search + Cart (right side) */}
+            <Link to="/products?search=true" className="lg:hidden p-2 text-foreground/70 hover:text-foreground transition-colors">
+              <Search className="h-5 w-5" />
+            </Link>
             <Link to="/cart" className="lg:hidden p-2 text-foreground/70 hover:text-foreground transition-colors">
               <ShoppingCart className="h-5 w-5" />
             </Link>
-            <button
-              className="lg:hidden p-2 text-foreground/70 hover:text-foreground transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
           </div>
         </div>
 
