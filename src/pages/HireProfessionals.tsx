@@ -95,7 +95,7 @@ const TikTokIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export default function HireEditors() {
+export default function HireProfessionals() {
   const { user } = useAuth();
   const [editors, setEditors] = useState<EditorProfile[]>([]);
   const [loading, setLoading] = useState(true);

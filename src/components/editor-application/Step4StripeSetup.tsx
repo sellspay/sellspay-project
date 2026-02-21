@@ -72,7 +72,7 @@ export default function Step4StripeSetup({ stripeConnected, onStripeStatusChange
       <div>
         <Label className="text-lg font-semibold">Payment Setup Required</Label>
         <p className="text-sm text-muted-foreground mt-1">
-          To receive payments from clients, you must connect your Stripe account. This is required before you can submit your editor application.
+          To receive payments from clients, you must connect your Stripe account. This is required before you can submit your application.
         </p>
       </div>
 
@@ -143,7 +143,7 @@ export default function Step4StripeSetup({ stripeConnected, onStripeStatusChange
           {stripeConnected && (
             <div className="p-4 rounded-lg bg-secondary/50 border">
               <p className="text-sm text-muted-foreground">
-                ✓ You're all set! Click "Submit Application" to complete your editor application.
+                ✓ You're all set! Click "Submit Application" to complete your application.
               </p>
             </div>
           )}

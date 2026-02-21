@@ -26,7 +26,7 @@ import Discord from "./pages/community/Discord";
 import Spotlight from "./pages/community/Spotlight";
 import Updates from "./pages/community/Updates";
 import FAQ from "./pages/FAQ";
-import HireEditors from "./pages/HireEditors";
+import HireProfessionals from "./pages/HireProfessionals";
 import Dashboard from "./pages/Dashboard";
 import Notifications from "./pages/Notifications";
 import SubscriptionPlans from "./pages/SubscriptionPlans";
@@ -92,8 +92,8 @@ const App = () => (
             <Route path="/community/discord" element={<MainLayout><Discord /></MainLayout>} />
             <Route path="/community/spotlight" element={<MainLayout><Spotlight /></MainLayout>} />
             <Route path="/faq" element={<MainLayout><FAQ /></MainLayout>} />
-            <Route path="/hire-professionals" element={<MainLayout><HireEditors /></MainLayout>} />
-            <Route path="/hire-editors" element={<MainLayout><HireEditors /></MainLayout>} />
+            <Route path="/hire-professionals" element={<MainLayout><HireProfessionals /></MainLayout>} />
+            <Route path="/hire-editors" element={<MainLayout><HireProfessionals /></MainLayout>} />
             <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
             <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
             <Route path="/subscription-plans" element={<SubscriptionPlans />} />

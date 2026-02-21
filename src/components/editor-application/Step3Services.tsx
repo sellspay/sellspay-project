@@ -48,7 +48,7 @@ export default function Step3Services({ formData, updateFormData }: Step3Props) 
       <div>
         <Label>Services You Offer *</Label>
         <p className="text-sm text-muted-foreground mt-1">
-          Select all the services you can provide to clients. These will appear on your editor profile and help clients find you.
+          Select all the services you can provide to clients. These will appear on your professional profile and help clients find you.
         </p>
       </div>
 
