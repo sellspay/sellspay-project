@@ -21,6 +21,7 @@ interface VibecoderHeaderProps {
   onPublish: () => void;
   isPublished: boolean;
   isPublishing: boolean;
+  hasUnpublishedChanges?: boolean;
   isEmpty: boolean;
   username?: string | null;
   // Page navigation props
@@ -78,6 +79,7 @@ export function VibecoderHeader({
   onPublish,
   isPublished,
   isPublishing,
+  hasUnpublishedChanges = false,
   isEmpty,
   username,
   currentPath = "/",
@@ -252,15 +254,24 @@ export function VibecoderHeader({
         <Button
           size="sm"
           onClick={onPublish}
-          disabled={isEmpty || isPublishing}
-          className="gap-2 bg-blue-600 hover:bg-blue-500 text-white"
+          disabled={isEmpty || isPublishing || (isPublished && !hasUnpublishedChanges)}
+          className={`gap-2 text-white ${
+            isPublished && !hasUnpublishedChanges
+              ? 'bg-emerald-600 hover:bg-emerald-600 cursor-default opacity-90'
+              : 'bg-blue-600 hover:bg-blue-500'
+          }`}
         >
           {isPublishing ? (
             <Loader2 className="w-4 h-4 animate-spin" />
+          ) : isPublished && !hasUnpublishedChanges ? (
+            <>
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              Published
+            </>
           ) : (
             <Eye className="w-4 h-4" />
           )}
-          Publish
+          {(!isPublished || hasUnpublishedChanges) && !isPublishing && 'Publish'}
         </Button>
 
         {/* Visual Divider */}

@@ -36,6 +36,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const navigate = useNavigate();
   const location = useLocation();
   const [isPublished, setIsPublished] = useState(false);
+  const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
@@ -418,7 +419,29 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     }
   });
 
-  // Wire setCode ref for Ghost Fixer callback
+  // Track unpublished changes: any code change after initial load marks dirty
+  const publishedCodeRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!loading && code && code !== DEFAULT_CODE) {
+      // On first meaningful code load, capture the baseline
+      if (publishedCodeRef.current === null) {
+        publishedCodeRef.current = code;
+        return;
+      }
+      // If code differs from what was last published/loaded, mark as changed
+      if (code !== publishedCodeRef.current) {
+        setHasUnpublishedChanges(true);
+      }
+    }
+  }, [code, loading, DEFAULT_CODE]);
+
+  // Reset baseline when publishing
+  useEffect(() => {
+    if (isPublished && !hasUnpublishedChanges) {
+      publishedCodeRef.current = code;
+    }
+  }, [isPublished, hasUnpublishedChanges]);
+
   useEffect(() => {
     setCodeRef.current = setCode;
   }, [setCode]);
@@ -1023,6 +1046,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
         .eq('id', profileId);
 
       setIsPublished(true);
+      setHasUnpublishedChanges(false);
       toast.success('Store published! Your AI layout is now live.');
     } catch (error) {
       toast.error('Failed to publish');
@@ -1494,6 +1518,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           onPublish={handlePublish}
           isPublished={isPublished}
           isPublishing={publishing}
+          hasUnpublishedChanges={hasUnpublishedChanges}
           isEmpty={isEmpty}
           username={username}
           currentPath={previewPath}
