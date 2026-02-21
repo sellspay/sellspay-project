@@ -208,9 +208,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       toast.info(`Auto-recovering code... (attempt ${attempt}/3)`);
     },
     onFixSuccess: (mergedCode) => {
-      console.log('[GhostFixer] ✅ Code recovered successfully');
-      toast.success('Code recovered successfully!');
-      // The setCode from useStreamingCode will be called after this hook is defined
+      console.log('[GhostFixer] ✅ Code patched after truncation');
+      toast.success('Code patched after truncation. Re-send your request if it wasn\'t fully completed.', { duration: 6000 });
     },
     onFixFailure: (reason) => {
       console.error('[GhostFixer] ❌ Recovery failed:', reason);
@@ -510,7 +509,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
               
               // Add success message
               if (activeProjectId) {
-                await addMessage('assistant', '✅ Code recovered successfully after truncation.', recoveredCode, activeProjectId);
+                await addMessage('assistant', '⚠️ Code was truncated and patched. Your request may not be fully complete — please re-send it to finish.', recoveredCode, activeProjectId);
               }
             } else {
               console.warn('[BackgroundGen] ⚠️ Ghost Fixer could not recover code');
