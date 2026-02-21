@@ -230,6 +230,18 @@ serve(async (req) => {
           multiplier: result.multiplier
         });
 
+        // Trigger referral reward if this user was referred and hasn't been rewarded yet
+        try {
+          const { data: refResult } = await supabaseClient.rpc('process_referral_reward', {
+            p_referred_user_id: user.id,
+          });
+          if (refResult?.rewarded) {
+            logStep("Referral reward triggered", refResult);
+          }
+        } catch (refErr) {
+          logStep("Referral reward check failed (non-critical)", { error: String(refErr) });
+        }
+
         return new Response(
           JSON.stringify({ 
             success: true, 
