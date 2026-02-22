@@ -346,16 +346,23 @@ const validateTsx = (code: string): TsxValidationResult => {
   }
 
   // Balance brackets/braces/parens while respecting strings/comments.
+  // Uses a template-depth stack to correctly handle ${} inside template literals.
   let paren = 0;
   let brace = 0;
   let bracket = 0;
 
   let inSingle = false;
   let inDouble = false;
-  let inTemplate = false;
   let inLineComment = false;
   let inBlockComment = false;
   let escaped = false;
+
+  // Stack for template literal nesting depth.
+  // When we enter a template literal we push the current brace depth.
+  // When we encounter `${` inside a template, we push again.
+  // When a `}` brings us back to a stacked depth, we re-enter the template string.
+  const templateStack: number[] = [];
+  const inTemplate = () => templateStack.length > 0;
 
   for (let i = 0; i < src.length; i++) {
     const c = src[i];
@@ -374,7 +381,7 @@ const validateTsx = (code: string): TsxValidationResult => {
       continue;
     }
 
-    if (inSingle || inDouble || inTemplate) {
+    if (inSingle || inDouble) {
       if (escaped) {
         escaped = false;
         continue;
@@ -385,11 +392,39 @@ const validateTsx = (code: string): TsxValidationResult => {
       }
       if (inSingle && c === "'") inSingle = false;
       else if (inDouble && c === '"') inDouble = false;
-      else if (inTemplate && c === '`') inTemplate = false;
       continue;
     }
 
-    // not inside string/comment
+    // Inside a template literal (not inside a ${} expression)
+    if (inTemplate() && templateStack[templateStack.length - 1] === brace) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (c === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (c === '`') {
+        // End of this template literal
+        templateStack.pop();
+        continue;
+      }
+      if (c === '$' && n === '{') {
+        // Enter template expression — push current brace depth and count the {
+        brace++;
+        templateStack.push(brace); // will re-enter template when brace returns here - 1
+        // Actually we track the depth we need to return TO, so adjust:
+        // When brace drops back to this value - 1, we're back in the template string
+        templateStack[templateStack.length - 1] = brace;
+        i++; // skip the {
+        continue;
+      }
+      // Any other character inside template string body — skip
+      continue;
+    }
+
+    // not inside string/comment/template-body
     if (c === '/' && n === '/') {
       inLineComment = true;
       i++;
@@ -410,14 +445,22 @@ const validateTsx = (code: string): TsxValidationResult => {
       continue;
     }
     if (c === '`') {
-      inTemplate = true;
+      // Start a new template literal
+      templateStack.push(brace);
       continue;
     }
 
     if (c === '(') paren++;
     else if (c === ')') paren--;
     else if (c === '{') brace++;
-    else if (c === '}') brace--;
+    else if (c === '}') {
+      brace--;
+      // Check if we're returning to a template literal body
+      if (inTemplate() && brace === templateStack[templateStack.length - 1]) {
+        // We've closed the ${} expression, back inside the template string
+        // The template string handler above will take over on next iteration
+      }
+    }
     else if (c === '[') bracket++;
     else if (c === ']') bracket--;
 
@@ -426,7 +469,7 @@ const validateTsx = (code: string): TsxValidationResult => {
     }
   }
 
-  if (inSingle || inDouble || inTemplate || inLineComment || inBlockComment) {
+  if (inSingle || inDouble || inTemplate() || inLineComment || inBlockComment) {
     return { valid: false, reason: 'Unterminated string or comment' };
   }
 
