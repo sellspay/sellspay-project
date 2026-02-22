@@ -942,21 +942,22 @@ window.addEventListener('message', (event) => {
 });
 
 // LIVE THEME PREVIEW: Inject a style tag that overrides colors in the preview
-// We store the original color map on first apply, then remap old->new
 (function() {
-  let originalColors = null; // { background, foreground, primary, accent, ... } - hex values captured on first apply
   let themeStyleEl = null;
 
   window.addEventListener('message', (event) => {
     const msg = event.data;
-    if (!msg || msg.type !== 'VIBECODER_APPLY_THEME') return;
+    if (!msg) return;
+
+    // REVERT: simply remove the override style tag
+    if (msg.type === 'VIBECODER_REVERT_THEME') {
+      if (themeStyleEl) { themeStyleEl.remove(); themeStyleEl = null; }
+      return;
+    }
+
+    if (msg.type !== 'VIBECODER_APPLY_THEME') return;
     const colors = msg.colors;
     if (!colors) return;
-
-    // Capture original colors on first apply so we know what to replace
-    if (!originalColors) {
-      originalColors = { ...colors };
-    }
 
     // Remove previous theme style
     if (themeStyleEl) themeStyleEl.remove();
@@ -964,16 +965,7 @@ window.addEventListener('message', (event) => {
     themeStyleEl.id = 'vibe-theme-override';
     themeStyleEl.setAttribute('data-vibe-overlay', 'true');
 
-    // Build CSS that sets custom properties AND applies broad overrides
-    let css = ':root {\\n';
-    for (const [key, hex] of Object.entries(colors)) {
-      if (typeof hex === 'string' && hex.startsWith('#')) {
-        // Set CSS custom property
-        const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-        css += '  --theme-' + key + ': ' + r + ', ' + g + ', ' + b + ';\\n';
-      }
-    }
-    css += '}\\n';
+    let css = '';
 
     // Override body/html background
     if (colors.background) {
@@ -983,11 +975,9 @@ window.addEventListener('message', (event) => {
       css += 'body, #root { color: ' + colors.foreground + ' !important; }\\n';
     }
 
-    // Override common element patterns with broad selectors
+    // Buttons
     if (colors.primary) {
-      // Buttons with colored backgrounds
       css += 'button:not([data-vibe-overlay]):not(.text-only), [role="button"] { background-color: ' + colors.primary + ' !important; color: ' + (colors['primary-foreground'] || '#fff') + ' !important; }\\n';
-      // Links / accent text
       css += 'a:not([data-vibe-overlay]) { color: ' + colors.accent + ' !important; }\\n';
     }
 
@@ -1011,8 +1001,8 @@ window.addEventListener('message', (event) => {
       css += 'nav, header, footer { background-color: ' + colors.background + ' !important; }\\n';
     }
 
-    document.head.appendChild(themeStyleEl);
     themeStyleEl.textContent = css;
+    document.head.appendChild(themeStyleEl);
   });
 })();
 
