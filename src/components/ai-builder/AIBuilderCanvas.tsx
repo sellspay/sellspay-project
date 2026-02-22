@@ -1691,7 +1691,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         </div>
 
         {/* Canvas / Preview Area — elevated rounded card */}
-        <div className="flex-1 min-h-0 relative overflow-hidden rounded-xl m-2 mt-0 bg-[#0c0c0f]">
+        <div className="flex-1 min-h-0 relative overflow-hidden rounded-xl m-2 mt-0 bg-[#1a1a1a]">
           {/* Transition Overlay */}
           {isProjectTransitioning && (
             <div className="absolute inset-0 z-[100] bg-[#0a0a0a] flex items-center justify-center rounded-2xl">
