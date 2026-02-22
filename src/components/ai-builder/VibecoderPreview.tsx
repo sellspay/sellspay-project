@@ -651,7 +651,7 @@ div[style*="background-color: red"],div[style*="background: red"] {
 
             {/* Main content area */}
             <div className="flex-1 min-w-0 flex flex-col" style={{ height: '100%' }}>
-              {viewMode === 'preview' || viewMode === 'image' || viewMode === 'video' ? (
+              {viewMode === 'preview' || viewMode === 'image' || viewMode === 'video' || viewMode === 'design' ? (
                 <SandpackPreviewComponent
                   showOpenInCodeSandbox={false}
                   showRefreshButton={false}
