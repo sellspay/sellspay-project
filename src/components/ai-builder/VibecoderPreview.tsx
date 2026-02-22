@@ -629,6 +629,26 @@ window.addEventListener('message', (event) => {
   let selectedOverlay: HTMLDivElement | null = null;
   let hoverLabel: HTMLDivElement | null = null;
   let lastHoveredEl: Element | null = null;
+  let selectedEl: Element | null = null;
+  let scrollRaf: number | null = null;
+
+  function onScroll() {
+    if (scrollRaf) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = null;
+      if (selectedEl && selectedOverlay && selectedOverlay.style.display !== 'none') {
+        positionOverlay(selectedOverlay, selectedEl);
+      }
+      if (lastHoveredEl && hoverOverlay && hoverOverlay.style.display !== 'none') {
+        positionOverlay(hoverOverlay, lastHoveredEl);
+        if (hoverLabel) {
+          const rect = lastHoveredEl.getBoundingClientRect();
+          hoverLabel.style.left = rect.left + 'px';
+          hoverLabel.style.top = Math.max(0, rect.top - 22) + 'px';
+        }
+      }
+    });
+  }
 
   function createOverlay(color: string, id: string) {
     const existing = document.getElementById(id);
@@ -691,6 +711,7 @@ window.addEventListener('message', (event) => {
     selectedOverlay = null;
     hoverLabel = null;
     lastHoveredEl = null;
+    selectedEl = null;
   }
 
   function handleMouseMove(e: MouseEvent) {
@@ -730,6 +751,7 @@ window.addEventListener('message', (event) => {
     if (!el || isOverlayElement(el) || el.id === 'root' || el === document.body || el === document.documentElement) return;
     
     if (!selectedOverlay) selectedOverlay = createOverlay('rgb(249,115,22)', 'vibe-selected-overlay');
+    selectedEl = el;
     positionOverlay(selectedOverlay, el);
     selectedOverlay.style.borderWidth = '2px';
     selectedOverlay.style.borderStyle = 'solid';
@@ -762,6 +784,7 @@ window.addEventListener('message', (event) => {
     document.addEventListener('mousemove', handleMouseMove, true);
     document.addEventListener('click', handleClick, true);
     document.addEventListener('mouseleave', handleMouseLeave, true);
+    window.addEventListener('scroll', onScroll, true);
   }
 
   function disablePicker() {
@@ -770,6 +793,7 @@ window.addEventListener('message', (event) => {
     document.removeEventListener('mousemove', handleMouseMove, true);
     document.removeEventListener('click', handleClick, true);
     document.removeEventListener('mouseleave', handleMouseLeave, true);
+    window.removeEventListener('scroll', onScroll, true);
     removeAllOverlays();
   }
 
