@@ -134,13 +134,17 @@ export const POLICY_RULES: PolicyRule[] = [
   },
   
   // === ROUTING & MULTI-PAGE RESTRICTIONS ===
+  // NOTE: Be very careful with keywords here — phrases like "new page", "separate page",
+  // "another page", "link to page" WILL match legitimate product navigation requests
+  // (e.g. "clicking a product opens a new page"). Only block explicit routing library requests.
   {
     id: 'routing_restriction',
     category: 'Architecture Limit',
     keywords: [
-      'react router', 'add route', 'create route', 'new page',
-      'separate page', 'another page', 'multi page', 'page navigation',
-      'url routing', 'browser routing', 'link to page',
+      'react router', 'add route', 'create route',
+      'multi page app', 'url routing', 'browser routing',
+      'install react-router', 'add react-router',
+      'create separate pages', 'multiple html pages',
     ],
     message: "Storefronts are single-page experiences. Navigation between sections (Products, Bundles, Support) uses tabs within your storefront, not separate URL routes.",
     redirectSuggestion: "I can create a tabbed navigation system to organize your content beautifully!",
