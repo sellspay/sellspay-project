@@ -545,13 +545,19 @@ const isLikelyCompleteTsx = (code: string): boolean => {
  * to window.open() which works safely in sandboxed contexts.
  */
 const sanitizeNavigation = (code: string): string => {
+  // Rewrite all navigation patterns to use postMessage bridge (sandbox-safe)
   let result = code.replace(
     /window\.top\.location\.href\s*=\s*([^;\n]+)/g,
-    'window.open($1, \'_blank\')'
+    'window.parent?.postMessage({ type: "VIBECODER_NAVIGATE", url: $1 }, "*")'
   );
   result = result.replace(
     /window\.location\.href\s*=\s*([^;\n]+)/g,
-    'window.open($1, \'_blank\')'
+    'window.parent?.postMessage({ type: "VIBECODER_NAVIGATE", url: $1 }, "*")'
+  );
+  // Rewrite window.open() calls to postMessage
+  result = result.replace(
+    /window\.open\(\s*([^,)]+?)(?:\s*,\s*['"][^'"]*['"])?\s*\)/g,
+    'window.parent?.postMessage({ type: "VIBECODER_NAVIGATE", url: $1 }, "*")'
   );
   result = result.replace(/target\s*=\s*["']_top["']/g, 'target="_blank"');
   return result;
@@ -858,6 +864,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                     options.onComplete?.(appCode);
                     receivedFiles = true;
                   }
+                  break;
                 }
                 case 'code_progress': {
                   // Visual feedback during generation (no code applied)
@@ -869,6 +876,27 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   // Skip if we already got files
                   if (receivedFiles) break;
                   streamingCodeBuffer += (data.content || '');
+
+                  // 🔥 Bulletproof: detect JSON files wrapper that slipped through
+                  const trimmedBuf = streamingCodeBuffer.trim();
+                  if (trimmedBuf.startsWith('{') && trimmedBuf.includes('"files"')) {
+                    try {
+                      const parsed = JSON.parse(trimmedBuf);
+                      const jsonFiles = parsed?.files ?? parsed?.projectFiles;
+                      if (jsonFiles && typeof jsonFiles === 'object' && Object.keys(jsonFiles).length > 0) {
+                        setState(prev => ({ ...prev, files: jsonFiles, code: '' }));
+                        const appCode = jsonFiles['/App.tsx'] || jsonFiles['App.tsx'] || '';
+                        if (appCode) lastGoodCodeRef.current = appCode;
+                        options.onComplete?.(appCode);
+                        receivedFiles = true;
+                        streamingCodeBuffer = '';
+                        break;
+                      }
+                    } catch {
+                      // Not complete JSON yet; keep buffering
+                    }
+                  }
+
                   if (streamingCodeBuffer.length > 100) {
                     setState(prev => ({ ...prev, code: streamingCodeBuffer }));
                   }
