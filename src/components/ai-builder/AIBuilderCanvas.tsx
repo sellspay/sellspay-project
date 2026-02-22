@@ -1034,13 +1034,19 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     // Skip if we're in the middle of a generation (don't overwrite streaming code)
     if (isStreaming) return;
     
-    const lastSnapshot = getLastCodeSnapshot();
-    if (lastSnapshot) {
-      console.log('📦 Restoring code from message history for project:', activeProjectId);
-      // skipValidation=true: code was already validated before saving to DB.
-      // Re-validating causes false rejections (template literal parsing edge cases).
-      setCode(lastSnapshot, true);
+    // Restore multi-file projects first, fall back to single-file
+    const lastFilesSnapshot = getLastFilesSnapshot();
+    if (lastFilesSnapshot && Object.keys(lastFilesSnapshot).length > 0) {
+      console.log('📦 Restoring multi-file project from message history for project:', activeProjectId, `(${Object.keys(lastFilesSnapshot).length} files)`);
+      setFiles(lastFilesSnapshot);
+    } else {
+      const lastSnapshot = getLastCodeSnapshot();
+      if (lastSnapshot) {
+        console.log('📦 Restoring single-file code from message history for project:', activeProjectId);
+        setCode(lastSnapshot, true);
+      }
     }
+    const hasContent = !!(lastFilesSnapshot && Object.keys(lastFilesSnapshot).length > 0) || !!getLastCodeSnapshot();
     // Mark as restored (even if no snapshot - prevents re-running)
     hasRestoredCodeRef.current = activeProjectId;
     
@@ -1050,14 +1056,14 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     
     // 🤝 PREVIEW HANDSHAKE: Only wait for Sandpack if we actually set code.
     // If there's no code to restore, don't gate on preview mount — just show immediately.
-    if (lastSnapshot) {
+    if (hasContent) {
       setIsWaitingForPreviewMount(true);
       // Force Sandpack remount so onReady fires reliably
       setRefreshKey(prev => prev + 1);
     } else {
       setIsWaitingForPreviewMount(false);
     }
-  }, [activeProjectId, messagesLoading, isVerifyingProject, getLastCodeSnapshot, setCode, isStreaming]);
+  }, [activeProjectId, messagesLoading, isVerifyingProject, getLastCodeSnapshot, getLastFilesSnapshot, setCode, setFiles, isStreaming]);
 
   // Reset restoration tracker when project changes
   useEffect(() => {
