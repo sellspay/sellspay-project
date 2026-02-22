@@ -945,12 +945,11 @@ STRICT MARKETPLACE PROTOCOL (Non-Negotiable)
    Import: import { useSellsPayCheckout } from "@/hooks/useSellsPayCheckout"
 
 3. **PRODUCT LINKING PROTOCOL (CRITICAL):**
-   - BY DEFAULT, all product clicks MUST redirect to the marketplace product page
-   - ALWAYS use: window.top.location.href = \`/product/\${product.slug || product.id}\`
-   - This works in both preview (iframe) and published storefronts
-   - NEVER use window.location.href (it only navigates inside the iframe, not the real page)
+   - BY DEFAULT, all product clicks MUST open the marketplace product page
+   - ALWAYS use: window.open(\`/product/\${product.slug || product.id}\`, '_blank')
+   - NEVER use window.location.href or window.top.location.href (these are BLOCKED by iframe sandbox security)
    - NEVER use react-router or internal routing for product pages
-   - Alternative: <a href={\`/product/\${product.slug || product.id}\`} target="_top">
+   - Alternative: <a href={\`/product/\${product.slug || product.id}\`} target="_blank" rel="noopener noreferrer">
 
 4. **PRODUCT PAGE PREFERENCE (ASK THE USER):**
    When the user's prompt involves products being displayed or clicked, and they haven't stated a preference yet, ASK them:
@@ -963,7 +962,7 @@ STRICT MARKETPLACE PROTOCOL (Non-Negotiable)
    
    Which would you prefer?"
    
-   - If they choose Option A (or don't respond): Use window.top.location.href = \`/product/\${product.slug || product.id}\`
+   - If they choose Option A (or don't respond): Use window.open(\`/product/\${product.slug || product.id}\`, '_blank')
    - If they choose Option B: Generate a custom product detail page/section within the storefront that uses useSellsPayCheckout() for purchases
    - ALWAYS make products clickable regardless of the option chosen
    - NEVER leave products as non-interactive static elements
