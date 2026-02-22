@@ -650,8 +650,8 @@ Adding a nav above the hero creates a "double navbar" that looks broken.
 \`\`\`
 return (
   <div>
-    {/* 1. HERO — always first */}
-    <section className="hero">...</section>
+    {/* 1. HERO — always first, MUST have data-hero="true" */}
+    <section data-hero="true" className="hero">...</section>
     
     {/* 2. NAVIGATION — always second, below hero */}
     <nav className="sticky top-0">...</nav>
@@ -664,6 +664,8 @@ return (
   </div>
 );
 \`\`\`
+
+**HERO TARGETING RULE:** The hero section's outermost wrapper element MUST include the attribute \`data-hero="true"\`. This is required for screenshot capture.
 
 **IF THE USER ASKS TO PUT NAV ABOVE HERO → REFUSE.**
 Say: "Navigation must stay below the hero — SellsPay already has a nav bar above your storefront."

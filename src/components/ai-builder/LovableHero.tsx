@@ -4,8 +4,10 @@ import { ArrowRight, Plus, ArrowLeft, Mic, Zap, CreditCard } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
-import { formatDistanceToNow } from "date-fns";
 import heroBg from "@/assets/hero-aurora-bg.jpg";
+import { DoorwaySidebar } from "./DoorwaySidebar";
+import { ProjectShelf } from "./ProjectShelf";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface RecentProject {
   id: string;
@@ -21,6 +23,7 @@ interface LovableHeroProps {
   onBack?: () => void;
   recentProjects?: RecentProject[];
   onSelectProject?: (projectId: string) => void;
+  userCredits?: number;
 }
 
 export function LovableHero({
@@ -30,6 +33,7 @@ export function LovableHero({
   onBack,
   recentProjects = [],
   onSelectProject,
+  userCredits,
 }: LovableHeroProps) {
   const [prompt, setPrompt] = useState("");
   const [isPlanMode, setIsPlanMode] = useState(false);
@@ -39,24 +43,18 @@ export function LovableHero({
   
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isMobile = useIsMobile();
 
   // Auto-resize textarea
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-
-    // Reset height to auto to correctly calculate shrink
     textarea.style.height = "auto";
-    
-    // Calculate new height, capped at ~400px (approx 16-20 lines)
     const newHeight = Math.min(textarea.scrollHeight, 400);
-    
-    // Set height (min 80px to accommodate buttons + one line)
     textarea.style.height = `${Math.max(80, newHeight)}px`;
-    
-    // Show scrollbar only if we hit the limit
     textarea.style.overflowY = textarea.scrollHeight > 400 ? "auto" : "hidden";
   }, [prompt]);
+
   const navigate = useNavigate();
   const { isPremium, credits, hasCredits, goToPricing, loading: subLoading } = useSubscription();
 
@@ -65,12 +63,11 @@ export function LovableHero({
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
-      recognition.continuous = true; // Keep listening until manually stopped
-      recognition.interimResults = false; // Only get final results to avoid duplicates
+      recognition.continuous = true;
+      recognition.interimResults = false;
       recognition.lang = 'en-US';
 
       recognition.onresult = (event: any) => {
-        // Only process NEW results using resultIndex to avoid duplicates
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           if (event.results[i].isFinal) {
@@ -83,7 +80,6 @@ export function LovableHero({
       };
 
       recognition.onerror = (event: any) => {
-        // Only stop on actual errors, not on 'no-speech' or 'aborted'
         if (event.error !== 'no-speech' && event.error !== 'aborted') {
           console.error('Speech recognition error:', event.error);
           setIsListening(false);
@@ -91,13 +87,8 @@ export function LovableHero({
       };
 
       recognition.onend = () => {
-        // Auto-restart if still supposed to be listening (toggle is on)
         if (isListening && recognitionRef.current) {
-          try {
-            recognitionRef.current.start();
-          } catch (e) {
-            // Already started, ignore
-          }
+          try { recognitionRef.current.start(); } catch {}
         }
       };
 
@@ -105,23 +96,16 @@ export function LovableHero({
     }
 
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-      }
+      if (recognitionRef.current) recognitionRef.current.abort();
     };
   }, [isListening]);
 
   const toggleListening = () => {
-    if (!recognitionRef.current) {
-      console.warn('Speech recognition not supported');
-      return;
-    }
-
+    if (!recognitionRef.current) return;
     if (isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
-      // Don't clear - append to existing text
       recognitionRef.current.start();
       setIsListening(true);
     }
@@ -131,14 +115,13 @@ export function LovableHero({
     e?.preventDefault();
     if (!prompt.trim()) return;
     
-    // Gate check: must have premium subscription AND credits
     if (!isPremium) {
       setGateType('subscription');
       setShowGateModal(true);
       return;
     }
     
-    if (!hasCredits(25)) { // Vibecoder costs 25 credits
+    if (!hasCredits(25)) {
       setGateType('credits');
       setShowGateModal(true);
       return;
@@ -148,230 +131,186 @@ export function LovableHero({
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    // Just paste into the input - don't auto-start
     setPrompt(suggestion);
   };
 
+  const hasSidebar = recentProjects.length > 0 && !isMobile;
+
   return (
-    <div className={(variant === 'embedded'
-      ? "h-full"
-      : "h-screen") + " w-full relative overflow-y-auto bg-black flex flex-col items-center p-4 " + (recentProjects.length > 0 ? "justify-start pt-[15vh]" : "justify-center")}
-    >
+    <div className={`${variant === 'embedded' ? "h-full" : "h-screen"} w-full relative overflow-hidden bg-black flex`}>
       
-      {/* Background Image - Full opacity for 4K quality */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${heroBg})` }}
-      />
-      
-      {/* Subtle overlay for text readability */}
-      <div className="absolute inset-0 bg-black/30" />
-
-      {/* Back Button */}
-      {variant === 'fullscreen' ? (
-        <button
-          onClick={() => {
-            // Always navigate to home - more reliable than history.back()
-            navigate('/');
+      {/* Sidebar (desktop only, when projects exist) */}
+      {recentProjects.length > 0 && onSelectProject && (
+        <DoorwaySidebar
+          projects={recentProjects}
+          onSelectProject={onSelectProject}
+          onNewProject={() => {
+            setPrompt("");
+            textareaRef.current?.focus();
           }}
-          className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
-        >
-          <ArrowLeft size={16} />
-          <span>Home</span>
-        </button>
-      ) : onBack ? (
-        <button
-          onClick={onBack}
-          className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
-        >
-          <ArrowLeft size={16} />
-          <span>Back</span>
-        </button>
-      ) : null}
+          credits={userCredits ?? credits}
+        />
+      )}
 
-      <div className="relative z-10 w-full max-w-2xl flex flex-col items-center text-center">
-        
-        {/* Pill Badge */}
-        <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-medium text-orange-200 tracking-wide uppercase">
-            Agentic V2 Model
-          </span>
-        </div>
+      {/* Main content area */}
+      <div className="flex-1 relative flex flex-col items-center overflow-y-auto">
+        {/* Background Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${heroBg})` }}
+        />
+        <div className="absolute inset-0 bg-black/30" />
 
-        {/* Headline */}
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-10 tracking-tight animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
-          What's on your mind, {userName}?
-        </h1>
+        {/* Back Button */}
+        {variant === 'fullscreen' ? (
+          <button
+            onClick={() => navigate('/')}
+            className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
+          >
+            <ArrowLeft size={16} />
+            <span>Home</span>
+          </button>
+        ) : onBack ? (
+          <button
+            onClick={onBack}
+            className="absolute top-6 left-6 z-20 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-zinc-400 hover:text-white transition-all backdrop-blur-sm"
+          >
+            <ArrowLeft size={16} />
+            <span>Back</span>
+          </button>
+        ) : null}
 
-        {/* The Magic Input Bar */}
-        <form 
-          onSubmit={handleSubmit}
-          className="w-full relative group animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-rose-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        {/* Center content */}
+        <div className={`relative z-10 w-full max-w-2xl flex flex-col items-center text-center px-4 ${
+          recentProjects.length > 0 ? "pt-[12vh]" : "pt-[25vh]"
+        } flex-1`}>
           
-          {/* MAIN INPUT CONTAINER */}
-          <div className="relative bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl transition-all focus-within:border-orange-500/30 focus-within:bg-zinc-900/90 overflow-hidden">
-            
-            {/* TEXTAREA - pb-16 reserves bottom space for buttons */}
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              placeholder="Ask VibeCoder to create a landing page for..."
-              rows={1}
-              className="w-full bg-transparent border-none text-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-0 font-medium resize-none px-5 pt-5 pb-[80px] min-h-[120px] max-h-[400px] scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent leading-relaxed"
-              autoFocus
-            />
+          {/* Pill Badge */}
+          <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-medium text-orange-200 tracking-wide uppercase">
+              Agentic V2 Model
+            </span>
+          </div>
 
-            {/* BUTTON LAYER (Absolute Positioned) */}
-            
-            {/* Left: Plus Button */}
-            <div className="absolute bottom-3 left-3 z-10">
-              <button 
-                type="button" 
-                className="p-2.5 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all"
-              >
-                <Plus size={20} />
-              </button>
-            </div>
+          {/* Headline */}
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-10 tracking-tight animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
+            What's on your mind, {userName}?
+          </h1>
 
-            {/* Right: Actions */}
-            <div className="absolute bottom-3 right-3 z-10 flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-zinc-900/50 rounded-xl p-1 backdrop-blur-md border border-white/5">
-                {/* Microphone / Voice Button */}
+          {/* The Magic Input Bar */}
+          <form 
+            onSubmit={handleSubmit}
+            className="w-full relative group animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-rose-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <div className="relative bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl transition-all focus-within:border-orange-500/30 focus-within:bg-zinc-900/90 overflow-hidden">
+              
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+                placeholder="Ask VibeCoder to create a landing page for..."
+                rows={1}
+                className="w-full bg-transparent border-none text-lg text-white placeholder:text-zinc-500 focus:outline-none focus:ring-0 font-medium resize-none px-5 pt-5 pb-[80px] min-h-[120px] max-h-[400px] scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-transparent leading-relaxed"
+                autoFocus
+              />
+
+              {/* Left: Plus Button */}
+              <div className="absolute bottom-3 left-3 z-10">
                 <button 
                   type="button" 
-                  onClick={toggleListening}
-                  className={`p-2 transition-all rounded-lg ${
-                    isListening 
-                      ? 'text-red-400 bg-red-500/20 animate-pulse' 
-                      : 'text-zinc-500 hover:text-white hover:bg-white/5'
-                  }`}
-                  title={isListening ? "Tap to stop" : "Voice input"}
+                  className="p-2.5 text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all"
                 >
-                  <Mic size={20} />
-                </button>
-                
-                <div className="w-px h-4 bg-white/10 mx-0.5" />
-                
-                {/* Plan Toggle */}
-                <button 
-                  type="button"
-                  onClick={() => setIsPlanMode(!isPlanMode)}
-                  className={`px-2 py-1.5 text-[11px] font-light tracking-wide transition-colors rounded-lg ${
-                    isPlanMode 
-                      ? 'text-orange-400 bg-orange-500/10' 
-                      : 'text-zinc-500 hover:text-orange-400'
-                  }`}
-                  title="Toggle plan mode"
-                >
-                  Plan
-                </button>
-                
-                <div className="w-px h-4 bg-white/10 mx-0.5" />
-                
-                {/* Submit Button */}
-                <button 
-                  type="submit"
-                  disabled={!prompt.trim() || subLoading}
-                  className="p-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-lg hover:from-orange-400 hover:to-rose-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/20"
-                >
-                  <ArrowRight size={20} />
+                  <Plus size={20} />
                 </button>
               </div>
+
+              {/* Right: Actions */}
+              <div className="absolute bottom-3 right-3 z-10 flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-zinc-900/50 rounded-xl p-1 backdrop-blur-md border border-white/5">
+                  <button 
+                    type="button" 
+                    onClick={toggleListening}
+                    className={`p-2 transition-all rounded-lg ${
+                      isListening 
+                        ? 'text-red-400 bg-red-500/20 animate-pulse' 
+                        : 'text-zinc-500 hover:text-white hover:bg-white/5'
+                    }`}
+                    title={isListening ? "Tap to stop" : "Voice input"}
+                  >
+                    <Mic size={20} />
+                  </button>
+                  
+                  <div className="w-px h-4 bg-white/10 mx-0.5" />
+                  
+                  <button 
+                    type="button"
+                    onClick={() => setIsPlanMode(!isPlanMode)}
+                    className={`px-2 py-1.5 text-[11px] font-light tracking-wide transition-colors rounded-lg ${
+                      isPlanMode 
+                        ? 'text-orange-400 bg-orange-500/10' 
+                        : 'text-zinc-500 hover:text-orange-400'
+                    }`}
+                    title="Toggle plan mode"
+                  >
+                    Plan
+                  </button>
+                  
+                  <div className="w-px h-4 bg-white/10 mx-0.5" />
+                  
+                  <button 
+                    type="submit"
+                    disabled={!prompt.trim() || subLoading}
+                    className="p-2 bg-gradient-to-r from-orange-500 to-rose-500 text-white rounded-lg hover:from-orange-400 hover:to-rose-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/20"
+                  >
+                    <ArrowRight size={20} />
+                  </button>
+                </div>
+              </div>
             </div>
+            
+            <div className="absolute -bottom-6 right-4 text-[10px] text-zinc-600 font-medium opacity-0 group-focus-within:opacity-100 transition-opacity">
+              Press Enter to send, Shift+Enter for new line
+            </div>
+          </form>
 
+          {/* Suggestion Chips */}
+          <div className="flex flex-wrap justify-center gap-3 mt-10 animate-in fade-in duration-1000 delay-300">
+            <SuggestionChip 
+              label="SaaS Dashboard" 
+              onClick={() => handleSuggestionClick(
+                "Build a premium dark-mode SaaS analytics dashboard with: a top stats bar showing MRR, active users, churn rate, and growth percentage with animated counters; a main area chart for revenue trends with gradient fills and hover tooltips; a secondary bar chart for user signups by source; a recent activity feed with avatars and timestamps; a sidebar with glassmorphism showing quick actions. Use zinc-900 background, subtle purple/blue accent gradients, rounded-2xl cards with soft shadows, smooth fade-in animations on load, and hover micro-interactions on all interactive elements. Typography should be clean with tracking-tight headings."
+              )} 
+            />
+            <SuggestionChip 
+              label="Portfolio Site" 
+              onClick={() => handleSuggestionClick(
+                "Create a stunning minimalist portfolio for a senior product designer with: an animated hero section featuring a large serif headline with a subtle text reveal animation; a curated project showcase grid (3 columns) with hover zoom effects and overlay descriptions; an about section with a professional photo, bio, and floating skill tags; a testimonials carousel with client quotes and company logos; a contact section with social links and a simple inquiry form. Use an off-white cream background with deep charcoal text, elegant serif/sans-serif font pairing, generous whitespace, smooth scroll-triggered animations, and delicate accent colors (terracotta or sage green). Include a sticky minimal header."
+              )} 
+            />
+            <SuggestionChip 
+              label="E-Commerce" 
+              onClick={() => handleSuggestionClick(
+                "Design a luxury watch e-commerce landing page with: a cinematic full-bleed hero featuring a large product image with parallax effect and bold headline with gold accent text; a featured collection row with horizontal scroll and product cards showing price, name, and quick-view hover state; a craftsmanship section with split layout (image left, text right) highlighting materials and heritage; a customer reviews section with star ratings and verified badges; a newsletter signup with elegant input styling. Use deep black background with warm gold (#C9A962) accents, sophisticated serif typography, high-contrast product photography, smooth reveal animations, and subtle grain texture overlay for premium feel."
+              )} 
+            />
           </div>
-          
-          {/* Helper text for Enter vs Shift+Enter */}
-          <div className="absolute -bottom-6 right-4 text-[10px] text-zinc-600 font-medium opacity-0 group-focus-within:opacity-100 transition-opacity">
-            Press Enter to send, Shift+Enter for new line
-          </div>
-        </form>
 
-        {/* Suggestion Chips - now just paste text */}
-        <div className="flex flex-wrap justify-center gap-3 mt-10 animate-in fade-in duration-1000 delay-300">
-          <SuggestionChip 
-            label="SaaS Dashboard" 
-            onClick={() => handleSuggestionClick(
-              "Build a premium dark-mode SaaS analytics dashboard with: a top stats bar showing MRR, active users, churn rate, and growth percentage with animated counters; a main area chart for revenue trends with gradient fills and hover tooltips; a secondary bar chart for user signups by source; a recent activity feed with avatars and timestamps; a sidebar with glassmorphism showing quick actions. Use zinc-900 background, subtle purple/blue accent gradients, rounded-2xl cards with soft shadows, smooth fade-in animations on load, and hover micro-interactions on all interactive elements. Typography should be clean with tracking-tight headings."
-            )} 
-          />
-          <SuggestionChip 
-            label="Portfolio Site" 
-            onClick={() => handleSuggestionClick(
-              "Create a stunning minimalist portfolio for a senior product designer with: an animated hero section featuring a large serif headline with a subtle text reveal animation; a curated project showcase grid (3 columns) with hover zoom effects and overlay descriptions; an about section with a professional photo, bio, and floating skill tags; a testimonials carousel with client quotes and company logos; a contact section with social links and a simple inquiry form. Use an off-white cream background with deep charcoal text, elegant serif/sans-serif font pairing, generous whitespace, smooth scroll-triggered animations, and delicate accent colors (terracotta or sage green). Include a sticky minimal header."
-            )} 
-          />
-          <SuggestionChip 
-            label="E-Commerce" 
-            onClick={() => handleSuggestionClick(
-              "Design a luxury watch e-commerce landing page with: a cinematic full-bleed hero featuring a large product image with parallax effect and bold headline with gold accent text; a featured collection row with horizontal scroll and product cards showing price, name, and quick-view hover state; a craftsmanship section with split layout (image left, text right) highlighting materials and heritage; a customer reviews section with star ratings and verified badges; a newsletter signup with elegant input styling. Use deep black background with warm gold (#C9A962) accents, sophisticated serif typography, high-contrast product photography, smooth reveal animations, and subtle grain texture overlay for premium feel."
-            )} 
-          />
+          {/* Project Shelf (bottom) */}
+          {recentProjects.length > 0 && onSelectProject && (
+            <ProjectShelf
+              projects={recentProjects}
+              onSelectProject={onSelectProject}
+            />
+          )}
         </div>
-
-        {/* Recent Projects Section */}
-        {recentProjects.length > 0 && onSelectProject && (
-          <div className="w-full max-w-4xl mt-14 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-500">
-            <div className="flex items-center justify-between mb-4 px-1">
-              <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-widest">Recent Projects</h3>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-              {recentProjects.slice(0, 6).map((project) => (
-                <button
-                  key={project.id}
-                  onClick={() => onSelectProject(project.id)}
-                  className="flex-shrink-0 w-64 group text-left"
-                >
-                  <div className="relative aspect-[16/10] rounded-xl overflow-hidden border border-white/10 bg-zinc-900 mb-2.5 transition-all group-hover:border-white/25 group-hover:shadow-lg group-hover:shadow-orange-500/5">
-                    {project.thumbnail_url ? (
-                      <img
-                        src={project.thumbnail_url}
-                        alt={project.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black relative overflow-hidden">
-                        {/* Simulated storefront hero preview */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-orange-500/10 via-transparent to-transparent" />
-                        <div className="absolute top-2 left-0 right-0 flex justify-center">
-                          <div className="h-1 w-16 rounded-full bg-orange-500/30" />
-                        </div>
-                        <div className="z-10 text-center px-3">
-                          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-400/70 mb-1">
-                            WELCOME TO
-                          </div>
-                          <div className="text-sm font-extrabold text-white/80 leading-tight">
-                            MY STORE
-                          </div>
-                        </div>
-                        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
-                          {['Projects', 'About', 'FAQ'].map(tab => (
-                            <span key={tab} className="text-[6px] uppercase tracking-wider text-zinc-500 font-medium">{tab}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">
-                    {project.name}
-                  </p>
-                  <p className="text-[11px] text-zinc-600 mt-0.5">
-                    {formatDistanceToNow(new Date(project.last_edited_at), { addSuffix: true })}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Subscription/Credits Gate Modal */}
@@ -431,4 +370,3 @@ function SuggestionChip({ label, onClick }: { label: string; onClick: () => void
     </button>
   );
 }
-

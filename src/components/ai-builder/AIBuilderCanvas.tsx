@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
+import { useThumbnailCapture } from './hooks/useThumbnailCapture';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAIBuilderOnboarding } from './AIBuilderOnboarding';
@@ -47,6 +48,9 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
+  // Thumbnail capture: debounce timer ref
+  const captureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
 
   // Once the app is "booted", never show the full-screen loading screen again.
@@ -526,6 +530,12 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
 
   // Wire phase callbacks ref now that useAgentLoop is initialized
   phaseCallbacksRef.current = { onPhaseChange, onAnalysis, onPlanItems, onStreamSummary, onConfidence, onSuggestions, onQuestions };
+
+  // 📸 THUMBNAIL CAPTURE: Upload hero screenshot after successful generation
+  const { requestCapture } = useThumbnailCapture({
+    projectId: activeProjectId,
+    enabled: Boolean(activeProjectId),
+  });
 
   // 🔄 BACKGROUND GENERATION: Jobs that persist even if user leaves
   // Track processed jobs to prevent duplicate message additions
@@ -1697,6 +1707,14 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                         setPreviewError(null);
                         setShowFixToast(false);
                         lastPreviewErrorRef.current = null;
+                        
+                        // 📸 THUMBNAIL CAPTURE: Debounced capture after preview stabilizes
+                        if (!isStreaming && code !== DEFAULT_CODE) {
+                          if (captureTimerRef.current) clearTimeout(captureTimerRef.current);
+                          captureTimerRef.current = setTimeout(() => {
+                            requestCapture();
+                          }, 2000);
+                        }
                       }}
                       onError={handlePreviewError}
                       viewMode={viewMode}
