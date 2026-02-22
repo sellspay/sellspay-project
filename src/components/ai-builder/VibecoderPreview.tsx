@@ -628,6 +628,7 @@ window.addEventListener('message', (event) => {
   let hoverOverlay: HTMLDivElement | null = null;
   let selectedOverlay: HTMLDivElement | null = null;
   let hoverLabel: HTMLDivElement | null = null;
+  let lastHoveredEl: Element | null = null;
 
   function createOverlay(color: string, id: string) {
     const existing = document.getElementById(id);
@@ -635,7 +636,7 @@ window.addEventListener('message', (event) => {
     const el = document.createElement('div');
     el.id = id;
     el.setAttribute('data-vibe-overlay', 'true');
-    el.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483646;border:2px solid ' + color + ';background:' + color.replace(')', ',0.06)').replace('rgb', 'rgba') + ';transition:all 0.1s ease;display:none;';
+    el.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483646;border:2px solid ' + color + ';background:' + color.replace(')', ',0.06)').replace('rgb', 'rgba') + ';transition:all 0.05s ease;display:none;';
     document.body.appendChild(el);
     return el;
   }
@@ -681,14 +682,31 @@ window.addEventListener('message', (event) => {
     return el.hasAttribute('data-vibe-overlay') || el.id === 'vibe-hover-overlay' || el.id === 'vibe-selected-overlay' || el.id === 'vibe-hover-label';
   }
 
+  function removeAllOverlays() {
+    ['vibe-hover-overlay', 'vibe-selected-overlay', 'vibe-hover-label'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+    hoverOverlay = null;
+    selectedOverlay = null;
+    hoverLabel = null;
+    lastHoveredEl = null;
+  }
+
   function handleMouseMove(e: MouseEvent) {
     if (!pickerActive) return;
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    if (!el || isOverlayElement(el) || el.id === 'root' || el === document.body || el === document.documentElement) return;
+    if (!el || isOverlayElement(el) || el.id === 'root' || el === document.body || el === document.documentElement) {
+      if (hoverOverlay) hoverOverlay.style.display = 'none';
+      if (hoverLabel) hoverLabel.style.display = 'none';
+      lastHoveredEl = null;
+      return;
+    }
+    if (el === lastHoveredEl) return;
+    lastHoveredEl = el;
     if (!hoverOverlay) hoverOverlay = createOverlay('rgb(59,130,246)', 'vibe-hover-overlay');
     if (!hoverLabel) hoverLabel = createLabel();
     positionOverlay(hoverOverlay, el);
-    // Show label
     const rect = el.getBoundingClientRect();
     const tagStr = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/)[0] : '');
     hoverLabel.textContent = tagStr;
@@ -700,6 +718,7 @@ window.addEventListener('message', (event) => {
   function handleMouseLeave() {
     if (hoverOverlay) hoverOverlay.style.display = 'none';
     if (hoverLabel) hoverLabel.style.display = 'none';
+    lastHoveredEl = null;
   }
 
   function handleClick(e: MouseEvent) {
@@ -751,10 +770,11 @@ window.addEventListener('message', (event) => {
     document.removeEventListener('mousemove', handleMouseMove, true);
     document.removeEventListener('click', handleClick, true);
     document.removeEventListener('mouseleave', handleMouseLeave, true);
-    if (hoverOverlay) { hoverOverlay.style.display = 'none'; }
-    if (selectedOverlay) { selectedOverlay.style.display = 'none'; }
-    if (hoverLabel) { hoverLabel.style.display = 'none'; }
+    removeAllOverlays();
   }
+
+  // Clean up any leftover overlays on script init
+  removeAllOverlays();
 
   window.addEventListener('message', (event) => {
     const msg = event.data;
