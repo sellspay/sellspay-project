@@ -1,96 +1,90 @@
 
 
-## Fix vibecoder-v2 Boot Crash + CORS Hardening
+# Bulletproof Fix: CORS + JSON-in-Code + Navigation + Missing Break
 
-### Root Cause: Boot Failure
+This plan addresses the 4 tangled failures you identified, plus a critical bug I found during exploration.
 
-The edge function logs show:
+---
+
+## Bug Summary
+
+| # | Issue | Root Cause | File |
+|---|-------|-----------|------|
+| 1 | OPTIONS preflight returning `"ok"` body | Some proxies reject non-empty preflight bodies | `vibecoder-v2/index.ts` |
+| 2 | JSON `{ files: ... }` written into `/App.tsx` | `code_chunk` fallback doesn't detect JSON wrapper; also **missing `break`** in `case 'files'` causes fall-through | `useStreamingCode.ts` |
+| 3 | Sandboxed iframe navigation crash | `window.open()` still blocked in some sandbox configs; needs `postMessage` bridge | `VibecoderPreview.tsx`, `vibecoder-v2/index.ts` |
+| 4 | `StreamingPhaseCard` ref warning | Already fixed with `forwardRef` (confirmed in current code) | N/A |
+
+---
+
+## Fix 1: OPTIONS preflight (vibecoder-v2/index.ts)
+
+Change the OPTIONS handler from returning `"ok"` with `status: 200` to returning `null` body with `status: 204`:
+
+```text
+Before: return new Response("ok", { status: 200, headers: corsHeaders });
+After:  return new Response(null, { status: 204, headers: corsHeaders });
 ```
-worker boot error: Uncaught SyntaxError: Unexpected reserved word
-    at vibecoder-v2/index.ts:1736:46
-```
 
-The bug is in the `processContent` function (source line 1850). It's declared as a **non-async arrow function**:
+This prevents proxy/CDN layers from rejecting preflight responses with unexpected bodies.
+
+---
+
+## Fix 2: Missing `break` + JSON-in-code_chunk defense (useStreamingCode.ts)
+
+**Critical bug found**: The `case 'files':` handler (line 848) has no `break` statement, causing it to fall through into `case 'code_progress'`. This means after receiving files, execution continues into the next case block.
+
+Changes:
+- Add `break;` after line 860 (`receivedFiles = true;`)
+- In `case 'code_chunk'`: add JSON wrapper detection -- if the accumulated buffer starts with `{` and contains `"files"`, attempt to parse it as a project files map and route to `state.files` instead of `state.code`
+
+---
+
+## Fix 3: postMessage navigation bridge
+
+Instead of `window.open()` (which can also be blocked in sandboxed iframes), use a `postMessage` bridge:
+
+**Backend (vibecoder-v2 prompt)**: Change product linking instructions to use:
 ```ts
-const processContent = () => {
+window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url }, '*');
 ```
 
-But inside it (around lines 1938 and 1955), it uses `await`:
-```ts
-const repairResponse = await fetch(GEMINI_API_URL, { ... });
-// ...
-const repairData = await repairResponse.json();
-```
+**Frontend sanitizer (useStreamingCode.ts)**: Update `sanitizeNavigation` to also rewrite `window.open(...)` calls to `postMessage`.
 
-`await` is a reserved word that can only appear inside `async` functions. Deno's TypeScript compiler rejects this at boot time, preventing the entire function from loading.
+**Parent listener (VibecoderPreview.tsx)**: Add a `useEffect` in the `VibecoderPreview` component (the outermost wrapper, lines 550-627) that listens for `VIBECODER_NAVIGATE` messages and calls `window.open(url, '_blank')` from the parent frame.
 
-### Fix 1: Make `processContent` async (line 1850)
+**Published storefront (AIStorefrontRenderer.tsx)**: Same listener added for the published storefront viewer.
 
-Change:
-```ts
-const processContent = () => {
-```
-To:
-```ts
-const processContent = async () => {
-```
+---
 
-And update the two call sites (lines 2045 and 2063) from:
-```ts
-processContent();
-```
-To:
-```ts
-await processContent();
-```
+## Fix 4: StreamingPhaseCard ref warning
 
-### Fix 2: Bulletproof CORS headers across all edge functions
+Already resolved -- current code uses `forwardRef`. No changes needed.
 
-Standardize the `corsHeaders` object in these functions that are currently missing headers:
+---
 
-**Functions to update:**
-- `generate-image/index.ts` -- missing `Access-Control-Allow-Methods` and `x-supabase-client-*` headers
-- `deduct-ai-credits/index.ts` -- same issue
-- `audio-stem-separation/index.ts` -- same issue
-- `create-pro-tools-checkout/index.ts` -- same issue
+## Technical Changes
 
-Replace their `corsHeaders` with:
-```ts
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-```
+### File: `supabase/functions/vibecoder-v2/index.ts`
 
-Also ensure their OPTIONS handlers return explicit `status: 200` and body `"ok"` (some currently return `null` body).
+1. Line 1449: Change OPTIONS response to `new Response(null, { status: 204, headers: corsHeaders })`
+2. Lines ~947-968: Change product linking prompt from `window.open()` to `window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url }, '*')`
 
-### Fix 3: Safe JSON body parsing in vibecoder-v2
+### File: `src/components/ai-builder/useStreamingCode.ts`
 
-Wrap `await req.json()` (line 1470) in a try/catch so malformed or empty POST bodies return a proper 400 with CORS headers instead of crashing:
+1. Line 861: Add missing `break;` after `case 'files'` block
+2. Lines 867-881: Add JSON-wrapper detection in `case 'code_chunk'` -- parse `{ "files": {...} }` and route to `state.files`
+3. Lines 547-557: Update `sanitizeNavigation` to rewrite `window.open()` and `window.location.href` to `postMessage`
 
-```ts
-let body: any = {};
-try {
-  body = await req.json();
-} catch {
-  return new Response(
-    JSON.stringify({ error: "Invalid or missing JSON body" }),
-    { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
-}
-```
+### File: `src/components/ai-builder/VibecoderPreview.tsx`
 
-### Summary of Changes
+1. Lines 572-604 area: Add `useEffect` with `window.addEventListener('message', ...)` to handle `VIBECODER_NAVIGATE` messages, calling `window.open(url, '_blank')` from the parent
 
-| File | Change |
-|------|--------|
-| `vibecoder-v2/index.ts` | Make `processContent` async, await its calls, safe body parsing |
-| `generate-image/index.ts` | Standardize corsHeaders |
-| `deduct-ai-credits/index.ts` | Standardize corsHeaders |
-| `audio-stem-separation/index.ts` | Standardize corsHeaders |
-| `create-pro-tools-checkout/index.ts` | Standardize corsHeaders |
+### File: `src/components/profile/AIStorefrontRenderer.tsx`
 
-After these changes, all functions will be deployed automatically. The boot crash will be resolved and CORS will be consistent everywhere.
+1. Add same `useEffect` message listener for published storefronts
+
+### Deployment
+
+- `vibecoder-v2` edge function will be redeployed automatically
 
