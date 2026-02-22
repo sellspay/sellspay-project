@@ -8,6 +8,7 @@ import type { BuildStep } from './types/chat';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
 import { PolicyViolationCard } from './PolicyViolationCard';
 import { RevertConfirmDialog } from './RevertConfirmDialog';
+import { StreamingPhaseCard } from './StreamingPhaseCard';
 
 // Extended message type with steps
 export interface MessageWithSteps extends VibecoderMessage {
@@ -81,6 +82,21 @@ function AssistantMessage({
 
       {/* Message Content - Pure Markdown */}
       <div className="flex-1 min-w-0 space-y-2">
+        {/* Persisted streaming phase data (analysis/plan/building) */}
+        {message.meta_data?.streamPhase && (
+          <StreamingPhaseCard
+            data={{
+              phase: 'complete',
+              analysisText: message.meta_data.streamPhase.analysisText,
+              planItems: message.meta_data.streamPhase.planItems,
+              completedPlanItems: message.meta_data.streamPhase.planItems?.length || 0,
+              summaryText: message.meta_data.streamPhase.summaryText,
+              confidenceScore: message.meta_data.streamPhase.confidenceScore,
+              confidenceReason: message.meta_data.streamPhase.confidenceReason,
+              elapsedSeconds: message.meta_data.streamPhase.elapsedSeconds,
+            }}
+          />
+        )}
         {/* The AI's actual response rendered as markdown */}
         <div className="text-zinc-300 text-sm leading-relaxed">
           {isStreaming && !message.content ? (
