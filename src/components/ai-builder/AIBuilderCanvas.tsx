@@ -1663,35 +1663,37 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         />
       </div>
 
-      {/* ═══ CENTER: Header + Canvas ═══ */}
-      <div className="flex-1 flex flex-col min-w-0 h-full">
-        {/* Header Toolbar */}
-        <div className="shrink-0">
-          <VibecoderHeader
-            projectName={activeProject?.name}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-            deviceMode={deviceMode}
-            setDeviceMode={setDeviceMode}
-            onRefresh={handleRefresh}
-            onPublish={handlePublish}
-            isPublished={isPublished}
-            isPublishing={publishing}
-            hasUnpublishedChanges={hasUnpublishedChanges}
-            isEmpty={isEmpty}
-            username={username}
-            currentPath={previewPath}
-            onNavigate={setPreviewPath}
-            pages={detectedPages}
-            avatarUrl={userAvatarUrl}
-            userCredits={userCredits}
-            subscriptionTier={subscriptionTier}
-            onSignOut={handleSignOut}
-          />
-        </div>
+      {/* ═══ MAIN WORKSPACE (Header + Canvas + Chat as one unified surface) ═══ */}
+      <div className="flex-1 flex min-w-0 h-full overflow-hidden">
+        {/* CENTER: Header + Canvas */}
+        <div className="flex-1 flex flex-col min-w-0 h-full">
+          {/* Header Toolbar */}
+          <div className="shrink-0">
+            <VibecoderHeader
+              projectName={activeProject?.name}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
+              deviceMode={deviceMode}
+              setDeviceMode={setDeviceMode}
+              onRefresh={handleRefresh}
+              onPublish={handlePublish}
+              isPublished={isPublished}
+              isPublishing={publishing}
+              hasUnpublishedChanges={hasUnpublishedChanges}
+              isEmpty={isEmpty}
+              username={username}
+              currentPath={previewPath}
+              onNavigate={setPreviewPath}
+              pages={detectedPages}
+              avatarUrl={userAvatarUrl}
+              userCredits={userCredits}
+              subscriptionTier={subscriptionTier}
+              onSignOut={handleSignOut}
+            />
+          </div>
 
-        {/* Canvas / Preview Area */}
-        <div className="flex-1 min-h-0 relative overflow-hidden rounded-xl m-1.5 mt-0 bg-[#0c0c0f]">
+          {/* Canvas / Preview Area — flush with header, no margin */}
+          <div className="flex-1 min-h-0 relative overflow-hidden bg-[#0c0c0f]">
           {/* Transition Overlay */}
           {isProjectTransitioning && (
             <div className="absolute inset-0 z-[100] bg-[#0a0a0a] flex items-center justify-center rounded-2xl">
@@ -1887,8 +1889,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           </svg>
         </button>
       )}
+      </div> {/* End MAIN WORKSPACE wrapper */}
 
-      {/* Placement Prompt Modal (z-40) */}
       <PlacementPromptModal
         isOpen={showPlacementModal}
         onClose={() => setShowPlacementModal(false)}

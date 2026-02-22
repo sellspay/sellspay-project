@@ -70,7 +70,7 @@ export function VibecoderHeader({
   const navigate = useNavigate();
 
   return (
-    <header className="h-12 bg-black/40 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between px-4 shrink-0 relative">
+    <header className="h-12 bg-zinc-950/80 flex items-center justify-between px-4 shrink-0 relative">
 
       {/* LEFT: Exit Button */}
       <div className="flex items-center">
