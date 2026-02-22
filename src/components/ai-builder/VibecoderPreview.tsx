@@ -808,96 +808,135 @@ window.addEventListener('message', (event) => {
   });
 })();
 
-// COLOR EXTRACTION: Read CSS custom properties from :root
+// COLOR EXTRACTION: Deep DOM scan to extract actual colors used in the project
 window.addEventListener('message', (event) => {
   const msg = event.data;
   if (!msg || msg.type !== 'VIBECODER_EXTRACT_COLORS') return;
-
-  function hslToHex(h, s, l) {
-    s /= 100; l /= 100;
-    const a = s * Math.min(l, 1 - l);
-    const f = (n) => {
-      const k = (n + h / 30) % 12;
-      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-      return Math.round(255 * color).toString(16).padStart(2, '0');
-    };
-    return '#' + f(0) + f(8) + f(4);
-  }
 
   function rgbToHex(rgb) {
     if (!rgb || rgb === 'transparent' || rgb === 'rgba(0, 0, 0, 0)') return null;
     if (rgb.startsWith('#')) return rgb;
     const match = rgb.match(/[\\d.]+/g);
     if (!match || match.length < 3) return null;
-    return '#' + [0,1,2].map(i => Math.round(parseFloat(match[i])).toString(16).padStart(2, '0')).join('');
+    const hex = '#' + [0,1,2].map(i => Math.round(parseFloat(match[i])).toString(16).padStart(2, '0')).join('');
+    return hex === '#000000' && rgb.includes('0, 0, 0') ? '#000000' : hex;
   }
 
-  function getCSSVar(name) {
-    const raw = getComputedStyle(document.documentElement).getPropertyValue('--' + name).trim();
-    if (!raw) return null;
-    // Try parsing as HSL values "h s% l%" or "h s l"
-    const parts = raw.split(/[\\s,/]+/).map(s => parseFloat(s.replace('%', '')));
-    if (parts.length >= 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-      return hslToHex(parts[0], parts[1], parts[2]);
-    }
-    // Maybe it's already a color value
-    if (raw.startsWith('#')) return raw;
-    if (raw.startsWith('rgb')) return rgbToHex(raw);
-    return null;
+  function luminance(hex) {
+    const r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+    return 0.299*r + 0.587*g + 0.114*b;
   }
 
-  const tokenNames = [
-    'primary', 'primary-foreground',
-    'secondary', 'secondary-foreground',
-    'accent', 'accent-foreground',
-    'background', 'foreground',
-    'card', 'card-foreground',
-    'popover', 'popover-foreground',
-    'muted', 'muted-foreground',
-    'destructive', 'destructive-foreground',
-    'border', 'input', 'ring',
-    'chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5',
-  ];
-
-  const colors = {};
-  let foundAny = false;
-  for (const name of tokenNames) {
-    const hex = getCSSVar(name);
-    if (hex) { colors[name] = hex; foundAny = true; }
+  function isNearBlackOrWhite(hex) {
+    const l = luminance(hex);
+    return l < 0.08 || l > 0.92;
   }
 
-  // Fallback: if no CSS vars found, sample from computed styles
-  if (!foundAny) {
-    const root = document.getElementById('root') || document.body;
-    const cs = window.getComputedStyle(root);
-    const bg = rgbToHex(cs.backgroundColor) || '#000000';
-    const fg = rgbToHex(cs.color) || '#ffffff';
-    colors['background'] = bg;
-    colors['foreground'] = fg;
-    // Sample buttons for primary
-    const btn = document.querySelector('button:not([data-vibe-overlay])');
-    if (btn) {
-      const bc = rgbToHex(window.getComputedStyle(btn).backgroundColor);
-      if (bc && bc !== bg) { colors['primary'] = bc; colors['primary-foreground'] = rgbToHex(window.getComputedStyle(btn).color) || '#ffffff'; }
-    }
+  // Scan all visible elements and collect color usage
+  const bgColors = new Map(); // hex -> count
+  const fgColors = new Map();
+  const borderColors = new Map();
+  const allEls = document.querySelectorAll('#root *:not([data-vibe-overlay])');
+
+  for (const el of allEls) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) continue;
+    const cs = window.getComputedStyle(el);
+
+    const bg = rgbToHex(cs.backgroundColor);
+    if (bg) bgColors.set(bg, (bgColors.get(bg) || 0) + rect.width * rect.height);
+
+    const fg = rgbToHex(cs.color);
+    if (fg) fgColors.set(fg, (fgColors.get(fg) || 0) + 1);
+
+    const bc = rgbToHex(cs.borderTopColor);
+    if (bc && cs.borderTopWidth !== '0px') borderColors.set(bc, (borderColors.get(bc) || 0) + 1);
   }
 
-  // Fill defaults for any missing tokens
-  const defaults = {
-    primary: '#8b5cf6', 'primary-foreground': '#ffffff',
-    secondary: '#27272a', 'secondary-foreground': '#fafafa',
-    accent: '#a78bfa', 'accent-foreground': '#ffffff',
-    background: '#09090b', foreground: '#fafafa',
-    card: '#18181b', 'card-foreground': '#fafafa',
-    popover: '#18181b', 'popover-foreground': '#fafafa',
-    muted: '#27272a', 'muted-foreground': '#a1a1aa',
-    destructive: '#ef4444', 'destructive-foreground': '#ffffff',
-    border: '#27272a', input: '#27272a', ring: '#8b5cf6',
-    'chart-1': '#8b5cf6', 'chart-2': '#3b82f6', 'chart-3': '#06b6d4', 'chart-4': '#10b981', 'chart-5': '#f59e0b',
+  // Sort by usage
+  const sortedBgs = [...bgColors.entries()].sort((a,b) => b[1] - a[1]);
+  const sortedFgs = [...fgColors.entries()].sort((a,b) => b[1] - a[1]);
+  const sortedBorders = [...borderColors.entries()].sort((a,b) => b[1] - a[1]);
+
+  // Background = largest area bg color
+  const pageBg = sortedBgs[0]?.[0] || '#000000';
+
+  // Foreground = most used text color
+  const pageFg = sortedFgs[0]?.[0] || '#ffffff';
+
+  // Primary = most used NON-black/white/gray bg color (the accent/brand color)
+  const accentBgs = sortedBgs.filter(([hex]) => {
+    if (hex === pageBg) return false;
+    const l = luminance(hex);
+    // Skip near-black and near-white and pure grays
+    if (l < 0.05 || l > 0.95) return false;
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    const max = Math.max(r,g,b), min = Math.min(r,g,b);
+    // Has some saturation (not gray)
+    return (max - min) > 15 || !isNearBlackOrWhite(hex);
+  });
+
+  // Also check text colors for accent
+  const accentFgs = sortedFgs.filter(([hex]) => {
+    if (hex === pageFg || hex === pageBg) return false;
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    const max = Math.max(r,g,b), min = Math.min(r,g,b);
+    return (max - min) > 30;
+  });
+
+  const primaryColor = accentBgs[0]?.[0] || accentFgs[0]?.[0] || '#f97316';
+  const accentColor = accentFgs[0]?.[0] || accentBgs[1]?.[0] || primaryColor;
+
+  // Card = second most-used bg color that differs from page bg
+  const cardBg = sortedBgs.find(([hex]) => hex !== pageBg)?.[0] || pageBg;
+
+  // Secondary bg
+  const secondaryBg = sortedBgs.find(([hex]) => hex !== pageBg && hex !== cardBg)?.[0] || cardBg;
+
+  // Muted text = text color that's between fg and bg in luminance
+  const mutedFg = sortedFgs.find(([hex]) => {
+    if (hex === pageFg) return false;
+    const l = luminance(hex);
+    const fgL = luminance(pageFg);
+    return Math.abs(l - fgL) > 0.1;
+  })?.[0] || '#a1a1aa';
+
+  // Card text
+  const cardFg = sortedFgs.find(([hex]) => hex !== pageFg)?.[0] || pageFg;
+
+  // Border
+  const borderHex = sortedBorders.find(([hex]) => hex !== pageBg && hex !== pageFg)?.[0] || '#27272a';
+
+  // Derive foreground for primary (white on dark, black on light)
+  const primaryFg = luminance(primaryColor) > 0.5 ? '#000000' : '#ffffff';
+  const accentFg = luminance(accentColor) > 0.5 ? '#000000' : '#ffffff';
+
+  const colors = {
+    primary: primaryColor,
+    'primary-foreground': primaryFg,
+    secondary: secondaryBg,
+    'secondary-foreground': pageFg,
+    accent: accentColor,
+    'accent-foreground': accentFg,
+    background: pageBg,
+    foreground: pageFg,
+    card: cardBg,
+    'card-foreground': cardFg !== pageFg ? cardFg : pageFg,
+    popover: cardBg,
+    'popover-foreground': pageFg,
+    muted: secondaryBg,
+    'muted-foreground': mutedFg,
+    destructive: '#ef4444',
+    'destructive-foreground': '#ffffff',
+    border: borderHex,
+    input: borderHex,
+    ring: primaryColor,
+    'chart-1': primaryColor,
+    'chart-2': accentColor,
+    'chart-3': '#06b6d4',
+    'chart-4': '#10b981',
+    'chart-5': '#f59e0b',
   };
-  for (const k of tokenNames) {
-    if (!colors[k]) colors[k] = defaults[k];
-  }
 
   window.parent.postMessage({ type: 'VIBECODER_COLORS_EXTRACTED', colors }, '*');
 });
