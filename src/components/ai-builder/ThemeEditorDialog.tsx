@@ -210,95 +210,89 @@ export function ThemeEditorDialog({ open, onClose, style, onApply, onLivePreview
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex pointer-events-none">
-      {/* Backdrop - only captures clicks, allows scroll through */}
-      <div className="absolute inset-0 bg-black/20 pointer-events-auto" onClick={handleDiscard} style={{ cursor: 'default' }} />
-
-      {/* Left panel */}
-      <motion.div
-        initial={{ x: -20, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: -20, opacity: 0 }}
-        transition={{ duration: 0.2 }}
-        className="relative z-10 w-[340px] h-full bg-[#0a0a0a] border-r border-zinc-800 flex flex-col pointer-events-auto"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
-          <div>
-            <h3 className="text-sm font-semibold text-zinc-100">Manage themes</h3>
-            <p className="text-[11px] text-zinc-500 mt-0.5">Customize the look and feel</p>
-          </div>
-          <button onClick={handleDiscard} className="text-zinc-500 hover:text-zinc-300 transition-colors">
-            <X className="w-4 h-4" />
-          </button>
+    <motion.div
+      initial={{ x: -20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -20, opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed left-0 top-0 z-[100] w-[340px] h-full bg-[#0a0a0a] border-r border-zinc-800 flex flex-col"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+        <div>
+          <h3 className="text-sm font-semibold text-zinc-100">Manage themes</h3>
+          <p className="text-[11px] text-zinc-500 mt-0.5">Customize the look and feel</p>
         </div>
+        <button onClick={handleDiscard} className="text-zinc-500 hover:text-zinc-300 transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
 
-        {/* Theme name row */}
-        <div className="px-5 pt-4 pb-2">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900/60">
-            <span className="text-sm text-zinc-200 flex-1">{style.name}</span>
-            <div className="flex items-center gap-1">
-              {[editColors.primary, editColors.accent, editColors.background, editColors.foreground].map((c, i) => (
-                <div key={i} className="w-3.5 h-3.5 rounded-full border border-white/10" style={{ backgroundColor: c || '#333' }} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="px-5 pt-2 pb-1">
-          <div className="flex gap-1 bg-zinc-900 rounded-lg p-1">
-            {(['colors', 'typography', 'effects'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "flex-1 text-xs py-1.5 rounded-md transition-colors capitalize",
-                  activeTab === tab ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
-                )}
-              >
-                {tab}
-              </button>
+      {/* Theme name row */}
+      <div className="px-5 pt-4 pb-2">
+        <div className="flex items-center gap-3 px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900/60">
+          <span className="text-sm text-zinc-200 flex-1">{style.name}</span>
+          <div className="flex items-center gap-1">
+            {[editColors.primary, editColors.accent, editColors.background, editColors.foreground].map((c, i) => (
+              <div key={i} className="w-3.5 h-3.5 rounded-full border border-white/10" style={{ backgroundColor: c || '#333' }} />
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-3 space-y-2">
-          {activeTab === 'colors' && COLOR_GROUPS.map((group, i) => (
-            <CollapsibleGroup
-              key={group.label}
-              label={group.label}
-              colors={group.colors}
-              editColors={editColors}
-              onColorChange={handleColorChange}
-              defaultOpen={i === 0}
-            />
+      {/* Tabs */}
+      <div className="px-5 pt-2 pb-1">
+        <div className="flex gap-1 bg-zinc-900 rounded-lg p-1">
+          {(['colors', 'typography', 'effects'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "flex-1 text-xs py-1.5 rounded-md transition-colors capitalize",
+                activeTab === tab ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
+              )}
+            >
+              {tab}
+            </button>
           ))}
-          {activeTab === 'typography' && (
-            <div className="py-8 text-center text-xs text-zinc-500">Typography settings coming soon</div>
-          )}
-          {activeTab === 'effects' && (
-            <div className="py-8 text-center text-xs text-zinc-500">Effects settings coming soon</div>
-          )}
         </div>
+      </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-zinc-800">
-          <button
-            onClick={handleDiscard}
-            className="px-3 py-1.5 text-xs font-medium text-zinc-400 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition-colors"
-          >
-            Discard
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-3 py-1.5 text-xs font-medium text-zinc-100 border border-zinc-600 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors"
-          >
-            Save changes
-          </button>
-        </div>
-      </motion.div>
-    </div>
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-3 space-y-2">
+        {activeTab === 'colors' && COLOR_GROUPS.map((group, i) => (
+          <CollapsibleGroup
+            key={group.label}
+            label={group.label}
+            colors={group.colors}
+            editColors={editColors}
+            onColorChange={handleColorChange}
+            defaultOpen={i === 0}
+          />
+        ))}
+        {activeTab === 'typography' && (
+          <div className="py-8 text-center text-xs text-zinc-500">Typography settings coming soon</div>
+        )}
+        {activeTab === 'effects' && (
+          <div className="py-8 text-center text-xs text-zinc-500">Effects settings coming soon</div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-zinc-800">
+        <button
+          onClick={handleDiscard}
+          className="px-3 py-1.5 text-xs font-medium text-zinc-400 border border-zinc-700 rounded-lg hover:bg-zinc-800 transition-colors"
+        >
+          Discard
+        </button>
+        <button
+          onClick={handleSave}
+          className="px-3 py-1.5 text-xs font-medium text-zinc-100 border border-zinc-600 rounded-lg bg-zinc-700 hover:bg-zinc-600 transition-colors"
+        >
+          Save changes
+        </button>
+      </div>
+    </motion.div>
   );
 }
