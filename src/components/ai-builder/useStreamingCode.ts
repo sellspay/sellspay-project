@@ -1042,26 +1042,33 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     let cleaned = stripCompleteSentinel(code);
 
     // Strip /// TYPE: CODE /// preamble that may be stored in code_snapshot.
-    const typeCodeIdx = cleaned.indexOf('/// TYPE: CODE ///');
-    if (typeCodeIdx >= 0) {
-      const afterMarker = cleaned.substring(typeCodeIdx + '/// TYPE: CODE ///'.length);
-      const codeStartPatterns = [
-        /(^|\n)(import\s+)/,
-        /(^|\n)(export\s+default\s+function\s+)/,
-        /(^|\n)(export\s+function\s+)/,
-        /(^|\n)(const\s+\w+\s*=\s*\()/,
-        /(^|\n)(function\s+\w+\s*\()/,
-      ];
-      let codeStart = -1;
-      for (const pattern of codeStartPatterns) {
-        const match = afterMarker.match(pattern);
-        if (match?.index !== undefined) {
-          codeStart = match.index;
-          break;
+    // Also handle /// BEGIN_CODE /// marker that separates explanation from actual code.
+    const beginCodeIdx = cleaned.indexOf('/// BEGIN_CODE ///');
+    if (beginCodeIdx >= 0) {
+      // Fast path: everything after /// BEGIN_CODE /// is the actual code
+      cleaned = cleaned.substring(beginCodeIdx + '/// BEGIN_CODE ///'.length).trim();
+    } else {
+      const typeCodeIdx = cleaned.indexOf('/// TYPE: CODE ///');
+      if (typeCodeIdx >= 0) {
+        const afterMarker = cleaned.substring(typeCodeIdx + '/// TYPE: CODE ///'.length);
+        const codeStartPatterns = [
+          /(^|\n)(import\s+)/,
+          /(^|\n)(export\s+default\s+function\s+)/,
+          /(^|\n)(export\s+function\s+)/,
+          /(^|\n)(const\s+\w+\s*=\s*\()/,
+          /(^|\n)(function\s+\w+\s*\()/,
+        ];
+        let codeStart = -1;
+        for (const pattern of codeStartPatterns) {
+          const match = afterMarker.match(pattern);
+          if (match?.index !== undefined) {
+            codeStart = match.index;
+            break;
+          }
         }
-      }
-      if (codeStart >= 0) {
-        cleaned = afterMarker.substring(codeStart).trim();
+        if (codeStart >= 0) {
+          cleaned = afterMarker.substring(codeStart).trim();
+        }
       }
     }
 

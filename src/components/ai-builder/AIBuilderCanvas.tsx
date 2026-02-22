@@ -460,8 +460,9 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   }, [isAwaitingPreviewReady, isStreaming]);
 
   // Safety: if isWaitingForPreviewMount never clears (Sandpack doesn't remount), force-clear it.
-  // This prevents the "Vibecoder ready but blank" bug where Sandpack updates files
+  // This prevents the "black screen" bug where Sandpack updates files
   // without triggering onReady (no key change = no remount).
+  // Reduced to 1.5s — 3s felt like a hang. Sandpack typically mounts in <500ms.
   useEffect(() => {
     if (!isWaitingForPreviewMount) return;
     if (isStreaming) return;
@@ -469,7 +470,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     const timeout = window.setTimeout(() => {
       console.log('⏰ Safety: Force-clearing isWaitingForPreviewMount after timeout');
       setIsWaitingForPreviewMount(false);
-    }, 3000);
+    }, 1500);
 
     return () => window.clearTimeout(timeout);
   }, [isWaitingForPreviewMount, isStreaming]);
@@ -991,9 +992,15 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     console.log('🚪 Opening content gate for project:', activeProjectId);
     setContentProjectId(activeProjectId);
     
-    // 🤝 PREVIEW HANDSHAKE: Start waiting for Sandpack to signal it's ready
-    // This keeps the loader visible until the iframe is actually painted
-    setIsWaitingForPreviewMount(true);
+    // 🤝 PREVIEW HANDSHAKE: Only wait for Sandpack if we actually set code.
+    // If there's no code to restore, don't gate on preview mount — just show immediately.
+    if (lastSnapshot) {
+      setIsWaitingForPreviewMount(true);
+      // Force Sandpack remount so onReady fires reliably
+      setRefreshKey(prev => prev + 1);
+    } else {
+      setIsWaitingForPreviewMount(false);
+    }
   }, [activeProjectId, messagesLoading, isVerifyingProject, getLastCodeSnapshot, setCode, isStreaming]);
 
   // Reset restoration tracker when project changes
