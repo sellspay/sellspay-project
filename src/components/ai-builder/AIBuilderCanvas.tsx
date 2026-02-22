@@ -1802,8 +1802,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                     </div>
                   </div>
                 ) : (
-                  <div className="h-full w-full relative overflow-hidden flex items-center justify-center p-4">
-                    <div className="relative w-full h-full max-w-[1280px] rounded-xl border border-zinc-700/60 bg-black overflow-hidden shadow-2xl shadow-black/40">
+                  <div className="h-full w-full relative overflow-hidden border border-zinc-700/50 rounded-sm">
                     <PreviewErrorBoundary
                       onAutoFix={handleAutoFix}
                       onReset={() => { setIsAwaitingPreviewReady(false); resetCode(); }}
@@ -1848,7 +1847,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                         }}
                       />
                     )}
-                    </div>
                   </div>
                 )}
               </div>
