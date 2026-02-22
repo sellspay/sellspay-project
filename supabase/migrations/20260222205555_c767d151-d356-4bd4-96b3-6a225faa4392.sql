@@ -1,0 +1,1 @@
+ALTER TABLE public.vibecoder_messages ADD COLUMN IF NOT EXISTS meta_data jsonb DEFAULT NULL;
