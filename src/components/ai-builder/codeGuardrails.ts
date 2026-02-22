@@ -36,17 +36,17 @@ export interface GuardConfig {
 }
 
 const NORMAL_CONFIG: GuardConfig = {
-  minLengthRatio: 0.4,
-  maxDiffRatio: 0.7,
+  minLengthRatio: 0.35,
+  maxDiffRatio: 0.6,
   minLineRatio: 0.3,
   activationThreshold: 200,
   minConfidence: 40,
 };
 
 const MICRO_CONFIG: GuardConfig = {
-  minLengthRatio: 0.7,
-  maxDiffRatio: 0.4,
-  minLineRatio: 0.6,
+  minLengthRatio: 0.65,
+  maxDiffRatio: 0.35,
+  minLineRatio: 0.55,
   activationThreshold: 200,
   minConfidence: 50,
 };

@@ -1165,8 +1165,28 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   }, []);
 
   const setCode = useCallback((code: string, skipValidation = false) => {
+    // First, check if the code is JSON-wrapped (e.g., {"files":{"/App.tsx":"..."}})
+    // This can happen when background jobs or DB snapshots store JSON-wrapped code
+    let rawCode = code;
+    const trimmedRaw = rawCode.trim();
+    if (trimmedRaw.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmedRaw);
+        if (parsed.files && typeof parsed.files === 'object') {
+          const fileKeys = Object.keys(parsed.files);
+          const appKey = fileKeys.find(k => k.includes('App.tsx')) || fileKeys[0];
+          if (appKey && typeof parsed.files[appKey] === 'string') {
+            console.warn('[useStreamingCode] setCode: Unwrapped JSON-wrapped code from key:', appKey);
+            rawCode = parsed.files[appKey];
+          }
+        }
+      } catch {
+        // Not JSON, proceed normally
+      }
+    }
+
     // Strip sentinel before validation (it's a marker, not app code)
-    let cleaned = stripCompleteSentinel(code);
+    let cleaned = stripCompleteSentinel(rawCode);
 
     // Strip /// TYPE: CODE /// preamble that may be stored in code_snapshot.
     // Also handle /// BEGIN_CODE /// marker that separates explanation from actual code.
