@@ -3318,6 +3318,7 @@ export type Database = {
           created_at: string
           files_snapshot: Json | null
           id: string
+          meta_data: Json | null
           project_id: string
           rating: number | null
           role: string
@@ -3328,6 +3329,7 @@ export type Database = {
           created_at?: string
           files_snapshot?: Json | null
           id?: string
+          meta_data?: Json | null
           project_id: string
           rating?: number | null
           role: string
@@ -3338,6 +3340,7 @@ export type Database = {
           created_at?: string
           files_snapshot?: Json | null
           id?: string
+          meta_data?: Json | null
           project_id?: string
           rating?: number | null
           role?: string
