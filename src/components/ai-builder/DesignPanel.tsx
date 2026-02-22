@@ -40,7 +40,7 @@ export function DesignPanel({ activeStyle, onStyleChange }: DesignPanelProps) {
 
   if (view === 'themes') {
     return (
-      <div className="h-full flex flex-col bg-[#0f0f0f] overflow-y-auto custom-scrollbar">
+      <div className="h-full flex flex-col bg-[#1a1a1a] overflow-y-auto custom-scrollbar">
         <div className="p-6 space-y-6">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2">
@@ -106,7 +106,7 @@ export function DesignPanel({ activeStyle, onStyleChange }: DesignPanelProps) {
 
   if (view === 'visual-edits') {
     return (
-      <div className="h-full flex flex-col bg-[#0f0f0f] items-center justify-center">
+      <div className="h-full flex flex-col bg-[#1a1a1a] items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-center px-6">
           <button
             onClick={() => setView('home')}
@@ -131,7 +131,7 @@ export function DesignPanel({ activeStyle, onStyleChange }: DesignPanelProps) {
 
   // Home view
   return (
-    <div className="h-full flex flex-col bg-[#0f0f0f]">
+    <div className="h-full flex flex-col bg-[#1a1a1a]">
       <div className="p-6 space-y-4">
         <h2 className="text-sm font-semibold text-zinc-200">Design</h2>
 
