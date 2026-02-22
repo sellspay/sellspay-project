@@ -654,7 +654,7 @@ div[style*="background-color: red"],div[style*="background: red"] {
               {viewMode === 'preview' || viewMode === 'image' || viewMode === 'video' ? (
                 <SandpackPreviewComponent
                   showOpenInCodeSandbox={false}
-                  showRefreshButton={true}
+                  showRefreshButton={false}
                   showSandpackErrorOverlay={false}
                   style={{ height: '100%', flex: 1 }}
                 />
