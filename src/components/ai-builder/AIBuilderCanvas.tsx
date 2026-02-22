@@ -24,6 +24,7 @@ import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke
 import { LovableHero } from './LovableHero';
 
 import { FixErrorToast } from './FixErrorToast';
+import { GenerationOverlay } from './GenerationOverlay';
 import { checkPolicyViolation } from '@/utils/policyGuard';
 import { useGhostFixer } from '@/hooks/useGhostFixer';
 
@@ -1679,6 +1680,13 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       viewMode={viewMode}
                     />
                   </PreviewErrorBoundary>
+
+                  {/* Cinematic generation overlay — shown when AI is working on a fresh/empty canvas */}
+                  <GenerationOverlay
+                    visible={isEmpty && isStreaming}
+                    phase={streamPhase}
+                    analysisText={analysisText}
+                  />
 
                   {/* Only show error toast when NOT streaming - errors during streaming are expected */}
                   {showFixToast && previewError && !isStreaming && (
