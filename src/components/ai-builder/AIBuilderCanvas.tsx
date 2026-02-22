@@ -129,39 +129,61 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Resizable sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [chatCollapsed, setChatCollapsed] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const isDraggingRef = useRef(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<HTMLDivElement>(null);
+  const handleDotRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   
-  // Drag handlers for resizable sidebar
-  const startResizing = useCallback(() => {
-    setIsDragging(true);
+  // Drag handlers — use refs + direct DOM for zero-lag resize
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'ew-resize';
+    // Show overlay to prevent iframe stealing events
+    if (overlayRef.current) overlayRef.current.style.display = 'block';
+    // Visual feedback on handle
+    if (handleRef.current) {
+      handleRef.current.classList.add('bg-blue-500/60', 'shadow-[0_0_12px_rgba(59,130,246,0.4)]');
+      handleRef.current.classList.remove('bg-transparent');
+    }
+    if (handleDotRef.current) handleDotRef.current.classList.add('bg-blue-400');
   }, []);
-
-  const stopResizing = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  const resize = useCallback(
-    (mouseMoveEvent: MouseEvent) => {
-      if (isDragging) {
-        // Calculate new width from the right edge of screen
-        const newWidth = window.innerWidth - mouseMoveEvent.clientX;
-        // Constraints: Min 300px, Max 800px
-        if (newWidth > 300 && newWidth < 800) {
-          setSidebarWidth(newWidth);
-        }
-      }
-    },
-    [isDragging]
-  );
 
   useEffect(() => {
-    window.addEventListener('mousemove', resize);
-    window.addEventListener('mouseup', stopResizing);
-    return () => {
-      window.removeEventListener('mousemove', resize);
-      window.removeEventListener('mouseup', stopResizing);
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth > 300 && newWidth < 800) {
+        if (sidebarRef.current) sidebarRef.current.style.width = `${newWidth}px`;
+        // Store for React state sync on mouseup
+        (isDraggingRef as any)._lastWidth = newWidth;
+      }
     };
-  }, [resize, stopResizing]);
+    const onMouseUp = () => {
+      if (!isDraggingRef.current) return;
+      isDraggingRef.current = false;
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      if (overlayRef.current) overlayRef.current.style.display = 'none';
+      // Remove visual feedback
+      if (handleRef.current) {
+        handleRef.current.classList.remove('bg-blue-500/60', 'shadow-[0_0_12px_rgba(59,130,246,0.4)]');
+        handleRef.current.classList.add('bg-transparent');
+      }
+      if (handleDotRef.current) handleDotRef.current.classList.remove('bg-blue-400');
+      // Sync final width to React state
+      const lastWidth = (isDraggingRef as any)._lastWidth;
+      if (lastWidth) setSidebarWidth(lastWidth);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, []);
   
   // Project management
   const {
@@ -1786,28 +1808,24 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               </div>
             )}
 
-            {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
+            <div ref={overlayRef} className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" style={{ display: 'none' }} />
         </div>
       </div>
 
       {/* ═══ DRAG HANDLE — always between canvas and chat ═══ */}
       {!chatCollapsed && (
         <div
+          ref={handleRef}
           onMouseDown={startResizing}
-          className={`shrink-0 w-1.5 cursor-ew-resize z-50 transition-all flex items-center justify-center group ${
-            isDragging
-              ? 'bg-blue-500/60 shadow-[0_0_12px_rgba(59,130,246,0.4)]'
-              : 'bg-transparent hover:bg-blue-500/30'
-          }`}
+          className="shrink-0 w-1.5 cursor-ew-resize z-50 flex items-center justify-center group bg-transparent hover:bg-blue-500/30"
         >
-          <div className={`w-0.5 h-10 rounded-full transition-all ${
-            isDragging ? 'bg-blue-400' : 'bg-zinc-600 group-hover:bg-blue-400'
-          }`} />
+          <div ref={handleDotRef} className="w-0.5 h-10 rounded-full bg-zinc-600 group-hover:bg-blue-400" />
         </div>
       )}
 
       {/* ═══ CHAT SIDEBAR — sits on background, chat input is its own card ═══ */}
       <div
+        ref={sidebarRef}
         className="shrink-0 h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
         style={{
           width: chatCollapsed ? 0 : sidebarWidth,
