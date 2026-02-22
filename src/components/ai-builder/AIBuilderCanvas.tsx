@@ -1666,7 +1666,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
       {/* ═══ CENTER: Header + Canvas ═══ */}
       <div className="flex-1 flex flex-col min-w-0 h-full">
         {/* Header Toolbar */}
-        <div className="shrink-0 px-2 pt-2">
+        <div className="shrink-0">
           <VibecoderHeader
             projectName={activeProject?.name}
             viewMode={viewMode}
@@ -1691,7 +1691,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         </div>
 
         {/* Canvas / Preview Area */}
-        <div className="flex-1 min-h-0 relative overflow-hidden m-2 rounded-2xl border border-white/[0.04] bg-[#0c0c0f]">
+        <div className="flex-1 min-h-0 relative overflow-hidden bg-[#0c0c0f]">
           {/* Transition Overlay */}
           {isProjectTransitioning && (
             <div className="absolute inset-0 z-[100] bg-[#0a0a0a] flex items-center justify-center rounded-2xl">
@@ -1790,7 +1790,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
       {/* ═══ CHAT SIDEBAR ═══ */}
       <div
-        className="shrink-0 h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out border-l border-white/[0.04]"
+        className="shrink-0 h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
         style={{
           width: chatCollapsed ? 0 : sidebarWidth,
         }}
