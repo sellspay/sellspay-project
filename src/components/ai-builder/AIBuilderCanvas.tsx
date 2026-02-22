@@ -1588,6 +1588,10 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         variant="fullscreen"
         recentProjects={projects}
         onSelectProject={selectProject}
+        userCredits={userCredits}
+        avatarUrl={userAvatarUrl}
+        subscriptionTier={subscriptionTier}
+        onSignOut={handleSignOut}
       />
     );
   }
