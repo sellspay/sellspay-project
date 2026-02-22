@@ -489,8 +489,11 @@ function ThemeBridge() {
       return `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}\n\nhtml, body, #root {\n  background-color: hsl(var(--background));\n  color: hsl(var(--foreground));\n}`;
     }
 
+    console.log('[ThemeBridge] useEffect mounted, attaching event listeners');
+
     const handleApply = (e: Event) => {
       const colors = (e as CustomEvent).detail;
+      console.log('[ThemeBridge] Received vibecoder-theme-apply event', Object.keys(colors || {}));
       if (!colors) return;
       // Save original CSS on first apply for revert
       if (!originalCSSRef.current) {
@@ -501,6 +504,7 @@ function ThemeBridge() {
         }
       }
       const css = buildThemeCSS(colors);
+      console.log('[ThemeBridge] Calling sandpack.updateFile with CSS length:', css.length);
       sandpack.updateFile('/styles/theme-base.css', css);
     };
 
