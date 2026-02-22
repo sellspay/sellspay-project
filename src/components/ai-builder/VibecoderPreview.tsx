@@ -10,8 +10,7 @@ import {
 import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
 import type { ViewMode } from './types/generation';
 import { useSuppressPreviewNoise } from './hooks/useSuppressPreviewNoise';
-import { CodeFileExplorer } from './CodeFileExplorer';
-import type { VirtualFile } from '@/utils/codeFileParser';
+import { CodeFileExplorer, type VirtualFile } from './CodeFileExplorer';
 
 /** Map of file paths to file contents (multi-file mode). */
 export type ProjectFiles = Record<string, string>;
@@ -376,6 +375,23 @@ const ConsoleErrorDetector = forwardRef<HTMLDivElement, {
 );
 ConsoleErrorDetector.displayName = 'ConsoleErrorDetector';
 
+// Syncs the file explorer selection to Sandpack's active file
+function SandpackFileActivator({ activeFileId }: { activeFileId: string | null }) {
+  const { sandpack } = useSandpack();
+  
+  useEffect(() => {
+    if (!activeFileId) return;
+    // activeFileId is the file path (e.g. "/App.tsx", "/components/Hero.tsx")
+    const availableFiles = Object.keys(sandpack.files);
+    const targetPath = activeFileId.startsWith('/') ? activeFileId : `/${activeFileId}`;
+    if (availableFiles.includes(targetPath)) {
+      sandpack.setActiveFile(targetPath);
+    }
+  }, [activeFileId, sandpack]);
+
+  return null;
+}
+
 // Memoized Sandpack component to prevent unnecessary re-renders during streaming
 const SandpackRenderer = memo(function SandpackRenderer({ 
   code, 
@@ -395,11 +411,9 @@ const SandpackRenderer = memo(function SandpackRenderer({
   isStreaming?: boolean;
 }) {
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
-  const [scrollToLine, setScrollToLine] = useState<number | null>(null);
 
   const handleFileSelect = useCallback((file: VirtualFile) => {
     setActiveFileId(file.id);
-    setScrollToLine(file.startLine);
   }, []);
 
   // Build the Sandpack file map from either `projectFiles` (multi-file) or `code` (legacy single-file)
@@ -573,11 +587,14 @@ div[style*="background-color: red"],div[style*="background: red"] {
           <ErrorDetector onError={onError} isStreaming={isStreaming} />
           <ConsoleErrorDetector onConsoleErrors={onConsoleErrors} isStreaming={isStreaming} />
           <ReadyDetector onReady={onReady} />
+          {/* File activator: syncs activeFileId to Sandpack's internal state */}
+          {isCodeView && <SandpackFileActivator activeFileId={activeFileId} />}
           <div className="h-full w-full flex-1 flex flex-row" style={{ height: '100%' }}>
             {/* Code view: File explorer sidebar + editor */}
-            {isCodeView && code && (
+            {isCodeView && (code || projectFiles) && (
               <CodeFileExplorer
                 code={code}
+                projectFiles={projectFiles}
                 activeFileId={activeFileId}
                 onFileSelect={handleFileSelect}
               />
@@ -594,7 +611,7 @@ div[style*="background-color: red"],div[style*="background: red"] {
                 />
               ) : (
                 <SandpackCodeEditor
-                  showTabs={true}
+                  showTabs={false}
                   showLineNumbers={true}
                   showInlineErrors={false}
                   wrapContent={true}
