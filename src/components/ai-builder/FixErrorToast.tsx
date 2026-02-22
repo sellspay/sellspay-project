@@ -1,3 +1,4 @@
+import React, { forwardRef } from "react";
 import { X, Wrench } from "lucide-react";
 
 interface FixErrorToastProps {
@@ -6,12 +7,13 @@ interface FixErrorToastProps {
   onDismiss: () => void;
 }
 
-export function FixErrorToast({ error, onFix, onDismiss }: FixErrorToastProps) {
+export const FixErrorToast = forwardRef<HTMLDivElement, FixErrorToastProps>(
+  ({ error, onFix, onDismiss }, ref) => {
   // Truncate very long errors for display
   const displayError = error.length > 150 ? error.slice(0, 150) + '...' : error;
   
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 w-[min(480px,calc(100%-2rem))]">
+    <div ref={ref} className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 w-[min(480px,calc(100%-2rem))]">
       <div className="bg-background/95 backdrop-blur-xl border border-border rounded-xl shadow-xl overflow-hidden">
         <div className="flex items-center gap-3 p-3">
           {/* Icon */}
@@ -49,4 +51,7 @@ export function FixErrorToast({ error, onFix, onDismiss }: FixErrorToastProps) {
       </div>
     </div>
   );
-}
+  }
+);
+
+FixErrorToast.displayName = "FixErrorToast";
