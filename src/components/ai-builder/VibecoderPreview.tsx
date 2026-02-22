@@ -808,107 +808,131 @@ window.addEventListener('message', (event) => {
   });
 })();
 
-// COLOR EXTRACTION: Extract actual colors from the rendered DOM for theme editor
+// COLOR EXTRACTION: Read CSS custom properties from :root
 window.addEventListener('message', (event) => {
   const msg = event.data;
   if (!msg || msg.type !== 'VIBECODER_EXTRACT_COLORS') return;
-  
+
+  function hslToHex(h, s, l) {
+    s /= 100; l /= 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n) => {
+      const k = (n + h / 30) % 12;
+      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    return '#' + f(0) + f(8) + f(4);
+  }
+
   function rgbToHex(rgb) {
     if (!rgb || rgb === 'transparent' || rgb === 'rgba(0, 0, 0, 0)') return null;
     if (rgb.startsWith('#')) return rgb;
-    const match = rgb.match(/\\d+/g);
+    const match = rgb.match(/[\\d.]+/g);
     if (!match || match.length < 3) return null;
-    const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
-    return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+    return '#' + [0,1,2].map(i => Math.round(parseFloat(match[i])).toString(16).padStart(2, '0')).join('');
   }
-  
-  const root = document.getElementById('root') || document.body;
-  const cs = window.getComputedStyle(root);
-  
-  const bg = rgbToHex(cs.backgroundColor) || '#000000';
-  const fg = rgbToHex(cs.color) || '#ffffff';
-  
-  // Find first visible button for primary
-  const btns = document.querySelectorAll('button:not([data-vibe-overlay])');
-  let primary = null;
-  let primaryFg = null;
-  for (const btn of btns) {
-    const bcs = window.getComputedStyle(btn);
-    const c = rgbToHex(bcs.backgroundColor);
-    if (c && c !== bg && c !== '#000000') { primary = c; primaryFg = rgbToHex(bcs.color); break; }
-  }
-  
-  // Find links for accent
-  const links = document.querySelectorAll('a');
-  let accent = null;
-  for (const link of links) {
-    const lcs = window.getComputedStyle(link);
-    const c = rgbToHex(lcs.color);
-    if (c && c !== fg) { accent = c; break; }
-  }
-  
-  // Find card-like elements
-  const cards = document.querySelectorAll('[class*="card"], [class*="Card"], section > div, main > div');
-  let cardBg = null;
-  let cardFg = null;
-  for (const card of cards) {
-    const ccs = window.getComputedStyle(card);
-    const c = rgbToHex(ccs.backgroundColor);
-    if (c && c !== bg) { cardBg = c; cardFg = rgbToHex(ccs.color); break; }
-  }
-  
-  // Find muted text
-  const texts = document.querySelectorAll('p, span, small');
-  let mutedFg = null;
-  for (const t of texts) {
-    const tcs = window.getComputedStyle(t);
-    const c = rgbToHex(tcs.color);
-    if (c && c !== fg && c !== primary) { mutedFg = c; break; }
-  }
-  
-  // Border
-  const bordered = document.querySelector('[class*="border"]');
-  let borderColor = null;
-  if (bordered) {
-    const bcs = window.getComputedStyle(bordered);
-    borderColor = rgbToHex(bcs.borderTopColor);
-  }
-  
-  const p = primary || '#3b82f6';
-  const a = accent || p;
-  const cb = cardBg || bg;
-  const cf = cardFg || fg;
-  const bc = borderColor || '#27272a';
-  
-  window.parent.postMessage({
-    type: 'VIBECODER_COLORS_EXTRACTED',
-    colors: {
-      primary: p,
-      'primary-foreground': primaryFg || '#ffffff',
-      secondary: cb,
-      'secondary-foreground': cf,
-      accent: a,
-      'accent-foreground': '#ffffff',
-      background: bg,
-      foreground: fg,
-      card: cb,
-      'card-foreground': cf,
-      popover: cb,
-      'popover-foreground': cf,
-      muted: cb,
-      'muted-foreground': mutedFg || '#a1a1aa',
-      destructive: '#ef4444',
-      'destructive-foreground': '#ffffff',
-      border: bc,
-      input: bc,
-      ring: p,
-      'chart-1': p,
-      'chart-2': a,
-      'chart-3': '#06b6d4',
-      'chart-4': '#10b981',
-      'chart-5': '#f59e0b',
+
+  function getCSSVar(name) {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue('--' + name).trim();
+    if (!raw) return null;
+    // Try parsing as HSL values "h s% l%" or "h s l"
+    const parts = raw.split(/[\\s,/]+/).map(s => parseFloat(s.replace('%', '')));
+    if (parts.length >= 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      return hslToHex(parts[0], parts[1], parts[2]);
     }
-  }, '*');
+    // Maybe it's already a color value
+    if (raw.startsWith('#')) return raw;
+    if (raw.startsWith('rgb')) return rgbToHex(raw);
+    return null;
+  }
+
+  const tokenNames = [
+    'primary', 'primary-foreground',
+    'secondary', 'secondary-foreground',
+    'accent', 'accent-foreground',
+    'background', 'foreground',
+    'card', 'card-foreground',
+    'popover', 'popover-foreground',
+    'muted', 'muted-foreground',
+    'destructive', 'destructive-foreground',
+    'border', 'input', 'ring',
+    'chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5',
+  ];
+
+  const colors = {};
+  let foundAny = false;
+  for (const name of tokenNames) {
+    const hex = getCSSVar(name);
+    if (hex) { colors[name] = hex; foundAny = true; }
+  }
+
+  // Fallback: if no CSS vars found, sample from computed styles
+  if (!foundAny) {
+    const root = document.getElementById('root') || document.body;
+    const cs = window.getComputedStyle(root);
+    const bg = rgbToHex(cs.backgroundColor) || '#000000';
+    const fg = rgbToHex(cs.color) || '#ffffff';
+    colors['background'] = bg;
+    colors['foreground'] = fg;
+    // Sample buttons for primary
+    const btn = document.querySelector('button:not([data-vibe-overlay])');
+    if (btn) {
+      const bc = rgbToHex(window.getComputedStyle(btn).backgroundColor);
+      if (bc && bc !== bg) { colors['primary'] = bc; colors['primary-foreground'] = rgbToHex(window.getComputedStyle(btn).color) || '#ffffff'; }
+    }
+  }
+
+  // Fill defaults for any missing tokens
+  const defaults = {
+    primary: '#8b5cf6', 'primary-foreground': '#ffffff',
+    secondary: '#27272a', 'secondary-foreground': '#fafafa',
+    accent: '#a78bfa', 'accent-foreground': '#ffffff',
+    background: '#09090b', foreground: '#fafafa',
+    card: '#18181b', 'card-foreground': '#fafafa',
+    popover: '#18181b', 'popover-foreground': '#fafafa',
+    muted: '#27272a', 'muted-foreground': '#a1a1aa',
+    destructive: '#ef4444', 'destructive-foreground': '#ffffff',
+    border: '#27272a', input: '#27272a', ring: '#8b5cf6',
+    'chart-1': '#8b5cf6', 'chart-2': '#3b82f6', 'chart-3': '#06b6d4', 'chart-4': '#10b981', 'chart-5': '#f59e0b',
+  };
+  for (const k of tokenNames) {
+    if (!colors[k]) colors[k] = defaults[k];
+  }
+
+  window.parent.postMessage({ type: 'VIBECODER_COLORS_EXTRACTED', colors }, '*');
+});
+
+// LIVE THEME PREVIEW: Apply CSS variables to :root when theme editor changes colors
+window.addEventListener('message', (event) => {
+  const msg = event.data;
+  if (!msg || msg.type !== 'VIBECODER_APPLY_THEME') return;
+  const colors = msg.colors;
+  if (!colors) return;
+
+  function hexToHSL(hex) {
+    const r = parseInt(hex.slice(1,3), 16) / 255;
+    const g = parseInt(hex.slice(3,5), 16) / 255;
+    const b = parseInt(hex.slice(5,7), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) * 60; break;
+        case g: h = ((b - r) / d + 2) * 60; break;
+        case b: h = ((r - g) / d + 4) * 60; break;
+      }
+    }
+    return Math.round(h) + ' ' + Math.round(s * 100) + '% ' + Math.round(l * 100) + '%';
+  }
+
+  const root = document.documentElement;
+  for (const [key, hex] of Object.entries(colors)) {
+    if (typeof hex === 'string' && hex.startsWith('#') && hex.length === 7) {
+      root.style.setProperty('--' + key, hexToHSL(hex));
+    }
+  }
 });
 
 const root = createRoot(document.getElementById("root")!);
