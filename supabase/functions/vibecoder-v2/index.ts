@@ -962,12 +962,13 @@ STRICT MARKETPLACE PROTOCOL (Non-Negotiable)
 
 3. **PRODUCT LINKING PROTOCOL (CRITICAL):**
    - All product clicks MUST use postMessage for navigation (iframe sandbox blocks direct navigation)
-   - DEFAULT (new tab): window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url: \`/product/\${product.slug || product.id}\` }, '*')
-   - SAME TAB (if user requests): window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url: \`/product/\${product.slug || product.id}\`, target: '_self' }, '*')
+   - DEFAULT (same tab redirect): window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url: \`/product/\${product.slug || product.id}\`, target: '_self' }, '*')
+   - NEW TAB (only if user explicitly requests): window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url: \`/product/\${product.slug || product.id}\` }, '*')
    - NEVER use window.open(), window.location.href, or window.top.location.href (these are ALL BLOCKED by iframe sandbox security)
    - NEVER use react-router or internal routing for product pages
    - For <a> tags, use onClick with postMessage instead of href navigation
-   - If the user says "don't open a new tab", "redirect instead", "same page", or similar — switch to target: '_self'
+   
+   **BEHAVIOR CHANGE RULE:** If the user asks to change how product clicks work (e.g. "don't open new tab", "redirect instead", "same page"), DO NOT EXPLAIN — just DO IT. Change the postMessage target accordingly and output the modified code. NEVER respond with explanations like "storefronts are single-page experiences" — that is WRONG. Product links navigate to the marketplace product page, they are NOT internal storefront navigation.
 
 4. **PRODUCT PAGE PREFERENCE (ASK THE USER):**
    When the user's prompt involves products being displayed or clicked, and they haven't stated a preference yet, ASK them:
@@ -980,11 +981,11 @@ STRICT MARKETPLACE PROTOCOL (Non-Negotiable)
    
    Which would you prefer?"
    
-   - If they choose Option A (or don't respond): Use window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url: \`/product/\${product.slug || product.id}\` }, '*')
+   - If they choose Option A (or don't respond): Use window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url: \`/product/\${product.slug || product.id}\`, target: '_self' }, '*')
    - If they choose Option B: Generate a custom product detail page/section within the storefront that uses useSellsPayCheckout() for purchases
    - ALWAYS make products clickable regardless of the option chosen
    - NEVER leave products as non-interactive static elements
-   - If user says "don't open new tab" or "redirect in same tab", add target: '_self' to the postMessage
+   - Default is SAME TAB redirect. Only use new tab if user explicitly asks for it.
 
 ═══════════════════════════════════════════════════════════════
 FRAMER MOTION & ANIMATION PROTOCOL
