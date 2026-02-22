@@ -548,16 +548,20 @@ const sanitizeNavigation = (code: string): string => {
   // Rewrite all navigation patterns to use postMessage bridge (sandbox-safe)
   let result = code.replace(
     /window\.top\.location\.href\s*=\s*([^;\n]+)/g,
-    'window.parent?.postMessage({ type: "VIBECODER_NAVIGATE", url: $1 }, "*")'
+    'window.parent?.postMessage({ type: "VIBECODER_NAVIGATE", url: $1, target: "_self" }, "*")'
   );
   result = result.replace(
     /window\.location\.href\s*=\s*([^;\n]+)/g,
-    'window.parent?.postMessage({ type: "VIBECODER_NAVIGATE", url: $1 }, "*")'
+    'window.parent?.postMessage({ type: "VIBECODER_NAVIGATE", url: $1, target: "_self" }, "*")'
   );
-  // Rewrite window.open() calls to postMessage
+  // Rewrite window.open() calls to postMessage — preserve target if specified
   result = result.replace(
-    /window\.open\(\s*([^,)]+?)(?:\s*,\s*['"][^'"]*['"])?\s*\)/g,
-    'window.parent?.postMessage({ type: "VIBECODER_NAVIGATE", url: $1 }, "*")'
+    /window\.open\(\s*([^,)]+?)\s*,\s*['"](_(?:self|blank))['"]\s*\)/g,
+    'window.parent?.postMessage({ type: "VIBECODER_NAVIGATE", url: $1, target: "$2" }, "*")'
+  );
+  result = result.replace(
+    /window\.open\(\s*([^,)]+?)\s*(?:,\s*['"][^'"]*['"])?\s*\)/g,
+    'window.parent?.postMessage({ type: "VIBECODER_NAVIGATE", url: $1, target: "_blank" }, "*")'
   );
   result = result.replace(/target\s*=\s*["']_top["']/g, 'target="_blank"');
   return result;
