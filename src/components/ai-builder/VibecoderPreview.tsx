@@ -986,6 +986,17 @@ window.addEventListener('message', (event) => {
       css += 'a:not([data-vibe-overlay]) { color: ' + colors.accent + ' !important; }\\n';
     }
 
+    // Secondary — secondary buttons, badges, tags, pill elements
+    if (colors.secondary) {
+      css += 'button[class*="secondary"], [class*="badge"], [class*="tag"], [class*="pill"], [class*="chip"] { background-color: ' + colors.secondary + ' !important; color: ' + (colors['secondary-foreground'] || colors.foreground || '#fff') + ' !important; }\\n';
+      css += 'section:not(:first-child), [class*="section"][class*="bg-"] { background-color: ' + colors.secondary + ' !important; }\\n';
+    }
+
+    // Card backgrounds
+    if (colors.card) {
+      css += '[class*="card" i] { background-color: ' + colors.card + ' !important; color: ' + (colors['card-foreground'] || colors.foreground) + ' !important; }\\n';
+    }
+
     themeStyleEl.textContent = css;
     document.head.appendChild(themeStyleEl);
   });
