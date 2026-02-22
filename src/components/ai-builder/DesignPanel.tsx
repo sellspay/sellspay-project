@@ -65,18 +65,24 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
     }
   }, []);
 
-  // When editing "Current Theme", extract colors from the preview first
+  // When editing a theme, use the CURRENTLY APPLIED colors (from activeStyle)
+  // instead of the preset defaults, so user edits are preserved
   const handleEditStyle = useCallback((style: StylePreset) => {
     if (style.id === 'none') {
+      // "Current Theme" — extract live colors from the iframe
       requestColorExtraction();
-      const colorsToUse = extractedColors ?? style.colors;
+      const colorsToUse = extractedColors ?? currentStyle.colors;
       setOriginalColorsSnapshot({ ...colorsToUse });
       setEditingStyle({ ...style, colors: colorsToUse });
     } else {
-      setOriginalColorsSnapshot({ ...style.colors });
-      setEditingStyle(style);
+      // For named presets: if this preset is the active one, use its APPLIED colors
+      // (which may have been customized), not the original preset defaults
+      const isCurrentlyActive = currentStyle.id === style.id;
+      const colorsToUse = isCurrentlyActive ? currentStyle.colors : style.colors;
+      setOriginalColorsSnapshot({ ...colorsToUse });
+      setEditingStyle({ ...style, colors: colorsToUse });
     }
-  }, [requestColorExtraction, extractedColors]);
+  }, [requestColorExtraction, extractedColors, currentStyle]);
 
   // Update editingStyle when extraction completes (if we're editing Current Theme)
   useEffect(() => {
@@ -150,8 +156,12 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
           <ThemeEditorDialog
             open={!!editingStyle}
             onClose={() => {
-              // Dispatch revert event — ThemeBridge handles it
-              window.dispatchEvent(new CustomEvent('vibecoder-theme-revert'));
+              // Revert to original snapshot (what was applied BEFORE opening editor)
+              if (originalColorsSnapshot) {
+                window.dispatchEvent(new CustomEvent('vibecoder-theme-apply', { detail: originalColorsSnapshot }));
+              } else {
+                window.dispatchEvent(new CustomEvent('vibecoder-theme-revert'));
+              }
               setEditingStyle(null);
               setOriginalColorsSnapshot(null);
             }}
