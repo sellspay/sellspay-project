@@ -257,7 +257,7 @@ export function VibecoderChat({
   const isEmpty = messages.length === 0 && !isStreaming && !messagesLoading;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[#1a1a1a]">
+    <div className="flex flex-col h-full overflow-hidden bg-[#1a1a1a] vibe-chat-container">
       {/* Header - Clean project name only */}
       <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-border/30">
         <div className="flex items-center gap-3">
