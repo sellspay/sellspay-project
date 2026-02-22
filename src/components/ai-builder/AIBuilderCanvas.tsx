@@ -1647,95 +1647,66 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
   // === EXISTING USER: Show the full editor interface ===
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-[#0a0a0a]">
-      {/* ═══ AMBIENT CANVAS BACKGROUND ═══ */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,#111111_0%,#0a0a0a_70%)]" />
-        <div className="absolute inset-0 opacity-[0.03] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')]" />
-        {/* Floating ambient blobs */}
-        <div className="absolute w-[500px] h-[500px] bg-blue-500/[0.04] blur-[120px] rounded-full top-[-150px] left-[-100px] pointer-events-none" />
-        <div className="absolute w-[400px] h-[400px] bg-purple-500/[0.03] blur-[100px] rounded-full bottom-[-100px] right-[-50px] pointer-events-none" />
-      </div>
-
-      {/* ═══ FLOATING PROJECT SIDEBAR (z-20) ═══ */}
-      <div className="absolute left-3 top-3 bottom-3 z-20">
-        <div className="h-full bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl shadow-2xl shadow-black/40 overflow-hidden">
-          <ProjectSidebar
-            projects={projects}
-            activeProjectId={activeProjectId}
-            loading={projectsLoading}
-            onSelectProject={selectProject}
-            onCreateProject={handleCreateProject}
-            onDeleteProject={handleDeleteProject}
-            onRenameProject={handleRenameProject}
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-          />
-        </div>
-      </div>
-
-      {/* ═══ FLOATING HEADER TOOLBAR (z-30) ═══ */}
-      <div
-        className="absolute top-3 z-30"
-        style={{
-          left: sidebarCollapsed ? 72 : 284,
-          right: chatCollapsed ? 12 : sidebarWidth + 20,
-          transition: 'left 0.3s ease, right 0.3s ease',
-        }}
-      >
-        <VibecoderHeader
-          projectName={activeProject?.name}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          deviceMode={deviceMode}
-          setDeviceMode={setDeviceMode}
-          onRefresh={handleRefresh}
-          onPublish={handlePublish}
-          isPublished={isPublished}
-          isPublishing={publishing}
-          hasUnpublishedChanges={hasUnpublishedChanges}
-          isEmpty={isEmpty}
-          username={username}
-          currentPath={previewPath}
-          onNavigate={setPreviewPath}
-          pages={detectedPages}
-          avatarUrl={userAvatarUrl}
-          userCredits={userCredits}
-          subscriptionTier={subscriptionTier}
-          onSignOut={handleSignOut}
+    <div className="flex h-screen w-screen overflow-hidden bg-[#0a0a0a]">
+      {/* ═══ PROJECT SIDEBAR ═══ */}
+      <div className="shrink-0 h-full">
+        <ProjectSidebar
+          projects={projects}
+          activeProjectId={activeProjectId}
+          loading={projectsLoading}
+          onSelectProject={selectProject}
+          onCreateProject={handleCreateProject}
+          onDeleteProject={handleDeleteProject}
+          onRenameProject={handleRenameProject}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
       </div>
 
-      {/* ═══ CANVAS LAYER: Preview/Studio (z-10) ═══ */}
-      <div
-        className="absolute z-10 overflow-hidden flex flex-col bg-[#0c0c0f] border border-white/[0.04] shadow-2xl shadow-black/40"
-        style={{
-          top: 64,
-          bottom: 12,
-          left: sidebarCollapsed ? 72 : 284,
-          right: chatCollapsed ? 12 : sidebarWidth + 20,
-          transition: 'left 0.3s ease, right 0.3s ease',
-          borderRadius: '16px',
-        }}
-      >
-        {/* 🛑 TRANSITION OVERLAY */}
-        {isProjectTransitioning && (
-          <div className="absolute inset-0 z-[100] bg-[#0a0a0a] flex items-center justify-center rounded-2xl">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-6 h-6 border-2 border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
-              <span className="text-sm text-zinc-500">Loading project…</span>
+      {/* ═══ CENTER: Header + Canvas ═══ */}
+      <div className="flex-1 flex flex-col min-w-0 h-full">
+        {/* Header Toolbar */}
+        <div className="shrink-0 px-2 pt-2">
+          <VibecoderHeader
+            projectName={activeProject?.name}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            deviceMode={deviceMode}
+            setDeviceMode={setDeviceMode}
+            onRefresh={handleRefresh}
+            onPublish={handlePublish}
+            isPublished={isPublished}
+            isPublishing={publishing}
+            hasUnpublishedChanges={hasUnpublishedChanges}
+            isEmpty={isEmpty}
+            username={username}
+            currentPath={previewPath}
+            onNavigate={setPreviewPath}
+            pages={detectedPages}
+            avatarUrl={userAvatarUrl}
+            userCredits={userCredits}
+            subscriptionTier={subscriptionTier}
+            onSignOut={handleSignOut}
+          />
+        </div>
+
+        {/* Canvas / Preview Area */}
+        <div className="flex-1 min-h-0 relative overflow-hidden m-2 rounded-2xl border border-white/[0.04] bg-[#0c0c0f]">
+          {/* Transition Overlay */}
+          {isProjectTransitioning && (
+            <div className="absolute inset-0 z-[100] bg-[#0a0a0a] flex items-center justify-center rounded-2xl">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-6 h-6 border-2 border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
+                <span className="text-sm text-zinc-500">Loading project…</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
             {viewMode === 'products' ? (
-              /* Products Panel: Show creator's products */
               <ProductsPanel profileId={profileId} />
             ) : viewMode === 'subscriptions' ? (
-              /* Subscriptions Panel: Show creator's subscription plans */
               <SubscriptionsPanel profileId={profileId} />
             ) : (viewMode === 'image' || viewMode === 'video') ? (
-              /* Creative Studio: Image/Video generation */
               <GenerationCanvas
                 mode={viewMode}
                 asset={currentAsset}
@@ -1746,12 +1717,10 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 activeModel={activeModel}
               />
             ) : (
-              /* Live Preview: Sandpack iframe - CRITICAL: bg-zinc-950 ensures no white flash */
-              <div className={`flex-1 min-h-0 relative bg-zinc-950 ${deviceMode === 'mobile' ? 'flex items-center justify-center' : ''}`}>
+              <div className={`flex-1 min-h-0 h-full relative bg-zinc-950 ${deviceMode === 'mobile' ? 'flex items-center justify-center' : ''}`}>
                 <div
                   className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-800 shadow-2xl bg-zinc-950' : 'w-full'} relative`}
                 >
-
                   <PreviewErrorBoundary
                     onAutoFix={handleAutoFix}
                     onReset={() => {
@@ -1766,16 +1735,12 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       isStreaming={isStreaming}
                       showLoadingOverlay={false}
                       onReady={() => {
-                        // 🤝 HANDSHAKE COMPLETE: Sandpack is ready, release the transition lock
                         setIsWaitingForPreviewMount(false);
                         setIsAwaitingPreviewReady(false);
-                        // If the bundle becomes healthy again, clear the toast.
                         setPreviewError(null);
                         setConsoleErrors([]);
                         setShowFixToast(false);
                         lastPreviewErrorRef.current = null;
-                        
-                        // 📸 THUMBNAIL CAPTURE: Debounced capture after preview stabilizes
                         if (!isStreaming && code !== DEFAULT_CODE) {
                           if (captureTimerRef.current) clearTimeout(captureTimerRef.current);
                           captureTimerRef.current = setTimeout(() => {
@@ -1790,16 +1755,12 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                     />
                   </PreviewErrorBoundary>
 
-                  {/* Cinematic generation overlay — shown throughout full generation lifecycle.
-                      Stays visible from stream start until real code replaces DEFAULT_CODE
-                      AND the preview is actually mounted, preventing black screen flicker. */}
                   <GenerationOverlay
                     visible={isStreaming && isEmpty}
                     phase={streamPhase || 'analyzing'}
                     analysisText={analysisText}
                   />
 
-                  {/* Only show error toast when NOT streaming - errors during streaming are expected */}
                   {showFixToast && (previewError || consoleErrors.length > 0) && !isStreaming && (
                     <FixErrorToast
                       error={previewError || consoleErrors[0] || 'Runtime error detected'}
@@ -1823,16 +1784,99 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               </div>
             )}
 
-            {/* Overlay while dragging */}
             {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
+        </div>
       </div>
 
-      {/* ═══ FLOATING CHAT PANEL (z-20) ═══ */}
+      {/* ═══ CHAT SIDEBAR ═══ */}
+      <div
+        className="shrink-0 h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out border-l border-white/[0.04]"
+        style={{
+          width: chatCollapsed ? 0 : sidebarWidth,
+        }}
+      >
+        {/* Drag handle for resizing */}
+        {!chatCollapsed && (
+          <div
+            onMouseDown={startResizing}
+            className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-50 transition-all ${
+              isDragging
+                ? 'bg-primary/60 shadow-[0_0_12px_hsl(var(--primary)/0.3)]'
+                : 'bg-transparent hover:bg-white/[0.08]'
+            }`}
+          />
+        )}
+
+        <div className="flex-1 min-h-0 overflow-hidden relative" style={{ isolation: 'isolate' }}>
+          <VibecoderChat
+            key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
+            onSendMessage={handleSendMessage}
+            onGenerateAsset={handleGenerateAsset}
+            isStreaming={isStreaming || isAgentRunning}
+            onCancel={async () => {
+              cancelStream();
+              cancelAgent();
+              cancelJob();
+              forceResetStreaming();
+              generationLockRef.current = null;
+              activeJobIdRef.current = null;
+              setLiveSteps([]);
+              if (activeProjectId) {
+                await addMessage('assistant', '🛑 Request cancelled. Your previous work is preserved — you can continue from where you left off.', undefined, activeProjectId);
+              }
+            }}
+            messages={messages}
+            messagesLoading={messagesLoading}
+            onRateMessage={rateMessage}
+            onRestoreToVersion={handleRestoreCode}
+            projectName={activeProject?.name ?? 'New Project'}
+            liveSteps={liveSteps}
+            agentStep={agentStep}
+            agentLogs={agentLogs}
+            isAgentMode={isAgentRunning}
+            activeModel={activeModel}
+            onOpenBilling={() => window.open('/pricing', '_blank')}
+            onModelChange={handleModelChange}
+            pendingPlan={pendingPlan}
+            onApprovePlan={handleApprovePlan}
+            onRejectPlan={handleRejectPlan}
+            canUndo={canUndo()}
+            streamPhaseData={{
+              phase: streamPhase,
+              analysisText,
+              planItems,
+              completedPlanItems,
+              summaryText,
+              confidenceScore: confidenceScore ?? undefined,
+              confidenceReason,
+            }}
+            backendSuggestions={backendSuggestions}
+            pendingQuestions={pendingQuestions}
+            enhancedPromptSeed={enhancedPromptSeed}
+            onSubmitClarification={(answers, seed) => {
+              clearQuestions();
+              const answerSummary = Object.entries(answers)
+                .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+                .join('; ');
+              const enrichedPrompt = seed 
+                ? `${seed}\n\nUser preferences: ${answerSummary}`
+                : `Based on these preferences: ${answerSummary}`;
+              handleSendMessage(enrichedPrompt);
+            }}
+            onSkipClarification={() => {
+              clearQuestions();
+            }}
+            isCollapsed={chatCollapsed}
+            onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
+          />
+        </div>
+      </div>
+
       {/* Chat expand toggle when collapsed */}
       {chatCollapsed && (
         <button
           onClick={() => setChatCollapsed(false)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 z-[25] w-8 h-12 flex items-center justify-center bg-white/[0.05] backdrop-blur-xl hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all shadow-lg shadow-black/30"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-[25] w-8 h-12 flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] rounded-l-xl transition-all"
           title="Open chat"
         >
           <svg
@@ -1843,92 +1887,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           </svg>
         </button>
       )}
-
-      <div
-        className="absolute right-3 top-3 bottom-3 z-20 flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
-        style={{
-          width: chatCollapsed ? 0 : sidebarWidth + 4,
-          opacity: chatCollapsed ? 0 : 1,
-        }}
-      >
-        <div className="h-full bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl shadow-2xl shadow-black/40 overflow-hidden relative flex flex-col">
-          {/* Drag handle for resizing */}
-          {!chatCollapsed && (
-            <div
-              onMouseDown={startResizing}
-              className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-50 transition-all rounded-l-2xl ${
-                isDragging
-                  ? 'bg-primary/60 shadow-[0_0_12px_hsl(var(--primary)/0.3)]'
-                  : 'bg-transparent hover:bg-white/[0.08]'
-              }`}
-            />
-          )}
-
-          <div className="flex-1 min-h-0 overflow-hidden" style={{ isolation: 'isolate' }}>
-            <VibecoderChat
-              key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
-              onSendMessage={handleSendMessage}
-              onGenerateAsset={handleGenerateAsset}
-              isStreaming={isStreaming || isAgentRunning}
-              onCancel={async () => {
-                cancelStream();
-                cancelAgent();
-                cancelJob();
-                forceResetStreaming();
-                generationLockRef.current = null;
-                activeJobIdRef.current = null;
-                setLiveSteps([]);
-                if (activeProjectId) {
-                  await addMessage('assistant', '🛑 Request cancelled. Your previous work is preserved — you can continue from where you left off.', undefined, activeProjectId);
-                }
-              }}
-              messages={messages}
-              messagesLoading={messagesLoading}
-              onRateMessage={rateMessage}
-              onRestoreToVersion={handleRestoreCode}
-              projectName={activeProject?.name ?? 'New Project'}
-              liveSteps={liveSteps}
-              agentStep={agentStep}
-              agentLogs={agentLogs}
-              isAgentMode={isAgentRunning}
-              activeModel={activeModel}
-              onOpenBilling={() => window.open('/pricing', '_blank')}
-              onModelChange={handleModelChange}
-              pendingPlan={pendingPlan}
-              onApprovePlan={handleApprovePlan}
-              onRejectPlan={handleRejectPlan}
-              canUndo={canUndo()}
-              streamPhaseData={{
-                phase: streamPhase,
-                analysisText,
-                planItems,
-                completedPlanItems,
-                summaryText,
-                confidenceScore: confidenceScore ?? undefined,
-                confidenceReason,
-              }}
-              backendSuggestions={backendSuggestions}
-              pendingQuestions={pendingQuestions}
-              enhancedPromptSeed={enhancedPromptSeed}
-              onSubmitClarification={(answers, seed) => {
-                clearQuestions();
-                const answerSummary = Object.entries(answers)
-                  .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
-                  .join('; ');
-                const enrichedPrompt = seed 
-                  ? `${seed}\n\nUser preferences: ${answerSummary}`
-                  : `Based on these preferences: ${answerSummary}`;
-                handleSendMessage(enrichedPrompt);
-              }}
-              onSkipClarification={() => {
-                clearQuestions();
-              }}
-              isCollapsed={chatCollapsed}
-              onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
-            />
-          </div>
-        </div>
-      </div>
 
       {/* Placement Prompt Modal (z-40) */}
       <PlacementPromptModal
