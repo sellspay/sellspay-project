@@ -164,6 +164,7 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
             onLivePreview={(colors) => {
               // Only push colors to iframe — do NOT call onStyleChange to avoid infinite loop
               const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+              console.log('[THEME-DEBUG] Sending VIBECODER_APPLY_THEME, iframe found:', !!iframe, 'contentWindow:', !!iframe?.contentWindow);
               if (iframe?.contentWindow) {
                 iframe.contentWindow.postMessage({ type: 'VIBECODER_APPLY_THEME', colors }, '*');
               }
