@@ -423,3 +423,12 @@ body[style*="margin-right"] {
     animation: none;
   }
 }
+
+/* Round the Sandpack preview iframe to match the workspace container */
+.sp-preview-container,
+.sp-preview-iframe,
+.sp-preview,
+.sp-stack {
+  border-radius: 0 0 16px 16px !important;
+  overflow: hidden !important;
+}
