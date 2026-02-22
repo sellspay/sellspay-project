@@ -286,11 +286,30 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     forceResetStreaming,
     DEFAULT_CODE 
   } = useStreamingCode({
-    onPhaseChange: (phase) => phaseCallbacksRef.current.onPhaseChange?.(phase),
-    onAnalysis: (text) => phaseCallbacksRef.current.onAnalysis?.(text),
-    onPlanItems: (items) => phaseCallbacksRef.current.onPlanItems?.(items),
-    onStreamSummary: (text) => phaseCallbacksRef.current.onStreamSummary?.(text),
-    onConfidence: (score, reason) => phaseCallbacksRef.current.onConfidence?.(score, reason),
+    onPhaseChange: (phase) => {
+      // Reset phase data at the start of a new generation
+      if (phase === 'analyzing') {
+        latestPhaseDataRef.current = {};
+      }
+      phaseCallbacksRef.current.onPhaseChange?.(phase);
+    },
+    onAnalysis: (text) => {
+      phaseCallbacksRef.current.onAnalysis?.(text);
+      latestPhaseDataRef.current.analysisText = text;
+    },
+    onPlanItems: (items) => {
+      phaseCallbacksRef.current.onPlanItems?.(items);
+      latestPhaseDataRef.current.planItems = items;
+    },
+    onStreamSummary: (text) => {
+      phaseCallbacksRef.current.onStreamSummary?.(text);
+      latestPhaseDataRef.current.summaryText = text;
+    },
+    onConfidence: (score, reason) => {
+      phaseCallbacksRef.current.onConfidence?.(score, reason);
+      latestPhaseDataRef.current.confidenceScore = score;
+      latestPhaseDataRef.current.confidenceReason = reason;
+    },
     onSuggestions: (suggestions) => phaseCallbacksRef.current.onSuggestions?.(suggestions),
     onQuestions: (questions, seed) => phaseCallbacksRef.current.onQuestions?.(questions, seed),
     // 🛑 RACE CONDITION GUARD: Check if generation should be discarded
@@ -573,14 +592,9 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Wire phase callbacks ref now that useAgentLoop is initialized
   phaseCallbacksRef.current = { onPhaseChange, onAnalysis, onPlanItems, onStreamSummary, onConfidence, onSuggestions, onQuestions };
 
-  // Keep phase data ref in sync for persistence in messages
-  latestPhaseDataRef.current = {
-    analysisText,
-    planItems,
-    summaryText,
-    confidenceScore: confidenceScore ?? undefined,
-    confidenceReason,
-  };
+  // NOTE: latestPhaseDataRef is updated imperatively inside phase callbacks above
+  // (onAnalysis, onPlanItems, onStreamSummary, onConfidence)
+  // so it retains data even after useAgentLoop resets its state.
 
   // 📸 THUMBNAIL CAPTURE: Upload hero screenshot after successful generation
   const { requestCapture } = useThumbnailCapture({
