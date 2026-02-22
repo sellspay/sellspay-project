@@ -443,15 +443,10 @@ function VisualEditInjector({ active }: { active: boolean }) {
   return null;
 }
 
-// Theme Bridge: listens for custom DOM events from DesignPanel and updates
-// the Sandpack /styles/theme-base.css file directly via useSandpack API.
-// This bypasses postMessage which doesn't reach cross-origin Sandpack iframes.
+// Theme Bridge: listens for custom DOM events from DesignPanel and injects
+// theme CSS directly into the Sandpack iframe via postMessage.
+// This is more reliable than sandpack.updateFile which requires recompilation.
 function ThemeBridge() {
-  const { sandpack } = useSandpack();
-  const sandpackRef = useRef(sandpack);
-  sandpackRef.current = sandpack;
-  const originalCSSRef = useRef<string | null>(null);
-  
   useEffect(() => {
     function hexToHSL(hex: string): string {
       const r = parseInt(hex.slice(1,3),16)/255;
@@ -488,7 +483,38 @@ function ThemeBridge() {
         return null;
       }).filter(Boolean);
       
-      return `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}\n\nhtml, body, #root {\n  background-color: hsl(var(--background));\n  color: hsl(var(--foreground));\n}`;
+      // Build CSS that overrides BOTH custom properties AND forces common elements
+      const bg = colors['background'];
+      const fg = colors['foreground'];
+      const bgHSL = bg?.startsWith('#') ? hexToHSL(bg) : null;
+      const fgHSL = fg?.startsWith('#') ? hexToHSL(fg) : null;
+
+      let css = `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}\n`;
+      css += `\nhtml, body, #root {\n  background-color: hsl(var(--background)) !important;\n  color: hsl(var(--foreground)) !important;\n}\n`;
+      
+      // Force override hardcoded dark backgrounds (common in AI-generated storefronts)
+      if (bgHSL) {
+        css += `\n/* Override hardcoded dark backgrounds */\n`;
+        css += `.bg-black, .bg-zinc-950, .bg-zinc-900, .bg-gray-950, .bg-gray-900,\n`;
+        css += `.bg-neutral-950, .bg-neutral-900, .bg-slate-950, .bg-slate-900 {\n`;
+        css += `  background-color: hsl(${bgHSL}) !important;\n}\n`;
+      }
+      if (fgHSL) {
+        css += `\n/* Override hardcoded text colors */\n`;
+        css += `.text-white, .text-zinc-100, .text-zinc-50, .text-gray-100, .text-gray-50 {\n`;
+        css += `  color: hsl(${fgHSL}) !important;\n}\n`;
+      }
+
+      return css;
+    }
+
+    function sendToIframe(type: string, data?: any) {
+      const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.postMessage({ type, ...data }, '*');
+      } else {
+        console.warn('[ThemeBridge] No iframe found');
+      }
     }
 
     console.log('[ThemeBridge] useEffect mounted, attaching event listeners');
@@ -497,24 +523,14 @@ function ThemeBridge() {
       const colors = (e as CustomEvent).detail;
       console.log('[ThemeBridge] Received vibecoder-theme-apply event', Object.keys(colors || {}));
       if (!colors) return;
-      const sp = sandpackRef.current;
-      // Save original CSS on first apply for revert
-      if (!originalCSSRef.current) {
-        const themeFile = sp.files['/styles/theme-base.css'];
-        if (themeFile) {
-          originalCSSRef.current = themeFile.code;
-        }
-      }
       const css = buildThemeCSS(colors);
-      console.log('[ThemeBridge] Calling sandpack.updateFile with CSS length:', css.length);
-      sp.updateFile('/styles/theme-base.css', css);
+      console.log('[ThemeBridge] Sending VIBECODER_INJECT_THEME to iframe, CSS length:', css.length);
+      sendToIframe('VIBECODER_INJECT_THEME', { css });
     };
 
     const handleRevert = () => {
-      if (originalCSSRef.current) {
-        sandpackRef.current.updateFile('/styles/theme-base.css', originalCSSRef.current);
-        originalCSSRef.current = null;
-      }
+      console.log('[ThemeBridge] Reverting theme');
+      sendToIframe('VIBECODER_REVERT_THEME');
     };
 
     window.addEventListener('vibecoder-theme-apply', handleApply);
@@ -732,7 +748,33 @@ window.addEventListener('message', (event) => {
   }
 });
 
-// VISUAL EDIT PICKER: Element selection overlay for design mode
+// THEME INJECTION BRIDGE: Listen for theme CSS from parent and inject/update a <style> tag
+window.addEventListener('message', (event) => {
+  const msg = event.data;
+  if (!msg) return;
+  
+  if (msg.type === 'VIBECODER_INJECT_THEME') {
+    console.log('[Iframe] Received VIBECODER_INJECT_THEME, CSS length:', (msg.css || '').length);
+    let styleEl = document.getElementById('vibecoder-theme-override');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'vibecoder-theme-override';
+      styleEl.setAttribute('data-vibe-overlay', 'true');
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = msg.css;
+    return;
+  }
+  
+  if (msg.type === 'VIBECODER_REVERT_THEME') {
+    console.log('[Iframe] Received VIBECODER_REVERT_THEME');
+    const styleEl = document.getElementById('vibecoder-theme-override');
+    if (styleEl) styleEl.remove();
+    return;
+  }
+});
+
+
 (function() {
   let pickerActive = false;
   let hoverOverlay: HTMLDivElement | null = null;
