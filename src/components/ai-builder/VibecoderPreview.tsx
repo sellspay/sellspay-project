@@ -956,8 +956,8 @@ window.addEventListener('message', (event) => {
     }
 
     if (msg.type !== 'VIBECODER_APPLY_THEME') return;
-    const colors = msg.colors;
-    if (!colors) return;
+    const c = msg.colors;
+    if (!c) return;
 
     // Remove previous theme style
     if (themeStyleEl) themeStyleEl.remove();
@@ -965,40 +965,82 @@ window.addEventListener('message', (event) => {
     themeStyleEl.id = 'vibe-theme-override';
     themeStyleEl.setAttribute('data-vibe-overlay', 'true');
 
+    // Helper: only add rule if color exists
+    function r(selector, props) {
+      if (!props) return '';
+      return selector + ' { ' + props + ' }\\n';
+    }
+
     let css = '';
 
-    // Background & text — only on root containers
-    if (colors.background) {
-      css += 'html, body, #root { background-color: ' + colors.background + ' !important; }\\n';
-      css += 'nav, header, footer { background-color: ' + colors.background + ' !important; }\\n';
-    }
-    if (colors.foreground) {
-      css += 'body, #root, p, span, h1, h2, h3, h4, h5, h6, li, td, th, label, div { color: ' + colors.foreground + ' !important; }\\n';
+    // ── Background ──
+    css += r('html, body, #root', c.background ? 'background-color: ' + c.background + ' !important' : '');
+
+    // ── Foreground (text) ── apply broadly to all text elements
+    css += r('body, #root, p, span, div, h1, h2, h3, h4, h5, h6, li, td, th, label, blockquote, figcaption, dt, dd, pre, code', c.foreground ? 'color: ' + c.foreground + ' !important' : '');
+
+    // ── Primary ── buttons (excluding variant buttons)
+    if (c.primary) {
+      css += r('button:not([data-vibe-overlay]):not([class*="ghost"]):not([class*="outline"]):not([class*="link"]):not([class*="secondary"]):not([class*="destructive"]), [role="button"]:not([class*="ghost"]):not([class*="outline"]):not([class*="secondary"])', 'background-color: ' + c.primary + ' !important; color: ' + (c['primary-foreground'] || '#fff') + ' !important; border-color: ' + c.primary + ' !important');
     }
 
-    // Primary — only actual buttons, not every element
-    if (colors.primary) {
-      css += 'button:not([data-vibe-overlay]):not([class*="ghost"]):not([class*="outline"]):not([class*="link"]):not([class*="secondary"]):not([class*="destructive"]) { background-color: ' + colors.primary + ' !important; color: ' + (colors['primary-foreground'] || '#fff') + ' !important; }\\n';
+    // ── Secondary ── secondary buttons, badges, section backgrounds
+    if (c.secondary) {
+      css += r('button[class*="secondary"], [class*="badge"], [class*="tag"], [class*="pill"], [class*="chip"]', 'background-color: ' + c.secondary + ' !important; color: ' + (c['secondary-foreground'] || c.foreground || '#fff') + ' !important');
     }
 
-    // Accent — links only
-    if (colors.accent) {
-      css += 'a:not([data-vibe-overlay]) { color: ' + colors.accent + ' !important; }\\n';
+    // ── Accent ── links, accent-colored text
+    if (c.accent) {
+      css += r('a:not([data-vibe-overlay]), [class*="accent"], [class*="highlight"]', 'color: ' + c.accent + ' !important');
     }
 
-    // Secondary — secondary buttons, badges, tags, pill elements
-    if (colors.secondary) {
-      css += 'button[class*="secondary"], [class*="badge"], [class*="tag"], [class*="pill"], [class*="chip"] { background-color: ' + colors.secondary + ' !important; color: ' + (colors['secondary-foreground'] || colors.foreground || '#fff') + ' !important; }\\n';
-      css += 'section:not(:first-child), [class*="section"][class*="bg-"] { background-color: ' + colors.secondary + ' !important; }\\n';
+    // ── Card ── card containers
+    if (c.card) {
+      css += r('[class*="card" i], [class*="Card"]', 'background-color: ' + c.card + ' !important; color: ' + (c['card-foreground'] || c.foreground) + ' !important');
     }
 
-    // Card backgrounds
-    if (colors.card) {
-      css += '[class*="card" i] { background-color: ' + colors.card + ' !important; color: ' + (colors['card-foreground'] || colors.foreground) + ' !important; }\\n';
+    // ── Popover ── dropdowns, tooltips, menus
+    if (c.popover) {
+      css += r('[class*="popover" i], [class*="dropdown" i], [class*="menu" i]:not(nav), [class*="tooltip" i], [role="menu"], [role="listbox"], [role="dialog"]', 'background-color: ' + c.popover + ' !important; color: ' + (c['popover-foreground'] || c.foreground) + ' !important');
+    }
+
+    // ── Muted ── subdued backgrounds and muted text
+    if (c.muted) {
+      css += r('[class*="muted"], [class*="subtle"], [class*="secondary-bg"]', 'background-color: ' + c.muted + ' !important');
+    }
+    if (c['muted-foreground']) {
+      css += r('[class*="text-gray"], [class*="text-zinc"], [class*="text-neutral"], [class*="text-slate"], [class*="text-muted"], [class*="text-sm"], small, [class*="description"], [class*="subtitle"], [class*="caption"]', 'color: ' + c['muted-foreground'] + ' !important');
+    }
+
+    // ── Destructive ── error/delete buttons
+    if (c.destructive) {
+      css += r('button[class*="destructive"], button[class*="danger"], button[class*="delete"], [class*="error"], [class*="destructive"]', 'background-color: ' + c.destructive + ' !important; color: ' + (c['destructive-foreground'] || '#fff') + ' !important');
+    }
+
+    // ── Border ── only elements that already have visible borders
+    if (c.border) {
+      css += r('[class*="border-"]:not([data-vibe-overlay]), hr', 'border-color: ' + c.border + ' !important');
+    }
+
+    // ── Input ── form inputs
+    if (c.input) {
+      css += r('input:not([type="color"]):not([data-vibe-overlay]), textarea, select', 'border-color: ' + c.input + ' !important; background-color: ' + (c.card || c.background || 'transparent') + ' !important; color: ' + (c.foreground || 'inherit') + ' !important');
+    }
+
+    // ── Ring ── focus rings
+    if (c.ring) {
+      css += r('*:focus, *:focus-visible', 'outline-color: ' + c.ring + ' !important; box-shadow: 0 0 0 2px ' + c.ring + '40 !important');
+    }
+
+    // ── Nav / header / footer ──
+    if (c.background) {
+      css += r('nav, header, footer', 'background-color: ' + c.background + ' !important');
     }
 
     themeStyleEl.textContent = css;
     document.head.appendChild(themeStyleEl);
+  });
+})();
   });
 })();
 
