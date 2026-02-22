@@ -141,11 +141,13 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     isDraggingRef.current = true;
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'ew-resize';
+    // Disable CSS transition during drag — this is the key perf fix
+    if (sidebarRef.current) sidebarRef.current.style.transition = 'none';
     // Show overlay to prevent iframe stealing events
     if (overlayRef.current) overlayRef.current.style.display = 'block';
     // Visual feedback on handle
     if (handleRef.current) {
-      handleRef.current.classList.add('bg-blue-500/60', 'shadow-[0_0_12px_rgba(59,130,246,0.4)]');
+      handleRef.current.classList.add('bg-blue-500/60');
       handleRef.current.classList.remove('bg-transparent');
     }
     if (handleDotRef.current) handleDotRef.current.classList.add('bg-blue-400');
@@ -166,14 +168,14 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       isDraggingRef.current = false;
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
+      // Re-enable CSS transition for collapse/expand animations
+      if (sidebarRef.current) sidebarRef.current.style.transition = '';
       if (overlayRef.current) overlayRef.current.style.display = 'none';
-      // Remove visual feedback
       if (handleRef.current) {
-        handleRef.current.classList.remove('bg-blue-500/60', 'shadow-[0_0_12px_rgba(59,130,246,0.4)]');
+        handleRef.current.classList.remove('bg-blue-500/60');
         handleRef.current.classList.add('bg-transparent');
       }
       if (handleDotRef.current) handleDotRef.current.classList.remove('bg-blue-400');
-      // Sync final width to React state
       const lastWidth = (isDraggingRef as any)._lastWidth;
       if (lastWidth) setSidebarWidth(lastWidth);
     };
