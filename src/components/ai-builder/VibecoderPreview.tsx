@@ -485,22 +485,178 @@ function ThemeBridge() {
         return null;
       }).filter(Boolean);
       
+      const primary = colors['primary'];
+      const primaryFg = colors['primary-foreground'];
+      const accent = colors['accent'];
+      const accentFg = colors['accent-foreground'];
       const bg = colors['background'];
       const fg = colors['foreground'];
-      const bgHSL = bg?.startsWith('#') ? hexToHSL(bg) : null;
-      const fgHSL = fg?.startsWith('#') ? hexToHSL(fg) : null;
+      const card = colors['card'];
+      const cardFg = colors['card-foreground'];
+      const muted = colors['muted'];
+      const mutedFg = colors['muted-foreground'];
+      const border = colors['border'];
+      const destructive = colors['destructive'];
+
+      const hsl = (hex?: string) => hex?.startsWith('#') ? hexToHSL(hex) : null;
 
       let css = `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}\n`;
       css += `\nhtml, body, #root {\n  background-color: hsl(var(--background)) !important;\n  color: hsl(var(--foreground)) !important;\n}\n`;
       
+      // Background overrides — remap all hardcoded bg colors to theme tokens
+      const bgHSL = hsl(bg);
+      const cardHSL = hsl(card);
+      const mutedHSL = hsl(muted);
+      const primaryHSL = hsl(primary);
+      const accentHSL = hsl(accent);
+      const borderHSL = hsl(border);
+      const fgHSL = hsl(fg);
+      const cardFgHSL = hsl(cardFg);
+      const primaryFgHSL = hsl(primaryFg);
+      const accentFgHSL = hsl(accentFg);
+      const mutedFgHSL = hsl(mutedFg);
+      const destructiveHSL = hsl(destructive);
+
       if (bgHSL) {
-        css += `\n.bg-black, .bg-zinc-950, .bg-zinc-900, .bg-gray-950, .bg-gray-900,\n`;
-        css += `.bg-neutral-950, .bg-neutral-900, .bg-slate-950, .bg-slate-900 {\n`;
-        css += `  background-color: hsl(${bgHSL}) !important;\n}\n`;
+        css += `\n.bg-black, .bg-zinc-950, .bg-zinc-900, .bg-gray-950, .bg-gray-900,
+.bg-neutral-950, .bg-neutral-900, .bg-slate-950, .bg-slate-900 {
+  background-color: hsl(${bgHSL}) !important;
+}\n`;
       }
+      if (cardHSL) {
+        css += `\n.bg-zinc-800, .bg-gray-800, .bg-neutral-800, .bg-slate-800,
+.bg-zinc-850, .bg-gray-850 {
+  background-color: hsl(${cardHSL}) !important;
+}\n`;
+      }
+      if (mutedHSL) {
+        css += `\n.bg-zinc-700, .bg-gray-700, .bg-neutral-700, .bg-slate-700 {
+  background-color: hsl(${mutedHSL}) !important;
+}\n`;
+      }
+
+      // PRIMARY color overrides — remap orange, blue, violet, purple, indigo, etc.
+      if (primaryHSL) {
+        css += `\n.bg-orange-500, .bg-orange-600, .bg-orange-400, .bg-orange-700,
+.bg-blue-500, .bg-blue-600, .bg-blue-400, .bg-blue-700,
+.bg-violet-500, .bg-violet-600, .bg-violet-400,
+.bg-purple-500, .bg-purple-600, .bg-purple-400,
+.bg-indigo-500, .bg-indigo-600, .bg-indigo-400,
+.bg-amber-500, .bg-amber-600, .bg-amber-400,
+.bg-yellow-500, .bg-yellow-600 {
+  background-color: hsl(${primaryHSL}) !important;
+}
+.text-orange-500, .text-orange-600, .text-orange-400, .text-orange-700, .text-orange-300,
+.text-blue-500, .text-blue-600, .text-blue-400, .text-blue-300,
+.text-violet-500, .text-violet-600, .text-violet-400,
+.text-purple-500, .text-purple-600, .text-purple-400,
+.text-indigo-500, .text-indigo-600, .text-indigo-400,
+.text-amber-500, .text-amber-600, .text-amber-400,
+.text-yellow-500, .text-yellow-600 {
+  color: hsl(${primaryHSL}) !important;
+}
+.border-orange-500, .border-orange-600, .border-orange-400,
+.border-blue-500, .border-blue-600, .border-blue-400,
+.border-violet-500, .border-violet-600, .border-violet-400,
+.border-purple-500, .border-purple-600,
+.border-indigo-500, .border-indigo-600,
+.border-amber-500, .border-amber-600 {
+  border-color: hsl(${primaryHSL}) !important;
+}
+.ring-orange-500, .ring-blue-500, .ring-violet-500, .ring-purple-500, .ring-indigo-500 {
+  --tw-ring-color: hsl(${primaryHSL}) !important;
+}
+.from-orange-500, .from-orange-600, .from-blue-500, .from-blue-600,
+.from-violet-500, .from-violet-600, .from-purple-500, .from-purple-600 {
+  --tw-gradient-from: hsl(${primaryHSL}) !important;
+}
+.to-orange-500, .to-orange-600, .to-blue-500, .to-blue-600,
+.to-violet-500, .to-violet-600, .to-purple-500, .to-purple-600 {
+  --tw-gradient-to: hsl(${primaryHSL}) !important;
+}
+.via-orange-500, .via-blue-500, .via-violet-500, .via-purple-500 {
+  --tw-gradient-via: hsl(${primaryHSL}) !important;
+}\n`;
+      }
+
+      // Primary foreground on those colored backgrounds
+      if (primaryFgHSL) {
+        css += `\n.text-orange-50, .text-blue-50, .text-violet-50, .text-purple-50 {
+  color: hsl(${primaryFgHSL}) !important;
+}\n`;
+      }
+
+      // ACCENT color overrides
+      if (accentHSL) {
+        css += `\n.bg-cyan-500, .bg-cyan-600, .bg-cyan-400,
+.bg-teal-500, .bg-teal-600, .bg-teal-400,
+.bg-emerald-500, .bg-emerald-600, .bg-emerald-400,
+.bg-sky-500, .bg-sky-600, .bg-sky-400 {
+  background-color: hsl(${accentHSL}) !important;
+}
+.text-cyan-500, .text-cyan-600, .text-cyan-400, .text-cyan-300,
+.text-teal-500, .text-teal-600, .text-teal-400,
+.text-emerald-500, .text-emerald-600, .text-emerald-400,
+.text-sky-500, .text-sky-600, .text-sky-400, .text-sky-300 {
+  color: hsl(${accentHSL}) !important;
+}
+.border-cyan-500, .border-teal-500, .border-emerald-500, .border-sky-500,
+.border-cyan-400, .border-teal-400, .border-sky-400 {
+  border-color: hsl(${accentHSL}) !important;
+}\n`;
+      }
+
+      // DESTRUCTIVE color overrides
+      if (destructiveHSL) {
+        css += `\n.bg-red-500, .bg-red-600, .bg-red-400, .bg-rose-500, .bg-rose-600 {
+  background-color: hsl(${destructiveHSL}) !important;
+}
+.text-red-500, .text-red-600, .text-red-400, .text-rose-500, .text-rose-600 {
+  color: hsl(${destructiveHSL}) !important;
+}\n`;
+      }
+
+      // FOREGROUND text overrides
       if (fgHSL) {
-        css += `\n.text-white, .text-zinc-100, .text-zinc-50, .text-gray-100, .text-gray-50 {\n`;
-        css += `  color: hsl(${fgHSL}) !important;\n}\n`;
+        css += `\n.text-white, .text-zinc-100, .text-zinc-50, .text-gray-100, .text-gray-50,
+.text-neutral-100, .text-neutral-50, .text-slate-100, .text-slate-50 {
+  color: hsl(${fgHSL}) !important;
+}\n`;
+      }
+      if (mutedFgHSL) {
+        css += `\n.text-zinc-400, .text-zinc-500, .text-gray-400, .text-gray-500,
+.text-neutral-400, .text-neutral-500, .text-slate-400, .text-slate-500 {
+  color: hsl(${mutedFgHSL}) !important;
+}\n`;
+      }
+      if (cardFgHSL) {
+        css += `\n.text-zinc-200, .text-zinc-300, .text-gray-200, .text-gray-300 {
+  color: hsl(${cardFgHSL}) !important;
+}\n`;
+      }
+
+      // Border overrides
+      if (borderHSL) {
+        css += `\n.border-zinc-800, .border-zinc-700, .border-gray-800, .border-gray-700,
+.border-neutral-800, .border-neutral-700, .border-slate-800, .border-slate-700,
+.border-white\\/10, .border-white\\/5, .border-white\\/20 {
+  border-color: hsl(${borderHSL}) !important;
+}\n`;
+      }
+
+      // Hover state overrides for primary buttons
+      if (primaryHSL) {
+        css += `\n.hover\\:bg-orange-600:hover, .hover\\:bg-orange-500:hover,
+.hover\\:bg-blue-600:hover, .hover\\:bg-blue-500:hover,
+.hover\\:bg-violet-600:hover, .hover\\:bg-violet-500:hover,
+.hover\\:bg-purple-600:hover, .hover\\:bg-purple-500:hover {
+  background-color: hsl(${primaryHSL}) !important;
+  filter: brightness(1.1);
+}
+.hover\\:text-orange-500:hover, .hover\\:text-orange-400:hover,
+.hover\\:text-blue-500:hover, .hover\\:text-blue-400:hover {
+  color: hsl(${primaryHSL}) !important;
+}\n`;
       }
 
       return css;
