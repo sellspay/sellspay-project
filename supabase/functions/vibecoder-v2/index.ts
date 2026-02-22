@@ -1454,6 +1454,16 @@ serve(async (req) => {
   }
 
   try {
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid or missing JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const {
       prompt,
       currentCode,
@@ -1462,12 +1472,11 @@ serve(async (req) => {
       productsContext,
       conversationHistory = [],
       jobId,
-      // 2-Stage Pipeline: clarification answers
       type: requestType,
       answers: clarificationAnswers,
       enhanced_prompt_seed: clientPromptSeed,
       projectId: requestProjectId,
-    } = await req.json();
+    } = body;
 
     const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -1847,7 +1856,7 @@ serve(async (req) => {
         }
         
         // Process accumulated content and emit structured events
-        const processContent = () => {
+        const processContent = async () => {
           // === ANALYSIS === section
           if (!analysisEmitted && fullContent.includes('=== ANALYSIS ===')) {
             const analysisStart = fullContent.indexOf('=== ANALYSIS ===') + '=== ANALYSIS ==='.length;
@@ -2042,7 +2051,7 @@ serve(async (req) => {
                   emitEvent('raw', { content });
                   
                   // Process structured sections
-                  processContent();
+                  await processContent();
                 }
               } catch (e) {
                 // Incomplete JSON
@@ -2060,7 +2069,7 @@ serve(async (req) => {
                 if (content) {
                   fullContent += content;
                   emitEvent('raw', { content });
-                  processContent();
+                  await processContent();
                 }
               } catch (e) {
                 // Ignore
