@@ -577,7 +577,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
         console.error('[BackgroundGen] Refusing to apply JSON as code_result for job:', job.id);
         toast.error('Auto-fix failed: received invalid code payload');
       } else {
-        setCode(job.code_result);
+        setCode(job.code_result, true);
       }
     } else {
       console.warn('[BackgroundGen] Job completed with no code_result:', job.id);
@@ -980,7 +980,9 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     const lastSnapshot = getLastCodeSnapshot();
     if (lastSnapshot) {
       console.log('📦 Restoring code from message history for project:', activeProjectId);
-      setCode(lastSnapshot);
+      // skipValidation=true: code was already validated before saving to DB.
+      // Re-validating causes false rejections (template literal parsing edge cases).
+      setCode(lastSnapshot, true);
     }
     // Mark as restored (even if no snapshot - prevents re-running)
     hasRestoredCodeRef.current = activeProjectId;
@@ -1038,7 +1040,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const handleUndo = useCallback(() => {
     const previousSnapshot = getPreviousCodeSnapshot();
     if (previousSnapshot) {
-      setCode(previousSnapshot);
+      setCode(previousSnapshot, true);
       toast.success('Reverted to previous version');
     }
   }, [getPreviousCodeSnapshot, setCode]);
@@ -1056,7 +1058,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       const restoredCode = await restoreToVersion(messageId);
 
       if (restoredCode) {
-        setCode(restoredCode);
+        setCode(restoredCode, true);
         toast.success('Restored to previous version');
       } else {
         toast.error('No code snapshot found for this version');
