@@ -89,17 +89,37 @@
 .scrollbar-hide { -ms-overflow-style: none !important; scrollbar-width: none !important; }
 .scrollbar-hide::-webkit-scrollbar { display: none !important; }
 
-/* Kill ALL scrollbars inside the chat sidebar */
+/* Kill scrollbars inside the chat sidebar, EXCEPT the main chat scroll area */
 .vibe-chat-container,
-.vibe-chat-container * {
+.vibe-chat-container *:not(.chat-scroll-area) {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
 .vibe-chat-container::-webkit-scrollbar,
-.vibe-chat-container *::-webkit-scrollbar {
+.vibe-chat-container *:not(.chat-scroll-area)::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
+}
+
+/* Visible scrollbar for the chat message area */
+.chat-scroll-area {
+  scrollbar-width: thin !important;
+  scrollbar-color: hsl(var(--primary) / 0.3) transparent !important;
+}
+.chat-scroll-area::-webkit-scrollbar {
+  display: block !important;
+  width: 6px !important;
+}
+.chat-scroll-area::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.chat-scroll-area::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.3) !important;
+  border-radius: 3px !important;
+}
+.chat-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.5) !important;
 }
 
 /* AI Tools Reveal: never show a nested (left) scrollbar.
