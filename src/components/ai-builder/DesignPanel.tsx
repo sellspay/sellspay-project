@@ -1,14 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Palette, Sparkles, ArrowLeft, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { STYLE_PRESETS, type StylePreset } from "./stylePresets";
 import { cn } from "@/lib/utils";
+import { VisualEditPanel, type SelectedElement } from "./VisualEditOverlay";
 
 type DesignView = 'home' | 'themes' | 'visual-edits';
 
 interface DesignPanelProps {
   activeStyle?: StylePreset;
   onStyleChange?: (style: StylePreset) => void;
+  onVisualEditModeChange?: (active: boolean) => void;
+  selectedElement?: SelectedElement | null;
+  onEditRequest?: (prompt: string) => void;
 }
 
 // Color dot row for a style preset
@@ -34,9 +38,14 @@ function StyleDots({ style }: { style: StylePreset }) {
   );
 }
 
-export function DesignPanel({ activeStyle, onStyleChange }: DesignPanelProps) {
+export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange, selectedElement, onEditRequest }: DesignPanelProps) {
   const [view, setView] = useState<DesignView>('home');
   const currentStyle = activeStyle ?? STYLE_PRESETS[0];
+
+  // Notify parent when visual edit mode changes
+  useEffect(() => {
+    onVisualEditModeChange?.(view === 'visual-edits');
+  }, [view, onVisualEditModeChange]);
 
   if (view === 'themes') {
     return (
@@ -106,26 +115,12 @@ export function DesignPanel({ activeStyle, onStyleChange }: DesignPanelProps) {
 
   if (view === 'visual-edits') {
     return (
-      <div className="h-full flex flex-col bg-[#1a1a1a] items-center justify-center">
-        <div className="flex flex-col items-center gap-4 text-center px-6">
-          <button
-            onClick={() => setView('home')}
-            className="absolute top-6 left-6 text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div className="text-zinc-500 mb-2">
-            <Sparkles className="w-10 h-10" />
-          </div>
-          <h3 className="text-lg font-semibold text-zinc-200">Visual edits</h3>
-          <p className="text-sm text-zinc-500 max-w-xs">
-            Select an element to edit it
-          </p>
-          <p className="text-xs text-zinc-600 font-mono">
-            Hold <kbd className="px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-400">Ctrl</kbd> to select multiple elements
-          </p>
-        </div>
-      </div>
+      <VisualEditPanel
+        selectedElement={selectedElement ?? null}
+        onBack={() => setView('home')}
+        onEditRequest={(prompt) => onEditRequest?.(prompt)}
+        isActive
+      />
     );
   }
 

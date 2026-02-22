@@ -29,6 +29,8 @@ interface VibecoderPreviewProps {
   onReady?: () => void;
   /** Active page path from PageNavigator — triggers in-sandbox navigation */
   activePage?: string;
+  /** When true, enables click-to-select element picker overlay in the preview */
+  visualEditMode?: boolean;
 }
 
 // NUCLEAR ERROR SILENCE PROTOCOL - Layer 5: Parent CSS Nuclear Strike
@@ -413,8 +415,27 @@ function PageNavigationBridge({ activePage }: { activePage?: string }) {
   
   return null;
 }
+// Visual Edit Injector: sends enable/disable messages to the Sandpack iframe
+// to activate the element picker overlay
+function VisualEditInjector({ active }: { active: boolean }) {
+  const prevActiveRef = useRef(false);
 
-// Memoized Sandpack component to prevent unnecessary re-renders during streaming
+  useEffect(() => {
+    const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+    if (!iframe?.contentWindow) return;
+
+    iframe.contentWindow.postMessage({
+      type: 'VIBECODER_VISUAL_EDIT_MODE',
+      active,
+    }, '*');
+
+    prevActiveRef.current = active;
+  }, [active]);
+
+  return null;
+}
+
+
 const SandpackRenderer = memo(function SandpackRenderer({ 
   code, 
   projectFiles,
@@ -424,6 +445,7 @@ const SandpackRenderer = memo(function SandpackRenderer({
   viewMode = 'preview',
   isStreaming = false,
   activePage,
+  visualEditMode = false,
 }: { 
   code?: string; 
   projectFiles?: ProjectFiles;
@@ -433,6 +455,7 @@ const SandpackRenderer = memo(function SandpackRenderer({
   viewMode?: ViewMode;
   isStreaming?: boolean;
   activePage?: string;
+  visualEditMode?: boolean;
 }) {
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
 
@@ -588,6 +611,111 @@ window.addEventListener('message', (event) => {
   }
 });
 
+// VISUAL EDIT PICKER: Element selection overlay for design mode
+(function() {
+  let pickerActive = false;
+  let hoverOverlay: HTMLDivElement | null = null;
+  let selectedOverlay: HTMLDivElement | null = null;
+
+  function createOverlay(color: string, id: string) {
+    const el = document.createElement('div');
+    el.id = id;
+    el.style.cssText = 'position:fixed;pointer-events:none;z-index:99998;border:2px solid ' + color + ';background:' + color.replace(')', ',0.08)').replace('rgb', 'rgba') + ';transition:all 0.15s ease;display:none;';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function positionOverlay(overlay: HTMLDivElement, el: Element) {
+    const rect = el.getBoundingClientRect();
+    overlay.style.left = rect.left + 'px';
+    overlay.style.top = rect.top + 'px';
+    overlay.style.width = rect.width + 'px';
+    overlay.style.height = rect.height + 'px';
+    overlay.style.display = 'block';
+  }
+
+  function getElementPath(el: Element): string {
+    const parts: string[] = [];
+    let current: Element | null = el;
+    while (current && current !== document.body) {
+      let selector = current.tagName.toLowerCase();
+      if (current.id) selector += '#' + current.id;
+      else if (current.className && typeof current.className === 'string') {
+        const cls = current.className.trim().split(/\\s+/).slice(0, 2).join('.');
+        if (cls) selector += '.' + cls;
+      }
+      parts.unshift(selector);
+      current = current.parentElement;
+    }
+    return parts.join(' > ');
+  }
+
+  function handleMouseMove(e: MouseEvent) {
+    if (!pickerActive) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el || el === hoverOverlay || el === selectedOverlay || el.id === 'root') return;
+    if (!hoverOverlay) hoverOverlay = createOverlay('rgb(59,130,246)', 'vibe-hover-overlay');
+    positionOverlay(hoverOverlay, el);
+  }
+
+  function handleClick(e: MouseEvent) {
+    if (!pickerActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el || el === hoverOverlay || el === selectedOverlay || el.id === 'root') return;
+    
+    if (!selectedOverlay) selectedOverlay = createOverlay('rgb(59,130,246)', 'vibe-selected-overlay');
+    positionOverlay(selectedOverlay, el);
+    selectedOverlay.style.borderWidth = '2px';
+    selectedOverlay.style.borderStyle = 'solid';
+
+    const computed = window.getComputedStyle(el);
+    window.parent.postMessage({
+      type: 'VIBECODER_ELEMENT_SELECTED',
+      element: {
+        tagName: el.tagName,
+        text: (el.textContent || '').trim().slice(0, 100),
+        classList: Array.from(el.classList).slice(0, 10),
+        id: el.id || undefined,
+        styles: {
+          color: computed.color,
+          backgroundColor: computed.backgroundColor,
+          fontSize: computed.fontSize,
+          fontWeight: computed.fontWeight,
+          padding: computed.padding,
+          margin: computed.margin,
+          borderRadius: computed.borderRadius,
+        },
+        path: getElementPath(el),
+      }
+    }, '*');
+  }
+
+  function enablePicker() {
+    pickerActive = true;
+    document.body.style.cursor = 'crosshair';
+    document.addEventListener('mousemove', handleMouseMove, true);
+    document.addEventListener('click', handleClick, true);
+  }
+
+  function disablePicker() {
+    pickerActive = false;
+    document.body.style.cursor = '';
+    document.removeEventListener('mousemove', handleMouseMove, true);
+    document.removeEventListener('click', handleClick, true);
+    if (hoverOverlay) { hoverOverlay.style.display = 'none'; }
+    if (selectedOverlay) { selectedOverlay.style.display = 'none'; }
+  }
+
+  window.addEventListener('message', (event) => {
+    const msg = event.data;
+    if (!msg || msg.type !== 'VIBECODER_VISUAL_EDIT_MODE') return;
+    if (msg.active) enablePicker();
+    else disablePicker();
+  });
+})();
+
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);`,
         hidden: true,
@@ -636,6 +764,7 @@ div[style*="background-color: red"],div[style*="background: red"] {
           <ConsoleErrorDetector onConsoleErrors={onConsoleErrors} isStreaming={isStreaming} />
           <ReadyDetector onReady={onReady} />
           <PageNavigationBridge activePage={activePage} />
+          <VisualEditInjector active={visualEditMode} />
           {/* File activator: syncs activeFileId to Sandpack's internal state */}
           {isCodeView && <SandpackFileActivator activeFileId={activeFileId} />}
           <div className="h-full w-full flex-1 flex flex-row" style={{ height: '100%' }}>
@@ -685,6 +814,7 @@ export function VibecoderPreview({
   onReady,
   viewMode = 'preview',
   activePage,
+  visualEditMode = false,
 }: VibecoderPreviewProps) {
   // NUCLEAR ERROR SILENCE PROTOCOL - Layer 4: Parent Window Suppression
   useSuppressPreviewNoise(true);
@@ -761,6 +891,7 @@ export function VibecoderPreview({
             viewMode={viewMode}
             isStreaming={isStreaming}
             activePage={activePage}
+            visualEditMode={visualEditMode}
           />
         ) : (
           <div className="h-full w-full flex items-center justify-center bg-background">

@@ -86,7 +86,20 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // LIFTED STATE: Active style preset for Design panel
   const [activeStyle, setActiveStyle] = useState<import('./stylePresets').StylePreset | undefined>(undefined);
   const [designInput, setDesignInput] = useState('');
+  const [visualEditMode, setVisualEditMode] = useState(false);
+  const [selectedElement, setSelectedElement] = useState<import('./VisualEditOverlay').SelectedElement | null>(null);
   
+  // Listen for element selection from iframe (visual edit mode)
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'VIBECODER_ELEMENT_SELECTED') {
+        setSelectedElement(event.data.element);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
   // Generation state for Creative Studio (Image & Video tabs)
   const [currentImageAsset, setCurrentImageAsset] = useState<GeneratedAsset | null>(null);
   const [currentVideoAsset, setCurrentVideoAsset] = useState<GeneratedAsset | null>(null);
@@ -1796,6 +1809,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                             onConsoleErrors={handleConsoleErrors}
                             viewMode={viewMode}
                             activePage={previewPath}
+                            visualEditMode={visualEditMode}
                           />
                         </PreviewErrorBoundary>
                         <GenerationOverlay visible={isStreaming && isEmpty} phase={streamPhase || 'analyzing'} analysisText={analysisText} />
@@ -1849,6 +1863,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                         onConsoleErrors={handleConsoleErrors}
                         viewMode={viewMode}
                         activePage={previewPath}
+                        visualEditMode={visualEditMode}
                       />
                     </PreviewErrorBoundary>
                     <GenerationOverlay visible={isStreaming && isEmpty} phase={streamPhase || 'analyzing'} analysisText={analysisText} />
@@ -1903,6 +1918,11 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 <DesignPanel
                   activeStyle={activeStyle}
                   onStyleChange={setActiveStyle}
+                  onVisualEditModeChange={setVisualEditMode}
+                  selectedElement={selectedElement}
+                  onEditRequest={(prompt) => {
+                    handleSendMessage(prompt);
+                  }}
                 />
               </div>
               {/* Keep chat input bar pinned at bottom */}
