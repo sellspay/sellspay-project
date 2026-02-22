@@ -1465,7 +1465,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     // 1. Extract smart project name from first 5 words
     const projectName = prompt.split(/\s+/).slice(0, 5).join(' ');
 
-    // 2. Create the project (this also navigates via URL update)
+    // 2. Create the project (this sets activeProjectId + updates URL)
     const newProjectId = await ensureProject(projectName);
     if (!newProjectId) {
       toast.error('Failed to create project');
@@ -1478,15 +1478,21 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
       finalPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${prompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
     }
 
-    // 4. IMPORTANT: Save the FIRST user message to DB so history persists
-    await addMessage('user', prompt);
+    // 4. Mark this project so the useEffect auto-start guard doesn't double-fire
+    startedInitialForProjectRef.current = newProjectId;
 
-    // 5. Navigate to the project URL with initialPrompt in state
-    // The useEffect above will pick this up and start the agent
-    navigate(`/ai-builder?project=${newProjectId}`, {
-      state: { initialPrompt: finalPrompt },
-      replace: true,
-    });
+    // 5. 🔒 LOCK: Set generation lock to this project
+    generationLockRef.current = newProjectId;
+
+    // 6. Cover Sandpack until bundling finishes
+    setIsAwaitingPreviewReady(true);
+
+    // 7. Save the user message to DB — CRITICAL: pass newProjectId explicitly
+    //    because activeProjectId in the closure is still stale (React batching)
+    await addMessage('user', prompt, undefined, newProjectId);
+
+    // 8. Start the agent directly — no navigate/location.state indirection
+    startAgent(finalPrompt, undefined, newProjectId);
   };
 
   // === DOORWAY: If no active project, ALWAYS show the magical prompt-first screen ===
