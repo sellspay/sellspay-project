@@ -3591,7 +3591,9 @@ export type Database = {
       }
       public_profiles: {
         Row: {
+          active_storefront_mode: string | null
           avatar_url: string | null
+          banner_position_y: number | null
           banner_url: string | null
           bio: string | null
           created_at: string | null
@@ -3604,10 +3606,13 @@ export type Database = {
           editor_services: string[] | null
           editor_social_links: Json | null
           full_name: string | null
+          global_custom_font: Json | null
+          global_font: string | null
           id: string | null
           is_creator: boolean | null
           is_editor: boolean | null
           is_owner: boolean | null
+          show_recent_uploads: boolean | null
           social_links: Json | null
           user_id: string | null
           username: string | null
@@ -3615,7 +3620,9 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          active_storefront_mode?: string | null
           avatar_url?: string | null
+          banner_position_y?: number | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
@@ -3628,10 +3635,13 @@ export type Database = {
           editor_services?: string[] | null
           editor_social_links?: Json | null
           full_name?: string | null
+          global_custom_font?: Json | null
+          global_font?: string | null
           id?: string | null
           is_creator?: boolean | null
           is_editor?: boolean | null
           is_owner?: never
+          show_recent_uploads?: boolean | null
           social_links?: Json | null
           user_id?: string | null
           username?: string | null
@@ -3639,7 +3649,9 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          active_storefront_mode?: string | null
           avatar_url?: string | null
+          banner_position_y?: number | null
           banner_url?: string | null
           bio?: string | null
           created_at?: string | null
@@ -3652,10 +3664,13 @@ export type Database = {
           editor_services?: string[] | null
           editor_social_links?: Json | null
           full_name?: string | null
+          global_custom_font?: Json | null
+          global_font?: string | null
           id?: string | null
           is_creator?: boolean | null
           is_editor?: boolean | null
           is_owner?: never
+          show_recent_uploads?: boolean | null
           social_links?: Json | null
           user_id?: string | null
           username?: string | null
