@@ -27,6 +27,8 @@ interface VibecoderPreviewProps {
   onConsoleErrors?: (errors: string[]) => void;
   viewMode?: ViewMode;
   onReady?: () => void;
+  /** Active page path from PageNavigator — triggers in-sandbox navigation */
+  activePage?: string;
 }
 
 // NUCLEAR ERROR SILENCE PROTOCOL - Layer 5: Parent CSS Nuclear Strike
@@ -392,6 +394,26 @@ function SandpackFileActivator({ activeFileId }: { activeFileId: string | null }
   return null;
 }
 
+// Bridge component: posts navigation messages to the Sandpack iframe
+function PageNavigationBridge({ activePage }: { activePage?: string }) {
+  const prevPageRef = useRef(activePage);
+  
+  useEffect(() => {
+    if (!activePage || activePage === prevPageRef.current) return;
+    prevPageRef.current = activePage;
+    
+    const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage({ 
+        type: 'VIBECODER_PAGE_NAVIGATE', 
+        page: activePage.replace(/^\//, '') || 'home'
+      }, '*');
+    }
+  }, [activePage]);
+  
+  return null;
+}
+
 // Memoized Sandpack component to prevent unnecessary re-renders during streaming
 const SandpackRenderer = memo(function SandpackRenderer({ 
   code, 
@@ -401,6 +423,7 @@ const SandpackRenderer = memo(function SandpackRenderer({
   onReady,
   viewMode = 'preview',
   isStreaming = false,
+  activePage,
 }: { 
   code?: string; 
   projectFiles?: ProjectFiles;
@@ -409,6 +432,7 @@ const SandpackRenderer = memo(function SandpackRenderer({
   onReady?: () => void;
   viewMode?: ViewMode;
   isStreaming?: boolean;
+  activePage?: string;
 }) {
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
 
@@ -540,6 +564,30 @@ import App from "./App";
   setInterval(nukeOverlays, 100);
 })();
 
+// PAGE NAVIGATION BRIDGE: Listen for parent page-switch messages
+window.addEventListener('message', (event) => {
+  const msg = event.data;
+  if (!msg || msg.type !== 'VIBECODER_PAGE_NAVIGATE') return;
+  const page = (msg.page || 'home').toLowerCase();
+  
+  // Strategy 1: Find and click nav buttons/links whose text matches the page name
+  const allClickables = document.querySelectorAll('button, a, [role="tab"], [data-tab]');
+  for (const el of allClickables) {
+    const text = (el.textContent || '').trim().toLowerCase();
+    if (text === page || text === page.replace(/-/g, ' ')) {
+      (el as HTMLElement).click();
+      return;
+    }
+  }
+  
+  // Strategy 2: Find elements with data-page or data-section attributes
+  const dataEl = document.querySelector('[data-page="' + page + '"], [data-section="' + page + '"], [data-tab="' + page + '"]');
+  if (dataEl) {
+    (dataEl as HTMLElement).click();
+    return;
+  }
+});
+
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);`,
         hidden: true,
@@ -587,6 +635,7 @@ div[style*="background-color: red"],div[style*="background: red"] {
           <ErrorDetector onError={onError} isStreaming={isStreaming} />
           <ConsoleErrorDetector onConsoleErrors={onConsoleErrors} isStreaming={isStreaming} />
           <ReadyDetector onReady={onReady} />
+          <PageNavigationBridge activePage={activePage} />
           {/* File activator: syncs activeFileId to Sandpack's internal state */}
           {isCodeView && <SandpackFileActivator activeFileId={activeFileId} />}
           <div className="h-full w-full flex-1 flex flex-row" style={{ height: '100%' }}>
@@ -635,6 +684,7 @@ export function VibecoderPreview({
   onConsoleErrors,
   onReady,
   viewMode = 'preview',
+  activePage,
 }: VibecoderPreviewProps) {
   // NUCLEAR ERROR SILENCE PROTOCOL - Layer 4: Parent Window Suppression
   useSuppressPreviewNoise(true);
@@ -710,6 +760,7 @@ export function VibecoderPreview({
             onReady={onReady}
             viewMode={viewMode}
             isStreaming={isStreaming}
+            activePage={activePage}
           />
         ) : (
           <div className="h-full w-full flex items-center justify-center bg-background">

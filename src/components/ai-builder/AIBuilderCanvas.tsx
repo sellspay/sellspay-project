@@ -1762,6 +1762,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       onError={handlePreviewError}
                       onConsoleErrors={handleConsoleErrors}
                       viewMode={viewMode}
+                      activePage={previewPath}
                     />
                   </PreviewErrorBoundary>
 
