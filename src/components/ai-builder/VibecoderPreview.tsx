@@ -705,27 +705,31 @@ function ThemeBridge() {
       }
     }
 
+    // Store the last applied CSS so we can re-send it when iframe reloads
+    let lastAppliedCSS: string | null = null;
+
     const handleApply = (e: Event) => {
       const colors = (e as CustomEvent).detail;
       if (!colors) return;
       const css = buildThemeCSS(colors);
+      lastAppliedCSS = css;
       sendToIframe('VIBECODER_INJECT_THEME', { css });
 
-      // ALSO update the theme-base.css file so it persists across recompiles
+      // ALSO write the FULL override CSS to theme-base.css so it persists across Sandpack recompiles
       try {
-        const lines = varKeys.map(key => {
-          const hex = colors[key];
-          if (hex && hex.startsWith('#')) {
-            return `  --${key}: ${hexToHSL(hex)};`;
-          }
-          return null;
-        }).filter(Boolean);
-        const newThemeCSS = `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}\n\nhtml, body, #root {\n  background-color: hsl(var(--background));\n  color: hsl(var(--foreground));\n}`;
-        sandpack.updateFile('/styles/theme-base.css', newThemeCSS);
+        sandpack.updateFile('/styles/theme-base.css', css);
       } catch (err) {
         // Non-critical — the postMessage injection still works
       }
     };
+
+    // Listen for iframe requesting current theme (after reload/recompile)
+    const handleThemeRequest = (event: MessageEvent) => {
+      if (event.data?.type === 'VIBECODER_REQUEST_THEME' && lastAppliedCSS) {
+        sendToIframe('VIBECODER_INJECT_THEME', { css: lastAppliedCSS });
+      }
+    };
+    window.addEventListener('message', handleThemeRequest);
 
     const handleRevert = () => {
       sendToIframe('VIBECODER_REVERT_THEME');
@@ -736,6 +740,7 @@ function ThemeBridge() {
     return () => {
       window.removeEventListener('vibecoder-theme-apply', handleApply);
       window.removeEventListener('vibecoder-theme-revert', handleRevert);
+      window.removeEventListener('message', handleThemeRequest);
     };
   }, [sandpack]);
 
@@ -971,6 +976,9 @@ window.addEventListener('message', (event) => {
     return;
   }
 });
+
+// Request current theme from parent on load (handles Sandpack recompile)
+window.parent.postMessage({ type: 'VIBECODER_REQUEST_THEME' }, '*');
 
 
 (function() {
