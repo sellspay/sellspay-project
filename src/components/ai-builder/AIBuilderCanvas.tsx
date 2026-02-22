@@ -1893,13 +1893,16 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           width: chatCollapsed ? 0 : sidebarWidth,
         }}
       >
-        <div className="flex-1 min-h-0 overflow-hidden relative" style={{ isolation: 'isolate' }}>
-          {viewMode === 'design' ? (
-            <DesignPanel
-              activeStyle={activeStyle}
-              onStyleChange={setActiveStyle}
-            />
-          ) : (
+        <div className="flex-1 min-h-0 overflow-hidden relative flex flex-col" style={{ isolation: 'isolate' }}>
+          {viewMode === 'design' && (
+            <div className="shrink-0 max-h-[50%] overflow-y-auto border-b border-zinc-800">
+              <DesignPanel
+                activeStyle={activeStyle}
+                onStyleChange={setActiveStyle}
+              />
+            </div>
+          )}
+          <div className="flex-1 min-h-0 overflow-hidden">
             <VibecoderChat
               key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
               onSendMessage={handleSendMessage}
@@ -1963,7 +1966,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               isCollapsed={chatCollapsed}
               onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
             />
-          )}
+          </div>
         </div>
       </div>
 
