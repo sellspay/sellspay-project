@@ -1,4 +1,4 @@
-import { useMemo, memo, useEffect, useRef, forwardRef } from 'react';
+import { useMemo, memo, useEffect, useRef, forwardRef, useState, useCallback } from 'react';
 import { 
   SandpackTheme, 
   useSandpack, 
@@ -9,6 +9,8 @@ import {
 import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
 import type { ViewMode } from './types/generation';
 import { useSuppressPreviewNoise } from './hooks/useSuppressPreviewNoise';
+import { CodeFileExplorer } from './CodeFileExplorer';
+import type { VirtualFile } from '@/utils/codeFileParser';
 
 /** Map of file paths to file contents (multi-file mode). */
 export type ProjectFiles = Record<string, string>;
@@ -330,8 +332,14 @@ const SandpackRenderer = memo(function SandpackRenderer({
   viewMode?: ViewMode;
   isStreaming?: boolean;
 }) {
-  // Wrap the code in proper structure, including the standard library
-  // NUCLEAR: Also inject iframe-silence.js and iframe-silence.css
+  const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const [scrollToLine, setScrollToLine] = useState<number | null>(null);
+
+  const handleFileSelect = useCallback((file: VirtualFile) => {
+    setActiveFileId(file.id);
+    setScrollToLine(file.startLine);
+  }, []);
+
   // Build the Sandpack file map from either `projectFiles` (multi-file) or `code` (legacy single-file)
   const files = useMemo(() => {
     // --- Project files (AI-generated) ---
@@ -430,6 +438,8 @@ div[style*="background-color: red"],div[style*="background: red"] {
     };
   }, [code, projectFiles]);
 
+  const isCodeView = viewMode === 'code';
+
   return (
     <div className="h-full w-full flex flex-col" style={{ height: '100%' }}>
       <SandpackProvider
@@ -440,8 +450,6 @@ div[style*="background-color: red"],div[style*="background: red"] {
           externalResources: [
             'https://cdn.tailwindcss.com',
           ],
-          // Prevent preview "spazzing" during streaming by delaying recompiles.
-          // When streaming ends, this snaps back to the normal delay.
           recompileMode: 'delayed',
           recompileDelay: isStreaming ? 20000 : 500,
         }}
@@ -458,24 +466,36 @@ div[style*="background-color: red"],div[style*="background: red"] {
         <div className="h-full w-full flex-1 flex flex-col relative" style={{ height: '100%' }}>
           <ErrorDetector onError={onError} isStreaming={isStreaming} />
           <ReadyDetector onReady={onReady} />
-          <div className="h-full w-full flex-1 flex flex-col" style={{ height: '100%' }}>
-            {viewMode === 'preview' || viewMode === 'image' || viewMode === 'video' ? (
-              <SandpackPreviewComponent
-                showOpenInCodeSandbox={false}
-                showRefreshButton={true}
-                showSandpackErrorOverlay={false}
-                style={{ height: '100%', flex: 1 }}
-              />
-            ) : (
-              <SandpackCodeEditor
-                showTabs={true}
-                showLineNumbers={true}
-                showInlineErrors={false} // NUCLEAR: Disable inline errors in editor too
-                wrapContent={true}
-                readOnly={true}
-                style={{ height: '100%', flex: 1 }}
+          <div className="h-full w-full flex-1 flex flex-row" style={{ height: '100%' }}>
+            {/* Code view: File explorer sidebar + editor */}
+            {isCodeView && code && (
+              <CodeFileExplorer
+                code={code}
+                activeFileId={activeFileId}
+                onFileSelect={handleFileSelect}
               />
             )}
+
+            {/* Main content area */}
+            <div className="flex-1 min-w-0 flex flex-col" style={{ height: '100%' }}>
+              {viewMode === 'preview' || viewMode === 'image' || viewMode === 'video' ? (
+                <SandpackPreviewComponent
+                  showOpenInCodeSandbox={false}
+                  showRefreshButton={true}
+                  showSandpackErrorOverlay={false}
+                  style={{ height: '100%', flex: 1 }}
+                />
+              ) : (
+                <SandpackCodeEditor
+                  showTabs={true}
+                  showLineNumbers={true}
+                  showInlineErrors={false}
+                  wrapContent={true}
+                  readOnly={true}
+                  style={{ height: '100%', flex: 1 }}
+                />
+              )}
+            </div>
           </div>
         </div>
       </SandpackProvider>
