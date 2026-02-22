@@ -130,8 +130,8 @@ const SANDPACK_HEIGHT_FIX = `
   div[style*="background-color: red"],
   div[style*="background: red"],
   div[style*="background: rgb(255"],
-  div[style*="position: fixed"][style*="z-index: 9999"],
-  div[style*="position: fixed"][style*="top: 0"][style*="background"] {
+  div[style*="position: fixed"][style*="z-index: 9999"]:not([data-vibe-overlay]),
+  div[style*="position: fixed"][style*="top: 0"][style*="background"]:not([data-vibe-overlay]) {
     display: none !important;
     opacity: 0 !important;
     visibility: hidden !important;
@@ -418,18 +418,26 @@ function PageNavigationBridge({ activePage }: { activePage?: string }) {
 // Visual Edit Injector: sends enable/disable messages to the Sandpack iframe
 // to activate the element picker overlay
 function VisualEditInjector({ active }: { active: boolean }) {
-  const prevActiveRef = useRef(false);
-
   useEffect(() => {
-    const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
-    if (!iframe?.contentWindow) return;
+    const sendMessage = () => {
+      const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+      if (!iframe?.contentWindow) return false;
+      iframe.contentWindow.postMessage({
+        type: 'VIBECODER_VISUAL_EDIT_MODE',
+        active,
+      }, '*');
+      return true;
+    };
 
-    iframe.contentWindow.postMessage({
-      type: 'VIBECODER_VISUAL_EDIT_MODE',
-      active,
-    }, '*');
-
-    prevActiveRef.current = active;
+    // Try immediately, then retry a few times for iframe load timing
+    if (!sendMessage()) {
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (sendMessage() || attempts > 10) clearInterval(interval);
+      }, 200);
+      return () => clearInterval(interval);
+    }
   }, [active]);
 
   return null;
@@ -616,11 +624,26 @@ window.addEventListener('message', (event) => {
   let pickerActive = false;
   let hoverOverlay: HTMLDivElement | null = null;
   let selectedOverlay: HTMLDivElement | null = null;
+  let hoverLabel: HTMLDivElement | null = null;
 
   function createOverlay(color: string, id: string) {
+    const existing = document.getElementById(id);
+    if (existing) existing.remove();
     const el = document.createElement('div');
     el.id = id;
-    el.style.cssText = 'position:fixed;pointer-events:none;z-index:99998;border:2px solid ' + color + ';background:' + color.replace(')', ',0.08)').replace('rgb', 'rgba') + ';transition:all 0.15s ease;display:none;';
+    el.setAttribute('data-vibe-overlay', 'true');
+    el.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483646;border:2px solid ' + color + ';background:' + color.replace(')', ',0.06)').replace('rgb', 'rgba') + ';transition:all 0.1s ease;display:none;';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function createLabel() {
+    const existing = document.getElementById('vibe-hover-label');
+    if (existing) existing.remove();
+    const el = document.createElement('div');
+    el.id = 'vibe-hover-label';
+    el.setAttribute('data-vibe-overlay', 'true');
+    el.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;background:#2563eb;color:#fff;font-size:11px;font-family:monospace;padding:2px 6px;border-radius:3px;display:none;white-space:nowrap;';
     document.body.appendChild(el);
     return el;
   }
@@ -650,22 +673,41 @@ window.addEventListener('message', (event) => {
     return parts.join(' > ');
   }
 
+  function isOverlayElement(el: Element | null): boolean {
+    if (!el) return false;
+    return el.hasAttribute('data-vibe-overlay') || el.id === 'vibe-hover-overlay' || el.id === 'vibe-selected-overlay' || el.id === 'vibe-hover-label';
+  }
+
   function handleMouseMove(e: MouseEvent) {
     if (!pickerActive) return;
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    if (!el || el === hoverOverlay || el === selectedOverlay || el.id === 'root') return;
+    if (!el || isOverlayElement(el) || el.id === 'root' || el === document.body || el === document.documentElement) return;
     if (!hoverOverlay) hoverOverlay = createOverlay('rgb(59,130,246)', 'vibe-hover-overlay');
+    if (!hoverLabel) hoverLabel = createLabel();
     positionOverlay(hoverOverlay, el);
+    // Show label
+    const rect = el.getBoundingClientRect();
+    const tagStr = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/)[0] : '');
+    hoverLabel.textContent = tagStr;
+    hoverLabel.style.left = rect.left + 'px';
+    hoverLabel.style.top = Math.max(0, rect.top - 22) + 'px';
+    hoverLabel.style.display = 'block';
+  }
+
+  function handleMouseLeave() {
+    if (hoverOverlay) hoverOverlay.style.display = 'none';
+    if (hoverLabel) hoverLabel.style.display = 'none';
   }
 
   function handleClick(e: MouseEvent) {
     if (!pickerActive) return;
     e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation();
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    if (!el || el === hoverOverlay || el === selectedOverlay || el.id === 'root') return;
+    if (!el || isOverlayElement(el) || el.id === 'root' || el === document.body || el === document.documentElement) return;
     
-    if (!selectedOverlay) selectedOverlay = createOverlay('rgb(59,130,246)', 'vibe-selected-overlay');
+    if (!selectedOverlay) selectedOverlay = createOverlay('rgb(249,115,22)', 'vibe-selected-overlay');
     positionOverlay(selectedOverlay, el);
     selectedOverlay.style.borderWidth = '2px';
     selectedOverlay.style.borderStyle = 'solid';
@@ -697,6 +739,7 @@ window.addEventListener('message', (event) => {
     document.body.style.cursor = 'crosshair';
     document.addEventListener('mousemove', handleMouseMove, true);
     document.addEventListener('click', handleClick, true);
+    document.addEventListener('mouseleave', handleMouseLeave, true);
   }
 
   function disablePicker() {
@@ -704,8 +747,10 @@ window.addEventListener('message', (event) => {
     document.body.style.cursor = '';
     document.removeEventListener('mousemove', handleMouseMove, true);
     document.removeEventListener('click', handleClick, true);
+    document.removeEventListener('mouseleave', handleMouseLeave, true);
     if (hoverOverlay) { hoverOverlay.style.display = 'none'; }
     if (selectedOverlay) { selectedOverlay.style.display = 'none'; }
+    if (hoverLabel) { hoverLabel.style.display = 'none'; }
   }
 
   window.addEventListener('message', (event) => {
@@ -723,11 +768,14 @@ root.render(<App />);`,
       '/styles/error-silence.css': {
         code: `#react-error-overlay,[class*="error-overlay"],[class*="ErrorOverlay"],
 .sp-error,.sp-error-overlay,.sp-error-message,
-div[style*="position: fixed"][style*="z-index: 9999"],
+div[style*="position: fixed"][style*="z-index: 9999"]:not([data-vibe-overlay]),
 div[style*="background-color: red"],div[style*="background: red"] {
   display:none!important;visibility:hidden!important;opacity:0!important;
   pointer-events:none!important;width:0!important;height:0!important;
   position:absolute!important;left:-99999px!important;z-index:-99999!important;
+}
+[data-vibe-overlay] {
+  display:block!important;visibility:visible!important;opacity:1!important;
 }`,
         hidden: true,
       },
