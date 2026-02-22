@@ -201,34 +201,13 @@ export function useSellsPayCheckout() {
     setIsProcessing(true);
     console.log('[SellsPay] Navigating to product:', productId);
 
-    // Determine the real site origin.
-    // Inside Sandpack the iframe origin is codesandbox.io, so we
-    // try to read the parent origin via referrer or fall back to
-    // a well-known production URL.
-    let siteOrigin = '';
-    try {
-      // document.referrer gives us the parent page URL
-      if (document.referrer) {
-        const ref = new URL(document.referrer);
-        siteOrigin = ref.origin;
-      }
-    } catch {}
+    // Always use the known production domain for product links.
+    // Inside Sandpack iframes, window.location is codesandbox.io
+    // and document.referrer may be empty, so we hardcode the real site.
+    const productUrl = 'https://sellspay.lovable.app/product/' + productId;
 
-    // Fallback: if no referrer, use current origin (works when not in iframe)
-    if (!siteOrigin) {
-      siteOrigin = window.location.origin;
-    }
-
-    const productUrl = siteOrigin + '/product/' + productId;
-
-    // Use window.open to safely navigate out of the Sandpack iframe.
-    // This works in both preview (AI builder) and published storefronts.
-    try {
-      window.open(productUrl, '_top');
-    } catch {
-      // Fallback: open in new tab if _top is blocked
-      window.open(productUrl, '_blank');
-    }
+    // Open in new tab — safest approach from inside any iframe context
+    window.open(productUrl, '_blank');
 
     setTimeout(() => setIsProcessing(false), 500);
   };
@@ -257,17 +236,10 @@ export function useSalesPayCheckout() {
     setIsProcessing(true);
     console.log('[SalesPay] Navigating to product:', productId);
 
-    let siteOrigin = '';
-    try {
-      if (document.referrer) {
-        const ref = new URL(document.referrer);
-        siteOrigin = ref.origin;
-      }
-    } catch {}
-    if (!siteOrigin) siteOrigin = window.location.origin;
-
-    const url = productId ? siteOrigin + '/product/' + productId : siteOrigin;
-    try { window.open(url, '_top'); } catch { window.open(url, '_blank'); }
+    const url = productId 
+      ? 'https://sellspay.lovable.app/product/' + productId 
+      : 'https://sellspay.lovable.app';
+    window.open(url, '_blank');
 
     setTimeout(() => setIsProcessing(false), 500);
   };
