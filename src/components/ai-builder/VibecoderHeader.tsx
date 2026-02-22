@@ -70,10 +70,8 @@ export function VibecoderHeader({
   const navigate = useNavigate();
 
   return (
-    <header className="h-14 w-full bg-zinc-950/80 backdrop-blur-sm flex items-center justify-between px-4 shrink-0 relative z-50">
-      {/* Subtle gradient separator */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-700/50 to-transparent" />
-      
+    <header className="h-12 bg-black/60 backdrop-blur-2xl border border-white/[0.08] rounded-2xl flex items-center justify-between px-4 shrink-0 relative shadow-2xl shadow-black/50">
+
       {/* LEFT: Exit Button */}
       <div className="flex items-center">
         <Button 
@@ -87,9 +85,9 @@ export function VibecoderHeader({
         </Button>
       </div>
 
-      {/* CENTER: Icon Pill Switcher — icons only, active tab expands to show label */}
-      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
-        <div className="flex items-center gap-0.5 p-1 rounded-xl bg-zinc-900 border border-zinc-800">
+      {/* CENTER: Icon Pill Switcher */}
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3">
+        <div className="flex items-center gap-0.5 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
           {TAB_CONFIG.map((tab, idx) => {
             const isActive = viewMode === tab.mode;
             const Icon = tab.icon;
@@ -130,7 +128,7 @@ export function VibecoderHeader({
 
         {/* Device Toggles (only show for preview mode) */}
         {viewMode === 'preview' && (
-          <div className="flex items-center gap-0.5 p-1 rounded-lg bg-zinc-900 border border-zinc-800">
+          <div className="flex items-center gap-0.5 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06]">
             <button 
               onClick={() => setDeviceMode('desktop')}
               className={`p-1.5 rounded-md transition-colors ${
@@ -207,7 +205,7 @@ export function VibecoderHeader({
         </Button>
 
         {/* Visual Divider */}
-        <div className="w-px h-6 bg-zinc-800" />
+        <div className="w-px h-5 bg-white/[0.08]" />
 
         {/* Profile Menu */}
         {onSignOut && (
