@@ -1040,7 +1040,44 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
   const setCode = useCallback((code: string) => {
     // Strip sentinel before validation (it's a marker, not app code)
-    const codeWithoutSentinel = stripCompleteSentinel(code);
+    let cleaned = stripCompleteSentinel(code);
+
+    // Strip /// TYPE: CODE /// preamble that may be stored in code_snapshot.
+    // The preamble contains explanation text that confuses the bracket validator.
+    const typeCodeIdx = cleaned.indexOf('/// TYPE: CODE ///');
+    if (typeCodeIdx >= 0) {
+      const afterMarker = cleaned.substring(typeCodeIdx + '/// TYPE: CODE ///'.length);
+      // Find where actual code starts (import/export/function/const)
+      const codeStartPatterns = [
+        /(^|\n)(import\s+)/,
+        /(^|\n)(export\s+default\s+function\s+)/,
+        /(^|\n)(export\s+function\s+)/,
+        /(^|\n)(const\s+\w+\s*=\s*\()/,
+        /(^|\n)(function\s+\w+\s*\()/,
+      ];
+      let codeStart = -1;
+      for (const pattern of codeStartPatterns) {
+        const match = afterMarker.match(pattern);
+        if (match?.index !== undefined) {
+          codeStart = match.index;
+          break;
+        }
+      }
+      if (codeStart >= 0) {
+        cleaned = afterMarker.substring(codeStart).trim();
+      }
+    }
+
+    // Also strip === SUMMARY === suffix if it bled in
+    const summaryIdx = cleaned.indexOf('=== SUMMARY ===');
+    if (summaryIdx >= 0) {
+      cleaned = cleaned.substring(0, summaryIdx).trim();
+    }
+
+    // Strip [LOG: ...] tags
+    cleaned = cleaned.replace(/\[LOG:\s*[^\]]+\]/g, '').trim();
+
+    const codeWithoutSentinel = cleaned;
     
     const validation = validateTsx(codeWithoutSentinel);
     if (!validation.valid) {
