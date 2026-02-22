@@ -706,11 +706,13 @@ Before writing code, structure your response with these section markers:
 - Step 2: description
 
 === CODE ===
-/// TYPE: CODE ///
-<your markdown summary and [LOG:] tags>
-/// BEGIN_CODE ///
-<full React TSX file>
-// --- VIBECODER_COMPLETE ---
+{
+  "files": {
+    "/App.tsx": "<full file content as a single string with \\n for newlines>",
+    "/components/NavBar.tsx": "<full file content>",
+    "/sections/Hero.tsx": "<full file content>"
+  }
+}
 
 === SUMMARY ===
 (2-4 sentences describing what you built/changed. Be specific about the key features, sections, or design choices you implemented. Mention the username if available. Write in a natural, conversational tone — not robotic. Example: "I've built a complete portfolio storefront for @username with an animated hero, a curated project grid, an about section with floating skills, and a contact form, all styled with the requested cream/charcoal/sage palette and elegant fonts.")
@@ -722,6 +724,38 @@ Before writing code, structure your response with these section markers:
 IMPORTANT: Always include ALL five sections (ANALYSIS, PLAN, CODE, SUMMARY, CONFIDENCE).
 The === markers must be on their own line exactly as shown.
 CONFIDENCE must be a number 0-100 on its own line, followed by a reason on the next line.
+
+FILE STRUCTURE PROTOCOL (MANDATORY FOR ALL BUILDS):
+The === CODE === section must contain ONLY a valid JSON object with a "files" key.
+NO markdown fences, NO commentary, NO explanation inside === CODE ===.
+
+When building a NEW storefront (BUILD intent), split into files:
+  /App.tsx - Router + layout compositor (imports sections/components, never contains full sections inline)
+  /components/NavBar.tsx - Navigation bar
+  /components/Footer.tsx - Footer
+  /sections/Hero.tsx - Hero section
+  /sections/[Name].tsx - Each major page section (Products, FAQ, About, etc.)
+
+When MODIFYING, only output the changed file(s) in the JSON.
+Keep each file under 150 lines.
+Each file must be a valid standalone React component with its own imports.
+The sentinel \`// --- VIBECODER_COMPLETE ---\` goes inside /App.tsx content only.
+
+EXAMPLE === CODE === output for a BUILD:
+{
+  "files": {
+    "/App.tsx": "import React from 'react';\\nimport { Hero } from './sections/Hero';\\nimport { NavBar } from './components/NavBar';\\n\\nexport default function App() {\\n  return (\\n    <div>\\n      <Hero />\\n      <NavBar />\\n    </div>\\n  );\\n}\\n// --- VIBECODER_COMPLETE ---",
+    "/sections/Hero.tsx": "import React from 'react';\\n\\nexport function Hero() {\\n  return <section className=\\"hero\\">Welcome</section>;\\n}",
+    "/components/NavBar.tsx": "import React from 'react';\\n\\nexport function NavBar() {\\n  return <nav>Nav</nav>;\\n}"
+  }
+}
+
+EXAMPLE === CODE === output for a MODIFY (only changed files):
+{
+  "files": {
+    "/sections/Hero.tsx": "import React from 'react';\\n\\nexport function Hero() {\\n  return <section className=\\"hero\\">New Title</section>;\\n}"
+  }
+}
 ═══════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════
@@ -1805,6 +1839,11 @@ serve(async (req) => {
         // Emit initial analyzing phase
         emitEvent('phase', { phase: 'analyzing' });
         
+        // Emit analyzer suggestions into the main stream (if available)
+        if (analysis?.suggestions?.length) {
+          emitEvent('suggestions', analysis.suggestions);
+        }
+        
         // Process accumulated content and emit structured events
         const processContent = () => {
           // === ANALYSIS === section
@@ -1841,28 +1880,107 @@ serve(async (req) => {
             }
           }
           
-          // === CODE === section
+          // === CODE === section — accumulate but DON'T stream as deltas
           if (!codePhaseEmitted && fullContent.includes('=== CODE ===')) {
             emitEvent('phase', { phase: 'building' });
             codePhaseEmitted = true;
           }
           
-          // Stream code chunks as DELTAS (not full content each time)
-          if (codePhaseEmitted) {
+          // During code accumulation, emit progress (byte count) instead of raw code
+          if (codePhaseEmitted && !summaryEmitted) {
             const codeStart = fullContent.indexOf('=== CODE ===') + '=== CODE ==='.length;
             let codeEnd = fullContent.indexOf('=== SUMMARY ===');
             if (codeEnd < 0) codeEnd = fullContent.length;
-            
             const codeSection = fullContent.substring(codeStart, codeEnd);
-            const newContent = codeSection.substring(lastCodeEmitLength);
-            if (newContent.length > 0) {
-              emitEvent('code_chunk', { content: newContent, total: codeSection.length });
+            // Only emit progress updates, not actual code
+            if (codeSection.length > lastCodeEmitLength + 200) {
+              emitEvent('code_progress', { bytes: codeSection.length });
               lastCodeEmitLength = codeSection.length;
             }
           }
           
-          // === SUMMARY === section
+          // === SUMMARY === section — CODE is now complete, parse JSON files
           if (!summaryEmitted && fullContent.includes('=== SUMMARY ===')) {
+            // Extract and parse the JSON files from === CODE === section
+            const codeStart = fullContent.indexOf('=== CODE ===') + '=== CODE ==='.length;
+            const codeEnd = fullContent.indexOf('=== SUMMARY ===');
+            const codeSectionRaw = fullContent.substring(codeStart, codeEnd).trim();
+            
+            // Strip markdown fences if present
+            const cleaned = codeSectionRaw
+              .replace(/^```(?:json|tsx?|jsx?)?\s*\n?/i, '')
+              .replace(/\n?```\s*$/i, '')
+              .trim();
+            
+            let filesEmitted = false;
+            try {
+              const parsed = JSON.parse(cleaned);
+              if (parsed.files && typeof parsed.files === 'object') {
+                // Validate each .tsx file
+                const fileMap: Record<string, string> = parsed.files;
+                const validationErrors: Array<{path: string; error: string}> = [];
+                
+                for (const [path, content] of Object.entries(fileMap)) {
+                  if (path.endsWith('.tsx') || path.endsWith('.ts')) {
+                    if (!content || (typeof content === 'string' && content.trim().length < 10)) {
+                      validationErrors.push({ path, error: 'File content is empty or too short' });
+                    }
+                  }
+                }
+                
+                // Auto-repair if validation errors found
+                if (validationErrors.length > 0) {
+                  console.warn(`[AutoRepair] ${validationErrors.length} file(s) need repair`);
+                  for (const err of validationErrors) {
+                    try {
+                      const repairResponse = await fetch(GEMINI_API_URL, {
+                        method: "POST",
+                        headers: {
+                          Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          model: "gemini-2.5-flash",
+                          messages: [
+                            { role: "system", content: "You are a code repair tool. Return ONLY the corrected file content. No markdown fences, no explanation." },
+                            { role: "user", content: `Fix this React component file (${err.path}):\n\nError: ${err.error}\n\nCurrent content:\n${fileMap[err.path] || '(empty)'}\n\nReturn ONLY the corrected TypeScript/React code.` },
+                          ],
+                          max_tokens: 4000,
+                          temperature: 0.1,
+                        }),
+                      });
+                      if (repairResponse.ok) {
+                        const repairData = await repairResponse.json();
+                        const repairedContent = repairData.choices?.[0]?.message?.content;
+                        if (repairedContent && repairedContent.trim().length > 20) {
+                          fileMap[err.path] = repairedContent.replace(/^```(?:tsx?|jsx?)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+                          console.log(`[AutoRepair] ✅ Repaired ${err.path}`);
+                        }
+                      }
+                    } catch (repairErr) {
+                      console.warn(`[AutoRepair] Failed to repair ${err.path}:`, repairErr);
+                    }
+                  }
+                }
+                
+                emitEvent('files', { projectFiles: fileMap });
+                filesEmitted = true;
+                console.log(`[Files] Emitted ${Object.keys(fileMap).length} files atomically`);
+              }
+            } catch (parseErr) {
+              console.warn('[Files] JSON parse failed, falling back to legacy code_chunk:', parseErr);
+            }
+            
+            // Legacy fallback: if JSON parse failed, emit as code_chunk
+            if (!filesEmitted && cleaned.length > 50) {
+              // Strip TYPE/BEGIN markers for legacy compat
+              const legacyCode = cleaned
+                .replace(/\/\/\/\s*TYPE:\s*CODE\s*\/\/\//g, '')
+                .replace(/\/\/\/\s*BEGIN_CODE\s*\/\/\//g, '')
+                .replace(/\/\/\s*---\s*VIBECODER_COMPLETE\s*---/g, '')
+                .trim();
+              emitEvent('code_chunk', { content: legacyCode, total: legacyCode.length });
+            }
             const summaryStart = fullContent.indexOf('=== SUMMARY ===') + '=== SUMMARY ==='.length;
             let summaryEnd = fullContent.indexOf('=== CONFIDENCE ===');
             if (summaryEnd < 0) summaryEnd = fullContent.length;

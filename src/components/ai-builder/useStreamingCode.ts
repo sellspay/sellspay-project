@@ -344,9 +344,9 @@ const enforceHeroFirstLayout = (src: string): TsxValidationResult | null => {
   const jsxStart = returnMatch.index + returnMatch[0].length;
   const jsxContent = src.substring(jsxStart);
   
-  // Find positions of nav/header tags and hero-like sections in the JSX
-  // Nav patterns: <nav, <header, <Navigation, <Navbar, <Header
-  const navPattern = /<(?:nav|header|Navigation|Navbar|Header)[\s>\/]/;
+  // Find positions of nav tags and hero-like sections in the JSX
+  // Only match actual navigation patterns, not generic HTML5 elements like <header>
+  const navPattern = /<(?:nav|Navigation|Navbar|NavBar|SiteNav|MainNav)[\s>\/]/;
   const navMatch = jsxContent.match(navPattern);
   
   // Hero patterns: hero in className, id="hero", <Hero, section with hero
@@ -760,6 +760,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       let isStructuredSSE = false;
       // Accumulate code_chunk deltas for live preview during streaming
       let streamingCodeBuffer = '';
+      let receivedFiles = false;
 
       const processSSELine = (line: string) => {
         if (line.startsWith('event: ')) {
@@ -791,14 +792,33 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                 case 'raw':
                   rawStream += data.content;
                   break;
+                case 'files': {
+                  // Multi-file atomic payload from backend (JSON files already validated server-side)
+                  const projectFiles = data.projectFiles || data.files || {};
+                  if (Object.keys(projectFiles).length > 0) {
+                    setState(prev => ({ ...prev, files: projectFiles, code: '' }));
+                    // Extract App.tsx for backward compat
+                    const appCode = projectFiles['/App.tsx'] || projectFiles['App.tsx'] || '';
+                    if (appCode) {
+                      lastGoodCodeRef.current = appCode;
+                    }
+                    options.onComplete?.(appCode);
+                    receivedFiles = true;
+                  }
+                }
+                case 'code_progress': {
+                  // Visual feedback during generation (no code applied)
+                  // Could update a progress indicator in the future
+                  break;
+                }
                 case 'code_chunk': {
-                  // Accumulate code deltas for live preview during streaming
+                  // Legacy fallback: only used when JSON parse failed on backend
+                  // Skip if we already got files
+                  if (receivedFiles) break;
                   streamingCodeBuffer += (data.content || '');
-                  // Progressive preview: show partial code immediately (no completeness gate during streaming)
                   if (streamingCodeBuffer.length > 100) {
                     setState(prev => ({ ...prev, code: streamingCodeBuffer }));
                   }
-                  // Also try to extract clean code for last-good-ref
                   const cleanChunk = extractCodeFromRaw(streamingCodeBuffer);
                   if (cleanChunk && isLikelyCompleteTsx(cleanChunk)) {
                     lastGoodCodeRef.current = cleanChunk;
@@ -968,6 +988,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           options.onChatResponse?.(planText);
         }
         return planText;
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // MULTI-FILE FAST PATH: If we received files via atomic JSON event,
+      // skip all legacy single-file extraction/validation/guardrails.
+      // The code was already validated server-side and applied atomically.
+      // ═══════════════════════════════════════════════════════════
+      if (receivedFiles) {
+        setState(prev => ({ ...prev, isStreaming: false }));
+        return lastGoodCodeRef.current;
       }
 
       const aiSummary = extractSummaryFromRaw(rawStream);
