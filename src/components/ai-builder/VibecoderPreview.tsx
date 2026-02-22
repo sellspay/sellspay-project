@@ -764,6 +764,109 @@ window.addEventListener('message', (event) => {
   });
 })();
 
+// COLOR EXTRACTION: Extract actual colors from the rendered DOM for theme editor
+window.addEventListener('message', (event) => {
+  const msg = event.data;
+  if (!msg || msg.type !== 'VIBECODER_EXTRACT_COLORS') return;
+  
+  function rgbToHex(rgb) {
+    if (!rgb || rgb === 'transparent' || rgb === 'rgba(0, 0, 0, 0)') return null;
+    if (rgb.startsWith('#')) return rgb;
+    const match = rgb.match(/\\d+/g);
+    if (!match || match.length < 3) return null;
+    const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
+    return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+  }
+  
+  const root = document.getElementById('root') || document.body;
+  const cs = window.getComputedStyle(root);
+  
+  const bg = rgbToHex(cs.backgroundColor) || '#000000';
+  const fg = rgbToHex(cs.color) || '#ffffff';
+  
+  // Find first visible button for primary
+  const btns = document.querySelectorAll('button:not([data-vibe-overlay])');
+  let primary = null;
+  let primaryFg = null;
+  for (const btn of btns) {
+    const bcs = window.getComputedStyle(btn);
+    const c = rgbToHex(bcs.backgroundColor);
+    if (c && c !== bg && c !== '#000000') { primary = c; primaryFg = rgbToHex(bcs.color); break; }
+  }
+  
+  // Find links for accent
+  const links = document.querySelectorAll('a');
+  let accent = null;
+  for (const link of links) {
+    const lcs = window.getComputedStyle(link);
+    const c = rgbToHex(lcs.color);
+    if (c && c !== fg) { accent = c; break; }
+  }
+  
+  // Find card-like elements
+  const cards = document.querySelectorAll('[class*="card"], [class*="Card"], section > div, main > div');
+  let cardBg = null;
+  let cardFg = null;
+  for (const card of cards) {
+    const ccs = window.getComputedStyle(card);
+    const c = rgbToHex(ccs.backgroundColor);
+    if (c && c !== bg) { cardBg = c; cardFg = rgbToHex(ccs.color); break; }
+  }
+  
+  // Find muted text
+  const texts = document.querySelectorAll('p, span, small');
+  let mutedFg = null;
+  for (const t of texts) {
+    const tcs = window.getComputedStyle(t);
+    const c = rgbToHex(tcs.color);
+    if (c && c !== fg && c !== primary) { mutedFg = c; break; }
+  }
+  
+  // Border
+  const bordered = document.querySelector('[class*="border"]');
+  let borderColor = null;
+  if (bordered) {
+    const bcs = window.getComputedStyle(bordered);
+    borderColor = rgbToHex(bcs.borderTopColor);
+  }
+  
+  const p = primary || '#3b82f6';
+  const a = accent || p;
+  const cb = cardBg || bg;
+  const cf = cardFg || fg;
+  const bc = borderColor || '#27272a';
+  
+  window.parent.postMessage({
+    type: 'VIBECODER_COLORS_EXTRACTED',
+    colors: {
+      primary: p,
+      'primary-foreground': primaryFg || '#ffffff',
+      secondary: cb,
+      'secondary-foreground': cf,
+      accent: a,
+      'accent-foreground': '#ffffff',
+      background: bg,
+      foreground: fg,
+      card: cb,
+      'card-foreground': cf,
+      popover: cb,
+      'popover-foreground': cf,
+      muted: cb,
+      'muted-foreground': mutedFg || '#a1a1aa',
+      destructive: '#ef4444',
+      'destructive-foreground': '#ffffff',
+      border: bc,
+      input: bc,
+      ring: p,
+      'chart-1': p,
+      'chart-2': a,
+      'chart-3': '#06b6d4',
+      'chart-4': '#10b981',
+      'chart-5': '#f59e0b',
+    }
+  }, '*');
+});
+
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);`,
         hidden: true,

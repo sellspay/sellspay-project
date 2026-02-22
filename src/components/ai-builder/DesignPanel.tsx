@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Palette, Sparkles, ArrowLeft, MoreHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
-import { STYLE_PRESETS, type StylePreset } from "./stylePresets";
+import { STYLE_PRESETS, type StylePreset, type StyleColors } from "./stylePresets";
 import { cn } from "@/lib/utils";
 import { VisualEditPanel, type SelectedElement } from "./VisualEditOverlay";
 import { ThemeEditorDialog } from "./ThemeEditorDialog";
@@ -37,12 +37,52 @@ function StyleDots({ style }: { style: StylePreset }) {
 export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange, selectedElement, onEditRequest }: DesignPanelProps) {
   const [view, setView] = useState<DesignView>('home');
   const [editingStyle, setEditingStyle] = useState<StylePreset | null>(null);
+  const [extractedColors, setExtractedColors] = useState<StyleColors | null>(null);
   const currentStyle = activeStyle ?? STYLE_PRESETS[0];
 
   // Notify parent when visual edit mode changes
   useEffect(() => {
     onVisualEditModeChange?.(view === 'visual-edits');
   }, [view, onVisualEditModeChange]);
+
+  // Listen for color extraction responses from the iframe
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      const msg = event.data;
+      if (!msg || msg.type !== 'VIBECODER_COLORS_EXTRACTED') return;
+      setExtractedColors(msg.colors as StyleColors);
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  // Request color extraction from the iframe
+  const requestColorExtraction = useCallback(() => {
+    const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'VIBECODER_EXTRACT_COLORS' }, '*');
+    }
+  }, []);
+
+  // When editing "Current Theme", extract colors from the preview first
+  const handleEditStyle = useCallback((style: StylePreset) => {
+    if (style.id === 'none') {
+      // Extract real colors from the iframe
+      requestColorExtraction();
+      // Use extracted colors if available, otherwise open with defaults
+      const colorsToUse = extractedColors ?? style.colors;
+      setEditingStyle({ ...style, colors: colorsToUse });
+    } else {
+      setEditingStyle(style);
+    }
+  }, [requestColorExtraction, extractedColors]);
+
+  // Update editingStyle when extraction completes (if we're editing Current Theme)
+  useEffect(() => {
+    if (editingStyle?.id === 'none' && extractedColors) {
+      setEditingStyle(prev => prev ? { ...prev, colors: extractedColors } : null);
+    }
+  }, [extractedColors, editingStyle?.id]);
 
   if (view === 'themes') {
     return (
@@ -77,15 +117,10 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
                       : "bg-zinc-900/60 border border-zinc-800/50"
                   )}
                 >
-                  {/* Color dots */}
                   <StyleDots style={style} />
-
-                  {/* Name */}
                   <span className="text-sm font-medium text-zinc-200 flex-1 truncate">
                     {style.name}
                   </span>
-
-                  {/* Apply button */}
                   {!isActive && (
                     <button
                       onClick={() => onStyleChange?.(style)}
@@ -94,10 +129,8 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
                       Apply
                     </button>
                   )}
-
-                  {/* Edit button */}
                   <button
-                    onClick={() => setEditingStyle(style)}
+                    onClick={() => handleEditStyle(style)}
                     className="p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 rounded-md transition-colors shrink-0"
                   >
                     <MoreHorizontal className="w-4 h-4" />
@@ -147,7 +180,6 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
         <h2 className="text-sm font-semibold text-zinc-200">Design</h2>
 
         <div className="grid grid-cols-2 gap-3">
-          {/* Themes card */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -164,7 +196,6 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
             <span className="text-zinc-600 text-xs">›</span>
           </motion.button>
 
-          {/* Visual Edits card */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
