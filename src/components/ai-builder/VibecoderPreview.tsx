@@ -644,6 +644,21 @@ function ThemeBridge() {
 }\n`;
       }
 
+      // Force all img elements with grayscale+invert filters to use theme-aware coloring
+      // and ensure marquee/sliding banner text respects theme
+      if (primaryHSL && fgHSL) {
+        css += `\n/* Sliding banner / marquee overrides */
+[style*="filter"][style*="invert"] {
+  filter: grayscale(1) brightness(0) invert(1) !important;
+}
+marquee *, [data-marquee] *, [class*="marquee"] *, [class*="sliding"] *, [class*="banner"] *, [class*="scroll"] * {
+  color: hsl(${fgHSL}) !important;
+}
+[class*="marquee"] img, [class*="sliding"] img, [class*="banner"] img, [class*="scroll"] img {
+  filter: grayscale(1) brightness(0) invert(1) !important;
+}\n`;
+      }
+
       // Hover state overrides for primary buttons
       if (primaryHSL) {
         css += `\n.hover\\:bg-orange-600:hover, .hover\\:bg-orange-500:hover,
