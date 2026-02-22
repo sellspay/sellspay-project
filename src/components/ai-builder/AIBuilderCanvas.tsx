@@ -194,6 +194,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
 
   // Preview error state (Sandpack compile/runtime)
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [consoleErrors, setConsoleErrors] = useState<string[]>([]);
   const [showFixToast, setShowFixToast] = useState(false);
   const lastPreviewErrorRef = useRef<string | null>(null);
   
@@ -835,6 +836,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     setChatResponse(null);
     setLiveSteps([]);
     setPreviewError(null);
+    setConsoleErrors([]);
     setShowFixToast(false);
     pendingSummaryRef.current = '';
   }, [cancelStream, cancelAgent, forceResetStreaming]);
@@ -1350,6 +1352,16 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     triggerSelfCorrection(errorMsg);
     // DO NOT add error messages to chat - keep chat clean!
   }, [isStreaming, triggerSelfCorrection]);
+
+  // 🔍 CONSOLE ERROR CAPTURE: Runtime errors from inside Sandpack iframe
+  const handleConsoleErrors = useCallback((errors: string[]) => {
+    if (isStreaming) return;
+    setConsoleErrors(errors);
+    // If there's no build error but console errors exist, show the fix toast
+    if (!previewError && errors.length > 0) {
+      setShowFixToast(true);
+    }
+  }, [isStreaming, previewError]);
   
   // 📋 PLAN APPROVAL: Execute the approved plan
   const handleApprovePlan = useCallback(async (originalPrompt: string) => {
@@ -1697,7 +1709,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                       resetCode();
                     }}
                   >
-                    <VibecoderPreview
+                     <VibecoderPreview
                       key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
                       code={code}
                       files={Object.keys(files).length > 0 ? files : undefined}
@@ -1709,6 +1721,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                         setIsAwaitingPreviewReady(false);
                         // If the bundle becomes healthy again, clear the toast.
                         setPreviewError(null);
+                        setConsoleErrors([]);
                         setShowFixToast(false);
                         lastPreviewErrorRef.current = null;
                         
@@ -1721,6 +1734,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                         }
                       }}
                       onError={handlePreviewError}
+                      onConsoleErrors={handleConsoleErrors}
                       viewMode={viewMode}
                     />
                   </PreviewErrorBoundary>
@@ -1735,14 +1749,22 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                   />
 
                   {/* Only show error toast when NOT streaming - errors during streaming are expected */}
-                  {showFixToast && previewError && !isStreaming && (
+                  {showFixToast && (previewError || consoleErrors.length > 0) && !isStreaming && (
                     <FixErrorToast
-                      error={previewError}
-                      onDismiss={() => setShowFixToast(false)}
+                      error={previewError || consoleErrors[0] || 'Runtime error detected'}
+                      onDismiss={() => { setShowFixToast(false); setConsoleErrors([]); }}
                       onFix={() => {
-                        const report = `CRITICAL_ERROR_REPORT: The preview has the following build error: "${previewError}". Analyze the latest code you generated, identify the cause (syntax error, missing import, undefined variable, etc.), and fix it immediately. Do NOT ask questions.`;
+                        const parts: string[] = [];
+                        if (previewError) {
+                          parts.push(`Build error: "${previewError}"`);
+                        }
+                        if (consoleErrors.length > 0) {
+                          parts.push(`Console errors (${consoleErrors.length}): ${consoleErrors.slice(0, 5).map(e => `"${e}"`).join('; ')}`);
+                        }
+                        const report = `CRITICAL_ERROR_REPORT: The preview has the following errors. ${parts.join('. ')}. Analyze the latest code you generated, identify the cause (syntax error, missing import, undefined variable, runtime TypeError, etc.), and fix it immediately. Do NOT ask questions.`;
                         handleAutoFix(report);
                         setShowFixToast(false);
+                        setConsoleErrors([]);
                       }}
                     />
                   )}
