@@ -539,6 +539,24 @@ const isLikelyCompleteTsx = (code: string): boolean => {
   return validateTsx(code).valid;
 };
 
+/**
+ * Sanitize navigation patterns that crash in Sandpack's sandboxed iframe.
+ * Rewrites window.top.location.href and window.location.href assignments
+ * to window.open() which works safely in sandboxed contexts.
+ */
+const sanitizeNavigation = (code: string): string => {
+  let result = code.replace(
+    /window\.top\.location\.href\s*=\s*([^;\n]+)/g,
+    'window.open($1, \'_blank\')'
+  );
+  result = result.replace(
+    /window\.location\.href\s*=\s*([^;\n]+)/g,
+    'window.open($1, \'_blank\')'
+  );
+  result = result.replace(/target\s*=\s*["']_top["']/g, 'target="_blank"');
+  return result;
+};
+
 export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   const [state, setState] = useState<StreamingState>({
     isStreaming: false,
@@ -697,6 +715,9 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
           .replace(/\n?```\s*$/i, '')
           .trim();
+
+        // Sanitize navigation patterns that crash in Sandpack's sandboxed iframe
+        cleaned = sanitizeNavigation(cleaned);
 
         cleaned = stripCompleteSentinel(cleaned);
         
