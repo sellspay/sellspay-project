@@ -3279,6 +3279,38 @@ export type Database = {
           },
         ]
       }
+      vibecoder_intent_profiles: {
+        Row: {
+          feature_counts: Json
+          id: string
+          primary_intent: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          feature_counts?: Json
+          id?: string
+          primary_intent?: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          feature_counts?: Json
+          id?: string
+          primary_intent?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vibecoder_intent_profiles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "vibecoder_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vibecoder_messages: {
         Row: {
           code_snapshot: string | null

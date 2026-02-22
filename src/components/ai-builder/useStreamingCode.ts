@@ -32,16 +32,19 @@ interface UseStreamingCodeOptions {
   onLogUpdate?: (logs: string[]) => void;
   onSummary?: (summary: string) => void;
   onError?: (error: Error) => void;
-  onTruncationDetected?: (truncatedCode: string, originalPrompt: string) => void; // NEW: Ghost Fixer trigger
+  onTruncationDetected?: (truncatedCode: string, originalPrompt: string) => void;
   shouldAbort?: () => boolean;
   getProductsContext?: () => Promise<ProductContext[]>;
   getConversationHistory?: () => Array<{role: string; content: string}>;
-  // NEW: Phase-based streaming callbacks
+  // Phase-based streaming callbacks
   onPhaseChange?: (phase: string) => void;
   onAnalysis?: (text: string) => void;
   onPlanItems?: (items: string[]) => void;
   onStreamSummary?: (text: string) => void;
   onConfidence?: (score: number, reason: string) => void;
+  // 2-Stage Analyzer Pipeline callbacks
+  onSuggestions?: (suggestions: Array<{ label: string; prompt: string }>) => void;
+  onQuestions?: (questions: Array<{ id: string; label: string; type: 'single' | 'multi'; options: Array<{ value: string; label: string }> }>, enhancedPromptSeed?: string) => void;
 }
 
 interface ProductContext {
@@ -825,6 +828,19 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   const score = data.score ?? 75;
                   const reason = data.reason || '';
                   options.onConfidence?.(score, reason);
+                  break;
+                }
+                case 'suggestions': {
+                  // 2-Stage Analyzer: Backend-driven suggestion chips
+                  const suggestions = Array.isArray(data) ? data : (data.suggestions || []);
+                  options.onSuggestions?.(suggestions);
+                  break;
+                }
+                case 'questions': {
+                  // 2-Stage Analyzer: Clarification questions
+                  const questions = Array.isArray(data) ? data : (data.questions || []);
+                  const promptSeed = data.enhanced_prompt_seed || '';
+                  options.onQuestions?.(questions, promptSeed);
                   break;
                 }
               }

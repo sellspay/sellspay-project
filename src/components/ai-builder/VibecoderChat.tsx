@@ -12,7 +12,8 @@ import { StreamingPhaseCard, type StreamPhase, type StreamingPhaseData } from '.
 import { PlanApprovalCard } from './PlanApprovalCard';
 import type { PlanData } from './useStreamingCode';
 import { type StylePreset, generateStylePrompt } from './stylePresets';
-import { ContextualSuggestions } from './ContextualSuggestions';
+import { ContextualSuggestions, type BackendSuggestion } from './ContextualSuggestions';
+import { ClarificationCard, type ClarificationQuestion } from './ClarificationCard';
 
 interface VibecoderChatProps {
   onSendMessage: (displayMessage: string, aiPrompt?: string) => void;
@@ -45,6 +46,12 @@ interface VibecoderChatProps {
   canUndo?: boolean;
   // NEW: Streaming phase data
   streamPhaseData?: StreamingPhaseData;
+  // 2-Stage Analyzer Pipeline
+  backendSuggestions?: BackendSuggestion[];
+  pendingQuestions?: ClarificationQuestion[];
+  enhancedPromptSeed?: string;
+  onSubmitClarification?: (answers: Record<string, string | string[]>, enhancedPromptSeed?: string) => void;
+  onSkipClarification?: () => void;
 }
 
 // Live Building Card - shows steps as they stream in
@@ -156,6 +163,11 @@ export function VibecoderChat({
   onRejectPlan,
   canUndo = false,
   streamPhaseData,
+  backendSuggestions = [],
+  pendingQuestions = [],
+  enhancedPromptSeed,
+  onSubmitClarification,
+  onSkipClarification,
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -352,17 +364,25 @@ export function VibecoderChat({
                 className="mt-4"
               />
             )}
+
+            {/* 🎯 CLARIFICATION CARD: Show when analyzer asks questions */}
+            {pendingQuestions.length > 0 && !isStreaming && (
+              <ClarificationCard
+                questions={pendingQuestions}
+                enhancedPromptSeed={enhancedPromptSeed}
+                onSubmitAnswers={(answers, seed) => onSubmitClarification?.(answers, seed)}
+                onSkip={onSkipClarification}
+              />
+            )}
           </>
         )}
       </div>
 
-      {/* Contextual Suggestions - appears above input when there's conversation history */}
+      {/* Contextual Suggestions - backend-driven from analyzer */}
       <ContextualSuggestions
-        messages={messages}
+        suggestions={backendSuggestions}
         onSelectSuggestion={(prompt) => {
           setInput(prompt);
-          // Auto-focus the input
-          // Optionally could auto-submit, but letting user review is better UX
         }}
         isStreaming={isStreaming}
       />

@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import type { AgentStep } from '@/components/ai-builder/AgentProgress';
 import type { StreamPhase } from '@/components/ai-builder/StreamingPhaseCard';
+import type { BackendSuggestion } from '@/components/ai-builder/ContextualSuggestions';
+import type { ClarificationQuestion } from '@/components/ai-builder/ClarificationCard';
 
 interface AgentState {
   step: AgentStep;
@@ -18,6 +20,10 @@ interface AgentState {
   // Confidence scoring
   confidenceScore: number | null;
   confidenceReason: string;
+  // 2-Stage Analyzer Pipeline
+  backendSuggestions: BackendSuggestion[];
+  pendingQuestions: ClarificationQuestion[];
+  enhancedPromptSeed: string;
 }
 
 interface UseAgentLoopOptions {
@@ -39,6 +45,9 @@ const INITIAL_STATE: AgentState = {
   summaryText: '',
   confidenceScore: null,
   confidenceReason: '',
+  backendSuggestions: [],
+  pendingQuestions: [],
+  enhancedPromptSeed: '',
 };
 
 function createFreshState(): AgentState {
@@ -83,7 +92,6 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       isRunning: true,
       lockedProjectId: lockedId,
       generationStartTime: Date.now(),
-      // Start in analyzing phase immediately
       streamPhase: 'analyzing',
       analysisText: '',
       planItems: [],
@@ -91,6 +99,9 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       summaryText: '',
       confidenceScore: null,
       confidenceReason: '',
+      backendSuggestions: [],
+      pendingQuestions: [],
+      enhancedPromptSeed: '',
     });
 
     try {
@@ -159,6 +170,25 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
   /** Called when SSE emits confidence scoring */
   const onConfidence = useCallback((score: number, reason: string) => {
     setState(prev => ({ ...prev, confidenceScore: score, confidenceReason: reason }));
+  }, []);
+
+  /** Called when SSE emits suggestions from analyzer */
+  const onSuggestions = useCallback((suggestions: BackendSuggestion[]) => {
+    setState(prev => ({ ...prev, backendSuggestions: suggestions }));
+  }, []);
+
+  /** Called when SSE emits clarification questions from analyzer */
+  const onQuestions = useCallback((questions: ClarificationQuestion[], promptSeed?: string) => {
+    setState(prev => ({ 
+      ...prev, 
+      pendingQuestions: questions,
+      enhancedPromptSeed: promptSeed || prev.enhancedPromptSeed,
+    }));
+  }, []);
+
+  /** Clear pending questions after user answers */
+  const clearQuestions = useCallback(() => {
+    setState(prev => ({ ...prev, pendingQuestions: [], enhancedPromptSeed: '' }));
   }, []);
 
   // ═══════════════════════════════════════════════════════════
@@ -262,6 +292,10 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
     onPlanItems,
     onStreamSummary,
     onConfidence,
+    // 2-Stage Analyzer callbacks
+    onSuggestions,
+    onQuestions,
+    clearQuestions,
     // Expose individual pieces
     agentStep: state.step,
     agentLogs: state.logs,
@@ -275,5 +309,9 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
     summaryText: state.summaryText,
     confidenceScore: state.confidenceScore,
     confidenceReason: state.confidenceReason,
+    // 2-Stage Analyzer state
+    backendSuggestions: state.backendSuggestions,
+    pendingQuestions: state.pendingQuestions,
+    enhancedPromptSeed: state.enhancedPromptSeed,
   };
 }
