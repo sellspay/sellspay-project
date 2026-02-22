@@ -941,38 +941,80 @@ window.addEventListener('message', (event) => {
   window.parent.postMessage({ type: 'VIBECODER_COLORS_EXTRACTED', colors }, '*');
 });
 
-// LIVE THEME PREVIEW: Apply CSS variables to :root when theme editor changes colors
-window.addEventListener('message', (event) => {
-  const msg = event.data;
-  if (!msg || msg.type !== 'VIBECODER_APPLY_THEME') return;
-  const colors = msg.colors;
-  if (!colors) return;
+// LIVE THEME PREVIEW: Inject a style tag that overrides colors in the preview
+// We store the original color map on first apply, then remap old->new
+(function() {
+  let originalColors = null; // { background, foreground, primary, accent, ... } - hex values captured on first apply
+  let themeStyleEl = null;
 
-  function hexToHSL(hex) {
-    const r = parseInt(hex.slice(1,3), 16) / 255;
-    const g = parseInt(hex.slice(3,5), 16) / 255;
-    const b = parseInt(hex.slice(5,7), 16) / 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    let h = 0, s = 0, l = (max + min) / 2;
-    if (max !== min) {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      switch (max) {
-        case r: h = ((g - b) / d + (g < b ? 6 : 0)) * 60; break;
-        case g: h = ((b - r) / d + 2) * 60; break;
-        case b: h = ((r - g) / d + 4) * 60; break;
+  window.addEventListener('message', (event) => {
+    const msg = event.data;
+    if (!msg || msg.type !== 'VIBECODER_APPLY_THEME') return;
+    const colors = msg.colors;
+    if (!colors) return;
+
+    // Capture original colors on first apply so we know what to replace
+    if (!originalColors) {
+      originalColors = { ...colors };
+    }
+
+    // Remove previous theme style
+    if (themeStyleEl) themeStyleEl.remove();
+    themeStyleEl = document.createElement('style');
+    themeStyleEl.id = 'vibe-theme-override';
+    themeStyleEl.setAttribute('data-vibe-overlay', 'true');
+
+    // Build CSS that sets custom properties AND applies broad overrides
+    let css = ':root {\\n';
+    for (const [key, hex] of Object.entries(colors)) {
+      if (typeof hex === 'string' && hex.startsWith('#')) {
+        // Set CSS custom property
+        const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+        css += '  --theme-' + key + ': ' + r + ', ' + g + ', ' + b + ';\\n';
       }
     }
-    return Math.round(h) + ' ' + Math.round(s * 100) + '% ' + Math.round(l * 100) + '%';
-  }
+    css += '}\\n';
 
-  const root = document.documentElement;
-  for (const [key, hex] of Object.entries(colors)) {
-    if (typeof hex === 'string' && hex.startsWith('#') && hex.length === 7) {
-      root.style.setProperty('--' + key, hexToHSL(hex));
+    // Override body/html background
+    if (colors.background) {
+      css += 'html, body, #root { background-color: ' + colors.background + ' !important; }\\n';
     }
-  }
-});
+    if (colors.foreground) {
+      css += 'body, #root { color: ' + colors.foreground + ' !important; }\\n';
+    }
+
+    // Override common element patterns with broad selectors
+    if (colors.primary) {
+      // Buttons with colored backgrounds
+      css += 'button:not([data-vibe-overlay]):not(.text-only), [role="button"] { background-color: ' + colors.primary + ' !important; color: ' + (colors['primary-foreground'] || '#fff') + ' !important; }\\n';
+      // Links / accent text
+      css += 'a:not([data-vibe-overlay]) { color: ' + colors.accent + ' !important; }\\n';
+    }
+
+    // Card-like containers
+    if (colors.card) {
+      css += '[class*="card"], [class*="Card"], [class*="rounded"][class*="bg-"], [class*="shadow"] { background-color: ' + colors.card + ' !important; color: ' + (colors['card-foreground'] || colors.foreground) + ' !important; }\\n';
+    }
+
+    // Borders
+    if (colors.border) {
+      css += '[class*="border"]:not([data-vibe-overlay]) { border-color: ' + colors.border + ' !important; }\\n';
+    }
+
+    // Muted text
+    if (colors['muted-foreground']) {
+      css += '[class*="text-gray"], [class*="text-zinc"], [class*="text-neutral"], [class*="text-slate"], [class*="opacity-"], small, .text-muted { color: ' + colors['muted-foreground'] + ' !important; }\\n';
+    }
+
+    // Nav / header areas
+    if (colors.background) {
+      css += 'nav, header, footer { background-color: ' + colors.background + ' !important; }\\n';
+    }
+
+    document.head.appendChild(themeStyleEl);
+    themeStyleEl.textContent = css;
+  });
+})();
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);`,
