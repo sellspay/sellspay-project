@@ -1033,11 +1033,11 @@ window.addEventListener('message', (event) => {
       '--chart-5': 'chart-5',
     };
 
-    let css = ':root {\\n';
+    let css = 'html, html.dark {\\n';
     for (const [varName, key] of Object.entries(varMap)) {
       const hex = c[key];
       if (hex && hex.startsWith('#')) {
-        css += '  ' + varName + ': ' + hexToHSL(hex) + ' !important;\\n';
+        css += '  ' + varName + ': ' + hexToHSL(hex) + ';\\n';
       }
     }
     css += '}\\n';
