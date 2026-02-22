@@ -88,6 +88,14 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const [designInput, setDesignInput] = useState('');
   const [visualEditMode, setVisualEditMode] = useState(false);
   const [selectedElement, setSelectedElement] = useState<import('./VisualEditOverlay').SelectedElement | null>(null);
+
+  // Auto-disable visual edit mode when leaving design view
+  useEffect(() => {
+    if (viewMode !== 'design') {
+      setVisualEditMode(false);
+      setSelectedElement(null);
+    }
+  }, [viewMode]);
   
   // Listen for element selection from iframe (visual edit mode)
   useEffect(() => {
