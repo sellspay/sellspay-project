@@ -1744,69 +1744,115 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               />
             ) : (
               <div className={`flex-1 min-h-0 h-full relative bg-[#1a1a1a] ${deviceMode === 'mobile' ? 'flex items-center justify-center' : ''}`}>
-                <div
-                  className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-800 shadow-2xl bg-zinc-950' : 'w-full'} relative overflow-hidden`}
-                >
-                  <PreviewErrorBoundary
-                    onAutoFix={handleAutoFix}
-                    onReset={() => {
-                      setIsAwaitingPreviewReady(false);
-                      resetCode();
-                    }}
-                  >
-                     <VibecoderPreview
-                      key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
-                      code={code}
-                      files={Object.keys(files).length > 0 ? files : undefined}
-                      isStreaming={isStreaming}
-                      showLoadingOverlay={false}
-                      onReady={() => {
-                        setIsWaitingForPreviewMount(false);
-                        setIsAwaitingPreviewReady(false);
-                        setPreviewError(null);
-                        setConsoleErrors([]);
-                        setShowFixToast(false);
-                        lastPreviewErrorRef.current = null;
-                        if (!isStreaming && code !== DEFAULT_CODE) {
-                          if (captureTimerRef.current) clearTimeout(captureTimerRef.current);
-                          captureTimerRef.current = setTimeout(() => {
-                            requestCapture();
-                          }, 2000);
-                        }
-                      }}
-                      onError={handlePreviewError}
-                      onConsoleErrors={handleConsoleErrors}
-                      viewMode={viewMode}
-                      activePage={previewPath}
-                    />
-                  </PreviewErrorBoundary>
-
-                  <GenerationOverlay
-                    visible={isStreaming && isEmpty}
-                    phase={streamPhase || 'analyzing'}
-                    analysisText={analysisText}
-                  />
-
-                  {showFixToast && (previewError || consoleErrors.length > 0) && !isStreaming && (
-                    <FixErrorToast
-                      error={previewError || consoleErrors[0] || 'Runtime error detected'}
-                      onDismiss={() => { setShowFixToast(false); setConsoleErrors([]); }}
-                      onFix={() => {
-                        const parts: string[] = [];
-                        if (previewError) {
-                          parts.push(`Build error: "${previewError}"`);
-                        }
-                        if (consoleErrors.length > 0) {
-                          parts.push(`Console errors (${consoleErrors.length}): ${consoleErrors.slice(0, 5).map(e => `"${e}"`).join('; ')}`);
-                        }
-                        const report = `CRITICAL_ERROR_REPORT: The preview has the following errors. ${parts.join('. ')}. Analyze the latest code you generated, identify the cause (syntax error, missing import, undefined variable, runtime TypeError, etc.), and fix it immediately. Do NOT ask questions.`;
-                        handleAutoFix(report);
-                        setShowFixToast(false);
-                        setConsoleErrors([]);
-                      }}
-                    />
-                  )}
-                </div>
+                {deviceMode === 'mobile' ? (
+                  /* Phone device frame */
+                  <div className="relative flex flex-col" style={{ height: 'calc(100% - 32px)', maxHeight: '900px' }}>
+                    <div className="relative h-full w-[390px] rounded-[3rem] border-[4px] border-zinc-700 bg-black shadow-2xl shadow-black/60 overflow-hidden flex flex-col">
+                      {/* Dynamic Island */}
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 w-[120px] h-[28px] bg-black rounded-b-2xl flex items-center justify-center">
+                        <div className="w-[60px] h-[4px] rounded-full bg-zinc-800" />
+                      </div>
+                      {/* Screen */}
+                      <div className="flex-1 overflow-hidden rounded-[calc(3rem-4px)] relative">
+                        <PreviewErrorBoundary
+                          onAutoFix={handleAutoFix}
+                          onReset={() => { setIsAwaitingPreviewReady(false); resetCode(); }}
+                        >
+                          <VibecoderPreview
+                            key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
+                            code={code}
+                            files={Object.keys(files).length > 0 ? files : undefined}
+                            isStreaming={isStreaming}
+                            showLoadingOverlay={false}
+                            onReady={() => {
+                              setIsWaitingForPreviewMount(false);
+                              setIsAwaitingPreviewReady(false);
+                              setPreviewError(null);
+                              setConsoleErrors([]);
+                              setShowFixToast(false);
+                              lastPreviewErrorRef.current = null;
+                              if (!isStreaming && code !== DEFAULT_CODE) {
+                                if (captureTimerRef.current) clearTimeout(captureTimerRef.current);
+                                captureTimerRef.current = setTimeout(() => { requestCapture(); }, 2000);
+                              }
+                            }}
+                            onError={handlePreviewError}
+                            onConsoleErrors={handleConsoleErrors}
+                            viewMode={viewMode}
+                            activePage={previewPath}
+                          />
+                        </PreviewErrorBoundary>
+                        <GenerationOverlay visible={isStreaming && isEmpty} phase={streamPhase || 'analyzing'} analysisText={analysisText} />
+                        {showFixToast && (previewError || consoleErrors.length > 0) && !isStreaming && (
+                          <FixErrorToast
+                            error={previewError || consoleErrors[0] || 'Runtime error detected'}
+                            onDismiss={() => { setShowFixToast(false); setConsoleErrors([]); }}
+                            onFix={() => {
+                              const parts: string[] = [];
+                              if (previewError) parts.push(`Build error: "${previewError}"`);
+                              if (consoleErrors.length > 0) parts.push(`Console errors (${consoleErrors.length}): ${consoleErrors.slice(0, 5).map(e => `"${e}"`).join('; ')}`);
+                              const report = `CRITICAL_ERROR_REPORT: The preview has the following errors. ${parts.join('. ')}. Analyze the latest code you generated, identify the cause (syntax error, missing import, undefined variable, runtime TypeError, etc.), and fix it immediately. Do NOT ask questions.`;
+                              handleAutoFix(report);
+                              setShowFixToast(false);
+                              setConsoleErrors([]);
+                            }}
+                          />
+                        )}
+                      </div>
+                      {/* Home indicator bar */}
+                      <div className="h-[20px] bg-black flex items-center justify-center">
+                        <div className="w-[134px] h-[5px] rounded-full bg-zinc-700" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full w-full relative overflow-hidden">
+                    <PreviewErrorBoundary
+                      onAutoFix={handleAutoFix}
+                      onReset={() => { setIsAwaitingPreviewReady(false); resetCode(); }}
+                    >
+                      <VibecoderPreview
+                        key={`preview-${activeProjectId ?? 'fresh'}-${resetKey}-${refreshKey}`}
+                        code={code}
+                        files={Object.keys(files).length > 0 ? files : undefined}
+                        isStreaming={isStreaming}
+                        showLoadingOverlay={false}
+                        onReady={() => {
+                          setIsWaitingForPreviewMount(false);
+                          setIsAwaitingPreviewReady(false);
+                          setPreviewError(null);
+                          setConsoleErrors([]);
+                          setShowFixToast(false);
+                          lastPreviewErrorRef.current = null;
+                          if (!isStreaming && code !== DEFAULT_CODE) {
+                            if (captureTimerRef.current) clearTimeout(captureTimerRef.current);
+                            captureTimerRef.current = setTimeout(() => { requestCapture(); }, 2000);
+                          }
+                        }}
+                        onError={handlePreviewError}
+                        onConsoleErrors={handleConsoleErrors}
+                        viewMode={viewMode}
+                        activePage={previewPath}
+                      />
+                    </PreviewErrorBoundary>
+                    <GenerationOverlay visible={isStreaming && isEmpty} phase={streamPhase || 'analyzing'} analysisText={analysisText} />
+                    {showFixToast && (previewError || consoleErrors.length > 0) && !isStreaming && (
+                      <FixErrorToast
+                        error={previewError || consoleErrors[0] || 'Runtime error detected'}
+                        onDismiss={() => { setShowFixToast(false); setConsoleErrors([]); }}
+                        onFix={() => {
+                          const parts: string[] = [];
+                          if (previewError) parts.push(`Build error: "${previewError}"`);
+                          if (consoleErrors.length > 0) parts.push(`Console errors (${consoleErrors.length}): ${consoleErrors.slice(0, 5).map(e => `"${e}"`).join('; ')}`);
+                          const report = `CRITICAL_ERROR_REPORT: The preview has the following errors. ${parts.join('. ')}. Analyze the latest code you generated, identify the cause (syntax error, missing import, undefined variable, runtime TypeError, etc.), and fix it immediately. Do NOT ask questions.`;
+                          handleAutoFix(report);
+                          setShowFixToast(false);
+                          setConsoleErrors([]);
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
