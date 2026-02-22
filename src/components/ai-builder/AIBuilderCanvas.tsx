@@ -239,7 +239,16 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onQuestions?: (questions: Array<{ id: string; label: string; type: 'single' | 'multi'; options: Array<{ value: string; label: string }> }>, enhancedPromptSeed?: string) => void;
   }>({});
 
-  // Streaming code state
+  // Ref to capture latest phase data for persisting in messages
+  const latestPhaseDataRef = useRef<{
+    analysisText?: string;
+    planItems?: string[];
+    summaryText?: string;
+    confidenceScore?: number;
+    confidenceReason?: string;
+    elapsedSeconds?: number;
+  }>({});
+
   const { 
     code, 
     files,
@@ -353,7 +362,14 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       // Pass the locked project ID explicitly for safety
       // Capture current files state for multi-file persistence
       const currentFiles = Object.keys(files).length > 0 ? files : undefined;
-      await addMessage('assistant', aiResponse, finalCode, generationLockRef.current || undefined, currentFiles);
+      // Persist streaming phase data (analysis/plan/building) in the message for chat history
+      const phaseMetaData = latestPhaseDataRef.current;
+      const hasPhaseData = phaseMetaData.analysisText || (phaseMetaData.planItems && phaseMetaData.planItems.length > 0);
+      await addMessage(
+        'assistant', aiResponse, finalCode,
+        generationLockRef.current || undefined, currentFiles,
+        hasPhaseData ? { streamPhase: { ...phaseMetaData } } : undefined,
+      );
 
       // Update last_success_at on the project
       const successProjectId = generationLockRef.current || activeProjectId;
@@ -531,6 +547,15 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
 
   // Wire phase callbacks ref now that useAgentLoop is initialized
   phaseCallbacksRef.current = { onPhaseChange, onAnalysis, onPlanItems, onStreamSummary, onConfidence, onSuggestions, onQuestions };
+
+  // Keep phase data ref in sync for persistence in messages
+  latestPhaseDataRef.current = {
+    analysisText,
+    planItems,
+    summaryText,
+    confidenceScore: confidenceScore ?? undefined,
+    confidenceReason,
+  };
 
   // 📸 THUMBNAIL CAPTURE: Upload hero screenshot after successful generation
   const { requestCapture } = useThumbnailCapture({

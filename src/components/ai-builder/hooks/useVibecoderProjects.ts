@@ -27,6 +27,15 @@ export interface VibecoderMessage {
   meta_data?: {
     type?: 'policy_violation' | string;
     category?: string;
+    /** Persisted streaming phase data so analysis/plan/building is visible in history */
+    streamPhase?: {
+      analysisText?: string;
+      planItems?: string[];
+      summaryText?: string;
+      confidenceScore?: number;
+      confidenceReason?: string;
+      elapsedSeconds?: number;
+    };
   };
 }
 
@@ -294,6 +303,7 @@ export function useVibecoderProjects() {
     codeSnapshot?: string | null,
     forProjectId?: string,
     filesSnapshot?: ProjectFiles | null,
+    metaData?: VibecoderMessage['meta_data'],
   ) => {
     const targetProjectId = forProjectId || activeProjectId;
     if (!targetProjectId) return null;
@@ -340,6 +350,7 @@ export function useVibecoderProjects() {
         files_snapshot: filesSnapshot ?? null,
         rating: 0,
         created_at: new Date().toISOString(),
+        meta_data: metaData,
       };
       return [...prev, optimisticMessage];
     });
@@ -352,6 +363,7 @@ export function useVibecoderProjects() {
         content,
         code_snapshot: codeSnapshot ?? null,
         files_snapshot: filesSnapshot ?? null,
+        meta_data: metaData ?? null,
       } as any)
       .select();
 
