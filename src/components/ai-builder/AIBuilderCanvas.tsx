@@ -18,6 +18,7 @@ import { ProductsPanel } from './ProductsPanel';
 import { SubscriptionsPanel } from './SubscriptionsPanel';
 import { DesignPanel } from './DesignPanel';
 import { PlacementPromptModal } from './PlacementPromptModal';
+import { ChatInputBar } from './ChatInputBar';
 import { AI_MODELS, type AIModel } from './ChatInputBar';
 import type { GeneratedAsset, ViewMode } from './types/generation';
 import { parseRoutesFromCode, type SitePage } from '@/utils/routeParser';
@@ -84,6 +85,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   
   // LIFTED STATE: Active style preset for Design panel
   const [activeStyle, setActiveStyle] = useState<import('./stylePresets').StylePreset | undefined>(undefined);
+  const [designInput, setDesignInput] = useState('');
   
   // Generation state for Creative Studio (Image & Video tabs)
   const [currentImageAsset, setCurrentImageAsset] = useState<GeneratedAsset | null>(null);
@@ -1894,15 +1896,37 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         }}
       >
         <div className="flex-1 min-h-0 overflow-hidden relative flex flex-col" style={{ isolation: 'isolate' }}>
-          {viewMode === 'design' && (
-            <div className="shrink-0 max-h-[50%] overflow-y-auto border-b border-zinc-800">
-              <DesignPanel
-                activeStyle={activeStyle}
-                onStyleChange={setActiveStyle}
-              />
-            </div>
-          )}
-          <div className="flex-1 min-h-0 overflow-hidden">
+          {viewMode === 'design' ? (
+            <>
+              {/* Design panel fills the sidebar, chat input stays at bottom */}
+              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                <DesignPanel
+                  activeStyle={activeStyle}
+                  onStyleChange={setActiveStyle}
+                />
+              </div>
+              {/* Keep chat input bar pinned at bottom */}
+              <div className="shrink-0 bg-[#1a1a1a]">
+                <ChatInputBar
+                  value={designInput}
+                  onChange={setDesignInput}
+                  onSubmit={(options) => {
+                    if (!designInput.trim()) return;
+                    handleSendMessage(designInput.trim());
+                    setDesignInput('');
+                  }}
+                  isGenerating={isStreaming || isAgentRunning}
+                  onCancel={async () => {
+                    cancelStream();
+                    cancelAgent();
+                    cancelJob();
+                    forceResetStreaming();
+                  }}
+                  placeholder="Ask about design changes..."
+                />
+              </div>
+            </>
+          ) : (
             <VibecoderChat
               key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
               onSendMessage={handleSendMessage}
@@ -1966,7 +1990,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               isCollapsed={chatCollapsed}
               onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
             />
-          </div>
+          )}
         </div>
       </div>
 
