@@ -702,10 +702,15 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onJobError: handleJobError,
   });
 
-  // Dynamically detected pages from generated code
+  // Dynamically detected pages from generated code (checks all files in multi-file mode)
   const detectedPages = useMemo<SitePage[]>(() => {
+    // In multi-file mode, concatenate all file contents for parsing
+    if (Object.keys(files).length > 0) {
+      const allCode = Object.values(files).join('\n');
+      return parseRoutesFromCode(allCode);
+    }
     return parseRoutesFromCode(code);
-  }, [code]);
+  }, [code, files]);
 
   // Auto-complete onboarding silently (skip dialog)
   useEffect(() => {
