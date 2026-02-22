@@ -1692,8 +1692,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             />
           </div>
 
-          {/* Canvas / Preview Area — flush with header, no margin */}
-          <div className="flex-1 min-h-0 relative overflow-hidden bg-[#0c0c0f]">
+          {/* Canvas / Preview Area */}
+          <div className="flex-1 min-h-0 relative overflow-hidden rounded-b-2xl bg-[#0c0c0f]">
           {/* Transition Overlay */}
           {isProjectTransitioning && (
             <div className="absolute inset-0 z-[100] bg-[#0a0a0a] flex items-center justify-center rounded-2xl">
