@@ -555,7 +555,7 @@ export function ChatInputBar({
   };
 
   return (
-    <div className="flex-shrink-0 px-4 py-3 bg-background relative">
+    <div className="flex-shrink-0 px-4 py-3 bg-[#1a1a1a] relative">
       
       {/* SPEECH INDICATOR (Floats ABOVE input) */}
       {isListening && (
