@@ -770,6 +770,35 @@ export function ChatInputBar({
 
       {/* COMPACT INPUT BAR - Matching reference image */}
       <div className="bg-zinc-800/90 backdrop-blur-sm border border-orange-500/30 rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(249,115,22,0.15)] hover:shadow-[0_0_30px_rgba(249,115,22,0.25)] transition-shadow duration-300">
+        {/* Attachment Previews - INSIDE the input box, above the textarea */}
+        {attachments.length > 0 && (
+          <div className="flex gap-2 px-3 pt-2 overflow-x-auto">
+            {attachments.map((file, i) => (
+              <div key={i} className="relative group shrink-0">
+                <div className="w-10 h-10 bg-zinc-900 rounded-lg border border-zinc-700 flex items-center justify-center overflow-hidden">
+                  {file.type.startsWith('image') ? (
+                    <img 
+                      src={URL.createObjectURL(file)} 
+                      alt={file.name}
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : file.type.startsWith('video') ? (
+                    <Video size={14} className="text-pink-400" />
+                  ) : (
+                    <Paperclip size={14} className="text-zinc-400" />
+                  )}
+                </div>
+                <button 
+                  onClick={() => removeAttachment(i)}
+                  className="absolute -top-1 -right-1 bg-zinc-900 text-zinc-400 hover:text-red-400 rounded-full p-0.5 border border-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        
         {/* Single-line input row */}
         <div className="flex items-center gap-1 px-3 py-2.5">
           <textarea
@@ -777,6 +806,22 @@ export function ChatInputBar({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={(e) => {
+              // Handle pasted images from clipboard
+              const items = e.clipboardData?.items;
+              if (items) {
+                for (let i = 0; i < items.length; i++) {
+                  if (items[i].type.startsWith('image/')) {
+                    const file = items[i].getAsFile();
+                    if (file) {
+                      e.preventDefault();
+                      setAttachments(prev => [...prev, file]);
+                    }
+                  }
+                }
+              }
+              // Text paste is handled natively by the textarea
+            }}
             placeholder={placeholder}
             disabled={isGenerating}
             rows={1}
@@ -881,35 +926,6 @@ export function ChatInputBar({
           </div>
         </div>
       </div>
-
-      {/* Attachment Previews - Compact */}
-      {attachments.length > 0 && (
-        <div className="mt-2 flex gap-2 overflow-x-auto">
-          {attachments.map((file, i) => (
-            <div key={i} className="relative group shrink-0">
-              <div className="w-12 h-12 bg-zinc-800 rounded-lg border border-zinc-700 flex items-center justify-center overflow-hidden">
-                {file.type.startsWith('image') ? (
-                  <img 
-                    src={URL.createObjectURL(file)} 
-                    alt={file.name}
-                    className="w-full h-full object-cover" 
-                  />
-                ) : file.type.startsWith('video') ? (
-                  <Video size={16} className="text-pink-400" />
-                ) : (
-                  <Paperclip size={16} className="text-zinc-400" />
-                )}
-              </div>
-              <button 
-                onClick={() => removeAttachment(i)}
-                className="absolute -top-1 -right-1 bg-zinc-900 text-zinc-400 hover:text-red-400 rounded-full p-0.5 border border-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X size={10} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Insufficient Credits Dialog */}
       {showCreditsDialog && (
