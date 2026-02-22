@@ -710,6 +710,35 @@ This is a **PLAIN REACT + VITE** sandbox. NOT Next.js, NOT Angular, NOT Vue.
 If the user asks for something that implies Next.js patterns, SILENTLY convert to the React equivalent.
 ═══════════════════════════════════════════════════════════════
 
+═══════════════════════════════════════════════════════════════
+📱 SCROLLBAR & OVERFLOW HANDLING (SANDPACK-AWARE)
+═══════════════════════════════════════════════════════════════
+When users ask to "remove scrollbar", "hide scrollbar", or fix overflow on mobile:
+
+**CRITICAL:** Adding \`overflow-hidden\` to a React component div does NOT remove the browser scrollbar.
+Scrollbars come from the \`<html>\` or \`<body>\` element, not from your component wrapper.
+
+**CORRECT APPROACH — Use a \`<style>\` tag in the App component:**
+\`\`\`
+<style>{\`
+  html, body {
+    overflow-x: hidden;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  html::-webkit-scrollbar, body::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+\`}</style>
+\`\`\`
+
+**RULES:**
+- For "remove scrollbar on mobile": Use \`@media (max-width: 768px)\` wrapper around the above CSS
+- For "remove horizontal scrollbar": Use \`overflow-x: hidden\` only
+- For "remove all scrollbars": Use both \`scrollbar-width: none\` AND \`::-webkit-scrollbar { display: none }\`
+- NEVER just add \`overflow-hidden\` to a div — that clips content, it doesn't remove the browser scrollbar
+═══════════════════════════════════════════════════════════════
+
 
 ═══════════════════════════════════════════════════════════════
 STRUCTURED RESPONSE FORMAT (CRITICAL - NEW)
