@@ -210,9 +210,9 @@ export function ThemeEditorDialog({ open, onClose, style, onApply, onLivePreview
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex">
-      {/* Reduced opacity backdrop so preview is clearly visible */}
-      <div className="absolute inset-0 bg-black/30" onClick={handleDiscard} />
+    <div className="fixed inset-0 z-[100] flex pointer-events-none">
+      {/* Backdrop - only captures clicks, allows scroll through */}
+      <div className="absolute inset-0 bg-black/20 pointer-events-auto" onClick={handleDiscard} style={{ cursor: 'default' }} />
 
       {/* Left panel */}
       <motion.div
@@ -220,7 +220,7 @@ export function ThemeEditorDialog({ open, onClose, style, onApply, onLivePreview
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: -20, opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="relative z-10 w-[340px] h-full bg-[#0a0a0a] border-r border-zinc-800 flex flex-col"
+        className="relative z-10 w-[340px] h-full bg-[#0a0a0a] border-r border-zinc-800 flex flex-col pointer-events-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
