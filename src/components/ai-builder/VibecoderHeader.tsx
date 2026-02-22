@@ -34,6 +34,9 @@ interface VibecoderHeaderProps {
   userCredits?: number;
   subscriptionTier?: string | null;
   onSignOut?: () => void;
+  // Chat collapse
+  chatCollapsed?: boolean;
+  onToggleChatCollapse?: () => void;
 }
 
 // Tab config for the icon pill switcher
@@ -66,6 +69,8 @@ export function VibecoderHeader({
   userCredits = 0,
   subscriptionTier,
   onSignOut,
+  chatCollapsed = false,
+  onToggleChatCollapse,
 }: VibecoderHeaderProps) {
   const navigate = useNavigate();
 
@@ -216,6 +221,22 @@ export function VibecoderHeader({
             subscriptionTier={subscriptionTier}
             onSignOut={onSignOut}
           />
+        )}
+
+        {/* Chat Toggle Arrow — always visible, right after profile */}
+        {onToggleChatCollapse && (
+          <button
+            onClick={onToggleChatCollapse}
+            className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            title={chatCollapsed ? 'Open chat' : 'Collapse chat'}
+          >
+            <svg
+              className={`w-4 h-4 transition-transform duration-200 ${chatCollapsed ? 'rotate-180' : ''}`}
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
         )}
       </div>
     </header>
