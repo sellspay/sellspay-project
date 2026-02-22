@@ -30,13 +30,72 @@ export const VIBECODER_STDLIB: Record<string, string> = {
   // ============================================
   '/src/iframe-silence.js': `
 // NUCLEAR ERROR SILENCE PROTOCOL - Layer 2: Iframe Runtime Silencer
-// Patches console.error, window.onerror, and removes error overlays
+// Patches console.error, window.onerror, removes error overlays,
+// and intercepts navigation attempts that fail in sandboxed iframes.
 
 (function() {
   'use strict';
   
-  // Patterns to suppress (same as parent window)
-  const NOISE_PATTERNS = [
+  // ── SAFE NAVIGATION PATCH ──────────────────────────────
+  // Sandpack iframes cannot do top-level navigation (window.location.href = ...).
+  // We intercept assignments to window.location.href and window.location.assign()
+  // and convert them to window.open() which works in sandboxed iframes.
+  
+  try {
+    // Patch window.location.assign and window.location.replace
+    const origAssign = window.location.assign.bind(window.location);
+    const origReplace = window.location.replace.bind(window.location);
+    
+    window.location.assign = function(url) {
+      try { origAssign(url); } catch(e) {
+        console.log('[Sandpack] Navigation blocked, opening in new tab:', url);
+        window.open(url, '_blank');
+      }
+    };
+    
+    window.location.replace = function(url) {
+      try { origReplace(url); } catch(e) {
+        console.log('[Sandpack] Navigation blocked, opening in new tab:', url);
+        window.open(url, '_blank');
+      }
+    };
+  } catch(e) { /* location patches not supported */ }
+
+  // Intercept clicks on <a> tags that would navigate the top frame
+  document.addEventListener('click', function(e) {
+    var target = e.target;
+    while (target && target.tagName !== 'A') target = target.parentElement;
+    if (!target || !target.href) return;
+    
+    var href = target.href;
+    // Skip same-page anchors and javascript: links
+    if (href.startsWith('#') || href.startsWith('javascript:')) return;
+    // Skip internal sandbox links
+    if (href.includes('codesandbox.io') || href.includes('sandpack')) return;
+    
+    // External link — open in new tab to avoid sandbox violation
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(href, '_blank');
+  }, true);
+
+  // Patch window.onerror to catch navigation errors silently
+  var origOnError = window.onerror;
+  window.onerror = function(message) {
+    if (typeof message === 'string' && (
+      message.includes('allow-top-navigation') ||
+      message.includes('Unsafe attempt to initiate navigation') ||
+      message.includes('Blocked a frame with origin')
+    )) {
+      return true; // Suppress sandbox navigation errors
+    }
+    if (shouldSuppress(message)) return true;
+    if (origOnError) return origOnError.apply(this, arguments);
+    return false;
+  };
+  
+  // ── ERROR SUPPRESSION ──────────────────────────────────
+  var NOISE_PATTERNS = [
     /Cannot assign to read only property/i,
     /MutationRecord/i,
     /which has only a getter/i,
@@ -51,37 +110,34 @@ export const VIBECODER_STDLIB: Record<string, string> = {
     /The above error occurred/i,
     /sandpack/i,
     /bundler/i,
+    /removeChild/i,
+    /allow-top-navigation/i,
+    /Unsafe attempt to initiate navigation/i,
   ];
   
-  const shouldSuppress = (msg) => {
+  function shouldSuppress(msg) {
     if (!msg) return false;
-    const str = typeof msg === 'string' ? msg : String(msg?.message || msg);
-    return NOISE_PATTERNS.some(p => p.test(str));
-  };
+    var str = typeof msg === 'string' ? msg : String(msg.message || msg);
+    return NOISE_PATTERNS.some(function(p) { return p.test(str); });
+  }
   
   // Patch console.error
-  const origError = console.error;
-  console.error = function(...args) {
-    if (args.some(shouldSuppress)) return;
-    origError.apply(console, args);
+  var origError = console.error;
+  console.error = function() {
+    if ([].some.call(arguments, shouldSuppress)) return;
+    origError.apply(console, arguments);
   };
   
   // Patch console.warn
-  const origWarn = console.warn;
-  console.warn = function(...args) {
-    if (args.some(shouldSuppress)) return;
-    origWarn.apply(console, args);
-  };
-  
-  // Patch window.onerror
-  window.onerror = function(message) {
-    if (shouldSuppress(message)) return true;
-    return false;
+  var origWarn = console.warn;
+  console.warn = function() {
+    if ([].some.call(arguments, shouldSuppress)) return;
+    origWarn.apply(console, arguments);
   };
   
   // Patch unhandled rejections
   window.onunhandledrejection = function(event) {
-    if (shouldSuppress(event?.reason)) {
+    if (shouldSuppress(event && event.reason)) {
       event.preventDefault();
       return true;
     }
@@ -89,8 +145,8 @@ export const VIBECODER_STDLIB: Record<string, string> = {
   };
   
   // Mutation observer to remove error overlays as they appear
-  const removeErrorOverlays = () => {
-    const selectors = [
+  var removeErrorOverlays = function() {
+    var selectors = [
       '#react-error-overlay',
       '.error-overlay',
       '[data-react-error-overlay]',
@@ -101,8 +157,8 @@ export const VIBECODER_STDLIB: Record<string, string> = {
       '.sp-error-stack',
     ];
     
-    selectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(el => {
+    selectors.forEach(function(sel) {
+      document.querySelectorAll(sel).forEach(function(el) {
         el.style.display = 'none';
         el.style.visibility = 'hidden';
         el.style.opacity = '0';
@@ -111,24 +167,19 @@ export const VIBECODER_STDLIB: Record<string, string> = {
     });
   };
   
-  // Run immediately
   removeErrorOverlays();
   
-  // Set up mutation observer to catch dynamically added overlays
   if (typeof MutationObserver !== 'undefined') {
-    const observer = new MutationObserver(removeErrorOverlays);
-    
-    // Start observing once DOM is ready
+    var observer = new MutationObserver(removeErrorOverlays);
     if (document.body) {
       observer.observe(document.body, { childList: true, subtree: true });
     } else {
-      document.addEventListener('DOMContentLoaded', () => {
+      document.addEventListener('DOMContentLoaded', function() {
         observer.observe(document.body, { childList: true, subtree: true });
       });
     }
   }
   
-  // Fallback interval (catches edge cases)
   setInterval(removeErrorOverlays, 500);
 })();
 `,
