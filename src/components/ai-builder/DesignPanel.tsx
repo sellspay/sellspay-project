@@ -147,19 +147,8 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
           <ThemeEditorDialog
             open={!!editingStyle}
             onClose={() => {
-              // Revert iframe to ORIGINAL colors on discard - broadcast to all nested frames
-              function broadcastRevert(win: Window, msg: any) {
-                try { win.postMessage(msg, '*'); } catch (_) {}
-                try {
-                  for (let i = 0; i < win.frames.length; i++) {
-                    broadcastRevert(win.frames[i] as Window, msg);
-                  }
-                } catch (_) {}
-              }
-              const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
-              if (iframe?.contentWindow && originalColorsSnapshot) {
-                broadcastRevert(iframe.contentWindow, { type: 'VIBECODER_REVERT_THEME' });
-              }
+              // Dispatch revert event — ThemeBridge handles it
+              window.dispatchEvent(new CustomEvent('vibecoder-theme-revert'));
               setEditingStyle(null);
               setOriginalColorsSnapshot(null);
             }}
@@ -170,21 +159,9 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
               setOriginalColorsSnapshot(null);
             }}
             onLivePreview={(colors) => {
-              // Broadcast to ALL nested iframes recursively - Sandpack has nested iframe structure
-              function broadcastToFrames(win: Window, msg: any) {
-                try { win.postMessage(msg, '*'); } catch (_) {}
-                try {
-                  for (let i = 0; i < win.frames.length; i++) {
-                    broadcastToFrames(win.frames[i] as Window, msg);
-                  }
-                } catch (_) {}
-              }
-              const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
-              const msg = { type: 'VIBECODER_APPLY_THEME', colors };
-              if (iframe?.contentWindow) {
-                broadcastToFrames(iframe.contentWindow, msg);
-              }
-              console.log('[THEME-DEBUG] Broadcast VIBECODER_APPLY_THEME to all frames');
+              // Dispatch custom DOM event — ThemeBridge (inside SandpackProvider) 
+              // listens and updates files via useSandpack API
+              window.dispatchEvent(new CustomEvent('vibecoder-theme-apply', { detail: colors }));
             }}
           />
         )}
