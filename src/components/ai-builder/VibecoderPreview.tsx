@@ -443,6 +443,85 @@ function VisualEditInjector({ active }: { active: boolean }) {
   return null;
 }
 
+// Theme Bridge: listens for custom DOM events from DesignPanel and updates
+// the Sandpack /styles/theme-base.css file directly via useSandpack API.
+// This bypasses postMessage which doesn't reach cross-origin Sandpack iframes.
+function ThemeBridge() {
+  const { sandpack } = useSandpack();
+  const originalCSSRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    function hexToHSL(hex: string): string {
+      const r = parseInt(hex.slice(1,3),16)/255;
+      const g = parseInt(hex.slice(3,5),16)/255;
+      const b = parseInt(hex.slice(5,7),16)/255;
+      const max = Math.max(r,g,b), min = Math.min(r,g,b);
+      let h = 0, s = 0;
+      const l = (max+min)/2;
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+        if (max === r) h = ((g-b)/d + (g<b?6:0))/6;
+        else if (max === g) h = ((b-r)/d+2)/6;
+        else h = ((r-g)/d+4)/6;
+      }
+      return Math.round(h*360) + ' ' + Math.round(s*100) + '% ' + Math.round(l*100) + '%';
+    }
+
+    const varKeys = [
+      'background', 'foreground', 'primary', 'primary-foreground',
+      'secondary', 'secondary-foreground', 'accent', 'accent-foreground',
+      'card', 'card-foreground', 'popover', 'popover-foreground',
+      'muted', 'muted-foreground', 'destructive', 'destructive-foreground',
+      'border', 'input', 'ring',
+      'chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5',
+    ];
+
+    function buildThemeCSS(colors: Record<string, string>): string {
+      const lines = varKeys.map(key => {
+        const hex = colors[key];
+        if (hex && hex.startsWith('#')) {
+          return `  --${key}: ${hexToHSL(hex)};`;
+        }
+        return null;
+      }).filter(Boolean);
+      
+      return `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}\n\nhtml, body, #root {\n  background-color: hsl(var(--background));\n  color: hsl(var(--foreground));\n}`;
+    }
+
+    const handleApply = (e: Event) => {
+      const colors = (e as CustomEvent).detail;
+      if (!colors) return;
+      // Save original CSS on first apply for revert
+      if (!originalCSSRef.current) {
+        const currentFiles = sandpack.files;
+        const themeFile = currentFiles['/styles/theme-base.css'];
+        if (themeFile) {
+          originalCSSRef.current = themeFile.code;
+        }
+      }
+      const css = buildThemeCSS(colors);
+      sandpack.updateFile('/styles/theme-base.css', css);
+    };
+
+    const handleRevert = () => {
+      if (originalCSSRef.current) {
+        sandpack.updateFile('/styles/theme-base.css', originalCSSRef.current);
+        originalCSSRef.current = null;
+      }
+    };
+
+    window.addEventListener('vibecoder-theme-apply', handleApply);
+    window.addEventListener('vibecoder-theme-revert', handleRevert);
+    return () => {
+      window.removeEventListener('vibecoder-theme-apply', handleApply);
+      window.removeEventListener('vibecoder-theme-revert', handleRevert);
+    };
+  }, [sandpack]);
+
+  return null;
+}
+
 
 const SandpackRenderer = memo(function SandpackRenderer({ 
   code, 
@@ -1132,6 +1211,7 @@ div[style*="background-color: red"],div[style*="background: red"] {
           <ReadyDetector onReady={onReady} />
           <PageNavigationBridge activePage={activePage} />
           <VisualEditInjector active={visualEditMode} />
+          <ThemeBridge />
           {/* File activator: syncs activeFileId to Sandpack's internal state */}
           {isCodeView && <SandpackFileActivator activeFileId={activeFileId} />}
           <div className="h-full w-full flex-1 flex flex-row" style={{ height: '100%' }}>
