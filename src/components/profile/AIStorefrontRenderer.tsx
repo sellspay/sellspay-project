@@ -91,7 +91,7 @@ export function AIStorefrontRenderer({ profileId }: AIStorefrontRendererProps) {
       const msg = event.data;
       if (!msg || msg.type !== 'VIBECODER_NAVIGATE') return;
       if (typeof msg.url !== 'string') return;
-      const target = msg.target === '_self' ? '_self' : '_blank';
+      const target = msg.target === '_blank' ? '_blank' : '_self';
       window.open(msg.url, target, target === '_blank' ? 'noopener,noreferrer' : '');
     };
     window.addEventListener('message', onNavMessage);
