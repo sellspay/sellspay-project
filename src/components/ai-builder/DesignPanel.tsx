@@ -145,13 +145,25 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
         {editingStyle && (
           <ThemeEditorDialog
             open={!!editingStyle}
-            onClose={() => setEditingStyle(null)}
+            onClose={() => {
+              // Revert iframe to original colors on discard
+              const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+              if (iframe?.contentWindow && editingStyle) {
+                iframe.contentWindow.postMessage({ type: 'VIBECODER_APPLY_THEME', colors: editingStyle.colors }, '*');
+              }
+              setEditingStyle(null);
+            }}
             style={editingStyle}
             onApply={(updated) => {
               onStyleChange?.(updated);
               setEditingStyle(null);
             }}
             onLivePreview={(colors) => {
+              // Push colors into the iframe for live preview
+              const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+              if (iframe?.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'VIBECODER_APPLY_THEME', colors }, '*');
+              }
               if (editingStyle) {
                 onStyleChange?.({ ...editingStyle, colors });
               }
