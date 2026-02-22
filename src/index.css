@@ -424,11 +424,11 @@ body[style*="margin-right"] {
   }
 }
 
-/* Round the Sandpack preview iframe to match the workspace container */
+/* Round the Sandpack preview to match workspace cards */
 .sp-preview-container,
 .sp-preview-iframe,
 .sp-preview,
 .sp-stack {
-  border-radius: 0 0 16px 16px !important;
+  border-radius: 0 !important;
   overflow: hidden !important;
 }
