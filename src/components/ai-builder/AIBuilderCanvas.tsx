@@ -1647,23 +1647,42 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
   // === EXISTING USER: Show the full editor interface ===
   return (
-    <div className="h-screen w-full bg-background flex overflow-hidden p-2">
-      {/* Project sidebar - outside main container */}
-      <ProjectSidebar
-        projects={projects}
-        activeProjectId={activeProjectId}
-        loading={projectsLoading}
-        onSelectProject={selectProject}
-        onCreateProject={handleCreateProject}
-        onDeleteProject={handleDeleteProject}
-        onRenameProject={handleRenameProject}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
+    <div className="relative h-screen w-screen overflow-hidden bg-[#0a0a0a]">
+      {/* ═══ AMBIENT CANVAS BACKGROUND ═══ */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,#111111_0%,#0a0a0a_70%)]" />
+        <div className="absolute inset-0 opacity-[0.03] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIwLjUiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')]" />
+        {/* Floating ambient blobs */}
+        <div className="absolute w-[500px] h-[500px] bg-blue-500/[0.04] blur-[120px] rounded-full top-[-150px] left-[-100px] pointer-events-none" />
+        <div className="absolute w-[400px] h-[400px] bg-purple-500/[0.03] blur-[100px] rounded-full bottom-[-100px] right-[-50px] pointer-events-none" />
+      </div>
 
-      {/* MAIN SEAMLESS CONTAINER */}
-      <div className="flex-1 flex flex-col min-h-0 rounded-2xl border border-border overflow-hidden bg-background">
-        {/* Integrated Header */}
+      {/* ═══ FLOATING PROJECT SIDEBAR (z-20) ═══ */}
+      <div className="absolute left-3 top-3 bottom-3 z-20">
+        <div className="h-full bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl shadow-2xl shadow-black/40 overflow-hidden">
+          <ProjectSidebar
+            projects={projects}
+            activeProjectId={activeProjectId}
+            loading={projectsLoading}
+            onSelectProject={selectProject}
+            onCreateProject={handleCreateProject}
+            onDeleteProject={handleDeleteProject}
+            onRenameProject={handleRenameProject}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          />
+        </div>
+      </div>
+
+      {/* ═══ FLOATING HEADER TOOLBAR (z-30) ═══ */}
+      <div
+        className="absolute top-3 z-30"
+        style={{
+          left: sidebarCollapsed ? 72 : 230,
+          right: chatCollapsed ? 12 : sidebarWidth + 12,
+          transition: 'left 0.3s ease, right 0.3s ease',
+        }}
+      >
         <VibecoderHeader
           projectName={activeProject?.name}
           viewMode={viewMode}
@@ -1685,30 +1704,29 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           subscriptionTier={subscriptionTier}
           onSignOut={handleSignOut}
         />
+      </div>
 
-        {/* Split View Content - Chat + Preview always visible */}
-        <div className="flex-1 flex min-h-0 overflow-hidden relative">
-
-          {/* 🛑 TRANSITION OVERLAY: Hides stale content from the previous project during switch.
-              This is the critical piece that prevents the "flash of old project" bug.
-              Without this, Sandpack's iframe and the chat panel still render the old project's
-              code/messages for 1-3 frames before the new project's data loads. */}
-          {isProjectTransitioning && (
-            <div className="absolute inset-0 z-[100] bg-background flex items-center justify-center">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
-                <span className="text-sm text-muted-foreground">Loading project…</span>
-              </div>
+      {/* ═══ CANVAS LAYER: Preview/Studio (z-10) ═══ */}
+      <div
+        className="absolute z-10 overflow-hidden flex flex-col bg-[#0c0c0f] border border-white/[0.04] shadow-2xl shadow-black/40"
+        style={{
+          top: 64,
+          bottom: 12,
+          left: sidebarCollapsed ? 72 : 230,
+          right: chatCollapsed ? 12 : sidebarWidth + 12,
+          transition: 'left 0.3s ease, right 0.3s ease',
+          borderRadius: '16px',
+        }}
+      >
+        {/* 🛑 TRANSITION OVERLAY */}
+        {isProjectTransitioning && (
+          <div className="absolute inset-0 z-[100] bg-[#0a0a0a] flex items-center justify-center rounded-2xl">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-6 h-6 border-2 border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
+              <span className="text-sm text-zinc-500">Loading project…</span>
             </div>
-          )}
-
-          {/* LEFT PANEL: Preview/Studio (seamless) */}
-          <div
-            className="flex-1 min-w-0 overflow-hidden relative flex flex-col bg-zinc-950"
-            style={{ isolation: 'isolate', contain: 'strict' }}
-          >
-            {/* Soft edge shadow to separate preview from chat without boxing */}
-            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 z-20 bg-gradient-to-l from-background/70 to-transparent" />
+          </div>
+        )}
 
             {viewMode === 'products' ? (
               /* Products Panel: Show creator's products */
@@ -1807,114 +1825,112 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
             {/* Overlay while dragging */}
             {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-ew-resize" />}
-          </div>
+      </div>
 
-          {/* SUBTLE SEPARATOR LINE */}
-          <div className="w-px shrink-0 bg-border/40" />
+      {/* ═══ FLOATING CHAT PANEL (z-20) ═══ */}
+      {/* Chat expand toggle when collapsed */}
+      {chatCollapsed && (
+        <button
+          onClick={() => setChatCollapsed(false)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 z-[25] w-8 h-12 flex items-center justify-center bg-white/[0.05] backdrop-blur-xl hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all shadow-lg shadow-black/30"
+          title="Open chat"
+        >
+          <svg
+            className="w-3.5 h-3.5 text-zinc-400 rotate-180"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          >
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      )}
 
-          {/* CHAT EXPAND TOGGLE (only when collapsed) */}
-          {chatCollapsed && (
-            <button
-              onClick={() => setChatCollapsed(false)}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-[60] w-5 h-10 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 border border-border/40 rounded-l-md transition-all"
-              title="Open chat"
-            >
-              <svg
-                className="w-3 h-3 text-zinc-400 rotate-180"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
+      <div
+        className="absolute right-3 top-3 bottom-3 z-20 flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
+        style={{
+          width: chatCollapsed ? 0 : sidebarWidth,
+          opacity: chatCollapsed ? 0 : 1,
+        }}
+      >
+        <div className="h-full bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl shadow-2xl shadow-black/40 overflow-hidden relative flex flex-col">
+          {/* Drag handle for resizing */}
+          {!chatCollapsed && (
+            <div
+              onMouseDown={startResizing}
+              className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-50 transition-all rounded-l-2xl ${
+                isDragging
+                  ? 'bg-primary/60 shadow-[0_0_12px_hsl(var(--primary)/0.3)]'
+                  : 'bg-transparent hover:bg-white/[0.08]'
+              }`}
+            />
           )}
 
-          {/* RIGHT PANEL: Chat (seamless) */}
-          <div
-            style={{ width: chatCollapsed ? 0 : sidebarWidth }}
-            className={`shrink-0 flex flex-col bg-muted/50 overflow-hidden relative transition-[width] duration-300 ease-in-out`}
-          >
-            {/* Refined drag handle - subtle until interaction */}
-            {!chatCollapsed && (
-              <div
-                onMouseDown={startResizing}
-                className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 transition-all ${
-                  isDragging
-                    ? 'bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.35)]'
-                    : 'bg-transparent hover:bg-border'
-                }`}
-              />
-            )}
-
-            <div className="flex-1 min-h-0 overflow-hidden" style={{ isolation: 'isolate' }}>
-              <VibecoderChat
-                key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
-                onSendMessage={handleSendMessage}
-                onGenerateAsset={handleGenerateAsset}
-                isStreaming={isStreaming || isAgentRunning}
-                onCancel={async () => {
-                  cancelStream();
-                  cancelAgent();
-                  cancelJob();
-                  forceResetStreaming();
-                  generationLockRef.current = null;
-                  activeJobIdRef.current = null;
-                  setLiveSteps([]);
-                  // Add a cancellation message to chat without deleting history
-                  if (activeProjectId) {
-                    await addMessage('assistant', '🛑 Request cancelled. Your previous work is preserved — you can continue from where you left off.', undefined, activeProjectId);
-                  }
-                }}
-                messages={messages}
-                messagesLoading={messagesLoading}
-                onRateMessage={rateMessage}
-                onRestoreToVersion={handleRestoreCode}
-                projectName={activeProject?.name ?? 'New Project'}
-                liveSteps={liveSteps}
-                agentStep={agentStep}
-                agentLogs={agentLogs}
-                isAgentMode={isAgentRunning}
-                activeModel={activeModel}
-                onOpenBilling={() => window.open('/pricing', '_blank')}
-                onModelChange={handleModelChange}
-                pendingPlan={pendingPlan}
-                onApprovePlan={handleApprovePlan}
-                onRejectPlan={handleRejectPlan}
-                canUndo={canUndo()}
-                streamPhaseData={{
-                  phase: streamPhase,
-                  analysisText,
-                  planItems,
-                  completedPlanItems,
-                  summaryText,
-                  confidenceScore: confidenceScore ?? undefined,
-                  confidenceReason,
-                }}
-                backendSuggestions={backendSuggestions}
-                pendingQuestions={pendingQuestions}
-                enhancedPromptSeed={enhancedPromptSeed}
-                onSubmitClarification={(answers, seed) => {
-                  clearQuestions();
-                  // Build enriched prompt from answers + seed
-                  const answerSummary = Object.entries(answers)
-                    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
-                    .join('; ');
-                  const enrichedPrompt = seed 
-                    ? `${seed}\n\nUser preferences: ${answerSummary}`
-                    : `Based on these preferences: ${answerSummary}`;
-                  handleSendMessage(enrichedPrompt);
-                }}
-                onSkipClarification={() => {
-                  clearQuestions();
-                }}
-                isCollapsed={chatCollapsed}
-                onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
-              />
-            </div>
+          <div className="flex-1 min-h-0 overflow-hidden" style={{ isolation: 'isolate' }}>
+            <VibecoderChat
+              key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
+              onSendMessage={handleSendMessage}
+              onGenerateAsset={handleGenerateAsset}
+              isStreaming={isStreaming || isAgentRunning}
+              onCancel={async () => {
+                cancelStream();
+                cancelAgent();
+                cancelJob();
+                forceResetStreaming();
+                generationLockRef.current = null;
+                activeJobIdRef.current = null;
+                setLiveSteps([]);
+                if (activeProjectId) {
+                  await addMessage('assistant', '🛑 Request cancelled. Your previous work is preserved — you can continue from where you left off.', undefined, activeProjectId);
+                }
+              }}
+              messages={messages}
+              messagesLoading={messagesLoading}
+              onRateMessage={rateMessage}
+              onRestoreToVersion={handleRestoreCode}
+              projectName={activeProject?.name ?? 'New Project'}
+              liveSteps={liveSteps}
+              agentStep={agentStep}
+              agentLogs={agentLogs}
+              isAgentMode={isAgentRunning}
+              activeModel={activeModel}
+              onOpenBilling={() => window.open('/pricing', '_blank')}
+              onModelChange={handleModelChange}
+              pendingPlan={pendingPlan}
+              onApprovePlan={handleApprovePlan}
+              onRejectPlan={handleRejectPlan}
+              canUndo={canUndo()}
+              streamPhaseData={{
+                phase: streamPhase,
+                analysisText,
+                planItems,
+                completedPlanItems,
+                summaryText,
+                confidenceScore: confidenceScore ?? undefined,
+                confidenceReason,
+              }}
+              backendSuggestions={backendSuggestions}
+              pendingQuestions={pendingQuestions}
+              enhancedPromptSeed={enhancedPromptSeed}
+              onSubmitClarification={(answers, seed) => {
+                clearQuestions();
+                const answerSummary = Object.entries(answers)
+                  .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+                  .join('; ');
+                const enrichedPrompt = seed 
+                  ? `${seed}\n\nUser preferences: ${answerSummary}`
+                  : `Based on these preferences: ${answerSummary}`;
+                handleSendMessage(enrichedPrompt);
+              }}
+              onSkipClarification={() => {
+                clearQuestions();
+              }}
+              isCollapsed={chatCollapsed}
+              onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
+            />
           </div>
         </div>
       </div>
 
-      {/* Placement Prompt Modal */}
+      {/* Placement Prompt Modal (z-40) */}
       <PlacementPromptModal
         isOpen={showPlacementModal}
         onClose={() => setShowPlacementModal(false)}
@@ -1922,10 +1938,10 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         asset={currentAsset}
       />
 
-      {/* Premium Upgrade Modal */}
+      {/* Premium Upgrade Modal (z-40) */}
       {showUpgradeModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+          <div className="bg-[#0c0c0f] border border-white/[0.08] rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-black/60">
             <div className="flex justify-center mb-6">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center border border-primary/30">
                 <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
