@@ -1746,12 +1746,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             </div>
           )}
 
-            {viewMode === 'design' ? (
-              <DesignPanel
-                activeStyle={activeStyle}
-                onStyleChange={setActiveStyle}
-              />
-            ) : viewMode === 'products' ? (
+            {viewMode === 'products' ? (
               <ProductsPanel profileId={profileId} />
             ) : viewMode === 'subscriptions' ? (
               <SubscriptionsPanel profileId={profileId} />
@@ -1899,69 +1894,76 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         }}
       >
         <div className="flex-1 min-h-0 overflow-hidden relative" style={{ isolation: 'isolate' }}>
-          <VibecoderChat
-            key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
-            onSendMessage={handleSendMessage}
-            onGenerateAsset={handleGenerateAsset}
-            isStreaming={isStreaming || isAgentRunning}
-            onCancel={async () => {
-              cancelStream();
-              cancelAgent();
-              cancelJob();
-              forceResetStreaming();
-              generationLockRef.current = null;
-              activeJobIdRef.current = null;
-              setLiveSteps([]);
-              if (activeProjectId) {
-                await addMessage('assistant', '🛑 Request cancelled. Your previous work is preserved — you can continue from where you left off.', undefined, activeProjectId);
-              }
-            }}
-            messages={messages}
-            messagesLoading={messagesLoading}
-            onRateMessage={rateMessage}
-            onRestoreToVersion={handleRestoreCode}
-            projectName={activeProject?.name ?? 'New Project'}
-            liveSteps={liveSteps}
-            agentStep={agentStep}
-            agentLogs={agentLogs}
-            isAgentMode={isAgentRunning}
-            activeModel={activeModel}
-            onOpenBilling={() => window.open('/pricing', '_blank')}
-            onModelChange={handleModelChange}
-            activeStyle={activeStyle}
-            onStyleChange={setActiveStyle}
-            pendingPlan={pendingPlan}
-            onApprovePlan={handleApprovePlan}
-            onRejectPlan={handleRejectPlan}
-            canUndo={canUndo()}
-            streamPhaseData={{
-              phase: streamPhase,
-              analysisText,
-              planItems,
-              completedPlanItems,
-              summaryText,
-              confidenceScore: confidenceScore ?? undefined,
-              confidenceReason,
-            }}
-            backendSuggestions={backendSuggestions}
-            pendingQuestions={pendingQuestions}
-            enhancedPromptSeed={enhancedPromptSeed}
-            onSubmitClarification={(answers, seed) => {
-              clearQuestions();
-              const answerSummary = Object.entries(answers)
-                .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
-                .join('; ');
-              const enrichedPrompt = seed 
-                ? `${seed}\n\nUser preferences: ${answerSummary}`
-                : `Based on these preferences: ${answerSummary}`;
-              handleSendMessage(enrichedPrompt);
-            }}
-            onSkipClarification={() => {
-              clearQuestions();
-            }}
-            isCollapsed={chatCollapsed}
-            onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
-          />
+          {viewMode === 'design' ? (
+            <DesignPanel
+              activeStyle={activeStyle}
+              onStyleChange={setActiveStyle}
+            />
+          ) : (
+            <VibecoderChat
+              key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
+              onSendMessage={handleSendMessage}
+              onGenerateAsset={handleGenerateAsset}
+              isStreaming={isStreaming || isAgentRunning}
+              onCancel={async () => {
+                cancelStream();
+                cancelAgent();
+                cancelJob();
+                forceResetStreaming();
+                generationLockRef.current = null;
+                activeJobIdRef.current = null;
+                setLiveSteps([]);
+                if (activeProjectId) {
+                  await addMessage('assistant', '🛑 Request cancelled. Your previous work is preserved — you can continue from where you left off.', undefined, activeProjectId);
+                }
+              }}
+              messages={messages}
+              messagesLoading={messagesLoading}
+              onRateMessage={rateMessage}
+              onRestoreToVersion={handleRestoreCode}
+              projectName={activeProject?.name ?? 'New Project'}
+              liveSteps={liveSteps}
+              agentStep={agentStep}
+              agentLogs={agentLogs}
+              isAgentMode={isAgentRunning}
+              activeModel={activeModel}
+              onOpenBilling={() => window.open('/pricing', '_blank')}
+              onModelChange={handleModelChange}
+              activeStyle={activeStyle}
+              onStyleChange={setActiveStyle}
+              pendingPlan={pendingPlan}
+              onApprovePlan={handleApprovePlan}
+              onRejectPlan={handleRejectPlan}
+              canUndo={canUndo()}
+              streamPhaseData={{
+                phase: streamPhase,
+                analysisText,
+                planItems,
+                completedPlanItems,
+                summaryText,
+                confidenceScore: confidenceScore ?? undefined,
+                confidenceReason,
+              }}
+              backendSuggestions={backendSuggestions}
+              pendingQuestions={pendingQuestions}
+              enhancedPromptSeed={enhancedPromptSeed}
+              onSubmitClarification={(answers, seed) => {
+                clearQuestions();
+                const answerSummary = Object.entries(answers)
+                  .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+                  .join('; ');
+                const enrichedPrompt = seed 
+                  ? `${seed}\n\nUser preferences: ${answerSummary}`
+                  : `Based on these preferences: ${answerSummary}`;
+                handleSendMessage(enrichedPrompt);
+              }}
+              onSkipClarification={() => {
+                clearQuestions();
+              }}
+              isCollapsed={chatCollapsed}
+              onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
+            />
+          )}
         </div>
       </div>
 
