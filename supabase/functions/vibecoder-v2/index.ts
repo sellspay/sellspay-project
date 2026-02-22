@@ -2237,7 +2237,10 @@ serve(async (req) => {
               }
 
               // GATE 3: Intent validation
-              if (!validationError) {
+              // Skip for FIX/micro-edit — the 3000-char window is unreliable for detecting fixes
+              const isMicro = detectMicroEdit(prompt, Boolean(currentCode?.trim()));
+              const skipIntentCheck = intentResult.intent === "FIX" || isMicro;
+              if (!validationError && !skipIntentCheck) {
                 try {
                   const intentCheck = await validateIntent(prompt, codeResult, GOOGLE_GEMINI_API_KEY);
                   validationReport.intent_ok = intentCheck.implements_request;
@@ -2255,6 +2258,9 @@ serve(async (req) => {
                 } catch (e) {
                   console.warn(`[Job ${jobId}] Intent validation error (non-fatal):`, e);
                 }
+              } else if (skipIntentCheck) {
+                validationReport.intent_ok = true;
+                console.log(`[Job ${jobId}] GATE 3 SKIP: ${intentResult.intent} intent / micro-edit — bypassing intent check`);
               }
             }
 
