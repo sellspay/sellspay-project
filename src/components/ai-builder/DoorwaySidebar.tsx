@@ -1,11 +1,12 @@
 import React from 'react';
-import { Home, FolderOpen, Layout, Plus, CreditCard, Menu, X } from 'lucide-react';
+import { Home, FolderOpen, Layout, Menu } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useIsMobile } from '@/hooks/use-mobile';
 import sellspayLogo from '@/assets/sellspay-s-logo-new.png';
+import { ProfileMenu } from './ProfileMenu';
 
 interface DoorwaySidebarProject {
   id: string;
@@ -18,9 +19,13 @@ interface DoorwaySidebarProps {
   onSelectProject: (id: string) => void;
   onNewProject: () => void;
   credits?: number;
+  avatarUrl?: string | null;
+  username?: string | null;
+  subscriptionTier?: string | null;
+  onSignOut?: () => void;
 }
 
-function SidebarContent({ projects, onSelectProject, onNewProject, credits }: DoorwaySidebarProps) {
+function SidebarContent({ projects, onSelectProject, onNewProject, credits, avatarUrl, username, subscriptionTier, onSignOut }: DoorwaySidebarProps) {
   return (
     <div className="h-full flex flex-col bg-zinc-950 text-zinc-300">
       {/* Logo */}
@@ -59,21 +64,27 @@ function SidebarContent({ projects, onSelectProject, onNewProject, credits }: Do
         </div>
       </div>
 
-      {/* Bottom */}
-      <div className="px-4 pb-5 pt-3 space-y-3 border-t border-white/5">
-        {credits !== undefined && (
+      {/* Bottom: Profile Section */}
+      <div className="px-3 pb-5 pt-3 border-t border-white/5">
+        {onSignOut ? (
+          <div className="flex items-center gap-2.5">
+            <ProfileMenu
+              avatarUrl={avatarUrl}
+              username={username}
+              userCredits={credits ?? 0}
+              subscriptionTier={subscriptionTier}
+              onSignOut={onSignOut}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-zinc-300 truncate font-medium">{username || 'Creator'}</p>
+              <p className="text-[11px] text-zinc-600">{(credits ?? 0).toLocaleString()} credits</p>
+            </div>
+          </div>
+        ) : credits !== undefined ? (
           <div className="flex items-center gap-2 px-2 py-1.5">
-            <CreditCard size={14} className="text-zinc-600" />
             <span className="text-xs text-zinc-500">{credits} credits</span>
           </div>
-        )}
-        <button
-          onClick={onNewProject}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 text-white text-sm font-medium hover:from-orange-400 hover:to-rose-400 transition-all shadow-lg shadow-orange-500/10"
-        >
-          <Plus size={16} />
-          New Project
-        </button>
+        ) : null}
       </div>
     </div>
   );

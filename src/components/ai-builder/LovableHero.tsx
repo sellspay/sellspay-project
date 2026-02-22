@@ -24,6 +24,9 @@ interface LovableHeroProps {
   recentProjects?: RecentProject[];
   onSelectProject?: (projectId: string) => void;
   userCredits?: number;
+  avatarUrl?: string | null;
+  subscriptionTier?: string | null;
+  onSignOut?: () => void;
 }
 
 export function LovableHero({
@@ -34,6 +37,9 @@ export function LovableHero({
   recentProjects = [],
   onSelectProject,
   userCredits,
+  avatarUrl,
+  subscriptionTier,
+  onSignOut,
 }: LovableHeroProps) {
   const [prompt, setPrompt] = useState("");
   const [isPlanMode, setIsPlanMode] = useState(false);
@@ -149,6 +155,10 @@ export function LovableHero({
             textareaRef.current?.focus();
           }}
           credits={userCredits ?? credits}
+          avatarUrl={avatarUrl}
+          username={userName}
+          subscriptionTier={subscriptionTier}
+          onSignOut={onSignOut}
         />
       )}
 

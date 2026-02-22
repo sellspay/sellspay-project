@@ -74,45 +74,42 @@ export function ProjectShelf({ projects, onSelectProject }: ProjectShelfProps) {
           </button>
         </div>
 
-        {/* Card row */}
-        <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory">
+        {/* Card row — fixed-height horizontal strip */}
+        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory">
           {projects.slice(0, 8).map((project) => (
             <button
               key={project.id}
               onClick={() => onSelectProject(project.id)}
-              className="flex-shrink-0 w-56 group text-left snap-start"
+              className="flex-shrink-0 group text-left snap-start flex items-center gap-3 bg-zinc-900/60 hover:bg-zinc-800/60 border border-white/5 hover:border-white/10 rounded-xl p-2.5 pr-5 transition-all hover:shadow-lg hover:shadow-orange-500/5 min-w-[220px]"
             >
-              <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 mb-2.5 transition-all duration-200 group-hover:border-white/20 group-hover:scale-[1.02] group-hover:shadow-lg group-hover:shadow-orange-500/5">
+              {/* Thumbnail */}
+              <div className="w-16 h-12 rounded-lg overflow-hidden border border-white/10 bg-zinc-900 shrink-0">
                 {project.thumbnail_url ? (
-                  <>
-                    <img
-                      src={project.thumbnail_url}
-                      alt={project.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                    {/* Gradient overlay for text readability */}
-                    <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
-                  </>
+                  <img
+                    src={project.thumbnail_url}
+                    alt={project.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
                 ) : (
                   <div className={cn(
-                    "w-full h-full bg-gradient-to-br",
+                    "w-full h-full bg-gradient-to-br flex items-center justify-center",
                     getSeededGradient(project.id)
                   )}>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-                        <Globe size={14} className="text-zinc-500" />
-                      </div>
-                    </div>
+                    <Globe size={12} className="text-zinc-500" />
                   </div>
                 )}
               </div>
-              <p className="text-sm font-medium text-zinc-300 truncate group-hover:text-white transition-colors">
-                {project.name}
-              </p>
-              <p className="text-[11px] text-zinc-600 mt-0.5">
-                {formatDistanceToNow(new Date(project.last_edited_at), { addSuffix: true })}
-              </p>
+
+              {/* Info */}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-zinc-300 truncate group-hover:text-white transition-colors">
+                  {project.name}
+                </p>
+                <p className="text-[11px] text-zinc-600 mt-0.5">
+                  {formatDistanceToNow(new Date(project.last_edited_at), { addSuffix: true })}
+                </p>
+              </div>
             </button>
           ))}
         </div>
