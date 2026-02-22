@@ -1016,6 +1016,11 @@ window.addEventListener('message', (event) => {
   window.addEventListener('message', (event) => {
     const msg = event.data;
     if (!msg) return;
+
+    if (msg.type === 'VIBECODER_APPLY_THEME' || msg.type === 'VIBECODER_REVERT_THEME') {
+      console.log('[THEME-DEBUG-IFRAME] Received:', msg.type, msg.colors ? Object.keys(msg.colors).length + ' keys' : 'no colors');
+    }
+
     const root = document.documentElement;
 
     if (msg.type === 'VIBECODER_REVERT_THEME') {
