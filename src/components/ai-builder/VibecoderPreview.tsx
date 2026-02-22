@@ -520,11 +520,19 @@ export function VibecoderPreview({
   const [isMounted, setIsMounted] = useState(false);
   const mountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Track the initial mount key — only remount on TRUE identity changes (not code updates)
+  const mountKeyRef = useRef(0);
 
+  // Mount once on initial render; do NOT remount when code/files change during streaming.
+  // Sandpack's internal file system handles hot-updates — remounting destroys the iframe.
   useEffect(() => {
-    // Small debounce on mount to prevent rapid mount/unmount cycles
+    mountKeyRef.current += 1;
+    const currentKey = mountKeyRef.current;
+
     mountTimerRef.current = setTimeout(() => {
-      setIsMounted(true);
+      if (mountKeyRef.current === currentKey) {
+        setIsMounted(true);
+      }
     }, 50);
 
     return () => {
@@ -549,7 +557,7 @@ export function VibecoderPreview({
         // DOM already cleaned up - safe to ignore
       }
     };
-  }, [code, files]);
+  }, []); // ← empty deps: mount once, never remount on code changes
 
   return (
     <div ref={containerRef} className="h-full w-full relative bg-background flex flex-col">
