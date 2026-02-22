@@ -22,8 +22,8 @@ export interface StylePreset {
 // Special "None" preset that represents no style override
 export const NO_STYLE_PRESET: StylePreset = {
   id: 'none',
-  name: 'No Style',
-  description: 'Use my existing design',
+  name: 'Current Theme',
+  description: 'Your existing design',
   colors: {
     primary: '',
     accent: '',

@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Palette, Sparkles, ArrowLeft, Check } from "lucide-react";
+import { Palette, Sparkles, ArrowLeft, MoreHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
 import { STYLE_PRESETS, type StylePreset } from "./stylePresets";
 import { cn } from "@/lib/utils";
 import { VisualEditPanel, type SelectedElement } from "./VisualEditOverlay";
+import { ThemeEditorDialog } from "./ThemeEditorDialog";
 
 type DesignView = 'home' | 'themes' | 'visual-edits';
 
@@ -17,14 +18,9 @@ interface DesignPanelProps {
 
 // Color dot row for a style preset
 function StyleDots({ style }: { style: StylePreset }) {
-  if (style.id === 'none') return null;
-  const colors = [
-    style.colors.primary,
-    style.colors.accent,
-    style.colors.background,
-    style.colors.surface,
-    style.colors.text,
-  ];
+  const colors = style.id === 'none'
+    ? ['#333', '#555', '#000', '#1a1a1a', '#fff']
+    : [style.colors.primary, style.colors.accent, style.colors.background, style.colors.surface, style.colors.text];
   return (
     <div className="flex items-center gap-1">
       {colors.map((c, i) => (
@@ -40,6 +36,7 @@ function StyleDots({ style }: { style: StylePreset }) {
 
 export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange, selectedElement, onEditRequest }: DesignPanelProps) {
   const [view, setView] = useState<DesignView>('home');
+  const [editingStyle, setEditingStyle] = useState<StylePreset | null>(null);
   const currentStyle = activeStyle ?? STYLE_PRESETS[0];
 
   // Notify parent when visual edit mode changes
@@ -63,52 +60,66 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
             <span className="text-sm font-semibold text-zinc-200">Themes</span>
           </div>
 
-          {/* Current theme */}
-          <div className="space-y-2">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Current theme</p>
-            <div className="px-4 py-3 rounded-xl border-2 border-blue-500/40 bg-blue-500/5">
-              <div className="flex items-center gap-3">
-                <StyleDots style={currentStyle} />
-                <span className="text-sm font-medium text-zinc-200">
-                  {currentStyle.name}
-                </span>
-              </div>
-            </div>
-          </div>
+          {/* Default themes label */}
+          <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Default themes</p>
 
-          {/* All themes */}
+          {/* Theme list */}
           <div className="space-y-2">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Available themes</p>
-            <div className="space-y-2">
-              {STYLE_PRESETS.map((style) => {
-                const isActive = currentStyle.id === style.id;
-                return (
-                  <motion.button
-                    key={style.id}
-                    onClick={() => onStyleChange?.(style)}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    className={cn(
-                      "w-full px-4 py-3 rounded-xl text-left transition-colors flex items-center justify-between",
-                      isActive
-                        ? "bg-zinc-800 border border-zinc-600"
-                        : "bg-zinc-900/60 border border-zinc-800/50 hover:bg-zinc-800/60 hover:border-zinc-700/50"
-                    )}
+            {STYLE_PRESETS.map((style) => {
+              const isActive = currentStyle.id === style.id;
+              return (
+                <div
+                  key={style.id}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors",
+                    isActive
+                      ? "bg-zinc-800 border border-zinc-600"
+                      : "bg-zinc-900/60 border border-zinc-800/50"
+                  )}
+                >
+                  {/* Color dots */}
+                  <StyleDots style={style} />
+
+                  {/* Name */}
+                  <span className="text-sm font-medium text-zinc-200 flex-1 truncate">
+                    {style.name}
+                  </span>
+
+                  {/* Apply button */}
+                  {!isActive && (
+                    <button
+                      onClick={() => onStyleChange?.(style)}
+                      className="px-3 py-1 text-xs font-medium text-zinc-300 bg-zinc-700 hover:bg-zinc-600 rounded-md transition-colors shrink-0"
+                    >
+                      Apply
+                    </button>
+                  )}
+
+                  {/* Edit button */}
+                  <button
+                    onClick={() => setEditingStyle(style)}
+                    className="p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 rounded-md transition-colors shrink-0"
                   >
-                    <div className="flex items-center gap-3">
-                      <StyleDots style={style} />
-                      <div>
-                        <p className="text-sm font-medium text-zinc-200">{style.name}</p>
-                        <p className="text-[11px] text-zinc-500">{style.description}</p>
-                      </div>
-                    </div>
-                    {isActive && <Check className="w-4 h-4 text-blue-400 shrink-0" />}
-                  </motion.button>
-                );
-              })}
-            </div>
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
+
+        {/* Theme editor dialog */}
+        {editingStyle && (
+          <ThemeEditorDialog
+            open={!!editingStyle}
+            onClose={() => setEditingStyle(null)}
+            style={editingStyle}
+            onApply={(updated) => {
+              onStyleChange?.(updated);
+              setEditingStyle(null);
+            }}
+          />
+        )}
       </div>
     );
   }
