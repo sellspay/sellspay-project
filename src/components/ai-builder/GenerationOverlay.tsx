@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface GenerationOverlayProps {
   visible: boolean;
@@ -7,35 +7,80 @@ interface GenerationOverlayProps {
   analysisText?: string;
 }
 
-const PHASE_LABELS: Record<string, string> = {
-  analyzing: 'Understanding your vision',
-  planning: 'Architecting the experience',
-  building: 'Generating your storefront',
-  reporting: 'Finalizing output',
+/**
+ * Phase-aware labels that match the AI pipeline stages.
+ * The overlay cycles through contextual messages within each phase.
+ */
+const PHASE_MESSAGES: Record<string, string[]> = {
+  analyzing: [
+    'Understanding your vision',
+    'Analyzing design requirements',
+    'Identifying key elements',
+    'Parsing your request',
+  ],
+  planning: [
+    'Architecting the experience',
+    'Designing component structure',
+    'Planning layout hierarchy',
+    'Mapping interactive elements',
+  ],
+  building: [
+    'Generating your storefront',
+    'Writing React components',
+    'Building responsive sections',
+    'Wiring interactive elements',
+    'Crafting layouts & typography',
+    'Applying color palettes',
+    'Polishing animations',
+    'Assembling your vision',
+    'Structuring CSS styles',
+    'Creating navigation flow',
+  ],
+  reporting: [
+    'Finalizing output',
+    'Running quality checks',
+    'Preparing preview',
+  ],
 };
 
-const AMBIENT_MESSAGES = [
-  'Crafting layouts & typography…',
-  'Designing color palettes…',
-  'Building responsive sections…',
-  'Wiring interactive elements…',
-  'Polishing animations…',
-  'Structuring component hierarchy…',
-  'Assembling your vision…',
+const FALLBACK_MESSAGES = [
+  'Working on your design',
+  'Crafting layouts & typography',
+  'Building responsive sections',
+  'Wiring interactive elements',
+  'Polishing animations',
 ];
 
 export function GenerationOverlay({ visible, phase, analysisText }: GenerationOverlayProps) {
-  const [ambientIdx, setAmbientIdx] = useState(0);
+  const [msgIdx, setMsgIdx] = useState(0);
+  const prevPhaseRef = useRef(phase);
 
+  // Reset message index when phase changes so we start fresh
+  useEffect(() => {
+    if (phase !== prevPhaseRef.current) {
+      setMsgIdx(0);
+      prevPhaseRef.current = phase;
+    }
+  }, [phase]);
+
+  // Cycle through messages for the current phase
   useEffect(() => {
     if (!visible) return;
     const interval = setInterval(() => {
-      setAmbientIdx(prev => (prev + 1) % AMBIENT_MESSAGES.length);
-    }, 3200);
+      setMsgIdx(prev => {
+        const messages = (phase && PHASE_MESSAGES[phase]) || FALLBACK_MESSAGES;
+        return (prev + 1) % messages.length;
+      });
+    }, 3000);
     return () => clearInterval(interval);
-  }, [visible]);
+  }, [visible, phase]);
 
-  const label = phase && PHASE_LABELS[phase] ? PHASE_LABELS[phase] : AMBIENT_MESSAGES[ambientIdx];
+  const messages = (phase && PHASE_MESSAGES[phase]) || FALLBACK_MESSAGES;
+  const label = messages[msgIdx % messages.length];
+
+  // Phase progress indicator
+  const phaseOrder = ['analyzing', 'planning', 'building', 'reporting'];
+  const currentPhaseIdx = phase ? phaseOrder.indexOf(phase) : 0;
 
   return (
     <AnimatePresence>
@@ -43,7 +88,7 @@ export function GenerationOverlay({ visible, phase, analysisText }: GenerationOv
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.6 } }}
+          exit={{ opacity: 0, transition: { duration: 0.8 } }}
           className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-zinc-950 overflow-hidden"
         >
           {/* Animated gradient orbs */}
@@ -115,14 +160,14 @@ export function GenerationOverlay({ visible, phase, analysisText }: GenerationOv
               />
             </div>
 
-            {/* Phase label */}
+            {/* Phase label with cycling animation */}
             <div className="text-center space-y-3">
               <AnimatePresence mode="wait">
                 <motion.p
                   key={label}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
+                  exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.4 }}
                   className="text-base font-medium text-white/90 tracking-wide"
                 >
@@ -142,24 +187,29 @@ export function GenerationOverlay({ visible, phase, analysisText }: GenerationOv
               )}
             </div>
 
-            {/* Progress dots */}
-            <div className="flex gap-1.5">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-1 h-1 rounded-full bg-primary/60"
-                  animate={{
-                    scale: [1, 1.8, 1],
-                    opacity: [0.3, 1, 0.3],
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    delay: i * 0.2,
-                    ease: 'easeInOut',
-                  }}
-                />
-              ))}
+            {/* Phase progress steps */}
+            <div className="flex items-center gap-2">
+              {phaseOrder.map((p, i) => {
+                const isActive = i === currentPhaseIdx;
+                const isComplete = i < currentPhaseIdx;
+                return (
+                  <div key={p} className="flex items-center gap-2">
+                    <motion.div
+                      className={`w-2 h-2 rounded-full ${
+                        isComplete ? 'bg-primary' : isActive ? 'bg-primary' : 'bg-zinc-700'
+                      }`}
+                      animate={isActive ? {
+                        scale: [1, 1.5, 1],
+                        opacity: [0.7, 1, 0.7],
+                      } : {}}
+                      transition={isActive ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : {}}
+                    />
+                    {i < phaseOrder.length - 1 && (
+                      <div className={`w-6 h-px ${isComplete ? 'bg-primary/50' : 'bg-zinc-800'}`} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </motion.div>

@@ -395,7 +395,8 @@ const validateTsx = (code: string): TsxValidationResult => {
       continue;
     }
 
-    // Inside a template literal (not inside a ${} expression)
+    // Inside a template literal body (not inside a ${} expression).
+    // We're "in the template body" when the top of the stack equals current brace depth.
     if (inTemplate() && templateStack[templateStack.length - 1] === brace) {
       if (escaped) {
         escaped = false;
@@ -411,12 +412,12 @@ const validateTsx = (code: string): TsxValidationResult => {
         continue;
       }
       if (c === '$' && n === '{') {
-        // Enter template expression — push current brace depth and count the {
-        brace++;
-        templateStack.push(brace); // will re-enter template when brace returns here - 1
-        // Actually we track the depth we need to return TO, so adjust:
-        // When brace drops back to this value - 1, we're back in the template string
-        templateStack[templateStack.length - 1] = brace;
+        // Enter template expression ${...}
+        // Push the brace depth we need to return to (current depth).
+        // When a closing } brings brace back to this depth, we re-enter the template body.
+        const returnDepth = brace;
+        brace++; // count the { from ${
+        templateStack.push(returnDepth);
         i++; // skip the {
         continue;
       }
@@ -455,11 +456,9 @@ const validateTsx = (code: string): TsxValidationResult => {
     else if (c === '{') brace++;
     else if (c === '}') {
       brace--;
-      // Check if we're returning to a template literal body
-      if (inTemplate() && brace === templateStack[templateStack.length - 1]) {
-        // We've closed the ${} expression, back inside the template string
-        // The template string handler above will take over on next iteration
-      }
+      // When brace drops back to the depth stored on top of templateStack,
+      // we've closed the ${} expression. The template-body handler at the
+      // top of the loop will take over on the next iteration — no action needed here.
     }
     else if (c === '[') bracket++;
     else if (c === ']') bracket--;
