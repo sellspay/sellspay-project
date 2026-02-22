@@ -1757,7 +1757,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 activeModel={activeModel}
               />
             ) : (
-              <div className={`flex-1 min-h-0 h-full relative bg-[#1a1a1a] ${deviceMode === 'mobile' ? 'flex items-center justify-center' : ''}`}>
+              <div className={`flex-1 min-h-0 h-full relative bg-[#1a1a1a] border border-zinc-600/60 rounded-lg ${deviceMode === 'mobile' ? 'flex items-center justify-center' : ''}`}>
                 {deviceMode === 'mobile' ? (
                   /* Phone device frame */
                   <div className="relative flex flex-col" style={{ height: 'calc(100% - 32px)', maxHeight: '900px' }}>
@@ -1816,7 +1816,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                     </div>
                   </div>
                 ) : (
-                  <div className="h-full w-full relative overflow-hidden border border-zinc-600/60 rounded-lg shadow-lg shadow-black/20">
+                  <div className="h-full w-full relative overflow-hidden">
                     <PreviewErrorBoundary
                       onAutoFix={handleAutoFix}
                       onReset={() => { setIsAwaitingPreviewReady(false); resetCode(); }}
