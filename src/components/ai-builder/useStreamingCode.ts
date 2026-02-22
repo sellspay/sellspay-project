@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ProjectFiles } from './VibecoderPreview';
+import { safeApply, saveSnapshot, isMicroEdit as detectMicroEdit } from './codeGuardrails';
 /**
  * Completion sentinel that MUST be present in every AI-generated code block.
  * If missing, the output is considered truncated.
@@ -823,50 +824,37 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       }
 
       // ═══════════════════════════════════════════════════════════
-      // 🛡️ PRESERVATION GUARDRAILS: Prevent catastrophic rewrites
+      // 🛡️ PRESERVATION GUARDRAILS v2: Enterprise-grade protection
       // ═══════════════════════════════════════════════════════════
       const previousCode = currentCode || lastGoodCodeRef.current;
-      const isPreviousDefault = !previousCode || previousCode === DEFAULT_CODE || previousCode.length < 200;
 
-      if (!isPreviousDefault && previousCode.length > 200) {
-        const oldLen = previousCode.length;
-        const newLen = finalCode.length;
-        const lengthRatio = newLen / oldLen;
+      // Auto-snapshot before every apply attempt
+      saveSnapshot(previousCode, prompt);
 
-        // GUARD 1: Length Guard — reject if new code is drastically smaller
-        if (lengthRatio < 0.4) {
-          console.error(`🛡️ LENGTH GUARD: New code (${newLen} chars) is ${Math.round(lengthRatio * 100)}% of original (${oldLen} chars). REJECTED.`);
-          const err = new Error('Generation rejected: output was suspiciously small compared to your existing code. Your storefront was preserved. Please try again with a more specific request.');
-          setState(prev => ({ ...prev, isStreaming: false, error: err.message, code: lastGoodCodeRef.current }));
-          options.onError?.(err);
-          return lastGoodCodeRef.current;
-        }
+      // Parse confidence from stream if available
+      let streamConfidence: number | undefined;
+      const confidenceMatch = rawStream.match(/\[CONFIDENCE[:\s]*(\d+)\]/i);
+      if (confidenceMatch) {
+        streamConfidence = parseInt(confidenceMatch[1], 10);
+      }
 
-        // GUARD 2: Diff Guard for micro-edits — reject if too many changes for small request
-        const promptLower = (prompt || '').toLowerCase().trim();
-        const promptWordCount = promptLower.split(/\s+/).filter(w => w.length > 0).length;
-        const isMicroRequest = promptWordCount <= 15;
+      const guardResult = safeApply(previousCode, finalCode, prompt, streamConfidence);
 
-        if (isMicroRequest && lengthRatio < 0.6) {
-          console.error(`🛡️ DIFF GUARD: Micro-edit "${promptLower.slice(0, 40)}..." caused ${Math.round((1 - lengthRatio) * 100)}% code reduction. REJECTED.`);
-          const err = new Error('Generation rejected: a small request caused excessive changes. Your storefront was preserved. Try being more specific (e.g., "make the product cards clickable" instead of "fix products").');
-          setState(prev => ({ ...prev, isStreaming: false, error: err.message, code: lastGoodCodeRef.current }));
-          options.onError?.(err);
-          return lastGoodCodeRef.current;
-        }
+      if (!guardResult.accepted) {
+        const guardNames = guardResult.failedGuards.map(g => g.guard).join(', ');
+        const guardMessages = guardResult.failedGuards.map(g => g.message).join(' ');
+        const isMicro = detectMicroEdit(prompt);
 
-        // GUARD 3: Line count sanity — reject if line count drops dramatically
-        const oldLines = previousCode.split('\n').length;
-        const newLines = finalCode.split('\n').length;
-        const lineRatio = newLines / oldLines;
+        console.error(`🛡️ GUARDRAILS REJECTED [${guardNames}]:`, guardMessages);
 
-        if (oldLines > 50 && lineRatio < 0.3) {
-          console.error(`🛡️ LINE GUARD: ${oldLines} lines → ${newLines} lines (${Math.round(lineRatio * 100)}%). REJECTED.`);
-          const err = new Error('Generation rejected: output had far fewer lines than your existing code. Your storefront was preserved.');
-          setState(prev => ({ ...prev, isStreaming: false, error: err.message, code: lastGoodCodeRef.current }));
-          options.onError?.(err);
-          return lastGoodCodeRef.current;
-        }
+        const userMessage = isMicro
+          ? `Generation rejected: a small request caused excessive changes. Your storefront was preserved. Try being more specific (e.g., "make the product cards clickable" instead of "fix products").`
+          : `Generation rejected: the AI attempted to rewrite too much of your code. Your storefront was preserved. Please try a more targeted request.`;
+
+        const err = new Error(userMessage);
+        setState(prev => ({ ...prev, isStreaming: false, error: err.message, code: lastGoodCodeRef.current }));
+        options.onError?.(err);
+        return lastGoodCodeRef.current;
       }
       // ═══════════════════════════════════════════════════════════
 
