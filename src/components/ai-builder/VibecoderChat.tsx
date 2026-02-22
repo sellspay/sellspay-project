@@ -271,20 +271,6 @@ export function VibecoderChat({
             BETA
           </span>
         </div>
-        {onToggleCollapse && (
-          <button
-            onClick={onToggleCollapse}
-            className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-            title="Collapse chat"
-          >
-            <svg
-              className="w-4 h-4"
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        )}
       </div>
 
       {/* Chat area */}

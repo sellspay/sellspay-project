@@ -1687,6 +1687,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             userCredits={userCredits}
             subscriptionTier={subscriptionTier}
             onSignOut={handleSignOut}
+            chatCollapsed={chatCollapsed}
+            onToggleChatCollapse={() => setChatCollapsed(!chatCollapsed)}
           />
         </div>
 
@@ -1788,6 +1790,22 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         </div>
       </div>
 
+      {/* ═══ DRAG HANDLE — always between canvas and chat ═══ */}
+      {!chatCollapsed && (
+        <div
+          onMouseDown={startResizing}
+          className={`shrink-0 w-1.5 cursor-ew-resize z-50 transition-all flex items-center justify-center group ${
+            isDragging
+              ? 'bg-blue-500/60 shadow-[0_0_12px_rgba(59,130,246,0.4)]'
+              : 'bg-transparent hover:bg-blue-500/30'
+          }`}
+        >
+          <div className={`w-0.5 h-10 rounded-full transition-all ${
+            isDragging ? 'bg-blue-400' : 'bg-zinc-600 group-hover:bg-blue-400'
+          }`} />
+        </div>
+      )}
+
       {/* ═══ CHAT SIDEBAR — sits on background, chat input is its own card ═══ */}
       <div
         className="shrink-0 h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
@@ -1795,18 +1813,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           width: chatCollapsed ? 0 : sidebarWidth,
         }}
       >
-        {/* Drag handle for resizing */}
-        {!chatCollapsed && (
-          <div
-            onMouseDown={startResizing}
-            className={`absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-50 transition-all ${
-              isDragging
-                ? 'bg-primary/60 shadow-[0_0_12px_hsl(var(--primary)/0.3)]'
-                : 'bg-transparent hover:bg-white/[0.08]'
-            }`}
-          />
-        )}
-
         <div className="flex-1 min-h-0 overflow-hidden relative" style={{ isolation: 'isolate' }}>
           <VibecoderChat
             key={`chat-${activeProjectId ?? 'fresh'}-${resetKey}`}
@@ -1872,21 +1878,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         </div>
       </div>
 
-      {/* Chat expand toggle when collapsed */}
-      {chatCollapsed && (
-        <button
-          onClick={() => setChatCollapsed(false)}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-[25] w-8 h-12 flex items-center justify-center bg-zinc-900 hover:bg-zinc-800 border border-white/[0.08] rounded-l-xl transition-all"
-          title="Open chat"
-        >
-          <svg
-            className="w-3.5 h-3.5 text-zinc-400 rotate-180"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
-      )}
+      {/* Chat expand toggle removed — now lives in header */}
       
 
       <PlacementPromptModal
