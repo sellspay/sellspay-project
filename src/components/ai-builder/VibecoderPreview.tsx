@@ -564,12 +564,14 @@ import App from "./App";
     origError.apply(console, args);
   };
 
+  const isVibeOverlay = (el) => el.hasAttribute && el.hasAttribute('data-vibe-overlay');
+
   const nukeOverlays = () => {
     const dangerous = document.querySelectorAll(
       '#react-error-overlay, [class*="error"], [class*="Error"], .sp-error, [style*="position: fixed"][style*="z-index"]'
     );
     dangerous.forEach(el => {
-      if (el.id === 'root' || el.closest('#root')) return;
+      if (el.id === 'root' || el.closest('#root') || isVibeOverlay(el)) return;
       try { el.remove(); } catch { (el as HTMLElement).style.display = 'none'; }
     });
   };
@@ -579,6 +581,7 @@ import App from "./App";
       m.addedNodes.forEach(node => {
         if (node.nodeType === 1) {
           const el = node as HTMLElement;
+          if (isVibeOverlay(el)) return;
           const isOverlay = el.id?.includes('error') || 
                            el.className?.toString().includes('error') ||
                            el.style?.position === 'fixed';
