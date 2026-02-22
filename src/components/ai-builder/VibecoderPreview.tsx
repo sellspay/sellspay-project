@@ -546,10 +546,35 @@ export {};`,
       },
       '/index.tsx': {
         code: `import "./styles/error-silence.css";
+import "./styles/theme-base.css";
 import "./utils/capture";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+
+// Configure Tailwind CDN to use CSS variable-based theme system
+if (typeof window !== 'undefined' && (window as any).tailwind) {
+  (window as any).tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          border: 'hsl(var(--border))',
+          input: 'hsl(var(--input))',
+          ring: 'hsl(var(--ring))',
+          background: 'hsl(var(--background))',
+          foreground: 'hsl(var(--foreground))',
+          primary: { DEFAULT: 'hsl(var(--primary))', foreground: 'hsl(var(--primary-foreground))' },
+          secondary: { DEFAULT: 'hsl(var(--secondary))', foreground: 'hsl(var(--secondary-foreground))' },
+          destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--destructive-foreground))' },
+          muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
+          accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(var(--accent-foreground))' },
+          popover: { DEFAULT: 'hsl(var(--popover))', foreground: 'hsl(var(--popover-foreground))' },
+          card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
+        },
+      },
+    },
+  };
+}
 
 // NUCLEAR ERROR SILENCE PROTOCOL
 (function() {
@@ -941,7 +966,7 @@ window.addEventListener('message', (event) => {
   window.parent.postMessage({ type: 'VIBECODER_COLORS_EXTRACTED', colors }, '*');
 });
 
-// LIVE THEME PREVIEW: Inject a style tag that overrides colors in the preview
+// LIVE THEME PREVIEW: Set CSS custom properties that Tailwind CDN resolves
 (function() {
   let themeStyleEl = null;
 
@@ -949,7 +974,6 @@ window.addEventListener('message', (event) => {
     const msg = event.data;
     if (!msg) return;
 
-    // REVERT: simply remove the override style tag
     if (msg.type === 'VIBECODER_REVERT_THEME') {
       if (themeStyleEl) { themeStyleEl.remove(); themeStyleEl = null; }
       return;
@@ -959,93 +983,109 @@ window.addEventListener('message', (event) => {
     const c = msg.colors;
     if (!c) return;
 
-    // Remove previous theme style
     if (themeStyleEl) themeStyleEl.remove();
     themeStyleEl = document.createElement('style');
     themeStyleEl.id = 'vibe-theme-override';
     themeStyleEl.setAttribute('data-vibe-overlay', 'true');
 
-    // Helper: only add rule if color exists
-    function r(selector, props) {
-      if (!props) return '';
-      return selector + ' { ' + props + ' }\\n';
+    // Convert hex to HSL string for CSS custom properties
+    function hexToHSL(hex) {
+      const r = parseInt(hex.slice(1,3),16)/255;
+      const g = parseInt(hex.slice(3,5),16)/255;
+      const b = parseInt(hex.slice(5,7),16)/255;
+      const max = Math.max(r,g,b), min = Math.min(r,g,b);
+      let h = 0, s = 0, l = (max+min)/2;
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+        if (max === r) h = ((g-b)/d + (g<b?6:0))/6;
+        else if (max === g) h = ((b-r)/d+2)/6;
+        else h = ((r-g)/d+4)/6;
+      }
+      return Math.round(h*360) + ' ' + Math.round(s*100) + '% ' + Math.round(l*100) + '%';
     }
 
-    let css = '';
+    // Map of CSS variable names to color keys
+    const varMap = {
+      '--background': 'background',
+      '--foreground': 'foreground',
+      '--primary': 'primary',
+      '--primary-foreground': 'primary-foreground',
+      '--secondary': 'secondary',
+      '--secondary-foreground': 'secondary-foreground',
+      '--accent': 'accent',
+      '--accent-foreground': 'accent-foreground',
+      '--card': 'card',
+      '--card-foreground': 'card-foreground',
+      '--popover': 'popover',
+      '--popover-foreground': 'popover-foreground',
+      '--muted': 'muted',
+      '--muted-foreground': 'muted-foreground',
+      '--destructive': 'destructive',
+      '--destructive-foreground': 'destructive-foreground',
+      '--border': 'border',
+      '--input': 'input',
+      '--ring': 'ring',
+      '--chart-1': 'chart-1',
+      '--chart-2': 'chart-2',
+      '--chart-3': 'chart-3',
+      '--chart-4': 'chart-4',
+      '--chart-5': 'chart-5',
+    };
 
-    // ── Background ──
-    css += r('html, body, #root', c.background ? 'background-color: ' + c.background + ' !important' : '');
-
-    // ── Foreground (text) ── apply broadly to all text elements
-    css += r('body, #root, p, span, div, h1, h2, h3, h4, h5, h6, li, td, th, label, blockquote, figcaption, dt, dd, pre, code', c.foreground ? 'color: ' + c.foreground + ' !important' : '');
-
-    // ── Primary ── buttons (excluding variant buttons)
-    if (c.primary) {
-      css += r('button:not([data-vibe-overlay]):not([class*="ghost"]):not([class*="outline"]):not([class*="link"]):not([class*="secondary"]):not([class*="destructive"]), [role="button"]:not([class*="ghost"]):not([class*="outline"]):not([class*="secondary"])', 'background-color: ' + c.primary + ' !important; color: ' + (c['primary-foreground'] || '#fff') + ' !important; border-color: ' + c.primary + ' !important');
+    let css = ':root {\\n';
+    for (const [varName, key] of Object.entries(varMap)) {
+      const hex = c[key];
+      if (hex && hex.startsWith('#')) {
+        css += '  ' + varName + ': ' + hexToHSL(hex) + ' !important;\\n';
+      }
     }
-
-    // ── Secondary ── secondary buttons, badges, section backgrounds
-    if (c.secondary) {
-      css += r('button[class*="secondary"], [class*="badge"], [class*="tag"], [class*="pill"], [class*="chip"]', 'background-color: ' + c.secondary + ' !important; color: ' + (c['secondary-foreground'] || c.foreground || '#fff') + ' !important');
-    }
-
-    // ── Accent ── links, accent-colored text
-    if (c.accent) {
-      css += r('a:not([data-vibe-overlay]), [class*="accent"], [class*="highlight"]', 'color: ' + c.accent + ' !important');
-    }
-
-    // ── Card ── card containers
-    if (c.card) {
-      css += r('[class*="card" i], [class*="Card"]', 'background-color: ' + c.card + ' !important; color: ' + (c['card-foreground'] || c.foreground) + ' !important');
-    }
-
-    // ── Popover ── dropdowns, tooltips, menus
-    if (c.popover) {
-      css += r('[class*="popover" i], [class*="dropdown" i], [class*="menu" i]:not(nav), [class*="tooltip" i], [role="menu"], [role="listbox"], [role="dialog"]', 'background-color: ' + c.popover + ' !important; color: ' + (c['popover-foreground'] || c.foreground) + ' !important');
-    }
-
-    // ── Muted ── subdued backgrounds and muted text
-    if (c.muted) {
-      css += r('[class*="muted"], [class*="subtle"], [class*="secondary-bg"]', 'background-color: ' + c.muted + ' !important');
-    }
-    if (c['muted-foreground']) {
-      css += r('[class*="text-gray"], [class*="text-zinc"], [class*="text-neutral"], [class*="text-slate"], [class*="text-muted"], [class*="text-sm"], small, [class*="description"], [class*="subtitle"], [class*="caption"]', 'color: ' + c['muted-foreground'] + ' !important');
-    }
-
-    // ── Destructive ── error/delete buttons
-    if (c.destructive) {
-      css += r('button[class*="destructive"], button[class*="danger"], button[class*="delete"], [class*="error"], [class*="destructive"]', 'background-color: ' + c.destructive + ' !important; color: ' + (c['destructive-foreground'] || '#fff') + ' !important');
-    }
-
-    // ── Border ── only elements that already have visible borders
-    if (c.border) {
-      css += r('[class*="border-"]:not([data-vibe-overlay]), hr', 'border-color: ' + c.border + ' !important');
-    }
-
-    // ── Input ── form inputs
-    if (c.input) {
-      css += r('input:not([type="color"]):not([data-vibe-overlay]), textarea, select', 'border-color: ' + c.input + ' !important; background-color: ' + (c.card || c.background || 'transparent') + ' !important; color: ' + (c.foreground || 'inherit') + ' !important');
-    }
-
-    // ── Ring ── focus rings
-    if (c.ring) {
-      css += r('*:focus, *:focus-visible', 'outline-color: ' + c.ring + ' !important; box-shadow: 0 0 0 2px ' + c.ring + '40 !important');
-    }
-
-    // ── Nav / header / footer ──
-    if (c.background) {
-      css += r('nav, header, footer', 'background-color: ' + c.background + ' !important');
-    }
+    css += '}\\n';
 
     themeStyleEl.textContent = css;
     document.head.appendChild(themeStyleEl);
   });
 })();
-  });
-})();
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);`,
+        hidden: true,
+      },
+      // Base theme CSS: defines CSS custom properties + Tailwind CDN config
+      '/styles/theme-base.css': {
+        code: `:root {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 98%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 4% 16%;
+  --secondary-foreground: 0 0% 98%;
+  --accent: 258 90% 66%;
+  --accent-foreground: 0 0% 100%;
+  --card: 240 6% 10%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 6% 10%;
+  --popover-foreground: 0 0% 98%;
+  --muted: 240 4% 16%;
+  --muted-foreground: 240 5% 65%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 4% 16%;
+  --input: 240 4% 16%;
+  --ring: 217 91% 60%;
+  --radius: 0.5rem;
+  --chart-1: 217 91% 60%;
+  --chart-2: 220 70% 50%;
+  --chart-3: 187 92% 41%;
+  --chart-4: 160 84% 39%;
+  --chart-5: 38 92% 50%;
+}
+
+/* Apply theme colors to root elements */
+html, body, #root {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}`,
         hidden: true,
       },
       '/styles/error-silence.css': {
