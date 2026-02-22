@@ -1671,7 +1671,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
   // === EXISTING USER: Show the full editor interface ===
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#1a1a1a] flex scrollbar-hide">
+    <div className="studio-layout h-screen w-screen overflow-hidden bg-[#1a1a1a] flex scrollbar-hide">
       {/* ═══ PROJECT SIDEBAR ═══ */}
       <div className="shrink-0 h-full">
         <ProjectSidebar
