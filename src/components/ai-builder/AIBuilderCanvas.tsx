@@ -1560,6 +1560,19 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         {/* Split View Content - Chat + Preview always visible */}
         <div className="flex-1 flex min-h-0 overflow-hidden relative">
 
+          {/* 🛑 TRANSITION OVERLAY: Hides stale content from the previous project during switch.
+              This is the critical piece that prevents the "flash of old project" bug.
+              Without this, Sandpack's iframe and the chat panel still render the old project's
+              code/messages for 1-3 frames before the new project's data loads. */}
+          {isProjectTransitioning && (
+            <div className="absolute inset-0 z-[100] bg-background flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+                <span className="text-sm text-muted-foreground">Loading project…</span>
+              </div>
+            </div>
+          )}
+
           {/* LEFT PANEL: Preview/Studio (seamless) */}
           <div
             className="flex-1 min-w-0 overflow-hidden relative flex flex-col bg-zinc-950"
