@@ -447,6 +447,8 @@ function VisualEditInjector({ active }: { active: boolean }) {
 // theme CSS directly into the Sandpack iframe via postMessage.
 // This is more reliable than sandpack.updateFile which requires recompilation.
 function ThemeBridge() {
+  const { sandpack } = useSandpack();
+
   useEffect(() => {
     function hexToHSL(hex: string): string {
       const r = parseInt(hex.slice(1,3),16)/255;
@@ -483,7 +485,6 @@ function ThemeBridge() {
         return null;
       }).filter(Boolean);
       
-      // Build CSS that overrides BOTH custom properties AND forces common elements
       const bg = colors['background'];
       const fg = colors['foreground'];
       const bgHSL = bg?.startsWith('#') ? hexToHSL(bg) : null;
@@ -492,44 +493,85 @@ function ThemeBridge() {
       let css = `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}\n`;
       css += `\nhtml, body, #root {\n  background-color: hsl(var(--background)) !important;\n  color: hsl(var(--foreground)) !important;\n}\n`;
       
-      // Force override hardcoded dark backgrounds (common in AI-generated storefronts)
       if (bgHSL) {
-        css += `\n/* Override hardcoded dark backgrounds */\n`;
-        css += `.bg-black, .bg-zinc-950, .bg-zinc-900, .bg-gray-950, .bg-gray-900,\n`;
+        css += `\n.bg-black, .bg-zinc-950, .bg-zinc-900, .bg-gray-950, .bg-gray-900,\n`;
         css += `.bg-neutral-950, .bg-neutral-900, .bg-slate-950, .bg-slate-900 {\n`;
         css += `  background-color: hsl(${bgHSL}) !important;\n}\n`;
       }
       if (fgHSL) {
-        css += `\n/* Override hardcoded text colors */\n`;
-        css += `.text-white, .text-zinc-100, .text-zinc-50, .text-gray-100, .text-gray-50 {\n`;
+        css += `\n.text-white, .text-zinc-100, .text-zinc-50, .text-gray-100, .text-gray-50 {\n`;
         css += `  color: hsl(${fgHSL}) !important;\n}\n`;
       }
 
       return css;
     }
 
+    // Find the Sandpack iframe using multiple strategies
+    function findIframe(): HTMLIFrameElement | null {
+      // Strategy 1: Sandpack's known selectors
+      const sp = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+      if (sp?.contentWindow) return sp;
+      // Strategy 2: Any iframe inside sp-preview container
+      const container = document.querySelector('.sp-preview-container, .sp-preview');
+      if (container) {
+        const iframe = container.querySelector('iframe') as HTMLIFrameElement | null;
+        if (iframe?.contentWindow) return iframe;
+      }
+      // Strategy 3: Any iframe with sandpack in src
+      const allIframes = document.querySelectorAll('iframe');
+      for (const iframe of allIframes) {
+        if (iframe.src?.includes('sandpack') || iframe.src?.includes('codesandbox')) {
+          if (iframe.contentWindow) return iframe;
+        }
+      }
+      // Strategy 4: First iframe in preview area
+      if (allIframes.length > 0 && allIframes[0].contentWindow) {
+        return allIframes[0] as HTMLIFrameElement;
+      }
+      return null;
+    }
+
     function sendToIframe(type: string, data?: any) {
-      const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+      const iframe = findIframe();
       if (iframe?.contentWindow) {
         iframe.contentWindow.postMessage({ type, ...data }, '*');
       } else {
-        console.warn('[ThemeBridge] No iframe found');
+        console.warn('[ThemeBridge] No iframe found, retrying in 500ms...');
+        // Retry once after a delay
+        setTimeout(() => {
+          const retryIframe = findIframe();
+          if (retryIframe?.contentWindow) {
+            retryIframe.contentWindow.postMessage({ type, ...data }, '*');
+          } else {
+            console.warn('[ThemeBridge] Retry failed — no iframe available');
+          }
+        }, 500);
       }
     }
 
-    console.log('[ThemeBridge] useEffect mounted, attaching event listeners');
-
     const handleApply = (e: Event) => {
       const colors = (e as CustomEvent).detail;
-      console.log('[ThemeBridge] Received vibecoder-theme-apply event', Object.keys(colors || {}));
       if (!colors) return;
       const css = buildThemeCSS(colors);
-      console.log('[ThemeBridge] Sending VIBECODER_INJECT_THEME to iframe, CSS length:', css.length);
       sendToIframe('VIBECODER_INJECT_THEME', { css });
+
+      // ALSO update the theme-base.css file so it persists across recompiles
+      try {
+        const lines = varKeys.map(key => {
+          const hex = colors[key];
+          if (hex && hex.startsWith('#')) {
+            return `  --${key}: ${hexToHSL(hex)};`;
+          }
+          return null;
+        }).filter(Boolean);
+        const newThemeCSS = `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}\n\nhtml, body, #root {\n  background-color: hsl(var(--background));\n  color: hsl(var(--foreground));\n}`;
+        sandpack.updateFile('/styles/theme-base.css', newThemeCSS);
+      } catch (err) {
+        // Non-critical — the postMessage injection still works
+      }
     };
 
     const handleRevert = () => {
-      console.log('[ThemeBridge] Reverting theme');
       sendToIframe('VIBECODER_REVERT_THEME');
     };
 
@@ -539,7 +581,7 @@ function ThemeBridge() {
       window.removeEventListener('vibecoder-theme-apply', handleApply);
       window.removeEventListener('vibecoder-theme-revert', handleRevert);
     };
-  }, []);
+  }, [sandpack]);
 
   return null;
 }
