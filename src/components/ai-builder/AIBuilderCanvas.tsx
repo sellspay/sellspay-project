@@ -16,6 +16,7 @@ import { useDataAvailabilityCheck } from './hooks/useDataAvailabilityCheck';
 import { GenerationCanvas } from './GenerationCanvas';
 import { ProductsPanel } from './ProductsPanel';
 import { SubscriptionsPanel } from './SubscriptionsPanel';
+import { DesignPanel } from './DesignPanel';
 import { PlacementPromptModal } from './PlacementPromptModal';
 import { AI_MODELS, type AIModel } from './ChatInputBar';
 import type { GeneratedAsset, ViewMode } from './types/generation';
@@ -80,6 +81,9 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   
   // LIFTED STATE: Active model from ChatInputBar
   const [activeModel, setActiveModel] = useState<AIModel>(AI_MODELS.code[0]);
+  
+  // LIFTED STATE: Active style preset for Design panel
+  const [activeStyle, setActiveStyle] = useState<import('./stylePresets').StylePreset | undefined>(undefined);
   
   // Generation state for Creative Studio (Image & Video tabs)
   const [currentImageAsset, setCurrentImageAsset] = useState<GeneratedAsset | null>(null);
@@ -1742,7 +1746,12 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             </div>
           )}
 
-            {viewMode === 'products' ? (
+            {viewMode === 'design' ? (
+              <DesignPanel
+                activeStyle={activeStyle}
+                onStyleChange={setActiveStyle}
+              />
+            ) : viewMode === 'products' ? (
               <ProductsPanel profileId={profileId} />
             ) : viewMode === 'subscriptions' ? (
               <SubscriptionsPanel profileId={profileId} />
@@ -1919,6 +1928,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             activeModel={activeModel}
             onOpenBilling={() => window.open('/pricing', '_blank')}
             onModelChange={handleModelChange}
+            activeStyle={activeStyle}
+            onStyleChange={setActiveStyle}
             pendingPlan={pendingPlan}
             onApprovePlan={handleApprovePlan}
             onRejectPlan={handleRejectPlan}

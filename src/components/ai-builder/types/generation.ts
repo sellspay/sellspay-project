@@ -9,4 +9,4 @@ export interface GeneratedAsset {
 }
 
 // Extended view mode for the AI Builder - 6 first-class tabs
-export type ViewMode = 'preview' | 'code' | 'image' | 'video' | 'products' | 'subscriptions';
+export type ViewMode = 'preview' | 'code' | 'image' | 'video' | 'products' | 'subscriptions' | 'design';
