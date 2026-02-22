@@ -836,9 +836,12 @@ STRICT MARKETPLACE PROTOCOL (Non-Negotiable)
 
 3. **PRODUCT LINKING PROTOCOL (CRITICAL):**
    - NEVER build product detail pages or modals
-   - All product clicks MUST redirect to: /product/{slug}
-   - Use: window.location.href = \`/product/\${product.slug}\`
-   - Or: <a href={\`/product/\${product.slug}\`}>
+   - All product clicks MUST open the real product page on the platform
+   - ALWAYS use: window.top.location.href = \`/product/\${product.slug}\`
+   - This works in both preview (iframe) and published storefronts
+   - NEVER use window.location.href (it only navigates inside the iframe, not the real page)
+   - NEVER use react-router or internal routing for product pages
+   - Alternative: <a href={\`/product/\${product.slug}\`} target="_top">
 
 ═══════════════════════════════════════════════════════════════
 FRAMER MOTION & ANIMATION PROTOCOL
