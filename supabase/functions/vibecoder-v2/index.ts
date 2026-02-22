@@ -1629,6 +1629,7 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════
     // Skip analyzer for clarification answers (they already went through it)
     // Also skip for QUESTION/REFUSE intents (no code gen needed)
+    let analysis: any = null; // Hoisted so streaming section can access suggestions
     if (requestType !== "clarification_answers" && intentResult.intent !== "QUESTION" && intentResult.intent !== "REFUSE") {
       // Fetch existing intent profile for context
       let intentProfile: { primary_intent: string; feature_counts: Record<string, number> } | null = null;
@@ -1646,7 +1647,7 @@ serve(async (req) => {
         }
       }
 
-      const analysis = await analyzeIntent(prompt, hasExistingCode, conversationHistory || [], intentProfile, GOOGLE_GEMINI_API_KEY);
+      analysis = await analyzeIntent(prompt, hasExistingCode, conversationHistory || [], intentProfile, GOOGLE_GEMINI_API_KEY);
 
       if (analysis) {
         // Update intent profile in background (don't await)
