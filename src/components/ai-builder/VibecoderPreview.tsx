@@ -967,38 +967,23 @@ window.addEventListener('message', (event) => {
 
     let css = '';
 
-    // Override body/html background
+    // Background & text — only on root containers
     if (colors.background) {
       css += 'html, body, #root { background-color: ' + colors.background + ' !important; }\\n';
+      css += 'nav, header, footer { background-color: ' + colors.background + ' !important; }\\n';
     }
     if (colors.foreground) {
-      css += 'body, #root { color: ' + colors.foreground + ' !important; }\\n';
+      css += 'body, #root, p, span, h1, h2, h3, h4, h5, h6, li, td, th, label, div { color: ' + colors.foreground + ' !important; }\\n';
     }
 
-    // Buttons
+    // Primary — only actual buttons, not every element
     if (colors.primary) {
-      css += 'button:not([data-vibe-overlay]):not(.text-only), [role="button"] { background-color: ' + colors.primary + ' !important; color: ' + (colors['primary-foreground'] || '#fff') + ' !important; }\\n';
+      css += 'button:not([data-vibe-overlay]):not([class*="ghost"]):not([class*="outline"]):not([class*="link"]):not([class*="secondary"]):not([class*="destructive"]) { background-color: ' + colors.primary + ' !important; color: ' + (colors['primary-foreground'] || '#fff') + ' !important; }\\n';
+    }
+
+    // Accent — links only
+    if (colors.accent) {
       css += 'a:not([data-vibe-overlay]) { color: ' + colors.accent + ' !important; }\\n';
-    }
-
-    // Card-like containers
-    if (colors.card) {
-      css += '[class*="card"], [class*="Card"], [class*="rounded"][class*="bg-"], [class*="shadow"] { background-color: ' + colors.card + ' !important; color: ' + (colors['card-foreground'] || colors.foreground) + ' !important; }\\n';
-    }
-
-    // Borders
-    if (colors.border) {
-      css += '[class*="border"]:not([data-vibe-overlay]) { border-color: ' + colors.border + ' !important; }\\n';
-    }
-
-    // Muted text
-    if (colors['muted-foreground']) {
-      css += '[class*="text-gray"], [class*="text-zinc"], [class*="text-neutral"], [class*="text-slate"], [class*="opacity-"], small, .text-muted { color: ' + colors['muted-foreground'] + ' !important; }\\n';
-    }
-
-    // Nav / header areas
-    if (colors.background) {
-      css += 'nav, header, footer { background-color: ' + colors.background + ' !important; }\\n';
     }
 
     themeStyleEl.textContent = css;
