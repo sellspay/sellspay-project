@@ -1671,7 +1671,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
   // === EXISTING USER: Show the full editor interface ===
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#1a1a1a] flex">
+    <div className="h-screen w-screen overflow-hidden bg-[#1a1a1a] flex scrollbar-hide">
       {/* ═══ PROJECT SIDEBAR ═══ */}
       <div className="shrink-0 h-full">
         <ProjectSidebar
@@ -1828,7 +1828,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
       {/* ═══ CHAT SIDEBAR — sits on background, chat input is its own card ═══ */}
       <div
         ref={sidebarRef}
-        className="shrink-0 h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
+        className="shrink-0 h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out scrollbar-hide"
         style={{
           width: chatCollapsed ? 0 : sidebarWidth,
         }}
