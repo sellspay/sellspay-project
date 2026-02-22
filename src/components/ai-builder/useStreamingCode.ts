@@ -1037,16 +1037,14 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     });
   }, []);
 
-  const setCode = useCallback((code: string) => {
+  const setCode = useCallback((code: string, skipValidation = false) => {
     // Strip sentinel before validation (it's a marker, not app code)
     let cleaned = stripCompleteSentinel(code);
 
     // Strip /// TYPE: CODE /// preamble that may be stored in code_snapshot.
-    // The preamble contains explanation text that confuses the bracket validator.
     const typeCodeIdx = cleaned.indexOf('/// TYPE: CODE ///');
     if (typeCodeIdx >= 0) {
       const afterMarker = cleaned.substring(typeCodeIdx + '/// TYPE: CODE ///'.length);
-      // Find where actual code starts (import/export/function/const)
       const codeStartPatterns = [
         /(^|\n)(import\s+)/,
         /(^|\n)(export\s+default\s+function\s+)/,
@@ -1077,18 +1075,28 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     cleaned = cleaned.replace(/\[LOG:\s*[^\]]+\]/g, '').trim();
 
     const codeWithoutSentinel = cleaned;
-    
-    const validation = validateTsx(codeWithoutSentinel);
-    if (!validation.valid) {
-      const reason = validation.reason || 'Invalid TSX';
-      const lineInfo = validation.line ? ` (line ${validation.line})` : '';
-      console.warn(`[useStreamingCode] Refusing to apply TSX: ${reason}${lineInfo}`);
-      setState(prev => ({
-        ...prev,
-        code: lastGoodCodeRef.current,
-        error: `Code rejected: ${reason}${lineInfo}. Kept last working preview.`,
-      }));
-      return;
+
+    // When restoring from DB, skip validation — the code was already validated before saving.
+    // This prevents false rejections from validator edge cases (template literals, etc.)
+    if (!skipValidation) {
+      const validation = validateTsx(codeWithoutSentinel);
+      if (!validation.valid) {
+        const reason = validation.reason || 'Invalid TSX';
+        const lineInfo = validation.line ? ` (line ${validation.line})` : '';
+        console.warn(`[useStreamingCode] Refusing to apply TSX: ${reason}${lineInfo}`);
+        setState(prev => ({
+          ...prev,
+          code: lastGoodCodeRef.current,
+          error: `Code rejected: ${reason}${lineInfo}. Kept last working preview.`,
+        }));
+        return;
+      }
+    } else {
+      // Even with skipValidation, do a basic sanity check
+      if (!codeWithoutSentinel || codeWithoutSentinel.trim().length < 20 || !hasTsxEntrypoint(codeWithoutSentinel)) {
+        console.warn('[useStreamingCode] Restored code failed basic sanity check — keeping default');
+        return;
+      }
     }
 
     lastGoodCodeRef.current = codeWithoutSentinel;
