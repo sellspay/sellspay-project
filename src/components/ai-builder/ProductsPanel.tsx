@@ -71,7 +71,7 @@ export function ProductsPanel({ profileId, onProductsChange }: ProductsPanelProp
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-zinc-950">
+      <div className="flex-1 flex items-center justify-center bg-[#1a1a1a]">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
           <p className="text-sm text-zinc-500">Loading products...</p>
@@ -81,7 +81,7 @@ export function ProductsPanel({ profileId, onProductsChange }: ProductsPanelProp
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden">
+    <div className="flex-1 flex flex-col bg-[#1a1a1a] overflow-hidden">
       {/* Header */}
       <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">

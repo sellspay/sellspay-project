@@ -1717,7 +1717,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 activeModel={activeModel}
               />
             ) : (
-              <div className={`flex-1 min-h-0 h-full relative bg-zinc-950 ${deviceMode === 'mobile' ? 'flex items-center justify-center' : ''}`}>
+              <div className={`flex-1 min-h-0 h-full relative bg-[#1a1a1a] ${deviceMode === 'mobile' ? 'flex items-center justify-center' : ''}`}>
                 <div
                   className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-800 shadow-2xl bg-zinc-950' : 'w-full'} relative overflow-hidden`}
                 >
