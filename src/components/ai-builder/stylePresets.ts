@@ -243,13 +243,19 @@ export function generateStylePrompt(style: StylePreset): string | null {
 [STYLE_CONTEXT]
 Apply this visual design system consistently:
 
-🎨 COLOR PALETTE:
-- Primary: ${style.colors.primary}
-- Accent: ${style.colors.accent}
-- Background: ${style.colors.background}
-- Card: ${style.colors.card}
-- Text: ${style.colors.foreground}
-- Muted: ${style.colors.muted}
+🎨 COLOR PALETTE (use semantic Tailwind classes, NOT hardcoded colors):
+- Primary button/CTA: bg-primary text-primary-foreground
+- Secondary elements: bg-secondary text-secondary-foreground  
+- Accent highlights: bg-accent text-accent-foreground or text-accent
+- Page background: bg-background
+- Card containers: bg-card text-card-foreground
+- Body text: text-foreground
+- Muted/subtle text: text-muted-foreground
+- Muted backgrounds: bg-muted
+- Borders: border-border
+- Inputs: border-input
+- Focus rings: ring-ring
+- Destructive: bg-destructive text-destructive-foreground
 
 📐 BACKGROUND STYLE:
 ${style.backgroundStyle}
@@ -260,8 +266,7 @@ ${style.cardStyle}
 ✏️ TYPOGRAPHY:
 ${style.typography}
 
-IMPORTANT: Use these exact colors as Tailwind arbitrary values.
-Maintain this visual identity across all sections, buttons, cards, and typography.
+CRITICAL: Always use semantic Tailwind color classes (bg-primary, text-foreground, bg-card, border-border, etc.) instead of hardcoded color values. This ensures the theme system works correctly. The CSS custom properties are already configured.
 `;
 }
 
