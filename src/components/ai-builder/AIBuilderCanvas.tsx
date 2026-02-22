@@ -1647,7 +1647,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
   // === EXISTING USER: Show the full editor interface ===
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0a0a0a]">
+    <div className="h-screen w-screen overflow-hidden bg-[#0a0a0a] p-2 flex gap-2">
       {/* ═══ PROJECT SIDEBAR ═══ */}
       <div className="shrink-0 h-full">
         <ProjectSidebar
@@ -1664,7 +1664,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
       </div>
 
       {/* ═══ MAIN WORKSPACE (Header + Canvas + Chat as one unified surface) ═══ */}
-      <div className="flex-1 flex min-w-0 h-full overflow-hidden">
+      <div className="flex-1 flex min-w-0 h-full overflow-hidden rounded-2xl bg-zinc-950/80">
         {/* CENTER: Header + Canvas */}
         <div className="flex-1 flex flex-col min-w-0 h-full">
           {/* Header Toolbar */}
