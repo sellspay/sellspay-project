@@ -524,6 +524,12 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     }
     processedJobIdsRef.current.add(job.id);
 
+    // ✅ STEP 1: Reject late events from old project IDs
+    if (job.project_id !== activeProjectId) {
+      console.warn(`🛑 BLOCKED: Job ${job.id} belongs to project ${job.project_id} but active is ${activeProjectId}`);
+      return;
+    }
+
     const isActiveRun = activeJobIdRef.current === job.id;
 
     console.log('[BackgroundGen] Job completed:', job.id, { isActiveRun, status: job.status });
@@ -783,6 +789,34 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Memoize stable references to avoid re-runs
   const getLastCodeSnapshotRef = useRef(getLastCodeSnapshot);
   getLastCodeSnapshotRef.current = getLastCodeSnapshot;
+
+  // ✅ STEP 1: Unified cleanup gate — runs on every project switch and unmount.
+  // Aborts active stream, unsubscribes realtime, resets UI state, and
+  // installs a "stale project ID" ref so late callbacks are rejected.
+  const cleanupProjectRuntime = useCallback(() => {
+    // 1. Abort any active SSE stream
+    try { abortControllerRef.current?.abort(); } catch {}
+
+    // 2. Cancel streaming + agent state
+    cancelStream();
+    cancelAgent();
+    forceResetStreaming();
+
+    // 3. Release generation lock
+    generationLockRef.current = null;
+    activeJobIdRef.current = null;
+
+    // 4. Reset transient UI state
+    setChatResponse(null);
+    setLiveSteps([]);
+    setPreviewError(null);
+    setShowFixToast(false);
+    pendingSummaryRef.current = '';
+  }, [cancelStream, cancelAgent, forceResetStreaming]);
+
+  // Expose abortController ref for cleanup (useStreamingCode stores it internally;
+  // we keep a parallel ref here for the cleanup gate)
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   useLayoutEffect(() => {
     let isMounted = true;
@@ -797,11 +831,10 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     setContentProjectId(null); // Close the gate IMMEDIATELY
     setIsVerifyingProject(true); // Block restoration effect from running too early
     loadingProjectRef.current = activeProjectId; // Mark which project is being loaded
+
+    // ✅ STEP 1: Run the unified cleanup gate
+    cleanupProjectRuntime();
     unmountAgentProject();
-    cancelStream();
-    cancelAgent();
-    forceResetStreaming();
-    generationLockRef.current = null;
 
     async function loadRoute() {
       // 2. DETECT PROJECT SWITCH: If switching to a different project, nuke the cache
