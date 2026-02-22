@@ -20,7 +20,7 @@ interface DesignPanelProps {
 function StyleDots({ style }: { style: StylePreset }) {
   const colors = style.id === 'none'
     ? ['#333', '#555', '#000', '#1a1a1a', '#fff']
-    : [style.colors.primary, style.colors.accent, style.colors.background, style.colors.surface, style.colors.text];
+    : [style.colors.primary, style.colors.accent, style.colors.background, style.colors.card, style.colors.foreground];
   return (
     <div className="flex items-center gap-1">
       {colors.map((c, i) => (
@@ -117,6 +117,11 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
             onApply={(updated) => {
               onStyleChange?.(updated);
               setEditingStyle(null);
+            }}
+            onLivePreview={(colors) => {
+              if (editingStyle) {
+                onStyleChange?.({ ...editingStyle, colors });
+              }
             }}
           />
         )}
