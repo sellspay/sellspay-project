@@ -1678,8 +1678,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
       <div
         className="absolute top-3 z-30"
         style={{
-          left: sidebarCollapsed ? 72 : 230,
-          right: chatCollapsed ? 12 : sidebarWidth + 12,
+          left: sidebarCollapsed ? 72 : 284,
+          right: chatCollapsed ? 12 : sidebarWidth + 20,
           transition: 'left 0.3s ease, right 0.3s ease',
         }}
       >
@@ -1712,8 +1712,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         style={{
           top: 64,
           bottom: 12,
-          left: sidebarCollapsed ? 72 : 230,
-          right: chatCollapsed ? 12 : sidebarWidth + 12,
+          left: sidebarCollapsed ? 72 : 284,
+          right: chatCollapsed ? 12 : sidebarWidth + 20,
           transition: 'left 0.3s ease, right 0.3s ease',
           borderRadius: '16px',
         }}
@@ -1847,7 +1847,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
       <div
         className="absolute right-3 top-3 bottom-3 z-20 flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
         style={{
-          width: chatCollapsed ? 0 : sidebarWidth,
+          width: chatCollapsed ? 0 : sidebarWidth + 4,
           opacity: chatCollapsed ? 0 : 1,
         }}
       >
