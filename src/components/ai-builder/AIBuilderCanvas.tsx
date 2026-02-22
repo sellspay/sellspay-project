@@ -1647,7 +1647,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
 
   // === EXISTING USER: Show the full editor interface ===
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#0a0a0a] p-2 flex gap-2">
+    <div className="h-screen w-screen overflow-hidden bg-[#1a1a1a] flex">
       {/* ═══ PROJECT SIDEBAR ═══ */}
       <div className="shrink-0 h-full">
         <ProjectSidebar
@@ -1663,9 +1663,9 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         />
       </div>
 
-      {/* ═══ CENTER: Header + Canvas (own rounded card) ═══ */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden rounded-2xl bg-[#0c0c0f]">
-        {/* Header Toolbar */}
+      {/* ═══ CENTER: Header + Canvas ═══ */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        {/* Header Toolbar — sits on background */}
         <div className="shrink-0">
           <VibecoderHeader
             projectName={activeProject?.name}
@@ -1690,8 +1690,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           />
         </div>
 
-        {/* Canvas / Preview Area */}
-        <div className="flex-1 min-h-0 relative overflow-hidden">
+        {/* Canvas / Preview Area — elevated rounded card */}
+        <div className="flex-1 min-h-0 relative overflow-hidden rounded-xl m-2 mt-0 bg-[#0c0c0f]">
           {/* Transition Overlay */}
           {isProjectTransitioning && (
             <div className="absolute inset-0 z-[100] bg-[#0a0a0a] flex items-center justify-center rounded-2xl">
@@ -1788,9 +1788,9 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         </div>
       </div>
 
-      {/* ═══ CHAT SIDEBAR (own rounded card) ═══ */}
+      {/* ═══ CHAT SIDEBAR — sits on background, chat input is its own card ═══ */}
       <div
-        className="shrink-0 h-full flex flex-col overflow-hidden rounded-2xl bg-[#0c0c0f] transition-all duration-300 ease-in-out"
+        className="shrink-0 h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
         style={{
           width: chatCollapsed ? 0 : sidebarWidth,
         }}
