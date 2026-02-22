@@ -203,8 +203,13 @@ export function useSellsPayCheckout() {
     // Simulate checkout delay
     setTimeout(() => {
       setIsProcessing(false);
-      alert('SellsPay Checkout: Redirecting to secure gateway... (Preview Mode)');
-    }, 1000);
+      // Use window.top to break out of iframe
+      if (window.top) {
+        window.top.location.href = '/product/' + productId;
+      } else {
+        window.location.href = '/product/' + productId;
+      }
+    }, 500);
   };
 
   const triggerCheckout = buyProduct; // Alias for backwards compatibility

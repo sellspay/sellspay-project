@@ -458,6 +458,21 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     return () => window.clearTimeout(timeout);
   }, [isAwaitingPreviewReady, isStreaming]);
 
+  // Safety: if isWaitingForPreviewMount never clears (Sandpack doesn't remount), force-clear it.
+  // This prevents the "Vibecoder ready but blank" bug where Sandpack updates files
+  // without triggering onReady (no key change = no remount).
+  useEffect(() => {
+    if (!isWaitingForPreviewMount) return;
+    if (isStreaming) return;
+
+    const timeout = window.setTimeout(() => {
+      console.log('⏰ Safety: Force-clearing isWaitingForPreviewMount after timeout');
+      setIsWaitingForPreviewMount(false);
+    }, 3000);
+
+    return () => window.clearTimeout(timeout);
+  }, [isWaitingForPreviewMount, isStreaming]);
+
   // Agent loop for premium multi-step experience
   const {
     agentStep,
