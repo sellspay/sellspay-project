@@ -434,6 +434,22 @@ Current: "Hmm, not sure"
 Reasoning: User is expressing uncertainty but not giving a clear action. This is conversational.
 Intent: QUESTION
 
+Example 7 (Frustrated Follow-up - CRITICAL):
+Conversation: ["when clicking a product its opening a new page make it just redirect to it instead of opening a new tab", "AI: Storefronts are single-page experiences..."]
+Current: "whats??? i just told you when i click the product it opens a new tab instead of just redirecting me"
+Reasoning: User is frustrated because the AI didn't address their PREVIOUS request. They are REPEATING a behavior change request (stop opening new tabs). The pronoun "it" refers to "clicking a product" from their earlier message. Despite the frustrated tone, this is clearly a MODIFY request — they want the product click behavior changed.
+Intent: MODIFY
+Target: "product click navigation behavior"
+
+Example 8 (Repeated request after bad AI response):
+Conversation: ["Change the button color to red", "AI: Sure, I can help with that!"]
+Current: "you didn't do it... just change the button color"
+Reasoning: User is pointing out the AI failed to execute. This is a repeated MODIFY request. "it" = "changing the button color to red".
+Intent: MODIFY
+Target: "button color"
+
+CRITICAL: If a user is REPEATING or REPHRASING an earlier request (especially with frustration), ALWAYS classify as MODIFY or FIX, NEVER as QUESTION. They want ACTION, not explanation.
+
 ═══════════════════════════════════════════════════════════════
 OUTPUT FORMAT:
 ═══════════════════════════════════════════════════════════════
@@ -945,11 +961,13 @@ STRICT MARKETPLACE PROTOCOL (Non-Negotiable)
    Import: import { useSellsPayCheckout } from "@/hooks/useSellsPayCheckout"
 
 3. **PRODUCT LINKING PROTOCOL (CRITICAL):**
-   - BY DEFAULT, all product clicks MUST open the marketplace product page
-   - ALWAYS use: window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url: \`/product/\${product.slug || product.id}\` }, '*')
+   - All product clicks MUST use postMessage for navigation (iframe sandbox blocks direct navigation)
+   - DEFAULT (new tab): window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url: \`/product/\${product.slug || product.id}\` }, '*')
+   - SAME TAB (if user requests): window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url: \`/product/\${product.slug || product.id}\`, target: '_self' }, '*')
    - NEVER use window.open(), window.location.href, or window.top.location.href (these are ALL BLOCKED by iframe sandbox security)
    - NEVER use react-router or internal routing for product pages
    - For <a> tags, use onClick with postMessage instead of href navigation
+   - If the user says "don't open a new tab", "redirect instead", "same page", or similar — switch to target: '_self'
 
 4. **PRODUCT PAGE PREFERENCE (ASK THE USER):**
    When the user's prompt involves products being displayed or clicked, and they haven't stated a preference yet, ASK them:
@@ -966,6 +984,7 @@ STRICT MARKETPLACE PROTOCOL (Non-Negotiable)
    - If they choose Option B: Generate a custom product detail page/section within the storefront that uses useSellsPayCheckout() for purchases
    - ALWAYS make products clickable regardless of the option chosen
    - NEVER leave products as non-interactive static elements
+   - If user says "don't open new tab" or "redirect in same tab", add target: '_self' to the postMessage
 
 ═══════════════════════════════════════════════════════════════
 FRAMER MOTION & ANIMATION PROTOCOL
