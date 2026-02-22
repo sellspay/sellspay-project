@@ -1663,37 +1663,35 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         />
       </div>
 
-      {/* ═══ MAIN WORKSPACE (Header + Canvas + Chat as one unified surface) ═══ */}
-      <div className="flex-1 flex min-w-0 h-full overflow-hidden rounded-2xl bg-zinc-950/80">
-        {/* CENTER: Header + Canvas */}
-        <div className="flex-1 flex flex-col min-w-0 h-full">
-          {/* Header Toolbar */}
-          <div className="shrink-0">
-            <VibecoderHeader
-              projectName={activeProject?.name}
-              viewMode={viewMode}
-              setViewMode={setViewMode}
-              deviceMode={deviceMode}
-              setDeviceMode={setDeviceMode}
-              onRefresh={handleRefresh}
-              onPublish={handlePublish}
-              isPublished={isPublished}
-              isPublishing={publishing}
-              hasUnpublishedChanges={hasUnpublishedChanges}
-              isEmpty={isEmpty}
-              username={username}
-              currentPath={previewPath}
-              onNavigate={setPreviewPath}
-              pages={detectedPages}
-              avatarUrl={userAvatarUrl}
-              userCredits={userCredits}
-              subscriptionTier={subscriptionTier}
-              onSignOut={handleSignOut}
-            />
-          </div>
+      {/* ═══ CENTER: Header + Canvas (own rounded card) ═══ */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden rounded-2xl bg-[#0c0c0f]">
+        {/* Header Toolbar */}
+        <div className="shrink-0">
+          <VibecoderHeader
+            projectName={activeProject?.name}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            deviceMode={deviceMode}
+            setDeviceMode={setDeviceMode}
+            onRefresh={handleRefresh}
+            onPublish={handlePublish}
+            isPublished={isPublished}
+            isPublishing={publishing}
+            hasUnpublishedChanges={hasUnpublishedChanges}
+            isEmpty={isEmpty}
+            username={username}
+            currentPath={previewPath}
+            onNavigate={setPreviewPath}
+            pages={detectedPages}
+            avatarUrl={userAvatarUrl}
+            userCredits={userCredits}
+            subscriptionTier={subscriptionTier}
+            onSignOut={handleSignOut}
+          />
+        </div>
 
-          {/* Canvas / Preview Area */}
-          <div className="flex-1 min-h-0 relative overflow-hidden rounded-b-2xl bg-[#0c0c0f]">
+        {/* Canvas / Preview Area */}
+        <div className="flex-1 min-h-0 relative overflow-hidden">
           {/* Transition Overlay */}
           {isProjectTransitioning && (
             <div className="absolute inset-0 z-[100] bg-[#0a0a0a] flex items-center justify-center rounded-2xl">
@@ -1721,7 +1719,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
             ) : (
               <div className={`flex-1 min-h-0 h-full relative bg-zinc-950 ${deviceMode === 'mobile' ? 'flex items-center justify-center' : ''}`}>
                 <div
-                  className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-800 shadow-2xl bg-zinc-950' : 'w-full'} relative overflow-hidden rounded-b-2xl`}
+                  className={`h-full ${deviceMode === 'mobile' ? 'w-[375px] border-x border-zinc-800 shadow-2xl bg-zinc-950' : 'w-full'} relative overflow-hidden`}
                 >
                   <PreviewErrorBoundary
                     onAutoFix={handleAutoFix}
@@ -1790,9 +1788,9 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         </div>
       </div>
 
-      {/* ═══ CHAT SIDEBAR ═══ */}
+      {/* ═══ CHAT SIDEBAR (own rounded card) ═══ */}
       <div
-        className="shrink-0 h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
+        className="shrink-0 h-full flex flex-col overflow-hidden rounded-2xl bg-[#0c0c0f] transition-all duration-300 ease-in-out"
         style={{
           width: chatCollapsed ? 0 : sidebarWidth,
         }}
@@ -1889,7 +1887,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           </svg>
         </button>
       )}
-      </div> {/* End MAIN WORKSPACE wrapper */}
+      
 
       <PlacementPromptModal
         isOpen={showPlacementModal}
