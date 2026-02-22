@@ -567,6 +567,18 @@ export function VibecoderPreview({
   // Track the initial mount key — only remount on TRUE identity changes (not code updates)
   const mountKeyRef = useRef(0);
 
+  // 🔗 NAVIGATION BRIDGE: Listen for postMessage navigation from Sandpack iframe
+  useEffect(() => {
+    const onNavMessage = (event: MessageEvent) => {
+      const msg = event.data;
+      if (!msg || msg.type !== 'VIBECODER_NAVIGATE') return;
+      if (typeof msg.url !== 'string') return;
+      window.open(msg.url, '_blank', 'noopener,noreferrer');
+    };
+    window.addEventListener('message', onNavMessage);
+    return () => window.removeEventListener('message', onNavMessage);
+  }, []);
+
   // Mount once on initial render; do NOT remount when code/files change during streaming.
   // Sandpack's internal file system handles hot-updates — remounting destroys the iframe.
   useEffect(() => {

@@ -85,6 +85,18 @@ export function AIStorefrontRenderer({ profileId }: AIStorefrontRendererProps) {
     }
   }, [profileId]);
 
+  // 🔗 NAVIGATION BRIDGE: Listen for postMessage navigation from Sandpack iframe
+  useEffect(() => {
+    const onNavMessage = (event: MessageEvent) => {
+      const msg = event.data;
+      if (!msg || msg.type !== 'VIBECODER_NAVIGATE') return;
+      if (typeof msg.url !== 'string') return;
+      window.open(msg.url, '_blank', 'noopener,noreferrer');
+    };
+    window.addEventListener('message', onNavMessage);
+    return () => window.removeEventListener('message', onNavMessage);
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">

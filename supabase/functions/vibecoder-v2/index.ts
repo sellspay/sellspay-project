@@ -946,10 +946,10 @@ STRICT MARKETPLACE PROTOCOL (Non-Negotiable)
 
 3. **PRODUCT LINKING PROTOCOL (CRITICAL):**
    - BY DEFAULT, all product clicks MUST open the marketplace product page
-   - ALWAYS use: window.open(\`/product/\${product.slug || product.id}\`, '_blank')
-   - NEVER use window.location.href or window.top.location.href (these are BLOCKED by iframe sandbox security)
+   - ALWAYS use: window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url: \`/product/\${product.slug || product.id}\` }, '*')
+   - NEVER use window.open(), window.location.href, or window.top.location.href (these are ALL BLOCKED by iframe sandbox security)
    - NEVER use react-router or internal routing for product pages
-   - Alternative: <a href={\`/product/\${product.slug || product.id}\`} target="_blank" rel="noopener noreferrer">
+   - For <a> tags, use onClick with postMessage instead of href navigation
 
 4. **PRODUCT PAGE PREFERENCE (ASK THE USER):**
    When the user's prompt involves products being displayed or clicked, and they haven't stated a preference yet, ASK them:
@@ -962,7 +962,7 @@ STRICT MARKETPLACE PROTOCOL (Non-Negotiable)
    
    Which would you prefer?"
    
-   - If they choose Option A (or don't respond): Use window.open(\`/product/\${product.slug || product.id}\`, '_blank')
+   - If they choose Option A (or don't respond): Use window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url: \`/product/\${product.slug || product.id}\` }, '*')
    - If they choose Option B: Generate a custom product detail page/section within the storefront that uses useSellsPayCheckout() for purchases
    - ALWAYS make products clickable regardless of the option chosen
    - NEVER leave products as non-interactive static elements
@@ -1446,8 +1446,8 @@ If the request says "change X", change ONLY X and nothing else.
 serve(async (req) => {
   // MUST BE FIRST: Handles the browser security handshake
   if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      status: 200,
+    return new Response(null, {
+      status: 204,
       headers: corsHeaders,
     });
   }
