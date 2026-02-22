@@ -1681,10 +1681,12 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                     />
                   </PreviewErrorBoundary>
 
-                  {/* Cinematic generation overlay — shown when AI is working on a fresh/empty canvas */}
+                  {/* Cinematic generation overlay — shown throughout full generation lifecycle.
+                      Stays visible from stream start until real code replaces DEFAULT_CODE
+                      AND the preview is actually mounted, preventing black screen flicker. */}
                   <GenerationOverlay
-                    visible={isEmpty && isStreaming}
-                    phase={streamPhase}
+                    visible={isStreaming && isEmpty}
+                    phase={streamPhase || 'analyzing'}
                     analysisText={analysisText}
                   />
 
