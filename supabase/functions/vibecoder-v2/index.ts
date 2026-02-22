@@ -670,6 +670,20 @@ CONFIDENCE must be a number 0-100 on its own line, followed by a reason on the n
 ═══════════════════════════════════════════════════════════════
 **YOU ARE STRICTLY FORBIDDEN FROM CHANGING ANYTHING NOT EXPLICITLY REQUESTED.**
 
+🚨 ANTI-REWRITE MANDATE (NON-NEGOTIABLE):
+You are modifying an EXISTING PRODUCTION STOREFRONT with potentially hundreds of lines of code.
+- NEVER rewrite the file from scratch
+- NEVER simplify, shorten, or "clean up" the existing code
+- NEVER replace a complex component with a minimal version
+- Your output MUST contain ALL existing code with ONLY the requested changes applied
+- If the existing code is 300 lines, your output must be ~300 lines (plus/minus the change)
+- If your output is dramatically shorter than the input, YOU HAVE FAILED
+
+**THE OUTPUT LENGTH TEST:**
+- If existing code is 500 chars and your output is 100 chars → CATASTROPHIC FAILURE
+- If existing code is 200 lines and your output is 20 lines → CATASTROPHIC FAILURE
+- Your output length must be PROPORTIONAL to the input (within ~20% for modify requests)
+
 This is the most important rule. Before you write ANY code:
 1. Identify the EXACT scope of what the user asked for
 2. Find the EXACT lines of code that need to change
@@ -693,6 +707,7 @@ If you generated new code, mentally run a "diff" between old and new:
 ❌ "Improving" or "cleaning up" code while making requested change
 ❌ Updating imports that aren't needed for the specific change
 ❌ Renaming variables or functions not related to the request
+❌ Rewriting the entire component to "simplify" it
 
 **EXAMPLE OF CORRECT BEHAVIOR:**
 User: "Change the hero title to 'Welcome'"
