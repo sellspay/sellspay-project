@@ -635,18 +635,46 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       const BEGIN_CODE_MARKER = '/// BEGIN_CODE ///';
 
-      const looksLikeJson = (text: string): boolean => {
+       const looksLikeJson = (text: string): boolean => {
         const trimmed = text.trim();
         if (!trimmed.startsWith('{')) return false;
         try {
           const parsed = JSON.parse(trimmed);
-          return parsed.success !== undefined || parsed.jobId !== undefined || parsed.status !== undefined;
+          return parsed.success !== undefined || parsed.jobId !== undefined || parsed.status !== undefined || parsed.files !== undefined;
         } catch {
           return false;
         }
       };
 
+      /**
+       * Attempt to unwrap JSON-wrapped code from the AI model.
+       * Some models return `{"files":{"/App.tsx":"<code>"}}` instead of raw TSX.
+       */
+      const tryUnwrapJsonCode = (text: string): string | null => {
+        const trimmed = text.trim();
+        if (!trimmed.startsWith('{')) return null;
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed.files && typeof parsed.files === 'object') {
+            // Look for /App.tsx or any .tsx file
+            const fileKeys = Object.keys(parsed.files);
+            const appKey = fileKeys.find(k => k.includes('App.tsx')) || fileKeys[0];
+            if (appKey && typeof parsed.files[appKey] === 'string') {
+              console.warn('[useStreamingCode] Unwrapped JSON-wrapped code from key:', appKey);
+              return parsed.files[appKey];
+            }
+          }
+        } catch {
+          // not valid JSON, that's fine
+        }
+        return null;
+      };
+
       const extractCodeFromRaw = (raw: string): string => {
+        // First, check if the entire raw stream is JSON-wrapped code
+        const unwrapped = tryUnwrapJsonCode(raw);
+        if (unwrapped) return unwrapped;
+
         if (looksLikeJson(raw)) {
           console.warn('[useStreamingCode] Raw stream looks like JSON - skipping code extraction');
           return '';
@@ -677,6 +705,10 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         if (summaryIdx >= 0) {
           cleaned = cleaned.substring(0, summaryIdx).trim();
         }
+
+        // Check if cleaned result is JSON-wrapped code
+        const unwrappedCleaned = tryUnwrapJsonCode(cleaned);
+        if (unwrappedCleaned) return unwrappedCleaned;
 
         if (looksLikeJson(cleaned)) {
           console.warn('[useStreamingCode] Cleaned code looks like JSON - returning empty');
