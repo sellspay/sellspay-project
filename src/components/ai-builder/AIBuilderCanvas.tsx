@@ -344,9 +344,11 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       const aiResponse = capturedSummary || 'Updated the storefront based on your request.';
       pendingSummaryRef.current = ''; // Reset for next generation
 
-      // Add assistant message with code snapshot (project-scoped)
+      // Add assistant message with code snapshot + files snapshot (project-scoped)
       // Pass the locked project ID explicitly for safety
-      await addMessage('assistant', aiResponse, finalCode, generationLockRef.current || undefined);
+      // Capture current files state for multi-file persistence
+      const currentFiles = Object.keys(files).length > 0 ? files : undefined;
+      await addMessage('assistant', aiResponse, finalCode, generationLockRef.current || undefined, currentFiles);
 
       // Update last_success_at on the project
       const successProjectId = generationLockRef.current || activeProjectId;
