@@ -1747,13 +1747,9 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 {deviceMode === 'mobile' ? (
                   /* Phone device frame */
                   <div className="relative flex flex-col" style={{ height: 'calc(100% - 32px)', maxHeight: '900px' }}>
-                    <div className="relative h-full w-[390px] rounded-[3rem] border-[4px] border-zinc-700 bg-black shadow-2xl shadow-black/60 overflow-hidden flex flex-col">
-                      {/* Dynamic Island */}
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 w-[120px] h-[28px] bg-black rounded-b-2xl flex items-center justify-center">
-                        <div className="w-[60px] h-[4px] rounded-full bg-zinc-800" />
-                      </div>
+                    <div className="relative h-full w-[390px] rounded-[3rem] border-[4px] border-zinc-700 bg-black shadow-2xl shadow-black/60 overflow-hidden flex flex-col scrollbar-hide">
                       {/* Screen */}
-                      <div className="flex-1 overflow-hidden rounded-[calc(3rem-4px)] relative">
+                      <div className="flex-1 overflow-hidden rounded-[calc(3rem-4px)] relative scrollbar-hide">
                         <PreviewErrorBoundary
                           onAutoFix={handleAutoFix}
                           onReset={() => { setIsAwaitingPreviewReady(false); resetCode(); }}
