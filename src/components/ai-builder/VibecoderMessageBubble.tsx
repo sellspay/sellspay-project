@@ -90,70 +90,85 @@ function AssistantMessage({
             </div>
           ) : (
             <div className="prose prose-sm prose-invert max-w-none">
-              <ReactMarkdown
-                components={{
-                  // Paragraphs: Nice breathing room
-                  p: ({ children, ...props }) => (
-                    <p className="mb-4 last:mb-0 leading-relaxed text-zinc-300" {...props}>
-                      {children}
-                    </p>
-                  ),
-                  // Links: Violet accent
-                  a: ({ children, ...props }) => (
-                    <a className="text-violet-400 hover:text-violet-300 hover:underline transition-colors" {...props}>
-                      {children}
-                    </a>
-                  ),
-                  // Inline code: Subtle background for technical terms
-                  code: ({ children, className }) => {
-                    const isBlock = className?.includes('language-');
-                    if (isBlock) {
-                      return <code className={className}>{children}</code>;
-                    }
-                    return (
-                      <code className="bg-zinc-800/80 px-1.5 py-0.5 rounded text-xs font-mono text-violet-300 border border-zinc-700/50">
-                        {children}
-                      </code>
-                    );
-                  },
-                  // ORDERED LISTS: Clean numbered formatting with proper spacing
-                  ol: ({ children, ...props }) => (
-                    <ol className="list-decimal pl-5 space-y-4 mb-4 marker:text-zinc-400 marker:font-semibold" {...props}>
-                      {children}
-                    </ol>
-                  ),
-                  // UNORDERED LISTS: Standard bullets
-                  ul: ({ children, ...props }) => (
-                    <ul className="list-disc pl-5 space-y-2 mb-4 marker:text-zinc-500" {...props}>
-                      {children}
-                    </ul>
-                  ),
-                  // LIST ITEMS: Proper alignment and text color
-                  li: ({ children, ...props }) => (
-                    <li className="pl-1 text-zinc-300 leading-relaxed" {...props}>
-                      {children}
-                    </li>
-                  ),
-                  // BOLD: Make headers pop with white color
-                  strong: ({ children, ...props }) => (
-                    <strong className="font-semibold text-white" {...props}>
-                      {children}
-                    </strong>
-                  ),
-                  // Headers
-                  h1: ({ children, ...props }) => (
-                    <h1 className="text-lg font-bold text-zinc-100 mt-4 mb-2" {...props}>{children}</h1>
-                  ),
-                  h2: ({ children, ...props }) => (
-                    <h2 className="text-base font-semibold text-zinc-100 mt-3 mb-2" {...props}>{children}</h2>
-                  ),
-                  h3: ({ children, ...props }) => (
-                    <h3 className="text-sm font-semibold text-zinc-200 mt-2 mb-1" {...props}>{children}</h3>
-                  ),
-                }}
-              >
-                {message.content || ''}
-              </ReactMarkdown>
+              {(() => {
+                const content = message.content || '';
+                // Split out confidence line if present
+                const confMatch = content.match(/\n?\n?=== CONFIDENCE === (\d+)\s*(.*)/);
+                const mainContent = confMatch ? content.replace(confMatch[0], '').trim() : content;
+                const confScore = confMatch ? parseInt(confMatch[1], 10) : null;
+                const confReason = confMatch ? confMatch[2]?.trim() : null;
+                
+                return (
+                  <>
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children, ...props }) => (
+                          <p className="mb-4 last:mb-0 leading-relaxed text-zinc-300" {...props}>
+                            {children}
+                          </p>
+                        ),
+                        a: ({ children, ...props }) => (
+                          <a className="text-violet-400 hover:text-violet-300 hover:underline transition-colors" {...props}>
+                            {children}
+                          </a>
+                        ),
+                        code: ({ children, className }) => {
+                          const isBlock = className?.includes('language-');
+                          if (isBlock) {
+                            return <code className={className}>{children}</code>;
+                          }
+                          return (
+                            <code className="bg-zinc-800/80 px-1.5 py-0.5 rounded text-xs font-mono text-violet-300 border border-zinc-700/50">
+                              {children}
+                            </code>
+                          );
+                        },
+                        ol: ({ children, ...props }) => (
+                          <ol className="list-decimal pl-5 space-y-4 mb-4 marker:text-zinc-400 marker:font-semibold" {...props}>
+                            {children}
+                          </ol>
+                        ),
+                        ul: ({ children, ...props }) => (
+                          <ul className="list-disc pl-5 space-y-2 mb-4 marker:text-zinc-500" {...props}>
+                            {children}
+                          </ul>
+                        ),
+                        li: ({ children, ...props }) => (
+                          <li className="pl-1 text-zinc-300 leading-relaxed" {...props}>
+                            {children}
+                          </li>
+                        ),
+                        strong: ({ children, ...props }) => (
+                          <strong className="font-semibold text-white" {...props}>
+                            {children}
+                          </strong>
+                        ),
+                        h1: ({ children, ...props }) => (
+                          <h1 className="text-lg font-bold text-zinc-100 mt-4 mb-2" {...props}>{children}</h1>
+                        ),
+                        h2: ({ children, ...props }) => (
+                          <h2 className="text-base font-semibold text-zinc-100 mt-3 mb-2" {...props}>{children}</h2>
+                        ),
+                        h3: ({ children, ...props }) => (
+                          <h3 className="text-sm font-semibold text-zinc-200 mt-2 mb-1" {...props}>{children}</h3>
+                        ),
+                      }}
+                    >
+                      {mainContent}
+                    </ReactMarkdown>
+                    
+                    {/* Confidence Score Display */}
+                    {confScore !== null && (
+                      <div className="mt-3 pt-2 border-t border-zinc-800/40">
+                        <p className="text-xs text-zinc-500">
+                          <span className="font-mono font-semibold text-zinc-400">=== CONFIDENCE === {confScore}</span>
+                          {confReason && <span className="ml-1">{confReason}</span>}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>

@@ -654,7 +654,7 @@ Before writing code, structure your response with these section markers:
 // --- VIBECODER_COMPLETE ---
 
 === SUMMARY ===
-(1 sentence confirmation of what was updated)
+(2-4 sentences describing what you built/changed. Be specific about the key features, sections, or design choices you implemented. Mention the username if available. Write in a natural, conversational tone — not robotic. Example: "I've built a complete portfolio storefront for @username with an animated hero, a curated project grid, an about section with floating skills, and a contact form, all styled with the requested cream/charcoal/sage palette and elegant fonts.")
 
 === CONFIDENCE ===
 <number 0-100>
@@ -1726,7 +1726,25 @@ serve(async (req) => {
               
               // Extract summary from === SUMMARY === section
               if (fullContent.includes("=== SUMMARY ===")) {
-                summary = fullContent.substring(fullContent.indexOf("=== SUMMARY ===") + "=== SUMMARY ===".length).trim();
+                const sumStart = fullContent.indexOf("=== SUMMARY ===") + "=== SUMMARY ===".length;
+                let sumEnd = fullContent.indexOf("=== CONFIDENCE ===");
+                if (sumEnd < 0) sumEnd = fullContent.length;
+                let summaryBody = fullContent.substring(sumStart, sumEnd).trim();
+                
+                // Append confidence score to the summary text for display
+                if (fullContent.includes("=== CONFIDENCE ===")) {
+                  const confStart = fullContent.indexOf("=== CONFIDENCE ===") + "=== CONFIDENCE ===".length;
+                  const confText = fullContent.substring(confStart).trim();
+                  const confLines = confText.split('\n').filter((l: string) => l.trim().length > 0);
+                  if (confLines.length >= 1) {
+                    const scoreMatch = confLines[0].match(/(\d+)/);
+                    const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 85;
+                    const reason = confLines.slice(1).join(' ').trim() || 'Generation completed successfully.';
+                    summaryBody += `\n\n=== CONFIDENCE === ${score} ${reason}`;
+                  }
+                }
+                
+                summary = summaryBody;
               } else {
                 // Fall back to analysis text
                 const analysisIdx = fullContent.indexOf("=== ANALYSIS ===");
