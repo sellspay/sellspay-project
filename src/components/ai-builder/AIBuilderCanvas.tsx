@@ -128,6 +128,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   
   // Resizable sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(400);
+  const [chatCollapsed, setChatCollapsed] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   
   // Drag handlers for resizable sidebar
@@ -1668,11 +1669,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           currentPath={previewPath}
           onNavigate={setPreviewPath}
           pages={detectedPages}
-          onRegenerate={(tweak) => {
-            // Send tweak as a new message to refine the current design
-            handleSendMessage(`Refine the current design: ${tweak}`);
-          }}
-          isGenerating={isStreaming}
           avatarUrl={userAvatarUrl}
           userCredits={userCredits}
           subscriptionTier={subscriptionTier}
@@ -1804,20 +1800,37 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           {/* SUBTLE SEPARATOR LINE */}
           <div className="w-px shrink-0 bg-border/40" />
 
+          {/* CHAT COLLAPSE TOGGLE */}
+          <button
+            onClick={() => setChatCollapsed(!chatCollapsed)}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-[60] w-5 h-10 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 border border-border/40 rounded-l-md transition-all"
+            style={{ right: chatCollapsed ? 0 : sidebarWidth - 1 }}
+            title={chatCollapsed ? 'Open chat' : 'Collapse chat'}
+          >
+            <svg
+              className={`w-3 h-3 text-zinc-400 transition-transform ${chatCollapsed ? 'rotate-180' : ''}`}
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+
           {/* RIGHT PANEL: Chat (seamless) */}
           <div
-            style={{ width: sidebarWidth }}
-            className="shrink-0 flex flex-col bg-muted/50 overflow-hidden relative"
+            style={{ width: chatCollapsed ? 0 : sidebarWidth }}
+            className={`shrink-0 flex flex-col bg-muted/50 overflow-hidden relative transition-[width] duration-300 ease-in-out`}
           >
             {/* Refined drag handle - subtle until interaction */}
-            <div
-              onMouseDown={startResizing}
-              className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 transition-all ${
-                isDragging
-                  ? 'bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.35)]'
-                  : 'bg-transparent hover:bg-border'
-              }`}
-            />
+            {!chatCollapsed && (
+              <div
+                onMouseDown={startResizing}
+                className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize z-50 transition-all ${
+                  isDragging
+                    ? 'bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.35)]'
+                    : 'bg-transparent hover:bg-border'
+                }`}
+              />
+            )}
 
             <div className="flex-1 min-h-0 overflow-hidden" style={{ isolation: 'isolate' }}>
               <VibecoderChat
