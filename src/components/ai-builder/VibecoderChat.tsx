@@ -220,10 +220,11 @@ export function VibecoderChat({
     // Build the prompt that goes to the AI backend (may include system instructions)
     let aiPrompt = cleanPrompt;
     
-    // STYLE INJECTION: If a style is selected (and not "None"), prepend the style context
-    // This ensures the generated code follows the selected visual design system
-    if (options.style && options.style.id !== 'none') {
-      const styleContext = generateStylePrompt(options.style);
+    // STYLE INJECTION: Use the active style from the Design panel (toolbar)
+    // If a style is selected (and not "None"), prepend the style context
+    const effectiveStyle = activeStyle || options.style;
+    if (effectiveStyle && effectiveStyle.id !== 'none') {
+      const styleContext = generateStylePrompt(effectiveStyle);
       if (styleContext) {
         aiPrompt = `${styleContext}\n\nUser Request: ${cleanPrompt}`;
       }

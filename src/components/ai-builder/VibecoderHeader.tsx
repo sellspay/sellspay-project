@@ -2,7 +2,7 @@ import { useState } from "react";
 import { 
   ArrowLeft, Eye, Code2, 
   Monitor, Smartphone, ExternalLink, Loader2,
-  Image as ImageIcon, Film, Package, Crown
+  Image as ImageIcon, Film, Package, Crown, Palette
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ const TAB_CONFIG: { mode: ViewMode; icon: React.ElementType; label: string; acti
   { mode: 'video', icon: Film, label: 'Video', activeColor: 'bg-pink-600 text-white shadow-lg shadow-pink-900/30' },
   { mode: 'products', icon: Package, label: 'Products', activeColor: 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30' },
   { mode: 'subscriptions', icon: Crown, label: 'Subs', activeColor: 'bg-violet-600 text-white shadow-lg shadow-violet-900/30' },
+  { mode: 'design', icon: Palette, label: 'Design', activeColor: 'bg-orange-600 text-white shadow-lg shadow-orange-900/30' },
 ];
 
 export function VibecoderHeader({ 
@@ -97,7 +98,7 @@ export function VibecoderHeader({
             const isActive = viewMode === tab.mode;
             const Icon = tab.icon;
             // Add dividers between groups: after Code (idx 1) and after Video (idx 3)
-            const showDivider = idx === 2 || idx === 4;
+            const showDivider = idx === 2 || idx === 4 || idx === 6;
 
             return (
               <div key={tab.mode} className="flex items-center">

@@ -702,71 +702,8 @@ export function ChatInputBar({
         </Portal>
       )}
 
-      {/* Portal-based Style Menu */}
-      {showStyleMenu && (
-        <Portal>
-          <div 
-            className="fixed inset-0 z-[9998]" 
-            onClick={() => setShowStyleMenu(false)} 
-          />
-          <div 
-            className="fixed z-[9999] w-64 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
-            style={{ 
-              left: Math.max(8, styleMenuCoords.left - 200),
-              bottom: typeof window !== 'undefined' ? window.innerHeight - styleMenuCoords.top + 8 : 0,
-            }}
-          >
-            <div className="p-2">
-              <div className="px-2 py-1 mb-1">
-                <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium">Style Design</span>
-              </div>
-              <div className="space-y-1 max-h-[280px] overflow-y-auto">
-                {STYLE_PRESETS.map(style => {
-                  const StyleIcon = getStyleIcon(style.icon);
-                  const isActive = selectedStyle.id === style.id;
-                  
-                  return (
-                    <button 
-                      key={style.id}
-                      onClick={() => handleStyleSelect(style)} 
-                      className={cn(
-                        "w-full flex items-center gap-3 px-2.5 py-2 rounded-lg text-left transition-colors",
-                        isActive ? "bg-zinc-800" : "hover:bg-zinc-800/60"
-                      )}
-                    >
-                      {/* Color swatch */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <div 
-                          className="w-4 h-4 rounded-full border border-white/20" 
-                          style={{ backgroundColor: style.colors.primary }}
-                        />
-                        <div 
-                          className="w-3 h-3 rounded-full border border-white/20 -ml-1.5" 
-                          style={{ backgroundColor: style.colors.accent }}
-                        />
-                      </div>
-                      
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className={cn("text-xs font-medium", isActive ? "text-white" : "text-zinc-300")}>
-                          {style.name}
-                        </div>
-                        <div className="text-[10px] text-zinc-500 truncate">{style.description}</div>
-                      </div>
-                      
-                      {/* Icon */}
-                      <StyleIcon size={12} className={cn(
-                        "shrink-0",
-                        isActive ? "text-violet-400" : "text-zinc-600"
-                      )} />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+
+
 
       {/* COMPACT INPUT BAR - Matching reference image */}
       <div className="bg-zinc-800/90 backdrop-blur-sm border border-orange-500/30 rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(249,115,22,0.15)] hover:shadow-[0_0_30px_rgba(249,115,22,0.25)] transition-shadow duration-300">
@@ -865,29 +802,8 @@ export function ChatInputBar({
             </button>
           </div>
           
-          {/* Right side: Style, Waveform/Mic, Stop/Send */}
+          {/* Right side: Waveform/Mic, Stop/Send */}
           <div className="flex items-center gap-1">
-            {/* Style Design selector (only for code models) */}
-            {selectedModel.category === 'code' && (
-              <button 
-                ref={styleButtonRef}
-                type="button"
-                onClick={toggleStyleMenu}
-                className={cn(
-                  "flex items-center gap-1.5 px-2 py-1.5 text-xs transition-colors rounded-lg",
-                  showStyleMenu 
-                    ? "text-white bg-zinc-700" 
-                    : "text-zinc-400 hover:text-white hover:bg-zinc-700"
-                )}
-              >
-                <div 
-                  className="w-3 h-3 rounded-full border border-white/20" 
-                  style={{ backgroundColor: selectedStyle.colors.primary }}
-                />
-                <span className="hidden sm:inline">{selectedStyle.name}</span>
-                <ChevronDown size={10} className="opacity-50" />
-              </button>
-            )}
             
             {/* Mic/Waveform button */}
             <button 
