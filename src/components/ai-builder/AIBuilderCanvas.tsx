@@ -733,23 +733,26 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       if (parsed?.message) userMessage = parsed.message;
     } catch { /* not JSON, use as-is */ }
 
-    // Handle needs_user_action (intent check failed, complexity guard, etc.)
-    if (job.status === 'needs_user_action') {
-      const msg = job.summary || 'This request may be too complex. Please simplify or break it into smaller parts.';
-      toast.error(msg, { duration: 8000 });
-      if (activeProjectId) {
-        addMessage('assistant', `⚠️ ${msg}`, undefined, activeProjectId);
-      }
-    } else {
-      toast.error(userMessage, { duration: 6000 });
-    }
-
     const isActiveRun = activeJobIdRef.current === job.id;
+
+    // Only show toasts for jobs the user actively initiated (not stale jobs found on mount)
     if (isActiveRun) {
+      if (job.status === 'needs_user_action') {
+        const msg = job.summary || 'This request may be too complex. Please simplify or break it into smaller parts.';
+        toast.error(msg, { duration: 8000 });
+        if (activeProjectId) {
+          addMessage('assistant', `⚠️ ${msg}`, undefined, activeProjectId);
+        }
+      } else {
+        toast.error(userMessage, { duration: 6000 });
+      }
       setLiveSteps([]);
       generationLockRef.current = null;
       activeJobIdRef.current = null;
       onStreamingError(job.error_message || 'Generation failed');
+    } else {
+      // Stale job from previous session — log but don't toast
+      console.warn('[BackgroundGen] Stale job error suppressed:', userMessage);
     }
   }, [onStreamingError, activeProjectId, addMessage]);
 
