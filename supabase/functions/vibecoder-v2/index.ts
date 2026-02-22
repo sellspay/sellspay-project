@@ -1367,30 +1367,27 @@ serve(async (req) => {
     // STAGE 0: COMPLEXITY DETECTION (Auto-Trigger Architect Mode)
     // ════════════════════════════════════════════════════════════
     const hasExistingCode = Boolean(currentCode?.trim());
-    const forceArchitect = shouldForceArchitectMode(prompt, hasExistingCode);
+    // AUTO-ARCHITECT DISABLED: Was causing unwanted plan approval flows
+    // Plan mode now only activates when the user explicitly toggles it on.
+    // The old shouldForceArchitectMode() triggered on >40 words, 3+ section keywords,
+    // or "build me a" patterns — too aggressive, causing failures and friction.
+    const forceArchitect = false;
 
     if (forceArchitect) {
       console.log(`[Stage 0] 🏗️ Complex build detected - forcing Architect Mode`);
     }
-
-    // ════════════════════════════════════════════════════════════
-    // STAGE 1: INTENT CLASSIFICATION (Chain-of-Thought Reasoning)
-    // ════════════════════════════════════════════════════════════
-    console.log(`[Stage 1] Classifying intent for: "${prompt.slice(0, 100)}..."`);
 
     const intentResult = await classifyIntent(prompt, hasExistingCode, conversationHistory || [], GOOGLE_GEMINI_API_KEY);
 
     console.log(`[Stage 1] Result: ${intentResult.intent} (${intentResult.confidence}) - ${intentResult.reasoning}`);
 
     // ════════════════════════════════════════════════════════════
-    // STAGE 1.5: FORCE ARCHITECT MODE FOR COMPLEX BUILDS
+    // STAGE 1.5: ARCHITECT MODE (only when user explicitly requests it)
     // ════════════════════════════════════════════════════════════
-    // If complexity was detected AND intent is BUILD/MODIFY, inject Architect Mode
     let modifiedPrompt = prompt;
     let forcePlanMode = false;
 
     if (forceArchitect && (intentResult.intent === "BUILD" || intentResult.intent === "MODIFY")) {
-      // Check if user already triggered Architect Mode manually
       const alreadyArchitect = prompt.includes("[ARCHITECT_MODE_ACTIVE]");
 
       if (!alreadyArchitect) {
