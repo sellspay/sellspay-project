@@ -37,6 +37,7 @@ function StyleDots({ style }: { style: StylePreset }) {
 export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange, selectedElement, onEditRequest }: DesignPanelProps) {
   const [view, setView] = useState<DesignView>('home');
   const [editingStyle, setEditingStyle] = useState<StylePreset | null>(null);
+  const [originalColorsSnapshot, setOriginalColorsSnapshot] = useState<StyleColors | null>(null);
   const [extractedColors, setExtractedColors] = useState<StyleColors | null>(null);
   const currentStyle = activeStyle ?? STYLE_PRESETS[0];
 
@@ -67,12 +68,12 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
   // When editing "Current Theme", extract colors from the preview first
   const handleEditStyle = useCallback((style: StylePreset) => {
     if (style.id === 'none') {
-      // Extract real colors from the iframe
       requestColorExtraction();
-      // Use extracted colors if available, otherwise open with defaults
       const colorsToUse = extractedColors ?? style.colors;
+      setOriginalColorsSnapshot({ ...colorsToUse });
       setEditingStyle({ ...style, colors: colorsToUse });
     } else {
+      setOriginalColorsSnapshot({ ...style.colors });
       setEditingStyle(style);
     }
   }, [requestColorExtraction, extractedColors]);
@@ -146,26 +147,25 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
           <ThemeEditorDialog
             open={!!editingStyle}
             onClose={() => {
-              // Revert iframe to original colors on discard
+              // Revert iframe to ORIGINAL colors on discard (snapshot, not mutated editingStyle)
               const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
-              if (iframe?.contentWindow && editingStyle) {
-                iframe.contentWindow.postMessage({ type: 'VIBECODER_APPLY_THEME', colors: editingStyle.colors }, '*');
+              if (iframe?.contentWindow && originalColorsSnapshot) {
+                iframe.contentWindow.postMessage({ type: 'VIBECODER_REVERT_THEME' }, '*');
               }
               setEditingStyle(null);
+              setOriginalColorsSnapshot(null);
             }}
             style={editingStyle}
             onApply={(updated) => {
               onStyleChange?.(updated);
               setEditingStyle(null);
+              setOriginalColorsSnapshot(null);
             }}
             onLivePreview={(colors) => {
-              // Push colors into the iframe for live preview
+              // Only push colors to iframe — do NOT call onStyleChange to avoid infinite loop
               const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
               if (iframe?.contentWindow) {
                 iframe.contentWindow.postMessage({ type: 'VIBECODER_APPLY_THEME', colors }, '*');
-              }
-              if (editingStyle) {
-                onStyleChange?.({ ...editingStyle, colors });
               }
             }}
           />
