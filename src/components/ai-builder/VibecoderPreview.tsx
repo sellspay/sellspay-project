@@ -968,14 +968,60 @@ window.addEventListener('message', (event) => {
 
 // LIVE THEME PREVIEW: Set CSS custom properties that Tailwind CDN resolves
 (function() {
-  let themeStyleEl = null;
+  // Convert hex to HSL string for CSS custom properties
+  function hexToHSL(hex) {
+    const r = parseInt(hex.slice(1,3),16)/255;
+    const g = parseInt(hex.slice(3,5),16)/255;
+    const b = parseInt(hex.slice(5,7),16)/255;
+    const max = Math.max(r,g,b), min = Math.min(r,g,b);
+    let h = 0, s = 0, l = (max+min)/2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+      if (max === r) h = ((g-b)/d + (g<b?6:0))/6;
+      else if (max === g) h = ((b-r)/d+2)/6;
+      else h = ((r-g)/d+4)/6;
+    }
+    return Math.round(h*360) + ' ' + Math.round(s*100) + '% ' + Math.round(l*100) + '%';
+  }
+
+  // Map of CSS variable names to color keys
+  const varMap = {
+    '--background': 'background',
+    '--foreground': 'foreground',
+    '--primary': 'primary',
+    '--primary-foreground': 'primary-foreground',
+    '--secondary': 'secondary',
+    '--secondary-foreground': 'secondary-foreground',
+    '--accent': 'accent',
+    '--accent-foreground': 'accent-foreground',
+    '--card': 'card',
+    '--card-foreground': 'card-foreground',
+    '--popover': 'popover',
+    '--popover-foreground': 'popover-foreground',
+    '--muted': 'muted',
+    '--muted-foreground': 'muted-foreground',
+    '--destructive': 'destructive',
+    '--destructive-foreground': 'destructive-foreground',
+    '--border': 'border',
+    '--input': 'input',
+    '--ring': 'ring',
+    '--chart-1': 'chart-1',
+    '--chart-2': 'chart-2',
+    '--chart-3': 'chart-3',
+    '--chart-4': 'chart-4',
+    '--chart-5': 'chart-5',
+  };
 
   window.addEventListener('message', (event) => {
     const msg = event.data;
     if (!msg) return;
+    const root = document.documentElement;
 
     if (msg.type === 'VIBECODER_REVERT_THEME') {
-      if (themeStyleEl) { themeStyleEl.remove(); themeStyleEl = null; }
+      for (const varName of Object.keys(varMap)) {
+        root.style.removeProperty(varName);
+      }
       return;
     }
 
@@ -983,67 +1029,12 @@ window.addEventListener('message', (event) => {
     const c = msg.colors;
     if (!c) return;
 
-    if (themeStyleEl) themeStyleEl.remove();
-    themeStyleEl = document.createElement('style');
-    themeStyleEl.id = 'vibe-theme-override';
-    themeStyleEl.setAttribute('data-vibe-overlay', 'true');
-
-    // Convert hex to HSL string for CSS custom properties
-    function hexToHSL(hex) {
-      const r = parseInt(hex.slice(1,3),16)/255;
-      const g = parseInt(hex.slice(3,5),16)/255;
-      const b = parseInt(hex.slice(5,7),16)/255;
-      const max = Math.max(r,g,b), min = Math.min(r,g,b);
-      let h = 0, s = 0, l = (max+min)/2;
-      if (max !== min) {
-        const d = max - min;
-        s = l > 0.5 ? d/(2-max-min) : d/(max+min);
-        if (max === r) h = ((g-b)/d + (g<b?6:0))/6;
-        else if (max === g) h = ((b-r)/d+2)/6;
-        else h = ((r-g)/d+4)/6;
-      }
-      return Math.round(h*360) + ' ' + Math.round(s*100) + '% ' + Math.round(l*100) + '%';
-    }
-
-    // Map of CSS variable names to color keys
-    const varMap = {
-      '--background': 'background',
-      '--foreground': 'foreground',
-      '--primary': 'primary',
-      '--primary-foreground': 'primary-foreground',
-      '--secondary': 'secondary',
-      '--secondary-foreground': 'secondary-foreground',
-      '--accent': 'accent',
-      '--accent-foreground': 'accent-foreground',
-      '--card': 'card',
-      '--card-foreground': 'card-foreground',
-      '--popover': 'popover',
-      '--popover-foreground': 'popover-foreground',
-      '--muted': 'muted',
-      '--muted-foreground': 'muted-foreground',
-      '--destructive': 'destructive',
-      '--destructive-foreground': 'destructive-foreground',
-      '--border': 'border',
-      '--input': 'input',
-      '--ring': 'ring',
-      '--chart-1': 'chart-1',
-      '--chart-2': 'chart-2',
-      '--chart-3': 'chart-3',
-      '--chart-4': 'chart-4',
-      '--chart-5': 'chart-5',
-    };
-
-    let css = 'html, html.dark {\\n';
     for (const [varName, key] of Object.entries(varMap)) {
       const hex = c[key];
       if (hex && hex.startsWith('#')) {
-        css += '  ' + varName + ': ' + hexToHSL(hex) + ';\\n';
+        root.style.setProperty(varName, hexToHSL(hex));
       }
     }
-    css += '}\\n';
-
-    themeStyleEl.textContent = css;
-    document.head.appendChild(themeStyleEl);
   });
 })();
 
