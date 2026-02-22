@@ -514,18 +514,61 @@ export function VibecoderPreview({
   // NUCLEAR ERROR SILENCE PROTOCOL - Layer 4: Parent Window Suppression
   useSuppressPreviewNoise(true);
 
+  // 🛡️ SANDPACK UNMOUNT GUARD: Prevent removeChild errors during rapid project switching.
+  // When Sandpack unmounts while still injecting scripts, DOM removeChild can throw.
+  // We debounce the mount and catch any DOM exceptions during cleanup.
+  const [isMounted, setIsMounted] = useState(false);
+  const mountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Small debounce on mount to prevent rapid mount/unmount cycles
+    mountTimerRef.current = setTimeout(() => {
+      setIsMounted(true);
+    }, 50);
+
+    return () => {
+      if (mountTimerRef.current) clearTimeout(mountTimerRef.current);
+      setIsMounted(false);
+      
+      // Guard: Clean up any orphaned Sandpack iframes to prevent removeChild errors
+      try {
+        const container = containerRef.current;
+        if (container) {
+          const iframes = container.querySelectorAll('iframe');
+          iframes.forEach(iframe => {
+            try {
+              iframe.src = 'about:blank';
+              iframe.remove();
+            } catch {
+              // Node already removed - safe to ignore
+            }
+          });
+        }
+      } catch {
+        // DOM already cleaned up - safe to ignore
+      }
+    };
+  }, [code, files]);
+
   return (
-    <div className="h-full w-full relative bg-background flex flex-col">
+    <div ref={containerRef} className="h-full w-full relative bg-background flex flex-col">
       <style>{SANDPACK_HEIGHT_FIX}</style>
       <div className="h-full w-full flex-1 min-h-0">
-        <SandpackRenderer
-          code={code}
-          projectFiles={files}
-          onError={onError}
-          onReady={onReady}
-          viewMode={viewMode}
-          isStreaming={isStreaming}
-        />
+        {isMounted ? (
+          <SandpackRenderer
+            code={code}
+            projectFiles={files}
+            onError={onError}
+            onReady={onReady}
+            viewMode={viewMode}
+            isStreaming={isStreaming}
+          />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center bg-background">
+            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          </div>
+        )}
       </div>
     </div>
   );

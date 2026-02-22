@@ -159,6 +159,37 @@ const hasTsxEntrypoint = (code: string) =>
   /export\s+default\s+function\s+App\b|export\s+default\s+function\b|export\s+default\b|function\s+App\b|const\s+App\b/.test(code);
 
 /**
+ * 🚫 BANNED IMPORTS: These frameworks/modules will crash the Sandpack preview
+ */
+const BANNED_IMPORT_PATTERNS = [
+  { pattern: /from\s+['"]next\//, label: 'Next.js module (next/*)' },
+  { pattern: /from\s+['"]next['"]/, label: 'Next.js core' },
+  { pattern: /from\s+['"]@next\//, label: 'Next.js scoped module (@next/*)' },
+  { pattern: /from\s+['"]vue['"]/, label: 'Vue.js' },
+  { pattern: /from\s+['"]@angular\//, label: 'Angular' },
+  { pattern: /from\s+['"]svelte['"]/, label: 'Svelte' },
+  { pattern: /\bgetServerSideProps\b/, label: 'Next.js getServerSideProps' },
+  { pattern: /\bgetStaticProps\b/, label: 'Next.js getStaticProps' },
+  { pattern: /\bNextResponse\b/, label: 'Next.js NextResponse' },
+  { pattern: /\brequire\s*\(\s*['"]next/, label: 'Next.js require()' },
+];
+
+/**
+ * Check for banned framework imports. Returns the first violation found, or null.
+ */
+export const detectBannedImports = (code: string): { label: string; line: number } | null => {
+  const lines = code.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    for (const { pattern, label } of BANNED_IMPORT_PATTERNS) {
+      if (pattern.test(lines[i])) {
+        return { label, line: i + 1 };
+      }
+    }
+  }
+  return null;
+};
+
+/**
  * Check if code has the completion sentinel (indicating full generation)
  */
 export const hasCompleteSentinel = (code: string): boolean => {
@@ -288,15 +319,30 @@ export const stripComponentMarkers = (code: string): string => {
  * 
  * Enhanced with completion sentinel detection for the Multi-Agent Pipeline.
  */
-const isLikelyCompleteTsx = (code: string): boolean => {
-  const src = (code ?? '').trim();
-  if (!src) return false;
-  if (!hasTsxEntrypoint(src)) return false;
+/**
+ * Detailed TSX validation result (not just boolean)
+ */
+interface TsxValidationResult {
+  valid: boolean;
+  reason?: string;
+  line?: number;
+}
 
-  // Common truncation symptom seen in the screenshot
+const validateTsx = (code: string): TsxValidationResult => {
+  const src = (code ?? '').trim();
+  if (!src) return { valid: false, reason: 'Code is empty' };
+  if (!hasTsxEntrypoint(src)) return { valid: false, reason: 'Missing default export or App component' };
+
+  // Check for banned imports FIRST
+  const banned = detectBannedImports(src);
+  if (banned) {
+    return { valid: false, reason: `Banned import detected: ${banned.label}`, line: banned.line };
+  }
+
+  // Common truncation symptom
   const lastChar = src.replace(/\s+$/g, '').slice(-1);
   if (['<', '{', '(', '[', ',', ':', '=', '.', '+', '-', '*', '/'].includes(lastChar)) {
-    return false;
+    return { valid: false, reason: `Code appears truncated (ends with "${lastChar}")` };
   }
 
   // Balance brackets/braces/parens while respecting strings/comments.
@@ -375,19 +421,28 @@ const isLikelyCompleteTsx = (code: string): boolean => {
     else if (c === '[') bracket++;
     else if (c === ']') bracket--;
 
-    if (paren < 0 || brace < 0 || bracket < 0) return false;
+    if (paren < 0 || brace < 0 || bracket < 0) {
+      return { valid: false, reason: `Unbalanced brackets at character ${i}` };
+    }
   }
 
-  // If we ended inside a string/comment, it's truncated.
-  if (inSingle || inDouble || inTemplate || inLineComment || inBlockComment) return false;
+  if (inSingle || inDouble || inTemplate || inLineComment || inBlockComment) {
+    return { valid: false, reason: 'Unterminated string or comment' };
+  }
 
-  // Must be balanced
-  if (paren !== 0 || brace !== 0 || bracket !== 0) return false;
+  if (paren !== 0) return { valid: false, reason: `Unbalanced parentheses (${paren > 0 ? 'missing )' : 'extra )'})` };
+  if (brace !== 0) return { valid: false, reason: `Unbalanced braces (${brace > 0 ? 'missing }' : 'extra }'})` };
+  if (bracket !== 0) return { valid: false, reason: `Unbalanced brackets (${bracket > 0 ? 'missing ]' : 'extra ]'})` };
 
-  // JSX should at least contain a return with a tag
-  if (!/return\s*\(/.test(src) && !/<[A-Za-z]/.test(src)) return false;
+  if (!/return\s*\(/.test(src) && !/<[A-Za-z]/.test(src)) {
+    return { valid: false, reason: 'No JSX return statement found' };
+  }
 
-  return true;
+  return { valid: true };
+};
+
+const isLikelyCompleteTsx = (code: string): boolean => {
+  return validateTsx(code).valid;
 };
 
 export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
@@ -810,14 +865,19 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       const hasSentinel = hasCompleteSentinel(rawStream);
       
       if (!finalCode || !isLikelyCompleteTsx(finalCode)) {
+        // Get specific validation reason
+        const validation = finalCode ? validateTsx(finalCode) : { valid: false, reason: 'No code extracted from AI response' };
+        const specificReason = validation.reason || 'Unknown validation failure';
+        const lineInfo = validation.line ? ` (line ${validation.line})` : '';
+
         // Check if this is a truncation case that Ghost Fixer should handle
         if (finalCode && finalCode.length > 200 && !hasSentinel) {
           console.warn('[useStreamingCode] ⚠️ Truncation detected - triggering Ghost Fixer');
           options.onTruncationDetected?.(finalCode, originalPromptRef.current);
         }
         
-        const err = new Error('Generated code was incomplete/invalid; kept last working preview.');
-        console.warn('[useStreamingCode] Invalid final TSX - keeping last known good snapshot');
+        const err = new Error(`Code rejected: ${specificReason}${lineInfo}. Your storefront was preserved.`);
+        console.warn(`[useStreamingCode] ❌ TSX validation failed: ${specificReason}${lineInfo}`);
         setState(prev => ({ ...prev, isStreaming: false, error: err.message, code: lastGoodCodeRef.current }));
         options.onError?.(err);
         return lastGoodCodeRef.current;
@@ -904,12 +964,15 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     // Strip sentinel before validation (it's a marker, not app code)
     const codeWithoutSentinel = stripCompleteSentinel(code);
     
-    if (!isLikelyCompleteTsx(codeWithoutSentinel)) {
-      console.warn('[useStreamingCode] Refusing to apply invalid TSX snapshot; keeping last known-good code');
+    const validation = validateTsx(codeWithoutSentinel);
+    if (!validation.valid) {
+      const reason = validation.reason || 'Invalid TSX';
+      const lineInfo = validation.line ? ` (line ${validation.line})` : '';
+      console.warn(`[useStreamingCode] Refusing to apply TSX: ${reason}${lineInfo}`);
       setState(prev => ({
         ...prev,
         code: lastGoodCodeRef.current,
-        error: 'Invalid code snapshot blocked (kept last working preview).',
+        error: `Code rejected: ${reason}${lineInfo}. Kept last working preview.`,
       }));
       return;
     }
