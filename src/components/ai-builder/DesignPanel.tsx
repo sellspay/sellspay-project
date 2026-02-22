@@ -124,7 +124,10 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
                   </span>
                   {!isActive && (
                     <button
-                      onClick={() => onStyleChange?.(style)}
+                      onClick={() => {
+                        onStyleChange?.(style);
+                        window.dispatchEvent(new CustomEvent('vibecoder-theme-apply', { detail: style.colors }));
+                      }}
                       className="px-3 py-1 text-xs font-medium text-zinc-300 bg-zinc-700 hover:bg-zinc-600 rounded-md transition-colors shrink-0"
                     >
                       Apply
@@ -155,6 +158,7 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
             style={editingStyle}
             onApply={(updated) => {
               onStyleChange?.(updated);
+              window.dispatchEvent(new CustomEvent('vibecoder-theme-apply', { detail: updated.colors }));
               setEditingStyle(null);
               setOriginalColorsSnapshot(null);
             }}
