@@ -448,6 +448,8 @@ function VisualEditInjector({ active }: { active: boolean }) {
 // This bypasses postMessage which doesn't reach cross-origin Sandpack iframes.
 function ThemeBridge() {
   const { sandpack } = useSandpack();
+  const sandpackRef = useRef(sandpack);
+  sandpackRef.current = sandpack;
   const originalCSSRef = useRef<string | null>(null);
   
   useEffect(() => {
@@ -495,22 +497,22 @@ function ThemeBridge() {
       const colors = (e as CustomEvent).detail;
       console.log('[ThemeBridge] Received vibecoder-theme-apply event', Object.keys(colors || {}));
       if (!colors) return;
+      const sp = sandpackRef.current;
       // Save original CSS on first apply for revert
       if (!originalCSSRef.current) {
-        const currentFiles = sandpack.files;
-        const themeFile = currentFiles['/styles/theme-base.css'];
+        const themeFile = sp.files['/styles/theme-base.css'];
         if (themeFile) {
           originalCSSRef.current = themeFile.code;
         }
       }
       const css = buildThemeCSS(colors);
       console.log('[ThemeBridge] Calling sandpack.updateFile with CSS length:', css.length);
-      sandpack.updateFile('/styles/theme-base.css', css);
+      sp.updateFile('/styles/theme-base.css', css);
     };
 
     const handleRevert = () => {
       if (originalCSSRef.current) {
-        sandpack.updateFile('/styles/theme-base.css', originalCSSRef.current);
+        sandpackRef.current.updateFile('/styles/theme-base.css', originalCSSRef.current);
         originalCSSRef.current = null;
       }
     };
@@ -521,7 +523,7 @@ function ThemeBridge() {
       window.removeEventListener('vibecoder-theme-apply', handleApply);
       window.removeEventListener('vibecoder-theme-revert', handleRevert);
     };
-  }, [sandpack]);
+  }, []);
 
   return null;
 }
