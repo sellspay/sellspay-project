@@ -370,8 +370,52 @@ const SandpackRenderer = memo(function SandpackRenderer({
       // AI-generated files
       ...generatedFiles,
       // Entry point with NUCLEAR error suppression
+      // Thumbnail capture helper — listens for parent postMessage and captures viewport
+      '/utils/capture.ts': {
+        code: `// Thumbnail capture script — activated via postMessage from parent
+window.addEventListener('message', async (event) => {
+  if (event.data?.type !== 'VIBECODER_CAPTURE_REQUEST') return;
+  try {
+    const hero = document.querySelector('[data-hero="true"]') as HTMLElement | null;
+    const target = hero || document.body;
+    const rect = hero ? hero.getBoundingClientRect() : { x: 0, y: 0, width: window.innerWidth, height: Math.min(900, document.body.scrollHeight) };
+    const canvas = document.createElement('canvas');
+    const scale = 0.5; // Half-res for smaller file size
+    canvas.width = rect.width * scale;
+    canvas.height = rect.height * scale;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    // Use SVG foreignObject to render DOM to canvas
+    const svgData = '<svg xmlns="http://www.w3.org/2000/svg" width="' + rect.width + '" height="' + rect.height + '">' +
+      '<foreignObject width="100%" height="100%">' +
+      new XMLSerializer().serializeToString(document.documentElement) +
+      '</foreignObject></svg>';
+    const img = new Image();
+    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, -rect.x, -rect.y);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((jpegBlob) => {
+        if (!jpegBlob) return;
+        jpegBlob.arrayBuffer().then((buffer) => {
+          window.parent.postMessage({ type: 'VIBECODER_CAPTURE_RESPONSE', buffer }, '*', [buffer]);
+        });
+      }, 'image/jpeg', 0.7);
+    };
+    img.onerror = () => URL.revokeObjectURL(url);
+    img.src = url;
+  } catch (e) {
+    console.warn('Capture failed:', e);
+  }
+});
+export {};`,
+        hidden: true,
+      },
       '/index.tsx': {
         code: `import "./styles/error-silence.css";
+import "./utils/capture";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
