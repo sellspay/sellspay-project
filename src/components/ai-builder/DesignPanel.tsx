@@ -147,10 +147,18 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
           <ThemeEditorDialog
             open={!!editingStyle}
             onClose={() => {
-              // Revert iframe to ORIGINAL colors on discard (snapshot, not mutated editingStyle)
+              // Revert iframe to ORIGINAL colors on discard - broadcast to all nested frames
+              function broadcastRevert(win: Window, msg: any) {
+                try { win.postMessage(msg, '*'); } catch (_) {}
+                try {
+                  for (let i = 0; i < win.frames.length; i++) {
+                    broadcastRevert(win.frames[i] as Window, msg);
+                  }
+                } catch (_) {}
+              }
               const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
               if (iframe?.contentWindow && originalColorsSnapshot) {
-                iframe.contentWindow.postMessage({ type: 'VIBECODER_REVERT_THEME' }, '*');
+                broadcastRevert(iframe.contentWindow, { type: 'VIBECODER_REVERT_THEME' });
               }
               setEditingStyle(null);
               setOriginalColorsSnapshot(null);
@@ -162,12 +170,21 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
               setOriginalColorsSnapshot(null);
             }}
             onLivePreview={(colors) => {
-              // Only push colors to iframe — do NOT call onStyleChange to avoid infinite loop
-              const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
-              console.log('[THEME-DEBUG] Sending VIBECODER_APPLY_THEME, iframe found:', !!iframe, 'contentWindow:', !!iframe?.contentWindow);
-              if (iframe?.contentWindow) {
-                iframe.contentWindow.postMessage({ type: 'VIBECODER_APPLY_THEME', colors }, '*');
+              // Broadcast to ALL nested iframes recursively - Sandpack has nested iframe structure
+              function broadcastToFrames(win: Window, msg: any) {
+                try { win.postMessage(msg, '*'); } catch (_) {}
+                try {
+                  for (let i = 0; i < win.frames.length; i++) {
+                    broadcastToFrames(win.frames[i] as Window, msg);
+                  }
+                } catch (_) {}
               }
+              const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+              const msg = { type: 'VIBECODER_APPLY_THEME', colors };
+              if (iframe?.contentWindow) {
+                broadcastToFrames(iframe.contentWindow, msg);
+              }
+              console.log('[THEME-DEBUG] Broadcast VIBECODER_APPLY_THEME to all frames');
             }}
           />
         )}
