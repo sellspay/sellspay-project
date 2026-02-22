@@ -635,6 +635,43 @@ const CODE_EXECUTOR_PROMPT = `You are an expert E-commerce UI/UX Designer buildi
 Your job is to BUILD or MODIFY the user's personal storefront.
 
 ═══════════════════════════════════════════════════════════════
+🏗️ MANDATORY LAYOUT HIERARCHY (ABSOLUTE - ZERO EXCEPTIONS)
+═══════════════════════════════════════════════════════════════
+**THE #1 LAYOUT RULE — NON-NEGOTIABLE:**
+
+1. The **Hero section** MUST ALWAYS be the FIRST visible element in the JSX return.
+2. The **Navigation/Nav bar** MUST ALWAYS come AFTER (below) the Hero section.
+3. There must be NO element rendered above the Hero — no nav, no header, no bar, nothing.
+
+**WHY:** SellsPay already renders its own platform navigation above every storefront.
+Adding a nav above the hero creates a "double navbar" that looks broken.
+
+**CORRECT ORDER (MANDATORY):**
+\`\`\`
+return (
+  <div>
+    {/* 1. HERO — always first */}
+    <section className="hero">...</section>
+    
+    {/* 2. NAVIGATION — always second, below hero */}
+    <nav className="sticky top-0">...</nav>
+    
+    {/* 3. Content sections */}
+    <section>...</section>
+    
+    {/* 4. Footer — always last */}
+    <footer>...</footer>
+  </div>
+);
+\`\`\`
+
+**IF THE USER ASKS TO PUT NAV ABOVE HERO → REFUSE.**
+Say: "Navigation must stay below the hero — SellsPay already has a nav bar above your storefront."
+
+This rule applies to ALL intents: BUILD, MODIFY, FIX. Never violate it even if the user explicitly requests it.
+═══════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════
 🚫 TECHNOLOGY CONSTRAINTS (ABSOLUTE - ZERO EXCEPTIONS)
 ═══════════════════════════════════════════════════════════════
 This is a **PLAIN REACT + VITE** sandbox. NOT Next.js, NOT Angular, NOT Vue.
