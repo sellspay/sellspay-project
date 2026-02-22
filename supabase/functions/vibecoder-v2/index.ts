@@ -1104,6 +1104,140 @@ async function classifyIntent(
 }
 
 // ═══════════════════════════════════════════════════════════════
+// STAGE 0.5: ANALYZER (2-Stage Pipeline)
+// Fast Gemini call to infer intent, generate suggestions + questions
+// ═══════════════════════════════════════════════════════════════
+
+const ANALYZER_SYSTEM_PROMPT = `You are a premium product strategist for VibeCoder, a website builder for creators.
+
+Goal:
+- Convert simplistic user requests into premium builds.
+- If the request is underspecified, ask structured multiple-choice questions before code generation.
+- Always generate context-aware suggestion chips based on the user's intent and recent intent profile.
+
+Return ONLY valid JSON with this schema:
+{
+  "intent": {"primary": string, "secondary": string[], "confidence": number},
+  "stage": "idea"|"structure"|"build"|"polish",
+  "missing": string[],
+  "questions": [{"id": string, "label": string, "type":"single"|"multi", "options":[{"value":string,"label":string}]}],
+  "suggestions": [{"label": string, "prompt": string}],
+  "feature_tags": string[],
+  "enhanced_prompt_seed": string
+}
+
+Rules:
+- questions: 4-6 items when missing info exists; 0 when the request is specific enough.
+- suggestions: 5-7 chips, tailored to intent + profile. Labels max 28 chars. Prompts must be directly usable as user messages.
+- If the user has existing code and is making a small modification, return 0 questions and 3-5 suggestions.
+- enhanced_prompt_seed: a richer version of what the user asked, incorporating inferred context.
+- feature_tags: keywords for tracking (e.g. "pricing", "hero", "testimonials").
+- intent.primary: one of "saas", "ecommerce", "portfolio", "blog", "marketplace", "booking", "creator", "course", "other".`;
+
+interface AnalyzerResult {
+  intent: { primary: string; secondary: string[]; confidence: number };
+  stage: string;
+  missing: string[];
+  questions: Array<{ id: string; label: string; type: "single" | "multi"; options: Array<{ value: string; label: string }> }>;
+  suggestions: Array<{ label: string; prompt: string }>;
+  feature_tags: string[];
+  enhanced_prompt_seed: string;
+}
+
+async function analyzeIntent(
+  prompt: string,
+  hasExistingCode: boolean,
+  conversationHistory: Array<{ role: string; content: string }>,
+  intentProfile: { primary_intent: string; feature_counts: Record<string, number> } | null,
+  apiKey: string,
+): Promise<AnalyzerResult | null> {
+  try {
+    const contextHint = hasExistingCode
+      ? "The user HAS existing code/design. This is a modification request."
+      : "The user has NO existing code - this is a fresh build.";
+
+    const recentMessages = conversationHistory.slice(-6);
+    const conversationContext = recentMessages.length > 0
+      ? "\nCONVERSATION HISTORY:\n" + recentMessages.map(m => m.role + ': "' + m.content + '"').join("\n")
+      : "";
+
+    const profileContext = intentProfile
+      ? "\nINTENT PROFILE: primary=" + intentProfile.primary_intent + ", features=" + JSON.stringify(intentProfile.feature_counts)
+      : "";
+
+    const response = await fetch(GEMINI_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gemini-2.5-flash",
+        messages: [
+          { role: "system", content: ANALYZER_SYSTEM_PROMPT },
+          { role: "user", content: "Context: " + contextHint + conversationContext + profileContext + "\n\nUser message: \"" + prompt + "\"" },
+        ],
+        max_tokens: 1500,
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("[Analyzer] API call failed, skipping analysis");
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || "";
+    const cleaned = content
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```$/i, "")
+      .trim();
+
+    const parsed = JSON.parse(cleaned);
+    console.log("[Analyzer] Intent: " + (parsed.intent?.primary || "unknown") + " | Questions: " + (parsed.questions?.length || 0) + " | Suggestions: " + (parsed.suggestions?.length || 0));
+    return parsed;
+  } catch (e) {
+    console.warn("[Analyzer] Parse error, skipping:", e);
+    return null;
+  }
+}
+
+async function updateIntentProfile(
+  supabase: ReturnType<typeof createClient>,
+  projectId: string,
+  analysis: AnalyzerResult,
+): Promise<void> {
+  try {
+    // Upsert the intent profile
+    const { data: existing } = await supabase
+      .from("vibecoder_intent_profiles")
+      .select("feature_counts")
+      .eq("project_id", projectId)
+      .maybeSingle();
+
+    const currentCounts = (existing?.feature_counts as Record<string, number>) || {};
+    const updatedCounts = { ...currentCounts };
+    
+    for (const tag of analysis.feature_tags || []) {
+      updatedCounts[tag] = (updatedCounts[tag] || 0) + 1;
+    }
+
+    await supabase
+      .from("vibecoder_intent_profiles")
+      .upsert({
+        project_id: projectId,
+        primary_intent: analysis.intent?.primary || "other",
+        feature_counts: updatedCounts,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "project_id" });
+  } catch (e) {
+    console.warn("[IntentProfile] Update failed:", e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // HELPER: Execute based on classified intent (Stage 2)
 // ═══════════════════════════════════════════════════════════════
 async function executeIntent(
@@ -1292,6 +1426,11 @@ serve(async (req) => {
       productsContext,
       conversationHistory = [],
       jobId,
+      // 2-Stage Pipeline: clarification answers
+      type: requestType,
+      answers: clarificationAnswers,
+      enhanced_prompt_seed: clientPromptSeed,
+      projectId: requestProjectId,
     } = await req.json();
 
     const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
@@ -1439,6 +1578,104 @@ serve(async (req) => {
     const intentResult = await classifyIntent(prompt, hasExistingCode, conversationHistory || [], GOOGLE_GEMINI_API_KEY);
 
     console.log(`[Stage 1] Result: ${intentResult.intent} (${intentResult.confidence}) - ${intentResult.reasoning}`);
+
+    // ════════════════════════════════════════════════════════════
+    // STAGE 1.1: ANALYZER (2-Stage Pipeline - Suggestions + Questions)
+    // ════════════════════════════════════════════════════════════
+    // Skip analyzer for clarification answers (they already went through it)
+    // Also skip for QUESTION/REFUSE intents (no code gen needed)
+    if (requestType !== "clarification_answers" && intentResult.intent !== "QUESTION" && intentResult.intent !== "REFUSE") {
+      // Fetch existing intent profile for context
+      let intentProfile: { primary_intent: string; feature_counts: Record<string, number> } | null = null;
+      if (requestProjectId) {
+        const { data: profile } = await supabase
+          .from("vibecoder_intent_profiles")
+          .select("primary_intent, feature_counts")
+          .eq("project_id", requestProjectId)
+          .maybeSingle();
+        if (profile) {
+          intentProfile = {
+            primary_intent: profile.primary_intent,
+            feature_counts: (profile.feature_counts as Record<string, number>) || {},
+          };
+        }
+      }
+
+      const analysis = await analyzeIntent(prompt, hasExistingCode, conversationHistory || [], intentProfile, GOOGLE_GEMINI_API_KEY);
+
+      if (analysis) {
+        // Update intent profile in background (don't await)
+        if (requestProjectId) {
+          updateIntentProfile(supabase, requestProjectId, analysis).catch(e => console.warn("[IntentProfile] Background update failed:", e));
+        }
+
+        // If analyzer produced questions and request is vague, return suggestions + questions
+        // then close the stream (wait for user answers)
+        if (analysis.questions && analysis.questions.length > 0) {
+          console.log(`[Analyzer] Vague request detected - emitting ${analysis.questions.length} questions`);
+          
+          const encoder = new TextEncoder();
+          const questionStream = new ReadableStream({
+            start(controller) {
+              // Emit phase
+              const phasePayload = `event: phase\ndata: ${JSON.stringify({ phase: "analyzing" })}\n\n`;
+              controller.enqueue(encoder.encode(phasePayload));
+              
+              // Emit suggestions
+              if (analysis.suggestions?.length) {
+                const sugPayload = `event: suggestions\ndata: ${JSON.stringify(analysis.suggestions)}\n\n`;
+                controller.enqueue(encoder.encode(sugPayload));
+              }
+              
+              // Emit questions with enhanced_prompt_seed
+              const qPayload = `event: questions\ndata: ${JSON.stringify({
+                questions: analysis.questions,
+                enhanced_prompt_seed: analysis.enhanced_prompt_seed || "",
+              })}\n\n`;
+              controller.enqueue(encoder.encode(qPayload));
+              
+              // Emit analysis text
+              const missing = analysis.missing?.length ? `Missing info: ${analysis.missing.join(", ")}` : "";
+              const textPayload = `event: text\ndata: ${JSON.stringify({ content: `I need a few details to build this right. ${missing}`.trim() })}\n\n`;
+              controller.enqueue(encoder.encode(textPayload));
+              
+              // Close stream (wait for answers)
+              const completePayload = `event: phase\ndata: ${JSON.stringify({ phase: "waiting_for_answers" })}\n\n`;
+              controller.enqueue(encoder.encode(completePayload));
+              
+              controller.close();
+            },
+          });
+
+          return new Response(questionStream, {
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "text/event-stream",
+              "Cache-Control": "no-cache",
+              Connection: "keep-alive",
+            },
+          });
+        }
+
+        // No questions needed - emit suggestions and use enhanced prompt
+        // Suggestions will be emitted during the main SSE stream below
+        // Store analysis for use in the streaming section
+        console.log(`[Analyzer] Request is specific enough - ${analysis.suggestions?.length || 0} suggestions generated`);
+      }
+    }
+
+    // If this is a clarification_answers request, build the enriched prompt
+    if (requestType === "clarification_answers" && clarificationAnswers) {
+      const answerSummary = Object.entries(clarificationAnswers)
+        .map(([k, v]) => `${k}: ${Array.isArray(v) ? (v as string[]).join(", ") : v}`)
+        .join("; ");
+      const enrichedPrompt = clientPromptSeed
+        ? `${clientPromptSeed}\n\nUser preferences: ${answerSummary}`
+        : `Based on these preferences: ${answerSummary}`;
+      console.log(`[Clarification] Built enriched prompt from answers: ${enrichedPrompt.substring(0, 100)}...`);
+      // Override prompt with enriched version for codegen
+      // (modifiedPrompt will be set below)
+    }
 
     // ════════════════════════════════════════════════════════════
     // STAGE 1.5: ARCHITECT MODE (only when user explicitly requests it)

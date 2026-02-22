@@ -230,6 +230,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onPlanItems?: (items: string[]) => void;
     onStreamSummary?: (text: string) => void;
     onConfidence?: (score: number, reason: string) => void;
+    onSuggestions?: (suggestions: Array<{ label: string; prompt: string }>) => void;
+    onQuestions?: (questions: Array<{ id: string; label: string; type: 'single' | 'multi'; options: Array<{ value: string; label: string }> }>, enhancedPromptSeed?: string) => void;
   }>({});
 
   // Streaming code state
@@ -250,6 +252,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onPlanItems: (items) => phaseCallbacksRef.current.onPlanItems?.(items),
     onStreamSummary: (text) => phaseCallbacksRef.current.onStreamSummary?.(text),
     onConfidence: (score, reason) => phaseCallbacksRef.current.onConfidence?.(score, reason),
+    onSuggestions: (suggestions) => phaseCallbacksRef.current.onSuggestions?.(suggestions),
+    onQuestions: (questions, seed) => phaseCallbacksRef.current.onQuestions?.(questions, seed),
     // 🛑 RACE CONDITION GUARD: Check if generation should be discarded
     shouldAbort: () => {
       if (generationLockRef.current && generationLockRef.current !== activeProjectId) {
@@ -496,6 +500,13 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onPlanItems,
     onStreamSummary,
     onConfidence,
+    // 2-Stage Analyzer
+    onSuggestions,
+    onQuestions,
+    clearQuestions,
+    backendSuggestions,
+    pendingQuestions,
+    enhancedPromptSeed,
     streamPhase,
     analysisText,
     planItems,
@@ -512,7 +523,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   });
 
   // Wire phase callbacks ref now that useAgentLoop is initialized
-  phaseCallbacksRef.current = { onPhaseChange, onAnalysis, onPlanItems, onStreamSummary, onConfidence };
+  phaseCallbacksRef.current = { onPhaseChange, onAnalysis, onPlanItems, onStreamSummary, onConfidence, onSuggestions, onQuestions };
 
   // 🔄 BACKGROUND GENERATION: Jobs that persist even if user leaves
   // Track processed jobs to prevent duplicate message additions
@@ -1780,6 +1791,23 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                   summaryText,
                   confidenceScore: confidenceScore ?? undefined,
                   confidenceReason,
+                }}
+                backendSuggestions={backendSuggestions}
+                pendingQuestions={pendingQuestions}
+                enhancedPromptSeed={enhancedPromptSeed}
+                onSubmitClarification={(answers, seed) => {
+                  clearQuestions();
+                  // Build enriched prompt from answers + seed
+                  const answerSummary = Object.entries(answers)
+                    .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+                    .join('; ');
+                  const enrichedPrompt = seed 
+                    ? `${seed}\n\nUser preferences: ${answerSummary}`
+                    : `Based on these preferences: ${answerSummary}`;
+                  handleSendMessage(enrichedPrompt);
+                }}
+                onSkipClarification={() => {
+                  clearQuestions();
                 }}
               />
             </div>
