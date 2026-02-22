@@ -79,6 +79,13 @@ const DEFAULT_PATTERNS: RegExp[] = [
   /Uncaught ReferenceError/i,
   /Uncaught Error/i,
   /Script error/i,
+
+  // Sandpack preview noise: forwardRef warnings, unrecognized features, CDN warnings
+  /Function components cannot be given refs/i,
+  /React\.forwardRef/i,
+  /Unrecognized feature/i,
+  /cdn\.tailwindcss\.com/i,
+  /should not be used in production/i,
 ];
 
 /**
