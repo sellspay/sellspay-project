@@ -217,9 +217,11 @@ export function useBackgroundGeneration({
     prompt: string,
     aiPrompt?: string,
     modelId?: string,
-    isPlanMode?: boolean
+    isPlanMode?: boolean,
+    explicitProjectId?: string
   ): Promise<GenerationJob | null> => {
-    if (!projectId) {
+    const resolvedProjectId = explicitProjectId || projectId;
+    if (!resolvedProjectId) {
       toast.error('No project selected');
       return null;
     }
@@ -234,7 +236,7 @@ export function useBackgroundGeneration({
       const { data: job, error } = await supabase
         .from('ai_generation_jobs')
         .insert({
-          project_id: projectId,
+          project_id: resolvedProjectId,
           user_id: user.id,
           prompt,
           ai_prompt: aiPrompt || prompt,

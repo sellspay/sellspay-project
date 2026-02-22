@@ -1492,8 +1492,23 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     //    because activeProjectId in the closure is still stale (React batching)
     await addMessage('user', prompt, undefined, newProjectId);
 
-    // 8. Start the agent directly — no navigate/location.state indirection
-    startAgent(finalPrompt, undefined, newProjectId);
+    // 8. 🔄 CREATE BACKGROUND JOB: Ensures generation persists even if user leaves
+    //    This was missing before — heroOnStart skipped job creation, so if the stream
+    //    failed there was nothing to recover from and the request just vanished.
+    const job = await createJob(prompt, finalPrompt, activeModel?.id, isPlanMode, newProjectId);
+
+    // Track whether this run is job-backed
+    activeJobIdRef.current = job?.id ?? null;
+
+    // 9. Start the agent with job ID for persistence
+    if (job) {
+      console.log('[heroOnStart] Created job:', job.id, 'for project:', newProjectId);
+      startAgent(finalPrompt, undefined, newProjectId, job.id);
+    } else {
+      // Fallback: Start without job (streaming only, won't persist if user leaves)
+      console.warn('[heroOnStart] Failed to create job, using streaming-only mode');
+      startAgent(finalPrompt, undefined, newProjectId);
+    }
   };
 
   // === DOORWAY: If no active project, ALWAYS show the magical prompt-first screen ===
