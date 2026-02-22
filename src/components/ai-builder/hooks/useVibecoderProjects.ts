@@ -353,17 +353,22 @@ export function useVibecoderProjects() {
         code_snapshot: codeSnapshot ?? null,
         files_snapshot: filesSnapshot ?? null,
       } as any)
-      .select()
-      .single();
+      .select();
 
-    if (error) {
-      console.error('Failed to add message:', error);
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(m => !m.id.startsWith('optimistic-')));
+    if (error || !data || data.length === 0) {
+      if (error) {
+        console.error('Failed to add message:', error);
+      } else {
+        console.warn('[addMessage] Insert returned no rows (RLS may have blocked SELECT). Message likely saved.');
+      }
+      // Remove optimistic message on hard error only
+      if (error) {
+        setMessages(prev => prev.filter(m => !m.id.startsWith('optimistic-')));
+      }
       return null;
     }
 
-    const newMessage = data as VibecoderMessage;
+    const newMessage = data[0] as VibecoderMessage;
 
     // Replace the *last* optimistic message matching role/content/code_snapshot with the real one.
     // This is more robust when multiple optimistic messages exist.
