@@ -21,37 +21,32 @@ interface VibecoderChatProps {
   isStreaming: boolean;
   onCancel: () => void;
   messages: VibecoderMessage[];
-  messagesLoading?: boolean; // Prevent flash during message load
+  messagesLoading?: boolean;
   onRateMessage: (messageId: string, rating: -1 | 0 | 1) => void;
   onRestoreToVersion: (messageId: string) => void;
   projectName?: string;
-  liveSteps?: string[]; // Real-time transparency logs (legacy fallback)
-  // Agent mode props (new premium experience)
+  liveSteps?: string[];
   agentStep?: AgentStep;
   agentLogs?: string[];
   isAgentMode?: boolean;
-  // Controlled model state
   activeModel?: AIModel;
   onModelChange?: (model: AIModel) => void;
-  // Billing callback
   onOpenBilling?: () => void;
-  // Controlled style state
   activeStyle?: StylePreset;
   onStyleChange?: (style: StylePreset) => void;
-  // Pending plan for approval
   pendingPlan?: { plan: PlanData; originalPrompt: string } | null;
   onApprovePlan?: (originalPrompt: string) => void;
   onRejectPlan?: () => void;
-  // NEW: Undo capability
   canUndo?: boolean;
-  // NEW: Streaming phase data
   streamPhaseData?: StreamingPhaseData;
-  // 2-Stage Analyzer Pipeline
   backendSuggestions?: BackendSuggestion[];
   pendingQuestions?: ClarificationQuestion[];
   enhancedPromptSeed?: string;
   onSubmitClarification?: (answers: Record<string, string | string[]>, enhancedPromptSeed?: string) => void;
   onSkipClarification?: () => void;
+  // Chat collapse
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 // Live Building Card - shows steps as they stream in
@@ -168,6 +163,8 @@ export function VibecoderChat({
   enhancedPromptSeed,
   onSubmitClarification,
   onSkipClarification,
+  isCollapsed,
+  onToggleCollapse,
 }: VibecoderChatProps) {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -274,7 +271,20 @@ export function VibecoderChat({
             BETA
           </span>
         </div>
-        <div className="flex items-center gap-2" />
+        {onToggleCollapse && (
+          <button
+            onClick={onToggleCollapse}
+            className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            title="Collapse chat"
+          >
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Chat area */}

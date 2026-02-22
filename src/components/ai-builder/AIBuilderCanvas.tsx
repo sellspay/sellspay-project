@@ -1800,20 +1800,21 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
           {/* SUBTLE SEPARATOR LINE */}
           <div className="w-px shrink-0 bg-border/40" />
 
-          {/* CHAT COLLAPSE TOGGLE */}
-          <button
-            onClick={() => setChatCollapsed(!chatCollapsed)}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-[60] w-5 h-10 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 border border-border/40 rounded-l-md transition-all"
-            style={{ right: chatCollapsed ? 0 : sidebarWidth - 1 }}
-            title={chatCollapsed ? 'Open chat' : 'Collapse chat'}
-          >
-            <svg
-              className={`w-3 h-3 text-zinc-400 transition-transform ${chatCollapsed ? 'rotate-180' : ''}`}
-              viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          {/* CHAT EXPAND TOGGLE (only when collapsed) */}
+          {chatCollapsed && (
+            <button
+              onClick={() => setChatCollapsed(false)}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-[60] w-5 h-10 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 border border-border/40 rounded-l-md transition-all"
+              title="Open chat"
             >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
+              <svg
+                className="w-3 h-3 text-zinc-400 rotate-180"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          )}
 
           {/* RIGHT PANEL: Chat (seamless) */}
           <div
@@ -1893,6 +1894,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
                 onSkipClarification={() => {
                   clearQuestions();
                 }}
+                isCollapsed={chatCollapsed}
+                onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
               />
             </div>
           </div>
