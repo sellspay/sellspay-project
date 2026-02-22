@@ -717,6 +717,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   const errorCode = data.code || 'UNKNOWN';
                   const errorMsg = data.message || 'An error occurred';
                   console.error(`[useStreamingCode] SSE error [${errorCode}]:`, errorMsg);
+                  
+                  // ✅ STEP 3: Only trigger truncation handler when backend EXPLICITLY says so
+                  if (errorCode === 'TRUNCATION_DETECTED' || errorCode === 'MODEL_TRUNCATED') {
+                    console.warn('[useStreamingCode] ⚠️ Backend-confirmed truncation');
+                    const partialCode = extractCodeFromRaw(rawStream);
+                    if (partialCode && partialCode.length > 200) {
+                      options.onTruncationDetected?.(partialCode, originalPromptRef.current);
+                    }
+                  }
+                  
                   options.onError?.(new Error(`[${errorCode}] ${errorMsg}`));
                   break;
                 }
@@ -860,9 +870,11 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       const finalCode = extractCodeFromRaw(rawStream);
 
-      // 🛡️ MULTI-AGENT PIPELINE: Check for completion sentinel
-      // If code looks valid structurally but is missing the sentinel, it may be truncated
-      const hasSentinel = hasCompleteSentinel(rawStream);
+      // ═══════════════════════════════════════════════════════════
+      // STEP 3: Fix false TRUNCATION_DETECTED
+      // Only treat as truncation when the backend explicitly sends it (via SSE event).
+      // Otherwise, show the real failure reason (VALIDATION_FAILED, STREAM_ENDED_EARLY, etc.)
+      // ═══════════════════════════════════════════════════════════
       
       if (!finalCode || !isLikelyCompleteTsx(finalCode)) {
         // Get specific validation reason
@@ -870,14 +882,21 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         const specificReason = validation.reason || 'Unknown validation failure';
         const lineInfo = validation.line ? ` (line ${validation.line})` : '';
 
-        // Check if this is a truncation case that Ghost Fixer should handle
-        if (finalCode && finalCode.length > 200 && !hasSentinel) {
-          console.warn('[useStreamingCode] ⚠️ Truncation detected - triggering Ghost Fixer');
-          options.onTruncationDetected?.(finalCode, originalPromptRef.current);
-        }
+        // ✅ STEP 3: Do NOT auto-trigger Ghost Fixer based on missing sentinel.
+        // The sentinel check was causing false TRUNCATION_DETECTED errors on short/simple
+        // requests. Only the backend should decide if output was truncated.
+        // If the backend sent a truncation event, it would have been handled in processSSELine.
         
-        const err = new Error(`Code rejected: ${specificReason}${lineInfo}. Your storefront was preserved.`);
-        console.warn(`[useStreamingCode] ❌ TSX validation failed: ${specificReason}${lineInfo}`);
+        // Determine the correct error code based on what actually happened
+        let errorCode = 'VALIDATION_FAILED';
+        if (!finalCode && rawStream.trim().length > 0) {
+          errorCode = 'NO_CODE_EXTRACTED';
+        } else if (finalCode && finalCode.length < 50) {
+          errorCode = 'INCOMPLETE_OUTPUT';
+        }
+
+        const err = new Error(`[${errorCode}] ${specificReason}${lineInfo}. Your storefront was preserved.`);
+        console.warn(`[useStreamingCode] ❌ ${errorCode}: ${specificReason}${lineInfo}`);
         setState(prev => ({ ...prev, isStreaming: false, error: err.message, code: lastGoodCodeRef.current }));
         options.onError?.(err);
         return lastGoodCodeRef.current;
@@ -912,6 +931,22 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           : `Generation rejected: the AI attempted to rewrite too much of your code. Your storefront was preserved. Please try a more targeted request.`;
 
         const err = new Error(userMessage);
+        setState(prev => ({ ...prev, isStreaming: false, error: err.message, code: lastGoodCodeRef.current }));
+        options.onError?.(err);
+        return lastGoodCodeRef.current;
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // STEP 4: Suspicious output guard — if the model returned very short code
+      // but the previous file was large, this is likely a destructive rewrite.
+      // Block it and require explicit user confirmation.
+      // ═══════════════════════════════════════════════════════════
+      const prevLineCount = previousCode ? previousCode.split('\n').length : 0;
+      const newLineCount = finalCode.split('\n').length;
+      if (prevLineCount > 100 && newLineCount < 200 && newLineCount < prevLineCount * 0.4) {
+        const suspiciousMsg = `Suspicious output: AI returned ${newLineCount} lines replacing ${prevLineCount} lines. This looks like a destructive rewrite. Your storefront was preserved. Try a more specific request, or say "rewrite from scratch" if intended.`;
+        console.warn(`🛡️ SUSPICIOUS OUTPUT GUARD: ${newLineCount} lines vs ${prevLineCount} lines`);
+        const err = new Error(suspiciousMsg);
         setState(prev => ({ ...prev, isStreaming: false, error: err.message, code: lastGoodCodeRef.current }));
         options.onError?.(err);
         return lastGoodCodeRef.current;
