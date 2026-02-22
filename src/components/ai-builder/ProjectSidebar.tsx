@@ -95,7 +95,7 @@ export function ProjectSidebar({
 
   if (collapsed) {
     return (
-      <div className="w-12 bg-[#1a1a1a] flex flex-col items-center py-4 gap-2">
+      <div className="w-12 bg-[#1a1a1a] flex flex-col items-center py-4 gap-2 px-0">
         <Button
           variant="ghost"
           size="icon"
@@ -115,7 +115,7 @@ export function ProjectSidebar({
             <Plus className="h-4 w-4" />
           </Button>
         )}
-        <div className="flex-1 overflow-y-auto w-full space-y-1 px-1.5">
+        <div className="flex-1 overflow-y-auto w-full space-y-1 flex flex-col items-center">
           {projects.slice(0, 10).map((project) => (
             <Button
               key={project.id}
