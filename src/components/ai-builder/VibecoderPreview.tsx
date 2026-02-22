@@ -5,6 +5,7 @@ import {
   SandpackProvider, 
   SandpackPreview as SandpackPreviewComponent,
   SandpackCodeEditor,
+  useSandpackConsole,
 } from '@codesandbox/sandpack-react';
 import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
 import type { ViewMode } from './types/generation';
@@ -23,6 +24,8 @@ interface VibecoderPreviewProps {
   isStreaming?: boolean;
   showLoadingOverlay?: boolean;
   onError?: (error: string) => void;
+  /** Callback when console errors are detected (runtime errors, not build errors) */
+  onConsoleErrors?: (errors: string[]) => void;
   viewMode?: ViewMode;
   onReady?: () => void;
 }
@@ -316,11 +319,69 @@ const ReadyDetector = forwardRef<HTMLDivElement, { onReady?: () => void }>(
 );
 ReadyDetector.displayName = 'ReadyDetector';
 
+// Console error detector - captures runtime console.error() calls from inside Sandpack
+// and surfaces them to the parent for AI debugging (not just build errors).
+const ConsoleErrorDetector = forwardRef<HTMLDivElement, { 
+  onConsoleErrors?: (errors: string[]) => void; 
+  isStreaming?: boolean;
+}>(
+  function ConsoleErrorDetector({ onConsoleErrors, isStreaming = false }, ref) {
+    const { logs, reset } = useSandpackConsole({ 
+      maxMessageCount: 50, 
+      showSyntaxError: false,
+      resetOnPreviewRestart: true,
+    });
+    const onConsoleErrorsRef = useRef(onConsoleErrors);
+    const lastReportedRef = useRef<string>('');
+
+    useEffect(() => {
+      onConsoleErrorsRef.current = onConsoleErrors;
+    }, [onConsoleErrors]);
+
+    useEffect(() => {
+      if (isStreaming) return;
+
+      // Extract only error-level logs
+      const errorLogs = logs
+        .filter(log => log.method === 'error')
+        .map(log => {
+          if (!log.data) return 'Unknown error';
+          return log.data
+            .map(d => typeof d === 'string' ? d : JSON.stringify(d))
+            .join(' ')
+            .slice(0, 300); // truncate
+        })
+        .filter(msg => {
+          // Filter out known noise patterns
+          if (/cdn\.tailwindcss\.com/i.test(msg)) return false;
+          if (/lovable\.js/i.test(msg)) return false;
+          if (/MutationRecord/i.test(msg)) return false;
+          if (/attributeName.*getter/i.test(msg)) return false;
+          if (/col\.csbops\.io/i.test(msg)) return false;
+          return true;
+        });
+
+      if (errorLogs.length === 0) return;
+
+      // Deduplicate: only report if the set of errors changed
+      const key = errorLogs.join('|||');
+      if (key === lastReportedRef.current) return;
+      lastReportedRef.current = key;
+
+      onConsoleErrorsRef.current?.(errorLogs);
+    }, [logs, isStreaming]);
+
+    return <div ref={ref} style={{ display: 'none' }} aria-hidden="true" />;
+  }
+);
+ConsoleErrorDetector.displayName = 'ConsoleErrorDetector';
+
 // Memoized Sandpack component to prevent unnecessary re-renders during streaming
 const SandpackRenderer = memo(function SandpackRenderer({ 
   code, 
   projectFiles,
   onError,
+  onConsoleErrors,
   onReady,
   viewMode = 'preview',
   isStreaming = false,
@@ -328,6 +389,7 @@ const SandpackRenderer = memo(function SandpackRenderer({
   code?: string; 
   projectFiles?: ProjectFiles;
   onError?: (error: string) => void;
+  onConsoleErrors?: (errors: string[]) => void;
   onReady?: () => void;
   viewMode?: ViewMode;
   isStreaming?: boolean;
@@ -509,6 +571,7 @@ div[style*="background-color: red"],div[style*="background: red"] {
       >
         <div className="h-full w-full flex-1 flex flex-col relative" style={{ height: '100%' }}>
           <ErrorDetector onError={onError} isStreaming={isStreaming} />
+          <ConsoleErrorDetector onConsoleErrors={onConsoleErrors} isStreaming={isStreaming} />
           <ReadyDetector onReady={onReady} />
           <div className="h-full w-full flex-1 flex flex-row" style={{ height: '100%' }}>
             {/* Code view: File explorer sidebar + editor */}
@@ -552,6 +615,7 @@ export function VibecoderPreview({
   files,
   isStreaming = false,
   onError,
+  onConsoleErrors,
   onReady,
   viewMode = 'preview',
 }: VibecoderPreviewProps) {
@@ -624,6 +688,7 @@ export function VibecoderPreview({
             code={code}
             projectFiles={files}
             onError={onError}
+            onConsoleErrors={onConsoleErrors}
             onReady={onReady}
             viewMode={viewMode}
             isStreaming={isStreaming}
