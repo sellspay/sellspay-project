@@ -95,7 +95,7 @@ export function ProjectSidebar({
 
   if (collapsed) {
     return (
-      <div className="w-12 bg-zinc-950/80 flex flex-col items-center py-4 gap-2 shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)]">
+      <div className="w-12 bg-[#1a1a1a] flex flex-col items-center py-4 gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -139,7 +139,7 @@ export function ProjectSidebar({
 
   return (
     <>
-      <div className="w-64 bg-zinc-950/80 flex flex-col h-full shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)]">
+      <div className="w-64 bg-[#1a1a1a] flex flex-col h-full">
         {/* Header */}
         <div className="p-3 border-b border-border/30 flex items-center gap-2">
           <Button
