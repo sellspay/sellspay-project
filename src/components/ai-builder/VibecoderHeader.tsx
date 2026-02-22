@@ -2,14 +2,15 @@ import { useState } from "react";
 import { 
   ArrowLeft, Eye, Code2, 
   Monitor, Smartphone, ExternalLink, Loader2,
-  Image as ImageIcon, Film, RefreshCw, Package, Crown
+  Image as ImageIcon, Film, Package, Crown
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import type { ViewMode } from "./types/generation";
 import { ProfileMenu } from "./ProfileMenu";
 import { PageNavigator, type SitePage } from "./PageNavigator";
-import { RegenerateModal } from "./RegenerateModal";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface VibecoderHeaderProps {
   projectName?: string;
@@ -28,9 +29,6 @@ interface VibecoderHeaderProps {
   currentPath?: string;
   onNavigate?: (path: string) => void;
   pages?: SitePage[];
-  // Regenerate props
-  onRegenerate?: (tweak: string) => void;
-  isGenerating?: boolean;
   // Profile menu props
   avatarUrl?: string | null;
   userCredits?: number;
@@ -38,36 +36,15 @@ interface VibecoderHeaderProps {
   onSignOut?: () => void;
 }
 
-// Tab button component for the view switcher
-function TabButton({ 
-  mode, 
-  icon: Icon, 
-  label, 
-  isActive, 
-  onClick,
-  activeClass = "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-}: { 
-  mode: ViewMode; 
-  icon: React.ElementType; 
-  label: string; 
-  isActive: boolean; 
-  onClick: () => void;
-  activeClass?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-        isActive 
-          ? activeClass 
-          : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-      }`}
-    >
-      <Icon className="w-3.5 h-3.5" />
-      {label}
-    </button>
-  );
-}
+// Tab config for the icon pill switcher
+const TAB_CONFIG: { mode: ViewMode; icon: React.ElementType; label: string; activeColor: string }[] = [
+  { mode: 'preview', icon: Eye, label: 'Preview', activeColor: 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' },
+  { mode: 'code', icon: Code2, label: 'Code', activeColor: 'bg-zinc-700 text-white' },
+  { mode: 'image', icon: ImageIcon, label: 'Image', activeColor: 'bg-amber-600 text-white shadow-lg shadow-amber-900/30' },
+  { mode: 'video', icon: Film, label: 'Video', activeColor: 'bg-pink-600 text-white shadow-lg shadow-pink-900/30' },
+  { mode: 'products', icon: Package, label: 'Products', activeColor: 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30' },
+  { mode: 'subscriptions', icon: Crown, label: 'Subs', activeColor: 'bg-violet-600 text-white shadow-lg shadow-violet-900/30' },
+];
 
 export function VibecoderHeader({ 
   projectName = "New Storefront",
@@ -85,26 +62,19 @@ export function VibecoderHeader({
   currentPath = "/",
   onNavigate,
   pages = [{ id: 'home', path: '/', label: 'Home' }],
-  onRegenerate,
-  isGenerating = false,
   avatarUrl,
   userCredits = 0,
   subscriptionTier,
   onSignOut,
 }: VibecoderHeaderProps) {
   const navigate = useNavigate();
-  const [isRegenerateOpen, setIsRegenerateOpen] = useState(false);
 
-  const handleRegenerate = (tweak: string) => {
-    setIsRegenerateOpen(false);
-    onRegenerate?.(tweak);
-  };
   return (
     <header className="h-14 w-full bg-zinc-950/80 backdrop-blur-sm flex items-center justify-between px-4 shrink-0 relative z-50">
-      {/* Subtle gradient separator instead of hard border */}
+      {/* Subtle gradient separator */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-zinc-700/50 to-transparent" />
       
-      {/* LEFT: Exit Button Only */}
+      {/* LEFT: Exit Button */}
       <div className="flex items-center">
         <Button 
           variant="ghost" 
@@ -117,72 +87,45 @@ export function VibecoderHeader({
         </Button>
       </div>
 
-      {/* CENTER: 4-Mode View Switcher */}
+      {/* CENTER: Icon Pill Switcher — icons only, active tab expands to show label */}
       <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-4">
-        {/* Preview/Code/Image/Video Pill */}
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-900 border border-zinc-800">
-          {/* Builder Group */}
-          <TabButton
-            mode="preview"
-            icon={Eye}
-            label="Preview"
-            isActive={viewMode === 'preview'}
-            onClick={() => setViewMode('preview')}
-            activeClass="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-          />
+        <div className="flex items-center gap-0.5 p-1 rounded-xl bg-zinc-900 border border-zinc-800">
+          {TAB_CONFIG.map((tab, idx) => {
+            const isActive = viewMode === tab.mode;
+            const Icon = tab.icon;
+            // Add dividers between groups: after Code (idx 1) and after Video (idx 3)
+            const showDivider = idx === 2 || idx === 4;
 
-          <TabButton
-            mode="code"
-            icon={Code2}
-            label="Code"
-            isActive={viewMode === 'code'}
-            onClick={() => setViewMode('code')}
-            activeClass="bg-zinc-700 text-white"
-          />
-
-          {/* Divider */}
-          <div className="w-px h-4 bg-zinc-700 mx-1" />
-
-          {/* Creative Studio Group */}
-          <TabButton
-            mode="image"
-            icon={ImageIcon}
-            label="Image"
-            isActive={viewMode === 'image'}
-            onClick={() => setViewMode('image')}
-            activeClass="bg-amber-600 text-white shadow-lg shadow-amber-900/20"
-          />
-
-          <TabButton
-            mode="video"
-            icon={Film}
-            label="Video"
-            isActive={viewMode === 'video'}
-            onClick={() => setViewMode('video')}
-            activeClass="bg-pink-600 text-white shadow-lg shadow-pink-900/20"
-          />
-
-          {/* Divider */}
-          <div className="w-px h-4 bg-zinc-700 mx-1" />
-
-          {/* Commerce Group */}
-          <TabButton
-            mode="products"
-            icon={Package}
-            label="Products"
-            isActive={viewMode === 'products'}
-            onClick={() => setViewMode('products')}
-            activeClass="bg-emerald-600 text-white shadow-lg shadow-emerald-900/20"
-          />
-
-          <TabButton
-            mode="subscriptions"
-            icon={Crown}
-            label="Subscriptions"
-            isActive={viewMode === 'subscriptions'}
-            onClick={() => setViewMode('subscriptions')}
-            activeClass="bg-violet-600 text-white shadow-lg shadow-violet-900/20"
-          />
+            return (
+              <div key={tab.mode} className="flex items-center">
+                {showDivider && <div className="w-px h-4 bg-zinc-700 mx-0.5" />}
+                <motion.button
+                  onClick={() => setViewMode(tab.mode)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg transition-colors",
+                    isActive
+                      ? cn(tab.activeColor, "px-3 py-1.5")
+                      : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 p-1.5"
+                  )}
+                  layout
+                  transition={{ type: 'spring', stiffness: 500, damping: 35, mass: 0.8 }}
+                  title={tab.label}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  {isActive && (
+                    <motion.span
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: 'auto' }}
+                      exit={{ opacity: 0, width: 0 }}
+                      className="text-xs font-bold whitespace-nowrap overflow-hidden"
+                    >
+                      {tab.label}
+                    </motion.span>
+                  )}
+                </motion.button>
+              </div>
+            );
+          })}
         </div>
 
         {/* Device Toggles (only show for preview mode) */}
@@ -225,17 +168,6 @@ export function VibecoderHeader({
             onRefresh={onRefresh} 
           />
         </div>
-
-        {/* Tweak Design Button - Never shows loading state */}
-        {!isEmpty && onRegenerate && (
-          <button 
-            onClick={() => setIsRegenerateOpen(true)}
-            className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-lg text-xs font-bold text-zinc-300 transition-all"
-          >
-            <RefreshCw size={12} />
-            <span>Tweak</span>
-          </button>
-        )}
 
         {/* View Live Button */}
         {isPublished && username && (
@@ -288,14 +220,6 @@ export function VibecoderHeader({
           />
         )}
       </div>
-
-      {/* Regenerate Modal */}
-      <RegenerateModal 
-        isOpen={isRegenerateOpen}
-        onClose={() => setIsRegenerateOpen(false)}
-        onConfirm={handleRegenerate}
-        isGenerating={isGenerating}
-      />
     </header>
   );
 }
