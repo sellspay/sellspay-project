@@ -102,6 +102,12 @@ export function useVibecoderProjects() {
   // Track previous project to detect actual changes
   const prevProjectIdRef = useRef<string | null>(null);
 
+  // RACE CONDITION GUARD: When a project is freshly created via heroOnStart,
+  // the loadMessages effect fires but the DB insert hasn't completed yet.
+  // This causes setMessages([]) which wipes the optimistic message.
+  // Skip the first load for freshly created projects.
+  const skipNextLoadRef = useRef<string | null>(null);
+
   // Load messages when active project changes
   useEffect(() => {
     // Only clear messages if we're switching to a DIFFERENT project
@@ -120,6 +126,13 @@ export function useVibecoderProjects() {
       return;
     }
 
+    // If this project was just created and we should skip the initial load
+    if (skipNextLoadRef.current === activeProjectId) {
+      skipNextLoadRef.current = null;
+      setMessagesLoading(false);
+      return;
+    }
+
     const loadMessages = async () => {
       setMessagesLoading(true);
       const { data, error } = await supabase
@@ -131,8 +144,23 @@ export function useVibecoderProjects() {
       if (error) {
         console.error('Failed to load messages:', error);
       } else {
-        const next = dedupeConsecutiveMessages(data as VibecoderMessage[]);
-        setMessages(next);
+        // MERGE GUARD: If there are already optimistic messages in state
+        // (e.g. from heroOnStart), don't wipe them with an empty DB result.
+        setMessages(prev => {
+          const hasOptimistic = prev.some(m => m.id.startsWith('optimistic-'));
+          if (hasOptimistic && (data || []).length === 0) {
+            // DB is empty but we have optimistic messages — keep them
+            return prev;
+          }
+          const next = dedupeConsecutiveMessages(data as VibecoderMessage[]);
+          // If we have optimistic messages that aren't in DB yet, merge them
+          if (hasOptimistic) {
+            const dbIds = new Set(next.map(m => m.id));
+            const optimisticToKeep = prev.filter(m => m.id.startsWith('optimistic-') && !dbIds.has(m.id));
+            return dedupeConsecutiveMessages([...next, ...optimisticToKeep]);
+          }
+          return next;
+        });
       }
       setMessagesLoading(false);
     };
@@ -141,7 +169,9 @@ export function useVibecoderProjects() {
   }, [activeProjectId]);
 
   // Create new project (can be called explicitly or auto-created on first prompt)
-  const createProject = useCallback(async (name?: string) => {
+  // skipInitialLoad: when true, skips the message-loading useEffect for this project
+  // (used by heroOnStart to prevent race condition with optimistic messages)
+  const createProject = useCallback(async (name?: string, skipInitialLoad?: boolean) => {
     if (!user) return null;
 
     // Generate a timestamp-based name if not provided
@@ -162,6 +192,12 @@ export function useVibecoderProjects() {
     }
 
     const newProject = data as VibecoderProject;
+    
+    // If skipInitialLoad, mark this project so loadMessages skips the first run
+    if (skipInitialLoad) {
+      skipNextLoadRef.current = newProject.id;
+    }
+    
     setProjects(prev => [newProject, ...prev]);
     setActiveProjectId(newProject.id);
     setMessages([]); // Clear messages for new project
@@ -176,10 +212,11 @@ export function useVibecoderProjects() {
 
   // Auto-create project if needed (called when user sends first message with no active project)
   // Accepts an optional name derived from the first prompt for smart project naming
-  const ensureProject = useCallback(async (promptBasedName?: string): Promise<string | null> => {
+  // skipInitialLoad: forwarded to createProject to prevent race with optimistic messages
+  const ensureProject = useCallback(async (promptBasedName?: string, skipInitialLoad?: boolean): Promise<string | null> => {
     if (activeProjectId) return activeProjectId;
 
-    const newProject = await createProject(promptBasedName);
+    const newProject = await createProject(promptBasedName, skipInitialLoad);
     return newProject?.id ?? null;
   }, [activeProjectId, createProject]);
 

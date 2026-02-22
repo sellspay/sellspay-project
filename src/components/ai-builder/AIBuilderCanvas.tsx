@@ -1466,7 +1466,8 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
     const projectName = prompt.split(/\s+/).slice(0, 5).join(' ');
 
     // 2. Create the project (this sets activeProjectId + updates URL)
-    const newProjectId = await ensureProject(projectName);
+    // skipInitialLoad=true prevents the message-loading effect from wiping our optimistic message
+    const newProjectId = await ensureProject(projectName, true);
     if (!newProjectId) {
       toast.error('Failed to create project');
       return;
