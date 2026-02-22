@@ -191,25 +191,46 @@ body > div[style*="position: fixed"][style*="top: 0"] {
 
 /**
  * SellsPay Unified Checkout Hook
- * This is a preview mock. In production, this triggers the real checkout.
+ * Handles product navigation safely from inside Sandpack iframes.
+ * Uses window.open() to avoid cross-origin security errors.
  */
 export function useSellsPayCheckout() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const buyProduct = async (productId: string) => {
     setIsProcessing(true);
-    console.log('[SellsPay Preview] Checkout triggered for:', productId);
-    
-    // Simulate checkout delay
-    setTimeout(() => {
-      setIsProcessing(false);
-      // Use window.top to break out of iframe
-      if (window.top) {
-        window.top.location.href = '/product/' + productId;
-      } else {
-        window.location.href = '/product/' + productId;
+    console.log('[SellsPay] Navigating to product:', productId);
+
+    // Determine the real site origin.
+    // Inside Sandpack the iframe origin is codesandbox.io, so we
+    // try to read the parent origin via referrer or fall back to
+    // a well-known production URL.
+    let siteOrigin = '';
+    try {
+      // document.referrer gives us the parent page URL
+      if (document.referrer) {
+        const ref = new URL(document.referrer);
+        siteOrigin = ref.origin;
       }
-    }, 500);
+    } catch {}
+
+    // Fallback: if no referrer, use current origin (works when not in iframe)
+    if (!siteOrigin) {
+      siteOrigin = window.location.origin;
+    }
+
+    const productUrl = siteOrigin + '/product/' + productId;
+
+    // Use window.open to safely navigate out of the Sandpack iframe.
+    // This works in both preview (AI builder) and published storefronts.
+    try {
+      window.open(productUrl, '_top');
+    } catch {
+      // Fallback: open in new tab if _top is blocked
+      window.open(productUrl, '_blank');
+    }
+
+    setTimeout(() => setIsProcessing(false), 500);
   };
 
   const triggerCheckout = buyProduct; // Alias for backwards compatibility
@@ -234,11 +255,21 @@ export function useSalesPayCheckout() {
 
   const triggerCheckout = (productId?: string) => {
     setIsProcessing(true);
-    console.log('[SalesPay Preview] Checkout triggered for:', productId);
-    setTimeout(() => {
-      setIsProcessing(false);
-      alert('SalesPay Checkout: This is a demo transaction.');
-    }, 1000);
+    console.log('[SalesPay] Navigating to product:', productId);
+
+    let siteOrigin = '';
+    try {
+      if (document.referrer) {
+        const ref = new URL(document.referrer);
+        siteOrigin = ref.origin;
+      }
+    } catch {}
+    if (!siteOrigin) siteOrigin = window.location.origin;
+
+    const url = productId ? siteOrigin + '/product/' + productId : siteOrigin;
+    try { window.open(url, '_top'); } catch { window.open(url, '_blank'); }
+
+    setTimeout(() => setIsProcessing(false), 500);
   };
 
   const buyProduct = triggerCheckout;
