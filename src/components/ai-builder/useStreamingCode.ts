@@ -328,6 +328,48 @@ interface TsxValidationResult {
   line?: number;
 }
 
+/**
+ * LAYOUT HIERARCHY ENFORCER
+ * Ensures the Hero section is ALWAYS rendered before any <nav> or <header> tag.
+ * This prevents the AI from generating nav-above-hero layouts.
+ */
+const enforceHeroFirstLayout = (src: string): TsxValidationResult | null => {
+  // Find the return statement's JSX — look for the first JSX-like content after "return ("
+  const returnMatch = src.match(/return\s*\(\s*/);
+  if (!returnMatch || returnMatch.index === undefined) return null;
+  
+  const jsxStart = returnMatch.index + returnMatch[0].length;
+  const jsxContent = src.substring(jsxStart);
+  
+  // Find positions of nav/header tags and hero-like sections in the JSX
+  // Nav patterns: <nav, <header, <Navigation, <Navbar, <Header
+  const navPattern = /<(?:nav|header|Navigation|Navbar|Header)[\s>\/]/;
+  const navMatch = jsxContent.match(navPattern);
+  
+  // Hero patterns: hero in className, id="hero", <Hero, section with hero
+  const heroPattern = /(?:className=["'][^"']*hero[^"']*["']|id=["']hero["']|<Hero[\s>\/]|{\/\*.*hero.*\*\/})/i;
+  const heroMatch = jsxContent.match(heroPattern);
+  
+  if (!navMatch || !heroMatch) return null; // Can't determine — let it pass
+  
+  const navIndex = navMatch.index ?? Infinity;
+  const heroIndex = heroMatch.index ?? Infinity;
+  
+  // If nav appears BEFORE hero in the JSX, it's a violation
+  if (navIndex < heroIndex) {
+    // Count line number for the nav tag
+    const upToNav = src.substring(0, jsxStart + navIndex);
+    const lineNum = (upToNav.match(/\n/g) || []).length + 1;
+    return {
+      valid: false,
+      reason: `Layout violation: Navigation/header appears before the Hero section. Hero MUST be the first element. Move the nav below the hero.`,
+      line: lineNum,
+    };
+  }
+  
+  return null; // Hero is first — all good
+};
+
 const validateTsx = (code: string): TsxValidationResult => {
   const src = (code ?? '').trim();
   if (!src) return { valid: false, reason: 'Code is empty' };
@@ -337,6 +379,13 @@ const validateTsx = (code: string): TsxValidationResult => {
   const banned = detectBannedImports(src);
   if (banned) {
     return { valid: false, reason: `Banned import detected: ${banned.label}`, line: banned.line };
+  }
+
+  // ═══ LAYOUT HIERARCHY CHECK: Hero must come before Nav ═══
+  // Find the first <nav or <header tag vs the first hero-like section in JSX
+  const layoutCheck = enforceHeroFirstLayout(src);
+  if (layoutCheck) {
+    return layoutCheck;
   }
 
   // Common truncation symptom
