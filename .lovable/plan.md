@@ -1,198 +1,168 @@
 
-# Reliable Multi-File Generation + Auto-Repair Pipeline
+# Thumbnail Capture Pipeline + Doorway UX Upgrade
 
 ## Overview
 
-This overhaul addresses 6 interconnected problems by making 3 core architectural changes: (1) switch code output from raw streaming deltas to atomic JSON file maps, (2) add auto-repair on validation failure, and (3) fix the false denial from overly aggressive layout enforcement.
+Two changes: (1) capture real screenshots from the Sandpack preview so project cards show actual UI instead of the generic "WELCOME TO MY STORE" placeholder, and (2) upgrade the doorway (LovableHero) layout to include a persistent sidebar and tabbed project shelf for a more premium feel.
 
-## Problem Diagnosis
+## Current State
 
-| Symptom | Root Cause |
-|---------|------------|
-| "storefront preserved" on valid requests | `code_chunk` deltas get truncated mid-stream, causing bracket imbalance in `validateTsx()` |
-| No file tabs in Sandpack | System prompt outputs single monolithic TSX; `processContent()` treats `=== CODE ===` as one blob |
-| False denial (promo banner blocked) | `enforceHeroFirstLayout()` in `validateTsx` flags any `<nav>/<header>` before a `hero` className, even when the element isn't navigation |
-| Project code vanishes after reload | `files_snapshot` is never populated because multi-file output never happens; only `code_snapshot` (single string) is saved |
-| Validation failures loop forever | No auto-repair: if validation fails, user sees error with no recovery |
-| Analyzer suggestions not reaching chips | Already wired but the analyzer `analysis` object isn't passed into the main SSE stream (it's scoped to the question-branch only) |
+- `vibecoder_projects` table already has a `thumbnail_url` column (confirmed in types.ts and useVibecoderProjects.ts)
+- `LovableHero.tsx` already renders thumbnails when `thumbnail_url` is present (line 335), but falls back to a static placeholder (lines 342-361) that looks identical for every project
+- No capture pipeline exists -- `thumbnail_url` is never populated
+- The doorway is a single centered column layout (prompt + suggestion chips + horizontal scroll of recent projects)
+- `VibecoderPreview` has an `onReady` callback that fires when Sandpack finishes rendering
+- The Sandpack iframe is cross-origin (codesandbox.io), so direct DOM access from the parent is impossible
 
-## Changes
+## Part 1: Thumbnail Capture Pipeline
 
-### 1. Backend: JSON Files Output Format
+### Approach
 
-**File:** `supabase/functions/vibecoder-v2/index.ts`
+Since the Sandpack iframe is cross-origin, we cannot use `html2canvas` from the parent. Instead, we inject a small capture script into the Sandpack file map that runs inside the iframe and sends the screenshot back via `postMessage`.
 
-**A) Update CODE_EXECUTOR_PROMPT** (lines ~697-725)
+### A) Inject capture helper into Sandpack files
 
-Replace the structured response format instructions so the `=== CODE ===` section contains a JSON file map instead of raw TSX:
+**File:** `src/components/ai-builder/VibecoderPreview.tsx`
 
-```
-=== CODE ===
-{
-  "files": {
-    "/App.tsx": "import React from 'react';\nimport { NavBar } from './components/NavBar';\n...",
-    "/components/NavBar.tsx": "export function NavBar() { ... }",
-    "/sections/Hero.tsx": "export function Hero() { ... }"
-  }
-}
-```
+Add a new hidden file to the Sandpack file map (`/utils/capture.ts`) that:
+- Listens for a `postMessage` from the parent requesting a capture
+- Finds the hero element (`[data-hero="true"]`) or falls back to the top 900px of `document.body`
+- Uses the Canvas API to draw the visible viewport to a canvas
+- Converts to a JPEG blob via `canvas.toBlob()`
+- Sends the blob back to the parent via `postMessage` (transferring the ArrayBuffer)
 
-Add explicit file structure rules:
-- `/App.tsx` is the router/compositor (imports components, never contains full sections inline)
-- `/components/*.tsx` for reusable UI (NavBar, Footer, ProductCard)
-- `/sections/*.tsx` for page sections (Hero, Products, FAQ)
-- Each file must be a valid standalone React component with its own imports
-- NO markdown fences inside the JSON values
-- The sentinel `// --- VIBECODER_COMPLETE ---` goes inside `/App.tsx` content only
+The script is lightweight (~40 lines) and only activates when it receives the capture message, so it has zero impact on normal preview performance.
 
-**B) Replace `processContent()` CODE section** (lines 1844-1861)
+Import the capture script from `/index.tsx` so it runs automatically.
 
-Instead of streaming raw code deltas, accumulate the `=== CODE ===` section and only emit once the `=== SUMMARY ===` marker appears (meaning the JSON is complete):
+### B) Parent-side capture orchestration
 
-```text
-When === SUMMARY === is detected:
-  1. Extract the text between === CODE === and === SUMMARY ===
-  2. Strip markdown fences if present
-  3. JSON.parse() the content
-  4. If parse succeeds: emit `event: files` with { projectFiles: parsed.files }
-  5. If parse fails: emit `event: code_chunk` with raw content (legacy fallback)
-```
+**File:** `src/components/ai-builder/hooks/useThumbnailCapture.ts` (new)
 
-During streaming (before SUMMARY marker), emit a progress indicator instead of partial code:
-```text
-event: code_progress
-data: { "bytes": 1234 }
-```
+A custom hook that:
+1. Listens for `message` events from the Sandpack iframe containing screenshot data
+2. When received, creates a Blob from the ArrayBuffer
+3. Uploads to the `site-assets` storage bucket (already exists and is public) at path `project-thumbs/{projectId}/hero.jpg`
+4. Updates `vibecoder_projects.thumbnail_url` with the public URL
+5. Updates local state so the doorway cards refresh immediately
 
-This prevents partial/broken code from ever reaching the frontend.
-
-**C) Pass analyzer suggestions into the main stream** (around line 1660)
-
-The current code runs the analyzer but only uses its results in the question-branch. When no questions are needed, the suggestions are lost. Fix: store `analysis.suggestions` in a variable and emit them in the main SSE stream's `start()` function.
-
-### 2. Backend: Auto-Repair on Validation Failure
-
-**File:** `supabase/functions/vibecoder-v2/index.ts` (new function + integration in finalization)
-
-After JSON parse of the files map, validate each `.tsx` file using the same structural checks. If any file fails:
-
-1. Call Gemini (gemini-2.5-flash, fast/free) with a repair prompt:
-   - Include the broken file content
-   - Include the exact validation error (reason + line)
-   - Ask it to return ONLY the corrected file content
-2. Replace the broken file in the map
-3. Re-validate
-4. If still broken after 1 retry, emit `event: error` with the validation details
-
-This happens server-side before the `event: files` is emitted, so the frontend only ever receives valid code.
-
-### 3. Frontend: Handle `event: files` and Multi-File State
-
-**File:** `src/components/ai-builder/useStreamingCode.ts`
-
-**A) New SSE case in `processSSELine()`** (after line 844):
-
-```typescript
-case 'files': {
-  const projectFiles = data.projectFiles || data.files || {};
-  if (Object.keys(projectFiles).length > 0) {
-    setState(prev => ({ ...prev, files: projectFiles, code: '' }));
-    // Extract App.tsx for backward compat
-    const appCode = projectFiles['/App.tsx'] || projectFiles['App.tsx'] || '';
-    if (appCode) {
-      lastGoodCodeRef.current = appCode;
-    }
-    options.onComplete?.(appCode);
-  }
-  break;
-}
-case 'code_progress': {
-  // Visual feedback during generation (no code applied)
-  break;
-}
-```
-
-**B) Skip legacy finalization when files exist** (around line 978):
-
-After the streaming loop, check if `state.files` has been populated by the `files` event. If so, skip the entire `extractCodeFromRaw` / `validateTsx` / `safeApply` pipeline -- the code was already validated server-side and applied atomically.
-
-```typescript
-// After streaming loop ends:
-if (Object.keys(stateRef.current.files).length > 0) {
-  // Multi-file mode: code was applied atomically via 'files' event
-  setState(prev => ({ ...prev, isStreaming: false }));
-  return lastGoodCodeRef.current;
-}
-// ... existing single-file finalization below
-```
-
-**C) Wire `files` into persistence** -- When `onComplete` fires with multi-file data, the caller (`AIBuilderCanvas`) should save `files_snapshot` to the database alongside `code_snapshot`.
-
-### 4. Fix False Denial (Layout Enforcer)
-
-**File:** `src/components/ai-builder/useStreamingCode.ts` (lines 339-374)
-
-The `enforceHeroFirstLayout()` function is too aggressive. It matches `<header>` which could be a semantic HTML element (not navigation), and it doesn't account for promo banners, alerts, or announcement bars above the hero.
-
-**Fix:** Narrow the pattern to only match actual navigation components:
-
-```typescript
-// Only match actual navigation patterns, not generic HTML5 elements
-const navPattern = /<(?:nav|Navigation|Navbar|NavBar|SiteNav|MainNav)[\s>\/]/;
-// Remove <header> and <Header> from the pattern -- these are valid above hero
-```
-
-This stops promo banners, announcement bars, and `<header>` elements from being falsely rejected.
-
-### 5. System Prompt: Multi-File Structure Rules
-
-**File:** `supabase/functions/vibecoder-v2/index.ts` (CODE_EXECUTOR_PROMPT)
-
-Add a new section to the system prompt enforcing modular file output:
-
-```
-FILE STRUCTURE PROTOCOL (MANDATORY FOR ALL BUILDS):
-When building a NEW storefront (BUILD intent), split into files:
-  /App.tsx - Router + layout compositor (imports sections/components)
-  /components/NavBar.tsx - Navigation bar
-  /components/Footer.tsx - Footer
-  /sections/Hero.tsx - Hero section
-  /sections/[Name].tsx - Each major section
-  
-When MODIFYING, only output the changed file(s).
-Keep each file under 150 lines.
-
-The === CODE === section must contain ONLY a JSON object:
-{
-  "files": {
-    "/App.tsx": "<full file content>",
-    "/components/NavBar.tsx": "<full file content>"
-  }
-}
-```
-
-### 6. Persist Multi-File Snapshots
+### C) Trigger capture at the right moments
 
 **File:** `src/components/ai-builder/AIBuilderCanvas.tsx`
 
-When `addMessage()` is called after a successful generation, pass the `files` map as `filesSnapshot` so it gets stored in `vibecoder_messages.files_snapshot`. On project reload, the `getLastFilesSnapshot()` function (already implemented in `useVibecoderProjects.ts`) will restore the full file map.
+Call the capture function:
+- When `onReady` fires after a successful generation (streaming completes + preview renders)
+- Debounced by 2 seconds to ensure the preview has stabilized
+- Only when `!isStreaming` and the project has real code (not the default scaffold)
+
+The flow:
+```text
+Generation completes
+  -> onReady fires from Sandpack
+  -> 2s debounce
+  -> Parent sends "capture" postMessage to iframe
+  -> Iframe captures viewport, sends ArrayBuffer back
+  -> Parent uploads to storage
+  -> Updates thumbnail_url in DB
+  -> Local project state updates
+  -> Doorway cards show real screenshot
+```
+
+### D) Fallback for projects without screenshots
+
+**File:** `src/components/ai-builder/LovableHero.tsx`
+
+Replace the current static "WELCOME TO MY STORE" placeholder with a unique gradient seeded by `projectId`. This ensures that even before capture runs, no two project cards look identical.
+
+Use a simple hash of the project ID to pick from a set of 6-8 gradient combinations (e.g., orange-to-purple, blue-to-teal, rose-to-amber).
+
+### E) System prompt convention
+
+**File:** `supabase/functions/vibecoder-v2/index.ts`
+
+Add to the CODE_EXECUTOR_PROMPT: "The hero section element MUST include the attribute `data-hero=\"true\"` on its outermost wrapper div."
+
+This makes capture targeting reliable.
+
+## Part 2: Doorway UX Upgrade
+
+### A) New sidebar component for the doorway
+
+**File:** `src/components/ai-builder/DoorwaySidebar.tsx` (new)
+
+A persistent left sidebar (~260px) visible only on the doorway screen. Contains:
+- **Top section:** App logo/wordmark
+- **Navigation:**
+  - Home (active by default)
+  - My Projects (navigates to filtered view)
+  - Templates (future -- shows as "Coming soon" badge)
+- **Project list:** Last 5 projects as compact items with folder icon + name + relative time
+- **Bottom:** Credit balance display + "New Project" button
+- Collapsible on mobile (hamburger trigger)
+
+### B) Tabbed project shelf
+
+**File:** `src/components/ai-builder/ProjectShelf.tsx` (new)
+
+A bottom shelf component replacing the current inline `recentProjects` section in LovableHero. Features:
+- **Tabs:** "Recent" | "My Projects" | "Starred" (starred is future, greyed out)
+- **Card grid:** Horizontal scroll with snap behavior, 4-5 cards visible on desktop
+- Each card shows:
+  - Thumbnail image (real screenshot or seeded gradient fallback)
+  - Project name (truncated)
+  - Relative timestamp ("2 hours ago")
+  - Published badge (if published)
+- "Browse all" link on the right (scrolls to show more or opens sidebar projects view)
+
+### C) Refactor LovableHero layout
+
+**File:** `src/components/ai-builder/LovableHero.tsx`
+
+Restructure from single centered column to a sidebar + main layout:
+
+```text
++------------------+----------------------------------------+
+|                  |                                        |
+|  DoorwaySidebar  |   Hero prompt area (centered)          |
+|                  |   - Pill badge                         |
+|  - Logo          |   - Headline                           |
+|  - Nav items     |   - Input bar                          |
+|  - Recent list   |   - Suggestion chips                   |
+|  - Credits       |                                        |
+|                  |   ProjectShelf (bottom)                |
+|                  |   - Tabs + scrollable cards            |
++------------------+----------------------------------------+
+```
+
+- The background image and overlay remain on the main area only
+- Sidebar has a solid dark background (zinc-950) with subtle right border
+- On mobile (< 768px), sidebar collapses to a hamburger menu
+
+### D) Visual polish
+
+- Cards: `rounded-2xl` with `hover:scale-[1.02]` and `hover:shadow-lg`
+- Shelf area: slightly darker base (`bg-black/40 backdrop-blur-sm`) for grouping contrast
+- Typography: reduce headline size slightly to `text-3xl md:text-4xl` to make room for shelf
+- Prompt input: add subtle `backdrop-blur-xl` for glass effect (already partially there)
+- Project cards: add a subtle gradient overlay at the bottom for text readability over thumbnails
 
 ## Implementation Order
 
-1. Edge function: Update system prompt for JSON files output format
-2. Edge function: Replace `processContent()` CODE section with JSON parse + `event: files`
-3. Edge function: Add auto-repair function
-4. Edge function: Pass analyzer suggestions to main stream
-5. Frontend: Add `files` case to `processSSELine()`
-6. Frontend: Skip legacy finalization when files exist
-7. Frontend: Fix `enforceHeroFirstLayout()` false positives
-8. Frontend: Wire `files_snapshot` persistence in `AIBuilderCanvas`
-9. Deploy edge function and test end-to-end
+1. Inject capture script into Sandpack file map (VibecoderPreview.tsx)
+2. Create `useThumbnailCapture` hook
+3. Wire capture trigger in AIBuilderCanvas.tsx (onReady + debounce)
+4. Replace static placeholder with seeded gradient fallback (LovableHero.tsx)
+5. Add `data-hero="true"` convention to system prompt
+6. Create `DoorwaySidebar.tsx` component
+7. Create `ProjectShelf.tsx` component
+8. Refactor `LovableHero.tsx` to use new sidebar + shelf layout
+9. Test end-to-end: generate a project, verify thumbnail appears on doorway
 
 ## Technical Notes
 
-- The `parseMultiFileOutput()` function (lines 84-125 of useStreamingCode.ts) already exists but uses a different marker format (`/// BEGIN_FILES ///`). The new approach uses JSON directly, which is more robust and doesn't require custom parsing.
-- The `ProjectFiles` type and `SandpackRenderer` multi-file support are already fully implemented in `VibecoderPreview.tsx` (lines 344-439). No changes needed there.
-- The `files_snapshot` column already exists in `vibecoder_messages` and is handled by `useVibecoderProjects.ts`. No database changes needed.
-- Credit cost is unchanged -- the auto-repair call uses `gemini-2.5-flash` which is free in the current pricing model.
-- Legacy single-file output remains supported as a fallback: if JSON parse fails, the system falls back to the existing `code_chunk` behavior.
+- No new storage bucket needed -- `site-assets` is already public and suitable for thumbnails
+- No database migration needed -- `thumbnail_url` column already exists on `vibecoder_projects`
+- The capture script inside Sandpack uses the native Canvas API (no external library needed) -- it renders the iframe's own viewport via `document.documentElement` scroll capture
+- `postMessage` with `ArrayBuffer` transfer is efficient and avoids base64 overhead
+- The capture JPEG quality is set to 0.7 for a good size/quality tradeoff (~30-80KB per thumbnail)
+- Mobile doorway: sidebar becomes a slide-out drawer, shelf stacks vertically with 2-column grid
