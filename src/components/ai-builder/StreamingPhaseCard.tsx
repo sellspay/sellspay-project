@@ -1,3 +1,4 @@
+import React, { forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, CheckCircle2, Code2, Brain, ListChecks, Sparkles, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,13 +21,14 @@ interface StreamingPhaseCardProps {
   className?: string;
 }
 
-export function StreamingPhaseCard({ data, className }: StreamingPhaseCardProps) {
+export const StreamingPhaseCard = forwardRef<HTMLDivElement, StreamingPhaseCardProps>(
+  ({ data, className }, ref) => {
   const { phase, analysisText, planItems, completedPlanItems = 0, summaryText, elapsedSeconds = 0, confidenceScore, confidenceReason } = data;
 
   if (phase === 'idle') return null;
 
   return (
-    <div className={cn("space-y-3 mb-6", className)}>
+    <div ref={ref} className={cn("space-y-3 mb-6", className)}>
       <AnimatePresence mode="popLayout">
         {/* ANALYZING PHASE: Streaming text bubble */}
         {(phase === 'analyzing' || analysisText) && (
@@ -214,4 +216,7 @@ export function StreamingPhaseCard({ data, className }: StreamingPhaseCardProps)
       </AnimatePresence>
     </div>
   );
-}
+  }
+);
+
+StreamingPhaseCard.displayName = "StreamingPhaseCard";
