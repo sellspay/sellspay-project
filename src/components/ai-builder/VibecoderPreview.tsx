@@ -637,7 +637,8 @@ export function VibecoderPreview({
       const msg = event.data;
       if (!msg || msg.type !== 'VIBECODER_NAVIGATE') return;
       if (typeof msg.url !== 'string') return;
-      window.open(msg.url, '_blank', 'noopener,noreferrer');
+      const target = msg.target === '_self' ? '_self' : '_blank';
+      window.open(msg.url, target, target === '_blank' ? 'noopener,noreferrer' : '');
     };
     window.addEventListener('message', onNavMessage);
     return () => window.removeEventListener('message', onNavMessage);
