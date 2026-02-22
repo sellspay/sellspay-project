@@ -1,3 +1,4 @@
+import React, { forwardRef } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,11 +17,8 @@ interface RevertConfirmDialogProps {
   onConfirm: () => void;
 }
 
-export function RevertConfirmDialog({ 
-  open, 
-  onOpenChange, 
-  onConfirm 
-}: RevertConfirmDialogProps) {
+export const RevertConfirmDialog = forwardRef<HTMLDivElement, RevertConfirmDialogProps>(
+  ({ open, onOpenChange, onConfirm }, ref) => {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
@@ -51,4 +49,7 @@ export function RevertConfirmDialog({
       </AlertDialogContent>
     </AlertDialog>
   );
-}
+  }
+);
+
+RevertConfirmDialog.displayName = "RevertConfirmDialog";
