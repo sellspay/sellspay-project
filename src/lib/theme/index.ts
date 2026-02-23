@@ -8,3 +8,6 @@ export { detectVibeFromPrompt, mergeVibeSignals } from './vibe-from-text';
 export { generateGradient, getGlassTokens, gradientAndGlassToCSSString, type GlassTokens } from './theme-gradient-glass';
 export { type ThemeScope, shouldApplyTheme, getScopeTarget, tagThemeScope } from './theme-scope';
 export { exportTheme, importTheme, downloadThemeFile, copyThemeToClipboard, type ExportedTheme } from './theme-export';
+export { type SectionTone, type SectionRole, SECTION_TONE_MAP, getSectionToneClass, toneForSection } from './section-tones';
+export { type DesignProfile, loadDesignProfile, saveDesignProfile, learnFromEdit } from './design-memory';
+export { type VibeRefinement, REFINEMENT_LABELS, refineTheme } from './vibe-refine';

@@ -268,6 +268,18 @@ export function applyVibeToTheme(
   };
   clone.transitionSpeed = motionMap[vibe] ?? '200ms';
 
+  // ─── Density / section padding ────────────────────────────────
+  const densityMap: Record<ThemeVibe, string> = {
+    luxury: '120px',
+    cyberpunk: '60px',
+    playful: '80px',
+    editorial: '100px',
+    minimal: '80px',
+    corporate: '80px',
+    modern: '80px',
+  };
+  clone.sectionPadding = densityMap[vibe] ?? '80px';
+
   // ─── Texture overlay ─────────────────────────────────────────
   const textureMap: Record<ThemeVibe, string> = {
     luxury: 'noise',
@@ -279,6 +291,18 @@ export function applyVibeToTheme(
     modern: 'noise',
   };
   clone.textureOverlay = textureMap[vibe] ?? 'none';
+
+  // ─── CTA style per vibe ──────────────────────────────────────
+  const ctaMap: Record<ThemeVibe, string> = {
+    luxury: 'outline-gold',
+    cyberpunk: 'glow',
+    playful: 'rounded-gradient',
+    editorial: 'underline',
+    minimal: 'flat',
+    corporate: 'solid',
+    modern: 'default',
+  };
+  clone.ctaStyle = ctaMap[vibe] ?? 'default';
 
   return clone;
 }

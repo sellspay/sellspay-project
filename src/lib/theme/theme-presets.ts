@@ -50,7 +50,9 @@ function makeTokens(partial: Partial<ThemeTokens>): ThemeTokens {
     letterSpacingHeading: '0.01em',
     radiusScale: '0.75rem',
     transitionSpeed: '200ms',
+    sectionPadding: '80px',
     textureOverlay: 'noise',
+    ctaStyle: 'default',
     ...partial,
   };
 }

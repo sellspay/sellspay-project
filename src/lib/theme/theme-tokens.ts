@@ -64,8 +64,14 @@ export type ThemeTokens = {
   // Motion
   transitionSpeed: string;
 
+  // Density
+  sectionPadding: string;
+
   // Texture
   textureOverlay: string;
+
+  // CTA style hint
+  ctaStyle: string;
 };
 
 /** CSS variable name mapping */
@@ -106,5 +112,7 @@ export const TOKEN_TO_CSS_VAR: Record<keyof ThemeTokens, string> = {
   letterSpacingHeading: '--letter-spacing-heading',
   radiusScale: '--radius',
   transitionSpeed: '--transition-speed',
+  sectionPadding: '--section-padding',
   textureOverlay: '--texture-overlay',
+  ctaStyle: '--cta-style',
 };
