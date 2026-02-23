@@ -10,6 +10,7 @@ export interface VibecoderProject {
   user_id: string;
   name: string;
   thumbnail_url: string | null;
+  is_starred: boolean;
   created_at: string;
   last_edited_at: string;
 }
@@ -584,6 +585,34 @@ export function useVibecoderProjects() {
     window.history.replaceState(null, '', url.toString());
   }, []);
 
+  // Toggle star on a project
+  const toggleStar = useCallback(async (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return false;
+
+    const newValue = !project.is_starred;
+
+    // Optimistic update
+    setProjects(prev => prev.map(p =>
+      p.id === projectId ? { ...p, is_starred: newValue } : p
+    ));
+
+    const { error } = await supabase
+      .from('vibecoder_projects')
+      .update({ is_starred: newValue })
+      .eq('id', projectId);
+
+    if (error) {
+      console.error('Failed to toggle star:', error);
+      // Revert
+      setProjects(prev => prev.map(p =>
+        p.id === projectId ? { ...p, is_starred: !newValue } : p
+      ));
+      return false;
+    }
+    return true;
+  }, [projects]);
+
   return {
     projects,
     activeProjectId,
@@ -604,9 +633,9 @@ export function useVibecoderProjects() {
     getPreviousCodeSnapshot,
     restoreToVersion,
     refreshMessages,
-    // New undo functionality
     undoLastChange,
     getLastSafeVersion,
     canUndo,
+    toggleStar,
   };
 }

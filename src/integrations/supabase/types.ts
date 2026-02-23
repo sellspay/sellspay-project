@@ -3361,6 +3361,7 @@ export type Database = {
           files: Json | null
           id: string
           is_broken: boolean | null
+          is_starred: boolean
           last_edited_at: string
           last_success_at: string | null
           name: string | null
@@ -3373,6 +3374,7 @@ export type Database = {
           files?: Json | null
           id?: string
           is_broken?: boolean | null
+          is_starred?: boolean
           last_edited_at?: string
           last_success_at?: string | null
           name?: string | null
@@ -3385,6 +3387,7 @@ export type Database = {
           files?: Json | null
           id?: string
           is_broken?: boolean | null
+          is_starred?: boolean
           last_edited_at?: string
           last_success_at?: string | null
           name?: string | null

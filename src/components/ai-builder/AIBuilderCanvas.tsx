@@ -238,6 +238,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     restoreToVersion,
     canUndo,
     undoLastChange,
+    toggleStar,
   } = useVibecoderProjects();
   
   // Theme persistence is now handled by ThemeProvider — no manual localStorage here
@@ -1731,6 +1732,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
         variant="fullscreen"
         recentProjects={projects}
         onSelectProject={selectProject}
+        onToggleStar={toggleStar}
         userCredits={userCredits}
         avatarUrl={userAvatarUrl}
         subscriptionTier={subscriptionTier}
