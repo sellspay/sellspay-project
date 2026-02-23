@@ -35,11 +35,6 @@ export function clearTheme(root?: HTMLElement) {
   for (const cssVar of Object.values(TOKEN_TO_CSS_VAR)) {
     el.style.removeProperty(cssVar);
   }
-  // Also clear gradient/glass vars
-  el.style.removeProperty('--vibe-gradient');
-  el.style.removeProperty('--glass-opacity');
-  el.style.removeProperty('--glass-blur');
-  el.style.removeProperty('--glass-border');
 }
 
 /**
@@ -102,7 +97,7 @@ export function themeToCSSString(theme: ThemeTokens): string {
       lines.push(`  ${cssVar}: ${value};`);
     }
   }
-  return `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}`;
+  return `:root {\n${lines.join('\n')}\n}`;
 }
 
 /**

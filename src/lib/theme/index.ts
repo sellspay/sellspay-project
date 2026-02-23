@@ -11,3 +11,5 @@ export { exportTheme, importTheme, downloadThemeFile, copyThemeToClipboard, type
 export { type SectionTone, type SectionRole, SECTION_TONE_MAP, getSectionToneClass, toneForSection } from './section-tones';
 export { type DesignProfile, loadDesignProfile, saveDesignProfile, learnFromEdit } from './design-memory';
 export { type VibeRefinement, REFINEMENT_LABELS, refineTheme } from './vibe-refine';
+export { THEME_SCHEMA_VERSION, migrateTheme, needsMigration, type VersionedTheme } from './theme-version';
+export { logTheme, validateTheme, auditLiveTheme } from './theme-diagnostics';
