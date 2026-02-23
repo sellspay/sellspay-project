@@ -2273,18 +2273,74 @@ serve(async (req) => {
             };
 
             if (codeResult) {
+              // ═══════════════════════════════════════════════════════
+              // MERGE-AWARE VALIDATION: For multi-file partial edits,
+              // merge the delta with existing project files before
+              // validating. This prevents false MISSING_EXPORT_DEFAULT
+              // failures when only sub-components are edited.
+              // ═══════════════════════════════════════════════════════
+              let isMultiFileJson = false;
+              let mergedAppContent: string | null = null;
+              
+              try {
+                const parsedResult = JSON.parse(codeResult);
+                if (parsedResult && typeof parsedResult === 'object' && parsedResult.files) {
+                  isMultiFileJson = true;
+                  const deltaFiles: Record<string, string> = parsedResult.files;
+                  
+                  // Merge delta with existing project files to get full state
+                  const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
+                    ? projectFiles as Record<string, string>
+                    : {};
+                  const mergedFiles = { ...existingFiles, ...deltaFiles };
+                  
+                  // Find App.tsx in the merged result for validation
+                  const appKey = Object.keys(mergedFiles).find(k => 
+                    k === '/App.tsx' || k === 'App.tsx' || k.endsWith('/App.tsx')
+                  );
+                  mergedAppContent = appKey ? mergedFiles[appKey] : null;
+                  
+                  console.log(`[Job ${jobId}] Multi-file delta: ${Object.keys(deltaFiles).length} changed, ${Object.keys(mergedFiles).length} total after merge`);
+                }
+              } catch {
+                // Not JSON — single-file code, validate as-is
+              }
+              
+              // Choose what to validate: merged App.tsx for multi-file, or raw codeResult for single-file
+              const contentToValidate = isMultiFileJson
+                ? (mergedAppContent || '') // If no App.tsx in merged result, validation will catch it
+                : codeResult;
+              
               const diagnostics = {
                 intent: intentResult.intent,
                 promptLength: prompt.length,
                 codeContextLength: currentCode?.length ?? 0,
                 generatedLength: codeResult.length,
-                hasExportDefault: /export\s+default\s/.test(codeResult),
-                bracketBalance: (codeResult.match(/[({[]/g) ?? []).length - (codeResult.match(/[)\]}]/g) ?? []).length,
+                isMultiFileJson,
+                hasExportDefault: /export\s+default\s/.test(contentToValidate),
+                bracketBalance: (contentToValidate.match(/[({[]/g) ?? []).length - (contentToValidate.match(/[)\]}]/g) ?? []).length,
               };
               console.log(`[Job ${jobId}] VALIDATION_INPUT:`, JSON.stringify(diagnostics));
 
-              // GATE 1: Structural validation
-              const structuralError = getValidationError(codeResult, intentResult.intent);
+              // GATE 1: Structural validation (on merged content, not delta)
+              // For multi-file with a valid merged App.tsx, validate that.
+              // If multi-file but NO App.tsx at all in the merged project, skip export check
+              // (the project may use a different entry point or App.tsx wasn't changed/needed).
+              let structuralError: { type: string; message: string } | null = null;
+              if (isMultiFileJson && mergedAppContent) {
+                structuralError = getValidationError(mergedAppContent, intentResult.intent);
+              } else if (isMultiFileJson && !mergedAppContent) {
+                // No App.tsx in merged result — skip export default check entirely
+                // but still check for completely empty output
+                if (codeResult.trim().length < 50) {
+                  structuralError = { type: "MODEL_EMPTY_RESPONSE", message: "AI returned no usable code. Please retry." };
+                } else {
+                  console.log(`[Job ${jobId}] GATE 1 SKIP: Multi-file partial edit without App.tsx — export check bypassed`);
+                }
+              } else {
+                structuralError = getValidationError(codeResult, intentResult.intent);
+              }
+              
               if (structuralError) {
                 // Emit structured error to frontend
                 emitEvent('error', { code: structuralError.type, message: structuralError.message });
@@ -2296,15 +2352,16 @@ serve(async (req) => {
               }
 
               // GATE 2: No-op detection
-              if (!validationError && isNoOp(currentCode, codeResult)) {
+              if (!validationError && !isMultiFileJson && isNoOp(currentCode, codeResult)) {
                 validationReport.no_op_detected = true;
                 console.warn(`[Job ${jobId}] GATE 2 WARN: No-op detected`);
               }
 
               // GATE 3: Intent validation
               // Skip for FIX/micro-edit — the 3000-char window is unreliable for detecting fixes
+              // Also skip for multi-file partial edits (delta alone is misleading for intent check)
               const isMicro = detectMicroEdit(prompt, Boolean(currentCode?.trim()));
-              const skipIntentCheck = intentResult.intent === "FIX" || isMicro;
+              const skipIntentCheck = intentResult.intent === "FIX" || isMicro || isMultiFileJson;
               if (!validationError && !skipIntentCheck) {
                 try {
                   const intentCheck = await validateIntent(prompt, codeResult, GOOGLE_GEMINI_API_KEY);
@@ -2325,7 +2382,7 @@ serve(async (req) => {
                 }
               } else if (skipIntentCheck) {
                 validationReport.intent_ok = true;
-                console.log(`[Job ${jobId}] GATE 3 SKIP: ${intentResult.intent} intent / micro-edit — bypassing intent check`);
+                console.log(`[Job ${jobId}] GATE 3 SKIP: ${intentResult.intent} intent / micro-edit / multi-file — bypassing intent check`);
               }
             }
 
@@ -2343,7 +2400,7 @@ serve(async (req) => {
               }
             }
 
-            // Manual Recovery Fix
+            // Manual Recovery Fix — handles both multi-file JSON and single-file
             if (codeResult && !validationError && jobStatus === "completed") {
               const { data: jobData } = await supabase
                 .from("ai_generation_jobs")
@@ -2351,7 +2408,24 @@ serve(async (req) => {
                 .eq("id", jobId)
                 .single();
               if (jobData?.project_id) {
-                const filesWrapper = { "App.tsx": codeResult };
+                let filesWrapper: Record<string, string>;
+                
+                // Detect if codeResult is multi-file JSON
+                try {
+                  const parsed = JSON.parse(codeResult);
+                  if (parsed && typeof parsed === 'object' && parsed.files) {
+                    // Multi-file: merge delta with existing project files
+                    const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
+                      ? projectFiles as Record<string, string>
+                      : {};
+                    filesWrapper = { ...existingFiles, ...parsed.files };
+                  } else {
+                    filesWrapper = { "App.tsx": codeResult };
+                  }
+                } catch {
+                  filesWrapper = { "App.tsx": codeResult };
+                }
+                
                 await supabase.from("vibecoder_projects").update({ files: filesWrapper }).eq("id", jobData.project_id);
                 await supabase.from("project_versions").insert({
                   project_id: jobData.project_id,
