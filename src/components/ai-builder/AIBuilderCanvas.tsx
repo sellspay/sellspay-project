@@ -116,6 +116,10 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Stores the project ID for which we've already triggered the initial prompt
   const startedInitialForProjectRef = useRef<string | null>(null);
   
+  // 🚧 DEFERRED HERO PROMPT: When heroOnStart creates a new project, the prompt is
+  // stored here and dispatched by a useEffect once the project is fully hydrated.
+  const deferredHeroPromptRef = useRef<{ prompt: string; aiPrompt?: string } | null>(null);
+  
   // 🔒 GENERATION LOCK: Captures the project ID when generation starts
   // Prevents race condition where AI writes to wrong project if user switches mid-generation
   const generationLockRef = useRef<string | null>(null);
@@ -883,6 +887,15 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // displayMessage: Clean user prompt shown in chat
   // aiPrompt: Backend-only prompt with system instructions (optional - defaults to displayMessage)
   const handleSendMessage = async (displayMessage: string, aiPrompt?: string) => {
+    // 🚧 PROJECT READY GATE: Block generation during project switch / hydration
+    // This prevents the race condition where job creation fires before the new project
+    // is fully stabilized in the database, causing insert failures and ghost streams.
+    if (activeProjectId && (isVerifyingProject || contentProjectId !== activeProjectId)) {
+      console.warn('[handleSendMessage] 🛑 BLOCKED: Project not ready. isVerifying:', isVerifyingProject, 'contentProjectId:', contentProjectId, 'activeProjectId:', activeProjectId);
+      toast.error('Project is still loading. Please wait a moment and try again.');
+      return;
+    }
+
     // 🔒 PREMIUM GATE: Non-premium users can explore but not generate
     if (!hasPremiumAccess) {
       setShowUpgradeModal(true);
@@ -992,9 +1005,17 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       // The backend will write results to the job record
       startAgent(promptForAI, existingCodeForAgent, projectId, job.id, projectFilesForAgent);
     } else {
-      // Fallback: Start without job (streaming only, won't persist if user leaves)
-      console.warn('[BackgroundGen] Failed to create job, using streaming-only mode');
-      startAgent(promptForAI, existingCodeForAgent, projectId, undefined, projectFilesForAgent);
+      // 🚨 HARD ABORT: Job creation failed — do NOT fall back to streaming-only mode.
+      // Streaming-only bypasses DB persistence, SUMMARY authority, validation gates,
+      // and snapshot persistence. It creates undefined behavior in the hardened pipeline.
+      console.error('[BackgroundGen] ❌ Job creation failed. Aborting generation — no streaming-only fallback.');
+      generationLockRef.current = null;
+      activeJobIdRef.current = null;
+      setIsAwaitingPreviewReady(false);
+      toast.error('Failed to start generation. Please try again.', { duration: 5000 });
+      if (projectId) {
+        await addMessage('assistant', '❌ Generation could not start — the backend job failed to create. Please try again.', undefined, projectId);
+      }
     }
   };
 
@@ -1182,6 +1203,20 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     }
   }, [hasBooted, isDataLoading]);
 
+  // 🚧 DEFERRED HERO PROMPT DISPATCHER
+  // When heroOnStart creates a new project, the prompt is stored in deferredHeroPromptRef.
+  // This effect fires it once the project is fully hydrated (contentProjectId matches).
+  useEffect(() => {
+    const deferred = deferredHeroPromptRef.current;
+    if (!deferred) return;
+    if (!activeProjectId || isVerifyingProject || contentProjectId !== activeProjectId) return;
+    
+    // Project is ready — dispatch the deferred prompt
+    console.log('[heroOnStart] 🚀 Project stabilized, dispatching deferred prompt');
+    deferredHeroPromptRef.current = null; // Clear before calling to prevent re-entry
+    handleSendMessage(deferred.prompt, deferred.aiPrompt);
+  }, [activeProjectId, isVerifyingProject, contentProjectId, handleSendMessage]);
+
   // 🛑 THE GATEKEEPER 🛑
   // Prevent "flash of old content" when switching projects.
   // Core rule: NEVER render the workspace with files/messages that belong to a different project.
@@ -1204,12 +1239,11 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // canUndo is now a function from useVibecoderProjects (includes sentinel safety check)
   const hasActiveProject = Boolean(activeProjectId);
 
-  const heroOnStart = async (prompt: string, isPlanMode?: boolean) => {
+    const heroOnStart = async (prompt: string, isPlanMode?: boolean) => {
     // 1. Extract smart project name from first 5 words
     const projectName = prompt.split(/\s+/).slice(0, 5).join(' ');
 
     // 2. Create the project first (this sets activeProjectId + updates URL)
-    // skipInitialLoad=true prevents the message-loading effect from wiping our optimistic message
     const newProjectId = await ensureProject(projectName, true);
     if (!newProjectId) {
       toast.error('Failed to create project');
@@ -1219,18 +1253,15 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     // 3. Mark this project so the useEffect auto-start guard doesn't double-fire
     startedInitialForProjectRef.current = newProjectId;
 
-    // 4. If plan mode, inject plan instruction into the prompt
-    if (isPlanMode) {
-      const planPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${prompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
-      // Delegate to handleSendMessage which handles job creation, intent classification, etc.
-      handleSendMessage(prompt, planPrompt);
-      return;
-    }
-
-    // 5. Delegate to handleSendMessage — this routes through the backend intent classifier
-    //    instead of blindly forcing BUILD mode. The intent classifier will determine if
-    //    the prompt is a clear build request or needs clarification first.
-    handleSendMessage(prompt);
+    // 4. 🚧 DEFER the prompt until the project is fully hydrated.
+    // React will re-render with the new activeProjectId, triggering hydration.
+    // The useEffect above will dispatch handleSendMessage once contentProjectId matches.
+    const aiPrompt = isPlanMode
+      ? `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${prompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`
+      : undefined;
+    
+    deferredHeroPromptRef.current = { prompt, aiPrompt };
+    console.log('[heroOnStart] Project created, deferring prompt until hydration completes:', newProjectId);
   };
 
   // === DOORWAY: If no active project, ALWAYS show the magical prompt-first screen ===
