@@ -8,6 +8,7 @@ import { type ThemeVibe } from "./theme-vibes";
 import { downloadThemeFile, copyThemeToClipboard, importTheme as parseImportedTheme } from "./theme-export";
 import { type VibeRefinement, refineTheme } from "./vibe-refine";
 import { loadDesignProfile, learnFromEdit, type DesignProfile } from "./design-memory";
+import { THEME_SCHEMA_VERSION, migrateTheme, needsMigration } from "./theme-version";
 
 export type ThemeSource = "auto" | "manual" | "preset";
 
@@ -46,6 +47,7 @@ function getStorageKey(projectId: string) {
 }
 
 interface StoredTheme {
+  version: number;
   tokens: ThemeTokens;
   presetId: string;
   source: ThemeSource;
@@ -80,11 +82,22 @@ export function ThemeProvider({
     try {
       const raw = localStorage.getItem(getStorageKey(projectId));
       if (raw) {
-        const stored: StoredTheme = JSON.parse(raw);
-        tokens = stored.tokens;
-        pid = stored.presetId || "none";
-        source = stored.source || "preset";
-        locked = stored.locked || false;
+        const parsed = JSON.parse(raw);
+        // Auto-migrate old schema versions
+        if (needsMigration(parsed)) {
+          const migrated = migrateTheme(parsed);
+          tokens = migrated.tokens;
+          pid = migrated.presetId;
+          source = migrated.source as ThemeSource;
+          locked = migrated.locked;
+          // Re-persist with new version
+          localStorage.setItem(getStorageKey(projectId), JSON.stringify(migrated));
+        } else {
+          tokens = parsed.tokens;
+          pid = parsed.presetId || "none";
+          source = parsed.source || "preset";
+          locked = parsed.locked || false;
+        }
       }
     } catch {
       // corrupt data — use defaults
@@ -110,7 +123,7 @@ export function ThemeProvider({
     (tokens: ThemeTokens, pid: string, source: ThemeSource, locked: boolean) => {
       if (projectId) {
         try {
-          const stored: StoredTheme = { tokens, presetId: pid, source, locked };
+          const stored: StoredTheme = { version: THEME_SCHEMA_VERSION, tokens, presetId: pid, source, locked };
           localStorage.setItem(getStorageKey(projectId), JSON.stringify(stored));
         } catch {
           // quota exceeded — ignore
