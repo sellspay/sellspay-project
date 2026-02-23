@@ -253,6 +253,9 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   
   // Ref to hold setCode function for Ghost Fixer callback
   const setCodeRef = useRef<((code: string) => void) | null>(null);
+
+  // DB-driven guardrail mode: populated by useProjectHydration, consumed by useStreamingCode
+  const hasDbSnapshotRef = useRef(false);
   
   // Ref to bridge phase callbacks (useAgentLoop declared after useStreamingCode)
   const phaseCallbacksRef = useRef<{
@@ -289,6 +292,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     DEFAULT_CODE 
   } = useStreamingCode({
     activeProjectId,
+    hasDbSnapshotRef,
     onPhaseChange: (phase) => {
       // Reset phase data at the start of a new generation
       if (phase === 'analyzing') {
@@ -761,6 +765,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     generationLockRef,
     activeJobIdRef,
     pendingSummaryRef,
+    hasDbSnapshotRef,
     onResetTransientState: resetTransientState,
     onIncrementResetKey: useCallback(() => setResetKey(prev => prev + 1), []),
     onIncrementRefreshKey: useCallback(() => setRefreshKey(prev => prev + 1), []),
