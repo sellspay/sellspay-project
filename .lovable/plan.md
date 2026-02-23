@@ -1,97 +1,117 @@
 
 
-# Theme System Migration: Clean Architecture Refactor
+# Harden Streaming Pipeline: Kill the JSON-as-Code Bug
 
-## Current State (What Exists)
+## Problem
 
-The theme system has **two parallel pipelines** doing the same job:
+The streaming layer in `useStreamingCode.ts` has a critical leak between its two tiers:
 
-1. **Clean layer** (`src/lib/theme/`): `ThemeTokens` contract, `applyTheme()` via batched `rAF`, `TOKEN_TO_CSS_VAR` mapping, schema versioning, diagnostics -- all well-structured.
+1. **Tier 1 (Streaming)**: Visual feedback only -- chunks arrive for live preview
+2. **Tier 2 (Atomic)**: `event: files` delivers validated JSON payload for final commit
 
-2. **Legacy bridge layer** (`VibecoderPreview.tsx` lines 446-630): A `ThemeBridge` component that **duplicates** `TOKEN_TO_CSS_VAR` inline, has its own `hexToHSL()`, its own `tokensToCSSString()` with a hardcoded `--radius: 0.5rem`, a kebab-case legacy mapper, and injects theme via `<style>` tag into the Sandpack iframe.
+The leak: when `event: code_chunk` fires (legacy fallback), raw chunks are buffered in `streamingCodeBuffer`. If those chunks contain JSON (e.g., `{"files": {"/App.tsx": "..."}}`), the code at **line 951-953** injects the raw buffer directly into Sandpack state:
 
-The flow today:
-```text
-ThemeContext dispatches "vibecoder-theme-apply" CustomEvent
-        |
-        v
-ThemeBridge (inside Sandpack) catches it
-        |
-        v
-buildThemeCSS() -- duplicates TOKEN_TO_CSS_VAR, has hexToHSL fallback
-        |
-        v
-postMessage "VIBECODER_INJECT_THEME" { css } to iframe
-        |
-        v
-Iframe listener creates <style id="vibecoder-theme-override"> tag
+```
+if (streamingCodeBuffer.length > 100) {
+  setState(prev => ({ ...prev, code: streamingCodeBuffer }));
+}
 ```
 
-## What Needs To Change
+This means a raw JSON string like `{"files":{...}}` gets set as `/App.tsx` content, and Babel crashes trying to transpile it.
 
-### 1. ThemeBridge: Use the canonical `themeToCSSString` from `theme-engine.ts`
+Additionally, if `extractCodeFromRaw` returns empty (NO_CODE_EXTRACTED), the legacy code path at **lines 1140-1171** correctly aborts -- but the streaming path at **line 952** already injected garbage before we got there.
 
-**Problem**: `ThemeBridge` has its own `TOKEN_TO_CSS_VAR` (20 keys -- missing all the new gradient/glass/typography/density tokens), its own `hexToHSL`, and hardcodes `--radius: 0.5rem`.
+## Fix (3 Surgical Changes)
 
-**Fix**: Import and use `themeToCSSString` from `@/lib/theme/theme-engine` directly. Delete the inline duplicates (`TOKEN_TO_CSS_VAR`, `tokensToCSSString`, `hexToHSL`, `buildThemeCSS`, `kebabMap`). This is ~70 lines of dead code.
+### 1. Add `looksLikeCode()` guard to `code_chunk` streaming injection (line 951-953)
 
-The `handleApply` function becomes:
+Before injecting `streamingCodeBuffer` into state for live preview, check that it actually looks like code, not JSON or SSE metadata:
+
 ```typescript
-const handleApply = (e: Event) => {
-  const tokens = (e as CustomEvent).detail as ThemeTokens;
-  if (!tokens) return;
-  const css = themeToCSSString(tokens);
-  lastAppliedCSS = css;
-  sendToIframe('VIBECODER_INJECT_THEME', { css });
-  // Persist to Sandpack file system for recompile survival
-  try { sandpack.updateFile('/styles/theme-base.css', css); } catch {}
-};
+function looksLikeCode(chunk: string): boolean {
+  if (!chunk || chunk.trim().length < 10) return false;
+  const trimmed = chunk.trim();
+  if (trimmed.startsWith('{') && trimmed.includes('"files"')) return false;
+  if (trimmed.startsWith('{"')) return false;
+  if (trimmed.startsWith('event:')) return false;
+  return true;
+}
 ```
 
-### 2. Remove hex fallback path
+Apply this guard at line 951:
+```typescript
+// BEFORE (line 951-953):
+if (streamingCodeBuffer.length > 100) {
+  setState(prev => ({ ...prev, code: streamingCodeBuffer }));
+}
 
-**Problem**: `buildThemeCSS` auto-detects hex vs HSL and converts at runtime. Since all token sources (presets, auto-extraction, import, vibe modifier) now output HSL, this path is dead.
+// AFTER:
+if (streamingCodeBuffer.length > 100 && looksLikeCode(streamingCodeBuffer)) {
+  setState(prev => ({ ...prev, code: streamingCodeBuffer }));
+}
+```
 
-**Fix**: Delete the hex detection branch entirely. The `hexToHSL` in `theme-engine.ts` stays as an exported utility (used by `ThemeEditorDialog` for color picker conversion), but the bridge no longer does format sniffing.
+### 2. Add the same guard to the `extractCodeFromRaw` mid-stream path (line 1072-1080)
 
-### 3. Fix hardcoded `--radius: 0.5rem` in iframe CSS
+The raw stream mode also injects during the read loop. Add the same guard:
 
-**Problem**: The bridge's `tokensToCSSString` appends `--radius: 0.5rem` at the end of every injected CSS block, overriding whatever `radiusScale` the theme engine set.
+```typescript
+// BEFORE (line 1072-1080):
+if (mode === 'code') {
+  const cleanCode = extractCodeFromRaw(rawStream);
+  if (cleanCode && isLikelyCompleteTsx(cleanCode)) {
+    lastGoodCodeRef.current = cleanCode;
+    setState(prev => ({ ...prev, code: cleanCode }));
+    options.onChunk?.(cleanCode);
+  }
+}
 
-**Fix**: Removed by using `themeToCSSString` which reads `radiusScale` from the token and maps it to `--radius` through `TOKEN_TO_CSS_VAR`.
+// AFTER:
+if (mode === 'code') {
+  const cleanCode = extractCodeFromRaw(rawStream);
+  if (cleanCode && looksLikeCode(cleanCode) && isLikelyCompleteTsx(cleanCode)) {
+    lastGoodCodeRef.current = cleanCode;
+    setState(prev => ({ ...prev, code: cleanCode }));
+    options.onChunk?.(cleanCode);
+  }
+}
+```
 
-### 4. Remove legacy kebab-case mapping
+### 3. Add final safety net in `code_chunk` JSON detection (line 916)
 
-**Problem**: The bridge has a separate `kebabMap` for keys like `'primary-foreground'` and `'chart-1'`. This was needed when `StyleColors` (kebab-case) was the format. Now everything flows through `ThemeTokens` (camelCase).
+The existing JSON detection at line 916 only fires when the buffer starts with `{` AND includes `"files"`. But the `try/catch` parse can fail on incomplete JSON, and execution falls through to line 951 where the raw buffer gets injected anyway. Add an early `return` after the JSON detection block to prevent fallthrough:
 
-**Fix**: Deleted along with the rest of the inline bridge code.
+```typescript
+// After the JSON detection block (line 915-949), add:
+if (trimmedBuf.startsWith('{') && trimmedBuf.includes('"files"')) {
+  // Already handled above or still buffering -- either way, do NOT
+  // inject raw JSON into Sandpack as code.
+  break;
+}
+```
 
-### 5. Iframe `<style>` injection stays (intentionally)
-
-The iframe-side listener that creates `<style id="vibecoder-theme-override">` is **correct and necessary**. Sandpack iframes are cross-origin sandboxes -- we cannot set `style` properties on `documentElement` from the parent. `postMessage` + `<style>` tag is the only viable approach. This is **not** the same as injecting `<style>` tags in the main document.
-
-### 6. Ensure all new tokens reach the iframe
-
-With the switch to canonical `themeToCSSString`, the iframe will now receive **all** tokens including gradient, glass, typography, radius, transition speed, section padding, texture, and CTA style -- which the old bridge was silently dropping.
+This replaces the current logic where the JSON parse failure falls through to raw injection.
 
 ## Files Changed
 
-| File | Change |
-|------|--------|
-| `src/components/ai-builder/VibecoderPreview.tsx` | Delete ~70 lines (inline `TOKEN_TO_CSS_VAR`, `hexToHSL`, `tokensToCSSString`, `buildThemeCSS`, `kebabMap`). Import `themeToCSSString` from `@/lib/theme`. Simplify `handleApply`. |
-| `src/components/ai-builder/stylePresets.ts` | No changes needed -- already a pure bridge adapter. |
-| `src/lib/theme/theme-engine.ts` | No changes needed -- `themeToCSSString` is already correct. |
+- `src/components/ai-builder/useStreamingCode.ts` -- 3 surgical edits, no architectural changes
 
-## What Does NOT Change
+## What This Does NOT Change
 
-- The `vibecoder-theme-apply` CustomEvent dispatch pattern (ThemeContext to ThemeBridge) -- this is clean.
-- The iframe-side `<style>` tag injection -- required for Sandpack sandboxing.
-- The `VIBECODER_REQUEST_THEME` handshake for recompile survival -- correct.
-- The `sandpack.updateFile('/styles/theme-base.css', css)` persistence -- correct.
-- The `!important` usage in `SANDPACK_HEIGHT_FIX` -- these target Sandpack layout chrome, not theme.
-- The `ThemeEditorDialog.tsx` hex-to-HSL conversion -- that's UI-layer conversion for color pickers, appropriate there.
+- The `event: files` atomic path (already correct)
+- The guardrails system (already correct)
+- The `extractCodeFromRaw` JSON unwrapping (already correct)
+- The final validation at lines 1140-1171 (already correct)
 
-## Risk Assessment
+## Result
 
-**Low risk.** This is removing duplicated code and routing through the canonical path. The only behavioral change is that the iframe will now receive ~15 additional CSS variables (gradient, glass, typography tokens) that it wasn't getting before. This is additive and harmless -- unused variables don't affect rendering.
+After this fix, the pipeline becomes:
+
+```
+AI -> Stream chunk -> looksLikeCode? -> NO -> skip (never touches Sandpack)
+AI -> Stream chunk -> looksLikeCode? -> YES -> inject for live preview
+AI -> event: files -> atomic commit (unchanged, already safe)
+```
+
+No JSON will ever reach Babel again.
 
