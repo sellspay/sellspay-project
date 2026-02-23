@@ -45,7 +45,6 @@ interface UseProjectHydrationOptions {
  * - Scorched earth orchestrator (project switch cleanup)
  * - Code restoration from messages (single-file + multi-file)
  * - Content gate (contentProjectId)
- * - Preview mount handshake (isWaitingForPreviewMount)
  * - Project verification state (isVerifyingProject)
  */
 export function useProjectHydration({
@@ -77,8 +76,8 @@ export function useProjectHydration({
   // STRICT LOADING: Verify project exists before rendering preview
   const [isVerifyingProject, setIsVerifyingProject] = useState(false);
 
-  // 🤝 PREVIEW HANDSHAKE: Tracks if we're waiting for Sandpack to signal "ready" after project switch
-  const [isWaitingForPreviewMount, setIsWaitingForPreviewMount] = useState(false);
+  // NOTE: isWaitingForPreviewMount removed — preview is now purely files-driven.
+  // Preview renders whenever files exist. No handshake needed.
 
   // Expose abortController ref for cleanup
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -258,9 +257,8 @@ export function useProjectHydration({
       console.log('📦 Restoring from DB last_valid_files for project:', activeProjectId, `(${Object.keys(dbSnapshot).length} files)`);
       setFiles(dbSnapshot);
       hasRestoredCodeRef.current = activeProjectId;
-      console.log('🚪 Opening content gate for project:', activeProjectId);
+    console.log('🚪 Opening content gate for project:', activeProjectId);
       setContentProjectId(activeProjectId);
-      setIsWaitingForPreviewMount(true);
       onIncrementRefreshKey();
       return;
     }
@@ -285,12 +283,9 @@ export function useProjectHydration({
     console.log('🚪 Opening content gate for project:', activeProjectId);
     setContentProjectId(activeProjectId);
 
-    // 🤝 PREVIEW HANDSHAKE
+    // Trigger refresh if content was restored
     if (hasContent) {
-      setIsWaitingForPreviewMount(true);
       onIncrementRefreshKey();
-    } else {
-      setIsWaitingForPreviewMount(false);
     }
   }, [activeProjectId, messagesLoading, isVerifyingProject, dbSnapshotReady, getLastCodeSnapshot, getLastFilesSnapshot, setCode, setFiles, isStreaming, onIncrementRefreshKey]);
 
@@ -302,8 +297,6 @@ export function useProjectHydration({
   return {
     contentProjectId,
     isVerifyingProject,
-    isWaitingForPreviewMount,
-    setIsWaitingForPreviewMount,
     cleanupProjectRuntime,
   };
 }

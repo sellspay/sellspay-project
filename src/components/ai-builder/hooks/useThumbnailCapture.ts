@@ -38,26 +38,16 @@ export function useThumbnailCapture({ projectId, enabled, onThumbnailUpdated }: 
     return null;
   }, []);
 
-  // Request capture with retry
+  // Fire-and-forget capture request — never blocks preview
   const requestCapture = useCallback(() => {
     if (!enabled || !projectId || isCapturingRef.current) return;
 
     const iframe = findIframe();
     if (!iframe?.contentWindow) {
-      console.warn('[ThumbnailCapture] No iframe found, retrying in 2s...');
-      setTimeout(() => {
-        const retryIframe = findIframe();
-        if (retryIframe?.contentWindow) {
-          console.log('[ThumbnailCapture] Retry: Requesting capture for project:', projectId);
-          retryIframe.contentWindow.postMessage({ type: 'VIBECODER_CAPTURE_REQUEST' }, '*');
-        } else {
-          console.warn('[ThumbnailCapture] Retry failed: No iframe found');
-        }
-      }, 2000);
+      // No iframe available — skip silently, don't retry
       return;
     }
 
-    console.log('[ThumbnailCapture] Requesting capture for project:', projectId);
     iframe.contentWindow.postMessage({ type: 'VIBECODER_CAPTURE_REQUEST' }, '*');
   }, [enabled, projectId, findIframe]);
 
