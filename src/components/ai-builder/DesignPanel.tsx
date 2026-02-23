@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Palette, Sparkles, ArrowLeft, MoreHorizontal } from "lucide-react";
+import { Palette, Sparkles, ArrowLeft, MoreHorizontal, Lock, Unlock } from "lucide-react";
 import { motion } from "framer-motion";
 import { STYLE_PRESETS, type StylePreset, type StyleColors } from "./stylePresets";
 import { cn } from "@/lib/utils";
 import { VisualEditPanel, type SelectedElement } from "./VisualEditOverlay";
 import { ThemeEditorDialog } from "./ThemeEditorDialog";
 import { useTheme, THEME_PRESETS as PRESETS, type ThemePreset, type ThemeTokens } from "@/lib/theme";
+import { Switch } from "@/components/ui/switch";
 
 type DesignView = 'home' | 'themes' | 'visual-edits';
 
@@ -92,7 +93,7 @@ function StyleDots({ tokens }: { tokens: ThemeTokens }) {
 }
 
 export function DesignPanel({ onVisualEditModeChange, selectedElement, onEditRequest }: DesignPanelProps) {
-  const { theme, presetId, setTheme, previewTheme, revertPreview, applyPreset } = useTheme();
+  const { theme, presetId, themeSource, isAutoThemeLocked, setTheme, previewTheme, revertPreview, applyPreset, setAutoThemeLocked } = useTheme();
   const [view, setView] = useState<DesignView>('home');
   const [editingStylePreset, setEditingStylePreset] = useState<StylePreset | null>(null);
 
@@ -131,6 +132,33 @@ export function DesignPanel({ onVisualEditModeChange, selectedElement, onEditReq
             <span className="text-sm text-zinc-500">Design /</span>
             <span className="text-sm font-semibold text-zinc-200">Themes</span>
           </div>
+
+          {/* Auto-theme toggle */}
+          <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-zinc-900/80 border border-zinc-800/50">
+            <div className="flex items-center gap-2">
+              {isAutoThemeLocked ? (
+                <Lock className="w-3.5 h-3.5 text-zinc-500" />
+              ) : (
+                <Unlock className="w-3.5 h-3.5 text-zinc-400" />
+              )}
+              <div>
+                <p className="text-xs font-medium text-zinc-300">Auto Theme</p>
+                <p className="text-[10px] text-zinc-600">
+                  {isAutoThemeLocked ? 'Manual override active' : 'Extracts from preview'}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={!isAutoThemeLocked}
+              onCheckedChange={(checked) => setAutoThemeLocked(!checked)}
+            />
+          </div>
+
+          {themeSource === 'auto' && (
+            <p className="text-[10px] text-emerald-500/70 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> Theme auto-extracted from preview
+            </p>
+          )}
 
           <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Default themes</p>
 
