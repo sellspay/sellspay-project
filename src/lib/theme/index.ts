@@ -1,6 +1,10 @@
 export { type ThemeTokens, TOKEN_TO_CSS_VAR } from './theme-tokens';
-export { applyTheme, clearTheme, readTheme, hexToHSL, themeToCSSString } from './theme-engine';
+export { applyTheme, clearTheme, readTheme, hexToHSL, themeToCSSString, debounce } from './theme-engine';
 export { type ThemePreset, THEME_PRESETS, NO_THEME_PRESET, DEFAULT_THEME, getThemePresetById } from './theme-presets';
 export { ThemeProvider, useTheme, type ThemeSource } from './theme-context';
 export { extractPaletteFromImage, paletteToTheme, generateThemeFromPalette, extractThemeFromImageUrl, type ThemePersonality } from './color-extractor';
 export { type ThemeVibe, ALL_VIBES, VIBE_LABELS, detectVibe, applyVibeToTheme } from './theme-vibes';
+export { detectVibeFromPrompt, mergeVibeSignals } from './vibe-from-text';
+export { generateGradient, getGlassTokens, gradientAndGlassToCSSString, type GlassTokens } from './theme-gradient-glass';
+export { type ThemeScope, shouldApplyTheme, getScopeTarget, tagThemeScope } from './theme-scope';
+export { exportTheme, importTheme, downloadThemeFile, copyThemeToClipboard, type ExportedTheme } from './theme-export';

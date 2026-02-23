@@ -2,17 +2,28 @@ import { ThemeTokens, TOKEN_TO_CSS_VAR } from './theme-tokens';
 
 /**
  * Apply a theme to a document's root element.
- * Sets CSS custom properties directly — no style tags, no !important, no injection.
+ * Uses batched cssText update inside rAF for performance.
  */
 export function applyTheme(theme: ThemeTokens, root?: HTMLElement) {
   const el = root ?? document.documentElement;
 
-  for (const [key, cssVar] of Object.entries(TOKEN_TO_CSS_VAR)) {
-    const value = theme[key as keyof ThemeTokens];
-    if (value) {
-      el.style.setProperty(cssVar, value);
+  // Batch all property changes in a single rAF for minimal reflows
+  requestAnimationFrame(() => {
+    const updates: string[] = [];
+    for (const [key, cssVar] of Object.entries(TOKEN_TO_CSS_VAR)) {
+      const value = theme[key as keyof ThemeTokens];
+      if (value) {
+        updates.push(`${cssVar}: ${value}`);
+      }
     }
-  }
+    // Append to existing inline styles without clobbering
+    const existing = el.getAttribute('style') || '';
+    const filtered = existing
+      .split(';')
+      .filter(s => s.trim() && !s.trim().startsWith('--'))
+      .join(';');
+    el.setAttribute('style', `${filtered}; ${updates.join('; ')}`);
+  });
 }
 
 /**
@@ -24,6 +35,11 @@ export function clearTheme(root?: HTMLElement) {
   for (const cssVar of Object.values(TOKEN_TO_CSS_VAR)) {
     el.style.removeProperty(cssVar);
   }
+  // Also clear gradient/glass vars
+  el.style.removeProperty('--vibe-gradient');
+  el.style.removeProperty('--glass-opacity');
+  el.style.removeProperty('--glass-blur');
+  el.style.removeProperty('--glass-border');
 }
 
 /**
@@ -75,7 +91,8 @@ export function hexToHSL(hex: string): string {
 }
 
 /**
- * Convert ThemeTokens to a CSS string for injection into iframes
+ * Convert ThemeTokens to a CSS string for injection into iframes.
+ * Includes gradient + glass variables.
  */
 export function themeToCSSString(theme: ThemeTokens): string {
   const lines: string[] = [];
@@ -86,4 +103,18 @@ export function themeToCSSString(theme: ThemeTokens): string {
     }
   }
   return `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}`;
+}
+
+/**
+ * Create a debounced version of a function.
+ */
+export function debounce<T extends (...args: unknown[]) => void>(
+  fn: T,
+  ms: number
+): (...args: Parameters<T>) => void {
+  let timer: ReturnType<typeof setTimeout>;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
 }

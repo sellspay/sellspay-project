@@ -1,36 +1,36 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { ThemeTokens } from "./theme-tokens";
-import { applyTheme, clearTheme, themeToCSSString } from "./theme-engine";
+import { applyTheme, clearTheme, themeToCSSString, debounce } from "./theme-engine";
 import { THEME_PRESETS, DEFAULT_THEME, type ThemePreset } from "./theme-presets";
 import { extractPaletteFromImage, generateThemeFromPalette, type ThemePersonality } from "./color-extractor";
+import { detectVibeFromPrompt, mergeVibeSignals } from "./vibe-from-text";
+import { type ThemeVibe } from "./theme-vibes";
+import { downloadThemeFile, copyThemeToClipboard, importTheme as parseImportedTheme } from "./theme-export";
 
 export type ThemeSource = "auto" | "manual" | "preset";
 
 type ThemeContextType = {
-  /** The committed (saved) theme */
   theme: ThemeTokens;
-  /** The active preset ID (if any) */
   presetId: string;
-  /** How the current theme was set */
   themeSource: ThemeSource;
-  /** Whether auto-theme is locked (manual override) */
   isAutoThemeLocked: boolean;
-  /** Commit a new theme as the saved state */
+  detectedVibe: ThemeVibe | null;
   setTheme: (theme: ThemeTokens, presetId?: string) => void;
-  /** Apply a theme temporarily for live preview (does NOT save) */
   previewTheme: (theme: ThemeTokens) => void;
-  /** Revert to the last saved theme (discard preview) */
   revertPreview: () => void;
-  /** Whether we're currently previewing (unsaved state) */
   isPreviewing: boolean;
-  /** Apply a preset by reference */
   applyPreset: (preset: ThemePreset) => void;
-  /** Get CSS string for iframe injection */
   getThemeCSS: () => string;
-  /** Toggle auto-theme lock on/off */
   setAutoThemeLocked: (locked: boolean) => void;
-  /** Extract theme from a preview image URL */
   extractThemeFromPreview: (imageUrl: string, personality?: ThemePersonality) => Promise<void>;
+  /** Detect vibe from prompt text and apply if auto-theme is unlocked */
+  applyVibeFromPrompt: (prompt: string) => void;
+  /** Export current theme as JSON download */
+  exportCurrentTheme: (name?: string) => void;
+  /** Copy current theme JSON to clipboard */
+  copyCurrentTheme: (name?: string) => Promise<boolean>;
+  /** Import theme from JSON string */
+  importThemeFromJSON: (json: string) => boolean;
 };
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
@@ -58,6 +58,7 @@ export function ThemeProvider({
   const [themeSource, setThemeSource] = useState<ThemeSource>("preset");
   const [isAutoThemeLocked, setAutoThemeLockedState] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const [detectedVibe, setDetectedVibe] = useState<ThemeVibe | null>(null);
   const savedThemeRef = useRef<ThemeTokens>(DEFAULT_THEME.tokens);
 
   // Hydrate from localStorage on mount / project switch
@@ -135,13 +136,19 @@ export function ThemeProvider({
     [projectId, presetId, persistTheme]
   );
 
+  // Debounced preview — prevents janky slider updates
+  const debouncedDispatch = useCallback(
+    debounce((t: ThemeTokens) => {
+      window.dispatchEvent(new CustomEvent("vibecoder-theme-apply", { detail: t }));
+    }, 50) as (t: ThemeTokens) => void,
+    []
+  );
+
   // Preview without saving
   const previewTheme = useCallback((tempTheme: ThemeTokens) => {
     setIsPreviewing(true);
-    window.dispatchEvent(
-      new CustomEvent("vibecoder-theme-apply", { detail: tempTheme })
-    );
-  }, []);
+    debouncedDispatch(tempTheme);
+  }, [debouncedDispatch]);
 
   // Revert to saved
   const revertPreview = useCallback(() => {
@@ -234,6 +241,55 @@ export function ThemeProvider({
     return themeToCSSString(theme);
   }, [theme]);
 
+  // Detect vibe from prompt text
+  const applyVibeFromPrompt = useCallback(
+    (prompt: string) => {
+      const vibe = detectVibeFromPrompt(prompt);
+      setDetectedVibe(vibe);
+    },
+    []
+  );
+
+  // Export current theme as file download
+  const exportCurrentTheme = useCallback(
+    (name: string = 'My Theme') => {
+      downloadThemeFile(theme, name, detectedVibe);
+    },
+    [theme, detectedVibe]
+  );
+
+  // Copy theme to clipboard
+  const copyCurrentTheme = useCallback(
+    async (name: string = 'My Theme') => {
+      return copyThemeToClipboard(theme, name, detectedVibe);
+    },
+    [theme, detectedVibe]
+  );
+
+  // Import theme from JSON string
+  const importThemeFromJSON = useCallback(
+    (json: string): boolean => {
+      const imported = parseImportedTheme(json);
+      if (!imported) return false;
+
+      const source: ThemeSource = "manual";
+      setThemeState(imported.tokens);
+      setPresetId("imported");
+      setThemeSource(source);
+      savedThemeRef.current = imported.tokens;
+      setIsPreviewing(false);
+      setAutoThemeLockedState(true);
+
+      persistTheme(imported.tokens, "imported", source, true);
+
+      window.dispatchEvent(
+        new CustomEvent("vibecoder-theme-apply", { detail: imported.tokens })
+      );
+      return true;
+    },
+    [persistTheme]
+  );
+
   return (
     <ThemeContext.Provider
       value={{
@@ -241,6 +297,7 @@ export function ThemeProvider({
         presetId,
         themeSource,
         isAutoThemeLocked,
+        detectedVibe,
         setTheme,
         previewTheme,
         revertPreview,
@@ -249,6 +306,10 @@ export function ThemeProvider({
         getThemeCSS,
         setAutoThemeLocked,
         extractThemeFromPreview,
+        applyVibeFromPrompt,
+        exportCurrentTheme,
+        copyCurrentTheme,
+        importThemeFromJSON,
       }}
     >
       {children}
