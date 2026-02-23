@@ -14,20 +14,52 @@ interface UseThumbnailCaptureOptions {
 export function useThumbnailCapture({ projectId, enabled, onThumbnailUpdated }: UseThumbnailCaptureOptions) {
   const isCapturingRef = useRef(false);
 
-  // Request capture by sending postMessage to the Sandpack iframe
+  // Find the Sandpack iframe using multiple strategies
+  const findIframe = useCallback((): HTMLIFrameElement | null => {
+    // Strategy 1: Standard Sandpack class
+    const sp = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+    if (sp?.contentWindow) return sp;
+    // Strategy 2: Container lookup
+    const container = document.querySelector('.sp-preview-container, .sp-preview');
+    if (container) {
+      const iframe = container.querySelector('iframe') as HTMLIFrameElement | null;
+      if (iframe?.contentWindow) return iframe;
+    }
+    // Strategy 3: Any iframe on the page
+    const allIframes = document.querySelectorAll('iframe');
+    for (const iframe of allIframes) {
+      if (iframe.src?.includes('sandpack') || iframe.src?.includes('codesandbox') || iframe.className?.includes('sp-')) {
+        if (iframe.contentWindow) return iframe;
+      }
+    }
+    if (allIframes.length > 0 && allIframes[0].contentWindow) {
+      return allIframes[0] as HTMLIFrameElement;
+    }
+    return null;
+  }, []);
+
+  // Request capture with retry
   const requestCapture = useCallback(() => {
     if (!enabled || !projectId || isCapturingRef.current) return;
 
-    // Find the Sandpack preview iframe
-    const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
+    const iframe = findIframe();
     if (!iframe?.contentWindow) {
-      console.warn('[ThumbnailCapture] No Sandpack iframe found');
+      console.warn('[ThumbnailCapture] No iframe found, retrying in 2s...');
+      setTimeout(() => {
+        const retryIframe = findIframe();
+        if (retryIframe?.contentWindow) {
+          console.log('[ThumbnailCapture] Retry: Requesting capture for project:', projectId);
+          retryIframe.contentWindow.postMessage({ type: 'VIBECODER_CAPTURE_REQUEST' }, '*');
+        } else {
+          console.warn('[ThumbnailCapture] Retry failed: No iframe found');
+        }
+      }, 2000);
       return;
     }
 
     console.log('[ThumbnailCapture] Requesting capture for project:', projectId);
     iframe.contentWindow.postMessage({ type: 'VIBECODER_CAPTURE_REQUEST' }, '*');
-  }, [enabled, projectId]);
+  }, [enabled, projectId, findIframe]);
 
   // Listen for capture response from iframe
   useEffect(() => {

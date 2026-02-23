@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Globe, ArrowRight, Star, Layout } from 'lucide-react';
+import { Globe, ArrowRight, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Template thumbnail imports
+import tplSaas from '@/assets/templates/tpl-saas.jpg';
+import tplPortfolio from '@/assets/templates/tpl-portfolio.jpg';
+import tplEcommerce from '@/assets/templates/tpl-ecommerce.jpg';
+import tplLanding from '@/assets/templates/tpl-landing.jpg';
+import tplBlog from '@/assets/templates/tpl-blog.jpg';
+import tplLinktree from '@/assets/templates/tpl-linktree.jpg';
 
 interface ShelfProject {
   id: string;
@@ -29,14 +37,14 @@ function getSeededGradient(id: string): string {
   return `linear-gradient(135deg, hsl(${hue1} 70% 20%) 0%, hsl(${hue2} 60% 12%) 100%)`;
 }
 
-// Built-in templates
+// Built-in templates with thumbnail images
 const TEMPLATES = [
-  { id: 'tpl-saas', name: 'SaaS Dashboard', description: 'Analytics dashboard with charts, stats, and activity feed', prompt: 'Build a premium dark-mode SaaS analytics dashboard...' },
-  { id: 'tpl-portfolio', name: 'Portfolio Site', description: 'Minimalist portfolio with project showcase and about section', prompt: '' },
-  { id: 'tpl-ecommerce', name: 'E-Commerce Store', description: 'Product landing page with hero, collection, and reviews', prompt: '' },
-  { id: 'tpl-landing', name: 'Landing Page', description: 'Modern startup landing page with CTA and features grid', prompt: '' },
-  { id: 'tpl-blog', name: 'Blog / Magazine', description: 'Editorial blog layout with featured posts and categories', prompt: '' },
-  { id: 'tpl-linktree', name: 'Link in Bio', description: 'Personal link tree with social links and bio', prompt: '' },
+  { id: 'tpl-saas', name: 'SaaS Dashboard', description: 'Analytics dashboard with charts, stats, and activity feed', thumbnail: tplSaas },
+  { id: 'tpl-portfolio', name: 'Portfolio Site', description: 'Minimalist portfolio with project showcase and about section', thumbnail: tplPortfolio },
+  { id: 'tpl-ecommerce', name: 'E-Commerce Store', description: 'Product landing page with hero, collection, and reviews', thumbnail: tplEcommerce },
+  { id: 'tpl-landing', name: 'Landing Page', description: 'Modern startup landing page with CTA and features grid', thumbnail: tplLanding },
+  { id: 'tpl-blog', name: 'Blog / Magazine', description: 'Editorial blog layout with featured posts and categories', thumbnail: tplBlog },
+  { id: 'tpl-linktree', name: 'Link in Bio', description: 'Personal link tree with social links and bio', thumbnail: tplLinktree },
 ];
 
 type TabId = 'recent' | 'my' | 'starred' | 'templates';
@@ -112,19 +120,18 @@ export function ProjectShelf({ projects, onSelectProject, onToggleStar }: Projec
                 onClick={() => onSelectProject(template.id)}
                 className="flex-shrink-0 group text-left snap-start w-[320px] transition-all duration-200 hover:-translate-y-1"
               >
-                <div
-                  className="w-full aspect-[16/10] rounded-xl overflow-hidden border border-white/[0.08] group-hover:border-white/20 bg-zinc-900 relative transition-all duration-200 group-hover:shadow-lg group-hover:shadow-black/50 flex items-center justify-center"
-                  style={{ background: getSeededGradient(template.id) }}
-                >
-                  <Layout size={28} className="text-zinc-500 group-hover:text-zinc-400 transition-colors" />
+                <div className="w-full aspect-[16/10] rounded-xl overflow-hidden border border-white/[0.08] group-hover:border-white/20 bg-zinc-900 relative transition-all duration-200 group-hover:shadow-lg group-hover:shadow-black/50">
+                  <img
+                    src={template.thumbnail}
+                    alt={template.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
                   <span className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded text-[10px] font-medium bg-black/60 text-zinc-400 backdrop-blur-sm border border-white/5">
                     Template
                   </span>
                 </div>
                 <div className="flex items-center gap-3 mt-3 px-0.5">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500/40 to-rose-500/30 flex items-center justify-center shrink-0 border border-white/5">
-                    <Layout size={14} className="text-white/70" />
-                  </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-zinc-200 truncate group-hover:text-white transition-colors">
                       {template.name}
