@@ -83,16 +83,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // LIFTED STATE: Active model from ChatInputBar
   const [activeModel, setActiveModel] = useState<AIModel>(AI_MODELS.code[0]);
   
-  // LIFTED STATE: Active style preset for Design panel — persisted per project
-  const [activeStyle, setActiveStyle] = useState<import('./stylePresets').StylePreset | undefined>(() => {
-    try {
-      // Read project ID from URL on initial mount
-      const pid = new URLSearchParams(window.location.search).get('project');
-      if (!pid) return undefined;
-      const saved = localStorage.getItem(`vibecoder-theme-${pid}`);
-      return saved ? JSON.parse(saved) : undefined;
-    } catch { return undefined; }
-  });
+  // THEME STATE: Now managed by ThemeProvider — see src/lib/theme/theme-context.tsx
+  // Legacy activeStyle kept as a derived value for components that still need StylePreset format
   const [designInput, setDesignInput] = useState('');
   const [visualEditMode, setVisualEditMode] = useState(false);
   const [selectedElement, setSelectedElement] = useState<import('./VisualEditOverlay').SelectedElement | null>(null);
@@ -246,30 +238,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     undoLastChange,
   } = useVibecoderProjects();
   
-  // Persist active theme to localStorage whenever it changes
-  useEffect(() => {
-    if (activeStyle && activeProjectId) {
-      try {
-        localStorage.setItem(`vibecoder-theme-${activeProjectId}`, JSON.stringify(activeStyle));
-      } catch {}
-    }
-  }, [activeStyle, activeProjectId]);
-
-  // Restore saved theme when switching projects
-  useEffect(() => {
-    if (!activeProjectId) return;
-    try {
-      const saved = localStorage.getItem(`vibecoder-theme-${activeProjectId}`);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setActiveStyle(parsed);
-        // Re-apply to iframe after Sandpack initializes
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('vibecoder-theme-apply', { detail: parsed.colors }));
-        }, 2000);
-      }
-    } catch {}
-  }, [activeProjectId]);
+  // Theme persistence is now handled by ThemeProvider — no manual localStorage here
 
   // Chat response state for intent router
   const [chatResponse, setChatResponse] = useState<string | null>(null);
@@ -1960,8 +1929,6 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               {/* Design panel fills the sidebar, chat input stays at bottom */}
               <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                 <DesignPanel
-                  activeStyle={activeStyle}
-                  onStyleChange={setActiveStyle}
                   onVisualEditModeChange={setVisualEditMode}
                   selectedElement={selectedElement}
                   onEditRequest={(prompt) => {
@@ -2020,8 +1987,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               activeModel={activeModel}
               onOpenBilling={() => window.open('/pricing', '_blank')}
               onModelChange={handleModelChange}
-              activeStyle={activeStyle}
-              onStyleChange={setActiveStyle}
+              // Theme state now managed by ThemeProvider — no props needed
               pendingPlan={pendingPlan}
               onApprovePlan={handleApprovePlan}
               onRejectPlan={handleRejectPlan}

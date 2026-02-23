@@ -5,23 +5,79 @@ import { STYLE_PRESETS, type StylePreset, type StyleColors } from "./stylePreset
 import { cn } from "@/lib/utils";
 import { VisualEditPanel, type SelectedElement } from "./VisualEditOverlay";
 import { ThemeEditorDialog } from "./ThemeEditorDialog";
-import { hexToHSL } from "@/lib/theme";
+import { useTheme, THEME_PRESETS as PRESETS, type ThemePreset, type ThemeTokens } from "@/lib/theme";
 
 type DesignView = 'home' | 'themes' | 'visual-edits';
 
 interface DesignPanelProps {
-  activeStyle?: StylePreset;
-  onStyleChange?: (style: StylePreset) => void;
   onVisualEditModeChange?: (active: boolean) => void;
   selectedElement?: SelectedElement | null;
   onEditRequest?: (prompt: string) => void;
 }
 
-// Color dot row for a style preset
-function StyleDots({ style }: { style: StylePreset }) {
-  const colors = style.id === 'none'
-    ? ['0 0% 20%', '0 0% 33%', '0 0% 0%', '0 0% 10%', '0 0% 100%']
-    : [style.colors.primary, style.colors.accent, style.colors.background, style.colors.card, style.colors.foreground];
+// --- Converters between ThemeTokens (camelCase) and StyleColors (kebab-case) ---
+function tokensToStyleColors(tokens: ThemeTokens): StyleColors {
+  return {
+    primary: tokens.primary,
+    'primary-foreground': tokens.primaryForeground,
+    secondary: tokens.secondary,
+    'secondary-foreground': tokens.secondaryForeground,
+    accent: tokens.accent,
+    'accent-foreground': tokens.accentForeground,
+    background: tokens.background,
+    foreground: tokens.foreground,
+    card: tokens.card,
+    'card-foreground': tokens.cardForeground,
+    popover: tokens.popover,
+    'popover-foreground': tokens.popoverForeground,
+    muted: tokens.muted,
+    'muted-foreground': tokens.mutedForeground,
+    destructive: tokens.destructive,
+    'destructive-foreground': tokens.destructiveForeground,
+    border: tokens.border,
+    input: tokens.input,
+    ring: tokens.ring,
+    'chart-1': tokens.chart1,
+    'chart-2': tokens.chart2,
+    'chart-3': tokens.chart3,
+    'chart-4': tokens.chart4,
+    'chart-5': tokens.chart5,
+  };
+}
+
+function styleColorsToTokens(colors: StyleColors): ThemeTokens {
+  return {
+    background: colors.background,
+    foreground: colors.foreground,
+    primary: colors.primary,
+    primaryForeground: colors['primary-foreground'],
+    secondary: colors.secondary,
+    secondaryForeground: colors['secondary-foreground'],
+    accent: colors.accent,
+    accentForeground: colors['accent-foreground'],
+    card: colors.card,
+    cardForeground: colors['card-foreground'],
+    popover: colors.popover,
+    popoverForeground: colors['popover-foreground'],
+    muted: colors.muted,
+    mutedForeground: colors['muted-foreground'],
+    destructive: colors.destructive,
+    destructiveForeground: colors['destructive-foreground'],
+    border: colors.border,
+    input: colors.input,
+    ring: colors.ring,
+    chart1: colors['chart-1'],
+    chart2: colors['chart-2'],
+    chart3: colors['chart-3'],
+    chart4: colors['chart-4'],
+    chart5: colors['chart-5'],
+  };
+}
+
+// Color dot row for a preset
+function StyleDots({ tokens }: { tokens: ThemeTokens }) {
+  const colors = [tokens.primary, tokens.accent, tokens.background, tokens.card, tokens.foreground]
+    .map(c => c || '0 0% 50%');
   return (
     <div className="flex items-center gap-1">
       {colors.map((c, i) => (
@@ -35,68 +91,30 @@ function StyleDots({ style }: { style: StylePreset }) {
   );
 }
 
-export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange, selectedElement, onEditRequest }: DesignPanelProps) {
+export function DesignPanel({ onVisualEditModeChange, selectedElement, onEditRequest }: DesignPanelProps) {
+  const { theme, presetId, setTheme, previewTheme, revertPreview, applyPreset } = useTheme();
   const [view, setView] = useState<DesignView>('home');
-  const [editingStyle, setEditingStyle] = useState<StylePreset | null>(null);
-  const [originalColorsSnapshot, setOriginalColorsSnapshot] = useState<StyleColors | null>(null);
-  const [extractedColors, setExtractedColors] = useState<StyleColors | null>(null);
-  const currentStyle = activeStyle ?? STYLE_PRESETS[0];
+  const [editingStylePreset, setEditingStylePreset] = useState<StylePreset | null>(null);
 
   // Notify parent when visual edit mode changes
   useEffect(() => {
     onVisualEditModeChange?.(view === 'visual-edits');
   }, [view, onVisualEditModeChange]);
 
-  // Listen for color extraction responses from the iframe
-  useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      const msg = event.data;
-      if (!msg || msg.type !== 'VIBECODER_COLORS_EXTRACTED') return;
-      // Convert hex values from iframe to HSL strings
-      const raw = msg.colors as Record<string, string>;
-      const converted: Record<string, string> = {};
-      for (const [key, val] of Object.entries(raw)) {
-        converted[key] = val?.startsWith('#') ? hexToHSL(val) : (val || '0 0% 0%');
-      }
-      setExtractedColors(converted as StyleColors);
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, []);
+  const handleEditPreset = useCallback((preset: ThemePreset) => {
+    const matching = STYLE_PRESETS.find(s => s.id === preset.id);
+    if (!matching) return;
 
-  // Request color extraction from the iframe
-  const requestColorExtraction = useCallback(() => {
-    const iframe = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
-    if (iframe?.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'VIBECODER_EXTRACT_COLORS' }, '*');
-    }
-  }, []);
-
-  // When editing a theme, use the CURRENTLY APPLIED colors (from activeStyle)
-  // instead of the preset defaults, so user edits are preserved
-  const handleEditStyle = useCallback((style: StylePreset) => {
-    if (style.id === 'none') {
-      // "Current Theme" — extract live colors from the iframe
-      requestColorExtraction();
-      const colorsToUse = extractedColors ?? currentStyle.colors;
-      setOriginalColorsSnapshot({ ...colorsToUse });
-      setEditingStyle({ ...style, colors: colorsToUse });
+    // If this preset is currently active, use the live theme (preserves user edits)
+    if (preset.id === presetId || preset.id === 'none') {
+      setEditingStylePreset({
+        ...matching,
+        colors: tokensToStyleColors(theme),
+      });
     } else {
-      // For named presets: if this preset is the active one, use its APPLIED colors
-      // (which may have been customized), not the original preset defaults
-      const isCurrentlyActive = currentStyle.id === style.id;
-      const colorsToUse = isCurrentlyActive ? currentStyle.colors : style.colors;
-      setOriginalColorsSnapshot({ ...colorsToUse });
-      setEditingStyle({ ...style, colors: colorsToUse });
+      setEditingStylePreset({ ...matching });
     }
-  }, [requestColorExtraction, extractedColors, currentStyle]);
-
-  // Update editingStyle when extraction completes (if we're editing Current Theme)
-  useEffect(() => {
-    if (editingStyle?.id === 'none' && extractedColors) {
-      setEditingStyle(prev => prev ? { ...prev, colors: extractedColors } : null);
-    }
-  }, [extractedColors, editingStyle?.id]);
+  }, [presetId, theme]);
 
   if (view === 'themes') {
     return (
@@ -114,16 +132,15 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
             <span className="text-sm font-semibold text-zinc-200">Themes</span>
           </div>
 
-          {/* Default themes label */}
           <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Default themes</p>
 
           {/* Theme list */}
           <div className="space-y-2">
-            {STYLE_PRESETS.map((style) => {
-              const isActive = currentStyle.id === style.id;
+            {PRESETS.map((preset) => {
+              const isActive = presetId === preset.id;
               return (
                 <div
-                  key={style.id}
+                  key={preset.id}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors",
                     isActive
@@ -131,23 +148,20 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
                       : "bg-zinc-900/60 border border-zinc-800/50"
                   )}
                 >
-                  <StyleDots style={style} />
+                  <StyleDots tokens={isActive ? theme : preset.tokens} />
                   <span className="text-sm font-medium text-zinc-200 flex-1 truncate">
-                    {style.name}
+                    {preset.name}
                   </span>
                   {!isActive && (
                     <button
-                      onClick={() => {
-                        onStyleChange?.(style);
-                        window.dispatchEvent(new CustomEvent('vibecoder-theme-apply', { detail: style.colors }));
-                      }}
+                      onClick={() => applyPreset(preset)}
                       className="px-3 py-1 text-xs font-medium text-zinc-300 bg-zinc-700 hover:bg-zinc-600 rounded-md transition-colors shrink-0"
                     >
                       Apply
                     </button>
                   )}
                   <button
-                    onClick={() => handleEditStyle(style)}
+                    onClick={() => handleEditPreset(preset)}
                     className="p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-700 rounded-md transition-colors shrink-0"
                   >
                     <MoreHorizontal className="w-4 h-4" />
@@ -159,30 +173,22 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
         </div>
 
         {/* Theme editor dialog */}
-        {editingStyle && (
+        {editingStylePreset && (
           <ThemeEditorDialog
-            open={!!editingStyle}
+            open={!!editingStylePreset}
             onClose={() => {
-              // Revert to original snapshot (what was applied BEFORE opening editor)
-              if (originalColorsSnapshot) {
-                window.dispatchEvent(new CustomEvent('vibecoder-theme-apply', { detail: originalColorsSnapshot }));
-              } else {
-                window.dispatchEvent(new CustomEvent('vibecoder-theme-revert'));
-              }
-              setEditingStyle(null);
-              setOriginalColorsSnapshot(null);
+              revertPreview();
+              setEditingStylePreset(null);
             }}
-            style={editingStyle}
+            style={editingStylePreset}
             onApply={(updated) => {
-              onStyleChange?.(updated);
-              window.dispatchEvent(new CustomEvent('vibecoder-theme-apply', { detail: updated.colors }));
-              setEditingStyle(null);
-              setOriginalColorsSnapshot(null);
+              const tokens = styleColorsToTokens(updated.colors);
+              setTheme(tokens, updated.id);
+              setEditingStylePreset(null);
             }}
             onLivePreview={(colors) => {
-              // Dispatch custom DOM event — ThemeBridge (inside SandpackProvider) 
-              // listens and updates files via useSandpack API
-              window.dispatchEvent(new CustomEvent('vibecoder-theme-apply', { detail: colors }));
+              const tokens = styleColorsToTokens(colors);
+              previewTheme(tokens);
             }}
           />
         )}
