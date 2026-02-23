@@ -1315,6 +1315,7 @@ If the request says "change X", change ONLY X and nothing else.
       messages,
       stream: shouldStream,
       max_tokens: maxTokens,
+      temperature: 0.3,
     }),
   });
 
