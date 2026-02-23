@@ -311,7 +311,7 @@ export function useSubscription() {
 
   // Real-time wallet balance sync — updates credits immediately on DB change
   useEffect(() => {
-    if (!user || isPrivileged) return;
+    if (!user) return;
 
     let channel: RealtimeChannel | null = null;
 
