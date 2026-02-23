@@ -1444,22 +1444,31 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     if (trimmedRaw.startsWith('{')) {
       try {
         const parsed = JSON.parse(trimmedRaw);
+        
+        // Handle {"files": {...}} wrapper
         if (parsed.files && typeof parsed.files === 'object') {
           const fileKeys = Object.keys(parsed.files);
-          // If JSON contains multiple files OR only non-App files, merge with current snapshot
-          const hasAppFile = fileKeys.some(k => k.includes('App.tsx'));
-          if (fileKeys.length > 1 || !hasAppFile) {
-            console.log('[useStreamingCode] setCode: Detected multi-file JSON — merging with snapshot,', fileKeys.length, 'files');
+          // ALWAYS delegate multi-file or any JSON with "files" key to setFiles
+          // This prevents raw JSON from ever reaching Sandpack as TSX
+          if (fileKeys.length > 0) {
+            console.log('[useStreamingCode] setCode: Detected JSON with "files" property — delegating to setFiles(),', fileKeys.length, 'files');
             const currentFiles = state.files && Object.keys(state.files).length > 0 ? state.files : {};
             const mergedFiles = { ...currentFiles, ...parsed.files };
             setFiles(mergedFiles);
             return;
           }
-          const appKey = fileKeys.find(k => k.includes('App.tsx'))!;
-          if (typeof parsed.files[appKey] === 'string') {
-            console.warn('[useStreamingCode] setCode: Unwrapped JSON-wrapped code from key:', appKey);
-            rawCode = parsed.files[appKey];
-          }
+        }
+        
+        // Handle direct file map {"/App.tsx": "...", "/components/Foo.tsx": "..."}
+        const directKeys = Object.keys(parsed);
+        const isDirectFileMap = directKeys.length > 0 &&
+          directKeys.every(k => (k.endsWith('.tsx') || k.endsWith('.ts') || k.endsWith('.css') || k.endsWith('.json')) && typeof parsed[k] === 'string');
+        if (isDirectFileMap) {
+          console.log('[useStreamingCode] setCode: Detected direct file map JSON — delegating to setFiles(),', directKeys.length, 'files');
+          const currentFiles = state.files && Object.keys(state.files).length > 0 ? state.files : {};
+          const mergedFiles = { ...currentFiles, ...parsed };
+          setFiles(mergedFiles);
+          return;
         }
       } catch {
         // Not JSON, proceed normally
