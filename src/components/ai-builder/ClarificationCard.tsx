@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 
 export interface ClarificationQuestion {
   id: string;
   label: string;
   type: 'single' | 'multi';
   options: Array<{ value: string; label: string }>;
+  allowCustomInput?: boolean;
 }
 
 interface ClarificationCardProps {
@@ -27,9 +29,12 @@ export function ClarificationCard({
   onSkip 
 }: ClarificationCardProps) {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
+  const [useCustom, setUseCustom] = useState<Record<string, boolean>>({});
 
   const handleSingleAnswer = (questionId: string, value: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
+    setUseCustom(prev => ({ ...prev, [questionId]: false }));
   };
 
   const handleMultiAnswer = (questionId: string, value: string, checked: boolean) => {
@@ -43,7 +48,17 @@ export function ClarificationCard({
     });
   };
 
-  const answeredCount = Object.keys(answers).length;
+  const handleCustomInput = (questionId: string, value: string) => {
+    setCustomInputs(prev => ({ ...prev, [questionId]: value }));
+    setUseCustom(prev => ({ ...prev, [questionId]: true }));
+    setAnswers(prev => ({ ...prev, [questionId]: value }));
+  };
+
+  const answeredCount = Object.keys(answers).filter(k => {
+    const val = answers[k];
+    if (Array.isArray(val)) return val.length > 0;
+    return val && val.length > 0;
+  }).length;
   const allAnswered = answeredCount === questions.length;
 
   return (
@@ -82,8 +97,15 @@ export function ClarificationCard({
               
               {q.type === 'single' ? (
                 <RadioGroup
-                  value={(answers[q.id] as string) || ''}
-                  onValueChange={(val) => handleSingleAnswer(q.id, val)}
+                  value={useCustom[q.id] ? '__custom__' : ((answers[q.id] as string) || '')}
+                  onValueChange={(val) => {
+                    if (val === '__custom__') {
+                      setUseCustom(prev => ({ ...prev, [q.id]: true }));
+                      setAnswers(prev => ({ ...prev, [q.id]: customInputs[q.id] || '' }));
+                    } else {
+                      handleSingleAnswer(q.id, val);
+                    }
+                  }}
                   className="grid gap-1.5"
                 >
                   {q.options.map(opt => (
@@ -94,6 +116,20 @@ export function ClarificationCard({
                       </Label>
                     </div>
                   ))}
+                  {q.allowCustomInput && (
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="__custom__" id={`${q.id}-custom`} />
+                      <Input
+                        placeholder="Type your own..."
+                        value={customInputs[q.id] || ''}
+                        onChange={(e) => handleCustomInput(q.id, e.target.value)}
+                        onFocus={() => {
+                          setUseCustom(prev => ({ ...prev, [q.id]: true }));
+                        }}
+                        className="h-7 text-xs flex-1 bg-background/50"
+                      />
+                    </div>
+                  )}
                 </RadioGroup>
               ) : (
                 <div className="grid gap-1.5">
@@ -112,6 +148,19 @@ export function ClarificationCard({
                       </div>
                     );
                   })}
+                  {q.allowCustomInput && (
+                    <Input
+                      placeholder="Or type your own..."
+                      value={customInputs[q.id] || ''}
+                      onChange={(e) => {
+                        setCustomInputs(prev => ({ ...prev, [q.id]: e.target.value }));
+                        if (e.target.value) {
+                          handleMultiAnswer(q.id, `custom:${e.target.value}`, true);
+                        }
+                      }}
+                      className="h-7 text-xs mt-1 bg-background/50"
+                    />
+                  )}
                 </div>
               )}
             </motion.div>
