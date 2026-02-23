@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke';
 import { LovableHero } from './LovableHero';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useUserCredits } from '@/hooks/useUserCredits';
 
 import { FixErrorToast } from './FixErrorToast';
 import { GenerationOverlay } from './GenerationOverlay';
@@ -46,7 +47,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const [publishing, setPublishing] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
-  const { credits: userCredits, plan: subscriptionTier } = useSubscription();
+  const { plan: subscriptionTier } = useSubscription();
+  const { credits: userCredits, refetch: refetchCredits } = useUserCredits();
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -502,7 +504,19 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onError: (err) => {
       setLiveSteps([]);
       generationLockRef.current = null; // Release lock on error
-      toast.error(err.message);
+      
+      // Handle credit-specific errors with actionable UI
+      if (err.message.includes('INSUFFICIENT_CREDITS')) {
+        toast.error('Not enough credits for this generation.', {
+          action: {
+            label: 'Top Up',
+            onClick: () => window.open('/billing', '_blank'),
+          },
+        });
+        refetchCredits(); // Sync display with actual balance
+      } else {
+        toast.error(err.message);
+      }
       onStreamingError(err.message);
     },
     // 🔧 GHOST FIXER TRIGGER: Called when truncation is detected (missing sentinel)
@@ -614,6 +628,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onStreamCode: streamCode,
     onComplete: () => {
       console.log('[AgentLoop] Complete');
+      // Refetch credits after generation completes (backend already deducted)
+      refetchCredits();
     },
     getActiveProjectId: () => activeProjectId,
   });
@@ -1243,6 +1259,25 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     if (!hasPremiumAccess) {
       setShowUpgradeModal(true);
       return; // ⛔ HARD STOP - show upgrade modal instead
+    }
+
+    // 💰 CREDIT CHECK: Verify sufficient credits before generation
+    const modelId = activeModel?.id || 'vibecoder-pro';
+    const CREDIT_COSTS: Record<string, number> = {
+      'vibecoder-pro': 3,
+      'vibecoder-flash': 0,
+      'vibecoder-turbo': 2,
+    };
+    const generationCost = CREDIT_COSTS[modelId] ?? 3;
+    
+    if (generationCost > 0 && userCredits < generationCost) {
+      toast.error(`Insufficient credits. You need ${generationCost} credits but have ${userCredits}. Please top up to continue.`, {
+        action: {
+          label: 'Top Up',
+          onClick: () => window.open('/billing', '_blank'),
+        },
+      });
+      return;
     }
     
     // Use the clean display message for policy checks and storage
@@ -2008,6 +2043,7 @@ TASK: Modify the existing storefront code to place this ${assetToApply.type} ass
               }}
               isCollapsed={chatCollapsed}
               onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
+              userCredits={userCredits}
             />
           )}
         </div>
