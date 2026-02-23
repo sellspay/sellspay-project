@@ -86,17 +86,88 @@ const COLOR_GROUPS: ColorGroup[] = [
   },
 ];
 
+/**
+ * Convert HSL string "H S% L%" to hex "#RRGGBB"
+ */
+function hslToHex(hslStr: string): string {
+  // If already hex, return as-is
+  if (hslStr.startsWith('#')) return hslStr;
+  
+  const parts = hslStr.match(/[\d.]+/g);
+  if (!parts || parts.length < 3) return '#000000';
+  
+  const h = parseFloat(parts[0]) / 360;
+  const s = parseFloat(parts[1]) / 100;
+  const l = parseFloat(parts[2]) / 100;
+
+  let r: number, g: number, b: number;
+
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+
+  const toHex = (c: number) => {
+    const hex = Math.round(c * 255).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  };
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+/**
+ * Convert hex "#RRGGBB" to HSL string "H S% L%"
+ */
+function hexToHSL(hex: string): string {
+  // If already HSL format, return as-is
+  if (!hex.startsWith('#')) return hex;
+
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
 function ColorRow({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  const [inputValue, setInputValue] = useState(value);
+  // Convert HSL to hex for the color picker display
+  const hexValue = hslToHex(value);
+  const [inputValue, setInputValue] = useState(hexValue);
 
   useEffect(() => {
-    setInputValue(value);
+    setInputValue(hslToHex(value));
   }, [value]);
 
-  const handleInputChange = (newVal: string) => {
-    setInputValue(newVal);
-    if (/^#[0-9a-fA-F]{6}$/.test(newVal)) {
-      onChange(newVal);
+  const handleHexChange = (hex: string) => {
+    setInputValue(hex);
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      // Convert hex to HSL before passing up
+      onChange(hexToHSL(hex));
     }
   };
 
@@ -105,23 +176,23 @@ function ColorRow({ label, value, onChange }: { label: string; value: string; on
       <label className="relative w-5 h-5 shrink-0">
         <input
           type="color"
-          value={value}
+          value={hexValue}
           onChange={(e) => {
             setInputValue(e.target.value);
-            onChange(e.target.value);
+            onChange(hexToHSL(e.target.value));
           }}
           className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
         />
         <div
           className="w-5 h-5 rounded-full border border-white/20 cursor-pointer"
-          style={{ backgroundColor: value }}
+          style={{ backgroundColor: hexValue }}
         />
       </label>
       <span className="text-sm text-zinc-300 flex-1">{label}</span>
       <input
         type="text"
         value={inputValue}
-        onChange={(e) => handleInputChange(e.target.value)}
+        onChange={(e) => handleHexChange(e.target.value)}
         className="w-20 text-right text-xs text-zinc-400 bg-transparent border-none outline-none font-mono"
       />
     </div>
@@ -160,7 +231,7 @@ function CollapsibleGroup({ label, colors, editColors, onColorChange, defaultOpe
                 <ColorRow
                   key={c.key}
                   label={c.label}
-                  value={editColors[c.key] || '#000000'}
+                  value={editColors[c.key] || '0 0% 0%'}
                   onChange={(val) => onColorChange(c.key, val)}
                 />
               ))}
@@ -234,7 +305,7 @@ export function ThemeEditorDialog({ open, onClose, style, onApply, onLivePreview
           <span className="text-sm text-zinc-200 flex-1">{style.name}</span>
           <div className="flex items-center gap-1">
             {[editColors.primary, editColors.accent, editColors.background, editColors.foreground].map((c, i) => (
-              <div key={i} className="w-3.5 h-3.5 rounded-full border border-white/10" style={{ backgroundColor: c || '#333' }} />
+              <div key={i} className="w-3.5 h-3.5 rounded-full border border-white/10" style={{ backgroundColor: `hsl(${c || '0 0% 0%'})` }} />
             ))}
           </div>
         </div>

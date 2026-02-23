@@ -450,6 +450,66 @@ function ThemeBridge() {
   const { sandpack } = useSandpack();
 
   useEffect(() => {
+    // Import theme engine utilities
+    const TOKEN_TO_CSS_VAR: Record<string, string> = {
+      background: '--background',
+      foreground: '--foreground',
+      primary: '--primary',
+      primaryForeground: '--primary-foreground',
+      secondary: '--secondary',
+      secondaryForeground: '--secondary-foreground',
+      accent: '--accent',
+      accentForeground: '--accent-foreground',
+      card: '--card',
+      cardForeground: '--card-foreground',
+      popover: '--popover',
+      popoverForeground: '--popover-foreground',
+      muted: '--muted',
+      mutedForeground: '--muted-foreground',
+      destructive: '--destructive',
+      destructiveForeground: '--destructive-foreground',
+      border: '--border',
+      input: '--input',
+      ring: '--ring',
+      chart1: '--chart-1',
+      chart2: '--chart-2',
+      chart3: '--chart-3',
+      chart4: '--chart-4',
+      chart5: '--chart-5',
+    };
+
+    function tokensToCSSString(tokens: Record<string, string>): string {
+      const lines: string[] = [];
+      for (const [key, cssVar] of Object.entries(TOKEN_TO_CSS_VAR)) {
+        const value = tokens[key];
+        if (value) {
+          lines.push(`  ${cssVar}: ${value};`);
+        }
+      }
+      // Also handle kebab-case keys from legacy StyleColors format
+      const kebabMap: Record<string, string> = {
+        'primary-foreground': '--primary-foreground',
+        'secondary-foreground': '--secondary-foreground',
+        'accent-foreground': '--accent-foreground',
+        'card-foreground': '--card-foreground',
+        'popover-foreground': '--popover-foreground',
+        'muted-foreground': '--muted-foreground',
+        'destructive-foreground': '--destructive-foreground',
+        'chart-1': '--chart-1',
+        'chart-2': '--chart-2',
+        'chart-3': '--chart-3',
+        'chart-4': '--chart-4',
+        'chart-5': '--chart-5',
+      };
+      for (const [kebabKey, cssVar] of Object.entries(kebabMap)) {
+        const value = tokens[kebabKey];
+        if (value && !lines.some(l => l.includes(cssVar))) {
+          lines.push(`  ${cssVar}: ${value};`);
+        }
+      }
+      return `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}`;
+    }
+
     function hexToHSL(hex: string): string {
       const r = parseInt(hex.slice(1,3),16)/255;
       const g = parseInt(hex.slice(3,5),16)/255;
@@ -467,235 +527,47 @@ function ThemeBridge() {
       return Math.round(h*360) + ' ' + Math.round(s*100) + '% ' + Math.round(l*100) + '%';
     }
 
-    const varKeys = [
-      'background', 'foreground', 'primary', 'primary-foreground',
-      'secondary', 'secondary-foreground', 'accent', 'accent-foreground',
-      'card', 'card-foreground', 'popover', 'popover-foreground',
-      'muted', 'muted-foreground', 'destructive', 'destructive-foreground',
-      'border', 'input', 'ring',
-      'chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5',
-    ];
+    /**
+     * Build theme CSS from either ThemeTokens (HSL) or legacy StyleColors (hex).
+     * Detects format automatically.
+     */
+    function buildThemeCSS(data: Record<string, string>): string {
+      // Check if values are hex or HSL
+      const firstValue = Object.values(data).find(v => v && typeof v === 'string');
+      const isHex = firstValue?.startsWith('#');
 
-    function buildThemeCSS(colors: Record<string, string>): string {
-      const lines = varKeys.map(key => {
-        const hex = colors[key];
-        if (hex && hex.startsWith('#')) {
-          return `  --${key}: ${hexToHSL(hex)};`;
+      if (isHex) {
+        // Convert hex to HSL first
+        const converted: Record<string, string> = {};
+        for (const [key, value] of Object.entries(data)) {
+          if (value?.startsWith('#')) {
+            converted[key] = hexToHSL(value);
+          } else if (value) {
+            converted[key] = value;
+          }
         }
-        return null;
-      }).filter(Boolean);
-      
-      const primary = colors['primary'];
-      const primaryFg = colors['primary-foreground'];
-      const accent = colors['accent'];
-      const accentFg = colors['accent-foreground'];
-      const bg = colors['background'];
-      const fg = colors['foreground'];
-      const card = colors['card'];
-      const cardFg = colors['card-foreground'];
-      const muted = colors['muted'];
-      const mutedFg = colors['muted-foreground'];
-      const border = colors['border'];
-      const destructive = colors['destructive'];
-
-      const hsl = (hex?: string) => hex?.startsWith('#') ? hexToHSL(hex) : null;
-
-      let css = `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}\n`;
-      css += `\nhtml, body, #root {\n  background-color: hsl(var(--background)) !important;\n  color: hsl(var(--foreground)) !important;\n}\n`;
-      
-      // Background overrides — remap all hardcoded bg colors to theme tokens
-      const bgHSL = hsl(bg);
-      const cardHSL = hsl(card);
-      const mutedHSL = hsl(muted);
-      const primaryHSL = hsl(primary);
-      const accentHSL = hsl(accent);
-      const borderHSL = hsl(border);
-      const fgHSL = hsl(fg);
-      const cardFgHSL = hsl(cardFg);
-      const primaryFgHSL = hsl(primaryFg);
-      const accentFgHSL = hsl(accentFg);
-      const mutedFgHSL = hsl(mutedFg);
-      const destructiveHSL = hsl(destructive);
-
-      if (bgHSL) {
-        css += `\n.bg-black, .bg-zinc-950, .bg-zinc-900, .bg-gray-950, .bg-gray-900,
-.bg-neutral-950, .bg-neutral-900, .bg-slate-950, .bg-slate-900 {
-  background-color: hsl(${bgHSL}) !important;
-}\n`;
-      }
-      if (cardHSL) {
-        css += `\n.bg-zinc-800, .bg-gray-800, .bg-neutral-800, .bg-slate-800,
-.bg-zinc-850, .bg-gray-850 {
-  background-color: hsl(${cardHSL}) !important;
-}\n`;
-      }
-      if (mutedHSL) {
-        css += `\n.bg-zinc-700, .bg-gray-700, .bg-neutral-700, .bg-slate-700 {
-  background-color: hsl(${mutedHSL}) !important;
-}\n`;
+        return tokensToCSSString(converted);
       }
 
-      // PRIMARY color overrides — remap orange, blue, violet, purple, indigo, etc.
-      if (primaryHSL) {
-        css += `\n.bg-orange-500, .bg-orange-600, .bg-orange-400, .bg-orange-700,
-.bg-blue-500, .bg-blue-600, .bg-blue-400, .bg-blue-700,
-.bg-violet-500, .bg-violet-600, .bg-violet-400,
-.bg-purple-500, .bg-purple-600, .bg-purple-400,
-.bg-indigo-500, .bg-indigo-600, .bg-indigo-400,
-.bg-amber-500, .bg-amber-600, .bg-amber-400,
-.bg-yellow-500, .bg-yellow-600 {
-  background-color: hsl(${primaryHSL}) !important;
-}
-.text-orange-500, .text-orange-600, .text-orange-400, .text-orange-700, .text-orange-300,
-.text-blue-500, .text-blue-600, .text-blue-400, .text-blue-300,
-.text-violet-500, .text-violet-600, .text-violet-400,
-.text-purple-500, .text-purple-600, .text-purple-400,
-.text-indigo-500, .text-indigo-600, .text-indigo-400,
-.text-amber-500, .text-amber-600, .text-amber-400,
-.text-yellow-500, .text-yellow-600 {
-  color: hsl(${primaryHSL}) !important;
-}
-.border-orange-500, .border-orange-600, .border-orange-400,
-.border-blue-500, .border-blue-600, .border-blue-400,
-.border-violet-500, .border-violet-600, .border-violet-400,
-.border-purple-500, .border-purple-600,
-.border-indigo-500, .border-indigo-600,
-.border-amber-500, .border-amber-600 {
-  border-color: hsl(${primaryHSL}) !important;
-}
-.ring-orange-500, .ring-blue-500, .ring-violet-500, .ring-purple-500, .ring-indigo-500 {
-  --tw-ring-color: hsl(${primaryHSL}) !important;
-}
-.from-orange-500, .from-orange-600, .from-blue-500, .from-blue-600,
-.from-violet-500, .from-violet-600, .from-purple-500, .from-purple-600 {
-  --tw-gradient-from: hsl(${primaryHSL}) !important;
-}
-.to-orange-500, .to-orange-600, .to-blue-500, .to-blue-600,
-.to-violet-500, .to-violet-600, .to-purple-500, .to-purple-600 {
-  --tw-gradient-to: hsl(${primaryHSL}) !important;
-}
-.via-orange-500, .via-blue-500, .via-violet-500, .via-purple-500 {
-  --tw-gradient-via: hsl(${primaryHSL}) !important;
-}\n`;
-      }
-
-      // Primary foreground on those colored backgrounds
-      if (primaryFgHSL) {
-        css += `\n.text-orange-50, .text-blue-50, .text-violet-50, .text-purple-50 {
-  color: hsl(${primaryFgHSL}) !important;
-}\n`;
-      }
-
-      // ACCENT color overrides
-      if (accentHSL) {
-        css += `\n.bg-cyan-500, .bg-cyan-600, .bg-cyan-400,
-.bg-teal-500, .bg-teal-600, .bg-teal-400,
-.bg-emerald-500, .bg-emerald-600, .bg-emerald-400,
-.bg-sky-500, .bg-sky-600, .bg-sky-400 {
-  background-color: hsl(${accentHSL}) !important;
-}
-.text-cyan-500, .text-cyan-600, .text-cyan-400, .text-cyan-300,
-.text-teal-500, .text-teal-600, .text-teal-400,
-.text-emerald-500, .text-emerald-600, .text-emerald-400,
-.text-sky-500, .text-sky-600, .text-sky-400, .text-sky-300 {
-  color: hsl(${accentHSL}) !important;
-}
-.border-cyan-500, .border-teal-500, .border-emerald-500, .border-sky-500,
-.border-cyan-400, .border-teal-400, .border-sky-400 {
-  border-color: hsl(${accentHSL}) !important;
-}\n`;
-      }
-
-      // DESTRUCTIVE color overrides
-      if (destructiveHSL) {
-        css += `\n.bg-red-500, .bg-red-600, .bg-red-400, .bg-rose-500, .bg-rose-600 {
-  background-color: hsl(${destructiveHSL}) !important;
-}
-.text-red-500, .text-red-600, .text-red-400, .text-rose-500, .text-rose-600 {
-  color: hsl(${destructiveHSL}) !important;
-}\n`;
-      }
-
-      // FOREGROUND text overrides
-      if (fgHSL) {
-        css += `\n.text-white, .text-zinc-100, .text-zinc-50, .text-gray-100, .text-gray-50,
-.text-neutral-100, .text-neutral-50, .text-slate-100, .text-slate-50 {
-  color: hsl(${fgHSL}) !important;
-}\n`;
-      }
-      if (mutedFgHSL) {
-        css += `\n.text-zinc-400, .text-zinc-500, .text-gray-400, .text-gray-500,
-.text-neutral-400, .text-neutral-500, .text-slate-400, .text-slate-500 {
-  color: hsl(${mutedFgHSL}) !important;
-}\n`;
-      }
-      if (cardFgHSL) {
-        css += `\n.text-zinc-200, .text-zinc-300, .text-gray-200, .text-gray-300 {
-  color: hsl(${cardFgHSL}) !important;
-}\n`;
-      }
-
-      // Border overrides
-      if (borderHSL) {
-        css += `\n.border-zinc-800, .border-zinc-700, .border-gray-800, .border-gray-700,
-.border-neutral-800, .border-neutral-700, .border-slate-800, .border-slate-700,
-.border-white\\/10, .border-white\\/5, .border-white\\/20 {
-  border-color: hsl(${borderHSL}) !important;
-}\n`;
-      }
-
-      // Force all img elements with grayscale+invert filters to use theme-aware coloring
-      // and ensure marquee/sliding banner text respects theme
-      if (primaryHSL && fgHSL) {
-        css += `\n/* Sliding banner / marquee overrides */
-[style*="filter"][style*="invert"] {
-  filter: grayscale(1) brightness(0) invert(1) !important;
-}
-marquee *, [data-marquee] *, [class*="marquee"] *, [class*="sliding"] *, [class*="banner"] *, [class*="scroll"] * {
-  color: hsl(${fgHSL}) !important;
-}
-[class*="marquee"] img, [class*="sliding"] img, [class*="banner"] img, [class*="scroll"] img {
-  filter: grayscale(1) brightness(0) invert(1) !important;
-}\n`;
-      }
-
-      // Hover state overrides for primary buttons
-      if (primaryHSL) {
-        css += `\n.hover\\:bg-orange-600:hover, .hover\\:bg-orange-500:hover,
-.hover\\:bg-blue-600:hover, .hover\\:bg-blue-500:hover,
-.hover\\:bg-violet-600:hover, .hover\\:bg-violet-500:hover,
-.hover\\:bg-purple-600:hover, .hover\\:bg-purple-500:hover {
-  background-color: hsl(${primaryHSL}) !important;
-  filter: brightness(1.1);
-}
-.hover\\:text-orange-500:hover, .hover\\:text-orange-400:hover,
-.hover\\:text-blue-500:hover, .hover\\:text-blue-400:hover {
-  color: hsl(${primaryHSL}) !important;
-}\n`;
-      }
-
-      return css;
+      // Already HSL format — pass through directly
+      return tokensToCSSString(data);
     }
 
     // Find the Sandpack iframe using multiple strategies
     function findIframe(): HTMLIFrameElement | null {
-      // Strategy 1: Sandpack's known selectors
       const sp = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
       if (sp?.contentWindow) return sp;
-      // Strategy 2: Any iframe inside sp-preview container
       const container = document.querySelector('.sp-preview-container, .sp-preview');
       if (container) {
         const iframe = container.querySelector('iframe') as HTMLIFrameElement | null;
         if (iframe?.contentWindow) return iframe;
       }
-      // Strategy 3: Any iframe with sandpack in src
       const allIframes = document.querySelectorAll('iframe');
       for (const iframe of allIframes) {
         if (iframe.src?.includes('sandpack') || iframe.src?.includes('codesandbox')) {
           if (iframe.contentWindow) return iframe;
         }
       }
-      // Strategy 4: First iframe in preview area
       if (allIframes.length > 0 && allIframes[0].contentWindow) {
         return allIframes[0] as HTMLIFrameElement;
       }
@@ -707,14 +579,10 @@ marquee *, [data-marquee] *, [class*="marquee"] *, [class*="sliding"] *, [class*
       if (iframe?.contentWindow) {
         iframe.contentWindow.postMessage({ type, ...data }, '*');
       } else {
-        console.warn('[ThemeBridge] No iframe found, retrying in 500ms...');
-        // Retry once after a delay
         setTimeout(() => {
           const retryIframe = findIframe();
           if (retryIframe?.contentWindow) {
             retryIframe.contentWindow.postMessage({ type, ...data }, '*');
-          } else {
-            console.warn('[ThemeBridge] Retry failed — no iframe available');
           }
         }, 500);
       }
@@ -724,17 +592,17 @@ marquee *, [data-marquee] *, [class*="marquee"] *, [class*="sliding"] *, [class*
     let lastAppliedCSS: string | null = null;
 
     const handleApply = (e: Event) => {
-      const colors = (e as CustomEvent).detail;
-      if (!colors) return;
-      const css = buildThemeCSS(colors);
+      const data = (e as CustomEvent).detail;
+      if (!data) return;
+      const css = buildThemeCSS(data);
       lastAppliedCSS = css;
       sendToIframe('VIBECODER_INJECT_THEME', { css });
 
-      // ALSO write the FULL override CSS to theme-base.css so it persists across Sandpack recompiles
+      // Also persist to Sandpack file system for recompile survival
       try {
         sandpack.updateFile('/styles/theme-base.css', css);
       } catch (err) {
-        // Non-critical — the postMessage injection still works
+        // Non-critical
       }
     };
 
@@ -1314,82 +1182,8 @@ window.addEventListener('message', (event) => {
   window.parent.postMessage({ type: 'VIBECODER_COLORS_EXTRACTED', colors }, '*');
 });
 
-// LIVE THEME PREVIEW: Set CSS custom properties that Tailwind CDN resolves
-(function() {
-  // Convert hex to HSL string for CSS custom properties
-  function hexToHSL(hex) {
-    const r = parseInt(hex.slice(1,3),16)/255;
-    const g = parseInt(hex.slice(3,5),16)/255;
-    const b = parseInt(hex.slice(5,7),16)/255;
-    const max = Math.max(r,g,b), min = Math.min(r,g,b);
-    let h = 0, s = 0, l = (max+min)/2;
-    if (max !== min) {
-      const d = max - min;
-      s = l > 0.5 ? d/(2-max-min) : d/(max+min);
-      if (max === r) h = ((g-b)/d + (g<b?6:0))/6;
-      else if (max === g) h = ((b-r)/d+2)/6;
-      else h = ((r-g)/d+4)/6;
-    }
-    return Math.round(h*360) + ' ' + Math.round(s*100) + '% ' + Math.round(l*100) + '%';
-  }
-
-  // Map of CSS variable names to color keys
-  const varMap = {
-    '--background': 'background',
-    '--foreground': 'foreground',
-    '--primary': 'primary',
-    '--primary-foreground': 'primary-foreground',
-    '--secondary': 'secondary',
-    '--secondary-foreground': 'secondary-foreground',
-    '--accent': 'accent',
-    '--accent-foreground': 'accent-foreground',
-    '--card': 'card',
-    '--card-foreground': 'card-foreground',
-    '--popover': 'popover',
-    '--popover-foreground': 'popover-foreground',
-    '--muted': 'muted',
-    '--muted-foreground': 'muted-foreground',
-    '--destructive': 'destructive',
-    '--destructive-foreground': 'destructive-foreground',
-    '--border': 'border',
-    '--input': 'input',
-    '--ring': 'ring',
-    '--chart-1': 'chart-1',
-    '--chart-2': 'chart-2',
-    '--chart-3': 'chart-3',
-    '--chart-4': 'chart-4',
-    '--chart-5': 'chart-5',
-  };
-
-  window.addEventListener('message', (event) => {
-    const msg = event.data;
-    if (!msg) return;
-
-    if (msg.type === 'VIBECODER_APPLY_THEME' || msg.type === 'VIBECODER_REVERT_THEME') {
-      console.log('[THEME-DEBUG-IFRAME] Received:', msg.type, msg.colors ? Object.keys(msg.colors).length + ' keys' : 'no colors');
-    }
-
-    const root = document.documentElement;
-
-    if (msg.type === 'VIBECODER_REVERT_THEME') {
-      for (const varName of Object.keys(varMap)) {
-        root.style.removeProperty(varName);
-      }
-      return;
-    }
-
-    if (msg.type !== 'VIBECODER_APPLY_THEME') return;
-    const c = msg.colors;
-    if (!c) return;
-
-    for (const [varName, key] of Object.entries(varMap)) {
-      const hex = c[key];
-      if (hex && hex.startsWith('#')) {
-        root.style.setProperty(varName, hexToHSL(hex));
-      }
-    }
-  });
-})();
+// Legacy VIBECODER_APPLY_THEME handler removed — all theme injection now goes through
+// VIBECODER_INJECT_THEME which uses a clean <style> tag with CSS variable declarations.
 
 const root = createRoot(document.getElementById("root")!);
 root.render(<App />);`,
