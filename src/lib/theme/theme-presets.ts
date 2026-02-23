@@ -44,6 +44,13 @@ function makeTokens(partial: Partial<ThemeTokens>): ThemeTokens {
     glassBlur: '12px',
     glassBorderOpacity: '0.2',
     shadowElevation: '0 10px 30px -10px',
+    fontHeading: "'Inter', sans-serif",
+    fontBody: "'Inter', sans-serif",
+    fontWeightHeading: '600',
+    letterSpacingHeading: '0.01em',
+    radiusScale: '0.75rem',
+    transitionSpeed: '200ms',
+    textureOverlay: 'noise',
     ...partial,
   };
 }

@@ -51,6 +51,21 @@ export type ThemeTokens = {
 
   // Elevation (CSS shadow offset string)
   shadowElevation: string;
+
+  // Typography tokens
+  fontHeading: string;
+  fontBody: string;
+  fontWeightHeading: string;
+  letterSpacingHeading: string;
+
+  // Geometry
+  radiusScale: string;
+
+  // Motion
+  transitionSpeed: string;
+
+  // Texture
+  textureOverlay: string;
 };
 
 /** CSS variable name mapping */
@@ -85,4 +100,11 @@ export const TOKEN_TO_CSS_VAR: Record<keyof ThemeTokens, string> = {
   glassBlur: '--glass-blur',
   glassBorderOpacity: '--glass-border-opacity',
   shadowElevation: '--shadow-elevation',
+  fontHeading: '--font-heading',
+  fontBody: '--font-body',
+  fontWeightHeading: '--font-weight-heading',
+  letterSpacingHeading: '--letter-spacing-heading',
+  radiusScale: '--radius',
+  transitionSpeed: '--transition-speed',
+  textureOverlay: '--texture-overlay',
 };
