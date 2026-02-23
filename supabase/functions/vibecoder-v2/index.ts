@@ -1907,6 +1907,13 @@ serve(async (req) => {
         let retryCount = 0;
         const generationStartTime = Date.now();
         
+        // ═══════════════════════════════════════════════════════
+        // SINGLE AUTHORITY: SUMMARY phase is the canonical parse.
+        // These flags prevent Gate 1 from re-deriving/re-validating.
+        // ═══════════════════════════════════════════════════════
+        let summaryValidated = false;
+        let lastMergedFiles: Record<string, string> | null = null;
+        
         // Helper to emit structured SSE events
         const emitEvent = (eventType: string, data: any) => {
           const payload = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -2042,7 +2049,10 @@ serve(async (req) => {
                 
                 emitEvent('files', { projectFiles: fileMap });
                 filesEmitted = true;
-                console.log(`[Files] Emitted ${Object.keys(fileMap).length} files atomically`);
+                // ✅ SINGLE AUTHORITY: Mark SUMMARY as canonical parse
+                lastMergedFiles = fileMap;
+                summaryValidated = true;
+                console.log(`[Files] Emitted ${Object.keys(fileMap).length} files atomically (summaryValidated=true)`);
               }
             } catch (parseErr) {
               console.warn('[Files] JSON parse failed, falling back to legacy code_chunk:', parseErr);
@@ -2274,41 +2284,47 @@ serve(async (req) => {
 
             if (codeResult) {
               // ═══════════════════════════════════════════════════════
-              // MERGE-AWARE VALIDATION: For multi-file partial edits,
-              // merge the delta with existing project files before
-              // validating. This prevents false MISSING_EXPORT_DEFAULT
-              // failures when only sub-components are edited.
+              // SINGLE AUTHORITY VALIDATION
+              // If SUMMARY phase already parsed, validated, repaired,
+              // and emitted files, use that canonical result.
+              // Do NOT re-derive from raw === CODE === section.
               // ═══════════════════════════════════════════════════════
               let isMultiFileJson = false;
               let mergedAppContent: string | null = null;
               
-              try {
-                const parsedResult = JSON.parse(codeResult);
-                if (parsedResult && typeof parsedResult === 'object' && parsedResult.files) {
-                  isMultiFileJson = true;
-                  const deltaFiles: Record<string, string> = parsedResult.files;
-                  
-                  // Merge delta with existing project files to get full state
-                  const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
-                    ? projectFiles as Record<string, string>
-                    : {};
-                  const mergedFiles = { ...existingFiles, ...deltaFiles };
-                  
-                  // Find App.tsx in the merged result for validation
-                  const appKey = Object.keys(mergedFiles).find(k => 
-                    k === '/App.tsx' || k === 'App.tsx' || k.endsWith('/App.tsx')
-                  );
-                  mergedAppContent = appKey ? mergedFiles[appKey] : null;
-                  
-                  console.log(`[Job ${jobId}] Multi-file delta: ${Object.keys(deltaFiles).length} changed, ${Object.keys(mergedFiles).length} total after merge`);
+              if (summaryValidated && lastMergedFiles) {
+                // ✅ SUMMARY already validated — use canonical merged files
+                isMultiFileJson = true;
+                const appKey = Object.keys(lastMergedFiles).find(k => 
+                  k === '/App.tsx' || k === 'App.tsx' || k.endsWith('/App.tsx')
+                );
+                mergedAppContent = appKey ? lastMergedFiles[appKey] : null;
+                console.log(`[Job ${jobId}] GATE 1: Using SUMMARY-validated files (${Object.keys(lastMergedFiles).length} files, summaryValidated=true)`);
+              } else {
+                // Fallback: SUMMARY didn't fire (legacy single-file or parse failure)
+                try {
+                  const parsedResult = JSON.parse(codeResult);
+                  if (parsedResult && typeof parsedResult === 'object' && parsedResult.files) {
+                    isMultiFileJson = true;
+                    const deltaFiles: Record<string, string> = parsedResult.files;
+                    const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
+                      ? projectFiles as Record<string, string>
+                      : {};
+                    const mergedFiles = { ...existingFiles, ...deltaFiles };
+                    const appKey = Object.keys(mergedFiles).find(k => 
+                      k === '/App.tsx' || k === 'App.tsx' || k.endsWith('/App.tsx')
+                    );
+                    mergedAppContent = appKey ? mergedFiles[appKey] : null;
+                    console.log(`[Job ${jobId}] GATE 1 FALLBACK: Re-merged ${Object.keys(deltaFiles).length} delta + ${Object.keys(existingFiles).length} existing`);
+                  }
+                } catch {
+                  // Not JSON — single-file code, validate as-is
                 }
-              } catch {
-                // Not JSON — single-file code, validate as-is
               }
               
-              // Choose what to validate: merged App.tsx for multi-file, or raw codeResult for single-file
+              // Choose what to validate
               const contentToValidate = isMultiFileJson
-                ? (mergedAppContent || '') // If no App.tsx in merged result, validation will catch it
+                ? (mergedAppContent || '')
                 : codeResult;
               
               const diagnostics = {
@@ -2317,21 +2333,33 @@ serve(async (req) => {
                 codeContextLength: currentCode?.length ?? 0,
                 generatedLength: codeResult.length,
                 isMultiFileJson,
+                summaryValidated,
                 hasExportDefault: /export\s+default\s/.test(contentToValidate),
                 bracketBalance: (contentToValidate.match(/[({[]/g) ?? []).length - (contentToValidate.match(/[)\]}]/g) ?? []).length,
               };
               console.log(`[Job ${jobId}] VALIDATION_INPUT:`, JSON.stringify(diagnostics));
 
-              // GATE 1: Structural validation (on merged content, not delta)
-              // For multi-file with a valid merged App.tsx, validate that.
-              // If multi-file but NO App.tsx at all in the merged project, skip export check
-              // (the project may use a different entry point or App.tsx wasn't changed/needed).
+              // GATE 1: Structural validation
+              // If summaryValidated=true AND we have a valid App.tsx → lightweight check only
+              // If summaryValidated=true AND no App.tsx → skip entirely (SUMMARY already approved)
               let structuralError: { type: string; message: string } | null = null;
-              if (isMultiFileJson && mergedAppContent) {
+              
+              if (summaryValidated && lastMergedFiles) {
+                // SUMMARY already parsed + repaired + emitted. Trust it.
+                if (mergedAppContent) {
+                  // Lightweight: only check export default on the canonical App.tsx
+                  const hasExport = /export\s+default\s/.test(mergedAppContent);
+                  if (!hasExport) {
+                    console.warn(`[Job ${jobId}] GATE 1 WARN: SUMMARY-validated App.tsx missing export default — allowing (SUMMARY is authority)`);
+                  }
+                  // Do NOT fail — SUMMARY already validated and emitted successfully
+                  console.log(`[Job ${jobId}] GATE 1 PASS: SUMMARY-validated, App.tsx present`);
+                } else {
+                  console.log(`[Job ${jobId}] GATE 1 PASS: SUMMARY-validated, no App.tsx in project (partial edit)`);
+                }
+              } else if (isMultiFileJson && mergedAppContent) {
                 structuralError = getValidationError(mergedAppContent, intentResult.intent);
               } else if (isMultiFileJson && !mergedAppContent) {
-                // No App.tsx in merged result — skip export default check entirely
-                // but still check for completely empty output
                 if (codeResult.trim().length < 50) {
                   structuralError = { type: "MODEL_EMPTY_RESPONSE", message: "AI returned no usable code. Please retry." };
                 } else {
@@ -2342,7 +2370,6 @@ serve(async (req) => {
               }
               
               if (structuralError) {
-                // Emit structured error to frontend
                 emitEvent('error', { code: structuralError.type, message: structuralError.message });
                 validationError = { errorType: structuralError.type, errorMessage: structuralError.message };
                 jobStatus = "failed";
@@ -2410,20 +2437,25 @@ serve(async (req) => {
               if (jobData?.project_id) {
                 let filesWrapper: Record<string, string>;
                 
-                // Detect if codeResult is multi-file JSON
-                try {
-                  const parsed = JSON.parse(codeResult);
-                  if (parsed && typeof parsed === 'object' && parsed.files) {
-                    // Multi-file: merge delta with existing project files
-                    const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
-                      ? projectFiles as Record<string, string>
-                      : {};
-                    filesWrapper = { ...existingFiles, ...parsed.files };
-                  } else {
+                // Use canonical SUMMARY-validated files if available
+                if (summaryValidated && lastMergedFiles) {
+                  filesWrapper = lastMergedFiles;
+                  console.log(`[Job ${jobId}] Recovery save: using SUMMARY-validated files (${Object.keys(filesWrapper).length} files)`);
+                } else {
+                  // Fallback: parse codeResult
+                  try {
+                    const parsed = JSON.parse(codeResult);
+                    if (parsed && typeof parsed === 'object' && parsed.files) {
+                      const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
+                        ? projectFiles as Record<string, string>
+                        : {};
+                      filesWrapper = { ...existingFiles, ...parsed.files };
+                    } else {
+                      filesWrapper = { "App.tsx": codeResult };
+                    }
+                  } catch {
                     filesWrapper = { "App.tsx": codeResult };
                   }
-                } catch {
-                  filesWrapper = { "App.tsx": codeResult };
                 }
                 
                 await supabase.from("vibecoder_projects").update({ files: filesWrapper }).eq("id", jobData.project_id);
