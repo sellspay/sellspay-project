@@ -861,11 +861,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   if (Object.keys(projectFiles).length > 0) {
                     // ═══ GUARDRAILS: Protect against destructive rewrites ═══
                     const appCode = projectFiles['/App.tsx'] || projectFiles['App.tsx'] || '';
-                    const oldCode = lastGoodCodeRef.current;
+                    // Use pre-reset backup if lastGoodCode was reset to DEFAULT_CODE
+                    const oldCode = (lastGoodCodeRef.current === DEFAULT_CODE && preResetCodeRef.current)
+                      ? preResetCodeRef.current
+                      : lastGoodCodeRef.current;
                     if (appCode && oldCode && oldCode.length >= 200) {
                       const guardResult = safeApply(oldCode, appCode, originalPromptRef.current);
                       if (!guardResult.accepted) {
                         console.error('🛡️ MULTI-FILE GUARDRAILS REJECTED:', guardResult.failedGuards.map(f => `${f.guard}: ${f.message}`).join(' | '));
+                        // CRITICAL: Restore the old code in state to prevent showing blank/default
+                        setState(prev => ({ ...prev, code: oldCode, error: `Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}` }));
                         options.onError?.(new Error(`Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}`));
                         receivedFiles = true; // prevent legacy path from running
                         break;
@@ -905,11 +910,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                       if (jsonFiles && typeof jsonFiles === 'object' && Object.keys(jsonFiles).length > 0) {
                         // ═══ GUARDRAILS: Protect against destructive rewrites ═══
                         const appCode = jsonFiles['/App.tsx'] || jsonFiles['App.tsx'] || '';
-                        const oldCode = lastGoodCodeRef.current;
+                        // Use pre-reset backup if lastGoodCode was reset to DEFAULT_CODE
+                        const oldCode = (lastGoodCodeRef.current === DEFAULT_CODE && preResetCodeRef.current)
+                          ? preResetCodeRef.current
+                          : lastGoodCodeRef.current;
                         if (appCode && oldCode && oldCode.length >= 200) {
                           const guardResult = safeApply(oldCode, appCode, originalPromptRef.current);
                           if (!guardResult.accepted) {
                             console.error('🛡️ CODE_CHUNK GUARDRAILS REJECTED:', guardResult.failedGuards.map(f => `${f.guard}: ${f.message}`).join(' | '));
+                            // CRITICAL: Restore the old code in state
+                            setState(prev => ({ ...prev, code: oldCode, error: `Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}` }));
                             options.onError?.(new Error(`Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}`));
                             receivedFiles = true;
                             streamingCodeBuffer = '';
@@ -1154,7 +1164,11 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       // ═══════════════════════════════════════════════════════════
       // 🛡️ PRESERVATION GUARDRAILS v2: Enterprise-grade protection
       // ═══════════════════════════════════════════════════════════
-      const previousCode = currentCode || lastGoodCodeRef.current;
+      // Use pre-reset backup if lastGoodCode was reset to DEFAULT_CODE
+      const effectiveLastGood = (lastGoodCodeRef.current === DEFAULT_CODE && preResetCodeRef.current)
+        ? preResetCodeRef.current
+        : lastGoodCodeRef.current;
+      const previousCode = currentCode || effectiveLastGood;
 
       // Auto-snapshot before every apply attempt
       saveSnapshot(previousCode, prompt);
@@ -1209,6 +1223,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       }
 
       lastGoodCodeRef.current = finalCode;
+      preResetCodeRef.current = null; // Clear backup — real code accepted
       setState(prev => ({ ...prev, isStreaming: false, code: finalCode }));
       options.onComplete?.(finalCode);
 
@@ -1234,7 +1249,15 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     setState(prev => ({ ...prev, isStreaming: false }));
   }, []);
 
+  // SAFETY: Store a backup of lastGoodCode before reset, so we can
+  // restore guardrail protection if a generation starts immediately after.
+  const preResetCodeRef = useRef<string | null>(null);
+
   const resetCode = useCallback(() => {
+    // Save pre-reset code so guardrails can use it as baseline even after reset
+    if (lastGoodCodeRef.current !== DEFAULT_CODE && lastGoodCodeRef.current.length > 200) {
+      preResetCodeRef.current = lastGoodCodeRef.current;
+    }
     lastGoodCodeRef.current = DEFAULT_CODE;
     setState({
       isStreaming: false,
@@ -1334,6 +1357,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     }
 
     lastGoodCodeRef.current = codeWithoutSentinel;
+    preResetCodeRef.current = null; // Clear backup since we have real code now
     setState(prev => ({ ...prev, code: codeWithoutSentinel, files: codeToFiles(codeWithoutSentinel), error: null }));
   }, []);
 
@@ -1342,6 +1366,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     const appCode = filesToCode(files);
     if (appCode) {
       lastGoodCodeRef.current = stripCompleteSentinel(appCode);
+      preResetCodeRef.current = null; // Clear backup since we have real code now
     }
     setState(prev => ({ ...prev, files, code: appCode || prev.code, error: null }));
   }, []);
