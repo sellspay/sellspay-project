@@ -5,7 +5,7 @@ import { STYLE_PRESETS, type StylePreset, type StyleColors } from "./stylePreset
 import { cn } from "@/lib/utils";
 import { VisualEditPanel, type SelectedElement } from "./VisualEditOverlay";
 import { ThemeEditorDialog } from "./ThemeEditorDialog";
-import { useTheme, THEME_PRESETS as PRESETS, type ThemePreset, type ThemeTokens } from "@/lib/theme";
+import { useTheme, THEME_PRESETS as PRESETS, type ThemePreset, type ThemeTokens, ALL_VIBES, VIBE_LABELS, type ThemeVibe } from "@/lib/theme";
 import { Switch } from "@/components/ui/switch";
 
 type DesignView = 'home' | 'themes' | 'visual-edits';
@@ -93,9 +93,10 @@ function StyleDots({ tokens }: { tokens: ThemeTokens }) {
 }
 
 export function DesignPanel({ onVisualEditModeChange, selectedElement, onEditRequest }: DesignPanelProps) {
-  const { theme, presetId, themeSource, isAutoThemeLocked, setTheme, previewTheme, revertPreview, applyPreset, setAutoThemeLocked } = useTheme();
+  const { theme, presetId, themeSource, isAutoThemeLocked, setTheme, previewTheme, revertPreview, applyPreset, setAutoThemeLocked, extractThemeFromPreview } = useTheme();
   const [view, setView] = useState<DesignView>('home');
   const [editingStylePreset, setEditingStylePreset] = useState<StylePreset | null>(null);
+  const [activeVibe, setActiveVibe] = useState<ThemeVibe | null>(null);
 
   // Notify parent when visual edit mode changes
   useEffect(() => {
@@ -159,6 +160,38 @@ export function DesignPanel({ onVisualEditModeChange, selectedElement, onEditReq
               <Sparkles className="w-3 h-3" /> Theme auto-extracted from preview
             </p>
           )}
+
+          {/* Vibe selector */}
+          <div className="space-y-2">
+            <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Vibe style</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {ALL_VIBES.map((vibe) => {
+                const info = VIBE_LABELS[vibe];
+                const isActive = activeVibe === vibe;
+                return (
+                  <button
+                    key={vibe}
+                    onClick={() => {
+                      setActiveVibe(vibe);
+                      // Re-run extraction with this vibe personality
+                      extractThemeFromPreview('', vibe as any);
+                    }}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all text-xs",
+                      isActive
+                        ? "bg-zinc-700 border border-zinc-500 text-zinc-100"
+                        : "bg-zinc-900/60 border border-zinc-800/50 text-zinc-400 hover:text-zinc-300 hover:border-zinc-700/60"
+                    )}
+                  >
+                    <span className="text-sm">{info.emoji}</span>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{info.label}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Default themes</p>
 
