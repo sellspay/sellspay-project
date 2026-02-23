@@ -582,40 +582,47 @@ const SandpackRenderer = memo(function SandpackRenderer({
       // Entry point with NUCLEAR error suppression
       // Thumbnail capture helper — listens for parent postMessage and captures viewport
       '/utils/capture.ts': {
-        code: `// Thumbnail capture script — activated via postMessage from parent
+        code: `// Thumbnail capture script — uses html2canvas for reliable screenshots
+let h2cLoaded = false;
+let h2cPromise: Promise<void> | null = null;
+
+function loadHtml2Canvas(): Promise<void> {
+  if (h2cLoaded) return Promise.resolve();
+  if (h2cPromise) return h2cPromise;
+  h2cPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    script.onload = () => { h2cLoaded = true; resolve(); };
+    script.onerror = () => reject(new Error('Failed to load html2canvas'));
+    document.head.appendChild(script);
+  });
+  return h2cPromise;
+}
+
 window.addEventListener('message', async (event) => {
   if (event.data?.type !== 'VIBECODER_CAPTURE_REQUEST') return;
   try {
+    await loadHtml2Canvas();
+    const h2c = (window as any).html2canvas;
+    if (!h2c) return;
     const hero = document.querySelector('[data-hero="true"]') as HTMLElement | null;
     const target = hero || document.body;
-    const rect = hero ? hero.getBoundingClientRect() : { x: 0, y: 0, width: window.innerWidth, height: Math.min(900, document.body.scrollHeight) };
-    const canvas = document.createElement('canvas');
-    const scale = 0.5; // Half-res for smaller file size
-    canvas.width = rect.width * scale;
-    canvas.height = rect.height * scale;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    // Use SVG foreignObject to render DOM to canvas
-    const svgData = '<svg xmlns="http://www.w3.org/2000/svg" width="' + rect.width + '" height="' + rect.height + '">' +
-      '<foreignObject width="100%" height="100%">' +
-      new XMLSerializer().serializeToString(document.documentElement) +
-      '</foreignObject></svg>';
-    const img = new Image();
-    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      ctx.scale(scale, scale);
-      ctx.drawImage(img, -rect.x, -rect.y);
-      URL.revokeObjectURL(url);
-      canvas.toBlob((jpegBlob) => {
-        if (!jpegBlob) return;
-        jpegBlob.arrayBuffer().then((buffer) => {
-          window.parent.postMessage({ type: 'VIBECODER_CAPTURE_RESPONSE', buffer }, '*', [buffer]);
-        });
-      }, 'image/jpeg', 0.7);
-    };
-    img.onerror = () => URL.revokeObjectURL(url);
-    img.src = url;
+    const canvas = await h2c(target, {
+      scale: 0.5,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      width: hero ? undefined : window.innerWidth,
+      height: hero ? undefined : Math.min(900, document.body.scrollHeight),
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+    });
+    canvas.toBlob((jpegBlob: Blob | null) => {
+      if (!jpegBlob) return;
+      jpegBlob.arrayBuffer().then((buffer: ArrayBuffer) => {
+        window.parent.postMessage({ type: 'VIBECODER_CAPTURE_RESPONSE', buffer }, '*', [buffer]);
+      });
+    }, 'image/jpeg', 0.7);
   } catch (e) {
     console.warn('Capture failed:', e);
   }
