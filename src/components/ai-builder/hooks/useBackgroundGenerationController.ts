@@ -18,6 +18,7 @@ interface BackgroundGenerationControllerOptions {
   generationLockRef: React.MutableRefObject<string | null>;
   activeJobIdRef: React.MutableRefObject<string | null>;
   pendingSummaryRef: React.MutableRefObject<string>;
+  hasDbSnapshotRef: React.MutableRefObject<boolean>;
 }
 
 export function useBackgroundGenerationController({
@@ -34,6 +35,7 @@ export function useBackgroundGenerationController({
   generationLockRef,
   activeJobIdRef,
   pendingSummaryRef,
+  hasDbSnapshotRef,
 }: BackgroundGenerationControllerOptions) {
   // Track processed jobs to prevent duplicate message additions
   const processedJobIdsRef = useRef<Set<string>>(new Set());
@@ -238,6 +240,11 @@ export function useBackgroundGenerationController({
       // ✅ ALL LAYERS PASSED — commit the file map
       console.log('[ZERO-TRUST] All layers passed. Committing', Object.keys(fileMap).length, 'files for job:', job.id);
       setFiles(fileMap);
+      
+      // 🔒 CRITICAL: Transition to EDIT/MERGE mode after first successful commit
+      // Without this, every generation stays in REPLACE mode, wiping the file tree
+      hasDbSnapshotRef.current = true;
+      console.log('[ZERO-TRUST] hasDbSnapshotRef set to TRUE — future generations will use MERGE mode');
     } else {
       console.warn('[BackgroundGen] Job completed with no code_result:', job.id);
     }
