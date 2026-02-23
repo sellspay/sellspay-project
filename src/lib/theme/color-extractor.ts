@@ -1,60 +1,78 @@
 import ColorThief from 'colorthief';
 import { ThemeTokens } from './theme-tokens';
 
-/**
- * Convert RGB [0-255] to HSL string "H S% L%"
- */
+// ─── Color Math Utilities ───────────────────────────────────────────
+
 function rgbToHSL(r: number, g: number, b: number): string {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  let h = 0;
-  let s = 0;
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
   const l = (max + min) / 2;
-
   if (max !== min) {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
     switch (max) {
-      case r:
-        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-        break;
-      case g:
-        h = ((b - r) / d + 2) / 6;
-        break;
-      case b:
-        h = ((r - g) / d + 4) / 6;
-        break;
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
     }
   }
-
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-type ParsedHSL = { raw: string; h: number; s: number; l: number };
-
-function parseHSL(hsl: string): ParsedHSL {
-  const parts = hsl.match(/[\d.]+/g);
-  if (!parts || parts.length < 3) return { raw: hsl, h: 0, s: 0, l: 0 };
-  return {
-    raw: hsl,
-    h: parseFloat(parts[0]),
-    s: parseFloat(parts[1]),
-    l: parseFloat(parts[2]),
-  };
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  s /= 100; l /= 100;
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [Math.round(255 * f(0)), Math.round(255 * f(8)), Math.round(255 * f(4))];
 }
 
-function hslString(h: number, s: number, l: number): string {
-  return `${Math.round(((h % 360) + 360) % 360)} ${Math.round(Math.max(0, Math.min(100, s)))}% ${Math.round(Math.max(0, Math.min(100, l)))}%`;
+function hsl(h: number, s: number, l: number): string {
+  return `${Math.round(((h % 360) + 360) % 360)} ${Math.round(clamp(s, 0, 100))}% ${Math.round(clamp(l, 0, 100))}%`;
 }
 
-/**
- * Classify a color by its perceptual role
- */
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v));
+}
+
+// ─── WCAG Contrast Engine ───────────────────────────────────────────
+
+function relativeLuminance(r: number, g: number, b: number): number {
+  const [rs, gs, bs] = [r, g, b].map(v => {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+function contrastRatio(rgb1: [number, number, number], rgb2: [number, number, number]): number {
+  const l1 = relativeLuminance(...rgb1);
+  const l2 = relativeLuminance(...rgb2);
+  const bright = Math.max(l1, l2);
+  const dark = Math.min(l1, l2);
+  return (bright + 0.05) / (dark + 0.05);
+}
+
+/** Pick white or black foreground for WCAG AA (4.5:1) compliance */
+function getAccessibleForeground(h: number, s: number, l: number): string {
+  const bgRgb = hslToRgb(h, s, l);
+  const white: [number, number, number] = [255, 255, 255];
+  const black: [number, number, number] = [0, 0, 0];
+  return contrastRatio(bgRgb, white) > contrastRatio(bgRgb, black)
+    ? '0 0% 100%' : '0 0% 5%';
+}
+
+// ─── Color Classification ───────────────────────────────────────────
+
+type ParsedHSL = { h: number; s: number; l: number };
+
+function parseHSL(raw: string): ParsedHSL {
+  const p = raw.match(/[\d.]+/g);
+  if (!p || p.length < 3) return { h: 0, s: 0, l: 0 };
+  return { h: parseFloat(p[0]), s: parseFloat(p[1]), l: parseFloat(p[2]) };
+}
+
 type ColorRole = 'vibrant' | 'neutral' | 'light' | 'dark' | 'balanced';
 
 function classifyColor(s: number, l: number): ColorRole {
@@ -65,16 +83,81 @@ function classifyColor(s: number, l: number): ColorRole {
   return 'balanced';
 }
 
-/**
- * Ensure foreground has enough contrast against background.
- * Uses a simplified WCAG-ish luminance check.
- */
-function ensureContrast(bgL: number, fgL: number): number {
-  const ratio = (Math.max(bgL, fgL) + 5) / (Math.min(bgL, fgL) + 5);
-  if (ratio >= 4.5) return fgL;
-  // Push foreground away from background
-  return bgL > 50 ? Math.max(0, bgL - 65) : Math.min(100, bgL + 65);
+/** Normalize a color for use as a brand color — cap saturation, center lightness */
+function normalizeBrand(h: number, s: number, l: number, isDark: boolean): ParsedHSL {
+  return {
+    h,
+    s: clamp(s, 50, 85),
+    l: isDark ? clamp(l, 45, 65) : clamp(l, 35, 55),
+  };
 }
+
+// ─── Style Personalities ────────────────────────────────────────────
+
+export type ThemePersonality = 'modern' | 'luxury' | 'cyberpunk' | 'minimal' | 'auto';
+
+type PersonalityModifiers = {
+  satBoost: number;
+  lightShift: number;
+  bgSaturation: number;
+  accentStrategy: 'complementary' | 'triadic' | 'analogous';
+  chartSpacing: number;
+};
+
+const PERSONALITIES: Record<Exclude<ThemePersonality, 'auto'>, PersonalityModifiers> = {
+  modern: {
+    satBoost: 5,
+    lightShift: 0,
+    bgSaturation: 15,
+    accentStrategy: 'triadic',
+    chartSpacing: 30,
+  },
+  luxury: {
+    satBoost: -10,
+    lightShift: -5,
+    bgSaturation: 8,
+    accentStrategy: 'analogous',
+    chartSpacing: 25,
+  },
+  cyberpunk: {
+    satBoost: 15,
+    lightShift: 5,
+    bgSaturation: 12,
+    accentStrategy: 'complementary',
+    chartSpacing: 45,
+  },
+  minimal: {
+    satBoost: -20,
+    lightShift: 0,
+    bgSaturation: 5,
+    accentStrategy: 'analogous',
+    chartSpacing: 20,
+  },
+};
+
+function getAccentHue(brandHue: number, strategy: PersonalityModifiers['accentStrategy'], palette: ParsedHSL[]): number {
+  const target = strategy === 'complementary'
+    ? (brandHue + 180) % 360
+    : strategy === 'triadic'
+      ? (brandHue + 120) % 360
+      : (brandHue + 30) % 360;
+
+  // Check if palette already contains a color near the target hue (±20°)
+  const existing = palette.find(c => {
+    const diff = Math.abs(c.h - target);
+    return (diff < 20 || diff > 340) && c.s > 30;
+  });
+
+  return existing ? existing.h : target;
+}
+
+function generateChartColors(baseHue: number, spacing: number, isDark: boolean): string[] {
+  return [0, 1, 2, 3, 4].map(i =>
+    hsl((baseHue + i * spacing) % 360, 75, isDark ? 55 : 50)
+  );
+}
+
+// ─── Main Pipeline ──────────────────────────────────────────────────
 
 /**
  * Extract a 6-color palette from an image using ColorThief.
@@ -85,8 +168,7 @@ export async function extractPaletteFromImage(
   return new Promise((resolve) => {
     try {
       const thief = new ColorThief();
-      // ColorThief needs the image fully loaded
-      if (img.complete) {
+      if (img.complete && img.naturalWidth > 0) {
         resolve(thief.getPalette(img, 6) || []);
       } else {
         img.addEventListener('load', () => {
@@ -100,73 +182,77 @@ export async function extractPaletteFromImage(
 }
 
 /**
- * Deterministic pipeline: palette → classified HSL → semantic ThemeTokens.
- * Produces contrast-safe, harmony-balanced, dark-aware themes.
+ * Deterministic, production-grade pipeline:
+ * palette → classify → normalize → WCAG contrast → personality → ThemeTokens
  */
-export function generateThemeFromPalette(palette: number[][]): Partial<ThemeTokens> {
+export function generateThemeFromPalette(
+  palette: number[][],
+  personality: ThemePersonality = 'auto'
+): Partial<ThemeTokens> {
   if (!palette.length) return {};
 
-  // Convert all to parsed HSL
-  const colors: ParsedHSL[] = palette.map(([r, g, b]) => parseHSL(rgbToHSL(r, g, b)));
+  // 1. Convert & classify
+  const colors: (ParsedHSL & { role: ColorRole })[] = palette
+    .map(([r, g, b]) => parseHSL(rgbToHSL(r, g, b)))
+    .map(c => ({ ...c, role: classifyColor(c.s, c.l) }));
 
-  // Classify each color
-  const classified = colors.map((c) => ({
-    ...c,
-    role: classifyColor(c.s, c.l),
-  }));
+  // 2. Deterministic sort: saturation descending → pick brand & neutral
+  const sorted = [...colors].sort((a, b) => b.s - a.s);
+  const brandRaw = sorted[0];
+  const neutralRaw = sorted[sorted.length - 1];
 
-  // Find best candidates for each semantic role
-  const vibrant = classified.find((c) => c.role === 'vibrant');
-  const neutral = classified.find((c) => c.role === 'neutral');
-  const darkColor = classified.find((c) => c.role === 'dark');
-  const balanced = classified.find((c) => c.role === 'balanced');
-
-  // Determine primary brand color — prefer vibrant, fallback to balanced, then first
-  const brand = vibrant || balanced || colors[0];
-
-  // Determine if the project is dark-oriented
+  // 3. Detect dark/light project
   const avgLightness = colors.reduce((sum, c) => sum + c.l, 0) / colors.length;
-  const isDark = avgLightness < 50 || !!darkColor;
+  const isDark = avgLightness < 50;
 
-  // --- Background strategy ---
-  const bgL = isDark ? 6 : 98;
-  const fgL = isDark ? 96 : 8;
-  const background = hslString(0, 0, bgL);
-  const foreground = hslString(0, 0, fgL);
+  // 4. Auto-detect personality if not specified
+  const effectivePersonality: Exclude<ThemePersonality, 'auto'> =
+    personality !== 'auto' ? personality :
+      brandRaw.s > 70 ? 'cyberpunk' :
+        brandRaw.s < 30 ? 'minimal' :
+          isDark ? 'modern' : 'luxury';
 
-  // --- Primary: cap saturation, normalize lightness for readability ---
-  const primaryS = Math.min(85, brand.s);
-  const primaryL = isDark
-    ? Math.max(45, Math.min(65, brand.l))
-    : Math.max(35, Math.min(55, brand.l));
-  const primary = hslString(brand.h, primaryS, primaryL);
+  const mods = PERSONALITIES[effectivePersonality];
 
-  // Primary foreground — ensure contrast
-  const pfL = ensureContrast(primaryL, isDark ? 98 : 5);
-  const primaryForeground = hslString(0, 0, pfL);
+  // 5. Normalize brand color
+  const brand = normalizeBrand(
+    brandRaw.h,
+    brandRaw.s + mods.satBoost,
+    brandRaw.l + mods.lightShift,
+    isDark
+  );
 
-  // --- Accent: offset hue by 30° for harmony ---
-  const accentHue = (brand.h + 30) % 360;
-  const accent = hslString(accentHue, Math.min(80, primaryS), isDark ? 55 : 50);
-  const accentFgL = ensureContrast(isDark ? 55 : 50, isDark ? 98 : 5);
-  const accentForeground = hslString(0, 0, accentFgL);
+  // 6. Background — subtly tinted with brand hue
+  const bgS = mods.bgSaturation;
+  const bgL = isDark ? 6 : 97;
+  const background = hsl(brand.h, bgS, bgL);
+  const foreground = hsl(0, 0, isDark ? 96 : 8);
 
-  // --- Secondary: use neutral or desaturated brand ---
-  const secSource = neutral || brand;
-  const secondary = hslString(secSource.h, Math.min(15, secSource.s), isDark ? 16 : 92);
+  // 7. Primary with WCAG-safe foreground
+  const primary = hsl(brand.h, brand.s, brand.l);
+  const primaryForeground = getAccessibleForeground(brand.h, brand.s, brand.l);
+
+  // 8. Accent — intelligent hue selection
+  const accentHue = getAccentHue(brand.h, mods.accentStrategy, colors);
+  const accentS = clamp(brand.s - 5, 50, 80);
+  const accentL = isDark ? 55 : 50;
+  const accent = hsl(accentHue, accentS, accentL);
+  const accentForeground = getAccessibleForeground(accentHue, accentS, accentL);
+
+  // 9. Secondary from neutral
+  const secS = clamp(neutralRaw.s, 5, 15);
+  const secondary = hsl(neutralRaw.h, secS, isDark ? 16 : 92);
   const secondaryForeground = foreground;
 
-  // --- Surface colors ---
-  const card = hslString(brand.h, isDark ? 4 : 2, isDark ? 10 : 100);
+  // 10. Surfaces — tinted with brand hue for cohesion
+  const card = hsl(brand.h, isDark ? 4 : 2, isDark ? 10 : 100);
   const popover = card;
-  const muted = hslString(brand.h, isDark ? 5 : 3, isDark ? 16 : 96);
-  const mutedForeground = hslString(0, 0, isDark ? 55 : 45);
-  const borderColor = hslString(brand.h, isDark ? 5 : 3, isDark ? 18 : 88);
+  const muted = hsl(brand.h, isDark ? 5 : 3, isDark ? 16 : 96);
+  const mutedForeground = hsl(brand.h, 5, isDark ? 55 : 45);
+  const borderColor = hsl(brand.h, isDark ? 5 : 3, isDark ? 18 : 88);
 
-  // --- Chart colors: 5-step hue rotation for maximum distinction ---
-  const chartColors = [0, 60, 120, 180, 240].map((offset) =>
-    hslString((brand.h + offset) % 360, Math.min(80, primaryS), isDark ? 55 : 50)
-  );
+  // 11. Chart colors — evenly spaced, cohesive
+  const charts = generateChartColors(brand.h, mods.chartSpacing, isDark);
 
   return {
     background,
@@ -188,20 +274,20 @@ export function generateThemeFromPalette(palette: number[][]): Partial<ThemeToke
     border: borderColor,
     input: borderColor,
     ring: primary,
-    chart1: chartColors[0],
-    chart2: chartColors[1],
-    chart3: chartColors[2],
-    chart4: chartColors[3],
-    chart5: chartColors[4],
+    chart1: charts[0],
+    chart2: charts[1],
+    chart3: charts[2],
+    chart4: charts[3],
+    chart5: charts[4],
   };
 }
 
 /**
- * Full pipeline: image URL → ThemeTokens.
- * Load image, extract palette via ColorThief, generate semantic theme.
+ * Full pipeline: image URL → ThemeTokens
  */
 export async function extractThemeFromImageUrl(
-  url: string
+  url: string,
+  personality: ThemePersonality = 'auto'
 ): Promise<Partial<ThemeTokens>> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -209,7 +295,7 @@ export async function extractThemeFromImageUrl(
     img.onload = async () => {
       try {
         const palette = await extractPaletteFromImage(img);
-        resolve(generateThemeFromPalette(palette));
+        resolve(generateThemeFromPalette(palette, personality));
       } catch {
         resolve({});
       }
@@ -219,42 +305,16 @@ export async function extractThemeFromImageUrl(
   });
 }
 
-/**
- * Legacy compat: paletteToTheme wrapper for existing callers
- */
+/** Legacy compat wrapper */
 export function paletteToTheme(
   palette: string[],
   _isDark = true
 ): Partial<ThemeTokens> {
-  // Convert HSL strings back to RGB for the pipeline
-  // This is a fallback — prefer extractPaletteFromImage directly
   return generateThemeFromPalette(
-    palette.map((hsl) => {
-      const parts = hsl.match(/[\d.]+/g);
-      if (!parts || parts.length < 3) return [128, 128, 128];
-      // Approximate HSL→RGB for pipeline input
-      const h = parseFloat(parts[0]) / 360;
-      const s = parseFloat(parts[1]) / 100;
-      const l = parseFloat(parts[2]) / 100;
-      const hue2rgb = (p: number, q: number, t: number) => {
-        if (t < 0) t += 1;
-        if (t > 1) t -= 1;
-        if (t < 1 / 6) return p + (q - p) * 6 * t;
-        if (t < 1 / 2) return q;
-        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-        return p;
-      };
-      let r: number, g: number, b: number;
-      if (s === 0) {
-        r = g = b = l;
-      } else {
-        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        const p = 2 * l - q;
-        r = hue2rgb(p, q, h + 1 / 3);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1 / 3);
-      }
-      return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    palette.map((raw) => {
+      const { h, s, l } = parseHSL(raw);
+      const [r, g, b] = hslToRgb(h, s, l);
+      return [r, g, b];
     })
   );
 }
