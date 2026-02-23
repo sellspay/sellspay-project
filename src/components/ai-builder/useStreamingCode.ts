@@ -1035,9 +1035,14 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   break;
                 }
                 case 'code_chunk': {
-                  // ATOMIC-ONLY: code_chunk is buffered for JSON detection only.
-                  // We NEVER inject mid-stream content into Sandpack.
-                  // Sandpack only updates via event: files (atomic commit).
+                  // 🔒 JOB-BACKED RUNS: code_chunk is COMPLETELY IGNORED.
+                  // The ONLY authority for file commits is handleJobComplete
+                  // via the background generation controller. Streaming is display-only.
+                  if (isJobBackedRun) {
+                    // Buffer silently for potential logging, but NEVER commit
+                    break;
+                  }
+                  // NON-JOB fallback (legacy): buffer for JSON detection only.
                   if (receivedFiles) break;
                   streamingCodeBuffer += (data.content || '');
 
@@ -1048,11 +1053,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                       const parsed = JSON.parse(trimmedBuf);
                       const jsonFiles = parsed?.files ?? parsed?.projectFiles;
                       if (jsonFiles && typeof jsonFiles === 'object' && Object.keys(jsonFiles).length > 0) {
-                        // ═══ MERGE: Partial delta merged with current snapshot ═══
                         const currentFiles = lastValidFilesRef.current || {};
                         const mergedJsonFiles = { ...currentFiles, ...jsonFiles };
-
-                        // ═══ GUARDRAILS: Protect against destructive rewrites ═══
                         const appCode = mergedJsonFiles['/App.tsx'] || mergedJsonFiles['App.tsx'] || '';
                         const oldCode = (lastGoodCodeRef.current === DEFAULT_CODE && preResetCodeRef.current)
                           ? preResetCodeRef.current
@@ -1072,7 +1074,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                         }
                         setState(prev => ({ ...prev, files: mergedJsonFiles, code: '' }));
                         if (appCode) lastGoodCodeRef.current = appCode;
-                        // ✅ LAST VALID SNAPSHOT: code_chunk JSON commit passed guardrails
                         lastValidFilesRef.current = { ...mergedJsonFiles };
                         persistLastValidFiles(options.activeProjectId ?? null, mergedJsonFiles, options.hasDbSnapshotRef);
                         options.onComplete?.(appCode);
@@ -1083,7 +1084,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                       // Not complete JSON yet; keep buffering — do NOT inject anything
                     }
                   }
-                  // No mid-stream injection. Buffer accumulates silently.
                   break;
                 }
                 case 'error': {
