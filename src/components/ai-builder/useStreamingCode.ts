@@ -732,18 +732,30 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
        * Attempt to unwrap JSON-wrapped code from the AI model.
        * Some models return `{"files":{"/App.tsx":"<code>"}}` instead of raw TSX.
        */
-      const tryUnwrapJsonCode = (text: string): string | null => {
+      /**
+       * Attempt to unwrap JSON-wrapped code from the AI model.
+       * Returns { singleFile: string } for single-file JSON,
+       * { multiFile: Record<string,string> } for multi-file,
+       * or null if not JSON-wrapped code.
+       */
+      const tryUnwrapJsonCode = (text: string): { singleFile: string } | { multiFile: Record<string, string> } | null => {
         const trimmed = text.trim();
         if (!trimmed.startsWith('{')) return null;
         try {
           const parsed = JSON.parse(trimmed);
           if (parsed.files && typeof parsed.files === 'object') {
-            // Look for /App.tsx or any .tsx file
             const fileKeys = Object.keys(parsed.files);
-            const appKey = fileKeys.find(k => k.includes('App.tsx')) || fileKeys[0];
-            if (appKey && typeof parsed.files[appKey] === 'string') {
+            if (fileKeys.length === 0) return null;
+            // Multi-file: return the whole map — do NOT extract a single file
+            if (fileKeys.length > 1 || !fileKeys.some(k => k.includes('App.tsx'))) {
+              console.log('[useStreamingCode] Detected multi-file JSON payload with', fileKeys.length, 'files');
+              return { multiFile: parsed.files as Record<string, string> };
+            }
+            // Single-file App.tsx
+            const appKey = fileKeys.find(k => k.includes('App.tsx'))!;
+            if (typeof parsed.files[appKey] === 'string') {
               console.warn('[useStreamingCode] Unwrapped JSON-wrapped code from key:', appKey);
-              return parsed.files[appKey];
+              return { singleFile: parsed.files[appKey] };
             }
           }
         } catch {
@@ -755,7 +767,28 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       const extractCodeFromRaw = (raw: string): string => {
         // First, check if the entire raw stream is JSON-wrapped code
         const unwrapped = tryUnwrapJsonCode(raw);
-        if (unwrapped) return unwrapped;
+        if (unwrapped) {
+          if ('multiFile' in unwrapped) {
+            // Multi-file partial edit: merge with current files and commit atomically
+            console.log('[useStreamingCode] extractCodeFromRaw: multi-file detected — merging with current files');
+            const currentFiles = lastValidFilesRef.current || {};
+            const mergedFiles = { ...currentFiles, ...unwrapped.multiFile };
+            // Sanitize all files
+            const sanitizedFiles: Record<string, string> = {};
+            for (const [path, content] of Object.entries(mergedFiles)) {
+              sanitizedFiles[path] = sanitizeNavigation(content);
+            }
+            const appCode = sanitizedFiles['/App.tsx'] || sanitizedFiles['App.tsx'] || '';
+            if (appCode) lastGoodCodeRef.current = appCode;
+            setState(prev => ({ ...prev, files: sanitizedFiles, code: appCode || prev.code }));
+            lastValidFilesRef.current = { ...sanitizedFiles };
+            persistLastValidFiles(options.activeProjectId ?? null, sanitizedFiles);
+            receivedFiles = true;
+            options.onComplete?.(appCode);
+            return appCode || '__MULTI_FILE_COMMITTED__';
+          }
+          return unwrapped.singleFile;
+        }
 
         if (looksLikeJson(raw)) {
           console.warn('[useStreamingCode] Raw stream looks like JSON - skipping code extraction');
@@ -793,7 +826,26 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
         // Check if cleaned result is JSON-wrapped code
         const unwrappedCleaned = tryUnwrapJsonCode(cleaned);
-        if (unwrappedCleaned) return unwrappedCleaned;
+        if (unwrappedCleaned) {
+          if ('multiFile' in unwrappedCleaned) {
+            // Multi-file detected in cleaned code — merge and commit
+            const currentFiles = lastValidFilesRef.current || {};
+            const mergedFiles = { ...currentFiles, ...unwrappedCleaned.multiFile };
+            const sanitizedFiles: Record<string, string> = {};
+            for (const [path, content] of Object.entries(mergedFiles)) {
+              sanitizedFiles[path] = sanitizeNavigation(content);
+            }
+            const appCode = sanitizedFiles['/App.tsx'] || sanitizedFiles['App.tsx'] || '';
+            if (appCode) lastGoodCodeRef.current = appCode;
+            setState(prev => ({ ...prev, files: sanitizedFiles, code: appCode || prev.code }));
+            lastValidFilesRef.current = { ...sanitizedFiles };
+            persistLastValidFiles(options.activeProjectId ?? null, sanitizedFiles);
+            receivedFiles = true;
+            options.onComplete?.(appCode);
+            return appCode || '__MULTI_FILE_COMMITTED__';
+          }
+          return unwrappedCleaned.singleFile;
+        }
 
         if (looksLikeJson(cleaned)) {
           console.warn('[useStreamingCode] Cleaned code looks like JSON - returning empty');
@@ -917,38 +969,40 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   break;
                 case 'files': {
                   // Multi-file atomic payload from backend (validated server-side for syntax)
-                  const projectFiles = data.projectFiles || data.files || {};
-                  if (Object.keys(projectFiles).length > 0) {
+                  const incomingFiles = data.projectFiles || data.files || {};
+                  if (Object.keys(incomingFiles).length > 0) {
+                    // ═══ MERGE: Partial file delta merged with current snapshot ═══
+                    const currentFiles = lastValidFilesRef.current || {};
+                    const mergedFiles = { ...currentFiles, ...incomingFiles };
+
                     // ═══ GUARDRAILS: Protect against destructive rewrites ═══
-                    const appCode = projectFiles['/App.tsx'] || projectFiles['App.tsx'] || '';
+                    const appCode = mergedFiles['/App.tsx'] || mergedFiles['App.tsx'] || '';
                     // Use pre-reset backup if lastGoodCode was reset to DEFAULT_CODE
                     const oldCode = (lastGoodCodeRef.current === DEFAULT_CODE && preResetCodeRef.current)
                       ? preResetCodeRef.current
                       : lastGoodCodeRef.current;
                     if (appCode && oldCode && oldCode.length >= 200) {
                       const guardResult = safeApply(oldCode, appCode, originalPromptRef.current, undefined, guardrailMode);
-                    if (!guardResult.accepted) {
+                      if (!guardResult.accepted) {
                         console.error('🛡️ MULTI-FILE GUARDRAILS REJECTED:', guardResult.failedGuards.map(f => `${f.guard}: ${f.message}`).join(' | '));
-                        // CRITICAL: Restore the old code AND old files in state to prevent showing blank/default
-                        // Also restore the last valid files snapshot to ensure no partial state leaks
                         const restoredFiles = lastValidFilesRef.current || (oldCode ? codeToFiles(oldCode) : {});
                         setState(prev => ({ ...prev, code: oldCode, files: restoredFiles, error: `Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}` }));
                         options.onError?.(new Error(`Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}`));
-                        receivedFiles = true; // prevent legacy path from running
-                        guardrailsRejected = true; // STRICT: block ALL fallback paths
+                        receivedFiles = true;
+                        guardrailsRejected = true;
                         break;
                       }
                     }
-                    // Sanitize navigation in all files
+                    // Sanitize navigation in all merged files
                     const sanitizedFiles: Record<string, string> = {};
-                    for (const [path, content] of Object.entries(projectFiles)) {
+                    for (const [path, content] of Object.entries(mergedFiles)) {
                       sanitizedFiles[path] = sanitizeNavigation(content as string);
                     }
                     setState(prev => ({ ...prev, files: sanitizedFiles, code: '' }));
                     if (appCode) {
                       lastGoodCodeRef.current = appCode;
                     }
-                    // ✅ LAST VALID SNAPSHOT: Atomic commit passed guardrails — ONLY valid snapshot location
+                    // ✅ LAST VALID SNAPSHOT: Atomic commit passed guardrails
                     lastValidFilesRef.current = { ...sanitizedFiles };
                     persistLastValidFiles(options.activeProjectId ?? null, sanitizedFiles);
                     options.onComplete?.(appCode);
@@ -975,8 +1029,12 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                       const parsed = JSON.parse(trimmedBuf);
                       const jsonFiles = parsed?.files ?? parsed?.projectFiles;
                       if (jsonFiles && typeof jsonFiles === 'object' && Object.keys(jsonFiles).length > 0) {
+                        // ═══ MERGE: Partial delta merged with current snapshot ═══
+                        const currentFiles = lastValidFilesRef.current || {};
+                        const mergedJsonFiles = { ...currentFiles, ...jsonFiles };
+
                         // ═══ GUARDRAILS: Protect against destructive rewrites ═══
-                        const appCode = jsonFiles['/App.tsx'] || jsonFiles['App.tsx'] || '';
+                        const appCode = mergedJsonFiles['/App.tsx'] || mergedJsonFiles['App.tsx'] || '';
                         const oldCode = (lastGoodCodeRef.current === DEFAULT_CODE && preResetCodeRef.current)
                           ? preResetCodeRef.current
                           : lastGoodCodeRef.current;
@@ -988,16 +1046,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                             setState(prev => ({ ...prev, code: oldCode, files: restoredFiles, error: `Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}` }));
                             options.onError?.(new Error(`Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}`));
                             receivedFiles = true;
-                            guardrailsRejected = true; // STRICT: block ALL fallback paths
+                            guardrailsRejected = true;
                             streamingCodeBuffer = '';
                             break;
                           }
                         }
-                        setState(prev => ({ ...prev, files: jsonFiles, code: '' }));
+                        setState(prev => ({ ...prev, files: mergedJsonFiles, code: '' }));
                         if (appCode) lastGoodCodeRef.current = appCode;
-                        // ✅ LAST VALID SNAPSHOT: code_chunk JSON commit passed guardrails — ONLY valid snapshot location
-                        lastValidFilesRef.current = { ...jsonFiles };
-                        persistLastValidFiles(options.activeProjectId ?? null, jsonFiles);
+                        // ✅ LAST VALID SNAPSHOT: code_chunk JSON commit passed guardrails
+                        lastValidFilesRef.current = { ...mergedJsonFiles };
+                        persistLastValidFiles(options.activeProjectId ?? null, mergedJsonFiles);
                         options.onComplete?.(appCode);
                         receivedFiles = true;
                         streamingCodeBuffer = '';
@@ -1198,6 +1256,12 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       // Otherwise, show the real failure reason (VALIDATION_FAILED, STREAM_ENDED_EARLY, etc.)
       // ═══════════════════════════════════════════════════════════
       
+      // Skip validation if multi-file commit already happened via extractCodeFromRaw
+      if (finalCode === '__MULTI_FILE_COMMITTED__') {
+        setState(prev => ({ ...prev, isStreaming: false }));
+        return lastGoodCodeRef.current;
+      }
+
       if (!finalCode || !isLikelyCompleteTsx(finalCode)) {
         // Get specific validation reason
         const validation = finalCode ? validateTsx(finalCode) : { valid: false, reason: 'No code extracted from AI response' };
@@ -1344,16 +1408,17 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         const parsed = JSON.parse(trimmedRaw);
         if (parsed.files && typeof parsed.files === 'object') {
           const fileKeys = Object.keys(parsed.files);
-          // CRITICAL FIX: If JSON contains multiple files, use setFiles instead of
-          // extracting just App.tsx. Extracting only App.tsx from a multi-file project
-          // causes missing module errors (e.g., ./sections/Hero not found).
-          if (fileKeys.length > 1) {
-            console.log('[useStreamingCode] setCode: Detected multi-file JSON — delegating to setFiles with', fileKeys.length, 'files');
-            setFiles(parsed.files);
+          // If JSON contains multiple files OR only non-App files, merge with current snapshot
+          const hasAppFile = fileKeys.some(k => k.includes('App.tsx'));
+          if (fileKeys.length > 1 || !hasAppFile) {
+            console.log('[useStreamingCode] setCode: Detected multi-file JSON — merging with snapshot,', fileKeys.length, 'files');
+            const currentFiles = state.files && Object.keys(state.files).length > 0 ? state.files : {};
+            const mergedFiles = { ...currentFiles, ...parsed.files };
+            setFiles(mergedFiles);
             return;
           }
-          const appKey = fileKeys.find(k => k.includes('App.tsx')) || fileKeys[0];
-          if (appKey && typeof parsed.files[appKey] === 'string') {
+          const appKey = fileKeys.find(k => k.includes('App.tsx'))!;
+          if (typeof parsed.files[appKey] === 'string') {
             console.warn('[useStreamingCode] setCode: Unwrapped JSON-wrapped code from key:', appKey);
             rawCode = parsed.files[appKey];
           }
