@@ -198,5 +198,34 @@ export function applyVibeToTheme(
     clone.border = hslStr(border.h, Math.max(0, border.s - Math.abs(mods.borderSoftness)), border.l + shift);
   }
 
+  // ─── Gradient tokens ──────────────────────────────────────────
+  const primaryParsed = clone.primary ? parseHSLStr(clone.primary) : { h: 217, s: 70, l: 50 };
+  const fromHue = primaryParsed.h;
+  const toHue = (fromHue + 40) % 360;
+
+  clone.gradientFrom = isDark
+    ? hslStr(fromHue, 60, 10)
+    : hslStr(fromHue, 60, 92);
+  clone.gradientTo = isDark
+    ? hslStr(toHue, 70, 18)
+    : hslStr(toHue, 60, 85);
+
+  // ─── Glass tokens (vibe-aware) ────────────────────────────────
+  const glassMap: Record<ThemeVibe, { opacity: string; blur: string; borderOp: string; shadow: string }> = {
+    luxury:    { opacity: '0.12', blur: '24px', borderOp: '0.2',  shadow: `0 12px 40px -12px` },
+    cyberpunk: { opacity: '0.25', blur: '10px', borderOp: '0.5',  shadow: `0 8px 30px -8px` },
+    playful:   { opacity: '0.18', blur: '14px', borderOp: '0.25', shadow: `0 10px 30px -10px` },
+    editorial: { opacity: '0.08', blur: '20px', borderOp: '0.1',  shadow: `0 6px 20px -8px` },
+    minimal:   { opacity: '1',    blur: '0px',  borderOp: '0.05', shadow: `0 4px 12px -4px` },
+    corporate: { opacity: '0.14', blur: '16px', borderOp: '0.15', shadow: `0 8px 24px -8px` },
+    modern:    { opacity: '0.18', blur: '12px', borderOp: '0.2',  shadow: `0 10px 30px -10px` },
+  };
+
+  const glass = glassMap[vibe] ?? glassMap.modern;
+  clone.glassOpacity = glass.opacity;
+  clone.glassBlur = glass.blur;
+  clone.glassBorderOpacity = glass.borderOp;
+  clone.shadowElevation = glass.shadow;
+
   return clone;
 }

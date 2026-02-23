@@ -38,6 +38,12 @@ function makeTokens(partial: Partial<ThemeTokens>): ThemeTokens {
     chart3: '187 92% 41%',
     chart4: '160 84% 39%',
     chart5: '38 92% 50%',
+    gradientFrom: '217 60% 10%',
+    gradientTo: '257 70% 18%',
+    glassOpacity: '0.18',
+    glassBlur: '12px',
+    glassBorderOpacity: '0.2',
+    shadowElevation: '0 10px 30px -10px',
     ...partial,
   };
 }

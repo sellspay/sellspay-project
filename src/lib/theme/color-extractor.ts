@@ -302,6 +302,13 @@ export function generateThemeFromPalette(
     chart3: charts[2],
     chart4: charts[3],
     chart5: charts[4],
+    // Placeholders — overridden by applyVibeToTheme
+    gradientFrom: hsl(brand.h, 60, isDark ? 10 : 92),
+    gradientTo: hsl((brand.h + 40) % 360, 70, isDark ? 18 : 85),
+    glassOpacity: '0.18',
+    glassBlur: '12px',
+    glassBorderOpacity: '0.2',
+    shadowElevation: '0 10px 30px -10px',
   };
 
   // 13. Apply vibe modifiers as post-processing
