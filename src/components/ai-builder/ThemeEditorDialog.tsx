@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { X, ChevronDown, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { type StylePreset, type StyleColors } from "./stylePresets";
@@ -254,6 +254,16 @@ interface ThemeEditorDialogProps {
 export function ThemeEditorDialog({ open, onClose, style, onApply, onLivePreview }: ThemeEditorDialogProps) {
   const [editColors, setEditColors] = useState<StyleColors>({ ...style.colors });
   const [activeTab, setActiveTab] = useState<'colors' | 'typography' | 'effects'>('colors');
+  const previewTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setEditColors({ ...style.colors });
@@ -262,7 +272,15 @@ export function ThemeEditorDialog({ open, onClose, style, onApply, onLivePreview
   const handleColorChange = useCallback((key: string, value: string) => {
     setEditColors(prev => {
       const updated = { ...prev, [key]: value } as StyleColors;
-      onLivePreview?.(updated);
+
+      // Defer preview to next tick — prevents setState-during-render violation
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+      previewTimeoutRef.current = setTimeout(() => {
+        onLivePreview?.(updated);
+      }, 16);
+
       return updated;
     });
   }, [onLivePreview]);
