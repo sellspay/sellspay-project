@@ -1,5 +1,6 @@
 import ColorThief from 'colorthief';
 import { ThemeTokens } from './theme-tokens';
+import { detectVibe, applyVibeToTheme } from './theme-vibes';
 
 // ─── Color Math Utilities ───────────────────────────────────────────
 
@@ -94,7 +95,7 @@ function normalizeBrand(h: number, s: number, l: number, isDark: boolean): Parse
 
 // ─── Style Personalities ────────────────────────────────────────────
 
-export type ThemePersonality = 'modern' | 'luxury' | 'cyberpunk' | 'minimal' | 'auto';
+export type ThemePersonality = 'modern' | 'luxury' | 'cyberpunk' | 'minimal' | 'playful' | 'corporate' | 'editorial' | 'auto';
 
 type PersonalityModifiers = {
   satBoost: number;
@@ -132,6 +133,27 @@ const PERSONALITIES: Record<Exclude<ThemePersonality, 'auto'>, PersonalityModifi
     bgSaturation: 5,
     accentStrategy: 'analogous',
     chartSpacing: 20,
+  },
+  playful: {
+    satBoost: 10,
+    lightShift: 5,
+    bgSaturation: 12,
+    accentStrategy: 'triadic',
+    chartSpacing: 35,
+  },
+  corporate: {
+    satBoost: 0,
+    lightShift: -3,
+    bgSaturation: 10,
+    accentStrategy: 'analogous',
+    chartSpacing: 25,
+  },
+  editorial: {
+    satBoost: -5,
+    lightShift: 8,
+    bgSaturation: 5,
+    accentStrategy: 'analogous',
+    chartSpacing: 25,
   },
 };
 
@@ -205,12 +227,12 @@ export function generateThemeFromPalette(
   const avgLightness = colors.reduce((sum, c) => sum + c.l, 0) / colors.length;
   const isDark = avgLightness < 50;
 
-  // 4. Auto-detect personality if not specified
+  // 3b. Detect vibe from palette (deterministic heuristic)
+  const detectedVibe = detectVibe(colors);
+
+  // 4. Auto-detect personality if not specified — use vibe detection
   const effectivePersonality: Exclude<ThemePersonality, 'auto'> =
-    personality !== 'auto' ? personality :
-      brandRaw.s > 70 ? 'cyberpunk' :
-        brandRaw.s < 30 ? 'minimal' :
-          isDark ? 'modern' : 'luxury';
+    personality !== 'auto' ? personality : detectedVibe;
 
   const mods = PERSONALITIES[effectivePersonality];
 
@@ -254,7 +276,8 @@ export function generateThemeFromPalette(
   // 11. Chart colors — evenly spaced, cohesive
   const charts = generateChartColors(brand.h, mods.chartSpacing, isDark);
 
-  return {
+  // 12. Build base tokens
+  const baseTokens: Partial<ThemeTokens> = {
     background,
     foreground,
     primary,
@@ -280,6 +303,15 @@ export function generateThemeFromPalette(
     chart4: charts[3],
     chart5: charts[4],
   };
+
+  // 13. Apply vibe modifiers as post-processing
+  const vibeAdjusted = applyVibeToTheme(
+    baseTokens as Record<string, string>,
+    effectivePersonality,
+    isDark
+  );
+
+  return vibeAdjusted as Partial<ThemeTokens>;
 }
 
 /**
