@@ -919,12 +919,13 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   break;
                 }
                 case 'code_chunk': {
-                  // Legacy fallback: only used when JSON parse failed on backend
-                  // Skip if we already got files
+                  // ATOMIC-ONLY: code_chunk is buffered for JSON detection only.
+                  // We NEVER inject mid-stream content into Sandpack.
+                  // Sandpack only updates via event: files (atomic commit).
                   if (receivedFiles) break;
                   streamingCodeBuffer += (data.content || '');
 
-                  // 🔥 Bulletproof: detect JSON files wrapper that slipped through
+                  // Detect complete JSON files wrapper that arrived via chunks
                   const trimmedBuf = streamingCodeBuffer.trim();
                   if (trimmedBuf.startsWith('{') && trimmedBuf.includes('"files"')) {
                     try {
@@ -933,7 +934,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                       if (jsonFiles && typeof jsonFiles === 'object' && Object.keys(jsonFiles).length > 0) {
                         // ═══ GUARDRAILS: Protect against destructive rewrites ═══
                         const appCode = jsonFiles['/App.tsx'] || jsonFiles['App.tsx'] || '';
-                        // Use pre-reset backup if lastGoodCode was reset to DEFAULT_CODE
                         const oldCode = (lastGoodCodeRef.current === DEFAULT_CODE && preResetCodeRef.current)
                           ? preResetCodeRef.current
                           : lastGoodCodeRef.current;
@@ -941,7 +941,6 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                           const guardResult = safeApply(oldCode, appCode, originalPromptRef.current);
                           if (!guardResult.accepted) {
                             console.error('🛡️ CODE_CHUNK GUARDRAILS REJECTED:', guardResult.failedGuards.map(f => `${f.guard}: ${f.message}`).join(' | '));
-                            // CRITICAL: Restore the old code in state
                             setState(prev => ({ ...prev, code: oldCode, error: `Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}` }));
                             options.onError?.(new Error(`Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}`));
                             receivedFiles = true;
@@ -954,28 +953,12 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                         options.onComplete?.(appCode);
                         receivedFiles = true;
                         streamingCodeBuffer = '';
-                        break;
                       }
                     } catch {
-                      // Not complete JSON yet; keep buffering
+                      // Not complete JSON yet; keep buffering — do NOT inject anything
                     }
                   }
-
-                  // Safety net: if buffer looks like JSON, do NOT inject as code
-                  if (trimmedBuf.startsWith('{') && trimmedBuf.includes('"files"')) {
-                    // Already handled above or still buffering — never inject raw JSON
-                    break;
-                  }
-
-                  if (streamingCodeBuffer.length > 100 && looksLikeCode(streamingCodeBuffer)) {
-                    setState(prev => ({ ...prev, code: streamingCodeBuffer }));
-                  }
-                  const cleanChunk = extractCodeFromRaw(streamingCodeBuffer);
-                  if (cleanChunk && looksLikeCode(cleanChunk) && isLikelyCompleteTsx(cleanChunk)) {
-                    lastGoodCodeRef.current = cleanChunk;
-                    setState(prev => ({ ...prev, code: cleanChunk }));
-                    options.onChunk?.(cleanChunk);
-                  }
+                  // No mid-stream injection. Buffer accumulates silently.
                   break;
                 }
                 case 'error': {
@@ -1089,13 +1072,9 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         }
 
         if (mode === 'code') {
-          const cleanCode = extractCodeFromRaw(rawStream);
-
-          if (cleanCode && looksLikeCode(cleanCode) && isLikelyCompleteTsx(cleanCode)) {
-            lastGoodCodeRef.current = cleanCode;
-            setState(prev => ({ ...prev, code: cleanCode }));
-            options.onChunk?.(cleanCode);
-          }
+          // ATOMIC-ONLY: Do not inject mid-stream code into Sandpack.
+          // Raw stream code is only used for final extraction after stream ends.
+          // Sandpack updates exclusively via event: files or final validated payload.
         }
       }
 
