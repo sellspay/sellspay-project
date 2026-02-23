@@ -117,7 +117,35 @@ export function useBackgroundGenerationController({
         console.error('[BackgroundGen] Refusing to apply JSON as code_result for job:', job.id);
         toast.error('Auto-fix failed: received invalid code payload');
       } else {
-        setCode(job.code_result, true);
+        // MULTI-FILE DETECTION: If code_result is a JSON file map, route to setFiles()
+        // This prevents raw JSON from being transpiled as TSX by Sandpack.
+        const trimmedResult = job.code_result.trim();
+        let handledAsMultiFile = false;
+        if (trimmedResult.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(trimmedResult);
+            // Handle {"files": {"/App.tsx": "...", ...}} wrapper
+            const fileMap = parsed?.files && typeof parsed.files === 'object' ? parsed.files : null;
+            // Handle direct file map {"/App.tsx": "...", ...}
+            const isDirectFileMap = !fileMap && parsed && typeof parsed === 'object' &&
+              Object.keys(parsed).some(k => k.endsWith('.tsx') || k.endsWith('.ts') || k.endsWith('.css'));
+            
+            if (fileMap && Object.keys(fileMap).length > 0) {
+              console.log('[BackgroundGen] code_result is {files:{...}} JSON — routing to setFiles():', Object.keys(fileMap).length, 'files');
+              setFiles(fileMap);
+              handledAsMultiFile = true;
+            } else if (isDirectFileMap) {
+              console.log('[BackgroundGen] code_result is direct file map — routing to setFiles():', Object.keys(parsed).length, 'files');
+              setFiles(parsed);
+              handledAsMultiFile = true;
+            }
+          } catch {
+            // Not valid JSON, fall through to setCode
+          }
+        }
+        if (!handledAsMultiFile) {
+          setCode(job.code_result, true);
+        }
       }
     } else {
       console.warn('[BackgroundGen] Job completed with no code_result:', job.id);
