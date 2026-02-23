@@ -182,7 +182,9 @@ export function confidenceGuard(score: number, config: GuardConfig): GuardResult
   return { passed: true, guard: 'CONFIDENCE_GUARD', message: 'OK' };
 }
 
-// ─── Combined Safe Apply ─────────────────────────────────────
+// ─── Guardrail Modes ─────────────────────────────────────────
+
+export type GuardrailMode = 'edit' | 'replace';
 
 export interface SafeApplyResult {
   accepted: boolean;
@@ -192,19 +194,43 @@ export interface SafeApplyResult {
 
 /**
  * Run all guards on a code change. Returns whether the change should be applied.
- * If any guard fails, returns the old code with failure details.
+ * 
+ * Modes:
+ *  - "edit" (default): Full protection — diff, length, line count, structure guards.
+ *  - "replace": First generation / full rewrite — only syntax & structural integrity.
+ *    Skips diff/length/line guards since there's no stable state to protect.
  */
 export function safeApply(
   oldCode: string,
   newCode: string,
   prompt: string,
   confidenceScore?: number,
+  mode: GuardrailMode = 'edit',
 ): SafeApplyResult {
   // Skip guards for first-time generation (no meaningful old code)
   if (!oldCode || oldCode.length < 200) {
     return { accepted: true, code: newCode, failedGuards: [] };
   }
 
+  // REPLACE MODE: Skip rewrite-protection guards entirely.
+  // Only keep structural integrity (export default, routes) and confidence.
+  if (mode === 'replace') {
+    const guards: GuardResult[] = [];
+    // Still check structure — don't allow removing all exports/routes
+    guards.push(structureGuard(oldCode, newCode));
+    if (confidenceScore !== undefined) {
+      const config = NORMAL_CONFIG;
+      guards.push(confidenceGuard(confidenceScore, config));
+    }
+    const failed = guards.filter(g => !g.passed);
+    if (failed.length > 0) {
+      console.error('🛡️ GUARDRAILS REJECTED (replace mode):', failed.map(f => `${f.guard}: ${f.message}`).join(' | '));
+      return { accepted: false, code: oldCode, failedGuards: failed };
+    }
+    return { accepted: true, code: newCode, failedGuards: [] };
+  }
+
+  // EDIT MODE: Full protection
   const micro = isMicroEdit(prompt);
   const config = micro ? MICRO_CONFIG : NORMAL_CONFIG;
 
