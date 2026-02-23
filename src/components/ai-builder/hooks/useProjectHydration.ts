@@ -163,10 +163,10 @@ export function useProjectHydration({
       setIsVerifyingProject(true);
       console.log(`🚀 Loading fresh context for: ${activeProjectId}`);
 
-      // 4. FETCH SOURCE OF TRUTH FROM DB
+      // 4. FETCH SOURCE OF TRUTH FROM DB (including last_valid_files for stable snapshot)
       const { data, error } = await supabase
         .from('vibecoder_projects')
-        .select('id')
+        .select('id, last_valid_files')
         .eq('id', activeProjectId)
         .maybeSingle();
 
@@ -205,14 +205,67 @@ export function useProjectHydration({
   }, [activeProjectId]);
 
   // =============== CODE RESTORATION FROM MESSAGES ===============
+  // Track the DB-fetched last_valid_files for use during restoration
+  const dbLastValidFilesRef = useRef<Record<string, string> | null>(null);
+  const [dbSnapshotReady, setDbSnapshotReady] = useState(false);
+
+  // Fetch stable snapshot from DB when project is verified
+  useEffect(() => {
+    if (!activeProjectId) {
+      dbLastValidFilesRef.current = null;
+      setDbSnapshotReady(true); // No project = ready (nothing to fetch)
+      return;
+    }
+    if (isVerifyingProject) {
+      setDbSnapshotReady(false);
+      return;
+    }
+    
+    let cancelled = false;
+    setDbSnapshotReady(false);
+    
+    const fetchStableSnapshot = async () => {
+      const { data } = await supabase
+        .from('vibecoder_projects')
+        .select('last_valid_files')
+        .eq('id', activeProjectId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data?.last_valid_files && typeof data.last_valid_files === 'object') {
+        dbLastValidFilesRef.current = data.last_valid_files as Record<string, string>;
+      } else {
+        dbLastValidFilesRef.current = null;
+      }
+      setDbSnapshotReady(true);
+    };
+    fetchStableSnapshot();
+    
+    return () => { cancelled = true; };
+  }, [activeProjectId, isVerifyingProject]);
+
   useEffect(() => {
     if (loadingProjectRef.current === activeProjectId) return;
     if (isVerifyingProject) return;
+    if (!dbSnapshotReady) return; // Wait for DB snapshot query to complete
     if (messagesLoading) return;
     if (!activeProjectId) return;
     if (hasRestoredCodeRef.current === activeProjectId) return;
     if (isStreaming) return;
 
+    // ✅ PRIORITY 1: Restore from DB-persisted stable snapshot (survives refresh)
+    const dbSnapshot = dbLastValidFilesRef.current;
+    if (dbSnapshot && Object.keys(dbSnapshot).length > 0) {
+      console.log('📦 Restoring from DB last_valid_files for project:', activeProjectId, `(${Object.keys(dbSnapshot).length} files)`);
+      setFiles(dbSnapshot);
+      hasRestoredCodeRef.current = activeProjectId;
+      console.log('🚪 Opening content gate for project:', activeProjectId);
+      setContentProjectId(activeProjectId);
+      setIsWaitingForPreviewMount(true);
+      onIncrementRefreshKey();
+      return;
+    }
+
+    // ✅ PRIORITY 2: Fall back to message history
     // Restore multi-file projects first, fall back to single-file
     const lastFilesSnapshot = getLastFilesSnapshot();
     if (lastFilesSnapshot && Object.keys(lastFilesSnapshot).length > 0) {
@@ -239,7 +292,7 @@ export function useProjectHydration({
     } else {
       setIsWaitingForPreviewMount(false);
     }
-  }, [activeProjectId, messagesLoading, isVerifyingProject, getLastCodeSnapshot, getLastFilesSnapshot, setCode, setFiles, isStreaming, onIncrementRefreshKey]);
+  }, [activeProjectId, messagesLoading, isVerifyingProject, dbSnapshotReady, getLastCodeSnapshot, getLastFilesSnapshot, setCode, setFiles, isStreaming, onIncrementRefreshKey]);
 
   // Reset restoration tracker when project changes
   useEffect(() => {
