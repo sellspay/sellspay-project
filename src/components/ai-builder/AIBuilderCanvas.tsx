@@ -1347,6 +1347,11 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     const lastGoodSnapshot = isAutoFixRequest ? getLastCodeSnapshot() : null;
     const existingCodeForAgent = lastGoodSnapshot || (code !== DEFAULT_CODE ? code : undefined);
 
+    // 📁 MULTI-FILE CONTEXT: Send the full project file map so the AI sees all components.
+    // This prevents "I don't see that element" errors when code is split across files.
+    const hasMultipleFiles = Object.keys(files).length > 1;
+    const projectFilesForAgent = hasMultipleFiles ? files : undefined;
+
     // 🔄 CREATE BACKGROUND JOB: This ensures generation persists even if user leaves
     // The job will be picked up by the edge function and results saved to database
     const job = await createJob(cleanPrompt, promptForAI, activeModel?.id, isPlanMode);
@@ -1359,11 +1364,11 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       
       // Start the agent loop with the AI prompt AND the job ID
       // The backend will write results to the job record
-      startAgent(promptForAI, existingCodeForAgent, projectId, job.id);
+      startAgent(promptForAI, existingCodeForAgent, projectId, job.id, projectFilesForAgent);
     } else {
       // Fallback: Start without job (streaming only, won't persist if user leaves)
       console.warn('[BackgroundGen] Failed to create job, using streaming-only mode');
-      startAgent(promptForAI, existingCodeForAgent, projectId);
+      startAgent(promptForAI, existingCodeForAgent, projectId, undefined, projectFilesForAgent);
     }
   };
 

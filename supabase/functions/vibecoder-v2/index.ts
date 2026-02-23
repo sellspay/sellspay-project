@@ -1332,6 +1332,7 @@ async function executeIntent(
   model: string,
   apiKey: string,
   creatorIdentity: { username: string; email: string } | null,
+  projectFiles?: Record<string, string> | null,
 ): Promise<Response> {
   // Select the appropriate system prompt based on intent
   let systemPrompt: string;
@@ -1453,9 +1454,23 @@ If the request says "change X", change ONLY X and nothing else.
 `;
 
     if (currentCode?.trim()) {
+      // Build code context: prefer multi-file map when available
+      let codeContext: string;
+      if (projectFiles && typeof projectFiles === 'object' && Object.keys(projectFiles).length > 1) {
+        // Multi-file project: show the full file map so AI can see all components
+        const fileEntries = Object.entries(projectFiles)
+          .filter(([path, content]) => typeof content === 'string' && content.trim().length > 0)
+          .map(([path, content]) => `=== ${path} ===\n${content}`)
+          .join('\n\n');
+        codeContext = `Here is the full project file map:\n\n${fileEntries}\n\nIMPORTANT: Return your response as a complete files map. Modify ONLY the files that need changes. Preserve all other files exactly as they are.`;
+      } else {
+        // Single-file project: backward compatible
+        codeContext = `Here is the current code:\n\n${currentCode}`;
+      }
+
       messages.push({
         role: "user",
-        content: `${intentInjection}${microInjection}${creatorInjection}${productsInjection}${resolvedTargetContext}${minimalDiffReminder}Here is the current code:\n\n${currentCode}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
+        content: `${intentInjection}${microInjection}${creatorInjection}${productsInjection}${resolvedTargetContext}${minimalDiffReminder}${codeContext}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
       });
     } else {
       messages.push({
@@ -1515,6 +1530,7 @@ serve(async (req) => {
     const {
       prompt,
       currentCode,
+      projectFiles,
       profileId,
       model = "vibecoder-pro",
       productsContext,
@@ -1794,12 +1810,13 @@ serve(async (req) => {
 
     const response = await executeIntent(
       intentResult,
-      modifiedPrompt, // Use modified prompt with Architect Mode injection if applicable
+      modifiedPrompt,
       currentCode || null,
       productsContext || null,
       model,
       GOOGLE_GEMINI_API_KEY,
       creatorIdentity,
+      projectFiles || null,
     );
 
     if (!response.ok) {
