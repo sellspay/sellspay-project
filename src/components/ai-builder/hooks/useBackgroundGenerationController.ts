@@ -38,6 +38,9 @@ export function useBackgroundGenerationController({
   // Track processed jobs to prevent duplicate message additions
   const processedJobIdsRef = useRef<Set<string>>(new Set());
 
+  // 🔄 RETRY STATE: Track the last failed prompt so users can retry
+  const [lastFailedPrompt, setLastFailedPrompt] = useState<string | null>(null);
+
   // 🔧 GHOST FIXER: Auto-recovery for truncated AI outputs
   const ghostFixer = useGhostFixer({
     maxRetries: 1,
@@ -186,6 +189,15 @@ export function useBackgroundGenerationController({
 
     const isActiveRun = activeJobIdRef.current === job.id;
 
+    // 🔄 RETRY: Capture the failed prompt so users can retry
+    const isRetryableError = userMessage.includes('NO_CODE_PRODUCED') || 
+      userMessage.includes('CORRUPT_JSON_OUTPUT') ||
+      userMessage.includes('did not generate any code') ||
+      userMessage.includes('responded conversationally');
+    if (isRetryableError && job.prompt) {
+      setLastFailedPrompt(job.prompt);
+    }
+
     if (isActiveRun) {
       // ✅ RESTORE FROM LAST VALID SNAPSHOT on any failure
       const validSnapshot = getLastValidSnapshot();
@@ -203,7 +215,8 @@ export function useBackgroundGenerationController({
       } else {
         toast.error(userMessage, { duration: 6000 });
         if (activeProjectId) {
-          addMessage('assistant', `❌ Generation failed: ${userMessage}\nNo changes were applied — your project was restored to its last stable state.`, undefined, activeProjectId);
+          const retryHint = isRetryableError ? '\n\nYou can retry this request using the button below.' : '';
+          addMessage('assistant', `❌ Generation failed: ${userMessage}\nNo changes were applied — your project was restored to its last stable state.${retryHint}`, undefined, activeProjectId);
         }
       }
       setLiveSteps([]);
@@ -246,6 +259,11 @@ export function useBackgroundGenerationController({
     acknowledgeJob(currentJob.id);
   }, [hasCompletedJob, currentJob, isLoadingJob, acknowledgeJob, handleJobComplete]);
 
+  // Clear retry state when a new generation starts successfully
+  const clearLastFailedPrompt = useCallback(() => {
+    setLastFailedPrompt(null);
+  }, []);
+
   return {
     currentJob,
     hasActiveJob,
@@ -255,5 +273,7 @@ export function useBackgroundGenerationController({
     cancelJob,
     acknowledgeJob,
     ghostFixer,
+    lastFailedPrompt,
+    clearLastFailedPrompt,
   };
 }

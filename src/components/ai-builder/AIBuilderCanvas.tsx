@@ -623,6 +623,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     cancelJob,
     acknowledgeJob,
     ghostFixer,
+    lastFailedPrompt,
+    clearLastFailedPrompt,
   } = useBackgroundGenerationController({
     activeProjectId,
     addMessage,
@@ -972,6 +974,9 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     // This prevents "I don't see that element" errors when code is split across files.
     const hasMultipleFiles = Object.keys(files).length > 1;
     const projectFilesForAgent = hasMultipleFiles ? files : undefined;
+
+    // Clear any previous retry state
+    clearLastFailedPrompt();
 
     // 🔄 CREATE BACKGROUND JOB: This ensures generation persists even if user leaves
     // The job will be picked up by the edge function and results saved to database
@@ -1572,6 +1577,13 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
               isCollapsed={chatCollapsed}
               onToggleCollapse={() => setChatCollapsed(!chatCollapsed)}
               userCredits={userCredits}
+              lastFailedPrompt={lastFailedPrompt}
+              onRetryLastFailed={() => {
+                if (lastFailedPrompt) {
+                  clearLastFailedPrompt();
+                  handleSendMessage(lastFailedPrompt);
+                }
+              }}
             />
           )}
         </div>

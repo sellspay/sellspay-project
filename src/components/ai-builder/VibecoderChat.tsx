@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Code2, CheckCircle2 } from 'lucide-react';
+import { Loader2, Code2, CheckCircle2, RefreshCw } from 'lucide-react';
 import { ChatInterface } from './VibecoderMessageBubble';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import { motion } from 'framer-motion';
@@ -47,6 +47,9 @@ interface VibecoderChatProps {
   // Chat collapse
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  // Retry failed generation
+  lastFailedPrompt?: string | null;
+  onRetryLastFailed?: () => void;
 }
 
 // Live Building Card - shows steps as they stream in
@@ -165,6 +168,8 @@ export function VibecoderChat({
   isCollapsed,
   onToggleCollapse,
   userCredits = 0,
+  lastFailedPrompt,
+  onRetryLastFailed,
 }: VibecoderChatProps) {
   const { presetId } = useTheme();
   const [input, setInput] = useState('');
@@ -359,6 +364,33 @@ export function VibecoderChat({
               />
             )}
 
+            {/* 🔄 RETRY BUTTON: Show when last generation failed with retryable error */}
+            {lastFailedPrompt && !isStreaming && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex gap-4 mb-4 mt-2"
+              >
+                <div className="flex-1 p-4 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <RefreshCw size={14} className="text-amber-400" />
+                    <span className="text-sm font-medium text-amber-400">Generation failed</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    The AI didn't produce valid code. You can retry the same request.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onRetryLastFailed}
+                    className="h-8 px-4 text-xs border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300"
+                  >
+                    <RefreshCw size={12} className="mr-1.5" />
+                    Retry Build
+                  </Button>
+                </div>
+              </motion.div>
+            )}
             {/* 🎯 CLARIFICATION CARD: Show when analyzer asks questions */}
             {pendingQuestions.length > 0 && !isStreaming && (
               <ClarificationCard
