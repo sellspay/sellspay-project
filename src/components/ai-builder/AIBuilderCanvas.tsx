@@ -643,6 +643,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     generationLockRef,
     activeJobIdRef,
     pendingSummaryRef,
+    hasDbSnapshotRef,
   });
 
   // Dynamically detected pages from generated code (checks all files in multi-file mode)
