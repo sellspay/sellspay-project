@@ -462,6 +462,10 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       // Release the lock
       generationLockRef.current = null;
 
+      // 📸 Trigger thumbnail capture after successful generation
+      if (captureTimerRef.current) clearTimeout(captureTimerRef.current);
+      captureTimerRef.current = setTimeout(() => { requestCapture(); }, 3000);
+
       // Notify agent loop that streaming is complete
       onStreamingComplete();
     },

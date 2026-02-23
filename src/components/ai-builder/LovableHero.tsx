@@ -193,7 +193,7 @@ export function LovableHero({
           </button>
         ) : null}
 
-        {/* Center content */}
+        {/* Center content (prompt area) */}
         <div className={`relative z-10 w-full max-w-2xl flex flex-col items-center text-center px-4 ${
           recentProjects.length > 0 ? "pt-[12vh]" : "pt-[25vh]"
         } flex-1`}>
@@ -315,13 +315,14 @@ export function LovableHero({
               )} 
             />
           </div>
+        </div>
 
-          {/* Project Shelf (bottom) */}
-          {onSelectProject && (
+        {/* Project Shelf — full width, outside max-w-2xl container */}
+        {onSelectProject && (
+          <div className="relative z-10 w-full px-6 pb-6 mt-auto">
             <ProjectShelf
               projects={recentProjects}
               onSelectProject={(id) => {
-                // Check if it's a template ID
                 if (id.startsWith('tpl-')) {
                   const templates: Record<string, string> = {
                     'tpl-saas': 'Build a premium dark-mode SaaS analytics dashboard with: a top stats bar showing MRR, active users, churn rate, and growth percentage with animated counters; a main area chart for revenue trends with gradient fills; a sidebar with quick actions. Use zinc-900 background, subtle purple/blue accent gradients, rounded-2xl cards with soft shadows, and smooth fade-in animations.',
@@ -342,8 +343,8 @@ export function LovableHero({
               }}
               onToggleStar={onToggleStar}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Subscription/Credits Gate Modal */}
