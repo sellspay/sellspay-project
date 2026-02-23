@@ -2055,19 +2055,94 @@ serve(async (req) => {
                 console.log(`[Files] Emitted ${Object.keys(fileMap).length} files atomically (summaryValidated=true)`);
               }
             } catch (parseErr) {
-              console.warn('[Files] JSON parse failed, falling back to legacy code_chunk:', parseErr);
+              console.warn('[Files] JSON parse failed in SUMMARY, attempting fallback extraction:', parseErr);
+              
+              // ═══════════════════════════════════════════════════════
+              // FALLBACK 1: Extract JSON from markdown code blocks
+              // ═══════════════════════════════════════════════════════
+              const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+              if (codeBlockMatch) {
+                try {
+                  const innerParsed = JSON.parse(codeBlockMatch[1].trim());
+                  if (innerParsed?.files && typeof innerParsed.files === 'object' && Object.keys(innerParsed.files).length > 0) {
+                    emitEvent('files', { projectFiles: innerParsed.files });
+                    filesEmitted = true;
+                    lastMergedFiles = innerParsed.files;
+                    summaryValidated = true;
+                    console.log(`[Files] FALLBACK 1: Extracted ${Object.keys(innerParsed.files).length} files from code block`);
+                  }
+                } catch {
+                  console.warn('[Files] FALLBACK 1: Code block JSON parse also failed');
+                }
+              }
+              
+              // ═══════════════════════════════════════════════════════
+              // FALLBACK 2: Repair truncated JSON (unbalanced braces)
+              // ═══════════════════════════════════════════════════════
+              if (!filesEmitted) {
+                try {
+                  let repaired = cleaned;
+                  let braces = 0, brackets = 0;
+                  for (const char of repaired) {
+                    if (char === '{') braces++;
+                    if (char === '}') braces--;
+                    if (char === '[') brackets++;
+                    if (char === ']') brackets--;
+                  }
+                  while (brackets > 0) { repaired += ']'; brackets--; }
+                  while (braces > 0) { repaired += '}'; braces--; }
+                  
+                  if (repaired !== cleaned) {
+                    const repairedParsed = JSON.parse(repaired);
+                    if (repairedParsed?.files && typeof repairedParsed.files === 'object' && Object.keys(repairedParsed.files).length > 0) {
+                      emitEvent('files', { projectFiles: repairedParsed.files });
+                      filesEmitted = true;
+                      lastMergedFiles = repairedParsed.files;
+                      summaryValidated = true;
+                      console.log(`[Files] FALLBACK 2: Repaired truncated JSON, extracted ${Object.keys(repairedParsed.files).length} files`);
+                    }
+                  }
+                } catch {
+                  console.warn('[Files] FALLBACK 2: Truncated JSON repair failed');
+                }
+              }
+              
+              // ═══════════════════════════════════════════════════════
+              // FALLBACK 3: Treat raw TSX as single-file App.tsx
+              // ═══════════════════════════════════════════════════════
+              if (!filesEmitted) {
+                const strippedCode = cleaned
+                  .replace(/\/\/\/\s*TYPE:\s*CODE\s*\/\/\//g, '')
+                  .replace(/\/\/\/\s*BEGIN_CODE\s*\/\/\//g, '')
+                  .replace(/\/\/\s*---\s*VIBECODER_COMPLETE\s*---/g, '')
+                  .trim();
+                
+                // Only treat as single-file if it looks like actual TSX/React code
+                const looksLikeCode = (strippedCode.includes('import ') || strippedCode.includes('export ')) &&
+                  !strippedCode.startsWith('{') &&
+                  strippedCode.length > 50;
+                
+                if (looksLikeCode) {
+                  const singleFileMap = { "App.tsx": strippedCode };
+                  emitEvent('files', { projectFiles: singleFileMap });
+                  filesEmitted = true;
+                  lastMergedFiles = singleFileMap;
+                  summaryValidated = true;
+                  console.log(`[Files] FALLBACK 3: Treated raw TSX as single-file App.tsx (${strippedCode.length} chars)`);
+                } else {
+                  // ═══════════════════════════════════════════════════════
+                  // ALL FALLBACKS EXHAUSTED: Mark for explicit failure
+                  // ═══════════════════════════════════════════════════════
+                  console.error('[Files] ALL FALLBACKS FAILED: No valid file map could be extracted from SUMMARY');
+                  summaryValidated = false;
+                  // Set a flag so finalization knows to fail the job
+                  lastMergedFiles = null as unknown as Record<string, string>;
+                }
+              }
             }
             
-            // Legacy fallback: if JSON parse failed, emit as code_chunk
-            if (!filesEmitted && cleaned.length > 50) {
-              // Strip TYPE/BEGIN markers for legacy compat
-              const legacyCode = cleaned
-                .replace(/\/\/\/\s*TYPE:\s*CODE\s*\/\/\//g, '')
-                .replace(/\/\/\/\s*BEGIN_CODE\s*\/\/\//g, '')
-                .replace(/\/\/\s*---\s*VIBECODER_COMPLETE\s*---/g, '')
-                .trim();
-              emitEvent('code_chunk', { content: legacyCode, total: legacyCode.length });
-            }
+            // 🚫 Do NOT emit raw code_chunk as legacy fallback — this causes JSON-as-code bugs
+            // If filesEmitted is false at this point, finalization will handle the failure
             const summaryStart = fullContent.indexOf('=== SUMMARY ===') + '=== SUMMARY ==='.length;
             let summaryEnd = fullContent.indexOf('=== CONFIDENCE ===');
             if (summaryEnd < 0) summaryEnd = fullContent.length;
@@ -2318,7 +2393,16 @@ serve(async (req) => {
                     console.log(`[Job ${jobId}] GATE 1 FALLBACK: Re-merged ${Object.keys(deltaFiles).length} delta + ${Object.keys(existingFiles).length} existing`);
                   }
                 } catch {
-                  // Not JSON — single-file code, validate as-is
+                  // Not JSON — could be single-file code, validate as-is
+                  // BUT if it looks like JSON (starts with {), it's corrupt — fail explicitly
+                  const trimmedCode = codeResult.trim();
+                  if (trimmedCode.startsWith('{') && (trimmedCode.includes('"files"') || trimmedCode.includes('"App.tsx"'))) {
+                    console.error(`[Job ${jobId}] GATE 0 FAIL: codeResult looks like JSON but cannot be parsed — refusing to treat as code`);
+                    validationError = { errorType: 'CORRUPT_JSON_OUTPUT', errorMessage: 'AI returned malformed JSON that could not be parsed into files. Please retry.' };
+                    jobStatus = "failed";
+                    terminalReason = "corrupt_json_output";
+                    validationReport.truncation_detected = true;
+                  }
                 }
               }
               
