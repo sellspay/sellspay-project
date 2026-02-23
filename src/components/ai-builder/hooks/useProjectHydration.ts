@@ -192,6 +192,15 @@ export function useProjectHydration({
         console.log("✅ DB Data received. Mounting.");
         mountAgentProject(activeProjectId);
         onResetTransientState();
+
+        // 🔥 CRITICAL: Set hasDbSnapshotRef HERE — before any useEffect can run.
+        // This eliminates the race where user sends a prompt before the separate
+        // DB snapshot fetch effect completes, causing REPLACE mode on existing projects.
+        if (data.last_valid_files && typeof data.last_valid_files === 'object' &&
+            Object.keys(data.last_valid_files as Record<string, string>).length > 0) {
+          hasDbSnapshotRef.current = true;
+          console.log('🔒 hasDbSnapshotRef set to TRUE in layout effect (race-free)');
+        }
       }
 
       setIsVerifyingProject(false);
