@@ -878,6 +878,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       // Accumulate code_chunk deltas for live preview during streaming
       let streamingCodeBuffer = '';
       let receivedFiles = false;
+      let guardrailsRejected = false; // STRICT: when true, NO fallback path may commit code
 
       const processSSELine = (line: string) => {
         if (line.startsWith('event: ')) {
@@ -921,12 +922,15 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                       : lastGoodCodeRef.current;
                     if (appCode && oldCode && oldCode.length >= 200) {
                       const guardResult = safeApply(oldCode, appCode, originalPromptRef.current);
-                      if (!guardResult.accepted) {
+                    if (!guardResult.accepted) {
                         console.error('🛡️ MULTI-FILE GUARDRAILS REJECTED:', guardResult.failedGuards.map(f => `${f.guard}: ${f.message}`).join(' | '));
-                        // CRITICAL: Restore the old code in state to prevent showing blank/default
-                        setState(prev => ({ ...prev, code: oldCode, error: `Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}` }));
+                        // CRITICAL: Restore the old code AND old files in state to prevent showing blank/default
+                        // Also restore the last valid files snapshot to ensure no partial state leaks
+                        const restoredFiles = lastValidFilesRef.current || (oldCode ? codeToFiles(oldCode) : {});
+                        setState(prev => ({ ...prev, code: oldCode, files: restoredFiles, error: `Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}` }));
                         options.onError?.(new Error(`Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}`));
                         receivedFiles = true; // prevent legacy path from running
+                        guardrailsRejected = true; // STRICT: block ALL fallback paths
                         break;
                       }
                     }
@@ -975,9 +979,11 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                           const guardResult = safeApply(oldCode, appCode, originalPromptRef.current);
                           if (!guardResult.accepted) {
                             console.error('🛡️ CODE_CHUNK GUARDRAILS REJECTED:', guardResult.failedGuards.map(f => `${f.guard}: ${f.message}`).join(' | '));
-                            setState(prev => ({ ...prev, code: oldCode, error: `Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}` }));
+                            const restoredFiles = lastValidFilesRef.current || (oldCode ? codeToFiles(oldCode) : {});
+                            setState(prev => ({ ...prev, code: oldCode, files: restoredFiles, error: `Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}` }));
                             options.onError?.(new Error(`Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}`));
                             receivedFiles = true;
+                            guardrailsRejected = true; // STRICT: block ALL fallback paths
                             streamingCodeBuffer = '';
                             break;
                           }
@@ -1158,10 +1164,17 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       }
 
       // ═══════════════════════════════════════════════════════════
+      // GUARDRAIL REJECTION GATE: If guardrails rejected, absolutely NO
+      // fallback injection allowed. This prevents partial App.tsx from
+      // being committed when multi-file commit was rejected.
+      // ═══════════════════════════════════════════════════════════
+      if (guardrailsRejected) {
+        console.warn('🛡️ STRICT GATE: Guardrails rejected — blocking ALL legacy fallback paths');
+        setState(prev => ({ ...prev, isStreaming: false }));
+        return lastGoodCodeRef.current;
+      }
       // MULTI-FILE FAST PATH: If we received files via atomic JSON event,
       // guardrails were already checked in the event handler above.
-      // Skip legacy single-file extraction.
-      // ═══════════════════════════════════════════════════════════
       if (receivedFiles) {
         setState(prev => ({ ...prev, isStreaming: false }));
         return lastGoodCodeRef.current;
@@ -1326,6 +1339,14 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         const parsed = JSON.parse(trimmedRaw);
         if (parsed.files && typeof parsed.files === 'object') {
           const fileKeys = Object.keys(parsed.files);
+          // CRITICAL FIX: If JSON contains multiple files, use setFiles instead of
+          // extracting just App.tsx. Extracting only App.tsx from a multi-file project
+          // causes missing module errors (e.g., ./sections/Hero not found).
+          if (fileKeys.length > 1) {
+            console.log('[useStreamingCode] setCode: Detected multi-file JSON — delegating to setFiles with', fileKeys.length, 'files');
+            setFiles(parsed.files);
+            return;
+          }
           const appKey = fileKeys.find(k => k.includes('App.tsx')) || fileKeys[0];
           if (appKey && typeof parsed.files[appKey] === 'string') {
             console.warn('[useStreamingCode] setCode: Unwrapped JSON-wrapped code from key:', appKey);
