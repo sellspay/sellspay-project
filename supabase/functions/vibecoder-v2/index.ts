@@ -1996,6 +1996,11 @@ serve(async (req) => {
               .replace(/\n?```\s*$/i, '')
               .trim();
             
+            // 🔍 DEBUG: Log raw CODE section before any parsing
+            console.log(`[Job ${jobId}] RAW_CODE_SECTION (first 2000 chars):`, cleaned.substring(0, 2000));
+            console.log(`[Job ${jobId}] RAW_CODE_SECTION (last 500 chars):`, cleaned.substring(Math.max(0, cleaned.length - 500)));
+            console.log(`[Job ${jobId}] RAW_CODE_SECTION total length: ${cleaned.length}`);
+            
             let filesEmitted = false;
             try {
               const parsed = JSON.parse(cleaned);
