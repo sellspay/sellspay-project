@@ -114,42 +114,130 @@ export function useBackgroundGenerationController({
       }
     };
 
-    // If we have code result, apply it
+    // ═══════════════════════════════════════════════════════
+    // ZERO-TRUST COMMIT GATE: Only accept validated JSON file maps
+    // ═══════════════════════════════════════════════════════
     if (job.code_result) {
-      if (looksLikeJson(job.code_result)) {
-        console.error('[BackgroundGen] Refusing to apply JSON as code_result for job:', job.id);
-        toast.error('Auto-fix failed: received invalid code payload');
-      } else {
-        // MULTI-FILE DETECTION: If code_result is a JSON file map, route to setFiles()
-        // This prevents raw JSON from being transpiled as TSX by Sandpack.
-        const trimmedResult = job.code_result.trim();
-        let handledAsMultiFile = false;
-        if (trimmedResult.startsWith('{')) {
-          try {
-            const parsed = JSON.parse(trimmedResult);
-            // Handle {"files": {"/App.tsx": "...", ...}} wrapper
-            const fileMap = parsed?.files && typeof parsed.files === 'object' ? parsed.files : null;
-            // Handle direct file map {"/App.tsx": "...", ...}
-            const isDirectFileMap = !fileMap && parsed && typeof parsed === 'object' &&
-              Object.keys(parsed).some(k => k.endsWith('.tsx') || k.endsWith('.ts') || k.endsWith('.css'));
-            
-            if (fileMap && Object.keys(fileMap).length > 0) {
-              console.log('[BackgroundGen] code_result is {files:{...}} JSON — routing to setFiles():', Object.keys(fileMap).length, 'files');
-              setFiles(fileMap);
-              handledAsMultiFile = true;
-            } else if (isDirectFileMap) {
-              console.log('[BackgroundGen] code_result is direct file map — routing to setFiles():', Object.keys(parsed).length, 'files');
-              setFiles(parsed);
-              handledAsMultiFile = true;
+      const trimmedResult = job.code_result.trim();
+      
+      // LAYER 1: Must be a non-empty string that starts with {
+      if (!trimmedResult.startsWith('{')) {
+        console.error('[ZERO-TRUST] code_result is not JSON. Refusing to commit:', job.id);
+        toast.error('Generation produced invalid output. Please retry.');
+        // Restore snapshot
+        const validSnapshot = getLastValidSnapshot();
+        if (validSnapshot && Object.keys(validSnapshot).length > 0) {
+          setFiles(validSnapshot);
+        }
+        if (isActiveRun) {
+          setLiveSteps([]);
+          pendingSummaryRef.current = '';
+          generationLockRef.current = null;
+          activeJobIdRef.current = null;
+          resetAgent();
+        }
+        return;
+      }
+      
+      // LAYER 2: Must parse as JSON
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(trimmedResult);
+      } catch {
+        console.error('[ZERO-TRUST] code_result JSON parse failed. Refusing to commit:', job.id);
+        toast.error('Generation produced corrupt output. Please retry.');
+        const validSnapshot = getLastValidSnapshot();
+        if (validSnapshot && Object.keys(validSnapshot).length > 0) {
+          setFiles(validSnapshot);
+        }
+        if (isActiveRun) {
+          setLiveSteps([]);
+          pendingSummaryRef.current = '';
+          generationLockRef.current = null;
+          activeJobIdRef.current = null;
+          resetAgent();
+        }
+        return;
+      }
+      
+      // LAYER 3: Must be a valid file map (either {files:{...}} or direct {"/App.tsx": "..."})
+      const fileMap: Record<string, string> | null = (() => {
+        if (parsed.files && typeof parsed.files === 'object' && !Array.isArray(parsed.files)) {
+          return parsed.files as Record<string, string>;
+        }
+        // Direct file map
+        const keys = Object.keys(parsed);
+        if (keys.length > 0 && keys.some(k => k.endsWith('.tsx') || k.endsWith('.ts') || k.endsWith('.css'))) {
+          return parsed as unknown as Record<string, string>;
+        }
+        return null;
+      })();
+      
+      if (!fileMap || Object.keys(fileMap).length === 0) {
+        console.error('[ZERO-TRUST] code_result is not a valid file map. Refusing to commit:', job.id);
+        toast.error('Generation produced invalid file structure. Please retry.');
+        const validSnapshot = getLastValidSnapshot();
+        if (validSnapshot && Object.keys(validSnapshot).length > 0) {
+          setFiles(validSnapshot);
+        }
+        if (isActiveRun) {
+          setLiveSteps([]);
+          pendingSummaryRef.current = '';
+          generationLockRef.current = null;
+          activeJobIdRef.current = null;
+          resetAgent();
+        }
+        return;
+      }
+      
+      // LAYER 4: All values must be strings (no object injection)
+      const allStrings = Object.entries(fileMap).every(([, v]) => typeof v === 'string');
+      if (!allStrings) {
+        console.error('[ZERO-TRUST] File map contains non-string values. Refusing to commit:', job.id);
+        toast.error('Generation produced invalid file contents. Please retry.');
+        const validSnapshot = getLastValidSnapshot();
+        if (validSnapshot && Object.keys(validSnapshot).length > 0) {
+          setFiles(validSnapshot);
+        }
+        if (isActiveRun) {
+          setLiveSteps([]);
+          pendingSummaryRef.current = '';
+          generationLockRef.current = null;
+          activeJobIdRef.current = null;
+          resetAgent();
+        }
+        return;
+      }
+      
+      // LAYER 5: No conversational text in code files
+      const forbiddenStarts = ['Alright', 'Got it!', 'Sure!', "Here's", "Let's", '=== ANALYSIS', '=== PLAN', '=== SUMMARY'];
+      for (const [path, content] of Object.entries(fileMap)) {
+        if ((path.endsWith('.tsx') || path.endsWith('.ts')) && typeof content === 'string') {
+          const trimmedContent = content.trim();
+          const isConversational = forbiddenStarts.some(s => trimmedContent.startsWith(s));
+          const hasCodeIndicators = /export|import|function|const|return|<\w+/.test(trimmedContent);
+          if (isConversational || !hasCodeIndicators) {
+            console.error(`[ZERO-TRUST] File ${path} contains conversational text. Refusing to commit.`);
+            toast.error('Generation produced non-code output. Please retry.');
+            const validSnapshot = getLastValidSnapshot();
+            if (validSnapshot && Object.keys(validSnapshot).length > 0) {
+              setFiles(validSnapshot);
             }
-          } catch {
-            // Not valid JSON, fall through to setCode
+            if (isActiveRun) {
+              setLiveSteps([]);
+              pendingSummaryRef.current = '';
+              generationLockRef.current = null;
+              activeJobIdRef.current = null;
+              resetAgent();
+            }
+            return;
           }
         }
-        if (!handledAsMultiFile) {
-          setCode(job.code_result, true);
-        }
       }
+      
+      // ✅ ALL LAYERS PASSED — commit the file map
+      console.log('[ZERO-TRUST] All layers passed. Committing', Object.keys(fileMap).length, 'files for job:', job.id);
+      setFiles(fileMap);
     } else {
       console.warn('[BackgroundGen] Job completed with no code_result:', job.id);
     }
