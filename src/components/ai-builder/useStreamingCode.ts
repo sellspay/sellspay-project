@@ -592,7 +592,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   const originalPromptRef = useRef<string>('');
   const lastGoodCodeRef = useRef<string>(DEFAULT_CODE);
 
-  const streamCode = useCallback(async (prompt: string, currentCode?: string, jobId?: string) => {
+  const streamCode = useCallback(async (prompt: string, currentCode?: string, jobId?: string, projectFiles?: Record<string, string>) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -635,6 +635,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
           body: JSON.stringify({
             prompt,
             currentCode,
+            projectFiles: projectFiles || undefined,
             productsContext,
             conversationHistory,
             jobId,

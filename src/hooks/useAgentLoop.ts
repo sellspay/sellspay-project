@@ -27,7 +27,7 @@ interface AgentState {
 }
 
 interface UseAgentLoopOptions {
-  onStreamCode: (prompt: string, existingCode?: string, jobId?: string) => void;
+  onStreamCode: (prompt: string, existingCode?: string, jobId?: string, projectFiles?: Record<string, string>) => void;
   onComplete?: () => void;
   getActiveProjectId?: () => string | null;
 }
@@ -80,7 +80,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
    * Starts the agent loop - immediately shows "Analyzing" and triggers code generation.
    * All subsequent phase transitions come from real SSE events.
    */
-  const startAgent = useCallback(async (prompt: string, existingCode?: string, projectId?: string, jobId?: string) => {
+  const startAgent = useCallback(async (prompt: string, existingCode?: string, projectId?: string, jobId?: string, projectFiles?: Record<string, string>) => {
     abortRef.current = false;
     streamStartedRef.current = false;
     
@@ -109,7 +109,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       
       // Trigger actual streaming immediately - no fake delays
       streamStartedRef.current = true;
-      onStreamCode(prompt, existingCode, jobId);
+      onStreamCode(prompt, existingCode, jobId, projectFiles);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Agent crashed';
       setState(prev => ({
