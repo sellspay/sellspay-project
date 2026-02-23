@@ -11,9 +11,10 @@ import { LiveThought } from './LiveThought';
 import { StreamingPhaseCard, type StreamPhase, type StreamingPhaseData } from './StreamingPhaseCard';
 import { PlanApprovalCard } from './PlanApprovalCard';
 import type { PlanData } from './useStreamingCode';
-import { type StylePreset, generateStylePrompt } from './stylePresets';
+import { type StylePreset, generateStylePrompt, STYLE_PRESETS } from './stylePresets';
 import { ContextualSuggestions, type BackendSuggestion } from './ContextualSuggestions';
 import { ClarificationCard, type ClarificationQuestion } from './ClarificationCard';
+import { useTheme } from '@/lib/theme';
 
 interface VibecoderChatProps {
   onSendMessage: (displayMessage: string, aiPrompt?: string) => void;
@@ -32,8 +33,7 @@ interface VibecoderChatProps {
   activeModel?: AIModel;
   onModelChange?: (model: AIModel) => void;
   onOpenBilling?: () => void;
-  activeStyle?: StylePreset;
-  onStyleChange?: (style: StylePreset) => void;
+  // activeStyle and onStyleChange removed — now managed by ThemeProvider
   pendingPlan?: { plan: PlanData; originalPrompt: string } | null;
   onApprovePlan?: (originalPrompt: string) => void;
   onRejectPlan?: () => void;
@@ -151,8 +151,7 @@ export function VibecoderChat({
   activeModel,
   onModelChange,
   onOpenBilling,
-  activeStyle,
-  onStyleChange,
+  // Theme from context
   pendingPlan,
   onApprovePlan,
   onRejectPlan,
@@ -166,6 +165,7 @@ export function VibecoderChat({
   isCollapsed,
   onToggleCollapse,
 }: VibecoderChatProps) {
+  const { presetId } = useTheme();
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isApprovingPlan, setIsApprovingPlan] = useState(false);
@@ -220,9 +220,8 @@ export function VibecoderChat({
     // Build the prompt that goes to the AI backend (may include system instructions)
     let aiPrompt = cleanPrompt;
     
-    // STYLE INJECTION: Use the active style from the Design panel (toolbar)
-    // If a style is selected (and not "None"), prepend the style context
-    const effectiveStyle = activeStyle || options.style;
+    // STYLE INJECTION: Get the active style from ThemeProvider context
+    const effectiveStyle = options.style || STYLE_PRESETS.find(s => s.id === presetId);
     if (effectiveStyle && effectiveStyle.id !== 'none') {
       const styleContext = generateStylePrompt(effectiveStyle);
       if (styleContext) {

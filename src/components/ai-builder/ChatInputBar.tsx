@@ -7,6 +7,7 @@ import {
   Paperclip, Film, Video, Coins, Mic, Lock, Palette, Moon, Sun, Leaf, Waves
 } from "lucide-react";
 import { STYLE_PRESETS, type StylePreset } from './stylePresets';
+import { useTheme, THEME_PRESETS } from '@/lib/theme';
 import { cn } from "@/lib/utils";
 
 // Speech Recognition type declarations
@@ -101,9 +102,7 @@ interface ChatInputBarProps {
   onModelChange?: (model: AIModel) => void;
   // Paywall callback
   onOpenBilling?: () => void;
-  // Controlled style state
-  activeStyle?: StylePreset;
-  onStyleChange?: (style: StylePreset) => void;
+  // Style state now managed by ThemeProvider context
 }
 
 // Portal component to render children directly on document.body
@@ -251,9 +250,8 @@ export function ChatInputBar({
   activeModel,
   onModelChange,
   onOpenBilling,
-  activeStyle,
-  onStyleChange,
 }: ChatInputBarProps) {
+  const { presetId, applyPreset } = useTheme();
   const [showMenu, setShowMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [showStyleMenu, setShowStyleMenu] = useState(false);
@@ -262,9 +260,8 @@ export function ChatInputBar({
   const [internalModel, setInternalModel] = useState<AIModel>(AI_MODELS.code[0]);
   const selectedModel = activeModel ?? internalModel;
   
-  // Use controlled style if provided, otherwise use local state
-  const [internalStyle, setInternalStyle] = useState<StylePreset>(STYLE_PRESETS[0]);
-  const selectedStyle = activeStyle ?? internalStyle;
+  // Style from ThemeProvider context
+  const selectedStyle = STYLE_PRESETS.find(s => s.id === presetId) ?? STYLE_PRESETS[0];
   
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isListening, setIsListening] = useState(false);
@@ -533,10 +530,9 @@ export function ChatInputBar({
   
   // Handle style selection
   const handleStyleSelect = (style: StylePreset) => {
-    if (onStyleChange) {
-      onStyleChange(style);
-    } else {
-      setInternalStyle(style);
+    const themePreset = THEME_PRESETS.find(p => p.id === style.id);
+    if (themePreset) {
+      applyPreset(themePreset);
     }
     setShowStyleMenu(false);
   };
