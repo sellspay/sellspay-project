@@ -25,6 +25,7 @@ import { parseRoutesFromCode, type SitePage } from '@/utils/routeParser';
 import { toast } from 'sonner';
 import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke';
 import { LovableHero } from './LovableHero';
+import { useUserCredits } from '@/hooks/useUserCredits';
 
 import { FixErrorToast } from './FixErrorToast';
 import { GenerationOverlay } from './GenerationOverlay';
@@ -45,7 +46,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const [publishing, setPublishing] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
-  const [userCredits, setUserCredits] = useState(0);
+  const { credits: userCredits } = useUserCredits();
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
   
@@ -854,7 +855,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // projects can "reappear" on refresh due to leftover profile-scoped cached code.
   useEffect(() => {
     const loadData = async () => {
-      const [layoutResp, profileResp, walletResp] = await Promise.all([
+      const [layoutResp, profileResp] = await Promise.all([
         supabase
           .from('ai_storefront_layouts')
           .select('*')
@@ -864,11 +865,6 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
           .from('profiles')
           .select('username, avatar_url, subscription_tier')
           .eq('id', profileId)
-          .maybeSingle(),
-        supabase
-          .from('user_wallets')
-          .select('balance')
-          .eq('user_id', profileId)
           .maybeSingle(),
       ]);
 
@@ -881,11 +877,6 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
         setUsername(profileResp.data.username);
         setUserAvatarUrl(profileResp.data.avatar_url);
         setSubscriptionTier(profileResp.data.subscription_tier);
-      }
-
-      // Set user credits
-      if (walletResp.data) {
-        setUserCredits(walletResp.data.balance ?? 0);
       }
 
       setLoading(false);
