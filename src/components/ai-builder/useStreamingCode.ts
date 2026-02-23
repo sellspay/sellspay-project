@@ -8,6 +8,19 @@ import { safeApply, saveSnapshot, isMicroEdit as detectMicroEdit } from './codeG
  */
 export const VIBECODER_COMPLETE_SENTINEL = '// --- VIBECODER_COMPLETE ---';
 
+/**
+ * Guard: returns false if the string looks like a JSON envelope or SSE metadata
+ * rather than actual TSX/JSX code. Prevents raw JSON from reaching Babel/Sandpack.
+ */
+function looksLikeCode(chunk: string): boolean {
+  if (!chunk || chunk.trim().length < 10) return false;
+  const trimmed = chunk.trim();
+  if (trimmed.startsWith('{') && trimmed.includes('"files"')) return false;
+  if (trimmed.startsWith('{"')) return false;
+  if (trimmed.startsWith('event:')) return false;
+  return true;
+}
+
 // Component markers for modular generation (Multi-Agent Architecture)
 export const COMPONENT_START_PATTERN = /\/\/\/\s*COMPONENT_START:\s*(\w+)\s*\/\/\//g;
 export const COMPONENT_END_PATTERN = /\/\/\/\s*COMPONENT_END\s*\/\/\//g;
@@ -948,11 +961,17 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                     }
                   }
 
-                  if (streamingCodeBuffer.length > 100) {
+                  // Safety net: if buffer looks like JSON, do NOT inject as code
+                  if (trimmedBuf.startsWith('{') && trimmedBuf.includes('"files"')) {
+                    // Already handled above or still buffering — never inject raw JSON
+                    break;
+                  }
+
+                  if (streamingCodeBuffer.length > 100 && looksLikeCode(streamingCodeBuffer)) {
                     setState(prev => ({ ...prev, code: streamingCodeBuffer }));
                   }
                   const cleanChunk = extractCodeFromRaw(streamingCodeBuffer);
-                  if (cleanChunk && isLikelyCompleteTsx(cleanChunk)) {
+                  if (cleanChunk && looksLikeCode(cleanChunk) && isLikelyCompleteTsx(cleanChunk)) {
                     lastGoodCodeRef.current = cleanChunk;
                     setState(prev => ({ ...prev, code: cleanChunk }));
                     options.onChunk?.(cleanChunk);
@@ -1072,7 +1091,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         if (mode === 'code') {
           const cleanCode = extractCodeFromRaw(rawStream);
 
-          if (cleanCode && isLikelyCompleteTsx(cleanCode)) {
+          if (cleanCode && looksLikeCode(cleanCode) && isLikelyCompleteTsx(cleanCode)) {
             lastGoodCodeRef.current = cleanCode;
             setState(prev => ({ ...prev, code: cleanCode }));
             options.onChunk?.(cleanCode);
