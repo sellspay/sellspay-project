@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ProjectFiles } from './VibecoderPreview';
-import { safeApply, saveSnapshot, isMicroEdit as detectMicroEdit } from './codeGuardrails';
+import { safeApply, saveSnapshot, isMicroEdit as detectMicroEdit, type GuardrailMode } from './codeGuardrails';
 
 /**
  * Persist the last valid files snapshot to the database.
@@ -879,6 +879,11 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       let streamingCodeBuffer = '';
       let receivedFiles = false;
       let guardrailsRejected = false; // STRICT: when true, NO fallback path may commit code
+      // Determine guardrail mode: 'replace' for first generation (no snapshot), 'edit' otherwise
+      const guardrailMode: GuardrailMode = (!lastValidFilesRef.current || Object.keys(lastValidFilesRef.current).length === 0) ? 'replace' : 'edit';
+      if (guardrailMode === 'replace') {
+        console.log('🔓 Guardrail mode: REPLACE (first generation — no snapshot exists)');
+      }
 
       const processSSELine = (line: string) => {
         if (line.startsWith('event: ')) {
@@ -921,7 +926,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                       ? preResetCodeRef.current
                       : lastGoodCodeRef.current;
                     if (appCode && oldCode && oldCode.length >= 200) {
-                      const guardResult = safeApply(oldCode, appCode, originalPromptRef.current);
+                      const guardResult = safeApply(oldCode, appCode, originalPromptRef.current, undefined, guardrailMode);
                     if (!guardResult.accepted) {
                         console.error('🛡️ MULTI-FILE GUARDRAILS REJECTED:', guardResult.failedGuards.map(f => `${f.guard}: ${f.message}`).join(' | '));
                         // CRITICAL: Restore the old code AND old files in state to prevent showing blank/default
@@ -976,7 +981,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                           ? preResetCodeRef.current
                           : lastGoodCodeRef.current;
                         if (appCode && oldCode && oldCode.length >= 200) {
-                          const guardResult = safeApply(oldCode, appCode, originalPromptRef.current);
+                          const guardResult = safeApply(oldCode, appCode, originalPromptRef.current, undefined, guardrailMode);
                           if (!guardResult.accepted) {
                             console.error('🛡️ CODE_CHUNK GUARDRAILS REJECTED:', guardResult.failedGuards.map(f => `${f.guard}: ${f.message}`).join(' | '));
                             const restoredFiles = lastValidFilesRef.current || (oldCode ? codeToFiles(oldCode) : {});
@@ -1238,7 +1243,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
         streamConfidence = parseInt(confidenceMatch[1], 10);
       }
 
-      const guardResult = safeApply(previousCode, finalCode, prompt, streamConfidence);
+      const guardResult = safeApply(previousCode, finalCode, prompt, streamConfidence, guardrailMode);
 
       if (!guardResult.accepted) {
         const guardNames = guardResult.failedGuards.map(g => g.guard).join(', ');
