@@ -94,7 +94,7 @@ export function themeToCSSString(theme: ThemeTokens): string {
   for (const [key, cssVar] of Object.entries(TOKEN_TO_CSS_VAR)) {
     const value = theme[key as keyof ThemeTokens];
     if (value) {
-      lines.push(`  ${cssVar}: ${value};`);
+      lines.push(`  ${cssVar}: ${value} !important;`);
     }
   }
   return `:root {\n${lines.join('\n')}\n}`;
