@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useThumbnailCapture } from './hooks/useThumbnailCapture';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +33,7 @@ import { GenerationOverlay } from './GenerationOverlay';
 import { checkPolicyViolation } from '@/utils/policyGuard';
 import { useBackgroundGenerationController } from './hooks/useBackgroundGenerationController';
 import { useCreativeStudio } from './hooks/useCreativeStudio';
+import { useProjectHydration } from './hooks/useProjectHydration';
 
 interface AIBuilderCanvasProps {
   profileId: string;
@@ -65,19 +66,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Reset key to force component re-mount on project deletion
   const [resetKey, setResetKey] = useState(0);
 
-  // STRICT LOADING: Verify project exists before rendering preview
-  const [isVerifyingProject, setIsVerifyingProject] = useState(false);
-
-  // CONTENT GATE: Which project has its code/chat fully mounted into the workspace.
-  // This prevents a 1-frame "flash" where the URL/activeProjectId changes but the old
-  // code/messages are still in React state.
-  const [contentProjectId, setContentProjectId] = useState<string | null>(null);
   // Prevent Sandpack's brief bundling/error flash after streaming completes
   const [isAwaitingPreviewReady, setIsAwaitingPreviewReady] = useState(false);
-  
-  // 🤝 PREVIEW HANDSHAKE: Tracks if we're waiting for Sandpack to signal "ready" after project switch
-  // This keeps the loading screen visible until the preview is actually rendered, preventing blank frames
-  const [isWaitingForPreviewMount, setIsWaitingForPreviewMount] = useState(false);
 
   // View mode state (Preview vs Code vs Image vs Video)
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
@@ -557,21 +547,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     return () => window.clearTimeout(timeout);
   }, [isAwaitingPreviewReady, isStreaming]);
 
-  // Safety: if isWaitingForPreviewMount never clears (Sandpack doesn't remount), force-clear it.
-  // This prevents the "black screen" bug where Sandpack updates files
-  // without triggering onReady (no key change = no remount).
-  // Reduced to 1.5s — 3s felt like a hang. Sandpack typically mounts in <500ms.
-  useEffect(() => {
-    if (!isWaitingForPreviewMount) return;
-    if (isStreaming) return;
 
-    const timeout = window.setTimeout(() => {
-      console.log('⏰ Safety: Force-clearing isWaitingForPreviewMount after timeout');
-      setIsWaitingForPreviewMount(false);
-    }, 1500);
-
-    return () => window.clearTimeout(timeout);
-  }, [isWaitingForPreviewMount, isStreaming]);
 
   // Agent loop for premium multi-step experience
   const {
@@ -742,246 +718,65 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     navigate('/login');
   };
 
-  // =============== SCORCHED EARTH ORCHESTRATOR ===============
-  // We use useLayoutEffect to ensure this runs synchronously before paint.
-  // This prevents any flash of stale content when switching projects.
-  // 
-  // CRITICAL: This effect ONLY runs when activeProjectId changes, NOT on every message update.
-  // Having `messages` in the dependency array caused a catastrophic bug where every new message
-  // would trigger unmount/remount, aborting in-flight AI generations.
-  const previousProjectIdRef = useRef<string | null>(null);
-  
-  // Tracks which project is currently being loaded by the orchestrator
-  // The restoration effect checks this to avoid opening the gate prematurely
-  const loadingProjectRef = useRef<string | null>(null);
-  
-  // Memoize stable references to avoid re-runs
-  const getLastCodeSnapshotRef = useRef(getLastCodeSnapshot);
-  getLastCodeSnapshotRef.current = getLastCodeSnapshot;
-
-  // ✅ STEP 1: Unified cleanup gate — runs on every project switch and unmount.
-  // Aborts active stream, unsubscribes realtime, resets UI state, and
-  // installs a "stale project ID" ref so late callbacks are rejected.
-  const cleanupProjectRuntime = useCallback(() => {
-    // 1. Abort any active SSE stream
-    try { abortControllerRef.current?.abort(); } catch {}
-
-    // 2. Cancel streaming + agent state
-    cancelStream();
-    cancelAgent();
-    forceResetStreaming();
-
-    // 3. Release generation lock
-    generationLockRef.current = null;
-    activeJobIdRef.current = null;
-
-    // 4. Reset transient UI state
+  // =============== PROJECT HYDRATION: Extracted to useProjectHydration ===============
+  // Stable callback to reset transient UI state during project switches
+  const resetTransientState = useCallback(() => {
     setChatResponse(null);
     setLiveSteps([]);
     setPreviewError(null);
     setConsoleErrors([]);
     setShowFixToast(false);
-    pendingSummaryRef.current = '';
-  }, [cancelStream, cancelAgent, forceResetStreaming]);
+    setViewMode('preview');
+    setPreviewPath('/');
+  }, []);
 
-  // Expose abortController ref for cleanup (useStreamingCode stores it internally;
-  // we keep a parallel ref here for the cleanup gate)
-  const abortControllerRef = useRef<AbortController | null>(null);
-  
-  useLayoutEffect(() => {
-    let isMounted = true;
-    
-    // Skip if project ID hasn't actually changed (prevents re-runs from other deps)
-    if (previousProjectIdRef.current === activeProjectId && previousProjectIdRef.current !== null) {
-      return;
-    }
-    
-    // 🚨 CRITICAL: These MUST run SYNCHRONOUSLY (not inside async function)
-    // Otherwise React will render with stale contentProjectId before the gate closes
-    setContentProjectId(null); // Close the gate IMMEDIATELY
-    setIsVerifyingProject(true); // Block restoration effect from running too early
-    loadingProjectRef.current = activeProjectId; // Mark which project is being loaded
+  // Ref-based bridge for clearAssets (declared later in useCreativeStudio)
+  const clearAssetsRef = useRef<() => void>(() => {});
+  const clearAssetsStable = useCallback(() => clearAssetsRef.current(), []);
 
-    // ✅ STEP 1: Run the unified cleanup gate
-    cleanupProjectRuntime();
-    unmountAgentProject();
+  const {
+    contentProjectId,
+    isVerifyingProject,
+    isWaitingForPreviewMount,
+    setIsWaitingForPreviewMount,
+    cleanupProjectRuntime,
+  } = useProjectHydration({
+    activeProjectId,
+    messagesLoading,
+    isStreaming,
+    getLastCodeSnapshot,
+    getLastFilesSnapshot,
+    setCode,
+    setFiles,
+    resetCode,
+    cancelStream,
+    cancelAgent,
+    forceResetStreaming,
+    mountAgentProject: mountAgentProject,
+    unmountAgentProject: unmountAgentProject,
+    resetAgent,
+    clearAssets: clearAssetsStable,
+    generationLockRef,
+    activeJobIdRef,
+    pendingSummaryRef,
+    onResetTransientState: resetTransientState,
+    onIncrementResetKey: useCallback(() => setResetKey(prev => prev + 1), []),
+    onIncrementRefreshKey: useCallback(() => setRefreshKey(prev => prev + 1), []),
+  });
 
-    async function loadRoute() {
-      // 2. DETECT PROJECT SWITCH: If switching to a different project, nuke the cache
-      const isProjectSwitch = previousProjectIdRef.current !== null && 
-                               previousProjectIdRef.current !== activeProjectId;
-      
-      if (isProjectSwitch) {
-        console.log(`🔄 Project switch detected: ${previousProjectIdRef.current} → ${activeProjectId}`);
-        // Clear storage for the OLD project
-        if (previousProjectIdRef.current) {
-          clearProjectLocalStorage(previousProjectIdRef.current);
-        }
-        // Nuclear option: Clear Sandpack IndexedDB
-        await nukeSandpackCache();
-      }
-      
-      // Update the ref for next comparison
-      previousProjectIdRef.current = activeProjectId;
-
-      // 3. NO PROJECT: Show Hero screen with blank slate
-      if (!activeProjectId) {
-        // Mark content as unmounted
-        setContentProjectId(null);
-
-        // Reset code + force Sandpack remount
-        resetCode();
-        setResetKey(prev => prev + 1);
-        setRefreshKey(prev => prev + 1);
-
-        // Clear transient state
-        setChatResponse(null);
-        setLiveSteps([]);
-        resetAgent();
-        setViewMode('preview');
-        setPreviewPath('/');
-        clearAssets();
-
-        setIsVerifyingProject(false);
-        return;
-      }
-
-      setIsVerifyingProject(true);
-
-      console.log(`🚀 Loading fresh context for: ${activeProjectId}`);
-
-      // 4. FETCH SOURCE OF TRUTH FROM DB
-      const { data, error } = await supabase
-        .from('vibecoder_projects')
-        .select('id')
-        .eq('id', activeProjectId)
-        .maybeSingle();
-
-      if (!isMounted) return;
-
-      if (error || !data) {
-        // === ZOMBIE DETECTED! ===
-        console.warn('[AIBuilderCanvas] Zombie project detected. Performing scorched earth reset.');
-
-        // Nuke all caches
-        await nukeSandpackCache();
-
-        // Reset code to blank slate
-        resetCode();
-
-        // Force React to destroy and remount preview/chat components
-        setResetKey(prev => prev + 1);
-        setRefreshKey(prev => prev + 1);
-
-        // Clear all transient state
-        setChatResponse(null);
-        setLiveSteps([]);
-        resetAgent();
-        setViewMode('preview');
-        setPreviewPath('/');
-        clearAssets();
-
-        toast.info('Previous project was deleted. Starting fresh.');
-      } else {
-        // Project verified - prepare for code loading.
-        console.log("✅ DB Data received. Mounting.");
-        
-        // Mount the agent with this project ID (sets the lock)
-        mountAgentProject(activeProjectId);
-        
-        // DO NOT load code here! Messages haven't loaded yet.
-        // The separate "restoration effect" will handle code once messagesLoading=false.
-        // For now, reset to blank to avoid showing stale code from previous project.
-        resetCode();
-        
-        // SAFETY: After loading, ensure we're not stuck in a generating state
-        // This catches edge cases where the previous generation didn't clean up
-        setLiveSteps([]);
-        setChatResponse(null);
-
-        // NOTE: contentProjectId is NOT set here anymore.
-        // It will be set by the restoration effect once messages are loaded and code is mounted.
-      }
-
-      setIsVerifyingProject(false);
-      loadingProjectRef.current = null; // Clear loading lock - restoration effect can now run
-    }
-
-    loadRoute();
-
-    // Cleanup function runs when URL changes or component unmounts
-    return () => {
-      isMounted = false;
-      unmountAgentProject(); // Final safety wipe on exit
-    };
-  // CRITICAL: Only depend on activeProjectId - NOT messages or other frequently changing values
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeProjectId]);
-
-  // =============== CODE RESTORATION FROM MESSAGES ===============
-  // This effect runs AFTER messages load from the database.
-  // It restores the last code snapshot once messages are available.
-  // Separated from the main orchestrator to avoid the infinite loop bug.
-  // ALSO sets contentProjectId to "open the gate" once correct content is mounted.
-  const hasRestoredCodeRef = useRef<string | null>(null);
-  
+  // Safety: if isWaitingForPreviewMount never clears (Sandpack doesn't remount), force-clear it.
   useEffect(() => {
-    // Skip if orchestrator is still loading this project (ref-based check for race condition)
-    if (loadingProjectRef.current === activeProjectId) return;
-    
-    // Skip if orchestrator is still verifying the project exists
-    if (isVerifyingProject) return;
-    
-    // Skip if messages are still loading
-    if (messagesLoading) return;
-    
-    // Skip if no active project
-    if (!activeProjectId) return;
-    
-    // Skip if we already restored code for this project
-    if (hasRestoredCodeRef.current === activeProjectId) return;
-    
-    // Skip if we're in the middle of a generation (don't overwrite streaming code)
+    if (!isWaitingForPreviewMount) return;
     if (isStreaming) return;
-    
-    // Restore multi-file projects first, fall back to single-file
-    const lastFilesSnapshot = getLastFilesSnapshot();
-    if (lastFilesSnapshot && Object.keys(lastFilesSnapshot).length > 0) {
-      console.log('📦 Restoring multi-file project from message history for project:', activeProjectId, `(${Object.keys(lastFilesSnapshot).length} files)`);
-      setFiles(lastFilesSnapshot);
-    } else {
-      const lastSnapshot = getLastCodeSnapshot();
-      if (lastSnapshot) {
-        console.log('📦 Restoring single-file code from message history for project:', activeProjectId);
-        setCode(lastSnapshot, true);
-      }
-    }
-    const hasContent = !!(lastFilesSnapshot && Object.keys(lastFilesSnapshot).length > 0) || !!getLastCodeSnapshot();
-    // Mark as restored (even if no snapshot - prevents re-running)
-    hasRestoredCodeRef.current = activeProjectId;
-    
-    // CONTENT GATE: Now it's safe to render - correct code/messages are mounted
-    console.log('🚪 Opening content gate for project:', activeProjectId);
-    setContentProjectId(activeProjectId);
-    
-    // 🤝 PREVIEW HANDSHAKE: Only wait for Sandpack if we actually set code.
-    // If there's no code to restore, don't gate on preview mount — just show immediately.
-    if (hasContent) {
-      setIsWaitingForPreviewMount(true);
-      // Force Sandpack remount so onReady fires reliably
-      setRefreshKey(prev => prev + 1);
-    } else {
+
+    const timeout = window.setTimeout(() => {
+      console.log('⏰ Safety: Force-clearing isWaitingForPreviewMount after timeout');
       setIsWaitingForPreviewMount(false);
-    }
-  }, [activeProjectId, messagesLoading, isVerifyingProject, getLastCodeSnapshot, getLastFilesSnapshot, setCode, setFiles, isStreaming]);
+    }, 1500);
 
-  // Reset restoration tracker when project changes
-  useEffect(() => {
-    hasRestoredCodeRef.current = null;
-  }, [activeProjectId]);
+    return () => window.clearTimeout(timeout);
+  }, [isWaitingForPreviewMount, isStreaming, setIsWaitingForPreviewMount]);
 
-
-  // NOTE: Draft code is NOT persisted to the public/live slot.
   // Publishing explicitly writes the current code to a dedicated published file.
   const savePublishedVibecoderCode = async (codeContent: string) => {
     try {
@@ -1374,6 +1169,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     setShowPlacementModal,
   });
 
+  // Wire clearAssets ref bridge (declared before useProjectHydration, populated here)
+  clearAssetsRef.current = clearAssets;
 
   // Mark boot complete when data is ready (no loading screen needed)
   const isDataLoading = loading || projectsLoading || isVerifyingProject || messagesLoading;
