@@ -447,9 +447,10 @@ function VisualEditInjector({ active }: { active: boolean }) {
 // Theme Bridge: listens for custom DOM events from DesignPanel and injects
 // theme CSS directly into the Sandpack iframe via postMessage.
 // Uses the canonical themeToCSSString from theme-engine (single source of truth).
-function ThemeBridge() {
-  const { sandpack } = useSandpack();
+// Persistent ref for last applied CSS — survives effect re-runs
+let _lastAppliedThemeCSS: string | null = null;
 
+function ThemeBridge() {
   useEffect(() => {
     // Find the Sandpack iframe using multiple strategies
     function findIframe(): HTMLIFrameElement | null {
@@ -486,29 +487,21 @@ function ThemeBridge() {
       }
     }
 
-    // Store the last applied CSS so we can re-send it when iframe reloads
-    let lastAppliedCSS: string | null = null;
-
     const handleApply = (e: Event) => {
       const tokens = (e as CustomEvent).detail;
       if (!tokens) return;
       // Use canonical themeToCSSString — single source of truth for token→CSS mapping
       const css = themeToCSSString(tokens);
-      lastAppliedCSS = css;
+      _lastAppliedThemeCSS = css;
       sendToIframe('VIBECODER_INJECT_THEME', { css });
-
-      // Also persist to Sandpack file system for recompile survival
-      try {
-        sandpack.updateFile('/styles/theme-base.css', css);
-      } catch (err) {
-        // Non-critical
-      }
+      // NOTE: Do NOT call sandpack.updateFile here — it triggers a recompile
+      // which reloads the iframe and destroys the injected theme.
     };
 
     // Listen for iframe requesting current theme (after reload/recompile)
     const handleThemeRequest = (event: MessageEvent) => {
-      if (event.data?.type === 'VIBECODER_REQUEST_THEME' && lastAppliedCSS) {
-        sendToIframe('VIBECODER_INJECT_THEME', { css: lastAppliedCSS });
+      if (event.data?.type === 'VIBECODER_REQUEST_THEME' && _lastAppliedThemeCSS) {
+        sendToIframe('VIBECODER_INJECT_THEME', { css: _lastAppliedThemeCSS });
       }
     };
     window.addEventListener('message', handleThemeRequest);
@@ -524,7 +517,7 @@ function ThemeBridge() {
       window.removeEventListener('vibecoder-theme-revert', handleRevert);
       window.removeEventListener('message', handleThemeRequest);
     };
-  }, [sandpack]);
+  }, []); // No sandpack dependency — prevents effect re-runs that reset state
 
   return null;
 }
