@@ -14,6 +14,7 @@ interface RecentProject {
   name: string;
   thumbnail_url: string | null;
   last_edited_at: string;
+  is_starred?: boolean;
 }
 
 interface LovableHeroProps {
@@ -23,6 +24,7 @@ interface LovableHeroProps {
   onBack?: () => void;
   recentProjects?: RecentProject[];
   onSelectProject?: (projectId: string) => void;
+  onToggleStar?: (projectId: string) => void;
   userCredits?: number;
   avatarUrl?: string | null;
   subscriptionTier?: string | null;
@@ -36,6 +38,7 @@ export function LovableHero({
   onBack,
   recentProjects = [],
   onSelectProject,
+  onToggleStar,
   userCredits,
   avatarUrl,
   subscriptionTier,
@@ -314,10 +317,30 @@ export function LovableHero({
           </div>
 
           {/* Project Shelf (bottom) */}
-          {recentProjects.length > 0 && onSelectProject && (
+          {onSelectProject && (
             <ProjectShelf
               projects={recentProjects}
-              onSelectProject={onSelectProject}
+              onSelectProject={(id) => {
+                // Check if it's a template ID
+                if (id.startsWith('tpl-')) {
+                  const templates: Record<string, string> = {
+                    'tpl-saas': 'Build a premium dark-mode SaaS analytics dashboard with: a top stats bar showing MRR, active users, churn rate, and growth percentage with animated counters; a main area chart for revenue trends with gradient fills; a sidebar with quick actions. Use zinc-900 background, subtle purple/blue accent gradients, rounded-2xl cards with soft shadows, and smooth fade-in animations.',
+                    'tpl-portfolio': 'Create a stunning minimalist portfolio for a senior product designer with: an animated hero section with a large serif headline; a curated project showcase grid with hover zoom effects; an about section with a bio and floating skill tags; a contact section with social links. Use off-white cream background with deep charcoal text, elegant serif/sans-serif font pairing, generous whitespace, and smooth scroll-triggered animations.',
+                    'tpl-ecommerce': 'Design a luxury watch e-commerce landing page with: a cinematic full-bleed hero with parallax effect and bold headline; a featured collection row with horizontal scroll and product cards; a craftsmanship section with split layout; customer reviews with star ratings. Use deep black background with warm gold accents, sophisticated serif typography, and subtle grain texture overlay.',
+                    'tpl-landing': 'Build a modern startup landing page with: a bold hero section with gradient text headline and email signup CTA; a features grid with icons and descriptions; a testimonials section with avatars; a pricing table with 3 tiers; a FAQ accordion; and a footer with social links. Use a dark theme with vibrant gradient accents, clean sans-serif typography, and smooth entrance animations.',
+                    'tpl-blog': 'Create an editorial blog homepage with: a large featured post hero with image overlay and category badge; a 3-column grid of recent posts with thumbnails and excerpts; a sidebar with categories, popular posts, and newsletter signup; clean typography with serif headings and sans-serif body. Use a warm cream/white palette with subtle borders and reading-optimized spacing.',
+                    'tpl-linktree': 'Create a stylish link-in-bio page with: a profile avatar and name at the top; a bio section; a vertical stack of link cards with icons, labels, and hover animations; social media icons at the bottom. Use a dark gradient background, glassmorphism link cards, and smooth hover scale effects. Make it mobile-first and visually striking.',
+                  };
+                  const templatePrompt = templates[id];
+                  if (templatePrompt) {
+                    setPrompt(templatePrompt);
+                    textareaRef.current?.focus();
+                  }
+                } else {
+                  onSelectProject(id);
+                }
+              }}
+              onToggleStar={onToggleStar}
             />
           )}
         </div>
