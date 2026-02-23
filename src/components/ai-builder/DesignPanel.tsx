@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Palette, Sparkles, ArrowLeft, MoreHorizontal, Lock, Unlock } from "lucide-react";
+import { Palette, Sparkles, ArrowLeft, MoreHorizontal, Lock, Unlock, Download, Upload, Copy } from "lucide-react";
 import { motion } from "framer-motion";
 import { STYLE_PRESETS, type StylePreset, type StyleColors } from "./stylePresets";
 import { cn } from "@/lib/utils";
@@ -93,10 +93,25 @@ function StyleDots({ tokens }: { tokens: ThemeTokens }) {
 }
 
 export function DesignPanel({ onVisualEditModeChange, selectedElement, onEditRequest }: DesignPanelProps) {
-  const { theme, presetId, themeSource, isAutoThemeLocked, setTheme, previewTheme, revertPreview, applyPreset, setAutoThemeLocked, extractThemeFromPreview } = useTheme();
+  const { theme, presetId, themeSource, isAutoThemeLocked, detectedVibe, setTheme, previewTheme, revertPreview, applyPreset, setAutoThemeLocked, extractThemeFromPreview, exportCurrentTheme, copyCurrentTheme, importThemeFromJSON } = useTheme();
   const [view, setView] = useState<DesignView>('home');
   const [editingStylePreset, setEditingStylePreset] = useState<StylePreset | null>(null);
   const [activeVibe, setActiveVibe] = useState<ThemeVibe | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState(false);
+  const importFileRef = useCallback((input: HTMLInputElement | null) => {
+    if (input) {
+      input.addEventListener('change', (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const json = reader.result as string;
+          importThemeFromJSON(json);
+        };
+        reader.readAsText(file);
+      });
+    }
+  }, [importThemeFromJSON]);
 
   // Notify parent when visual edit mode changes
   useEffect(() => {
@@ -231,6 +246,35 @@ export function DesignPanel({ onVisualEditModeChange, selectedElement, onEditReq
               );
             })}
           </div>
+          {/* Export / Import */}
+          <div className="space-y-2">
+            <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">Theme actions</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => exportCurrentTheme()}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-zinc-900/60 border border-zinc-800/50 text-zinc-400 hover:text-zinc-300 hover:border-zinc-700/60 transition-colors flex-1"
+              >
+                <Download className="w-3.5 h-3.5" /> Export
+              </button>
+              <button
+                onClick={async () => {
+                  const ok = await copyCurrentTheme();
+                  if (ok) {
+                    setCopyFeedback(true);
+                    setTimeout(() => setCopyFeedback(false), 1500);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-zinc-900/60 border border-zinc-800/50 text-zinc-400 hover:text-zinc-300 hover:border-zinc-700/60 transition-colors flex-1"
+              >
+                <Copy className="w-3.5 h-3.5" /> {copyFeedback ? 'Copied!' : 'Copy'}
+              </button>
+              <label className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-zinc-900/60 border border-zinc-800/50 text-zinc-400 hover:text-zinc-300 hover:border-zinc-700/60 transition-colors cursor-pointer flex-1">
+                <Upload className="w-3.5 h-3.5" /> Import
+                <input type="file" accept=".json" className="hidden" ref={importFileRef} />
+              </label>
+            </div>
+          </div>
+
         </div>
 
         {/* Theme editor dialog */}
