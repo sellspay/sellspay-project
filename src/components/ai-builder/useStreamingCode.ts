@@ -933,8 +933,15 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       let guardrailsRejected = false; // STRICT: when true, NO fallback path may commit code
       // Determine guardrail mode: 'replace' for first generation (no snapshot), 'edit' otherwise
       const guardrailMode: GuardrailMode = (!lastValidFilesRef.current || Object.keys(lastValidFilesRef.current).length === 0) ? 'replace' : 'edit';
+      // JOB-BACKED RUN DETECTION: When jobId is present, the atomic event:files handler
+      // is the SOLE authority for success/failure. SSE error events and post-stream
+      // validation become display-only (logged but do not emit onError or change state).
+      const isJobBackedRun = !!jobId;
       if (guardrailMode === 'replace') {
         console.log('🔓 Guardrail mode: REPLACE (first generation — no snapshot exists)');
+      }
+      if (isJobBackedRun) {
+        console.log('🔒 Job-backed run: SSE validation is display-only. Atomic handler is sole authority.');
       }
 
       const processSSELine = (line: string) => {
@@ -1071,6 +1078,13 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   const errorCode = data.code || 'UNKNOWN';
                   const errorMsg = data.message || 'An error occurred';
                   console.error(`[useStreamingCode] SSE error [${errorCode}]:`, errorMsg);
+                  
+                  // 🔒 JOB-BACKED: SSE errors are display-only. The background job
+                  // completion handler is the sole authority for success/failure.
+                  if (isJobBackedRun) {
+                    console.log(`[useStreamingCode] Job-backed run: SSE error [${errorCode}] logged but NOT emitted (atomic handler decides)`);
+                    break;
+                  }
                   
                   // ✅ STEP 3: Only trigger truncation handler when backend EXPLICITLY says so
                   if (errorCode === 'TRUNCATION_DETECTED' || errorCode === 'MODEL_TRUNCATED') {
@@ -1239,6 +1253,18 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       // MULTI-FILE FAST PATH: If we received files via atomic JSON event,
       // guardrails were already checked in the event handler above.
       if (receivedFiles) {
+        setState(prev => ({ ...prev, isStreaming: false }));
+        return lastGoodCodeRef.current;
+      }
+
+      // 🔒 JOB-BACKED RUN: Skip ALL post-stream validation.
+      // The background job completion handler (useBackgroundGenerationController)
+      // is the sole authority for success/failure in job-backed runs.
+      // Running post-stream validation here would create a split-brain:
+      // the atomic handler commits successfully, then this path flags failure,
+      // causing snapshot restore AFTER the UI already updated.
+      if (isJobBackedRun) {
+        console.log('[useStreamingCode] Job-backed run: skipping post-stream validation (atomic handler is sole authority)');
         setState(prev => ({ ...prev, isStreaming: false }));
         return lastGoodCodeRef.current;
       }
