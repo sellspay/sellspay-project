@@ -8,6 +8,7 @@ import {
   useSandpackConsole,
 } from '@codesandbox/sandpack-react';
 import { VIBECODER_STDLIB } from '@/lib/vibecoder-stdlib';
+import { themeToCSSString } from '@/lib/theme/theme-engine';
 import type { ViewMode } from './types/generation';
 import { useSuppressPreviewNoise } from './hooks/useSuppressPreviewNoise';
 import { CodeFileExplorer, type VirtualFile } from './CodeFileExplorer';
@@ -445,114 +446,11 @@ function VisualEditInjector({ active }: { active: boolean }) {
 
 // Theme Bridge: listens for custom DOM events from DesignPanel and injects
 // theme CSS directly into the Sandpack iframe via postMessage.
-// This is more reliable than sandpack.updateFile which requires recompilation.
+// Uses the canonical themeToCSSString from theme-engine (single source of truth).
 function ThemeBridge() {
   const { sandpack } = useSandpack();
 
   useEffect(() => {
-    // Import theme engine utilities
-    const TOKEN_TO_CSS_VAR: Record<string, string> = {
-      background: '--background',
-      foreground: '--foreground',
-      primary: '--primary',
-      primaryForeground: '--primary-foreground',
-      secondary: '--secondary',
-      secondaryForeground: '--secondary-foreground',
-      accent: '--accent',
-      accentForeground: '--accent-foreground',
-      card: '--card',
-      cardForeground: '--card-foreground',
-      popover: '--popover',
-      popoverForeground: '--popover-foreground',
-      muted: '--muted',
-      mutedForeground: '--muted-foreground',
-      destructive: '--destructive',
-      destructiveForeground: '--destructive-foreground',
-      border: '--border',
-      input: '--input',
-      ring: '--ring',
-      chart1: '--chart-1',
-      chart2: '--chart-2',
-      chart3: '--chart-3',
-      chart4: '--chart-4',
-      chart5: '--chart-5',
-    };
-
-    function tokensToCSSString(tokens: Record<string, string>): string {
-      const lines: string[] = [];
-      for (const [key, cssVar] of Object.entries(TOKEN_TO_CSS_VAR)) {
-        const value = tokens[key];
-        if (value) {
-          lines.push(`  ${cssVar}: ${value};`);
-        }
-      }
-      // Also handle kebab-case keys from legacy StyleColors format
-      const kebabMap: Record<string, string> = {
-        'primary-foreground': '--primary-foreground',
-        'secondary-foreground': '--secondary-foreground',
-        'accent-foreground': '--accent-foreground',
-        'card-foreground': '--card-foreground',
-        'popover-foreground': '--popover-foreground',
-        'muted-foreground': '--muted-foreground',
-        'destructive-foreground': '--destructive-foreground',
-        'chart-1': '--chart-1',
-        'chart-2': '--chart-2',
-        'chart-3': '--chart-3',
-        'chart-4': '--chart-4',
-        'chart-5': '--chart-5',
-      };
-      for (const [kebabKey, cssVar] of Object.entries(kebabMap)) {
-        const value = tokens[kebabKey];
-        if (value && !lines.some(l => l.includes(cssVar))) {
-          lines.push(`  ${cssVar}: ${value};`);
-        }
-      }
-      return `:root {\n${lines.join('\n')}\n  --radius: 0.5rem;\n}`;
-    }
-
-    function hexToHSL(hex: string): string {
-      const r = parseInt(hex.slice(1,3),16)/255;
-      const g = parseInt(hex.slice(3,5),16)/255;
-      const b = parseInt(hex.slice(5,7),16)/255;
-      const max = Math.max(r,g,b), min = Math.min(r,g,b);
-      let h = 0, s = 0;
-      const l = (max+min)/2;
-      if (max !== min) {
-        const d = max - min;
-        s = l > 0.5 ? d/(2-max-min) : d/(max+min);
-        if (max === r) h = ((g-b)/d + (g<b?6:0))/6;
-        else if (max === g) h = ((b-r)/d+2)/6;
-        else h = ((r-g)/d+4)/6;
-      }
-      return Math.round(h*360) + ' ' + Math.round(s*100) + '% ' + Math.round(l*100) + '%';
-    }
-
-    /**
-     * Build theme CSS from either ThemeTokens (HSL) or legacy StyleColors (hex).
-     * Detects format automatically.
-     */
-    function buildThemeCSS(data: Record<string, string>): string {
-      // Check if values are hex or HSL
-      const firstValue = Object.values(data).find(v => v && typeof v === 'string');
-      const isHex = firstValue?.startsWith('#');
-
-      if (isHex) {
-        // Convert hex to HSL first
-        const converted: Record<string, string> = {};
-        for (const [key, value] of Object.entries(data)) {
-          if (value?.startsWith('#')) {
-            converted[key] = hexToHSL(value);
-          } else if (value) {
-            converted[key] = value;
-          }
-        }
-        return tokensToCSSString(converted);
-      }
-
-      // Already HSL format — pass through directly
-      return tokensToCSSString(data);
-    }
-
     // Find the Sandpack iframe using multiple strategies
     function findIframe(): HTMLIFrameElement | null {
       const sp = document.querySelector('.sp-preview-iframe') as HTMLIFrameElement | null;
@@ -592,9 +490,10 @@ function ThemeBridge() {
     let lastAppliedCSS: string | null = null;
 
     const handleApply = (e: Event) => {
-      const data = (e as CustomEvent).detail;
-      if (!data) return;
-      const css = buildThemeCSS(data);
+      const tokens = (e as CustomEvent).detail;
+      if (!tokens) return;
+      // Use canonical themeToCSSString — single source of truth for token→CSS mapping
+      const css = themeToCSSString(tokens);
       lastAppliedCSS = css;
       sendToIframe('VIBECODER_INJECT_THEME', { css });
 
