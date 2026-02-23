@@ -582,47 +582,95 @@ const SandpackRenderer = memo(function SandpackRenderer({
       // Entry point with NUCLEAR error suppression
       // Thumbnail capture helper — listens for parent postMessage and captures viewport
       '/utils/capture.ts': {
-        code: `// Thumbnail capture script — uses html2canvas for reliable screenshots
-let h2cLoaded = false;
-let h2cPromise: Promise<void> | null = null;
-
-function loadHtml2Canvas(): Promise<void> {
-  if (h2cLoaded) return Promise.resolve();
-  if (h2cPromise) return h2cPromise;
-  h2cPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-    script.onload = () => { h2cLoaded = true; resolve(); };
-    script.onerror = () => reject(new Error('Failed to load html2canvas'));
-    document.head.appendChild(script);
-  });
-  return h2cPromise;
-}
-
+        code: `// Zero-dependency thumbnail capture — renders simplified DOM snapshot to canvas
 window.addEventListener('message', async (event) => {
   if (event.data?.type !== 'VIBECODER_CAPTURE_REQUEST') return;
   try {
-    await loadHtml2Canvas();
-    const h2c = (window as any).html2canvas;
-    if (!h2c) return;
-    const hero = document.querySelector('[data-hero="true"]') as HTMLElement | null;
-    const target = hero || document.body;
-    const canvas = await h2c(target, {
-      scale: 0.5,
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-      width: hero ? undefined : window.innerWidth,
-      height: hero ? undefined : Math.min(900, document.body.scrollHeight),
-      windowWidth: window.innerWidth,
-      windowHeight: window.innerHeight,
+    const W = 640, H = 400;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 1. Capture page background
+    const bodyStyle = getComputedStyle(document.body);
+    const htmlStyle = getComputedStyle(document.documentElement);
+    const bgColor = bodyStyle.backgroundColor || htmlStyle.backgroundColor || 'rgb(0,0,0)';
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, W, H);
+
+    // 2. Walk visible sections and paint their backgrounds
+    const sections = document.querySelectorAll('section, header, main, footer, nav, div[data-hero], [class*="hero"], [class*="banner"]');
+    const scale = W / window.innerWidth;
+    sections.forEach(function(el) {
+      var rect = el.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > 900) return;
+      var bg = getComputedStyle(el).backgroundColor;
+      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+        ctx.fillStyle = bg;
+        ctx.fillRect(rect.left * scale, rect.top * scale, rect.width * scale, rect.height * scale);
+      }
     });
-    canvas.toBlob((jpegBlob: Blob | null) => {
+
+    // 3. Paint colored divs/buttons (up to 50 elements for perf)
+    var colorEls = document.querySelectorAll('button, a[class], div[class*="card"], div[class*="bg-"]');
+    var count = 0;
+    colorEls.forEach(function(el) {
+      if (count++ > 50) return;
+      var rect = el.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > 900 || rect.width < 10 || rect.height < 10) return;
+      var bg = getComputedStyle(el).backgroundColor;
+      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+        ctx.fillStyle = bg;
+        var r = parseFloat(getComputedStyle(el).borderRadius) || 0;
+        if (r > 2) {
+          ctx.beginPath();
+          var x = rect.left*scale, y = rect.top*scale, w = rect.width*scale, h = rect.height*scale;
+          var cr = Math.min(r*scale, w/2, h/2);
+          ctx.moveTo(x+cr,y);ctx.lineTo(x+w-cr,y);ctx.quadraticCurveTo(x+w,y,x+w,y+cr);
+          ctx.lineTo(x+w,y+h-cr);ctx.quadraticCurveTo(x+w,y+h,x+w-cr,y+h);
+          ctx.lineTo(x+cr,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-cr);
+          ctx.lineTo(x,y+cr);ctx.quadraticCurveTo(x,y,x+cr,y);
+          ctx.fill();
+        } else {
+          ctx.fillRect(rect.left*scale, rect.top*scale, rect.width*scale, rect.height*scale);
+        }
+      }
+    });
+
+    // 4. Render text elements
+    var textEls = document.querySelectorAll('h1, h2, h3, p, span, a, button, li');
+    var textCount = 0;
+    textEls.forEach(function(el) {
+      if (textCount++ > 40) return;
+      var rect = el.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > 900 || !el.textContent.trim()) return;
+      var style = getComputedStyle(el);
+      var fontSize = parseFloat(style.fontSize) * scale;
+      if (fontSize < 4) return;
+      ctx.fillStyle = style.color || '#fff';
+      ctx.font = (style.fontWeight || '400') + ' ' + Math.max(8, fontSize) + 'px system-ui, sans-serif';
+      var text = el.textContent.trim().substring(0, 80);
+      var x = rect.left * scale + 2;
+      var y = rect.top * scale + fontSize;
+      ctx.fillText(text, x, y, rect.width * scale);
+    });
+
+    // 5. Draw image placeholders
+    document.querySelectorAll('img').forEach(function(img) {
+      var rect = img.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > 900) return;
+      ctx.fillStyle = 'rgba(128,128,128,0.3)';
+      ctx.fillRect(rect.left*scale, rect.top*scale, rect.width*scale, rect.height*scale);
+    });
+
+    canvas.toBlob(function(jpegBlob) {
       if (!jpegBlob) return;
-      jpegBlob.arrayBuffer().then((buffer: ArrayBuffer) => {
-        window.parent.postMessage({ type: 'VIBECODER_CAPTURE_RESPONSE', buffer }, '*', [buffer]);
+      jpegBlob.arrayBuffer().then(function(buffer) {
+        window.parent.postMessage({ type: 'VIBECODER_CAPTURE_RESPONSE', buffer: buffer }, '*', [buffer]);
       });
-    }, 'image/jpeg', 0.7);
+    }, 'image/jpeg', 0.85);
   } catch (e) {
     console.warn('Capture failed:', e);
   }
