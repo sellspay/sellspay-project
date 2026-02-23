@@ -1,3 +1,4 @@
+import ColorThief from 'colorthief';
 import { ThemeTokens } from './theme-tokens';
 
 /**
@@ -34,152 +35,226 @@ function rgbToHSL(r: number, g: number, b: number): string {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-/**
- * Get luminance of an HSL string to determine if it's light or dark
- */
-function getLuminance(hsl: string): number {
+type ParsedHSL = { raw: string; h: number; s: number; l: number };
+
+function parseHSL(hsl: string): ParsedHSL {
   const parts = hsl.match(/[\d.]+/g);
-  if (!parts || parts.length < 3) return 0;
-  return parseFloat(parts[2]);
+  if (!parts || parts.length < 3) return { raw: hsl, h: 0, s: 0, l: 0 };
+  return {
+    raw: hsl,
+    h: parseFloat(parts[0]),
+    s: parseFloat(parts[1]),
+    l: parseFloat(parts[2]),
+  };
+}
+
+function hslString(h: number, s: number, l: number): string {
+  return `${Math.round(((h % 360) + 360) % 360)} ${Math.round(Math.max(0, Math.min(100, s)))}% ${Math.round(Math.max(0, Math.min(100, l)))}%`;
 }
 
 /**
- * Get saturation of an HSL string
+ * Classify a color by its perceptual role
  */
-function getSaturation(hsl: string): number {
-  const parts = hsl.match(/[\d.]+/g);
-  if (!parts || parts.length < 3) return 0;
-  return parseFloat(parts[1]);
+type ColorRole = 'vibrant' | 'neutral' | 'light' | 'dark' | 'balanced';
+
+function classifyColor(s: number, l: number): ColorRole {
+  if (s > 50 && l > 25 && l < 75) return 'vibrant';
+  if (s < 15) return 'neutral';
+  if (l > 75) return 'light';
+  if (l < 25) return 'dark';
+  return 'balanced';
 }
 
 /**
- * Generate a foreground color for a given background
+ * Ensure foreground has enough contrast against background.
+ * Uses a simplified WCAG-ish luminance check.
  */
-function autoForeground(bgHSL: string): string {
-  return getLuminance(bgHSL) > 55 ? '0 0% 9%' : '0 0% 98%';
+function ensureContrast(bgL: number, fgL: number): number {
+  const ratio = (Math.max(bgL, fgL) + 5) / (Math.min(bgL, fgL) + 5);
+  if (ratio >= 4.5) return fgL;
+  // Push foreground away from background
+  return bgL > 50 ? Math.max(0, bgL - 65) : Math.min(100, bgL + 65);
 }
 
 /**
- * Shift lightness of an HSL string
+ * Extract a 6-color palette from an image using ColorThief.
  */
-function shiftLightness(hsl: string, delta: number): string {
-  const parts = hsl.match(/[\d.]+/g);
-  if (!parts || parts.length < 3) return hsl;
-  const h = parseFloat(parts[0]);
-  const s = parseFloat(parts[1]);
-  const l = Math.max(0, Math.min(100, parseFloat(parts[2]) + delta));
-  return `${Math.round(h)} ${Math.round(s)}% ${Math.round(l)}%`;
+export async function extractPaletteFromImage(
+  img: HTMLImageElement
+): Promise<number[][]> {
+  return new Promise((resolve) => {
+    try {
+      const thief = new ColorThief();
+      // ColorThief needs the image fully loaded
+      if (img.complete) {
+        resolve(thief.getPalette(img, 6) || []);
+      } else {
+        img.addEventListener('load', () => {
+          resolve(thief.getPalette(img, 6) || []);
+        });
+      }
+    } catch {
+      resolve([]);
+    }
+  });
 }
 
 /**
- * Extract a palette from an image element using canvas sampling.
- * Returns an array of HSL strings sorted by frequency.
+ * Deterministic pipeline: palette → classified HSL → semantic ThemeTokens.
+ * Produces contrast-safe, harmony-balanced, dark-aware themes.
  */
-export function extractPaletteFromImage(img: HTMLImageElement, sampleCount = 5): string[] {
-  const canvas = document.createElement('canvas');
-  const size = 100; // downsample for speed
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return [];
+export function generateThemeFromPalette(palette: number[][]): Partial<ThemeTokens> {
+  if (!palette.length) return {};
 
-  ctx.drawImage(img, 0, 0, size, size);
-  const data = ctx.getImageData(0, 0, size, size).data;
+  // Convert all to parsed HSL
+  const colors: ParsedHSL[] = palette.map(([r, g, b]) => parseHSL(rgbToHSL(r, g, b)));
 
-  // Simple k-means-ish color bucketing
-  const buckets = new Map<string, number>();
+  // Classify each color
+  const classified = colors.map((c) => ({
+    ...c,
+    role: classifyColor(c.s, c.l),
+  }));
 
-  for (let i = 0; i < data.length; i += 16) { // sample every 4th pixel
-    const r = Math.round(data[i] / 32) * 32;
-    const g = Math.round(data[i + 1] / 32) * 32;
-    const b = Math.round(data[i + 2] / 32) * 32;
-    const key = `${r},${g},${b}`;
-    buckets.set(key, (buckets.get(key) || 0) + 1);
-  }
+  // Find best candidates for each semantic role
+  const vibrant = classified.find((c) => c.role === 'vibrant');
+  const neutral = classified.find((c) => c.role === 'neutral');
+  const darkColor = classified.find((c) => c.role === 'dark');
+  const balanced = classified.find((c) => c.role === 'balanced');
 
-  // Sort by frequency, take top N
-  const sorted = [...buckets.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, sampleCount * 2);
+  // Determine primary brand color — prefer vibrant, fallback to balanced, then first
+  const brand = vibrant || balanced || colors[0];
 
-  // Convert to HSL, filter out near-black and near-white
-  const hslColors = sorted
-    .map(([key]) => {
-      const [r, g, b] = key.split(',').map(Number);
-      return rgbToHSL(r, g, b);
-    })
-    .filter(hsl => {
-      const lum = getLuminance(hsl);
-      return lum > 5 && lum < 95; // skip extremes
-    });
+  // Determine if the project is dark-oriented
+  const avgLightness = colors.reduce((sum, c) => sum + c.l, 0) / colors.length;
+  const isDark = avgLightness < 50 || !!darkColor;
 
-  return hslColors.slice(0, sampleCount);
-}
+  // --- Background strategy ---
+  const bgL = isDark ? 6 : 98;
+  const fgL = isDark ? 96 : 8;
+  const background = hslString(0, 0, bgL);
+  const foreground = hslString(0, 0, fgL);
 
-/**
- * Intelligently map an extracted palette to ThemeTokens.
- * Uses the most saturated color as primary, second as accent.
- */
-export function paletteToTheme(
-  palette: string[],
-  isDark = true
-): Partial<ThemeTokens> {
-  if (palette.length === 0) return {};
+  // --- Primary: cap saturation, normalize lightness for readability ---
+  const primaryS = Math.min(85, brand.s);
+  const primaryL = isDark
+    ? Math.max(45, Math.min(65, brand.l))
+    : Math.max(35, Math.min(55, brand.l));
+  const primary = hslString(brand.h, primaryS, primaryL);
 
-  // Sort by saturation to find the "brand" colors
-  const bySaturation = [...palette].sort(
-    (a, b) => getSaturation(b) - getSaturation(a)
+  // Primary foreground — ensure contrast
+  const pfL = ensureContrast(primaryL, isDark ? 98 : 5);
+  const primaryForeground = hslString(0, 0, pfL);
+
+  // --- Accent: offset hue by 30° for harmony ---
+  const accentHue = (brand.h + 30) % 360;
+  const accent = hslString(accentHue, Math.min(80, primaryS), isDark ? 55 : 50);
+  const accentFgL = ensureContrast(isDark ? 55 : 50, isDark ? 98 : 5);
+  const accentForeground = hslString(0, 0, accentFgL);
+
+  // --- Secondary: use neutral or desaturated brand ---
+  const secSource = neutral || brand;
+  const secondary = hslString(secSource.h, Math.min(15, secSource.s), isDark ? 16 : 92);
+  const secondaryForeground = foreground;
+
+  // --- Surface colors ---
+  const card = hslString(brand.h, isDark ? 4 : 2, isDark ? 10 : 100);
+  const popover = card;
+  const muted = hslString(brand.h, isDark ? 5 : 3, isDark ? 16 : 96);
+  const mutedForeground = hslString(0, 0, isDark ? 55 : 45);
+  const borderColor = hslString(brand.h, isDark ? 5 : 3, isDark ? 18 : 88);
+
+  // --- Chart colors: 5-step hue rotation for maximum distinction ---
+  const chartColors = [0, 60, 120, 180, 240].map((offset) =>
+    hslString((brand.h + offset) % 360, Math.min(80, primaryS), isDark ? 55 : 50)
   );
 
-  const primary = bySaturation[0] || palette[0];
-  const accent = bySaturation[1] || shiftLightness(primary, 15);
-
-  const bg = isDark ? '0 0% 4%' : '0 0% 100%';
-  const fg = isDark ? '0 0% 98%' : '0 0% 9%';
-  const cardBg = isDark ? '0 0% 7%' : '0 0% 100%';
-  const mutedBg = isDark ? '0 0% 12%' : '0 0% 96%';
-  const borderColor = isDark ? '0 0% 15%' : '0 0% 90%';
-
   return {
+    background,
+    foreground,
     primary,
-    primaryForeground: autoForeground(primary),
+    primaryForeground,
+    secondary,
+    secondaryForeground,
     accent,
-    accentForeground: autoForeground(accent),
-    background: bg,
-    foreground: fg,
-    card: cardBg,
-    cardForeground: fg,
-    popover: cardBg,
-    popoverForeground: fg,
-    muted: mutedBg,
-    mutedForeground: isDark ? '0 0% 55%' : '0 0% 45%',
+    accentForeground,
+    card,
+    cardForeground: foreground,
+    popover,
+    popoverForeground: foreground,
+    muted,
+    mutedForeground,
+    destructive: '0 84% 60%',
+    destructiveForeground: '0 0% 100%',
     border: borderColor,
     input: borderColor,
     ring: primary,
-    chart1: primary,
-    chart2: accent,
-    chart3: palette[2] || shiftLightness(primary, 20),
-    chart4: palette[3] || shiftLightness(accent, -10),
-    chart5: palette[4] || shiftLightness(primary, -15),
+    chart1: chartColors[0],
+    chart2: chartColors[1],
+    chart3: chartColors[2],
+    chart4: chartColors[3],
+    chart5: chartColors[4],
   };
 }
 
 /**
- * Extract theme from an image URL.
- * Returns a partial ThemeTokens that can be spread onto a base theme.
+ * Full pipeline: image URL → ThemeTokens.
+ * Load image, extract palette via ColorThief, generate semantic theme.
  */
 export async function extractThemeFromImageUrl(
-  url: string,
-  isDark = true
+  url: string
 ): Promise<Partial<ThemeTokens>> {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const palette = extractPaletteFromImage(img);
-      resolve(paletteToTheme(palette, isDark));
+    img.onload = async () => {
+      try {
+        const palette = await extractPaletteFromImage(img);
+        resolve(generateThemeFromPalette(palette));
+      } catch {
+        resolve({});
+      }
     };
     img.onerror = () => resolve({});
     img.src = url;
   });
+}
+
+/**
+ * Legacy compat: paletteToTheme wrapper for existing callers
+ */
+export function paletteToTheme(
+  palette: string[],
+  _isDark = true
+): Partial<ThemeTokens> {
+  // Convert HSL strings back to RGB for the pipeline
+  // This is a fallback — prefer extractPaletteFromImage directly
+  return generateThemeFromPalette(
+    palette.map((hsl) => {
+      const parts = hsl.match(/[\d.]+/g);
+      if (!parts || parts.length < 3) return [128, 128, 128];
+      // Approximate HSL→RGB for pipeline input
+      const h = parseFloat(parts[0]) / 360;
+      const s = parseFloat(parts[1]) / 100;
+      const l = parseFloat(parts[2]) / 100;
+      const hue2rgb = (p: number, q: number, t: number) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      let r: number, g: number, b: number;
+      if (s === 0) {
+        r = g = b = l;
+      } else {
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1 / 3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1 / 3);
+      }
+      return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    })
+  );
 }
