@@ -119,6 +119,10 @@ export function useVibecoderProjects() {
 
   // Load messages when active project changes
   useEffect(() => {
+    // GUARD: Don't load messages until user is authenticated.
+    // Without a session, RLS returns 0 rows, making history appear empty.
+    if (!user) return;
+
     // Only clear messages if we're switching to a DIFFERENT project
     // This prevents flicker when the same project is re-mounted
     const isProjectSwitch = prevProjectIdRef.current !== null &&
@@ -175,7 +179,7 @@ export function useVibecoderProjects() {
     };
 
     loadMessages();
-  }, [activeProjectId]);
+  }, [activeProjectId, user]);
 
   // Create new project (can be called explicitly or auto-created on first prompt)
   // skipInitialLoad: when true, skips the message-loading useEffect for this project
