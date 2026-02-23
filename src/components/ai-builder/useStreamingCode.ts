@@ -856,12 +856,27 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   rawStream += data.content;
                   break;
                 case 'files': {
-                  // Multi-file atomic payload from backend (JSON files already validated server-side)
+                  // Multi-file atomic payload from backend (validated server-side for syntax)
                   const projectFiles = data.projectFiles || data.files || {};
                   if (Object.keys(projectFiles).length > 0) {
-                    setState(prev => ({ ...prev, files: projectFiles, code: '' }));
-                    // Extract App.tsx for backward compat
+                    // ═══ GUARDRAILS: Protect against destructive rewrites ═══
                     const appCode = projectFiles['/App.tsx'] || projectFiles['App.tsx'] || '';
+                    const oldCode = lastGoodCodeRef.current;
+                    if (appCode && oldCode && oldCode.length >= 200) {
+                      const guardResult = safeApply(oldCode, appCode, originalPromptRef.current);
+                      if (!guardResult.accepted) {
+                        console.error('🛡️ MULTI-FILE GUARDRAILS REJECTED:', guardResult.failedGuards.map(f => `${f.guard}: ${f.message}`).join(' | '));
+                        options.onError?.(new Error(`Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}`));
+                        receivedFiles = true; // prevent legacy path from running
+                        break;
+                      }
+                    }
+                    // Sanitize navigation in all files
+                    const sanitizedFiles: Record<string, string> = {};
+                    for (const [path, content] of Object.entries(projectFiles)) {
+                      sanitizedFiles[path] = sanitizeNavigation(content as string);
+                    }
+                    setState(prev => ({ ...prev, files: sanitizedFiles, code: '' }));
                     if (appCode) {
                       lastGoodCodeRef.current = appCode;
                     }
@@ -888,8 +903,20 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                       const parsed = JSON.parse(trimmedBuf);
                       const jsonFiles = parsed?.files ?? parsed?.projectFiles;
                       if (jsonFiles && typeof jsonFiles === 'object' && Object.keys(jsonFiles).length > 0) {
-                        setState(prev => ({ ...prev, files: jsonFiles, code: '' }));
+                        // ═══ GUARDRAILS: Protect against destructive rewrites ═══
                         const appCode = jsonFiles['/App.tsx'] || jsonFiles['App.tsx'] || '';
+                        const oldCode = lastGoodCodeRef.current;
+                        if (appCode && oldCode && oldCode.length >= 200) {
+                          const guardResult = safeApply(oldCode, appCode, originalPromptRef.current);
+                          if (!guardResult.accepted) {
+                            console.error('🛡️ CODE_CHUNK GUARDRAILS REJECTED:', guardResult.failedGuards.map(f => `${f.guard}: ${f.message}`).join(' | '));
+                            options.onError?.(new Error(`Code change rejected: ${guardResult.failedGuards[0]?.message || 'Destructive rewrite detected'}`));
+                            receivedFiles = true;
+                            streamingCodeBuffer = '';
+                            break;
+                          }
+                        }
+                        setState(prev => ({ ...prev, files: jsonFiles, code: '' }));
                         if (appCode) lastGoodCodeRef.current = appCode;
                         options.onComplete?.(appCode);
                         receivedFiles = true;
@@ -1077,8 +1104,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       // ═══════════════════════════════════════════════════════════
       // MULTI-FILE FAST PATH: If we received files via atomic JSON event,
-      // skip all legacy single-file extraction/validation/guardrails.
-      // The code was already validated server-side and applied atomically.
+      // guardrails were already checked in the event handler above.
+      // Skip legacy single-file extraction.
       // ═══════════════════════════════════════════════════════════
       if (receivedFiles) {
         setState(prev => ({ ...prev, isStreaming: false }));
