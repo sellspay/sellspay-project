@@ -227,5 +227,58 @@ export function applyVibeToTheme(
   clone.glassBorderOpacity = glass.borderOp;
   clone.shadowElevation = glass.shadow;
 
+  // ─── Typography tokens (vibe-aware) ───────────────────────────
+  const typoMap: Record<ThemeVibe, { heading: string; body: string; weight: string; spacing: string }> = {
+    luxury:    { heading: "'Playfair Display', serif", body: "'Inter', sans-serif",    weight: '600', spacing: '0.02em' },
+    cyberpunk: { heading: "'Orbitron', sans-serif",    body: "'Inter', sans-serif",    weight: '700', spacing: '0.08em' },
+    playful:   { heading: "'Poppins', sans-serif",     body: "'Poppins', sans-serif",  weight: '600', spacing: '0.03em' },
+    editorial: { heading: "'Playfair Display', serif", body: "'Inter', sans-serif",    weight: '500', spacing: '0.01em' },
+    minimal:   { heading: "'Inter', sans-serif",       body: "'Inter', sans-serif",    weight: '500', spacing: '0em' },
+    corporate: { heading: "'Inter', sans-serif",       body: "'Inter', sans-serif",    weight: '600', spacing: '0.01em' },
+    modern:    { heading: "'Inter', sans-serif",       body: "'Inter', sans-serif",    weight: '600', spacing: '0.01em' },
+  };
+
+  const typo = typoMap[vibe] ?? typoMap.modern;
+  clone.fontHeading = typo.heading;
+  clone.fontBody = typo.body;
+  clone.fontWeightHeading = typo.weight;
+  clone.letterSpacingHeading = typo.spacing;
+
+  // ─── Radius (geometry personality) ────────────────────────────
+  const radiusMap: Record<ThemeVibe, string> = {
+    luxury: '0.375rem',
+    cyberpunk: '0.125rem',
+    playful: '1.25rem',
+    editorial: '0.25rem',
+    minimal: '0rem',
+    corporate: '0.5rem',
+    modern: '0.75rem',
+  };
+  clone.radiusScale = radiusMap[vibe] ?? '0.75rem';
+
+  // ─── Motion personality ───────────────────────────────────────
+  const motionMap: Record<ThemeVibe, string> = {
+    luxury: '300ms',
+    cyberpunk: '120ms',
+    playful: '250ms',
+    editorial: '350ms',
+    minimal: '100ms',
+    corporate: '200ms',
+    modern: '200ms',
+  };
+  clone.transitionSpeed = motionMap[vibe] ?? '200ms';
+
+  // ─── Texture overlay ─────────────────────────────────────────
+  const textureMap: Record<ThemeVibe, string> = {
+    luxury: 'noise',
+    cyberpunk: 'glow',
+    playful: 'none',
+    editorial: 'none',
+    minimal: 'none',
+    corporate: 'none',
+    modern: 'noise',
+  };
+  clone.textureOverlay = textureMap[vibe] ?? 'none';
+
   return clone;
 }
