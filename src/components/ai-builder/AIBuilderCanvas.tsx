@@ -25,7 +25,7 @@ import { parseRoutesFromCode, type SitePage } from '@/utils/routeParser';
 import { toast } from 'sonner';
 import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke';
 import { LovableHero } from './LovableHero';
-import { useUserCredits } from '@/hooks/useUserCredits';
+import { useSubscription } from '@/hooks/useSubscription';
 
 import { FixErrorToast } from './FixErrorToast';
 import { GenerationOverlay } from './GenerationOverlay';
@@ -46,8 +46,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const [publishing, setPublishing] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
-  const { credits: userCredits } = useUserCredits();
-  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+  const { credits: userCredits, plan: subscriptionTier } = useSubscription();
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -863,7 +862,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
           .maybeSingle(),
         supabase
           .from('profiles')
-          .select('username, avatar_url, subscription_tier')
+          .select('username, avatar_url')
           .eq('id', profileId)
           .maybeSingle(),
       ]);
@@ -876,7 +875,6 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       if (profileResp.data) {
         setUsername(profileResp.data.username);
         setUserAvatarUrl(profileResp.data.avatar_url);
-        setSubscriptionTier(profileResp.data.subscription_tier);
       }
 
       setLoading(false);
