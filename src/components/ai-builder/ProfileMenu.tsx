@@ -122,7 +122,7 @@ export function ProfileMenu({
         className={cn(
           "w-9 h-9 rounded-full border overflow-hidden transition-all focus:outline-none",
           isOpen 
-            ? "ring-2 ring-violet-500/50 border-violet-500/50" 
+            ? "ring-2 ring-zinc-600 border-zinc-600" 
             : "border-zinc-700 hover:ring-2 hover:ring-zinc-600"
         )}
       >
@@ -238,14 +238,13 @@ export function ProfileMenu({
             />
           </div>
 
-          {/* AI Builder */}
+          {/* Navigation Links - continued */}
           <div className="p-2 border-t border-zinc-800">
-            <button
+            <MenuItem 
+              icon={Zap} 
+              label="AI Builder" 
               onClick={() => handleNavigate('/ai-builder')}
-              className="w-full px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors rounded-lg text-left"
-            >
-              AI Builder
-            </button>
+            />
           </div>
 
           {/* Help Center & Sign Out */}
