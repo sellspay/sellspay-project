@@ -11,7 +11,7 @@ import { VibecoderHeader } from './VibecoderHeader';
 import { useStreamingCode } from './useStreamingCode';
 import { useVibecoderProjects, type VibecoderMessage } from './hooks/useVibecoderProjects';
 import { useAgentLoop } from '@/hooks/useAgentLoop';
-import { useBackgroundGeneration, type GenerationJob } from '@/hooks/useBackgroundGeneration';
+import type { GenerationJob } from '@/hooks/useBackgroundGeneration';
 import { useDataAvailabilityCheck } from './hooks/useDataAvailabilityCheck';
 import { GenerationCanvas } from './GenerationCanvas';
 import { ProductsPanel } from './ProductsPanel';
@@ -31,7 +31,8 @@ import { useUserCredits } from '@/hooks/useUserCredits';
 import { FixErrorToast } from './FixErrorToast';
 import { GenerationOverlay } from './GenerationOverlay';
 import { checkPolicyViolation } from '@/utils/policyGuard';
-import { useGhostFixer } from '@/hooks/useGhostFixer';
+import { useBackgroundGenerationController } from './hooks/useBackgroundGenerationController';
+import { useCreativeStudio } from './hooks/useCreativeStudio';
 
 interface AIBuilderCanvasProps {
   profileId: string;
@@ -110,15 +111,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  // Generation state for Creative Studio (Image & Video tabs)
-  const [currentImageAsset, setCurrentImageAsset] = useState<GeneratedAsset | null>(null);
-  const [currentVideoAsset, setCurrentVideoAsset] = useState<GeneratedAsset | null>(null);
-  const [isImageGenerating, setIsImageGenerating] = useState(false);
-  const [isVideoGenerating, setIsVideoGenerating] = useState(false);
+  // Creative Studio state - most logic extracted to useCreativeStudio (declared after handleSendMessage)
   const [showPlacementModal, setShowPlacementModal] = useState(false);
-  const [lastAssetPrompt, setLastAssetPrompt] = useState<string>('');
-  const [lastAssetModel, setLastAssetModel] = useState<AIModel | null>(null);
-  
   // Premium upgrade modal state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
@@ -264,23 +258,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Track the last user prompt for data availability checking
   const lastUserPromptRef = useRef<string>('');
   
-  // 🔧 GHOST FIXER: Auto-recovery for truncated AI outputs
-  // This hook detects missing completion sentinels and triggers continuation
-  const ghostFixer = useGhostFixer({
-    maxRetries: 1,
-    onFixAttempt: (attempt) => {
-      console.log(`[GhostFixer] Generation was interrupted; retrying... (attempt ${attempt}/1)`);
-      toast.info('Generation was interrupted; retrying with full regeneration...');
-    },
-    onFixSuccess: (mergedCode) => {
-      console.log('[GhostFixer] ✅ Full regeneration successful');
-      toast.success('Code regenerated successfully.', { duration: 6000 });
-    },
-    onFixFailure: (reason) => {
-      console.error('[GhostFixer] ❌ Recovery failed:', reason);
-      toast.error(reason, { duration: 8000 });
-    }
-  });
+  // 🔧 GHOST FIXER + BACKGROUND GENERATION: Extracted to useBackgroundGenerationController
+  // (declared after useAgentLoop provides onStreamingComplete/onStreamingError — see below)
   
   // Ref to hold setCode function for Ghost Fixer callback
   const setCodeRef = useRef<((code: string) => void) | null>(null);
@@ -652,150 +631,32 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     enabled: Boolean(activeProjectId),
   });
 
-  // 🔄 BACKGROUND GENERATION: Jobs that persist even if user leaves
-  // Track processed jobs to prevent duplicate message additions
-  const processedJobIdsRef = useRef<Set<string>>(new Set());
-  
-  const handleJobComplete = useCallback(async (job: GenerationJob) => {
-    // Prevent duplicate processing
-    if (processedJobIdsRef.current.has(job.id)) {
-      console.log('[BackgroundGen] Job already processed, skipping:', job.id);
-      return;
-    }
-    processedJobIdsRef.current.add(job.id);
-
-    // ✅ STEP 1: Reject late events from old project IDs
-    if (job.project_id !== activeProjectId) {
-      console.warn(`🛑 BLOCKED: Job ${job.id} belongs to project ${job.project_id} but active is ${activeProjectId}`);
-      return;
-    }
-
-    const isActiveRun = activeJobIdRef.current === job.id;
-
-    console.log('[BackgroundGen] Job completed:', job.id, { isActiveRun, status: job.status });
-
-    // ═══════════════════════════════════════════════════════════════
-    // TRUNCATION HANDLING: Hard fail — no silent patching
-    // ═══════════════════════════════════════════════════════════════
-    if (job.status === 'needs_continuation') {
-      console.warn('[BackgroundGen] ❌ Job truncated — no auto-recovery');
-      
-      toast.error('Code generation was interrupted. Please retry with a simpler request.', { duration: 6000 });
-      if (activeProjectId) {
-        await addMessage('assistant', '⚠️ Code generation was interrupted. Please simplify your request or break it into smaller parts.', undefined, activeProjectId);
-      }
-
-      // Clear state — no Ghost Fixer, no silent retry
-      if (isActiveRun) {
-        setLiveSteps([]);
-        pendingSummaryRef.current = '';
-        generationLockRef.current = null;
-        activeJobIdRef.current = null;
-        resetAgent();
-      }
-      return;
-    }
-
-    // 🛡️ SAFETY: Never apply JSON (job status / accidental payload) as code
-    const looksLikeJson = (text: string): boolean => {
-      const trimmed = (text || '').trim();
-      if (!trimmed.startsWith('{')) return false;
-      try {
-        const parsed = JSON.parse(trimmed);
-        return parsed && typeof parsed === 'object' && (
-          'jobId' in parsed || 'status' in parsed || 'success' in parsed
-        );
-      } catch {
-        return false;
-      }
-    };
-
-    // If we have code result, apply it (only if it looks like TSX/JS)
-    if (job.code_result) {
-      if (looksLikeJson(job.code_result)) {
-        console.error('[BackgroundGen] Refusing to apply JSON as code_result for job:', job.id);
-        toast.error('Auto-fix failed: received invalid code payload');
-      } else {
-        setCode(job.code_result, true);
-      }
-    } else {
-      console.warn('[BackgroundGen] Job completed with no code_result:', job.id);
-    }
-
-    // If we have a plan result, show the plan approval card
-    if (job.plan_result) {
-      setPendingPlan({
-        plan: job.plan_result,
-        originalPrompt: job.prompt,
-      });
-    }
-
-    // Add assistant message with the summary (this is the canonical source for job-backed runs)
-    if (job.summary && activeProjectId) {
-      addMessage('assistant', job.summary, job.code_result || undefined, activeProjectId);
-    }
-
-    // ✅ IMPORTANT: Clear "building" state for the run that created this job
-    if (isActiveRun) {
-      setLiveSteps([]);
-      pendingSummaryRef.current = '';
-      generationLockRef.current = null;
-      activeJobIdRef.current = null;
-      onStreamingComplete();
-      resetAgent();
-    }
-  }, [activeProjectId, addMessage, onStreamingComplete, resetAgent, setCode, ghostFixer]);
-
-  const handleJobError = useCallback((job: GenerationJob) => {
-    console.error('[BackgroundGen] Job failed:', job.error_message);
-    
-    // Parse structured error if available
-    let userMessage = job.error_message || 'Unknown error';
-    try {
-      const parsed = JSON.parse(userMessage);
-      if (parsed?.message) userMessage = parsed.message;
-    } catch { /* not JSON, use as-is */ }
-
-    const isActiveRun = activeJobIdRef.current === job.id;
-
-    // Only show toasts for jobs the user actively initiated (not stale jobs found on mount)
-    if (isActiveRun) {
-      if (job.status === 'needs_user_action') {
-        const msg = job.summary || 'This request may be too complex. Please simplify or break it into smaller parts.';
-        toast.error(msg, { duration: 8000 });
-        if (activeProjectId) {
-          addMessage('assistant', `⚠️ ${msg}`, undefined, activeProjectId);
-        }
-      } else {
-        toast.error(userMessage, { duration: 6000 });
-      }
-      setLiveSteps([]);
-      generationLockRef.current = null;
-      activeJobIdRef.current = null;
-      onStreamingError(job.error_message || 'Generation failed');
-    } else {
-      // Stale job from previous session — log but don't toast
-      console.warn('[BackgroundGen] Stale job error suppressed:', userMessage);
-    }
-  }, [onStreamingError, activeProjectId, addMessage]);
-
+  // 🔄 BACKGROUND GENERATION: Extracted to useBackgroundGenerationController
   const {
     currentJob,
     hasActiveJob,
     hasCompletedJob,
-    isLoading: isLoadingJob,
+    isLoadingJob,
     createJob,
     cancelJob,
     acknowledgeJob,
-  } = useBackgroundGeneration({
-    projectId: activeProjectId,
-    onJobComplete: handleJobComplete,
-    onJobError: handleJobError,
+    ghostFixer,
+  } = useBackgroundGenerationController({
+    activeProjectId,
+    addMessage,
+    setCode,
+    setPendingPlan,
+    setLiveSteps,
+    resetAgent,
+    onStreamingComplete,
+    onStreamingError,
+    generationLockRef,
+    activeJobIdRef,
+    pendingSummaryRef,
   });
 
   // Dynamically detected pages from generated code (checks all files in multi-file mode)
   const detectedPages = useMemo<SitePage[]>(() => {
-    // In multi-file mode, concatenate all file contents for parsing
     if (Object.keys(files).length > 0) {
       const allCode = Object.values(files).join('\n');
       return parseRoutesFromCode(allCode);
@@ -809,35 +670,6 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       completeOnboarding();
     }
   }, [loading, needsOnboarding]);
-
-  // 🔄 RESUME: If a job completes while the user is away and we miss the realtime event,
-  // we may still rehydrate `currentJob` as completed in rare cases.
-  // IMPORTANT: Never append messages here directly (that caused duplication).
-  // Always route through the deduped job handlers.
-  const processedCompletedJobRef = useRef<string | null>(null);
-  
-  useEffect(() => {
-    if (!hasCompletedJob || !currentJob || isLoadingJob) return;
-
-    // Only process once per job ID
-    if (processedCompletedJobRef.current === currentJob.id) return;
-
-    // If we've already handled this job via realtime completion, skip.
-    if (processedJobIdsRef.current.has(currentJob.id)) {
-      processedCompletedJobRef.current = currentJob.id;
-      acknowledgeJob(currentJob.id);
-      return;
-    }
-
-    console.log('[BackgroundGen] Found completed job on mount, routing through handler...');
-    processedCompletedJobRef.current = currentJob.id;
-
-    // Reuse the deduped completion handler (sets code, pending plan, and appends ONE assistant msg)
-    handleJobComplete(currentJob);
-
-    // Clear local "currentJob" pointer so we don't re-run
-    acknowledgeJob(currentJob.id);
-  }, [hasCompletedJob, currentJob, isLoadingJob, acknowledgeJob, handleJobComplete]);
 
   // AUTO-START: Pick up initial prompt from navigation state (passed from Hero)
   useEffect(() => {
@@ -1008,8 +840,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
         resetAgent();
         setViewMode('preview');
         setPreviewPath('/');
-        setCurrentImageAsset(null);
-        setCurrentVideoAsset(null);
+        clearAssets();
 
         setIsVerifyingProject(false);
         return;
@@ -1048,8 +879,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
         resetAgent();
         setViewMode('preview');
         setPreviewPath('/');
-        setCurrentImageAsset(null);
-        setCurrentVideoAsset(null);
+        clearAssets();
 
         toast.info('Previous project was deleted. Starting fresh.');
       } else {
@@ -1390,8 +1220,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     setChatResponse(null);          // Pending response → null
     setLiveSteps([]);               // Progress steps → empty
     setViewMode('preview');         // View → preview (not code/image/video)
-    setCurrentImageAsset(null);     // Clear any generated assets
-    setCurrentVideoAsset(null);
+    clearAssets();                  // Clear any generated assets
     
     // 4. Force increment reset key to remount components
     setResetKey(prev => prev + 1);
@@ -1450,8 +1279,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
         setPreviewPath('/');
 
         // Clear any generated assets
-        setCurrentImageAsset(null);
-        setCurrentVideoAsset(null);
+        clearAssets();
 
         // Increment resetKey to force React to DESTROY and re-mount all preview/chat components
         // This ensures no stale state survives in child components
@@ -1530,117 +1358,21 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     toast.info('Plan cancelled. You can refine your request and try again.');
   }, []);
 
-  // ===== CREATIVE STUDIO: Asset Generation Handlers =====
-  
-  // Generate asset from image/video model
-  const handleGenerateAsset = useCallback(async (model: AIModel, prompt: string) => {
-    const isVideoModel = model.category === 'video';
-    
-    // Switch to the appropriate view immediately
-    setViewMode(isVideoModel ? 'video' : 'image');
-    
-    // Set loading state for the appropriate type
-    if (isVideoModel) {
-      setIsVideoGenerating(true);
-      setCurrentVideoAsset(null);
-    } else {
-      setIsImageGenerating(true);
-      setCurrentImageAsset(null);
-    }
-    
-    setLastAssetPrompt(prompt);
-    setLastAssetModel(model);
-
-    try {
-      // Call the backend to generate the asset
-      const { data, error } = await supabase.functions.invoke('storefront-generate-asset', {
-        body: { 
-          prompt, 
-          modelId: model.id,
-          type: isVideoModel ? 'video' : 'image',
-        },
-      });
-
-      if (error) throw error;
-
-      // Create the asset object
-      const newAsset: GeneratedAsset = {
-        id: crypto.randomUUID(),
-        type: isVideoModel ? 'video' : 'image',
-        url: data.url || data.imageUrl,
-        prompt,
-        modelId: model.id,
-        createdAt: new Date(),
-      };
-
-      // Set the generated asset to the appropriate state
-      if (isVideoModel) {
-        setCurrentVideoAsset(newAsset);
-      } else {
-        setCurrentImageAsset(newAsset);
-      }
-    } catch (error) {
-      console.error('Asset generation failed:', error);
-      toast.error('Failed to generate asset. Please try again.');
-    } finally {
-      if (isVideoModel) {
-        setIsVideoGenerating(false);
-      } else {
-        setIsImageGenerating(false);
-      }
-    }
-  }, []);
-
-  // Retry asset generation with same prompt
-  const handleRetryAsset = useCallback(() => {
-    if (lastAssetModel && lastAssetPrompt) {
-      handleGenerateAsset(lastAssetModel, lastAssetPrompt);
-    }
-  }, [lastAssetModel, lastAssetPrompt, handleGenerateAsset]);
-
-  // Get the current active asset based on view mode
-  const currentAsset = viewMode === 'video' ? currentVideoAsset : currentImageAsset;
-  const isCurrentlyGenerating = viewMode === 'video' ? isVideoGenerating : isImageGenerating;
-
-  // Apply generated asset to canvas via code injection
-  const handleApplyAssetToCanvas = useCallback((instructions: string) => {
-    const assetToApply = viewMode === 'video' ? currentVideoAsset : currentImageAsset;
-    if (!assetToApply) return;
-
-    setShowPlacementModal(false);
-    setViewMode('preview');
-
-    // Construct a specialized prompt for the AI to inject the asset
-    const injectionPrompt = `
-[ASSET_INJECTION_REQUEST]
-Asset Type: ${assetToApply.type}
-Asset URL: ${assetToApply.url}
-User Instructions: ${instructions}
-
-TASK: Modify the existing storefront code to place this ${assetToApply.type} asset as specified by the user. 
-- Use an <img> tag for images or <video> tag for videos
-- Apply appropriate styling (object-fit, width, height) based on the placement
-- Ensure the asset is responsive and fits the design
-`;
-
-    // Send to the code generator
-    handleSendMessage(injectionPrompt);
-    
-    // Clear the appropriate asset
-    if (viewMode === 'video') {
-      setCurrentVideoAsset(null);
-    } else {
-      setCurrentImageAsset(null);
-    }
-  }, [viewMode, currentVideoAsset, currentImageAsset, handleSendMessage]);
-
-  // Asset feedback handler
-  const handleAssetFeedback = useCallback((rating: 'positive' | 'negative') => {
-    const activeAsset = viewMode === 'video' ? currentVideoAsset : currentImageAsset;
-    // TODO: Log feedback for model improvement
-    console.log('Asset feedback:', rating, activeAsset?.id);
-    toast.success(rating === 'positive' ? 'Thanks for the feedback!' : 'Noted! Try regenerating.');
-  }, [viewMode, currentVideoAsset, currentImageAsset]);
+  // ===== CREATIVE STUDIO: Extracted to useCreativeStudio =====
+  const {
+    currentAsset,
+    isCurrentlyGenerating,
+    handleGenerateAsset,
+    handleRetryAsset,
+    handleApplyAssetToCanvas,
+    handleAssetFeedback,
+    clearAssets,
+  } = useCreativeStudio({
+    viewMode,
+    setViewMode,
+    handleSendMessage,
+    setShowPlacementModal,
+  });
 
 
   // Mark boot complete when data is ready (no loading screen needed)
