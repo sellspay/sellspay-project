@@ -592,6 +592,13 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
   const originalPromptRef = useRef<string>('');
   const lastGoodCodeRef = useRef<string>(DEFAULT_CODE);
 
+  // ═══════════════════════════════════════════════════════════
+  // LAST VALID SNAPSHOT: Stores the most recently validated+committed files.
+  // This is the rollback target on ANY failure — NOT message history.
+  // Updated ONLY when code passes guardrails and is applied to Sandpack.
+  // ═══════════════════════════════════════════════════════════
+  const lastValidFilesRef = useRef<ProjectFiles | null>(null);
+
   const streamCode = useCallback(async (prompt: string, currentCode?: string, jobId?: string, projectFiles?: Record<string, string>) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -909,6 +916,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                     if (appCode) {
                       lastGoodCodeRef.current = appCode;
                     }
+                    // ✅ LAST VALID SNAPSHOT: Atomic commit passed guardrails
+                    lastValidFilesRef.current = { ...sanitizedFiles };
                     options.onComplete?.(appCode);
                     receivedFiles = true;
                   }
@@ -951,6 +960,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                         }
                         setState(prev => ({ ...prev, files: jsonFiles, code: '' }));
                         if (appCode) lastGoodCodeRef.current = appCode;
+                        // ✅ LAST VALID SNAPSHOT: code_chunk JSON commit passed guardrails
+                        lastValidFilesRef.current = { ...jsonFiles };
                         options.onComplete?.(appCode);
                         receivedFiles = true;
                         streamingCodeBuffer = '';
@@ -1233,6 +1244,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       lastGoodCodeRef.current = finalCode;
       preResetCodeRef.current = null; // Clear backup — real code accepted
+      // ✅ LAST VALID SNAPSHOT: Legacy single-file commit passed guardrails
+      lastValidFilesRef.current = codeToFiles(finalCode);
       setState(prev => ({ ...prev, isStreaming: false, code: finalCode }));
       options.onComplete?.(finalCode);
 
@@ -1367,6 +1380,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
     lastGoodCodeRef.current = codeWithoutSentinel;
     preResetCodeRef.current = null; // Clear backup since we have real code now
+    // ✅ LAST VALID SNAPSHOT: setCode (DB restore) passed validation
+    lastValidFilesRef.current = codeToFiles(codeWithoutSentinel);
     setState(prev => ({ ...prev, code: codeWithoutSentinel, files: codeToFiles(codeWithoutSentinel), error: null }));
   }, []);
 
@@ -1377,6 +1392,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       lastGoodCodeRef.current = stripCompleteSentinel(appCode);
       preResetCodeRef.current = null; // Clear backup since we have real code now
     }
+    // ✅ LAST VALID SNAPSHOT: setFiles (DB restore) accepted
+    lastValidFilesRef.current = { ...files };
     setState(prev => ({ ...prev, files, code: appCode || prev.code, error: null }));
   }, []);
 
@@ -1388,6 +1405,12 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     setState(prev => ({ ...prev, isStreaming: false, error: null }));
   }, []);
 
+  /** Returns the last validated+committed snapshot (files map or single-file wrapped).
+   *  This is the safe rollback target on any failure. */
+  const getLastValidSnapshot = useCallback((): ProjectFiles | null => {
+    return lastValidFilesRef.current;
+  }, []);
+
   return {
     ...state,
     streamCode,
@@ -1396,6 +1419,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
     setCode,
     setFiles,
     forceResetStreaming,
+    getLastValidSnapshot,
     DEFAULT_CODE,
   };
 }
