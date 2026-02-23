@@ -741,8 +741,6 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const {
     contentProjectId,
     isVerifyingProject,
-    isWaitingForPreviewMount,
-    setIsWaitingForPreviewMount,
     cleanupProjectRuntime,
   } = useProjectHydration({
     activeProjectId,
@@ -768,18 +766,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onIncrementRefreshKey: useCallback(() => setRefreshKey(prev => prev + 1), []),
   });
 
-  // Safety: if isWaitingForPreviewMount never clears (Sandpack doesn't remount), force-clear it.
-  useEffect(() => {
-    if (!isWaitingForPreviewMount) return;
-    if (isStreaming) return;
-
-    const timeout = window.setTimeout(() => {
-      console.log('⏰ Safety: Force-clearing isWaitingForPreviewMount after timeout');
-      setIsWaitingForPreviewMount(false);
-    }, 1500);
-
-    return () => window.clearTimeout(timeout);
-  }, [isWaitingForPreviewMount, isStreaming, setIsWaitingForPreviewMount]);
+  // NOTE: isWaitingForPreviewMount removed — preview is now purely files-driven.
 
   // Publishing explicitly writes the current code to a dedicated published file.
   const savePublishedVibecoderCode = async (codeContent: string) => {
@@ -1188,18 +1175,12 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // 🛑 THE GATEKEEPER 🛑
   // Prevent "flash of old content" when switching projects.
   // Core rule: NEVER render the workspace with files/messages that belong to a different project.
-  // We gate on `contentProjectId` (the project whose content is actually mounted) instead of
-  // only async flags, so we also cover the 1-frame gap right after the URL/activeProjectId flips.
-  // 
-  // CRITICAL: The PRIMARY check is contentProjectId !== activeProjectId.
-  // This is the ONLY reliable way to know if the correct content is mounted.
-  // 🤝 HANDSHAKE: Also wait for Sandpack to signal it's ready (isWaitingForPreviewMount)
+  // Preview is now purely files-driven — no isWaitingForPreviewMount needed.
   const isProjectTransitioning = Boolean(
     activeProjectId && (
       contentProjectId !== activeProjectId ||
       isVerifyingProject ||
       messagesLoading ||
-      isWaitingForPreviewMount || // Wait for Sandpack's onReady signal
       (lockedProjectId && lockedProjectId !== activeProjectId)
     )
   );
@@ -1374,8 +1355,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
                             files={Object.keys(files).length > 0 ? files : undefined}
                             isStreaming={isStreaming}
                             showLoadingOverlay={false}
-                            onReady={() => {
-                              setIsWaitingForPreviewMount(false);
+                          onReady={() => {
                               setIsAwaitingPreviewReady(false);
                               setPreviewError(null);
                               setConsoleErrors([]);
@@ -1429,7 +1409,6 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
                         isStreaming={isStreaming}
                         showLoadingOverlay={false}
                         onReady={() => {
-                          setIsWaitingForPreviewMount(false);
                           setIsAwaitingPreviewReady(false);
                           setPreviewError(null);
                           setConsoleErrors([]);
