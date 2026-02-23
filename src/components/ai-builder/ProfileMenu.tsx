@@ -104,12 +104,14 @@ export function ProfileMenu({
   // Get initials for avatar fallback
   const initials = username ? username.slice(0, 2).toUpperCase() : 'CR';
 
-  // Get tier badge styling
+  // Get tier badge styling — matches navbar Header.tsx logic
   const tierBadge = subscriptionTier === 'agency' 
-    ? { label: 'Agency', className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' }
+    ? { label: 'AGENCY', className: 'bg-amber-500/20 text-amber-400 border-amber-500/30' }
     : subscriptionTier === 'creator'
-      ? { label: 'Creator', className: 'bg-violet-500/20 text-violet-400 border-violet-500/30' }
-      : { label: 'Free', className: 'bg-zinc-700 text-zinc-400 border-zinc-600' };
+      ? { label: 'PRO', className: 'bg-primary/20 text-primary border-primary/30' }
+      : subscriptionTier === 'basic'
+        ? { label: 'BASIC', className: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' }
+        : { label: 'FREE', className: 'bg-zinc-700 text-zinc-400 border-zinc-600' };
 
   return (
     <div className="relative">
@@ -194,6 +196,15 @@ export function ProfileMenu({
                 <span className="text-xs text-zinc-500">left</span>
                 <ChevronRight size={14} className="text-zinc-600" />
               </div>
+            </div>
+            {/* Progress bar */}
+            <div className="mt-2 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ 
+                  width: `${Math.min((userCredits / (subscriptionTier === 'agency' ? 12000 : subscriptionTier === 'creator' ? 2500 : 100)) * 100, 100)}%` 
+                }}
+              />
             </div>
             <p className="text-xs text-zinc-500 flex items-center gap-1.5 mt-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
