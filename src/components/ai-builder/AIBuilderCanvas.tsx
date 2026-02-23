@@ -1208,7 +1208,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     // 1. Extract smart project name from first 5 words
     const projectName = prompt.split(/\s+/).slice(0, 5).join(' ');
 
-    // 2. Create the project (this sets activeProjectId + updates URL)
+    // 2. Create the project first (this sets activeProjectId + updates URL)
     // skipInitialLoad=true prevents the message-loading effect from wiping our optimistic message
     const newProjectId = await ensureProject(projectName, true);
     if (!newProjectId) {
@@ -1216,42 +1216,21 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       return;
     }
 
-    // 3. Prepare the prompt (inject plan mode instruction if needed)
-    let finalPrompt = prompt;
-    if (isPlanMode) {
-      finalPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${prompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
-    }
-
-    // 4. Mark this project so the useEffect auto-start guard doesn't double-fire
+    // 3. Mark this project so the useEffect auto-start guard doesn't double-fire
     startedInitialForProjectRef.current = newProjectId;
 
-    // 5. 🔒 LOCK: Set generation lock to this project
-    generationLockRef.current = newProjectId;
-
-    // 6. Cover Sandpack until bundling finishes
-    setIsAwaitingPreviewReady(true);
-
-    // 7. Save the user message to DB — CRITICAL: pass newProjectId explicitly
-    //    because activeProjectId in the closure is still stale (React batching)
-    await addMessage('user', prompt, undefined, newProjectId);
-
-    // 8. 🔄 CREATE BACKGROUND JOB: Ensures generation persists even if user leaves
-    //    This was missing before — heroOnStart skipped job creation, so if the stream
-    //    failed there was nothing to recover from and the request just vanished.
-    const job = await createJob(prompt, finalPrompt, activeModel?.id, isPlanMode, newProjectId);
-
-    // Track whether this run is job-backed
-    activeJobIdRef.current = job?.id ?? null;
-
-    // 9. Start the agent with job ID for persistence
-    if (job) {
-      console.log('[heroOnStart] Created job:', job.id, 'for project:', newProjectId);
-      startAgent(finalPrompt, undefined, newProjectId, job.id);
-    } else {
-      // Fallback: Start without job (streaming only, won't persist if user leaves)
-      console.warn('[heroOnStart] Failed to create job, using streaming-only mode');
-      startAgent(finalPrompt, undefined, newProjectId);
+    // 4. If plan mode, inject plan instruction into the prompt
+    if (isPlanMode) {
+      const planPrompt = `[ARCHITECT_MODE_ACTIVE]\nUser Request: ${prompt}\n\nINSTRUCTION: Do NOT generate code. Create a detailed implementation plan. Output JSON: { "type": "plan", "title": "...", "summary": "...", "steps": ["step 1", "step 2"] }`;
+      // Delegate to handleSendMessage which handles job creation, intent classification, etc.
+      handleSendMessage(prompt, planPrompt);
+      return;
     }
+
+    // 5. Delegate to handleSendMessage — this routes through the backend intent classifier
+    //    instead of blindly forcing BUILD mode. The intent classifier will determine if
+    //    the prompt is a clear build request or needs clarification first.
+    handleSendMessage(prompt);
   };
 
   // === DOORWAY: If no active project, ALWAYS show the magical prompt-first screen ===
