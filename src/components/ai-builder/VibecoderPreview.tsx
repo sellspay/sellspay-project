@@ -1118,11 +1118,62 @@ root.render(<App />);`,
   --chart-5: 38 92% 50%;
 }
 
-/* Apply theme colors to root elements */
+/* Apply theme to root */
 html, body, #root {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-}`,
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* === HARDCODED COLOR OVERRIDES ===
+   Remap common Tailwind hardcoded classes to theme tokens.
+   This ensures AI-generated code using bg-black, text-white, etc.
+   responds to theme changes. */
+
+/* Background overrides */
+.bg-black { background-color: hsl(var(--background)) !important; }
+.bg-white { background-color: hsl(var(--background)) !important; }
+.bg-gray-50, .bg-gray-100 { background-color: hsl(var(--muted)) !important; }
+.bg-gray-200, .bg-gray-300 { background-color: hsl(var(--muted)) !important; }
+.bg-gray-800, .bg-gray-900, .bg-gray-950 { background-color: hsl(var(--card)) !important; }
+.bg-zinc-800, .bg-zinc-900, .bg-zinc-950 { background-color: hsl(var(--card)) !important; }
+.bg-slate-800, .bg-slate-900, .bg-slate-950 { background-color: hsl(var(--card)) !important; }
+.bg-neutral-800, .bg-neutral-900, .bg-neutral-950 { background-color: hsl(var(--card)) !important; }
+
+/* Text overrides */
+.text-white { color: hsl(var(--foreground)) !important; }
+.text-black { color: hsl(var(--foreground)) !important; }
+.text-gray-100, .text-gray-200, .text-gray-300 { color: hsl(var(--foreground)) !important; }
+.text-gray-400, .text-gray-500 { color: hsl(var(--muted-foreground)) !important; }
+.text-gray-600, .text-gray-700 { color: hsl(var(--muted-foreground)) !important; }
+.text-zinc-100, .text-zinc-200, .text-zinc-300 { color: hsl(var(--foreground)) !important; }
+.text-zinc-400, .text-zinc-500 { color: hsl(var(--muted-foreground)) !important; }
+.text-slate-100, .text-slate-200, .text-slate-300 { color: hsl(var(--foreground)) !important; }
+.text-slate-400, .text-slate-500 { color: hsl(var(--muted-foreground)) !important; }
+
+/* Border overrides */
+.border-gray-700, .border-gray-800 { border-color: hsl(var(--border)) !important; }
+.border-zinc-700, .border-zinc-800 { border-color: hsl(var(--border)) !important; }
+.border-slate-700, .border-slate-800 { border-color: hsl(var(--border)) !important; }
+.border-white\\/10, .border-white\\/20 { border-color: hsl(var(--border)) !important; }
+
+/* Common accent color overrides — remap to primary */
+.bg-blue-500, .bg-blue-600, .bg-blue-700 { background-color: hsl(var(--primary)) !important; }
+.bg-indigo-500, .bg-indigo-600, .bg-indigo-700 { background-color: hsl(var(--primary)) !important; }
+.bg-purple-500, .bg-purple-600, .bg-purple-700 { background-color: hsl(var(--accent)) !important; }
+.bg-violet-500, .bg-violet-600, .bg-violet-700 { background-color: hsl(var(--accent)) !important; }
+.bg-orange-500, .bg-orange-600 { background-color: hsl(var(--primary)) !important; }
+.bg-amber-500, .bg-amber-600 { background-color: hsl(var(--primary)) !important; }
+.bg-red-500, .bg-red-600 { background-color: hsl(var(--destructive)) !important; }
+.bg-green-500, .bg-green-600 { background-color: hsl(var(--accent)) !important; }
+.bg-teal-500, .bg-teal-600 { background-color: hsl(var(--accent)) !important; }
+.bg-cyan-500, .bg-cyan-600 { background-color: hsl(var(--accent)) !important; }
+
+.text-blue-400, .text-blue-500 { color: hsl(var(--primary)) !important; }
+.text-indigo-400, .text-indigo-500 { color: hsl(var(--primary)) !important; }
+.text-purple-400, .text-purple-500 { color: hsl(var(--accent)) !important; }
+.text-orange-400, .text-orange-500 { color: hsl(var(--primary)) !important; }
+.text-amber-400, .text-amber-500 { color: hsl(var(--primary)) !important; }
+`,
         hidden: true,
       },
       '/styles/error-silence.css': {
