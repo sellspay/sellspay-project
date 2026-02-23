@@ -2010,8 +2010,41 @@ serve(async (req) => {
             try {
               const parsed = JSON.parse(cleaned);
               if (parsed.files && typeof parsed.files === 'object') {
-                // Validate each .tsx file
                 const fileMap: Record<string, string> = parsed.files;
+                
+                // ═══════════════════════════════════════════════════════
+                // ZERO-TRUST LAYER 3: All values must be strings
+                // ═══════════════════════════════════════════════════════
+                for (const [path, content] of Object.entries(fileMap)) {
+                  if (typeof content !== 'string') {
+                    throw new Error(`INVALID_FILE_CONTENT_TYPE: ${path} has type ${typeof content}`);
+                  }
+                }
+                
+                // ═══════════════════════════════════════════════════════
+                // ZERO-TRUST LAYER 4: No conversational signatures
+                // ═══════════════════════════════════════════════════════
+                const forbiddenStarts = ['Alright', 'Got it!', 'Sure!', "Here's", "Let's", '=== ANALYSIS', '=== PLAN', '=== SUMMARY'];
+                for (const [path, content] of Object.entries(fileMap)) {
+                  if (path.endsWith('.tsx') || path.endsWith('.ts') || path.endsWith('.jsx') || path.endsWith('.js')) {
+                    const trimmedContent = (content as string).trim();
+                    const isConversational = forbiddenStarts.some(s => trimmedContent.startsWith(s));
+                    const hasCodeIndicators = /export|import|function|const|return|<\w+/.test(trimmedContent);
+                    if (isConversational || !hasCodeIndicators) {
+                      throw new Error(`NON_CODE_OUTPUT: ${path} contains conversational text, not code`);
+                    }
+                  }
+                }
+                
+                // ═══════════════════════════════════════════════════════
+                // ZERO-TRUST LAYER 5: App.tsx must export default
+                // ═══════════════════════════════════════════════════════
+                const appKey = Object.keys(fileMap).find(k => k === 'App.tsx' || k === '/App.tsx');
+                if (appKey && !fileMap[appKey].includes('export default')) {
+                  console.warn(`[ZERO-TRUST] App.tsx missing export default — will attempt repair`);
+                }
+                
+                // Validate each .tsx file
                 const validationErrors: Array<{path: string; error: string}> = [];
                 
                 for (const [path, content] of Object.entries(fileMap)) {
@@ -2118,36 +2151,12 @@ serve(async (req) => {
               }
               
               // ═══════════════════════════════════════════════════════
-              // FALLBACK 3: Treat raw TSX as single-file App.tsx
+              // ZERO-TRUST: NO raw TSX fallback. Must be valid JSON file map.
               // ═══════════════════════════════════════════════════════
               if (!filesEmitted) {
-                const strippedCode = cleaned
-                  .replace(/\/\/\/\s*TYPE:\s*CODE\s*\/\/\//g, '')
-                  .replace(/\/\/\/\s*BEGIN_CODE\s*\/\/\//g, '')
-                  .replace(/\/\/\s*---\s*VIBECODER_COMPLETE\s*---/g, '')
-                  .trim();
-                
-                // Only treat as single-file if it looks like actual TSX/React code
-                const looksLikeCode = (strippedCode.includes('import ') || strippedCode.includes('export ')) &&
-                  !strippedCode.startsWith('{') &&
-                  strippedCode.length > 50;
-                
-                if (looksLikeCode) {
-                  const singleFileMap = { "App.tsx": strippedCode };
-                  emitEvent('files', { projectFiles: singleFileMap });
-                  filesEmitted = true;
-                  lastMergedFiles = singleFileMap;
-                  summaryValidated = true;
-                  console.log(`[Files] FALLBACK 3: Treated raw TSX as single-file App.tsx (${strippedCode.length} chars)`);
-                } else {
-                  // ═══════════════════════════════════════════════════════
-                  // ALL FALLBACKS EXHAUSTED: Mark for explicit failure
-                  // ═══════════════════════════════════════════════════════
-                  console.error('[Files] ALL FALLBACKS FAILED: No valid file map could be extracted from SUMMARY');
-                  summaryValidated = false;
-                  // Set a flag so finalization knows to fail the job
-                  lastMergedFiles = null as unknown as Record<string, string>;
-                }
+                console.error('[Files] ZERO-TRUST GATE: No valid JSON file map extracted. All fallbacks exhausted.');
+                summaryValidated = false;
+                lastMergedFiles = null as unknown as Record<string, string>;
               }
             }
             
@@ -2339,18 +2348,14 @@ serve(async (req) => {
                   summary = fullContent.substring(analysisIdx + "=== ANALYSIS ===".length, aEnd > 0 ? aEnd : codeStart).trim();
                 }
               }
-            } else if (fullContent.includes("/// BEGIN_CODE ///")) {
-              // Legacy fallback
-              const codeMatch = fullContent.split("/// BEGIN_CODE ///");
-              if (codeMatch.length > 1) {
-                codeResult = codeMatch[1].split("// --- VIBECODER_COMPLETE ---")[0].trim();
-                codeResult = codeResult.replace(/\/\/\/\s*END_CODE\s*\/\/\//g, "").trim();
-              }
-              summary = codeMatch[0].replace("/// TYPE: CODE ///", "").trim();
             } else if (fullContent.includes("/// TYPE: CHAT ///")) {
+              // Chat-only response — no code expected
               summary = fullContent.replace("/// TYPE: CHAT ///", "").trim();
             } else {
-              summary = fullContent;
+              // ZERO-TRUST: Do NOT treat raw fullContent as code
+              // Only use it as summary text
+              summary = fullContent.length > 200 ? fullContent.substring(0, 200) + '...' : fullContent;
+              console.warn(`[Job ${jobId}] ZERO-TRUST: No structured sections found. Raw content treated as summary only.`);
             }
 
             // ═══════════════════════════════════════════════════════
@@ -2426,16 +2431,12 @@ serve(async (req) => {
                     console.log(`[Job ${jobId}] GATE 1 FALLBACK: Re-merged ${Object.keys(deltaFiles).length} delta + ${Object.keys(existingFiles).length} existing`);
                   }
                 } catch {
-                  // Not JSON — could be single-file code, validate as-is
-                  // BUT if it looks like JSON (starts with {), it's corrupt — fail explicitly
-                  const trimmedCode = codeResult.trim();
-                  if (trimmedCode.startsWith('{') && (trimmedCode.includes('"files"') || trimmedCode.includes('"App.tsx"'))) {
-                    console.error(`[Job ${jobId}] GATE 0 FAIL: codeResult looks like JSON but cannot be parsed — refusing to treat as code`);
-                    validationError = { errorType: 'CORRUPT_JSON_OUTPUT', errorMessage: 'AI returned malformed JSON that could not be parsed into files. Please retry.' };
-                    jobStatus = "failed";
-                    terminalReason = "corrupt_json_output";
-                    validationReport.truncation_detected = true;
-                  }
+                  // ZERO-TRUST: codeResult is not valid JSON — fail explicitly
+                  console.error(`[Job ${jobId}] ZERO-TRUST GATE: codeResult is not valid JSON. Failing job.`);
+                  validationError = { errorType: 'CORRUPT_JSON_OUTPUT', errorMessage: 'AI returned non-JSON output that cannot be committed as files. Please retry.' };
+                  jobStatus = "failed";
+                  terminalReason = "corrupt_json_output";
+                  validationReport.truncation_detected = true;
                 }
               }
               
@@ -2544,7 +2545,7 @@ serve(async (req) => {
               }
             }
 
-            // Manual Recovery Fix — handles both multi-file JSON and single-file
+            // ZERO-TRUST Recovery Save — ONLY from validated file maps, never raw text
             if (codeResult && !validationError && jobStatus === "completed") {
               const { data: jobData } = await supabase
                 .from("ai_generation_jobs")
@@ -2552,35 +2553,42 @@ serve(async (req) => {
                 .eq("id", jobId)
                 .single();
               if (jobData?.project_id) {
-                let filesWrapper: Record<string, string>;
+                // ONLY use SUMMARY-validated files or parsed JSON file maps
+                let filesWrapper: Record<string, string> | null = null;
                 
-                // Use canonical SUMMARY-validated files if available
                 if (summaryValidated && lastMergedFiles) {
                   filesWrapper = lastMergedFiles;
                   console.log(`[Job ${jobId}] Recovery save: using SUMMARY-validated files (${Object.keys(filesWrapper).length} files)`);
                 } else {
-                  // Fallback: parse codeResult
+                  // Try to parse codeResult as JSON file map — NO raw text fallback
                   try {
                     const parsed = JSON.parse(codeResult);
-                    if (parsed && typeof parsed === 'object' && parsed.files) {
-                      const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
-                        ? projectFiles as Record<string, string>
-                        : {};
-                      filesWrapper = { ...existingFiles, ...parsed.files };
-                    } else {
-                      filesWrapper = { "App.tsx": codeResult };
+                    if (parsed && typeof parsed === 'object' && parsed.files && typeof parsed.files === 'object') {
+                      // Validate all values are strings (Layer 3)
+                      const allStrings = Object.values(parsed.files).every((v: unknown) => typeof v === 'string');
+                      if (allStrings && Object.keys(parsed.files).length > 0) {
+                        const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
+                          ? projectFiles as Record<string, string>
+                          : {};
+                        filesWrapper = { ...existingFiles, ...parsed.files };
+                      }
                     }
                   } catch {
-                    filesWrapper = { "App.tsx": codeResult };
+                    // Not valid JSON — DO NOT wrap raw text as App.tsx
+                    console.error(`[Job ${jobId}] ZERO-TRUST: codeResult is not valid JSON file map. Skipping DB persist.`);
                   }
                 }
                 
-                await supabase.from("vibecoder_projects").update({ files: filesWrapper }).eq("id", jobData.project_id);
-                await supabase.from("project_versions").insert({
-                  project_id: jobData.project_id,
-                  files_snapshot: filesWrapper,
-                  version_label: "Manual Recovery Save",
-                });
+                if (filesWrapper && Object.keys(filesWrapper).length > 0) {
+                  await supabase.from("vibecoder_projects").update({ files: filesWrapper }).eq("id", jobData.project_id);
+                  await supabase.from("project_versions").insert({
+                    project_id: jobData.project_id,
+                    files_snapshot: filesWrapper,
+                    version_label: "Manual Recovery Save",
+                  });
+                } else {
+                  console.error(`[Job ${jobId}] ZERO-TRUST: No valid file map to persist. Skipping recovery save.`);
+                }
               }
             }
 
