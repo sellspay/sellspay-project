@@ -61,6 +61,12 @@
     /* Motion */
     --transition-speed: 200ms;
 
+    /* Density */
+    --section-padding: 80px;
+
+    /* CTA */
+    --cta-style: default;
+
     /* Texture */
     --texture-overlay: noise;
     
@@ -528,6 +534,52 @@ body[style*="margin-right"] {
     color var(--transition-speed, 200ms) ease,
     border-color var(--transition-speed, 200ms) ease,
     box-shadow var(--transition-speed, 200ms) ease;
+}
+
+/* ─── Section Tone System ─────────────────────────────────────── */
+
+.section-default {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.section-elevated {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+.section-inverted {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.section-accented {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+/* Section density — vibe-driven padding */
+.section-padded {
+  padding-top: var(--section-padding, 80px);
+  padding-bottom: var(--section-padding, 80px);
+}
+
+/* ─── CTA Button Variants ─────────────────────────────────────── */
+
+.cta-glow {
+  box-shadow: 0 0 20px hsl(var(--primary) / 0.5), 0 0 40px hsl(var(--primary) / 0.2);
+}
+
+.cta-outline-gold {
+  background: transparent;
+  border: 1.5px solid hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.cta-rounded-gradient {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  color: hsl(var(--primary-foreground));
+  border-radius: 9999px;
 }
 
 /* ─── Vibe Typography ─────────────────────────────────────────── */

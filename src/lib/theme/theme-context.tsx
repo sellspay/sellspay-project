@@ -6,6 +6,8 @@ import { extractPaletteFromImage, generateThemeFromPalette, type ThemePersonalit
 import { detectVibeFromPrompt, mergeVibeSignals } from "./vibe-from-text";
 import { type ThemeVibe } from "./theme-vibes";
 import { downloadThemeFile, copyThemeToClipboard, importTheme as parseImportedTheme } from "./theme-export";
+import { type VibeRefinement, refineTheme } from "./vibe-refine";
+import { loadDesignProfile, learnFromEdit, type DesignProfile } from "./design-memory";
 
 export type ThemeSource = "auto" | "manual" | "preset";
 
@@ -31,6 +33,10 @@ type ThemeContextType = {
   copyCurrentTheme: (name?: string) => Promise<boolean>;
   /** Import theme from JSON string */
   importThemeFromJSON: (json: string) => boolean;
+  /** Apply a vibe refinement (dramatic/softer/premium/bolder) */
+  applyRefinement: (refinement: VibeRefinement) => void;
+  /** Current design memory profile */
+  designProfile: DesignProfile;
 };
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
@@ -59,6 +65,7 @@ export function ThemeProvider({
   const [isAutoThemeLocked, setAutoThemeLockedState] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [detectedVibe, setDetectedVibe] = useState<ThemeVibe | null>(null);
+  const [designProfile, setDesignProfile] = useState<DesignProfile>(loadDesignProfile);
   const savedThemeRef = useRef<ThemeTokens>(DEFAULT_THEME.tokens);
 
   // Hydrate from localStorage on mount / project switch
@@ -290,6 +297,20 @@ export function ThemeProvider({
     [persistTheme]
   );
 
+  // Apply vibe refinement
+  const applyRefinement = useCallback(
+    (refinement: VibeRefinement) => {
+      const refined = refineTheme(theme, refinement);
+      setTheme(refined);
+      // Learn from refinement
+      const updated = learnFromEdit(designProfile, {
+        saturation: parseInt(refined.primary.split(' ')[1]) || 50,
+      });
+      setDesignProfile(updated);
+    },
+    [theme, setTheme, designProfile]
+  );
+
   return (
     <ThemeContext.Provider
       value={{
@@ -310,6 +331,8 @@ export function ThemeProvider({
         exportCurrentTheme,
         copyCurrentTheme,
         importThemeFromJSON,
+        applyRefinement,
+        designProfile,
       }}
     >
       {children}
