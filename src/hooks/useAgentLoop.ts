@@ -136,7 +136,6 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       validating: 'building',    // show as building until validated
       repairing: 'building',     // show as building during repair
       complete: 'complete',
-      waiting_for_answers: 'idle', // clarification mode — stop the spinner
     };
     const streamPhase = phaseMap[phase] || 'analyzing';
     
@@ -144,11 +143,6 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
     
     // Map to legacy agent steps for backward compat
     if (phase === 'building') setStep('writing');
-    if (phase === 'waiting_for_answers') {
-      // Clarification mode: stop the agent, let questions render
-      setStep('idle');
-      setState(prev => ({ ...prev, isRunning: false }));
-    }
     if (phase === 'complete') {
       setStep('done');
       setState(prev => ({ ...prev, isRunning: false, lockedProjectId: null }));

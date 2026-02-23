@@ -207,21 +207,6 @@ export function useBackgroundGenerationController({
       }
 
       if (job.status === 'needs_user_action') {
-        // Check if this is a clarification request (not a real error)
-        const isClarification = (job.error_message || '').includes('clarification_needed') || 
-          (job.summary || '').includes('answer the questions');
-        if (isClarification) {
-          // Questions were already emitted via SSE — just clear the building state
-          console.log('[BackgroundGen] Clarification needed — questions already shown via SSE');
-          if (activeProjectId && job.summary) {
-            addMessage('assistant', job.summary, undefined, activeProjectId);
-          }
-          setLiveSteps([]);
-          generationLockRef.current = null;
-          activeJobIdRef.current = null;
-          resetAgent();
-          return;
-        }
         const msg = job.summary || 'This request may be too complex. Please simplify or break it into smaller parts.';
         toast.error(msg, { duration: 8000 });
         if (activeProjectId) {

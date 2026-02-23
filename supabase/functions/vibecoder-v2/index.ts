@@ -772,32 +772,6 @@ IMPORTANT: Always include ALL five sections (ANALYSIS, PLAN, CODE, SUMMARY, CONF
 The === markers must be on their own line exactly as shown.
 CONFIDENCE must be a number 0-100 on its own line, followed by a reason on the next line.
 
-CLARIFICATION PROTOCOL:
-If the user's request is ambiguous and you need more information before building, you may REPLACE the CODE section with a === QUESTION === section:
-
-=== ANALYSIS ===
-(explain what is unclear)
-
-=== QUESTION ===
-type: select
-id: unique_question_id
-label: What kind of product page do you want?
-options:
-- redirect_marketplace: Redirect to existing marketplace
-- custom_landing: Custom product landing page
-- simple_grid: Simple product grid
-allow_custom_input: true
-
-=== SUMMARY ===
-I need a bit more detail before I can build this.
-
-=== CONFIDENCE ===
-0
-Need clarification before building.
-
-You may include multiple questions by repeating the === QUESTION === block.
-Only use this when the request is genuinely ambiguous. If the intent is clear, proceed directly with CODE.
-
 FILE STRUCTURE PROTOCOL (MANDATORY FOR ALL BUILDS):
 The === CODE === section must contain ONLY a valid JSON object with a "files" key.
 NO markdown fences, NO commentary, NO explanation inside === CODE ===.
@@ -1923,13 +1897,12 @@ serve(async (req) => {
         }, timeoutMs);
         
         // Track structured sections
-        let currentSection: 'none' | 'analysis' | 'plan' | 'code' | 'summary' | 'confidence' | 'question' = 'none';
+        let currentSection: 'none' | 'analysis' | 'plan' | 'code' | 'summary' | 'confidence' = 'none';
         let analysisEmitted = false;
         let planEmitted = false;
         let codePhaseEmitted = false;
         let summaryEmitted = false;
         let confidenceEmitted = false;
-        let questionsEmitted = false;
         let lastCodeEmitLength = 0;
         let retryCount = 0;
         const generationStartTime = Date.now();
@@ -1991,47 +1964,8 @@ serve(async (req) => {
             }
           }
           
-          // === QUESTION === section (clarification instead of code)
-          if (!questionsEmitted && fullContent.includes('=== QUESTION ===')) {
-            const questionBlocks: Array<{ id: string; label: string; type: 'single' | 'multi'; options: Array<{ value: string; label: string }>; allowCustomInput?: boolean }> = [];
-            const questionRegex = /=== QUESTION ===([\s\S]*?)(?==== (?:QUESTION|SUMMARY|CODE|CONFIDENCE) ===|$)/g;
-            let qMatch;
-            while ((qMatch = questionRegex.exec(fullContent)) !== null) {
-              const block = qMatch[1].trim();
-              // Parse structured question block
-              const idMatch = block.match(/^id:\s*(.+)$/m);
-              const labelMatch = block.match(/^label:\s*(.+)$/m);
-              const typeMatch = block.match(/^type:\s*(.+)$/m);
-              const allowCustomMatch = block.match(/^allow_custom_input:\s*(true|false)$/m);
-              const optionLines = block.match(/^-\s+(\S+):\s+(.+)$/gm) || [];
-              
-              if (idMatch && labelMatch) {
-                const options = optionLines.map(line => {
-                  const m = line.match(/^-\s+(\S+):\s+(.+)$/);
-                  return m ? { value: m[1], label: m[2] } : null;
-                }).filter(Boolean) as Array<{ value: string; label: string }>;
-                
-                questionBlocks.push({
-                  id: idMatch[1].trim(),
-                  label: labelMatch[1].trim(),
-                  type: (typeMatch?.[1]?.trim() === 'multi' ? 'multi' : 'single'),
-                  options,
-                  allowCustomInput: allowCustomMatch?.[1] === 'true',
-                });
-              }
-            }
-            
-            if (questionBlocks.length > 0) {
-              console.log(`[Streaming] Parsed ${questionBlocks.length} === QUESTION === blocks from model output`);
-              emitEvent('phase', { phase: 'analyzing' });
-              emitEvent('questions', { questions: questionBlocks, enhanced_prompt_seed: prompt });
-              emitEvent('phase', { phase: 'waiting_for_answers' });
-              questionsEmitted = true;
-            }
-          }
-          
           // === CODE === section — accumulate but DON'T stream as deltas
-          if (!codePhaseEmitted && !questionsEmitted && fullContent.includes('=== CODE ===')) {
+          if (!codePhaseEmitted && fullContent.includes('=== CODE ===')) {
             emitEvent('phase', { phase: 'building' });
             codePhaseEmitted = true;
           }
@@ -2440,13 +2374,6 @@ serve(async (req) => {
                 // SUMMARY phase handled it — synthesize codeResult from canonical files
                 codeResult = JSON.stringify({ files: lastMergedFiles });
                 console.log(`[Job ${jobId}] GATE -1: No === CODE === section, but SUMMARY emitted ${Object.keys(lastMergedFiles).length} files — using canonical result`);
-              } else if (questionsEmitted) {
-                // Model emitted === QUESTION === blocks — this is a clarification, not a failure.
-                // Mark job as waiting for user input instead of failing.
-                console.log(`[Job ${jobId}] GATE -1: No code, but questions were emitted — marking as needs_user_action`);
-                jobStatus = "needs_user_action";
-                terminalReason = "clarification_needed";
-                summary = summary || "I need a bit more detail before I can build this. Please answer the questions above.";
               } else {
                 console.error(`[Job ${jobId}] GATE -1 FAIL: Intent is ${intentResult.intent} but model produced NO code. Full content length: ${fullContent.length}`);
                 console.error(`[Job ${jobId}] GATE -1 DEBUG: Has === CODE ===: ${fullContent.includes('=== CODE ===')}, Has /// BEGIN_CODE ///: ${fullContent.includes('/// BEGIN_CODE ///')}`);
