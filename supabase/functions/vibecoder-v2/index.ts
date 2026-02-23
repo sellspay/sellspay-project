@@ -2362,6 +2362,29 @@ serve(async (req) => {
               terminal_reason: "",
             };
 
+            // ═══════════════════════════════════════════════════════
+            // GATE -1: NO CODE PRODUCED (conversational response on BUILD/MODIFY/FIX)
+            // If the model responded conversationally instead of producing a file map,
+            // fail the job explicitly — never let it through as "completed".
+            // ═══════════════════════════════════════════════════════
+            const codeRequiredIntents = ["BUILD", "MODIFY", "FIX"];
+            if (!codeResult && codeRequiredIntents.includes(intentResult.intent)) {
+              // Check if SUMMARY streaming already emitted files successfully
+              if (summaryValidated && lastMergedFiles && Object.keys(lastMergedFiles).length > 0) {
+                // SUMMARY phase handled it — synthesize codeResult from canonical files
+                codeResult = JSON.stringify({ files: lastMergedFiles });
+                console.log(`[Job ${jobId}] GATE -1: No === CODE === section, but SUMMARY emitted ${Object.keys(lastMergedFiles).length} files — using canonical result`);
+              } else {
+                console.error(`[Job ${jobId}] GATE -1 FAIL: Intent is ${intentResult.intent} but model produced NO code. Full content length: ${fullContent.length}`);
+                console.error(`[Job ${jobId}] GATE -1 DEBUG: Has === CODE ===: ${fullContent.includes('=== CODE ===')}, Has /// BEGIN_CODE ///: ${fullContent.includes('/// BEGIN_CODE ///')}`);
+                console.error(`[Job ${jobId}] GATE -1 FIRST 500 chars: ${fullContent.substring(0, 500)}`);
+                validationError = { errorType: 'NO_CODE_PRODUCED', errorMessage: 'AI responded conversationally instead of generating code. Please retry your request.' };
+                jobStatus = "failed";
+                terminalReason = "no_code_produced";
+                emitEvent('error', { code: 'NO_CODE_PRODUCED', message: 'AI did not generate any code. Please try again.' });
+              }
+            }
+
             if (codeResult) {
               // ═══════════════════════════════════════════════════════
               // SINGLE AUTHORITY VALIDATION
