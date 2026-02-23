@@ -285,6 +285,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     setCode,
     setFiles,
     forceResetStreaming,
+    getLastValidSnapshot,
     DEFAULT_CODE 
   } = useStreamingCode({
     onPhaseChange: (phase) => {
@@ -621,6 +622,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     activeProjectId,
     addMessage,
     setCode,
+    setFiles,
+    getLastValidSnapshot,
     setPendingPlan,
     setLiveSteps,
     resetAgent,

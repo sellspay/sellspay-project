@@ -8,6 +8,8 @@ interface BackgroundGenerationControllerOptions {
   activeProjectId: string | null;
   addMessage: (role: string, content: string, codeSnapshot?: string, projectId?: string) => Promise<any>;
   setCode: (code: string, skipGuards?: boolean) => void;
+  setFiles: (files: Record<string, string>) => void;
+  getLastValidSnapshot: () => Record<string, string> | null;
   setPendingPlan: (plan: { plan: any; originalPrompt: string } | null) => void;
   setLiveSteps: (steps: string[]) => void;
   resetAgent: () => void;
@@ -22,6 +24,8 @@ export function useBackgroundGenerationController({
   activeProjectId,
   addMessage,
   setCode,
+  setFiles,
+  getLastValidSnapshot,
   setPendingPlan,
   setLiveSteps,
   resetAgent,
@@ -68,12 +72,20 @@ export function useBackgroundGenerationController({
     const isActiveRun = activeJobIdRef.current === job.id;
     console.log('[BackgroundGen] Job completed:', job.id, { isActiveRun, status: job.status });
 
-    // TRUNCATION HANDLING: Hard fail — no silent patching
+    // TRUNCATION HANDLING: Restore last valid snapshot — never leave broken state
     if (job.status === 'needs_continuation') {
-      console.warn('[BackgroundGen] ❌ Job truncated — no auto-recovery');
-      toast.error('Code generation was interrupted. Please retry with a simpler request.', { duration: 6000 });
+      console.warn('[BackgroundGen] ❌ Job truncated — restoring last valid snapshot');
+      
+      // ✅ RESTORE FROM LAST VALID SNAPSHOT (not message history)
+      const validSnapshot = getLastValidSnapshot();
+      if (validSnapshot && Object.keys(validSnapshot).length > 0) {
+        console.log('[BackgroundGen] Restoring from lastValidSnapshot:', Object.keys(validSnapshot).length, 'files');
+        setFiles(validSnapshot);
+      }
+
+      toast.error('Code generation was interrupted. Your project was preserved. Please retry with a simpler request.', { duration: 6000 });
       if (activeProjectId) {
-        await addMessage('assistant', '⚠️ Code generation was interrupted. Please simplify your request or break it into smaller parts.', undefined, activeProjectId);
+        await addMessage('assistant', '⚠️ Code generation was interrupted. No changes were applied — your project was restored to its last stable state. Please simplify your request or break it into smaller parts.', undefined, activeProjectId);
       }
       if (isActiveRun) {
         setLiveSteps([]);
@@ -133,7 +145,7 @@ export function useBackgroundGenerationController({
       onStreamingComplete();
       resetAgent();
     }
-  }, [activeProjectId, addMessage, onStreamingComplete, resetAgent, setCode, setPendingPlan, setLiveSteps, generationLockRef, activeJobIdRef, pendingSummaryRef]);
+  }, [activeProjectId, addMessage, onStreamingComplete, resetAgent, setCode, setFiles, getLastValidSnapshot, setPendingPlan, setLiveSteps, generationLockRef, activeJobIdRef, pendingSummaryRef]);
 
   const handleJobError = useCallback((job: GenerationJob) => {
     console.error('[BackgroundGen] Job failed:', job.error_message);
@@ -147,14 +159,24 @@ export function useBackgroundGenerationController({
     const isActiveRun = activeJobIdRef.current === job.id;
 
     if (isActiveRun) {
+      // ✅ RESTORE FROM LAST VALID SNAPSHOT on any failure
+      const validSnapshot = getLastValidSnapshot();
+      if (validSnapshot && Object.keys(validSnapshot).length > 0) {
+        console.log('[BackgroundGen] Restoring from lastValidSnapshot on error:', Object.keys(validSnapshot).length, 'files');
+        setFiles(validSnapshot);
+      }
+
       if (job.status === 'needs_user_action') {
         const msg = job.summary || 'This request may be too complex. Please simplify or break it into smaller parts.';
         toast.error(msg, { duration: 8000 });
         if (activeProjectId) {
-          addMessage('assistant', `⚠️ ${msg}`, undefined, activeProjectId);
+          addMessage('assistant', `⚠️ ${msg}\nNo changes were applied — your project was restored to its last stable state.`, undefined, activeProjectId);
         }
       } else {
         toast.error(userMessage, { duration: 6000 });
+        if (activeProjectId) {
+          addMessage('assistant', `❌ Generation failed: ${userMessage}\nNo changes were applied — your project was restored to its last stable state.`, undefined, activeProjectId);
+        }
       }
       setLiveSteps([]);
       generationLockRef.current = null;
@@ -163,7 +185,7 @@ export function useBackgroundGenerationController({
     } else {
       console.warn('[BackgroundGen] Stale job error suppressed:', userMessage);
     }
-  }, [onStreamingError, activeProjectId, addMessage, setLiveSteps, generationLockRef, activeJobIdRef]);
+  }, [onStreamingError, activeProjectId, addMessage, setFiles, getLastValidSnapshot, setLiveSteps, generationLockRef, activeJobIdRef]);
 
   const {
     currentJob,
