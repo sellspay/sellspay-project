@@ -91,6 +91,12 @@ export function styleColorsToTokens(colors: StyleColors): ThemeTokens {
     chart3: colors['chart-3'],
     chart4: colors['chart-4'],
     chart5: colors['chart-5'],
+    gradientFrom: '217 60% 10%',
+    gradientTo: '257 70% 18%',
+    glassOpacity: '0.18',
+    glassBlur: '12px',
+    glassBorderOpacity: '0.2',
+    shadowElevation: '0 10px 30px -10px',
   };
 }
 

@@ -43,6 +43,14 @@
     --sidebar-accent-foreground: 210 10% 96%;
     --sidebar-border: 0 0% 10%;
     --sidebar-ring: 217 91% 60%;
+
+    /* Gradient + Glass + Elevation tokens */
+    --gradient-from: 217 60% 10%;
+    --gradient-to: 257 70% 18%;
+    --glass-opacity: 0.18;
+    --glass-blur: 12px;
+    --glass-border-opacity: 0.2;
+    --shadow-elevation: 0 10px 30px -10px;
     
     /* Hero Light Background Mode - Vibrant Purple Accent */
     --hero-text: 220 15% 20%;
@@ -464,4 +472,48 @@ body[style*="margin-right"] {
 .sp-stack {
   border-radius: 0 !important;
   overflow: hidden !important;
+}
+
+/* ─── Gradient + Glass + Elevation Utility Classes ─────────────── */
+
+/* Glass surface — adapts to vibe via CSS vars */
+.glass {
+  background-color: hsl(var(--card) / var(--glass-opacity));
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid hsl(var(--border) / var(--glass-border-opacity));
+}
+
+/* Elevated card with vibe-tinted shadow */
+.card-elevated {
+  box-shadow: var(--shadow-elevation) hsl(var(--primary) / 0.4);
+}
+
+/* Gradient background — derived from primary hue */
+.bg-vibe-gradient {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--gradient-from)),
+    hsl(var(--gradient-to))
+  );
+}
+
+/* Gradient overlay — prevents overpowering readability */
+.bg-vibe-gradient-muted::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: hsl(var(--background) / 0.6);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Smooth theme transitions — intentional feel */
+.theme-transition,
+.theme-transition * {
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
 }
