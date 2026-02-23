@@ -632,7 +632,17 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Request failed: ${response.status}`);
+        const errorMsg = errorData.error || `Request failed: ${response.status}`;
+        
+        // Special handling for credit-related errors
+        if (response.status === 402 || errorMsg === 'INSUFFICIENT_CREDITS') {
+          const creditError = new Error(`INSUFFICIENT_CREDITS: ${errorData.message || 'You don\'t have enough credits for this generation. Please top up to continue.'}`);
+          setState(prev => ({ ...prev, isStreaming: false, error: creditError.message }));
+          options.onError?.(creditError);
+          return lastGoodCodeRef.current;
+        }
+        
+        throw new Error(errorMsg);
       }
 
       const contentType = response.headers.get('Content-Type') || '';

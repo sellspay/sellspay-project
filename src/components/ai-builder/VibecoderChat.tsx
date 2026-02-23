@@ -5,7 +5,6 @@ import { ChatInterface } from './VibecoderMessageBubble';
 import type { VibecoderMessage } from './hooks/useVibecoderProjects';
 import { motion } from 'framer-motion';
 import { ChatInputBar, type AIModel } from './ChatInputBar';
-import { useUserCredits } from '@/hooks/useUserCredits';
 import { type AgentStep } from './AgentProgress';
 import { LiveThought } from './LiveThought';
 import { StreamingPhaseCard, type StreamPhase, type StreamingPhaseData } from './StreamingPhaseCard';
@@ -33,6 +32,7 @@ interface VibecoderChatProps {
   activeModel?: AIModel;
   onModelChange?: (model: AIModel) => void;
   onOpenBilling?: () => void;
+  userCredits?: number;
   // activeStyle and onStyleChange removed — now managed by ThemeProvider
   pendingPlan?: { plan: PlanData; originalPrompt: string } | null;
   onApprovePlan?: (originalPrompt: string) => void;
@@ -164,6 +164,7 @@ export function VibecoderChat({
   onSkipClarification,
   isCollapsed,
   onToggleCollapse,
+  userCredits = 0,
 }: VibecoderChatProps) {
   const { presetId } = useTheme();
   const [input, setInput] = useState('');
@@ -193,9 +194,6 @@ export function VibecoderChat({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isStreaming]);
-
-  // User credits hook
-  const { credits: userCredits } = useUserCredits();
 
   const handleSubmit = (options: { 
     isPlanMode: boolean; 
