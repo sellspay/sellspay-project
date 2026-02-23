@@ -60,7 +60,7 @@ export function useBackgroundGeneration({
 
   // Stale job timeout ref
   const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const STALE_JOB_TIMEOUT_MS = 120_000; // 2 minutes
+  const STALE_JOB_TIMEOUT_MS = 200_000; // 3m20s — must exceed backend's max 180s timeout for first builds
 
   // Subscribe to realtime updates for this project's jobs
   useEffect(() => {

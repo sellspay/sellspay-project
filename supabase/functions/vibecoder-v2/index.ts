@@ -769,6 +769,8 @@ Before writing code, structure your response with these section markers:
 <1 sentence reason for this confidence level>
 
 IMPORTANT: Always include ALL five sections (ANALYSIS, PLAN, CODE, SUMMARY, CONFIDENCE).
+However, for FIRST-TIME BUILDS (when there is no existing code), you may SKIP the ANALYSIS and PLAN sections to save time.
+In that case, go directly to === CODE ===, then === SUMMARY ===, then === CONFIDENCE ===.
 The === markers must be on their own line exactly as shown.
 CONFIDENCE must be a number 0-100 on its own line, followed by a reason on the next line.
 
@@ -951,7 +953,7 @@ All fixed! Contact's back in place."
 - "Certainly..."
 - "I'll generate..."
 
-IMPORTANT: Every response must also be wrapped in the structured sections (ANALYSIS → PLAN → CODE → SUMMARY → CONFIDENCE).
+IMPORTANT: Every response must also be wrapped in the structured sections. For EDITS: ANALYSIS → PLAN → CODE → SUMMARY → CONFIDENCE. For FIRST BUILDS (no existing code): CODE → SUMMARY → CONFIDENCE (skip ANALYSIS and PLAN to maximize code quality).
 
 ═══════════════════════════════════════════════════════════════
 DETAILED RESPONSE PROTOCOL (MANDATORY)
@@ -1473,9 +1475,10 @@ If the request says "change X", change ONLY X and nothing else.
         content: `${intentInjection}${microInjection}${creatorInjection}${productsInjection}${resolvedTargetContext}${minimalDiffReminder}${codeContext}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
       });
     } else {
+      // First build (REPLACE mode) — skip ANALYSIS/PLAN to reduce token burden and avoid timeouts
       messages.push({
         role: "user",
-        content: `${intentInjection}${creatorInjection}${productsInjection}Create a complete storefront with this description: ${prompt}`,
+        content: `${intentInjection}${creatorInjection}${productsInjection}Create a complete storefront with this description: ${prompt}\n\nIMPORTANT: This is a FIRST BUILD — skip the ANALYSIS and PLAN sections. Go directly to === CODE ===, then === SUMMARY ===, then === CONFIDENCE ===. Focus all tokens on generating high-quality code.`,
       });
     }
   }
@@ -1884,8 +1887,10 @@ serve(async (req) => {
           }
         }, 10_000);
         
-        // Hard timeout: 90s for job-backed, 60s otherwise
-        const timeoutMs = jobId ? 90_000 : 60_000;
+        // Hard timeout: 180s for first builds (REPLACE mode), 120s for job-backed edits, 60s otherwise
+        const isFirstBuild = !currentCode?.trim();
+        const timeoutMs = isFirstBuild ? 180_000 : jobId ? 120_000 : 60_000;
+        console.log(`[Streaming] Timeout set to ${timeoutMs / 1000}s (firstBuild=${isFirstBuild}, jobBacked=${!!jobId})`);
         const streamTimeout = setTimeout(() => {
           console.error("[Streaming] Hard timeout reached");
           const payload = `event: error\ndata: ${JSON.stringify({ code: "STREAM_TIMEOUT", message: "Generation timed out. Please retry with a simpler request." })}\n\n`;
