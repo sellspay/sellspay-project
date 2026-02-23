@@ -1,7 +1,13 @@
-// Style Design Presets for AI Builder
-// These presets inject visual design instructions into the AI prompt
+// Bridge file: re-exports from the new theme engine for backward compatibility
+// All theme logic lives in src/lib/theme/
 
-export interface StyleColors {
+import { type ThemeTokens, type ThemePreset, THEME_PRESETS, NO_THEME_PRESET, DEFAULT_THEME } from '@/lib/theme';
+
+/**
+ * Legacy StyleColors type — maps CSS variable names to HSL strings.
+ * New code should use ThemeTokens from @/lib/theme instead.
+ */
+export type StyleColors = {
   primary: string;
   'primary-foreground': string;
   secondary: string;
@@ -26,6 +32,66 @@ export interface StyleColors {
   'chart-3': string;
   'chart-4': string;
   'chart-5': string;
+};
+
+/** Convert ThemeTokens (camelCase) to StyleColors (kebab-case) */
+function tokensToStyleColors(tokens: ThemeTokens): StyleColors {
+  return {
+    primary: tokens.primary,
+    'primary-foreground': tokens.primaryForeground,
+    secondary: tokens.secondary,
+    'secondary-foreground': tokens.secondaryForeground,
+    accent: tokens.accent,
+    'accent-foreground': tokens.accentForeground,
+    background: tokens.background,
+    foreground: tokens.foreground,
+    card: tokens.card,
+    'card-foreground': tokens.cardForeground,
+    popover: tokens.popover,
+    'popover-foreground': tokens.popoverForeground,
+    muted: tokens.muted,
+    'muted-foreground': tokens.mutedForeground,
+    destructive: tokens.destructive,
+    'destructive-foreground': tokens.destructiveForeground,
+    border: tokens.border,
+    input: tokens.input,
+    ring: tokens.ring,
+    'chart-1': tokens.chart1,
+    'chart-2': tokens.chart2,
+    'chart-3': tokens.chart3,
+    'chart-4': tokens.chart4,
+    'chart-5': tokens.chart5,
+  };
+}
+
+/** Convert StyleColors (kebab-case) to ThemeTokens (camelCase) */
+export function styleColorsToTokens(colors: StyleColors): ThemeTokens {
+  return {
+    background: colors.background,
+    foreground: colors.foreground,
+    primary: colors.primary,
+    primaryForeground: colors['primary-foreground'],
+    secondary: colors.secondary,
+    secondaryForeground: colors['secondary-foreground'],
+    accent: colors.accent,
+    accentForeground: colors['accent-foreground'],
+    card: colors.card,
+    cardForeground: colors['card-foreground'],
+    popover: colors.popover,
+    popoverForeground: colors['popover-foreground'],
+    muted: colors.muted,
+    mutedForeground: colors['muted-foreground'],
+    destructive: colors.destructive,
+    destructiveForeground: colors['destructive-foreground'],
+    border: colors.border,
+    input: colors.input,
+    ring: colors.ring,
+    chart1: colors['chart-1'],
+    chart2: colors['chart-2'],
+    chart3: colors['chart-3'],
+    chart4: colors['chart-4'],
+    chart5: colors['chart-5'],
+  };
 }
 
 export interface StylePreset {
@@ -39,199 +105,23 @@ export interface StylePreset {
   icon: 'moon' | 'zap' | 'sun' | 'leaf' | 'waves' | 'sparkles' | 'palette';
 }
 
-function makeColors(partial: Partial<StyleColors>): StyleColors {
+/** Convert ThemePreset to legacy StylePreset */
+function themeToStylePreset(tp: ThemePreset): StylePreset {
   return {
-    primary: '#8b5cf6',
-    'primary-foreground': '#ffffff',
-    secondary: '#27272a',
-    'secondary-foreground': '#fafafa',
-    accent: '#a78bfa',
-    'accent-foreground': '#ffffff',
-    background: '#09090b',
-    foreground: '#fafafa',
-    card: '#18181b',
-    'card-foreground': '#fafafa',
-    popover: '#18181b',
-    'popover-foreground': '#fafafa',
-    muted: '#27272a',
-    'muted-foreground': '#a1a1aa',
-    destructive: '#ef4444',
-    'destructive-foreground': '#ffffff',
-    border: '#27272a',
-    input: '#27272a',
-    ring: '#8b5cf6',
-    'chart-1': '#8b5cf6',
-    'chart-2': '#3b82f6',
-    'chart-3': '#06b6d4',
-    'chart-4': '#10b981',
-    'chart-5': '#f59e0b',
-    ...partial,
+    id: tp.id,
+    name: tp.name,
+    description: tp.description,
+    colors: tokensToStyleColors(tp.tokens),
+    backgroundStyle: tp.backgroundStyle,
+    cardStyle: tp.cardStyle,
+    typography: tp.typography,
+    icon: tp.icon,
   };
 }
 
-// Special "None" preset that represents no style override
-export const NO_STYLE_PRESET: StylePreset = {
-  id: 'none',
-  name: 'Current Theme',
-  description: 'Your existing design',
-  colors: makeColors({}),
-  backgroundStyle: '',
-  cardStyle: '',
-  typography: '',
-  icon: 'palette',
-};
+export const NO_STYLE_PRESET: StylePreset = themeToStylePreset(NO_THEME_PRESET);
 
-export const STYLE_PRESETS: StylePreset[] = [
-  NO_STYLE_PRESET,
-  {
-    id: 'midnight-luxury',
-    name: 'Midnight Luxury',
-    description: 'Dark mode with violet accents',
-    colors: makeColors({
-      primary: '#8b5cf6',
-      'primary-foreground': '#ffffff',
-      accent: '#a78bfa',
-      'accent-foreground': '#ffffff',
-      background: '#0a0a0f',
-      foreground: '#ffffff',
-      card: '#1a1a2e',
-      'card-foreground': '#ffffff',
-      muted: '#27273a',
-      'muted-foreground': '#a1a1bb',
-      border: '#2a2a4a',
-      ring: '#8b5cf6',
-    }),
-    backgroundStyle: 'Glassmorphism overlays with backdrop-blur-xl, subtle gradient meshes, border border-white/10',
-    cardStyle: 'bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl shadow-violet-500/10',
-    typography: 'Clean sans-serif (Inter/Geist), high contrast white on dark, elegant letter-spacing',
-    icon: 'moon',
-  },
-  {
-    id: 'neon-cyberpunk',
-    name: 'Neon Cyberpunk',
-    description: 'Bold neon on dark',
-    colors: makeColors({
-      primary: '#00ff88',
-      'primary-foreground': '#0f0f0f',
-      accent: '#ff00ff',
-      'accent-foreground': '#ffffff',
-      background: '#0f0f0f',
-      foreground: '#ffffff',
-      card: '#1a1a1a',
-      'card-foreground': '#ffffff',
-      muted: '#2a2a2a',
-      'muted-foreground': '#888888',
-      border: '#333333',
-      ring: '#00ff88',
-      'chart-1': '#00ff88',
-      'chart-2': '#ff00ff',
-      'chart-3': '#00ffff',
-      'chart-4': '#ffff00',
-      'chart-5': '#ff6600',
-    }),
-    backgroundStyle: 'Gradient meshes with neon glow effects, animated gradients, grid patterns',
-    cardStyle: 'bg-black/80 border border-[#00ff88]/30 rounded-lg shadow-[0_0_30px_rgba(0,255,136,0.2)]',
-    typography: 'Bold condensed fonts (Orbitron/Rajdhani), glowing text effects, uppercase headers',
-    icon: 'zap',
-  },
-  {
-    id: 'clean-minimal',
-    name: 'Clean Minimal',
-    description: 'Light, spacious, professional',
-    colors: makeColors({
-      primary: '#1a1a1a',
-      'primary-foreground': '#ffffff',
-      secondary: '#f5f5f5',
-      'secondary-foreground': '#171717',
-      accent: '#3b82f6',
-      'accent-foreground': '#ffffff',
-      background: '#ffffff',
-      foreground: '#171717',
-      card: '#ffffff',
-      'card-foreground': '#171717',
-      popover: '#ffffff',
-      'popover-foreground': '#171717',
-      muted: '#f5f5f5',
-      'muted-foreground': '#737373',
-      border: '#e5e5e5',
-      input: '#e5e5e5',
-      ring: '#3b82f6',
-    }),
-    backgroundStyle: 'Pure white with subtle shadows, lots of whitespace, no gradients',
-    cardStyle: 'bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-shadow',
-    typography: 'System fonts (Inter/SF Pro), generous line-height, minimal weight contrast',
-    icon: 'sun',
-  },
-  {
-    id: 'warm-earth',
-    name: 'Warm Earth',
-    description: 'Natural, organic tones',
-    colors: makeColors({
-      primary: '#8b6f47',
-      'primary-foreground': '#ffffff',
-      accent: '#c9a66b',
-      'accent-foreground': '#3d2914',
-      background: '#faf7f2',
-      foreground: '#3d2914',
-      card: '#f5efe6',
-      'card-foreground': '#3d2914',
-      muted: '#ede5d8',
-      'muted-foreground': '#8b7355',
-      border: '#e8dcc8',
-      ring: '#8b6f47',
-    }),
-    backgroundStyle: 'Soft cream textures, paper-like backgrounds, organic noise patterns',
-    cardStyle: 'bg-[#f5efe6] border border-[#e8dcc8] rounded-xl shadow-warm',
-    typography: 'Serif fonts (Playfair/Merriweather) for headings, warm brown tones',
-    icon: 'leaf',
-  },
-  {
-    id: 'ocean-breeze',
-    name: 'Ocean Breeze',
-    description: 'Cool blues and teals',
-    colors: makeColors({
-      primary: '#0ea5e9',
-      'primary-foreground': '#ffffff',
-      accent: '#06b6d4',
-      'accent-foreground': '#ffffff',
-      background: '#f0f9ff',
-      foreground: '#0c4a6e',
-      card: '#ffffff',
-      'card-foreground': '#0c4a6e',
-      muted: '#e0f2fe',
-      'muted-foreground': '#64748b',
-      border: '#bae6fd',
-      ring: '#0ea5e9',
-    }),
-    backgroundStyle: 'Gentle blue gradients, wave patterns, soft flowing shapes',
-    cardStyle: 'bg-white/80 backdrop-blur-sm border border-sky-100 rounded-2xl shadow-sky-100/50',
-    typography: 'Modern sans-serif (Plus Jakarta/DM Sans), cool blue accents on text',
-    icon: 'waves',
-  },
-  {
-    id: 'retro-pop',
-    name: 'Retro Pop',
-    description: 'Vintage 80s aesthetic',
-    colors: makeColors({
-      primary: '#f97316',
-      'primary-foreground': '#ffffff',
-      accent: '#ec4899',
-      'accent-foreground': '#ffffff',
-      background: '#fef3c7',
-      foreground: '#451a03',
-      card: '#ffffff',
-      'card-foreground': '#451a03',
-      muted: '#fde68a',
-      'muted-foreground': '#92400e',
-      border: '#fbbf24',
-      ring: '#f97316',
-    }),
-    backgroundStyle: 'Geometric patterns, Memphis design elements, bold color blocks',
-    cardStyle: 'bg-white border-2 border-black rounded-none shadow-[4px_4px_0_0_#000]',
-    typography: 'Bold display fonts (Space Grotesk/Archivo Black), playful uppercase, thick strokes',
-    icon: 'sparkles',
-  },
-];
+export const STYLE_PRESETS: StylePreset[] = THEME_PRESETS.map(themeToStylePreset);
 
 /**
  * Generate a style context string to inject into the AI prompt
@@ -266,7 +156,7 @@ ${style.cardStyle}
 ✏️ TYPOGRAPHY:
 ${style.typography}
 
-CRITICAL: Always use semantic Tailwind color classes (bg-primary, text-foreground, bg-card, border-border, etc.) instead of hardcoded color values. This ensures the theme system works correctly. The CSS custom properties are already configured.
+CRITICAL: Always use semantic Tailwind color classes (bg-primary, text-foreground, bg-card, border-border, etc.) instead of hardcoded color values like bg-gray-900, text-white, bg-black, text-zinc-400. This ensures the theme system works correctly. The CSS custom properties are already configured with HSL values.
 `;
 }
 

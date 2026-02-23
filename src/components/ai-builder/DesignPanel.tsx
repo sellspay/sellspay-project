@@ -5,6 +5,7 @@ import { STYLE_PRESETS, type StylePreset, type StyleColors } from "./stylePreset
 import { cn } from "@/lib/utils";
 import { VisualEditPanel, type SelectedElement } from "./VisualEditOverlay";
 import { ThemeEditorDialog } from "./ThemeEditorDialog";
+import { hexToHSL } from "@/lib/theme";
 
 type DesignView = 'home' | 'themes' | 'visual-edits';
 
@@ -19,7 +20,7 @@ interface DesignPanelProps {
 // Color dot row for a style preset
 function StyleDots({ style }: { style: StylePreset }) {
   const colors = style.id === 'none'
-    ? ['#333', '#555', '#000', '#1a1a1a', '#fff']
+    ? ['0 0% 20%', '0 0% 33%', '0 0% 0%', '0 0% 10%', '0 0% 100%']
     : [style.colors.primary, style.colors.accent, style.colors.background, style.colors.card, style.colors.foreground];
   return (
     <div className="flex items-center gap-1">
@@ -27,7 +28,7 @@ function StyleDots({ style }: { style: StylePreset }) {
         <div
           key={i}
           className="w-4 h-4 rounded-full border border-white/10"
-          style={{ backgroundColor: c }}
+          style={{ backgroundColor: `hsl(${c})` }}
         />
       ))}
     </div>
@@ -51,7 +52,13 @@ export function DesignPanel({ activeStyle, onStyleChange, onVisualEditModeChange
     const handler = (event: MessageEvent) => {
       const msg = event.data;
       if (!msg || msg.type !== 'VIBECODER_COLORS_EXTRACTED') return;
-      setExtractedColors(msg.colors as StyleColors);
+      // Convert hex values from iframe to HSL strings
+      const raw = msg.colors as Record<string, string>;
+      const converted: Record<string, string> = {};
+      for (const [key, val] of Object.entries(raw)) {
+        converted[key] = val?.startsWith('#') ? hexToHSL(val) : (val || '0 0% 0%');
+      }
+      setExtractedColors(converted as StyleColors);
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
