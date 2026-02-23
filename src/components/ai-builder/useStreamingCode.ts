@@ -1,13 +1,19 @@
-import { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ProjectFiles } from './VibecoderPreview';
 import { safeApply, saveSnapshot, isMicroEdit as detectMicroEdit, type GuardrailMode } from './codeGuardrails';
 
 /**
  * Persist the last valid files snapshot to the database.
+ * Persist the last valid files snapshot to the database.
  * Called ONLY after guardrails pass inside atomic commit paths.
+ * Also transitions hasDbSnapshotRef to true (self-transitioning lifecycle).
  */
-async function persistLastValidFiles(projectId: string | null, files: ProjectFiles): Promise<void> {
+async function persistLastValidFiles(
+  projectId: string | null,
+  files: ProjectFiles,
+  hasDbSnapshotRef?: React.MutableRefObject<boolean>,
+): Promise<void> {
   if (!projectId || !files || Object.keys(files).length === 0) return;
   try {
     const { error } = await supabase
@@ -18,6 +24,8 @@ async function persistLastValidFiles(projectId: string | null, files: ProjectFil
       console.warn('[persistLastValidFiles] DB write failed:', error.message);
     } else {
       console.log('[persistLastValidFiles] ✅ Snapshot persisted to DB for project:', projectId);
+      // Self-transition: future generations will use 'edit' mode
+      if (hasDbSnapshotRef) hasDbSnapshotRef.current = true;
     }
   } catch (e) {
     console.warn('[persistLastValidFiles] Exception:', e);
@@ -81,6 +89,8 @@ interface UseStreamingCodeOptions {
   onQuestions?: (questions: Array<{ id: string; label: string; type: 'single' | 'multi'; options: Array<{ value: string; label: string }> }>, enhancedPromptSeed?: string) => void;
   /** Project ID for persisting snapshots to DB */
   activeProjectId?: string | null;
+  /** DB-driven signal: true when project has a persisted last_valid_files snapshot */
+  hasDbSnapshotRef?: React.MutableRefObject<boolean>;
 }
 
 interface ProductContext {
@@ -782,7 +792,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
             if (appCode) lastGoodCodeRef.current = appCode;
             setState(prev => ({ ...prev, files: sanitizedFiles, code: appCode || prev.code }));
             lastValidFilesRef.current = { ...sanitizedFiles };
-            persistLastValidFiles(options.activeProjectId ?? null, sanitizedFiles);
+            persistLastValidFiles(options.activeProjectId ?? null, sanitizedFiles, options.hasDbSnapshotRef);
             receivedFiles = true;
             options.onComplete?.(appCode);
             return appCode || '__MULTI_FILE_COMMITTED__';
@@ -839,7 +849,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
             if (appCode) lastGoodCodeRef.current = appCode;
             setState(prev => ({ ...prev, files: sanitizedFiles, code: appCode || prev.code }));
             lastValidFilesRef.current = { ...sanitizedFiles };
-            persistLastValidFiles(options.activeProjectId ?? null, sanitizedFiles);
+            persistLastValidFiles(options.activeProjectId ?? null, sanitizedFiles, options.hasDbSnapshotRef);
             receivedFiles = true;
             options.onComplete?.(appCode);
             return appCode || '__MULTI_FILE_COMMITTED__';
@@ -931,14 +941,16 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       let streamingCodeBuffer = '';
       let receivedFiles = false;
       let guardrailsRejected = false; // STRICT: when true, NO fallback path may commit code
-      // Determine guardrail mode: 'replace' for first generation (no snapshot), 'edit' otherwise
-      const guardrailMode: GuardrailMode = (!lastValidFilesRef.current || Object.keys(lastValidFilesRef.current).length === 0) ? 'replace' : 'edit';
+      // Determine guardrail mode from DB snapshot existence (authoritative signal),
+      // NOT from in-memory lastValidFilesRef which can have scaffold files.
+      const hasDbSnapshot = options.hasDbSnapshotRef?.current ?? false;
+      const guardrailMode: GuardrailMode = hasDbSnapshot ? 'edit' : 'replace';
       // JOB-BACKED RUN DETECTION: When jobId is present, the atomic event:files handler
       // is the SOLE authority for success/failure. SSE error events and post-stream
       // validation become display-only (logged but do not emit onError or change state).
       const isJobBackedRun = !!jobId;
       if (guardrailMode === 'replace') {
-        console.log('🔓 Guardrail mode: REPLACE (first generation — no snapshot exists)');
+        console.log('🔓 Guardrail mode: REPLACE (first generation — no DB snapshot exists)');
       }
       if (isJobBackedRun) {
         console.log('🔒 Job-backed run: SSE validation is display-only. Atomic handler is sole authority.');
@@ -1011,7 +1023,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                     }
                     // ✅ LAST VALID SNAPSHOT: Atomic commit passed guardrails
                     lastValidFilesRef.current = { ...sanitizedFiles };
-                    persistLastValidFiles(options.activeProjectId ?? null, sanitizedFiles);
+                    persistLastValidFiles(options.activeProjectId ?? null, sanitizedFiles, options.hasDbSnapshotRef);
                     options.onComplete?.(appCode);
                     receivedFiles = true;
                   }
@@ -1062,7 +1074,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                         if (appCode) lastGoodCodeRef.current = appCode;
                         // ✅ LAST VALID SNAPSHOT: code_chunk JSON commit passed guardrails
                         lastValidFilesRef.current = { ...mergedJsonFiles };
-                        persistLastValidFiles(options.activeProjectId ?? null, mergedJsonFiles);
+                        persistLastValidFiles(options.activeProjectId ?? null, mergedJsonFiles, options.hasDbSnapshotRef);
                         options.onComplete?.(appCode);
                         receivedFiles = true;
                         streamingCodeBuffer = '';
@@ -1380,7 +1392,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       // ✅ LAST VALID SNAPSHOT: Legacy single-file commit passed guardrails — ONLY valid snapshot location
       const finalFiles = codeToFiles(finalCode);
       lastValidFilesRef.current = finalFiles;
-      persistLastValidFiles(options.activeProjectId ?? null, finalFiles);
+      persistLastValidFiles(options.activeProjectId ?? null, finalFiles, options.hasDbSnapshotRef);
       setState(prev => ({ ...prev, isStreaming: false, code: finalCode }));
       options.onComplete?.(finalCode);
 

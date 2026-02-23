@@ -31,6 +31,9 @@ interface UseProjectHydrationOptions {
   activeJobIdRef: React.MutableRefObject<string | null>;
   pendingSummaryRef: React.MutableRefObject<string>;
 
+  // DB-driven guardrail mode ref (owned by parent, populated here)
+  hasDbSnapshotRef: React.MutableRefObject<boolean>;
+
   // Parent state reset callbacks
   onResetTransientState: () => void;
   onIncrementResetKey: () => void;
@@ -66,6 +69,7 @@ export function useProjectHydration({
   generationLockRef,
   activeJobIdRef,
   pendingSummaryRef,
+  hasDbSnapshotRef,
   onResetTransientState,
   onIncrementResetKey,
   onIncrementRefreshKey,
@@ -126,6 +130,7 @@ export function useProjectHydration({
     setContentProjectId(null);
     setIsVerifyingProject(true);
     loadingProjectRef.current = activeProjectId;
+    hasDbSnapshotRef.current = false; // Reset until DB fetch confirms
 
     // ✅ STEP 1: Run the unified cleanup gate
     cleanupProjectRuntime();
@@ -208,6 +213,8 @@ export function useProjectHydration({
   const dbLastValidFilesRef = useRef<Record<string, string> | null>(null);
   const [dbSnapshotReady, setDbSnapshotReady] = useState(false);
 
+  // hasDbSnapshotRef is now passed in from parent (owned by AIBuilderCanvas)
+
   // Fetch stable snapshot from DB when project is verified
   useEffect(() => {
     if (!activeProjectId) {
@@ -232,8 +239,10 @@ export function useProjectHydration({
       if (cancelled) return;
       if (data?.last_valid_files && typeof data.last_valid_files === 'object') {
         dbLastValidFilesRef.current = data.last_valid_files as Record<string, string>;
+        hasDbSnapshotRef.current = true;
       } else {
         dbLastValidFilesRef.current = null;
+        hasDbSnapshotRef.current = false;
       }
       setDbSnapshotReady(true);
     };
