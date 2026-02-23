@@ -288,6 +288,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     getLastValidSnapshot,
     DEFAULT_CODE 
   } = useStreamingCode({
+    activeProjectId,
     onPhaseChange: (phase) => {
       // Reset phase data at the start of a new generation
       if (phase === 'analyzing') {

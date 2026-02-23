@@ -2,6 +2,27 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ProjectFiles } from './VibecoderPreview';
 import { safeApply, saveSnapshot, isMicroEdit as detectMicroEdit } from './codeGuardrails';
+
+/**
+ * Persist the last valid files snapshot to the database.
+ * Called ONLY after guardrails pass inside atomic commit paths.
+ */
+async function persistLastValidFiles(projectId: string | null, files: ProjectFiles): Promise<void> {
+  if (!projectId || !files || Object.keys(files).length === 0) return;
+  try {
+    const { error } = await supabase
+      .from('vibecoder_projects')
+      .update({ last_valid_files: files as any })
+      .eq('id', projectId);
+    if (error) {
+      console.warn('[persistLastValidFiles] DB write failed:', error.message);
+    } else {
+      console.log('[persistLastValidFiles] ✅ Snapshot persisted to DB for project:', projectId);
+    }
+  } catch (e) {
+    console.warn('[persistLastValidFiles] Exception:', e);
+  }
+}
 /**
  * Completion sentinel that MUST be present in every AI-generated code block.
  * If missing, the output is considered truncated.
@@ -58,6 +79,8 @@ interface UseStreamingCodeOptions {
   // 2-Stage Analyzer Pipeline callbacks
   onSuggestions?: (suggestions: Array<{ label: string; prompt: string }>) => void;
   onQuestions?: (questions: Array<{ id: string; label: string; type: 'single' | 'multi'; options: Array<{ value: string; label: string }> }>, enhancedPromptSeed?: string) => void;
+  /** Project ID for persisting snapshots to DB */
+  activeProjectId?: string | null;
 }
 
 interface ProductContext {
@@ -916,8 +939,9 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                     if (appCode) {
                       lastGoodCodeRef.current = appCode;
                     }
-                    // ✅ LAST VALID SNAPSHOT: Atomic commit passed guardrails
+                    // ✅ LAST VALID SNAPSHOT: Atomic commit passed guardrails — ONLY valid snapshot location
                     lastValidFilesRef.current = { ...sanitizedFiles };
+                    persistLastValidFiles(options.activeProjectId ?? null, sanitizedFiles);
                     options.onComplete?.(appCode);
                     receivedFiles = true;
                   }
@@ -960,8 +984,9 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                         }
                         setState(prev => ({ ...prev, files: jsonFiles, code: '' }));
                         if (appCode) lastGoodCodeRef.current = appCode;
-                        // ✅ LAST VALID SNAPSHOT: code_chunk JSON commit passed guardrails
+                        // ✅ LAST VALID SNAPSHOT: code_chunk JSON commit passed guardrails — ONLY valid snapshot location
                         lastValidFilesRef.current = { ...jsonFiles };
+                        persistLastValidFiles(options.activeProjectId ?? null, jsonFiles);
                         options.onComplete?.(appCode);
                         receivedFiles = true;
                         streamingCodeBuffer = '';
@@ -1244,8 +1269,10 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
       lastGoodCodeRef.current = finalCode;
       preResetCodeRef.current = null; // Clear backup — real code accepted
-      // ✅ LAST VALID SNAPSHOT: Legacy single-file commit passed guardrails
-      lastValidFilesRef.current = codeToFiles(finalCode);
+      // ✅ LAST VALID SNAPSHOT: Legacy single-file commit passed guardrails — ONLY valid snapshot location
+      const finalFiles = codeToFiles(finalCode);
+      lastValidFilesRef.current = finalFiles;
+      persistLastValidFiles(options.activeProjectId ?? null, finalFiles);
       setState(prev => ({ ...prev, isStreaming: false, code: finalCode }));
       options.onComplete?.(finalCode);
 
@@ -1380,8 +1407,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
 
     lastGoodCodeRef.current = codeWithoutSentinel;
     preResetCodeRef.current = null; // Clear backup since we have real code now
-    // ✅ LAST VALID SNAPSHOT: setCode (DB restore) passed validation
-    lastValidFilesRef.current = codeToFiles(codeWithoutSentinel);
+    // ⚠️ setCode is NOT a snapshot location — only atomic commits update lastValidFilesRef
     setState(prev => ({ ...prev, code: codeWithoutSentinel, files: codeToFiles(codeWithoutSentinel), error: null }));
   }, []);
 
@@ -1392,8 +1418,7 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
       lastGoodCodeRef.current = stripCompleteSentinel(appCode);
       preResetCodeRef.current = null; // Clear backup since we have real code now
     }
-    // ✅ LAST VALID SNAPSHOT: setFiles (DB restore) accepted
-    lastValidFilesRef.current = { ...files };
+    // ⚠️ setFiles is NOT a snapshot location — only atomic commits update lastValidFilesRef
     setState(prev => ({ ...prev, files, code: appCode || prev.code, error: null }));
   }, []);
 

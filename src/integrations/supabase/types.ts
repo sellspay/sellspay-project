@@ -3364,6 +3364,7 @@ export type Database = {
           is_starred: boolean
           last_edited_at: string
           last_success_at: string | null
+          last_valid_files: Json | null
           name: string | null
           thumbnail_url: string | null
           updated_at: string
@@ -3377,6 +3378,7 @@ export type Database = {
           is_starred?: boolean
           last_edited_at?: string
           last_success_at?: string | null
+          last_valid_files?: Json | null
           name?: string | null
           thumbnail_url?: string | null
           updated_at?: string
@@ -3390,6 +3392,7 @@ export type Database = {
           is_starred?: boolean
           last_edited_at?: string
           last_success_at?: string | null
+          last_valid_files?: Json | null
           name?: string | null
           thumbnail_url?: string | null
           updated_at?: string
