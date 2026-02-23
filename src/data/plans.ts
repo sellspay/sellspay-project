@@ -33,12 +33,13 @@ export const PLANS: PlanData[] = [
       { text: "Sell Digital Products & Subs", included: true },
       { text: "Buy from Marketplace", included: true },
       { text: "Community Access", included: true },
-      { text: "VibeCoder AI Builder", included: false },
-      { text: "AI Image Generation", included: false },
-      { text: "AI Video Generation", included: false },
+      { text: "5 Monthly Credits", included: true },
+      { text: "SellsPay Badge Required", isNeutral: true },
+      { text: "VibeCoder (Flash Models)", included: false },
+      { text: "AI Image & Video Generation", included: false },
       { text: "10% Transaction Fee", isNeutral: true },
     ],
-    credits: 0,
+    credits: 5,
     modelTier: null,
   },
   {
@@ -52,13 +53,14 @@ export const PLANS: PlanData[] = [
     features: [
       { text: "Everything in Starter", included: true },
       { text: "VibeCoder (Flash Models)", included: true, highlight: true },
-      { text: "500 Monthly Credits", included: true },
+      { text: "100 Monthly Credits", included: true },
       { text: "Manual Model Selection", included: true },
+      { text: "Remove SellsPay Badge", included: true },
+      { text: "On-Demand Credit Top-Ups", included: true },
       { text: "Pro Models (GPT-5, Gemini Pro)", included: false },
-      { text: "Image & Video Generation", included: false },
       { text: "8% Transaction Fee", isNeutral: true },
     ],
-    credits: 500,
+    credits: 100,
     modelTier: 'flash',
   },
   {
@@ -74,11 +76,12 @@ export const PLANS: PlanData[] = [
       { text: "Pro Models (GPT-5, Gemini 3 Pro)", included: true, highlight: true },
       { text: "AI Image Generation", included: true, highlight: true },
       { text: "Auto-Model Selection", included: true },
-      { text: "2,500 Monthly Credits", included: true },
+      { text: "500 Monthly Credits", included: true },
+      { text: "Credit Rollovers", included: true },
       { text: "Grey Verified Badge", included: true },
       { text: "5% Transaction Fee", isNeutral: true },
     ],
-    credits: 2500,
+    credits: 500,
     modelTier: 'pro',
   },
   {
@@ -94,12 +97,13 @@ export const PLANS: PlanData[] = [
       { text: "Flagship Models (GPT-5.2)", included: true, highlight: true },
       { text: "AI Video Generation", included: true, highlight: true },
       { text: "Full Auto-Model Access", included: true },
-      { text: "6,000 Monthly Credits", included: true },
+      { text: "1,500 Monthly Credits", included: true },
+      { text: "Credit Rollovers", included: true },
       { text: "Priority Processing", included: true },
       { text: "Gold Verified Badge", included: true, highlightColor: "text-amber-400" },
       { text: "0% Transaction Fees", highlightColor: "text-green-400" },
     ],
-    credits: 6000,
+    credits: 1500,
     modelTier: 'flagship',
   },
 ];
@@ -110,8 +114,8 @@ export const PLAN_FAQS = [
     a: "We use the absolute bleeding edge. Vibecoder is powered by Claude 3.5 Sonnet for code. Image generation uses Flux 1.1 Pro and Recraft V3. Video generation uses Kling AI and Luma Ray 2. We handle all the API costs."
   },
   {
-    q: "How far do 12,000 credits go?",
-    a: "A lot. That's enough for roughly 600 AI videos, OR 6,000 high-fidelity images, OR 4,000 code iterations. Most agencies can run their entire storefront design business on one subscription."
+    q: "How far do 1,500 credits go?",
+    a: "Quite far. That's enough for roughly 75 AI videos, OR 750 high-fidelity images, OR 500 code iterations. Most agencies can run their entire storefront design business on one subscription."
   },
   {
     q: "Can I cancel anytime?",

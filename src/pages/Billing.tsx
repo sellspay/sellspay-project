@@ -10,11 +10,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 const PLAN_META: Record<string, { label: string; color: string; credits: number }> = {
-  browser: { label: "Free", color: "text-zinc-400", credits: 0 },
-  starter: { label: "Starter", color: "text-zinc-400", credits: 0 },
-  basic: { label: "Basic", color: "text-emerald-400", credits: 500 },
-  creator: { label: "Creator", color: "text-violet-400", credits: 2500 },
-  agency: { label: "Agency", color: "text-amber-400", credits: 6000 },
+  browser: { label: "Free", color: "text-zinc-400", credits: 5 },
+  starter: { label: "Starter", color: "text-zinc-400", credits: 5 },
+  basic: { label: "Basic", color: "text-emerald-400", credits: 100 },
+  creator: { label: "Creator", color: "text-violet-400", credits: 500 },
+  agency: { label: "Agency", color: "text-amber-400", credits: 1500 },
 };
 
 export default function Billing() {
