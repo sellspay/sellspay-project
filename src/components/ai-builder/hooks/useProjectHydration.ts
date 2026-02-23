@@ -265,6 +265,8 @@ export function useProjectHydration({
     if (dbSnapshot && Object.keys(dbSnapshot).length > 0) {
       console.log('📦 Restoring from DB last_valid_files for project:', activeProjectId, `(${Object.keys(dbSnapshot).length} files)`);
       setFiles(dbSnapshot);
+      // 🔥 CRITICAL: Signal that a DB snapshot exists so guardrails use EDIT mode
+      hasDbSnapshotRef.current = true;
       hasRestoredCodeRef.current = activeProjectId;
     console.log('🚪 Opening content gate for project:', activeProjectId);
       setContentProjectId(activeProjectId);
