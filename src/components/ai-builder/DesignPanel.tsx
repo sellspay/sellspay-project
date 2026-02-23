@@ -46,7 +46,8 @@ function tokensToStyleColors(tokens: ThemeTokens): StyleColors {
   };
 }
 
-function styleColorsToTokens(colors: StyleColors): ThemeTokens {
+/** Extract only the color fields from StyleColors (no extended tokens) */
+function colorFieldsFromStyleColors(colors: StyleColors): Partial<ThemeTokens> {
   return {
     background: colors.background,
     foreground: colors.foreground,
@@ -72,21 +73,6 @@ function styleColorsToTokens(colors: StyleColors): ThemeTokens {
     chart3: colors['chart-3'],
     chart4: colors['chart-4'],
     chart5: colors['chart-5'],
-    gradientFrom: '217 60% 10%',
-    gradientTo: '257 70% 18%',
-    glassOpacity: '0.18',
-    glassBlur: '12px',
-    glassBorderOpacity: '0.2',
-    shadowElevation: '0 10px 30px -10px',
-    fontHeading: "'Inter', sans-serif",
-    fontBody: "'Inter', sans-serif",
-    fontWeightHeading: '600',
-    letterSpacingHeading: '0.01em',
-    radiusScale: '0.75rem',
-    transitionSpeed: '200ms',
-    sectionPadding: '80px',
-    textureOverlay: 'noise',
-    ctaStyle: 'default',
   };
 }
 
@@ -302,12 +288,19 @@ export function DesignPanel({ onVisualEditModeChange, selectedElement, onEditReq
             }}
             style={editingStylePreset}
             onApply={(updated) => {
-              const tokens = styleColorsToTokens(updated.colors);
+              // Merge edited colors with current extended tokens to preserve gradient/glass/font/radius settings
+              const tokens: ThemeTokens = {
+                ...theme,
+                ...colorFieldsFromStyleColors(updated.colors),
+              };
               setTheme(tokens, updated.id);
               setEditingStylePreset(null);
             }}
             onLivePreview={(colors) => {
-              const tokens = styleColorsToTokens(colors);
+              const tokens: ThemeTokens = {
+                ...theme,
+                ...colorFieldsFromStyleColors(colors),
+              };
               previewTheme(tokens);
             }}
           />
