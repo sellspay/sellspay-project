@@ -330,6 +330,37 @@ function validateAllFilesServer(files: Record<string, string>): { valid: boolean
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SERVER-SIDE PATH ISOLATION GUARD (Layer 7)
+// Prevents AI from writing to restricted folders
+// ═══════════════════════════════════════════════════════════════
+
+const RESTRICTED_PATH_PREFIXES = [
+  '/core/', '/checkout/', '/auth/', '/payments/',
+  '/settings/', '/admin/', '/api/'
+];
+
+function validatePathIsolationServer(
+  files: Record<string, string>,
+  legacyMode: boolean = false
+): { valid: boolean; errors: Array<{ file: string; error: string }> } {
+  const errors: Array<{ file: string; error: string }> = [];
+  for (const path of Object.keys(files)) {
+    if (path.includes('..')) {
+      errors.push({ file: path, error: 'Path traversal detected' });
+      continue;
+    }
+    if (RESTRICTED_PATH_PREFIXES.some(p => path.startsWith(p))) {
+      errors.push({ file: path, error: 'Targets restricted folder' });
+      continue;
+    }
+    if (!legacyMode && !path.startsWith('/storefront/') && path !== '/App.tsx') {
+      errors.push({ file: path, error: 'File must be under /storefront/' });
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // COMPILE-FIX REPAIR: Send broken file + error to AI for fix
 // ═══════════════════════════════════════════════════════════════
 
@@ -624,7 +655,7 @@ INTENT CATEGORIES:
 - "MODIFY" = User wants to CHANGE something that exists (colors, layout, add element to existing design)
 - "QUESTION" = User is ASKING about something (what is X? why did you add Y? how does Z work?)
 - "FIX" = User is reporting an ERROR or BUG (crash, broken, not working, red screen)
-- "REFUSE" = User is asking for something PROHIBITED (payment integrations, nav above hero, external APIs)
+- "REFUSE" = User is asking for something PROHIBITED (payment integrations, nav above hero, external APIs, stripe, paypal, payment gateway, api endpoint, server route, webhook, checkout override)
 
 ═══════════════════════════════════════════════════════════════
 REASONING EXAMPLES WITH CONVERSATION CONTEXT:
@@ -868,6 +899,9 @@ PROHIBITED REQUESTS:
 - Navigation placed above the hero section
 - Custom API key integrations for payments
 - Building internal product detail pages (products link to /product/{slug})
+- Implementing custom checkout, payment processing, or commission logic
+- Adding server endpoints, API routes, or webhooks
+- Modifying Stripe/payment provider configuration
 
 OUTPUT FORMAT:
 - Start with: "/// TYPE: CHAT ///"
@@ -876,7 +910,9 @@ OUTPUT FORMAT:
 
 EXAMPLE RESPONSES:
 - Payment request: "I can't add external payment buttons. SellsPay is a managed marketplace that handles all transactions securely. Your earnings are automatically routed to your Payouts Dashboard."
-- Nav above hero: "I keep the navigation integrated within the hero for a clean, immersive landing experience. This is a core design principle for SellsPay storefronts."`;
+- Nav above hero: "I keep the navigation integrated within the hero for a clean, immersive landing experience. This is a core design principle for SellsPay storefronts."
+- Checkout override: "Checkout is handled by the SellsPay platform to ensure secure, compliant transactions. I can help you customize the product display and shopping experience instead."
+- API endpoint: "Server-side logic is managed by the platform. I can help you build beautiful product pages that connect to the existing checkout flow."`;
 
 // The main CODE executor prompt - STRICT DETERMINISTIC VERSION
 // Zero conversational drift. Machine-readable output only.
@@ -1011,19 +1047,58 @@ When removing scrollbars, use a <style> tag in App component:
 NEVER just add overflow-hidden to a div — that clips content, not scrollbar.
 
 ════════════════════════════════════════════════════════════════
-FILE STRUCTURE PROTOCOL
+FILE STRUCTURE PROTOCOL (STOREFRONT ISOLATION)
 ════════════════════════════════════════════════════════════════
-When building a NEW storefront (BUILD intent), split into files:
-  /App.tsx - Router + layout compositor
-  /components/NavBar.tsx - Navigation bar
-  /components/Footer.tsx - Footer
-  /sections/Hero.tsx - Hero section
-  /sections/[Name].tsx - Each major page section
+ALL editable files MUST live under /storefront/. The only exception is /App.tsx (router shell).
+
+When building a NEW storefront (BUILD intent), use this structure:
+  /App.tsx                          -- Router shell (imports from /storefront/)
+  /storefront/Layout.tsx            -- Main layout wrapper
+  /storefront/routes/Home.tsx       -- Home page
+  /storefront/routes/ProductPage.tsx -- Product listing page
+  /storefront/routes/[Custom].tsx   -- Custom pages (About, Contact, FAQ, etc.)
+  /storefront/components/*.tsx      -- Reusable UI components
+  /storefront/theme.ts              -- Theme tokens & config
 
 When MODIFYING, output ONLY the changed file(s).
 Keep each file under 150 lines.
 Each file must be a valid standalone React component with its own imports.
+
+You may create NEW files under /storefront/routes/ (e.g., Contact.tsx, About.tsx, FAQ.tsx, CampaignLanding.tsx).
+You may NOT create files outside /storefront/ (except /App.tsx).
+You may NOT modify the routing engine — only the storefront UI layer.
+
+RESTRICTED FOLDERS (NEVER write to these — commit will be rejected):
+  /core/**  /checkout/**  /auth/**  /payments/**  /settings/**  /admin/**  /api/**
+
+STOREFRONT PRIMITIVES (PRE-BUILT — import instead of recreating):
+  import { ProductGrid } from '/storefront/primitives/ProductGrid'
+  import { ProductCard } from '/storefront/primitives/ProductCard'
+  import { BuyButton } from '/storefront/primitives/BuyButton'
+  import { FeaturedProducts } from '/storefront/primitives/FeaturedProducts'
+  import { UserHeader } from '/storefront/primitives/UserHeader'
+  import { StoreThemeProvider } from '/storefront/primitives/StoreThemeProvider'
+
+These primitives handle commerce logic internally. DO NOT recreate payment/checkout code.
+
 The sentinel \`// --- VIBECODER_COMPLETE ---\` goes inside /App.tsx content only.
+
+════════════════════════════════════════════════════════════════
+COMMERCE BOUNDARY (ABSOLUTE — ZERO EXCEPTIONS)
+════════════════════════════════════════════════════════════════
+AI MAY: Customize UI, style components, create pages, create product layouts,
+         use storefront primitives (ProductGrid, BuyButton, etc.)
+
+AI MAY NOT:
+  ❌ Implement payment processing (Stripe, PayPal, CashApp, crypto)
+  ❌ Override checkout flow
+  ❌ Add custom payment providers or gateways
+  ❌ Modify Stripe/commission/fee logic
+  ❌ Add server endpoints, API routes, or webhooks
+  ❌ Create files outside /storefront/ (except /App.tsx)
+
+All purchases MUST go through useSellsPayCheckout() or the BuyButton primitive.
+Revenue flows are managed by the platform — the AI has ZERO access to modify them.
 
 ════════════════════════════════════════════════════════════════
 █████ MINIMAL DIFF PROTOCOL (HIGHEST PRIORITY) █████
@@ -2171,13 +2246,33 @@ serve(async (req) => {
                   }
                 }
                 
-                // Only emit if validation passed (or was never triggered as failed)
+                // ═══════════════════════════════════════════════════════
+                // LAYER 7: PATH ISOLATION GUARD (Server-Side)
+                // Block files targeting restricted folders
+                // ═══════════════════════════════════════════════════════
+                if (summaryValidated !== false) {
+                  const existingPaths = Object.keys(fileMap);
+                  const hasLegacyPaths = existingPaths.some(
+                    p => !p.startsWith('/storefront/') && p !== '/App.tsx'
+                      && !RESTRICTED_PATH_PREFIXES.some(r => p.startsWith(r))
+                  );
+                  const pathIsolationResult = validatePathIsolationServer(fileMap, hasLegacyPaths);
+                  if (!pathIsolationResult.valid) {
+                    const errorSummary = pathIsolationResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
+                    console.error(`[PathIsolation] ABORT: ${errorSummary}`);
+                    emitEvent('error', { code: 'PATH_ISOLATION_VIOLATION', message: `Files target restricted folders: ${errorSummary}` });
+                    summaryValidated = false;
+                    lastMergedFiles = null as unknown as Record<string, string>;
+                  }
+                }
+
+                // Only emit if all validation passed
                 if (summaryValidated !== false) {
                   emitEvent('files', { projectFiles: fileMap });
                   filesEmitted = true;
                   lastMergedFiles = fileMap;
                   summaryValidated = true;
-                  console.log(`[Files] Emitted ${Object.keys(fileMap).length} files atomically (summaryValidated=true, syntax-validated)`);
+                  console.log(`[Files] Emitted ${Object.keys(fileMap).length} files atomically (summaryValidated=true, syntax+path validated)`);
                 }
               }
             } catch (parseErr) {

@@ -376,4 +376,200 @@ import "../src/iframe-silence.js";
 
   '/iframe-silence.css': `@import "./src/iframe-silence.css";
 `,
+
+  // ============================================
+  // STOREFRONT PRIMITIVES: Pre-built commerce components
+  // AI should compose these instead of recreating commerce logic
+  // ============================================
+
+  '/storefront/primitives/BuyButton.tsx': `import { useSellsPayCheckout } from '../../src/hooks/useSellsPayCheckout';
+
+interface BuyButtonProps {
+  productId: string;
+  label?: string;
+  className?: string;
+}
+
+export function BuyButton({ productId, label = 'Buy Now', className = '' }: BuyButtonProps) {
+  const { buyProduct, isProcessing } = useSellsPayCheckout();
+  return (
+    <button
+      onClick={() => buyProduct(productId)}
+      disabled={isProcessing}
+      className={\`px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl transition-all disabled:opacity-50 \${className}\`}
+    >
+      {isProcessing ? 'Processing...' : label}
+    </button>
+  );
+}
+
+export default BuyButton;
+`,
+
+  '/storefront/primitives/ProductCard.tsx': `interface ProductCardProps {
+  product: {
+    id: string;
+    name: string;
+    price_cents?: number | null;
+    cover_image_url?: string | null;
+    slug?: string | null;
+    excerpt?: string | null;
+  };
+  className?: string;
+}
+
+export function ProductCard({ product, className = '' }: ProductCardProps) {
+  const price = product.price_cents != null ? (product.price_cents / 100).toFixed(2) : 'Free';
+
+  const handleClick = () => {
+    const url = '/product/' + (product.slug || product.id);
+    window.parent?.postMessage({ type: 'VIBECODER_NAVIGATE', url, target: '_self' }, '*');
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      className={\`group cursor-pointer bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 hover:border-violet-500/50 transition-all \${className}\`}
+    >
+      {product.cover_image_url && (
+        <div className="aspect-[4/3] overflow-hidden">
+          <img src={product.cover_image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        </div>
+      )}
+      <div className="p-4">
+        <h3 className="text-white font-semibold text-lg">{product.name}</h3>
+        {product.excerpt && <p className="text-zinc-400 text-sm mt-1 line-clamp-2">{product.excerpt}</p>}
+        <p className="text-violet-400 font-bold mt-2">{typeof price === 'string' && price !== 'Free' ? '$' + price : price}</p>
+      </div>
+    </div>
+  );
+}
+
+export default ProductCard;
+`,
+
+  '/storefront/primitives/ProductGrid.tsx': `import { ProductCard } from './ProductCard';
+
+interface Product {
+  id: string;
+  name: string;
+  price_cents?: number | null;
+  cover_image_url?: string | null;
+  slug?: string | null;
+  excerpt?: string | null;
+}
+
+interface ProductGridProps {
+  products: Product[];
+  columns?: 2 | 3 | 4;
+  className?: string;
+}
+
+export function ProductGrid({ products, columns = 3, className = '' }: ProductGridProps) {
+  const gridCols = columns === 2 ? 'grid-cols-1 sm:grid-cols-2' : columns === 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+
+  return (
+    <div className={\`grid \${gridCols} gap-6 \${className}\`}>
+      {products.map(product => (
+        <ProductCard key={product.id} product={product} />
+      ))}
+    </div>
+  );
+}
+
+export default ProductGrid;
+`,
+
+  '/storefront/primitives/FeaturedProducts.tsx': `import { ProductGrid } from './ProductGrid';
+
+interface Product {
+  id: string;
+  name: string;
+  price_cents?: number | null;
+  cover_image_url?: string | null;
+  slug?: string | null;
+  excerpt?: string | null;
+}
+
+interface FeaturedProductsProps {
+  products: Product[];
+  title?: string;
+  subtitle?: string;
+  className?: string;
+}
+
+export function FeaturedProducts({ products, title = 'Featured Products', subtitle, className = '' }: FeaturedProductsProps) {
+  return (
+    <section className={\`py-16 px-4 \${className}\`}>
+      <div className="max-w-6xl mx-auto">
+        <h2 className="text-3xl font-bold text-white mb-2">{title}</h2>
+        {subtitle && <p className="text-zinc-400 mb-8">{subtitle}</p>}
+        <ProductGrid products={products} columns={3} />
+      </div>
+    </section>
+  );
+}
+
+export default FeaturedProducts;
+`,
+
+  '/storefront/primitives/UserHeader.tsx': `interface UserHeaderProps {
+  username: string;
+  bio?: string;
+  avatarUrl?: string;
+  className?: string;
+}
+
+export function UserHeader({ username, bio, avatarUrl, className = '' }: UserHeaderProps) {
+  return (
+    <div className={\`flex items-center gap-4 \${className}\`}>
+      {avatarUrl ? (
+        <img src={avatarUrl} alt={username} className="w-12 h-12 rounded-full object-cover border-2 border-violet-500/50" />
+      ) : (
+        <div className="w-12 h-12 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-lg">
+          {username.charAt(0).toUpperCase()}
+        </div>
+      )}
+      <div>
+        <h3 className="text-white font-semibold text-lg">{username}</h3>
+        {bio && <p className="text-zinc-400 text-sm">{bio}</p>}
+      </div>
+    </div>
+  );
+}
+
+export default UserHeader;
+`,
+
+  '/storefront/primitives/StoreThemeProvider.tsx': `import React from 'react';
+
+interface StoreThemeProviderProps {
+  children: React.ReactNode;
+  primaryColor?: string;
+  accentColor?: string;
+  fontFamily?: string;
+}
+
+export function StoreThemeProvider({
+  children,
+  primaryColor = '#8b5cf6',
+  accentColor = '#3b82f6',
+  fontFamily = 'Inter, system-ui, sans-serif',
+}: StoreThemeProviderProps) {
+  return (
+    <div
+      style={{
+        '--store-primary': primaryColor,
+        '--store-accent': accentColor,
+        fontFamily,
+      } as React.CSSProperties}
+      className="min-h-screen bg-zinc-950 text-zinc-100"
+    >
+      {children}
+    </div>
+  );
+}
+
+export default StoreThemeProvider;
+`,
 };
