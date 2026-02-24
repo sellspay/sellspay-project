@@ -1903,8 +1903,15 @@ If the request says "change X", change ONLY X and nothing else.
   const config = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-pro"];
 
   // Determine max tokens based on intent + micro-edit
-  let maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : 65000;
-  if (isMicro) maxTokens = 16000;
+  // Provider limits: Claude=64000, GPT-4o=16384, Gemini=8192
+  const PROVIDER_MAX_TOKENS: Record<string, number> = {
+    anthropic: 60000,
+    openai: 16000,
+    gemini: 8192,
+  };
+  const providerCap = PROVIDER_MAX_TOKENS[config.provider] || 8192;
+  let maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : providerCap;
+  if (isMicro) maxTokens = Math.min(16000, providerCap);
 
   console.log(`[Executor] Using model: ${config.modelId} (${config.provider}) for intent: ${intent.intent}${isMicro ? ' (micro-edit, 16k tokens)' : ''}`);
 
