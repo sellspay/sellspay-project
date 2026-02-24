@@ -441,6 +441,68 @@ RULES:
 }
 
 // ═══════════════════════════════════════════════════════════════
+// VIBE INTENT DETECTION (Backend port of vibe-from-text.ts)
+// Detects aesthetic/emotional keywords for Brand Layer injection
+// ═══════════════════════════════════════════════════════════════
+
+const VIBE_KEYWORD_MAP: Array<{ vibe: string; keywords: string[]; weight: number }> = [
+  { vibe: 'cyberpunk', keywords: ['futuristic', 'neon', 'cyber', 'sci-fi', 'scifi', 'hacker', 'matrix', 'synthwave', 'retrowave', 'vaporwave', 'glitch', 'tech noir'], weight: 3 },
+  { vibe: 'luxury', keywords: ['luxury', 'premium', 'elegant', 'exclusive', 'high-end', 'highend', 'sophisticated', 'upscale', 'boutique', 'jewel', 'gold', 'marble', 'opulent'], weight: 3 },
+  { vibe: 'playful', keywords: ['playful', 'fun', 'colorful', 'vibrant', 'cheerful', 'bright', 'energetic', 'kids', 'gaming', 'cartoon', 'whimsical', 'quirky'], weight: 3 },
+  { vibe: 'minimal', keywords: ['minimal', 'minimalist', 'clean', 'simple', 'zen', 'whitespace', 'bare', 'austere', 'understated', 'stripped'], weight: 3 },
+  { vibe: 'corporate', keywords: ['corporate', 'saas', 'enterprise', 'b2b', 'business', 'professional', 'dashboard', 'fintech', 'banking', 'consulting', 'agency'], weight: 2 },
+  { vibe: 'editorial', keywords: ['editorial', 'magazine', 'blog', 'journal', 'newspaper', 'article', 'portfolio', 'gallery', 'photography', 'typography'], weight: 2 },
+  { vibe: 'modern', keywords: ['modern', 'contemporary', 'sleek', 'sharp', 'startup', 'app', 'landing'], weight: 1 },
+];
+
+function detectVibeIntent(prompt: string): string | null {
+  if (!prompt || prompt.length < 3) return null;
+  const p = prompt.toLowerCase();
+  const scores: Record<string, number> = {};
+  for (const entry of VIBE_KEYWORD_MAP) {
+    for (const kw of entry.keywords) {
+      if (p.includes(kw)) {
+        scores[entry.vibe] = (scores[entry.vibe] || 0) + entry.weight;
+      }
+    }
+  }
+  let bestVibe: string | null = null;
+  let bestScore = 0;
+  for (const [vibe, score] of Object.entries(scores)) {
+    if (score > bestScore) { bestScore = score; bestVibe = vibe; }
+  }
+  return bestScore > 0 ? bestVibe : null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILE INVENTORY DIFF ENGINE
+// Compares current projectFiles against last_valid_files snapshot
+// to inject file-level diff awareness into MODIFY/FIX prompts
+// ═══════════════════════════════════════════════════════════════
+
+function computeFileDiff(
+  prevFiles: Record<string, string> | null,
+  newFiles: Record<string, string>,
+): { added: string[]; removed: string[]; modified: string[]; unchanged: string[] } {
+  if (!prevFiles) {
+    return { added: Object.keys(newFiles), removed: [], modified: [], unchanged: [] };
+  }
+  const added: string[] = [];
+  const removed: string[] = [];
+  const modified: string[] = [];
+  const unchanged: string[] = [];
+
+  const allKeys = new Set([...Object.keys(prevFiles), ...Object.keys(newFiles)]);
+  for (const key of allKeys) {
+    if (!(key in prevFiles)) { added.push(key); }
+    else if (!(key in newFiles)) { removed.push(key); }
+    else if (prevFiles[key] !== newFiles[key]) { modified.push(key); }
+    else { unchanged.push(key); }
+  }
+  return { added, removed, modified, unchanged };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // NO-OP DETECTOR: Catches "silent failure" where output matches input
 // ═══════════════════════════════════════════════════════════════
 
@@ -751,10 +813,23 @@ CRITICAL: If a user is REPEATING or REPHRASING an earlier request (especially wi
 ═══════════════════════════════════════════════════════════════
 OUTPUT FORMAT:
 ═══════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════════
+INTERACTION MODE DETECTION:
+═══════════════════════════════════════════════════════════════
+Classify how the user is thinking:
+- "vision": The user uses emotional/aesthetic language. Examples: "make it feel like", "luxury", "cozy", "bold", "clean", "dark and moody", "bright and cheerful", "futuristic", "elegant". They describe FEELINGS, not code.
+- "developer": The user uses technical language. Examples: "CSS grid", "memoize", "useEffect", "flex", "z-index", "component", "useState", "border-radius", "padding", "margin". They describe CODE, not feelings.
+
+Default to "vision" if unclear.
+
+═══════════════════════════════════════════════════════════════
+OUTPUT FORMAT:
+═══════════════════════════════════════════════════════════════
 You must respond with ONLY a valid JSON object (no markdown, no explanation):
 {
   "reasoning": "Brief chain-of-thought explaining your classification (1-2 sentences)",
   "intent": "BUILD" | "MODIFY" | "QUESTION" | "FIX" | "REFUSE",
+  "interactionMode": "vision" | "developer",
   "confidence": 0.0-1.0,
   "context_needed": true | false,
   "resolved_target": "The specific element being referenced (if pronouns were resolved)"
@@ -1250,6 +1325,7 @@ This is a code execution environment. Format compliance is mandatory.`;
 interface IntentClassification {
   reasoning: string;
   intent: "BUILD" | "MODIFY" | "QUESTION" | "FIX" | "REFUSE";
+  interactionMode: "vision" | "developer";
   confidence: number;
   context_needed: boolean;
   resolved_target?: string; // The specific element being referenced (if pronouns were resolved)
@@ -1294,6 +1370,7 @@ async function classifyIntent(
     return {
       reasoning: "Classifier unavailable, defaulting to code generation",
       intent: "MODIFY",
+      interactionMode: "vision",
       confidence: 0.5,
       context_needed: true,
     };
@@ -1316,6 +1393,7 @@ async function classifyIntent(
     return {
       reasoning: parsed.reasoning || "No reasoning provided",
       intent: parsed.intent || "MODIFY",
+      interactionMode: parsed.interactionMode || "vision",
       confidence: parsed.confidence || 0.5,
       context_needed: parsed.context_needed ?? true,
       resolved_target: parsed.resolved_target || undefined,
@@ -1325,17 +1403,18 @@ async function classifyIntent(
     // Fallback: try to extract intent from text
     const upperContent = content.toUpperCase();
     if (upperContent.includes("QUESTION")) {
-      return { reasoning: "Detected question pattern", intent: "QUESTION", confidence: 0.6, context_needed: false };
+      return { reasoning: "Detected question pattern", intent: "QUESTION", interactionMode: "vision", confidence: 0.6, context_needed: false };
     }
     if (upperContent.includes("FIX") || upperContent.includes("ERROR")) {
-      return { reasoning: "Detected error pattern", intent: "FIX", confidence: 0.6, context_needed: true };
+      return { reasoning: "Detected error pattern", intent: "FIX", interactionMode: "developer", confidence: 0.6, context_needed: true };
     }
     if (upperContent.includes("REFUSE")) {
-      return { reasoning: "Detected prohibited request", intent: "REFUSE", confidence: 0.6, context_needed: false };
+      return { reasoning: "Detected prohibited request", intent: "REFUSE", interactionMode: "vision", confidence: 0.6, context_needed: false };
     }
     return {
       reasoning: "Could not parse, defaulting to modify",
       intent: "MODIFY",
+      interactionMode: "vision",
       confidence: 0.5,
       context_needed: true,
     };
@@ -1488,6 +1567,7 @@ async function executeIntent(
   apiKey: string,
   creatorIdentity: { username: string; email: string } | null,
   projectFiles?: Record<string, string> | null,
+  lastValidFiles?: Record<string, string> | null,
 ): Promise<Response> {
   // Select the appropriate system prompt based on intent
   let systemPrompt: string;
@@ -1512,6 +1592,34 @@ async function executeIntent(
   // INTENT-SPECIFIC PROMPT SPECIALIZATION
   // ═══════════════════════════════════════════════════════════════
   let intentInjection = "";
+  
+  // ═══════════════════════════════════════════════════════════════
+  // MODE-SPECIFIC BEHAVIOR INJECTION (Vision vs Developer)
+  // ═══════════════════════════════════════════════════════════════
+  let modeInjection = "";
+  if (intent.interactionMode === "developer") {
+    modeInjection = `
+═══════════════════════════════════════════════════════════════
+🔧 DEVELOPER MODE: SURGICAL PRECISION
+═══════════════════════════════════════════════════════════════
+The user is technical. Apply surgical precision. Respect exact CSS/React terminology.
+Do not interpret — execute literally. When they say "CSS grid", use CSS grid.
+When they say "memoize", use React.memo or useMemo. Be exact.
+═══════════════════════════════════════════════════════════════
+`;
+  } else {
+    modeInjection = `
+═══════════════════════════════════════════════════════════════
+🎨 VISION MODE: CREATIVE INTERPRETATION
+═══════════════════════════════════════════════════════════════
+The user is non-technical. Focus on creative interpretation.
+Translate their emotional language into concrete design decisions.
+Be opinionated about layout, color, and spacing.
+"Make it feel luxury" means dark backgrounds, serif headings, wide spacing, gold accents.
+═══════════════════════════════════════════════════════════════
+`;
+  }
+
   if (intent.intent === "FIX") {
     intentInjection = `
 ═══════════════════════════════════════════════════════════════
@@ -1534,6 +1642,40 @@ the modification explicitly requires changes.
 Your diff should be minimal. Only change what was asked.
 ═══════════════════════════════════════════════════════════════
 `;
+  }
+  
+  // ═══════════════════════════════════════════════════════════════
+  // BRAND LAYER: Vibe-aware design intelligence (Vision mode only)
+  // ═══════════════════════════════════════════════════════════════
+  let brandLayerInjection = "";
+  if (intent.interactionMode === "vision") {
+    const detectedVibe = detectVibeIntent(prompt);
+    if (detectedVibe) {
+      console.log(`[BrandLayer] Detected vibe: ${detectedVibe} — injecting design intelligence`);
+      brandLayerInjection = `
+═══════════════════════════════════════════════════════════════
+🎨 DESIGN INTELLIGENCE: BRAND LAYER
+═══════════════════════════════════════════════════════════════
+DETECTED VIBE: ${detectedVibe}
+Apply the "${detectedVibe}" design system comprehensively across all affected files.
+
+When the user describes a feeling or aesthetic, update the ENTIRE design system coherently:
+1. /storefront/theme.ts — Update color tokens, spacing scale, border radius, typography
+2. Component files — Apply the theme tokens consistently (use CSS variables, not hardcoded colors)
+
+VIBE MAP:
+- "luxury/premium/elegant" → Dark backgrounds, serif headings (Playfair Display), wide spacing (120px sections), subtle borders, gold/warm accents, 0.375rem radius, noise texture
+- "futuristic/neon/cyber" → Near-black bg (#0a0a0f), neon accent colors (cyan/magenta), tight spacing (60px), sharp corners (0.125rem), glow effects, Orbitron headings
+- "playful/fun/colorful" → Vibrant multi-color palette, rounded corners (1.25rem), bouncy animations (250ms), bold Poppins typography, no texture
+- "minimal/clean/simple" → Maximum whitespace, thin Inter font (weight 500), no decorative elements, monochrome, 0rem radius, 100ms transitions
+- "corporate/professional" → Blue accents (#2563eb), system Inter fonts (weight 600), structured grid, subtle shadows, 0.5rem radius
+- "editorial/magazine" → Light airy backgrounds, Playfair Display headings, high contrast typography, 0.25rem radius, 350ms transitions
+
+CRITICAL: When changing the vibe, update theme.ts AND ensure components reference theme tokens.
+Never scatter hardcoded colors — centralize in theme.ts.
+═══════════════════════════════════════════════════════════════
+`;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1611,13 +1753,27 @@ If the request says "change X", change ONLY X and nothing else.
     if (currentCode?.trim()) {
       // Build code context: prefer multi-file map when available
       let codeContext: string;
+      let fileInventoryBlock = "";
       if (projectFiles && typeof projectFiles === 'object' && Object.keys(projectFiles).length > 1) {
+        // Compute file inventory diff if lastValidFiles available
+        if (lastValidFiles && typeof lastValidFiles === 'object') {
+          const diff = computeFileDiff(lastValidFiles as Record<string, string>, projectFiles as Record<string, string>);
+          const parts: string[] = ['FILE INVENTORY (do NOT modify unchanged files):'];
+          if (diff.unchanged.length > 0) parts.push(`- UNCHANGED: ${diff.unchanged.join(', ')}`);
+          if (diff.modified.length > 0) parts.push(`- MODIFIED LAST TIME: ${diff.modified.join(', ')}`);
+          if (diff.added.length > 0) parts.push(`- NEW: ${diff.added.join(', ')}`);
+          if (diff.removed.length > 0) parts.push(`- REMOVED: ${diff.removed.join(', ')}`);
+          parts.push('Only output files you are actually changing.\n');
+          fileInventoryBlock = parts.join('\n');
+          console.log(`[FileDiff] Inventory: ${diff.unchanged.length} unchanged, ${diff.modified.length} modified, ${diff.added.length} added`);
+        }
+        
         // Multi-file project: show the full file map so AI can see all components
         const fileEntries = Object.entries(projectFiles)
           .filter(([path, content]) => typeof content === 'string' && content.trim().length > 0)
           .map(([path, content]) => `=== ${path} ===\n${content}`)
           .join('\n\n');
-        codeContext = `Here is the full project file map:\n\n${fileEntries}\n\nIMPORTANT: Return your response as a complete files map. Modify ONLY the files that need changes. Preserve all other files exactly as they are.`;
+        codeContext = `${fileInventoryBlock}Here is the full project file map:\n\n${fileEntries}\n\nIMPORTANT: Return your response as a complete files map. Modify ONLY the files that need changes. Preserve all other files exactly as they are.`;
       } else {
         // Single-file project: backward compatible
         codeContext = `Here is the current code:\n\n${currentCode}`;
@@ -1625,13 +1781,13 @@ If the request says "change X", change ONLY X and nothing else.
 
       messages.push({
         role: "user",
-        content: `${intentInjection}${microInjection}${creatorInjection}${productsInjection}${resolvedTargetContext}${minimalDiffReminder}${codeContext}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
+        content: `${modeInjection}${brandLayerInjection}${intentInjection}${microInjection}${creatorInjection}${productsInjection}${resolvedTargetContext}${minimalDiffReminder}${codeContext}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
       });
     } else {
       // First build (REPLACE mode) — skip ANALYSIS/PLAN to reduce token burden and avoid timeouts
       messages.push({
         role: "user",
-        content: `${intentInjection}${creatorInjection}${productsInjection}Create a complete storefront with this description: ${prompt}\n\nIMPORTANT: This is a FIRST BUILD — skip the ANALYSIS and PLAN sections. Go directly to === CODE ===, then === SUMMARY ===, then === CONFIDENCE ===. Focus all tokens on generating high-quality code.`,
+        content: `${modeInjection}${brandLayerInjection}${intentInjection}${creatorInjection}${productsInjection}Create a complete storefront with this description: ${prompt}\n\nIMPORTANT: This is a FIRST BUILD — skip the ANALYSIS and PLAN sections. Go directly to === CODE ===, then === SUMMARY ===, then === CONFIDENCE ===. Focus all tokens on generating high-quality code.`,
       });
     }
   }
@@ -1936,6 +2092,26 @@ serve(async (req) => {
     }
 
     // ════════════════════════════════════════════════════════════
+    // FETCH LAST VALID FILES (for File Inventory Diff Engine)
+    // ════════════════════════════════════════════════════════════
+    let lastValidFiles: Record<string, string> | null = null;
+    if (requestProjectId && (intentResult.intent === "MODIFY" || intentResult.intent === "FIX")) {
+      try {
+        const { data: projectData } = await supabase
+          .from("vibecoder_projects")
+          .select("last_valid_files")
+          .eq("id", requestProjectId)
+          .single();
+        if (projectData?.last_valid_files && typeof projectData.last_valid_files === 'object') {
+          lastValidFiles = projectData.last_valid_files as Record<string, string>;
+          console.log(`[FileDiff] Fetched last_valid_files: ${Object.keys(lastValidFiles).length} files`);
+        }
+      } catch (e) {
+        console.warn("[FileDiff] Could not fetch last_valid_files:", e);
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════
     // STAGE 1.5: ARCHITECT MODE (only when user explicitly requests it)
     // ════════════════════════════════════════════════════════════
     let modifiedPrompt = prompt;
@@ -1954,7 +2130,7 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════
     // STAGE 2: EXECUTE BASED ON CLASSIFIED INTENT
     // ════════════════════════════════════════════════════════════
-    console.log(`[Stage 2] Executing ${intentResult.intent} handler${forcePlanMode ? " (Plan Mode Forced)" : ""}...`);
+    console.log(`[Stage 2] Executing ${intentResult.intent} handler (mode: ${intentResult.interactionMode})${forcePlanMode ? " (Plan Mode Forced)" : ""}...`);
 
     const response = await executeIntent(
       intentResult,
@@ -1965,6 +2141,7 @@ serve(async (req) => {
       GOOGLE_GEMINI_API_KEY,
       creatorIdentity,
       projectFiles || null,
+      lastValidFiles,
     );
 
     if (!response.ok) {
@@ -2250,12 +2427,22 @@ serve(async (req) => {
                   for (const err of syntaxResult.errors) {
                     // Model-aware repair: use the same model that generated the code
                     const generatorConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
-                    const repaired = await repairBrokenFile(err.file, fileMap[err.file], err.error, generatorConfig);
+                    let repaired = await repairBrokenFile(err.file, fileMap[err.file], err.error, generatorConfig);
+                    
+                    // Lateral retry: if primary repair fails, try the other premium model
+                    if (!repaired) {
+                      const lateralConfig = PREMIUM_FALLBACK_CHAIN[generatorConfig.provider];
+                      if (lateralConfig) {
+                        console.log(`[CompileFix] Primary repair failed for ${err.file}, trying lateral: ${lateralConfig.provider}/${lateralConfig.modelId}`);
+                        repaired = await repairBrokenFile(err.file, fileMap[err.file], err.error, lateralConfig);
+                      }
+                    }
+                    
                     if (repaired) {
                       fileMap[err.file] = repaired;
                     } else {
                       allRepaired = false;
-                      console.error(`[CompileFix] ❌ Could not repair ${err.file}: ${err.error}`);
+                      console.error(`[CompileFix] ❌ Could not repair ${err.file} (both primary + lateral failed): ${err.error}`);
                     }
                   }
                   
