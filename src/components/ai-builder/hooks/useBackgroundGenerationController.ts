@@ -218,13 +218,34 @@ export function useBackgroundGenerationController({
       // ✅ ALL 7 LAYERS PASSED — atomic commit sequence
       console.log('[ZERO-TRUST] All layers passed (including path isolation). Committing', Object.keys(fileMap).length, 'files for job:', job.id);
 
+      // DELTA MERGE: If the model returned only changed files (no /App.tsx),
+      // merge with existing DB snapshot to preserve unchanged files.
+      let mergedFileMap = fileMap;
+      if (activeProjectId && !fileMap['/App.tsx']) {
+        try {
+          const { data: projectData } = await supabase
+            .from('vibecoder_projects')
+            .select('last_valid_files')
+            .eq('id', activeProjectId)
+            .maybeSingle();
+          
+          if (projectData?.last_valid_files && typeof projectData.last_valid_files === 'object') {
+            const existingFiles = projectData.last_valid_files as Record<string, string>;
+            mergedFileMap = { ...existingFiles, ...fileMap };
+            console.log(`[ZERO-TRUST] Delta merge: ${Object.keys(fileMap).length} changed + ${Object.keys(existingFiles).length} existing → ${Object.keys(mergedFileMap).length} total`);
+          }
+        } catch (mergeErr) {
+          console.warn('[ZERO-TRUST] Delta merge fetch failed, using raw fileMap:', mergeErr);
+        }
+      }
+
       // ATOMIC COMMIT: DB first, then sandbox, then ref
       // If DB fails, no UI mutation occurs — prevents refresh inconsistency
       if (activeProjectId) {
         try {
           const { error } = await supabase
             .from('vibecoder_projects')
-            .update({ last_valid_files: fileMap as any })
+            .update({ last_valid_files: mergedFileMap as any })
             .eq('id', activeProjectId);
           if (error) {
             console.error('[ZERO-TRUST] DB persistence failed. Aborting commit:', error.message);
@@ -241,7 +262,7 @@ export function useBackgroundGenerationController({
       }
 
       // DB succeeded — safe to mutate sandbox
-      setFiles(fileMap);
+      setFiles(mergedFileMap);
       hasDbSnapshotRef.current = true;
       console.log('[ZERO-TRUST] ✅ Commit + persistence successful');
     } else {
