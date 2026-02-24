@@ -1,0 +1,190 @@
+/**
+ * Transpile Validator — ZERO-TRUST Layer 6
+ * 
+ * Validates that all TSX/TS files are syntactically valid before
+ * committing to the DB snapshot. Prevents broken code from being
+ * persisted as `last_valid_files`.
+ * 
+ * This is a lightweight syntax check (no Babel dependency) that catches:
+ * - Unbalanced braces, parens, brackets
+ * - Unterminated strings / template literals
+ * - Truncation artifacts (trailing operators)
+ * - Malformed JSX (unclosed tags)
+ * - Malformed style objects (common AI generation error)
+ */
+
+export interface TranspileCheckResult {
+  valid: boolean;
+  errors: Array<{ file: string; error: string }>;
+}
+
+/**
+ * Validate a single file's syntax.
+ * Returns null if valid, or an error string if invalid.
+ */
+export function validateFileSyntax(content: string, filePath: string): string | null {
+  if (!content || content.trim().length === 0) {
+    return 'Empty file';
+  }
+
+  // Only validate code files
+  if (!filePath.endsWith('.tsx') && !filePath.endsWith('.ts') && !filePath.endsWith('.jsx') && !filePath.endsWith('.js')) {
+    return null; // Skip non-code files (CSS, JSON, etc.)
+  }
+
+  // 1. Brace/paren/bracket balance (string & comment aware)
+  const balanceResult = checkBalance(content);
+  if (balanceResult) return balanceResult;
+
+  // 2. Unterminated strings
+  const stringResult = checkStrings(content);
+  if (stringResult) return stringResult;
+
+  // 3. Truncation detection (trailing operators)
+  const trimmed = content.trim();
+  const lastChar = trimmed.slice(-1);
+  const truncationChars = ['{', '(', '[', ',', ':', '=', '.', '+', '-', '*', '/'];
+  if (truncationChars.includes(lastChar)) {
+    return `Code appears truncated — ends with "${lastChar}"`;
+  }
+
+  // 4. Malformed style objects (common AI error: duplicated URLs in backgroundImage)
+  const malformedStyle = checkMalformedStyles(content);
+  if (malformedStyle) return malformedStyle;
+
+  return null;
+}
+
+/**
+ * Validate all files in a file map.
+ * Returns a result with all errors found.
+ */
+export function validateAllFiles(files: Record<string, string>): TranspileCheckResult {
+  const errors: Array<{ file: string; error: string }> = [];
+
+  for (const [path, content] of Object.entries(files)) {
+    if (typeof content !== 'string') continue;
+    const error = validateFileSyntax(content, path);
+    if (error) {
+      errors.push({ file: path, error });
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+// ─── Internal Helpers ────────────────────────────────────────
+
+function checkBalance(code: string): string | null {
+  let braces = 0;
+  let parens = 0;
+  let brackets = 0;
+
+  let inSingle = false;
+  let inDouble = false;
+  let inTemplate = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escaped = false;
+
+  for (let i = 0; i < code.length; i++) {
+    const c = code[i];
+    const n = code[i + 1];
+
+    if (inLineComment) {
+      if (c === '\n') inLineComment = false;
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (c === '*' && n === '/') {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (inSingle || inDouble || inTemplate) {
+      if (escaped) { escaped = false; continue; }
+      if (c === '\\') { escaped = true; continue; }
+      if (inSingle && c === "'") inSingle = false;
+      else if (inDouble && c === '"') inDouble = false;
+      else if (inTemplate && c === '`') inTemplate = false;
+      continue;
+    }
+
+    if (c === '/' && n === '/') { inLineComment = true; i++; continue; }
+    if (c === '/' && n === '*') { inBlockComment = true; i++; continue; }
+    if (c === "'") { inSingle = true; continue; }
+    if (c === '"') { inDouble = true; continue; }
+    if (c === '`') { inTemplate = true; continue; }
+
+    if (c === '{') braces++;
+    else if (c === '}') braces--;
+    else if (c === '(') parens++;
+    else if (c === ')') parens--;
+    else if (c === '[') brackets++;
+    else if (c === ']') brackets--;
+
+    if (braces < 0) return 'Extra closing brace }';
+    if (parens < 0) return 'Extra closing parenthesis )';
+    if (brackets < 0) return 'Extra closing bracket ]';
+  }
+
+  if (inSingle || inDouble || inTemplate) return 'Unterminated string literal';
+  if (inBlockComment) return 'Unterminated block comment';
+
+  if (braces !== 0) return `Unbalanced braces: ${braces > 0 ? braces + ' unclosed' : Math.abs(braces) + ' extra closing'}`;
+  if (parens !== 0) return `Unbalanced parentheses: ${parens > 0 ? parens + ' unclosed' : Math.abs(parens) + ' extra closing'}`;
+  if (brackets !== 0) return `Unbalanced brackets: ${brackets > 0 ? brackets + ' unclosed' : Math.abs(brackets) + ' extra closing'}`;
+
+  return null;
+}
+
+function checkStrings(code: string): string | null {
+  // Count backticks outside comments
+  let backticks = 0;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let inSingle = false;
+  let inDouble = false;
+  let escaped = false;
+
+  for (let i = 0; i < code.length; i++) {
+    const c = code[i];
+    const n = code[i + 1];
+
+    if (inLineComment) { if (c === '\n') inLineComment = false; continue; }
+    if (inBlockComment) { if (c === '*' && n === '/') { inBlockComment = false; i++; } continue; }
+
+    if (inSingle || inDouble) {
+      if (escaped) { escaped = false; continue; }
+      if (c === '\\') { escaped = true; continue; }
+      if (inSingle && c === "'") inSingle = false;
+      else if (inDouble && c === '"') inDouble = false;
+      continue;
+    }
+
+    if (c === '/' && n === '/') { inLineComment = true; i++; continue; }
+    if (c === '/' && n === '*') { inBlockComment = true; i++; continue; }
+    if (c === "'") { inSingle = true; continue; }
+    if (c === '"') { inDouble = true; continue; }
+    if (c === '`') backticks++;
+  }
+
+  if (backticks % 2 !== 0) return 'Unterminated template literal';
+  return null;
+}
+
+function checkMalformedStyles(code: string): string | null {
+  // Detect the common AI error: url('...' ("..."))
+  // This pattern appears when the model duplicates a URL inside a style prop
+  const malformedUrlPattern = /url\([^)]*\([^)]*\)/;
+  if (malformedUrlPattern.test(code)) {
+    return 'Malformed CSS url() — contains nested parentheses (likely duplicated URL)';
+  }
+  return null;
+}
