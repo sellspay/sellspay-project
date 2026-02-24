@@ -3,6 +3,7 @@ import { useBackgroundGeneration, type GenerationJob } from '@/hooks/useBackgrou
 import { useGhostFixer } from '@/hooks/useGhostFixer';
 import { toast } from 'sonner';
 import type { AIModel } from '../ChatInputBar';
+import { validateAllFiles } from '../transpileValidator';
 
 interface BackgroundGenerationControllerOptions {
   activeProjectId: string | null;
@@ -237,8 +238,28 @@ export function useBackgroundGenerationController({
         }
       }
       
+      // LAYER 6: Transpile validation — reject if any file has syntax errors
+      const transpileResult = validateAllFiles(fileMap);
+      if (!transpileResult.valid) {
+        const errorSummary = transpileResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
+        console.error('[ZERO-TRUST] Transpile validation failed. Refusing to commit:', errorSummary);
+        toast.error('Generation produced code with syntax errors. Please retry.');
+        const validSnapshot = getLastValidSnapshot();
+        if (validSnapshot && Object.keys(validSnapshot).length > 0) {
+          setFiles(validSnapshot);
+        }
+        if (isActiveRun) {
+          setLiveSteps([]);
+          pendingSummaryRef.current = '';
+          generationLockRef.current = null;
+          activeJobIdRef.current = null;
+          resetAgent();
+        }
+        return;
+      }
+
       // ✅ ALL LAYERS PASSED — commit the file map
-      console.log('[ZERO-TRUST] All layers passed. Committing', Object.keys(fileMap).length, 'files for job:', job.id);
+      console.log('[ZERO-TRUST] All layers passed (including transpile). Committing', Object.keys(fileMap).length, 'files for job:', job.id);
       setFiles(fileMap);
       
       // 🔒 CRITICAL: Transition to EDIT/MERGE mode after first successful commit
