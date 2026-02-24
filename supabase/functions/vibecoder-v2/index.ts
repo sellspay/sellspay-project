@@ -3405,18 +3405,32 @@ serve(async (req) => {
                 // Fallback: SUMMARY didn't fire (legacy single-file or parse failure)
                 try {
                   const parsedResult = JSON.parse(codeResult);
-                  if (parsedResult && typeof parsedResult === 'object' && parsedResult.files) {
-                    isMultiFileJson = true;
-                    const deltaFiles: Record<string, string> = parsedResult.files;
-                    const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
-                      ? projectFiles as Record<string, string>
-                      : {};
-                    const mergedFiles = { ...existingFiles, ...deltaFiles };
-                    const appKey = Object.keys(mergedFiles).find(k => 
-                      k === '/App.tsx' || k === 'App.tsx' || k.endsWith('/App.tsx')
-                    );
-                    mergedAppContent = appKey ? mergedFiles[appKey] : null;
-                    console.log(`[Job ${jobId}] GATE 1 FALLBACK: Re-merged ${Object.keys(deltaFiles).length} delta + ${Object.keys(existingFiles).length} existing`);
+                  if (parsedResult && typeof parsedResult === 'object') {
+                    // Detect file map: either {files: {...}} wrapper or direct {"/path.tsx": "..."}
+                    let deltaFiles: Record<string, string> | null = null;
+                    if (parsedResult.files && typeof parsedResult.files === 'object' && !Array.isArray(parsedResult.files)) {
+                      deltaFiles = parsedResult.files;
+                    } else {
+                      const keys = Object.keys(parsedResult);
+                      const looksLikeFileMap = keys.length > 0 && keys.some(k => 
+                        k.endsWith('.tsx') || k.endsWith('.ts') || k.endsWith('.css')
+                      );
+                      if (looksLikeFileMap) {
+                        deltaFiles = parsedResult as Record<string, string>;
+                      }
+                    }
+                    if (deltaFiles) {
+                      isMultiFileJson = true;
+                      const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
+                        ? projectFiles as Record<string, string>
+                        : {};
+                      const mergedFiles = { ...existingFiles, ...deltaFiles };
+                      const appKey = Object.keys(mergedFiles).find(k => 
+                        k === '/App.tsx' || k === 'App.tsx' || k.endsWith('/App.tsx')
+                      );
+                      mergedAppContent = appKey ? mergedFiles[appKey] : null;
+                      console.log(`[Job ${jobId}] GATE 1 FALLBACK: Re-merged ${Object.keys(deltaFiles).length} delta + ${Object.keys(existingFiles).length} existing`);
+                    }
                   }
                 } catch {
                   // ZERO-TRUST: codeResult is not valid JSON — fail explicitly
