@@ -1,117 +1,63 @@
 
 
-# Harden Streaming Pipeline: Kill the JSON-as-Code Bug
+# Kill the Hydration Reset Loop
 
 ## Problem
+After successful generation + commit, `activeProjectId` transiently becomes `null`, triggering the Scorched Earth orchestrator which nukes Sandpack, resets `contentProjectId`, and flips `hasDbSnapshotRef` to `false` -- causing a Hello World fallback.
 
-The streaming layer in `useStreamingCode.ts` has a critical leak between its two tiers:
+## Changes (all in `src/components/ai-builder/hooks/useProjectHydration.ts`)
 
-1. **Tier 1 (Streaming)**: Visual feedback only -- chunks arrive for live preview
-2. **Tier 2 (Atomic)**: `event: files` delivers validated JSON payload for final commit
+### Fix 1: Null Guard on Layout Effect (line 121-127)
+Replace the current guard logic with a null-first check. If `activeProjectId` is null, the layout effect does nothing -- no Scorched Earth, no cleanup, no state wipe.
 
-The leak: when `event: code_chunk` fires (legacy fallback), raw chunks are buffered in `streamingCodeBuffer`. If those chunks contain JSON (e.g., `{"files": {"/App.tsx": "..."}}`), the code at **line 951-953** injects the raw buffer directly into Sandpack state:
-
-```
-if (streamingCodeBuffer.length > 100) {
-  setState(prev => ({ ...prev, code: streamingCodeBuffer }));
-}
-```
-
-This means a raw JSON string like `{"files":{...}}` gets set as `/App.tsx` content, and Babel crashes trying to transpile it.
-
-Additionally, if `extractCodeFromRaw` returns empty (NO_CODE_EXTRACTED), the legacy code path at **lines 1140-1171** correctly aborts -- but the streaming path at **line 952** already injected garbage before we got there.
-
-## Fix (3 Surgical Changes)
-
-### 1. Add `looksLikeCode()` guard to `code_chunk` streaming injection (line 951-953)
-
-Before injecting `streamingCodeBuffer` into state for live preview, check that it actually looks like code, not JSON or SSE metadata:
-
+**Before:**
 ```typescript
-function looksLikeCode(chunk: string): boolean {
-  if (!chunk || chunk.trim().length < 10) return false;
-  const trimmed = chunk.trim();
-  if (trimmed.startsWith('{') && trimmed.includes('"files"')) return false;
-  if (trimmed.startsWith('{"')) return false;
-  if (trimmed.startsWith('event:')) return false;
-  return true;
+if (previousProjectIdRef.current === activeProjectId && previousProjectIdRef.current !== null) {
+  return;
 }
 ```
 
-Apply this guard at line 951:
+**After:**
 ```typescript
-// BEFORE (line 951-953):
-if (streamingCodeBuffer.length > 100) {
-  setState(prev => ({ ...prev, code: streamingCodeBuffer }));
-}
-
-// AFTER:
-if (streamingCodeBuffer.length > 100 && looksLikeCode(streamingCodeBuffer)) {
-  setState(prev => ({ ...prev, code: streamingCodeBuffer }));
-}
+if (!activeProjectId) return;
+if (previousProjectIdRef.current === activeProjectId) return;
 ```
 
-### 2. Add the same guard to the `extractCodeFromRaw` mid-stream path (line 1072-1080)
+### Fix 2: Move `previousProjectIdRef` Assignment Before Async Work (line 152)
+Move `previousProjectIdRef.current = activeProjectId` from inside `loadRoute()` (line 152) to immediately after the guards (before line 129). This prevents re-entry if a re-render fires while the async DB fetch is in-flight.
 
-The raw stream mode also injects during the read loop. Add the same guard:
+### Fix 3: Conditional `hasDbSnapshotRef` Reset (line 133)
+Instead of unconditionally resetting `hasDbSnapshotRef.current = false`, only reset it on a confirmed real project switch (both old and new IDs are non-null and differ).
 
+**Before:**
 ```typescript
-// BEFORE (line 1072-1080):
-if (mode === 'code') {
-  const cleanCode = extractCodeFromRaw(rawStream);
-  if (cleanCode && isLikelyCompleteTsx(cleanCode)) {
-    lastGoodCodeRef.current = cleanCode;
-    setState(prev => ({ ...prev, code: cleanCode }));
-    options.onChunk?.(cleanCode);
-  }
-}
-
-// AFTER:
-if (mode === 'code') {
-  const cleanCode = extractCodeFromRaw(rawStream);
-  if (cleanCode && looksLikeCode(cleanCode) && isLikelyCompleteTsx(cleanCode)) {
-    lastGoodCodeRef.current = cleanCode;
-    setState(prev => ({ ...prev, code: cleanCode }));
-    options.onChunk?.(cleanCode);
-  }
-}
+hasDbSnapshotRef.current = false;
 ```
 
-### 3. Add final safety net in `code_chunk` JSON detection (line 916)
-
-The existing JSON detection at line 916 only fires when the buffer starts with `{` AND includes `"files"`. But the `try/catch` parse can fail on incomplete JSON, and execution falls through to line 951 where the raw buffer gets injected anyway. Add an early `return` after the JSON detection block to prevent fallthrough:
-
+**After:**
 ```typescript
-// After the JSON detection block (line 915-949), add:
-if (trimmedBuf.startsWith('{') && trimmedBuf.includes('"files"')) {
-  // Already handled above or still buffering -- either way, do NOT
-  // inject raw JSON into Sandpack as code.
-  break;
+if (previousProjectIdRef.current && previousProjectIdRef.current !== activeProjectId) {
+  hasDbSnapshotRef.current = false;
 }
 ```
 
-This replaces the current logic where the JSON parse failure falls through to raw injection.
+Note: this check uses `previousProjectIdRef` before it gets updated (Fix 2 moves the assignment after this block).
 
-## Files Changed
+### Fix 4: Delete Duplicate DB Fetch Effect (lines 228-261)
+Remove the entire second `useEffect` that re-fetches `last_valid_files`. The layout effect already fetches `last_valid_files` and sets `hasDbSnapshotRef`. This duplicate creates a race condition that can flip `hasDbSnapshotRef` back to `false`.
 
-- `src/components/ai-builder/useStreamingCode.ts` -- 3 surgical edits, no architectural changes
+Instead, populate `dbLastValidFilesRef` directly inside the layout effect's success handler (where `data.last_valid_files` is already available), and set `dbSnapshotReady` to `true` at the end of `loadRoute()`.
 
-## What This Does NOT Change
+The restoration effect (lines 263-310) continues to work unchanged -- it reads from `dbLastValidFilesRef` and gates on `dbSnapshotReady`, both of which are now set by the single layout effect.
 
-- The `event: files` atomic path (already correct)
-- The guardrails system (already correct)
-- The `extractCodeFromRaw` JSON unwrapping (already correct)
-- The final validation at lines 1140-1171 (already correct)
+### Summary of line-level changes
 
-## Result
-
-After this fix, the pipeline becomes:
-
-```
-AI -> Stream chunk -> looksLikeCode? -> NO -> skip (never touches Sandpack)
-AI -> Stream chunk -> looksLikeCode? -> YES -> inject for live preview
-AI -> event: files -> atomic commit (unchanged, already safe)
-```
-
-No JSON will ever reach Babel again.
+1. Lines 121-127: Replace guard with null-first check
+2. Line 129 (new): Insert `previousProjectIdRef.current = activeProjectId` right after guards
+3. Line 133: Conditional snapshot reset instead of unconditional
+4. Line 152: Remove the old `previousProjectIdRef.current = activeProjectId` (moved up)
+5. Lines 190-203: Add `dbLastValidFilesRef.current = ...` and `setDbSnapshotReady(true)` in the DB success handler
+6. Lines 206-207: Add `setDbSnapshotReady(true)` after zombie path too
+7. Lines 228-261: Delete entire duplicate fetch effect
+8. Remove `dbSnapshotReady` state setter from the deleted effect; keep the `useState` declaration since the restoration effect still reads it
 
