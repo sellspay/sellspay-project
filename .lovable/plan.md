@@ -1,266 +1,174 @@
 
 
-# VibeCoder Storefront Isolation Architecture
+# VibeCoder Intelligence Layer: Mode Detection, Structural Diff, and Design Intelligence
 
 ## Overview
 
-This plan restructures VibeCoder to enforce strict folder isolation, namespaced routing, and commerce boundary protection. Users get unlimited UI creativity within `/storefront/**` while core commerce, checkout, auth, and admin logic remain untouchable.
-
-## Current State
-
-- AI generates files at arbitrary paths: `/App.tsx`, `/components/Hero.tsx`, `/sections/About.tsx`
-- No folder restrictions in the ZERO-TRUST commit gate
-- Published storefronts render via `AIStorefrontRenderer` using Sandpack with the full file map
-- Profile route `/@username` conditionally renders the storefront or classic profile
-- System prompt allows generating files anywhere
-
-## Changes
+Four changes that shift VibeCoder from infrastructure to product intelligence. These are additive — nothing breaks.
 
 ---
 
-### 1. Storefront Folder Enforcement (ZERO-TRUST Layer 7)
+## Step 1: Mode Detection (Vision vs Developer)
 
-**Files to modify:**
-- `supabase/functions/vibecoder-v2/index.ts`
-- `src/components/ai-builder/hooks/useBackgroundGenerationController.ts`
-- `src/components/ai-builder/transpileValidator.ts`
+### What Changes
 
-**What changes:**
+Add an `interactionMode` field to the intent classifier output. The existing `classifyIntent` function (line 1258) already returns structured JSON — we extend its output schema.
 
-Add a new validation layer (Layer 7: Path Isolation Guard) that runs after Layer 6 (transpile validation) and before the atomic commit.
+### Files Modified
 
-Every file path in the file map must satisfy:
-- Starts with `/storefront/` (or is exactly `/App.tsx` for backward compat during migration)
-- Does not contain `../`
-- Does not target restricted folders: `/core/`, `/checkout/`, `/auth/`, `/payments/`, `/settings/`, `/admin/`
+**`supabase/functions/vibecoder-v2/index.ts`**
 
-A new helper function `validatePathIsolation(fileMap)` will be added to the transpile validator module and called in both:
-- The backend edge function (server-side, during SUMMARY phase parsing)
-- The frontend controller (client-side, as Layer 7 in the ZERO-TRUST gate)
+1. Update `INTENT_CLASSIFIER_PROMPT` (line 649) to include a new output field:
+   ```
+   "interactionMode": "vision" | "developer"
+   ```
+   Add classification rules:
+   - "vision": emotional/aesthetic language ("make it feel like", "luxury", "cozy", "bold", "clean")
+   - "developer": technical language ("CSS grid", "memoize", "useEffect", "flex", "z-index", "component")
 
-Files that fail path isolation will cause the entire commit to abort (non-destructive, matching existing abort pattern).
+2. Update `IntentClassification` interface (line 1250) to add:
+   ```typescript
+   interactionMode: "vision" | "developer";
+   ```
 
----
+3. Update `classifyIntent` response parsing (line 1306) to extract `interactionMode`, defaulting to `"vision"`.
 
-### 2. Restructure Storefront File Layout
+4. Update `executeIntent` (line 1482) to inject mode-specific behavior:
+   - **Vision mode**: Add a prompt injection that says "The user is non-technical. Focus on creative interpretation. Translate their emotional language into concrete design decisions. Be opinionated about layout, color, and spacing."
+   - **Developer mode**: Add a prompt injection that says "The user is technical. Apply surgical precision. Respect exact CSS/React terminology. Do not interpret — execute literally."
 
-**Files to modify:**
-- `supabase/functions/vibecoder-v2/index.ts` (system prompt: FILE STRUCTURE PROTOCOL section)
-- `src/lib/vibecoder-stdlib.ts` (add storefront primitives)
+### No Frontend Changes Required
 
-**What changes:**
-
-Update the `CODE_EXECUTOR_PROMPT` file structure protocol from:
-```
-/App.tsx
-/components/NavBar.tsx
-/sections/Hero.tsx
-```
-To:
-```
-/storefront/Layout.tsx       -- Main layout wrapper
-/storefront/routes/Home.tsx  -- Home page
-/storefront/routes/ProductPage.tsx
-/storefront/routes/[Custom].tsx
-/storefront/components/*.tsx -- Reusable UI
-/storefront/theme.ts         -- Theme tokens
-/App.tsx                      -- Router shell (auto-generated, read-only template)
-```
-
-The AI may create new files under `/storefront/routes/` (e.g., `Contact.tsx`, `About.tsx`, `FAQ.tsx`, `CampaignLanding.tsx`) but may NOT modify the routing engine itself.
-
-The `/App.tsx` will be a fixed template that dynamically imports from `/storefront/` -- the AI cannot rewrite it from scratch; only the storefront layer is editable.
+The mode detection is invisible to the user — it just makes the AI smarter. The classifier already runs on every request.
 
 ---
 
-### 3. Namespaced Routing (`/@username/*`)
+## Step 2: Structural Diff Engine
 
-**Files to modify:**
-- `src/App.tsx` (update route definition)
-- `src/components/profile/AIStorefrontRenderer.tsx` (add dynamic route mounting)
+### What Changes
 
-**What changes:**
+Add a diff-awareness layer to the MODIFY intent path. Instead of the AI receiving "here is the full file, change X", it receives a hint about what changed in the last generation, reducing hallucinated regressions.
 
-The current `/@username` route already exists and conditionally renders `AIStorefrontRenderer`. This plan enhances it to:
+### Files Modified
 
-1. Keep `<Route path="/:atUsername/*" element={<AtUsernameRoute />} />` -- the wildcard `*` is already implicit
-2. Inside `AIStorefrontRenderer`, mount a nested router that maps storefront route files dynamically:
-   - `/` renders `routes/Home.tsx`
-   - `/about` renders `routes/About.tsx`
-   - etc.
-3. Core routes (`/product/:slug`, `/checkout`) remain in the main app router -- never inside the storefront sandbox
+**`supabase/functions/vibecoder-v2/index.ts`**
 
-Since storefronts run in Sandpack (isolated iframe), the actual route mounting happens inside the Sandpack environment. The AI-generated `/App.tsx` template will contain the internal routing for storefront pages.
+1. Add a `computeFileDiff` helper function that compares the incoming `projectFiles` against the previous `last_valid_files` snapshot and produces a lightweight diff summary:
+   ```typescript
+   function computeFileDiff(
+     prevFiles: Record<string, string>,
+     newFiles: Record<string, string>
+   ): { added: string[]; removed: string[]; modified: string[]; unchanged: string[] }
+   ```
+   This is NOT a line-level diff — it's a file-level inventory that tells the AI "these files exist, these changed, these are new."
 
-No changes to the main app router are needed beyond confirming the wildcard catch works.
+2. In `executeIntent` (line 1611), when building the code context for MODIFY/FIX intents with multi-file projects, inject a `FILE_INVENTORY` block before the file contents:
+   ```
+   FILE INVENTORY (do NOT modify unchanged files):
+   - UNCHANGED: /storefront/components/Hero.tsx, /storefront/routes/Home.tsx
+   - MODIFIED LAST TIME: /storefront/Layout.tsx
+   - NEW: (none)
+   
+   Only output files you are actually changing.
+   ```
 
----
+3. Fetch `last_valid_files` from `vibecoder_projects` table at the start of the request (when `requestProjectId` is available) so the diff can be computed.
 
-### 4. Commerce Boundary in System Prompt
+### Why File-Level Not Line-Level
 
-**Files to modify:**
-- `supabase/functions/vibecoder-v2/index.ts` (system prompts)
-
-**What changes:**
-
-Add a new section to `CODE_EXECUTOR_PROMPT`:
-
-```
-COMMERCE BOUNDARY (ABSOLUTE)
-AI may: Customize UI, style components, create pages, create product layouts
-AI may NOT: Implement payments, override checkout, add payment providers,
-            modify Stripe/commission logic, add server endpoints, create API routes
-```
-
-Also update `REFUSE_EXECUTOR_PROMPT` to include commerce boundary violations alongside the existing nav-above-hero refusal.
-
-Add commerce keywords to the intent classifier's REFUSE detection: `stripe`, `paypal`, `payment gateway`, `api endpoint`, `server route`, `webhook`.
+Line-level diffs are expensive to compute server-side and unreliable with AI output. File-level inventory is cheap (just key comparison) and achieves the same goal: telling the AI which files to leave alone.
 
 ---
 
-### 5. Core UI Primitives (Stdlib Expansion)
+## Step 3: Compile-Fix Second Retry (Controlled)
 
-**Files to modify:**
-- `src/lib/vibecoder-stdlib.ts`
+### What Changes
 
-**What changes:**
+The current repair loop (line 2238) does one attempt with the same model. Add a single lateral retry: if the primary model's repair fails, try the other premium model before aborting.
 
-Add pre-built, read-only components that the AI can compose:
+### Files Modified
 
-```
-/storefront/primitives/ProductGrid.tsx
-/storefront/primitives/ProductCard.tsx
-/storefront/primitives/BuyButton.tsx
-/storefront/primitives/FeaturedProducts.tsx
-/storefront/primitives/UserHeader.tsx
-/storefront/primitives/StoreThemeProvider.tsx
-```
+**`supabase/functions/vibecoder-v2/index.ts`**
 
-These will be injected into `VIBECODER_STDLIB` so they are always available in the Sandpack environment. The AI's system prompt will instruct it to import from `@/storefront/primitives/` rather than recreating commerce logic.
+1. In the compile-fix loop (line 2250), after a repair attempt fails (`repaired` is null), add one lateral retry:
+   ```typescript
+   if (!repaired) {
+     // Lateral retry: try the other premium model
+     const lateralConfig = PREMIUM_FALLBACK_CHAIN[generatorConfig.provider];
+     if (lateralConfig) {
+       console.log(`[CompileFix] Primary repair failed, trying lateral: ${lateralConfig.provider}`);
+       repaired = await repairBrokenFile(err.file, fileMap[err.file], err.error, lateralConfig);
+     }
+   }
+   ```
 
-Each primitive delegates to `useSellsPayCheckout()` internally, ensuring all commerce flows through the managed marketplace.
-
----
-
-### 6. Migration Path (Backward Compatibility)
-
-**What changes:**
-
-Existing projects have files at `/App.tsx`, `/sections/Hero.tsx`, `/components/NavBar.tsx`. These must continue to work.
-
-Strategy:
-- The path isolation guard will have a **migration mode**: if the project's `last_valid_files` contains legacy paths (files outside `/storefront/`), the guard allows the existing structure but logs a deprecation warning
-- New projects (no `last_valid_files`) will enforce `/storefront/` from the start
-- A future migration script can relocate legacy files, but this is out of scope for this change
-
-This ensures zero breakage for existing users while all new builds follow the isolated structure.
+2. This adds exactly one more repair attempt (2 total max), then abort. Matches the "stability over complexity" principle.
 
 ---
 
-### 7. Shared Runtime Confirmation
+## Step 4: Storefront Design Intelligence (Brand Layer)
 
-No per-user sandbox infrastructure. No separate bundles. The architecture remains:
-- Sandpack iframe renders the user's file map dynamically
-- The host app (`AIStorefrontRenderer`) injects the stdlib + file map
-- All storefronts share the same React runtime, Tailwind CDN, and dependency set
-- Performance optimization: stdlib files are static constants (cached in memory)
+### What Changes
 
----
+When the user uses emotional/vision language ("make it dark and futuristic"), the AI should update theme tokens holistically — not just random class edits. This connects the existing `theme-vibes.ts` system to the AI generation pipeline.
 
-### 8. Multi-Model Orchestration Compatibility
+### Files Modified
 
-All changes are additive and do not modify the existing:
-- Intent classifier pipeline
-- Planner/executor routing
-- Compile-fix retry loop
-- Structural diff guards
+**`supabase/functions/vibecoder-v2/index.ts`**
 
-The path isolation guard is a new validation layer that slots into the existing 6-layer gate as Layer 7. The system prompt changes are confined to the `CODE_EXECUTOR_PROMPT` constant.
+1. Add a `BRAND_LAYER_PROMPT` injection for vision-mode requests that contain style/vibe keywords. This goes into `executeIntent` when `interactionMode === "vision"` AND the prompt matches vibe keywords (reuse the keyword map from `vibe-from-text.ts`):
 
----
+   ```
+   DESIGN INTELLIGENCE: BRAND LAYER
+   When the user describes a feeling or aesthetic, update the ENTIRE design system coherently:
+   1. /storefront/theme.ts — Update color tokens, spacing scale, border radius, typography
+   2. Component files — Apply the theme tokens consistently (use CSS variables, not hardcoded colors)
+   
+   VIBE MAP:
+   - "luxury/premium/elegant" → Dark backgrounds, serif headings, wide spacing, subtle borders, gold accents
+   - "futuristic/neon/cyber" → Near-black bg, neon accent colors, tight spacing, sharp corners, glow effects
+   - "playful/fun/colorful" → Vibrant palette, rounded corners, bouncy animations, bold typography
+   - "minimal/clean/simple" → Maximum whitespace, thin fonts, no decorative elements, monochrome
+   - "corporate/professional" → Blue accents, system fonts, structured grid, subtle shadows
+   
+   CRITICAL: When changing the vibe, update theme.ts AND ensure components reference theme tokens.
+   Never scatter hardcoded colors — centralize in theme.ts.
+   ```
 
-## Technical Details
+2. Add vibe keyword detection to the backend (port the keyword map from `vibe-from-text.ts`):
+   ```typescript
+   function detectVibeIntent(prompt: string): string | null {
+     // Same keyword matching as vibe-from-text.ts
+     // Returns: "luxury" | "cyberpunk" | "playful" | "minimal" | "corporate" | "editorial" | null
+   }
+   ```
 
-### New Validation Function
+3. When a vibe is detected AND mode is "vision", inject the brand layer prompt AND append to the user message:
+   ```
+   DETECTED VIBE: luxury
+   Apply the "luxury" design system comprehensively across all affected files.
+   ```
 
-```typescript
-// In transpileValidator.ts
-const RESTRICTED_PREFIXES = [
-  '/core/', '/checkout/', '/auth/', '/payments/',
-  '/settings/', '/admin/', '/api/'
-];
+### No New Files Required
 
-export function validatePathIsolation(
-  files: Record<string, string>,
-  legacyMode: boolean = false
-): { valid: boolean; errors: Array<{ file: string; error: string }> } {
-  const errors = [];
-  for (const path of Object.keys(files)) {
-    if (path.includes('..')) {
-      errors.push({ file: path, error: 'Path traversal detected' });
-      continue;
-    }
-    if (RESTRICTED_PREFIXES.some(p => path.startsWith(p))) {
-      errors.push({ file: path, error: 'Targets restricted folder' });
-      continue;
-    }
-    // In strict mode, must be under /storefront/ or be /App.tsx
-    if (!legacyMode && !path.startsWith('/storefront/') && path !== '/App.tsx') {
-      errors.push({ file: path, error: 'File must be under /storefront/' });
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-```
-
-### Updated ZERO-TRUST Gate Order
-
-1. JSON parse
-2. Valid file map object
-3. All values are strings
-4. No conversational signatures
-5. Export default in App.tsx
-6. Transpile validation (syntax)
-7. **Path isolation guard** (new)
-8. Atomic DB-first commit
-
-### System Prompt File Structure Update
-
-The FILE STRUCTURE PROTOCOL section (lines ~1014-1026) will be replaced with the new storefront-aware structure, and a COMMERCE BOUNDARY section will be added after the MARKETPLACE PROTOCOL section.
-
-### Stdlib Primitive Example
-
-```typescript
-// /storefront/primitives/BuyButton.tsx
-import { useSellsPayCheckout } from '@/hooks/useSellsPayCheckout';
-
-export function BuyButton({ productId, label = 'Buy Now' }) {
-  const { buyProduct, isProcessing } = useSellsPayCheckout();
-  return (
-    <button onClick={() => buyProduct(productId)} disabled={isProcessing}>
-      {isProcessing ? 'Processing...' : label}
-    </button>
-  );
-}
-```
+This leverages the existing `theme-vibes.ts` intelligence but surfaces it to the AI code generation pipeline. The theme system already exists on the client side — we're just teaching the AI to use it properly.
 
 ---
 
-## Summary of Files Changed
+## Summary of All Changes
 
 | File | Change |
 |------|--------|
-| `src/components/ai-builder/transpileValidator.ts` | Add `validatePathIsolation()` |
-| `src/components/ai-builder/hooks/useBackgroundGenerationController.ts` | Add Layer 7 path isolation check |
-| `supabase/functions/vibecoder-v2/index.ts` | Add server-side path isolation, update system prompts, add commerce boundary |
-| `src/lib/vibecoder-stdlib.ts` | Add storefront primitives (ProductGrid, BuyButton, etc.) |
-| `src/components/profile/AIStorefrontRenderer.tsx` | Minor: confirm storefront route support |
+| `supabase/functions/vibecoder-v2/index.ts` | Add interactionMode to classifier, file inventory diff, lateral repair retry, brand layer prompt injection |
 
-## What This Prevents
+All changes are in a single file. No new files. No database changes. No frontend changes. Pure backend intelligence upgrade.
 
-- AI generating files in `/checkout/`, `/auth/`, `/admin/` -- blocked by path isolation
-- AI implementing custom payment logic -- blocked by commerce boundary in system prompt + REFUSE intent
-- Path traversal attacks (`../../../core/`) -- blocked by `..` check
-- Breaking existing projects -- legacy mode allows old file structures
-- Revenue layer tampering -- all commerce flows through `useSellsPayCheckout()` primitives
+## Execution Order
+
+1. Mode Detection (extends classifier — foundational)
+2. Brand Layer (depends on mode detection)
+3. File Inventory Diff (independent)
+4. Lateral Repair Retry (independent, 5-line change)
+
+All four can be implemented in a single edge function update and deployment.
 
