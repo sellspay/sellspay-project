@@ -2228,7 +2228,8 @@ If the request says "change X", change ONLY X and nothing else.
   let maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : providerCap;
   if (isMicro) maxTokens = Math.min(16000, providerCap);
 
-  console.log(`[Executor] Using model: ${config.modelId} (${config.provider}) for intent: ${intent.intent}${isMicro ? ' (micro-edit, 16k tokens)' : ''}`);
+  console.log(`[EDGE] Model resolved: ${config.modelId} (${config.provider}) for intent: ${intent.intent} | maxTokens=${maxTokens} | micro=${isMicro}`);
+  console.log(`[MODEL_ROUTER] Provider selected: ${config.provider} | Model: ${config.modelId} | Intent: ${intent.intent}`);
 
   // Call the AI via multi-model router
   try {
@@ -2436,8 +2437,11 @@ serve(async (req) => {
       console.log(`[Stage 0] 🏗️ Complex build detected - forcing Architect Mode`);
     }
 
+    console.log(`[EDGE] Request received`, { intent: 'classifying...', modelId: model, projectId: requestProjectId, hasExistingCode, promptLength: prompt?.length });
+
     const intentResult = await classifyIntent(prompt, hasExistingCode, conversationHistory || [], GOOGLE_GEMINI_API_KEY);
 
+    console.log(`[EDGE] Intent classified: ${intentResult.intent} (confidence=${intentResult.confidence}) mode=${intentResult.interactionMode}`);
     console.log(`[Stage 1] Result: ${intentResult.intent} (${intentResult.confidence}) - ${intentResult.reasoning}`);
 
     // ════════════════════════════════════════════════════════════
@@ -2578,6 +2582,7 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════
     // STAGE 2: EXECUTE BASED ON CLASSIFIED INTENT
     // ════════════════════════════════════════════════════════════
+    console.log(`[EDGE] Starting generation — intent=${intentResult.intent} model=${model} resolvedConfig will be computed inside executeIntent`);
     console.log(`[Stage 2] Executing ${intentResult.intent} handler (mode: ${intentResult.interactionMode})${forcePlanMode ? " (Plan Mode Forced)" : ""}...`);
 
     const response = await executeIntent(
@@ -2594,9 +2599,11 @@ serve(async (req) => {
       brandIdentityLocked,
     );
 
+    console.log(`[EDGE] Generation response received — ok=${response.ok} status=${response.status} streaming=${!!response.body}`);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI Gateway error:", response.status, errorText);
+      console.error("[EDGE] Generation FAILED:", response.status, errorText.slice(0, 500));
 
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
@@ -2798,6 +2805,9 @@ serve(async (req) => {
               .trim();
             
             // 🔍 DEBUG: Log raw CODE section before any parsing
+            console.log(`[EDGE] Raw response tail (last 200 chars):`, cleaned.slice(-200));
+            console.log(`[EDGE] CODE section total length: ${cleaned.length}`);
+            console.log(`[EDGE] CODE section starts with: ${cleaned.substring(0, 100)}`);
             console.log(`[Job ${jobId}] RAW_CODE_SECTION (first 2000 chars):`, cleaned.substring(0, 2000));
             console.log(`[Job ${jobId}] RAW_CODE_SECTION (last 500 chars):`, cleaned.substring(Math.max(0, cleaned.length - 500)));
             console.log(`[Job ${jobId}] RAW_CODE_SECTION total length: ${cleaned.length}`);
@@ -2805,8 +2815,10 @@ serve(async (req) => {
             let filesEmitted = false;
             try {
               const parsed = JSON.parse(cleaned);
+              console.log(`[EDGE] JSON parsed successfully — top-level keys: ${Object.keys(parsed).join(', ')}`);
               if (parsed.files && typeof parsed.files === 'object') {
                 const fileMap: Record<string, string> = parsed.files;
+                console.log(`[EDGE] File map keys: ${Object.keys(fileMap).join(', ')} (${Object.keys(fileMap).length} files)`);
                 
                 // ═══════════════════════════════════════════════════════
                 // ZERO-TRUST LAYER 3: All values must be strings
@@ -2881,9 +2893,15 @@ serve(async (req) => {
                 // If any fail, batch-repair ALL broken files in one call.
                 // Max 2 attempts. Returns structured COMPILE_FAILURE on abort.
                 // ═══════════════════════════════════════════════════════
+                console.log(`[EDGE] Validation starting — ${Object.keys(fileMap).length} files`);
                 const initialSyntaxCheck = validateAllFilesServer(fileMap);
                 if (!initialSyntaxCheck.valid) {
+                  console.warn(`[EDGE] Validation FAILED — ${initialSyntaxCheck.errors.length} errors: ${initialSyntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
                   console.warn(`[COMPILE_FIX] ${initialSyntaxCheck.errors.length} file(s) have syntax errors — starting batch repair`);
+                } else {
+                  console.log(`[EDGE] Syntax validation passed — all ${Object.keys(fileMap).length} files clean`);
+                }
+                if (!initialSyntaxCheck.valid) {
                   const batchGeneratorConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
                   const batchResult = await batchCompileFix(fileMap, batchGeneratorConfig, emitEvent);
                   
@@ -2952,6 +2970,8 @@ serve(async (req) => {
 
                 // Only emit if all validation passed
                 if (summaryValidated !== false) {
+                  console.log(`[EDGE] Validation passed — all layers OK`);
+                  console.log(`[EDGE] Emitting files — ${Object.keys(fileMap).length} files`);
                   emitEvent('files', { projectFiles: fileMap });
                   filesEmitted = true;
                   lastMergedFiles = fileMap;
