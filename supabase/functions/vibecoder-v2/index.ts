@@ -773,6 +773,42 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
+const HARD_TIMEOUT_MS = 45_000;
+const PROVIDER_FETCH_TIMEOUT_MS = 40_000;
+
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit,
+  timeoutMs: number = PROVIDER_FETCH_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort("EDGE_TIMEOUT"), timeoutMs);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("EDGE_TIMEOUT");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function withHardTimeout<T>(operation: Promise<T>, timeoutMs: number = HARD_TIMEOUT_MS): Promise<T> {
+  let timeoutId: number | null = null;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("EDGE_TIMEOUT")), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([operation, timeoutPromise]);
+  } finally {
+    if (timeoutId !== null) clearTimeout(timeoutId);
+  }
+}
+
 // Model Configuration Mapping - Multi-provider routing
 type ModelProvider = 'gemini' | 'openai' | 'anthropic';
 
@@ -881,7 +917,7 @@ async function callModelAPI(
           return tryPremiumFallback("openai", "OPENAI_API_KEY is missing");
         }
 
-        const response = await fetch(OPENAI_API_URL, {
+        const response = await fetchWithTimeout(OPENAI_API_URL, {
           method: "POST",
           headers: { Authorization: `Bearer ${OPENAI_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -913,7 +949,7 @@ async function callModelAPI(
           .map((m) => `${m.role.toUpperCase()}:\n${m.content}`)
           .join("\n\n");
 
-        const response = await fetch(ANTHROPIC_API_URL, {
+        const response = await fetchWithTimeout(ANTHROPIC_API_URL, {
           method: "POST",
           headers: {
             "content-type": "application/json",
@@ -985,7 +1021,7 @@ async function callModelAPI(
           });
         }
 
-        const response = await fetch(GEMINI_API_URL, {
+        const response = await fetchWithTimeout(GEMINI_API_URL, {
           method: "POST",
           headers: { Authorization: `Bearer ${GOOGLE_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -2253,8 +2289,15 @@ If the request says "change X", change ONLY X and nothing else.
 }
 
 serve(async (req) => {
+  let requestJobId: string | null = null;
+  let supabaseAdmin: ReturnType<typeof createClient> | null = null;
+  let endedAsSuccess = false;
+
+  console.log("[EDGE] START", { method: req.method });
+
   // MUST BE FIRST: Handles the browser security handshake
   if (req.method === "OPTIONS") {
+    endedAsSuccess = true;
     return new Response(null, {
       status: 204,
       headers: corsHeaders,
@@ -2287,6 +2330,9 @@ serve(async (req) => {
       projectId: requestProjectId,
     } = body;
 
+    requestJobId = jobId ?? null;
+    console.log("[EDGE] Request received", { intent: requestType ?? "auto", modelId: model, jobId: requestJobId });
+
     const GOOGLE_GEMINI_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -2295,6 +2341,7 @@ serve(async (req) => {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error("Supabase configuration missing");
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    supabaseAdmin = supabase;
 
     // ============================================
     // CREDIT ENFORCEMENT: Check and deduct credits
@@ -2585,18 +2632,21 @@ serve(async (req) => {
     console.log(`[EDGE] Starting generation — intent=${intentResult.intent} model=${model} resolvedConfig will be computed inside executeIntent`);
     console.log(`[Stage 2] Executing ${intentResult.intent} handler (mode: ${intentResult.interactionMode})${forcePlanMode ? " (Plan Mode Forced)" : ""}...`);
 
-    const response = await executeIntent(
-      intentResult,
-      modifiedPrompt,
-      currentCode || null,
-      productsContext || null,
-      model,
-      GOOGLE_GEMINI_API_KEY,
-      creatorIdentity,
-      projectFiles || null,
-      lastValidFiles,
-      brandIdentity,
-      brandIdentityLocked,
+    const response = await withHardTimeout(
+      executeIntent(
+        intentResult,
+        modifiedPrompt,
+        currentCode || null,
+        productsContext || null,
+        model,
+        GOOGLE_GEMINI_API_KEY,
+        creatorIdentity,
+        projectFiles || null,
+        lastValidFiles,
+        brandIdentity,
+        brandIdentityLocked,
+      ),
+      HARD_TIMEOUT_MS,
     );
 
     console.log(`[EDGE] Generation response received — ok=${response.ok} status=${response.status} streaming=${!!response.body}`);
@@ -2690,19 +2740,22 @@ serve(async (req) => {
           }
         }, 10_000);
         
-        // Hard timeout: 180s for first builds (REPLACE mode), 120s for job-backed edits, 60s otherwise
-        const isFirstBuild = !currentCode?.trim();
-        const timeoutMs = isFirstBuild ? 180_000 : jobId ? 120_000 : 60_000;
-        console.log(`[Streaming] Timeout set to ${timeoutMs / 1000}s (firstBuild=${isFirstBuild}, jobBacked=${!!jobId})`);
-        const streamTimeout = setTimeout(() => {
-          console.error("[Streaming] Hard timeout reached");
-          const payload = `event: error\ndata: ${JSON.stringify({ code: "STREAM_TIMEOUT", message: "Generation timed out. Please retry with a simpler request." })}\n\n`;
+        // Hard timeout: abort stream processing if provider stream never closes
+        let streamTimedOut = false;
+        console.log(`[Streaming] Hard timeout set to ${HARD_TIMEOUT_MS / 1000}s`);
+        const streamTimeout = setTimeout(async () => {
+          streamTimedOut = true;
+          console.error(`[EDGE_TIMEOUT] Stream exceeded ${HARD_TIMEOUT_MS}ms`);
+          emitEvent('error', {
+            code: 'EDGE_TIMEOUT',
+            message: 'Execution exceeded safe time limit.',
+          });
           try {
-            controller.enqueue(encoder.encode(payload));
-            controller.close();
-          } catch { /* already closed */ }
-          clearInterval(heartbeatInterval);
-        }, timeoutMs);
+            await reader.cancel('EDGE_TIMEOUT');
+          } catch {
+            // best effort
+          }
+        }, HARD_TIMEOUT_MS);
         
         // Track structured sections
         let currentSection: 'none' | 'analysis' | 'plan' | 'code' | 'summary' | 'confidence' = 'none';
@@ -3077,7 +3130,7 @@ serve(async (req) => {
 
         try {
           while (true) {
-            const { done, value } = await reader.read();
+            const { done, value } = await withHardTimeout(reader.read(), HARD_TIMEOUT_MS);
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
@@ -3137,6 +3190,10 @@ serve(async (req) => {
             }
           }
           
+          if (streamTimedOut) {
+            throw new Error("EDGE_TIMEOUT");
+          }
+
           // Final: emit complete if no confidence section detected
           if (!confidenceEmitted) {
             // Default confidence when model didn't output the section
@@ -3532,8 +3589,14 @@ serve(async (req) => {
             console.log(`[Job ${jobId}] Job ${jobStatus} | Reason: ${terminalReason}`);
           }
         } catch (e) {
-          console.error("Stream processing error:", e);
-          emitEvent('error', { code: "STREAM_ERROR", message: e instanceof Error ? e.message : 'Stream error' });
+          const isTimeout = e instanceof Error && e.message === "EDGE_TIMEOUT";
+          const errorType = isTimeout ? "EDGE_TIMEOUT" : "STREAM_ERROR";
+          const errorMessage = isTimeout
+            ? "Execution exceeded safe time limit."
+            : (e instanceof Error ? e.message : "Stream error");
+
+          console.error(isTimeout ? "[EDGE_TIMEOUT_OR_CRASH]" : "Stream processing error:", e);
+          emitEvent('error', { code: errorType, message: errorMessage });
 
           // If job-backed, mark as failed
           if (jobId) {
@@ -3542,8 +3605,8 @@ serve(async (req) => {
               .update({
                 status: "failed",
                 completed_at: new Date().toISOString(),
-                error_message: e instanceof Error ? e.message : "Unknown error",
-                progress_logs: ["Starting AI generation...", "Error occurred", e instanceof Error ? e.message : "Unknown error"],
+                error_message: JSON.stringify({ type: errorType, message: errorMessage }),
+                progress_logs: ["Starting AI generation...", "Error occurred", `${errorType}: ${errorMessage}`],
               })
               .eq("id", jobId);
           }
@@ -3555,6 +3618,7 @@ serve(async (req) => {
       },
     });
 
+    endedAsSuccess = true;
     return new Response(stream, {
       headers: {
         ...corsHeaders,
@@ -3564,10 +3628,42 @@ serve(async (req) => {
       },
     });
   } catch (error) {
-    console.error("vibecoder-v2 error:", error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
-      status: 500,
+    const isTimeout = error instanceof Error && error.message === "EDGE_TIMEOUT";
+    console.error("[EDGE_TIMEOUT_OR_CRASH]", error);
+
+    if (requestJobId && supabaseAdmin) {
+      await supabaseAdmin
+        .from("ai_generation_jobs")
+        .update({
+          status: "failed",
+          completed_at: new Date().toISOString(),
+          error_message: JSON.stringify({
+            type: isTimeout ? "EDGE_TIMEOUT" : "EDGE_CRASH",
+            message: error instanceof Error ? error.message : "Unknown error",
+          }),
+          progress_logs: [
+            "Starting AI generation...",
+            "Error occurred",
+            isTimeout ? "EDGE_TIMEOUT: Execution exceeded safe time limit." : (error instanceof Error ? error.message : "Unknown error"),
+          ],
+        })
+        .eq("id", requestJobId);
+    }
+
+    return new Response(JSON.stringify({
+      type: isTimeout ? "EDGE_TIMEOUT" : "EDGE_CRASH",
+      message: isTimeout
+        ? "Execution exceeded safe time limit."
+        : (error instanceof Error ? error.message : "Unknown error"),
+    }), {
+      status: isTimeout ? 504 : 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+  } finally {
+    if (endedAsSuccess) {
+      console.log("[EDGE] END_SUCCESS", requestJobId ?? "no-job");
+    } else {
+      console.log("[EDGE] END_FAILURE", requestJobId ?? "no-job");
+    }
   }
 });
