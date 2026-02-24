@@ -1385,16 +1385,26 @@ async function classifyIntent(
     const parsed = JSON.parse(cleaned);
 
     console.log(`[Intent Classifier] Reasoning: ${parsed.reasoning}`);
-    console.log(`[Intent Classifier] Intent: ${parsed.intent} (${parsed.confidence})`);
+    console.log(`[Intent Classifier] Intent: ${parsed.intent} (${parsed.confidence}) | Mode: ${parsed.interactionMode}`);
     if (parsed.resolved_target) {
       console.log(`[Intent Classifier] Resolved Target: ${parsed.resolved_target}`);
+    }
+
+    // Confidence threshold: low-confidence mode detection defaults to vision
+    // because most Sellspay users are non-technical creators
+    const rawMode = parsed.interactionMode || "vision";
+    const modeConfidence = parsed.confidence || 0.5;
+    const MODE_CONFIDENCE_THRESHOLD = 0.65;
+    const resolvedMode = (rawMode === "developer" && modeConfidence < MODE_CONFIDENCE_THRESHOLD) ? "vision" : rawMode;
+    if (rawMode === "developer" && resolvedMode === "vision") {
+      console.log(`[Intent Classifier] Mode downgraded: developer → vision (confidence ${modeConfidence} < ${MODE_CONFIDENCE_THRESHOLD})`);
     }
 
     return {
       reasoning: parsed.reasoning || "No reasoning provided",
       intent: parsed.intent || "MODIFY",
-      interactionMode: parsed.interactionMode || "vision",
-      confidence: parsed.confidence || 0.5,
+      interactionMode: resolvedMode,
+      confidence: modeConfidence,
       context_needed: parsed.context_needed ?? true,
       resolved_target: parsed.resolved_target || undefined,
     };
@@ -1602,20 +1612,40 @@ async function executeIntent(
 ═══════════════════════════════════════════════════════════════
 🔧 DEVELOPER MODE: SURGICAL PRECISION
 ═══════════════════════════════════════════════════════════════
-The user is technical. Apply surgical precision. Respect exact CSS/React terminology.
-Do not interpret — execute literally. When they say "CSS grid", use CSS grid.
-When they say "memoize", use React.memo or useMemo. Be exact.
+The user is technical. Apply surgical code discipline:
+- Execute LITERALLY what they ask. "CSS grid" → CSS grid. "memo" → React.memo.
+- NO creative drift. NO layout reinterpretation. NO design opinions.
+- Change ONLY the files and lines explicitly referenced.
+- If they say "refactor ProductCard", touch ONLY ProductCard. Nothing else.
+- Return the SMALLEST possible diff. Preserve everything untouched.
+- No "while I'm at it" improvements. Zero collateral changes.
 ═══════════════════════════════════════════════════════════════
 `;
   } else {
     modeInjection = `
 ═══════════════════════════════════════════════════════════════
-🎨 VISION MODE: CREATIVE INTERPRETATION
+🎨 DESIGN COFOUNDER MODE: BRAND-FIRST INTELLIGENCE
 ═══════════════════════════════════════════════════════════════
-The user is non-technical. Focus on creative interpretation.
-Translate their emotional language into concrete design decisions.
-Be opinionated about layout, color, and spacing.
-"Make it feel luxury" means dark backgrounds, serif headings, wide spacing, gold accents.
+You are a design cofounder, not a code generator. Think like a creative director.
+
+WHEN THE USER DESCRIBES A FEELING, THINK IN:
+1. 🎯 BRAND IDENTITY — What story does this storefront tell? What emotion should visitors feel?
+2. 📐 LAYOUT HIERARCHY — What should the eye see first? Hero → Social proof → Products → CTA.
+3. 🎨 COLOR PSYCHOLOGY — Warm tones = trust. Cool tones = tech. Dark = premium. Bright = energy.
+4. 🔘 CTA PLACEMENT — Primary CTA above the fold. Secondary CTA after social proof. Sticky CTA on scroll.
+5. 🛒 CONVERSION FLOW — Reduce friction. Clear pricing. Trust signals. Urgency cues. Easy checkout path.
+
+TRANSLATE EMOTIONAL LANGUAGE INTO DESIGN DECISIONS:
+- "boring" → Needs visual contrast, dynamic spacing, hero imagery, motion
+- "luxury" → Dark bg, serif headings, wide spacing, gold accents, subtle animations
+- "modern" → Clean lines, sans-serif, ample whitespace, gradient accents
+- "high-converting" → Bold CTAs, social proof sections, pricing clarity, urgency elements
+- "professional" → Structured grid, blue accents, credentials section, testimonials
+- "fun/playful" → Rounded corners, vibrant colors, bouncy animations, emoji-friendly
+
+CRITICAL: Be OPINIONATED. Creators want confident design decisions, not options.
+Make the storefront feel like it was designed by a premium agency.
+BUT: Never rewrite everything unless explicitly asked. Merge intelligently.
 ═══════════════════════════════════════════════════════════════
 `;
   }
