@@ -4,7 +4,7 @@ import { useGhostFixer } from '@/hooks/useGhostFixer';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { AIModel } from '../ChatInputBar';
-import { validateAllFiles } from '../transpileValidator';
+import { validateAllFiles, validatePathIsolation } from '../transpileValidator';
 
 interface BackgroundGenerationControllerOptions {
   activeProjectId: string | null;
@@ -197,8 +197,26 @@ export function useBackgroundGenerationController({
         return;
       }
 
-      // ✅ ALL 6 LAYERS PASSED — atomic commit sequence
-      console.log('[ZERO-TRUST] All layers passed (including transpile). Committing', Object.keys(fileMap).length, 'files for job:', job.id);
+      // LAYER 7: Path Isolation Guard — reject if files target restricted folders
+      // Legacy mode: allow old paths if existing project has files outside /storefront/
+      const existingPaths = Object.keys(fileMap);
+      const hasLegacyPaths = existingPaths.some(
+        p => !p.startsWith('/storefront/') && p !== '/App.tsx'
+          && !p.startsWith('/core/') && !p.startsWith('/checkout/')
+          && !p.startsWith('/auth/') && !p.startsWith('/payments/')
+          && !p.startsWith('/settings/') && !p.startsWith('/admin/')
+      );
+      const pathResult = validatePathIsolation(fileMap, hasLegacyPaths);
+      if (!pathResult.valid) {
+        const errorSummary = pathResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
+        console.error('[ZERO-TRUST] Path isolation failed. Refusing to commit:', errorSummary);
+        toast.error('Generation attempted to modify restricted files. Please retry.');
+        abortGeneration();
+        return;
+      }
+
+      // ✅ ALL 7 LAYERS PASSED — atomic commit sequence
+      console.log('[ZERO-TRUST] All layers passed (including path isolation). Committing', Object.keys(fileMap).length, 'files for job:', job.id);
 
       // ATOMIC COMMIT: DB first, then sandbox, then ref
       // If DB fails, no UI mutation occurs — prevents refresh inconsistency

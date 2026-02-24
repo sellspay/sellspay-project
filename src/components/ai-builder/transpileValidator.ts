@@ -188,3 +188,46 @@ function checkMalformedStyles(code: string): string | null {
   }
   return null;
 }
+
+// ─── Layer 7: Path Isolation Guard ──────────────────────────────
+
+const RESTRICTED_PREFIXES = [
+  '/core/', '/checkout/', '/auth/', '/payments/',
+  '/settings/', '/admin/', '/api/'
+];
+
+/**
+ * Validate that all file paths in a file map are within the allowed
+ * `/storefront/` directory and do not target restricted folders.
+ *
+ * @param files       - The file map to validate
+ * @param legacyMode  - If true, allow legacy paths (files outside /storefront/)
+ *                      for backward compatibility with existing projects.
+ */
+export function validatePathIsolation(
+  files: Record<string, string>,
+  legacyMode: boolean = false
+): { valid: boolean; errors: Array<{ file: string; error: string }> } {
+  const errors: Array<{ file: string; error: string }> = [];
+
+  for (const path of Object.keys(files)) {
+    // Block path traversal
+    if (path.includes('..')) {
+      errors.push({ file: path, error: 'Path traversal detected' });
+      continue;
+    }
+
+    // Block restricted folders
+    if (RESTRICTED_PREFIXES.some(p => path.startsWith(p))) {
+      errors.push({ file: path, error: 'Targets restricted folder' });
+      continue;
+    }
+
+    // In strict mode, must be under /storefront/ or be /App.tsx
+    if (!legacyMode && !path.startsWith('/storefront/') && path !== '/App.tsx') {
+      errors.push({ file: path, error: 'File must be under /storefront/' });
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
