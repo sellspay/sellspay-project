@@ -1578,6 +1578,8 @@ async function executeIntent(
   creatorIdentity: { username: string; email: string } | null,
   projectFiles?: Record<string, string> | null,
   lastValidFiles?: Record<string, string> | null,
+  brandIdentity?: Record<string, unknown> | null,
+  brandIdentityLocked?: boolean,
 ): Promise<Response> {
   // Select the appropriate system prompt based on intent
   let systemPrompt: string;
@@ -1675,6 +1677,36 @@ Your diff should be minimal. Only change what was asked.
   }
   
   // ═══════════════════════════════════════════════════════════════
+  // BRAND MEMORY: Inject stored brand identity into planner context
+  // ═══════════════════════════════════════════════════════════════
+  let brandMemoryInjection = "";
+  if (brandIdentity && typeof brandIdentity === 'object' && Object.keys(brandIdentity).length > 0) {
+    const lockStatus = brandIdentityLocked
+      ? "🔒 LOCKED — Do NOT modify any brand tokens (palette, typography, spacing, vibe). The user has locked their brand direction. Only change layout/content, never design tokens."
+      : "🔓 UNLOCKED — You may evolve the brand identity if the user's request implies a style change. If you do, output a JSON block at the end of your response tagged === BRAND_UPDATE === with the updated brand_identity object.";
+    brandMemoryInjection = `
+═══════════════════════════════════════════════════════════════
+🧠 BRAND MEMORY: STORED BRAND IDENTITY
+═══════════════════════════════════════════════════════════════
+${JSON.stringify(brandIdentity, null, 2)}
+
+${lockStatus}
+
+When generating code, ALWAYS reference these brand tokens:
+- Use the colorPalette values for all color decisions
+- Use the typography style for font choices
+- Use the borderRadius scale for component rounding
+- Use the spacingScale for section/component spacing
+- Use the ctaStyle for button/CTA design decisions
+- Use the vibe as the overall design personality
+
+This ensures CONSISTENCY across all generations.
+═══════════════════════════════════════════════════════════════
+`;
+    console.log(`[BrandMemory] Injected brand identity into prompt (locked: ${brandIdentityLocked})`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // BRAND LAYER: Vibe-aware design intelligence (Vision mode only)
   // ═══════════════════════════════════════════════════════════════
   let brandLayerInjection = "";
@@ -1703,6 +1735,7 @@ VIBE MAP:
 
 CRITICAL: When changing the vibe, update theme.ts AND ensure components reference theme tokens.
 Never scatter hardcoded colors — centralize in theme.ts.
+${!brandIdentityLocked ? `\nIf you change the vibe, output === BRAND_UPDATE === at the end with the new brand_identity JSON.` : ''}
 ═══════════════════════════════════════════════════════════════
 `;
     }
@@ -1811,13 +1844,13 @@ If the request says "change X", change ONLY X and nothing else.
 
       messages.push({
         role: "user",
-        content: `${modeInjection}${brandLayerInjection}${intentInjection}${microInjection}${creatorInjection}${productsInjection}${resolvedTargetContext}${minimalDiffReminder}${codeContext}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
+        content: `${modeInjection}${brandMemoryInjection}${brandLayerInjection}${intentInjection}${microInjection}${creatorInjection}${productsInjection}${resolvedTargetContext}${minimalDiffReminder}${codeContext}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
       });
     } else {
       // First build (REPLACE mode) — skip ANALYSIS/PLAN to reduce token burden and avoid timeouts
       messages.push({
         role: "user",
-        content: `${modeInjection}${brandLayerInjection}${intentInjection}${creatorInjection}${productsInjection}Create a complete storefront with this description: ${prompt}\n\nIMPORTANT: This is a FIRST BUILD — skip the ANALYSIS and PLAN sections. Go directly to === CODE ===, then === SUMMARY ===, then === CONFIDENCE ===. Focus all tokens on generating high-quality code.`,
+        content: `${modeInjection}${brandMemoryInjection}${brandLayerInjection}${intentInjection}${creatorInjection}${productsInjection}Create a complete storefront with this description: ${prompt}\n\nIMPORTANT: This is a FIRST BUILD — skip the ANALYSIS and PLAN sections. Go directly to === CODE ===, then === SUMMARY ===, then === CONFIDENCE ===. Focus all tokens on generating high-quality code.`,
       });
     }
   }
@@ -1982,13 +2015,15 @@ serve(async (req) => {
     }
 
     // ════════════════════════════════════════════════════════════
-    // FETCH CREATOR IDENTITY (for personalization)
+    // FETCH CREATOR IDENTITY + BRAND MEMORY (for personalization)
     // ════════════════════════════════════════════════════════════
     let creatorIdentity: { username: string; email: string } | null = null;
+    let brandIdentity: Record<string, unknown> | null = null;
+    let brandIdentityLocked = false;
 
     try {
-      // Get user's profile for username
-      const { data: profile } = await supabase.from("profiles").select("username").eq("user_id", userId).single();
+      // Get user's profile for username + brand identity
+      const { data: profile } = await supabase.from("profiles").select("username, brand_identity, brand_identity_locked").eq("user_id", userId).single();
 
       // Get user's email from auth
       const userEmail = userData.user.email || "";
@@ -1999,6 +2034,12 @@ serve(async (req) => {
           email: userEmail,
         };
         console.log(`[Creator Identity] Username: ${creatorIdentity.username}, Email: ${creatorIdentity.email}`);
+      }
+
+      if (profile?.brand_identity && typeof profile.brand_identity === 'object') {
+        brandIdentity = profile.brand_identity as Record<string, unknown>;
+        brandIdentityLocked = profile?.brand_identity_locked === true;
+        console.log(`[BrandMemory] Loaded brand identity (locked: ${brandIdentityLocked}): vibe=${brandIdentity.vibe || 'none'}, style=${brandIdentity.brandStyle || 'none'}`);
       }
     } catch (e) {
       console.warn("Failed to fetch creator identity:", e);
@@ -2172,6 +2213,8 @@ serve(async (req) => {
       creatorIdentity,
       projectFiles || null,
       lastValidFiles,
+      brandIdentity,
+      brandIdentityLocked,
     );
 
     if (!response.ok) {
@@ -2710,6 +2753,29 @@ serve(async (req) => {
             model,
           };
           console.log(`[Telemetry] ${JSON.stringify(telemetry)}`);
+
+          // ════════════════════════════════════════════════════════
+          // BRAND MEMORY: Auto-update brand_identity if AI evolved it
+          // ════════════════════════════════════════════════════════
+          if (!brandIdentityLocked && fullContent.includes('=== BRAND_UPDATE ===')) {
+            try {
+              const brandUpdateStart = fullContent.indexOf('=== BRAND_UPDATE ===') + '=== BRAND_UPDATE ==='.length;
+              let brandUpdateEnd = fullContent.indexOf('===', brandUpdateStart + 1);
+              if (brandUpdateEnd < 0) brandUpdateEnd = fullContent.length;
+              const brandUpdateRaw = fullContent.substring(brandUpdateStart, brandUpdateEnd).trim();
+              const brandUpdateClean = brandUpdateRaw
+                .replace(/^```(?:json)?\s*/i, '')
+                .replace(/```$/i, '')
+                .trim();
+              const updatedBrandIdentity = JSON.parse(brandUpdateClean);
+              if (updatedBrandIdentity && typeof updatedBrandIdentity === 'object') {
+                await supabase.from("profiles").update({ brand_identity: updatedBrandIdentity }).eq("user_id", userId);
+                console.log(`[BrandMemory] ✅ Auto-updated brand identity: vibe=${updatedBrandIdentity.vibe || 'unknown'}`);
+              }
+            } catch (e) {
+              console.warn('[BrandMemory] Failed to parse/save brand update:', e);
+            }
+          }
 
           // ════════════════════════════════════════════════════════
           // JOB FINALIZATION: Write results to DB (if job-backed)
