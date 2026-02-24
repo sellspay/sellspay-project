@@ -52,6 +52,12 @@ export function validateFileSyntax(content: string, filePath: string): string | 
   const malformedStyle = checkMalformedStyles(content);
   if (malformedStyle) return malformedStyle;
 
+  // 5. JSX tag balance (catches "Unterminated JSX contents")
+  if (filePath.endsWith('.tsx') || filePath.endsWith('.jsx')) {
+    const jsxResult = checkJsxTagBalance(content);
+    if (jsxResult) return jsxResult;
+  }
+
   return null;
 }
 
@@ -189,7 +195,121 @@ function checkMalformedStyles(code: string): string | null {
   return null;
 }
 
-// ─── Layer 7: Path Isolation Guard ──────────────────────────────
+/**
+ * Check JSX tag balance in TSX/JSX files.
+ * Uses a stack-based approach to detect unclosed or mismatched JSX tags.
+ */
+function checkJsxTagBalance(code: string): string | null {
+  // Strip strings, comments, and template literals to avoid false positives
+  const stripped = stripStringsAndComments(code);
+  
+  const tagStack: string[] = [];
+  // Match opening tags, closing tags, and self-closing tags
+  // Opening: <TagName or <tag.name  (not </ and not <>)
+  // Closing: </TagName> or </tag.name>
+  // Self-closing: ... />
+  const tagRegex = /<\/?([A-Za-z][A-Za-z0-9.]*)[^>]*?\/?>/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = tagRegex.exec(stripped)) !== null) {
+    const fullMatch = match[0];
+    const tagName = match[1];
+    
+    // Skip fragment shorthand <> </>
+    if (!tagName) continue;
+    
+    // Skip HTML void elements that don't need closing
+    const voidElements = new Set([
+      'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+      'link', 'meta', 'param', 'source', 'track', 'wbr'
+    ]);
+    
+    const isSelfClosing = fullMatch.endsWith('/>');
+    const isClosing = fullMatch.startsWith('</');
+    
+    if (isSelfClosing) {
+      // Self-closing tags are balanced
+      continue;
+    }
+    
+    if (isClosing) {
+      if (tagStack.length === 0) {
+        return `Extra closing JSX tag </${tagName}> with no matching opening tag`;
+      }
+      // Pop — we don't enforce strict matching since conditional rendering 
+      // can make strict matching unreliable. Just check count balance.
+      tagStack.pop();
+    } else {
+      // Opening tag
+      if (voidElements.has(tagName.toLowerCase())) continue;
+      tagStack.push(tagName);
+    }
+  }
+  
+  if (tagStack.length > 0) {
+    return `Unclosed JSX tag(s): ${tagStack.slice(-3).map(t => '<' + t + '>').join(', ')} — ${tagStack.length} unclosed`;
+  }
+  
+  return null;
+}
+
+/**
+ * Strip strings, template literals, and comments from code
+ * so regex-based analysis doesn't get confused.
+ */
+function stripStringsAndComments(code: string): string {
+  let result = '';
+  let inSingle = false;
+  let inDouble = false;
+  let inTemplate = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escaped = false;
+  let templateDepth = 0;
+
+  for (let i = 0; i < code.length; i++) {
+    const c = code[i];
+    const n = code[i + 1];
+
+    if (inLineComment) {
+      if (c === '\n') { inLineComment = false; result += '\n'; }
+      else result += ' ';
+      continue;
+    }
+    if (inBlockComment) {
+      if (c === '*' && n === '/') { inBlockComment = false; result += '  '; i++; }
+      else result += c === '\n' ? '\n' : ' ';
+      continue;
+    }
+    if (inSingle || inDouble) {
+      if (escaped) { escaped = false; result += ' '; continue; }
+      if (c === '\\') { escaped = true; result += ' '; continue; }
+      if (inSingle && c === "'") { inSingle = false; result += ' '; }
+      else if (inDouble && c === '"') { inDouble = false; result += ' '; }
+      else result += ' ';
+      continue;
+    }
+    if (inTemplate) {
+      if (escaped) { escaped = false; result += ' '; continue; }
+      if (c === '\\') { escaped = true; result += ' '; continue; }
+      if (c === '`') { inTemplate = false; result += ' '; }
+      else if (c === '$' && n === '{') { templateDepth++; inTemplate = false; result += '  '; i++; }
+      else result += c === '\n' ? '\n' : ' ';
+      continue;
+    }
+
+    if (c === '/' && n === '/') { inLineComment = true; result += ' '; i++; continue; }
+    if (c === '/' && n === '*') { inBlockComment = true; result += ' '; i++; continue; }
+    if (c === "'") { inSingle = true; result += ' '; continue; }
+    if (c === '"') { inDouble = true; result += ' '; continue; }
+    if (c === '`') { inTemplate = true; result += ' '; continue; }
+    if (c === '}' && templateDepth > 0) { templateDepth--; inTemplate = true; result += ' '; continue; }
+
+    result += c;
+  }
+
+  return result;
+}
 
 const RESTRICTED_PREFIXES = [
   '/core/', '/checkout/', '/auth/', '/payments/',

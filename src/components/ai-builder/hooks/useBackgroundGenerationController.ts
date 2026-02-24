@@ -166,10 +166,21 @@ export function useBackgroundGenerationController({
         return;
       }
       
+      // LAYER 4.5: Path normalization — ensure all paths start with /
+      // Prevents duplicate keys (e.g. "storefront/Hero.tsx" vs "/storefront/Hero.tsx")
+      const normalizedFileMap: Record<string, string> = {};
+      for (const [path, content] of Object.entries(fileMap)) {
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        normalizedFileMap[normalizedPath] = content;
+      }
+      // Replace fileMap reference for all subsequent layers
+      const validatedFileMap = normalizedFileMap;
+      console.log(`[ZERO-TRUST] Path normalization: ${Object.keys(fileMap).length} → ${Object.keys(validatedFileMap).length} files`);
+
       // LAYER 5: No conversational text in code files
       const forbiddenStarts = ['Alright', 'Got it!', 'Sure!', "Here's", "Let's", '=== ANALYSIS', '=== PLAN', '=== SUMMARY'];
       let hasConversational = false;
-      for (const [path, content] of Object.entries(fileMap)) {
+      for (const [path, content] of Object.entries(validatedFileMap)) {
         if ((path.endsWith('.tsx') || path.endsWith('.ts')) && typeof content === 'string') {
           const trimmedContent = content.trim();
           const isConversational = forbiddenStarts.some(s => trimmedContent.startsWith(s));
@@ -188,7 +199,7 @@ export function useBackgroundGenerationController({
       }
       
       // LAYER 6: Transpile validation — reject if any file has syntax errors
-      const transpileResult = validateAllFiles(fileMap);
+      const transpileResult = validateAllFiles(validatedFileMap);
       if (!transpileResult.valid) {
         const errorSummary = transpileResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
         console.error('[ZERO-TRUST] Transpile validation failed. Refusing to commit:', errorSummary);
@@ -199,14 +210,14 @@ export function useBackgroundGenerationController({
 
       // LAYER 7: Path Isolation Guard — reject if files target restricted folders
       // Legacy mode: allow old paths if existing project has files outside /storefront/
-      const existingPaths = Object.keys(fileMap);
+      const existingPaths = Object.keys(validatedFileMap);
       const hasLegacyPaths = existingPaths.some(
         p => !p.startsWith('/storefront/') && p !== '/App.tsx'
           && !p.startsWith('/core/') && !p.startsWith('/checkout/')
           && !p.startsWith('/auth/') && !p.startsWith('/payments/')
           && !p.startsWith('/settings/') && !p.startsWith('/admin/')
       );
-      const pathResult = validatePathIsolation(fileMap, hasLegacyPaths);
+      const pathResult = validatePathIsolation(validatedFileMap, hasLegacyPaths);
       if (!pathResult.valid) {
         const errorSummary = pathResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
         console.error('[ZERO-TRUST] Path isolation failed. Refusing to commit:', errorSummary);
@@ -216,12 +227,12 @@ export function useBackgroundGenerationController({
       }
 
       // ✅ ALL 7 LAYERS PASSED — atomic commit sequence
-      console.log('[ZERO-TRUST] All layers passed (including path isolation). Committing', Object.keys(fileMap).length, 'files for job:', job.id);
+      console.log('[ZERO-TRUST] All layers passed (including path isolation). Committing', Object.keys(validatedFileMap).length, 'files for job:', job.id);
 
       // DELTA MERGE: If the model returned only changed files (no /App.tsx),
       // merge with existing DB snapshot to preserve unchanged files.
-      let mergedFileMap = fileMap;
-      if (activeProjectId && !fileMap['/App.tsx']) {
+      let mergedFileMap = validatedFileMap;
+      if (activeProjectId && !validatedFileMap['/App.tsx']) {
         try {
           const { data: projectData } = await supabase
             .from('vibecoder_projects')
@@ -231,8 +242,15 @@ export function useBackgroundGenerationController({
           
           if (projectData?.last_valid_files && typeof projectData.last_valid_files === 'object') {
             const existingFiles = projectData.last_valid_files as Record<string, string>;
-            mergedFileMap = { ...existingFiles, ...fileMap };
-            console.log(`[ZERO-TRUST] Delta merge: ${Object.keys(fileMap).length} changed + ${Object.keys(existingFiles).length} existing → ${Object.keys(mergedFileMap).length} total`);
+            // Normalize existing file paths too before merging
+            const normalizedExisting: Record<string, string> = {};
+            for (const [p, c] of Object.entries(existingFiles)) {
+              if (typeof c === 'string') {
+                normalizedExisting[p.startsWith('/') ? p : `/${p}`] = c;
+              }
+            }
+            mergedFileMap = { ...normalizedExisting, ...validatedFileMap };
+            console.log(`[ZERO-TRUST] Delta merge: ${Object.keys(validatedFileMap).length} changed + ${Object.keys(normalizedExisting).length} existing → ${Object.keys(mergedFileMap).length} total`);
           }
         } catch (mergeErr) {
           console.warn('[ZERO-TRUST] Delta merge fetch failed, using raw fileMap:', mergeErr);
