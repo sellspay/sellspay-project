@@ -1855,8 +1855,27 @@ If the request says "change X", change ONLY X and nothing else.
     }
   }
 
-  // Get model config
-  const config = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
+  // ═══════════════════════════════════════════════════════════════
+  // INTENT-AWARE MODEL ROUTING
+  // BUILD → Claude Sonnet (structural JSON discipline, multi-file cohesion)
+  // MODIFY/FIX/QUESTION/REFUSE → Gemini Flash (fast, cheap, surgical)
+  // User can override with explicit model selection (e.g. vibecoder-claude)
+  // ═══════════════════════════════════════════════════════════════
+  const isExplicitModelSelection = model !== "vibecoder-pro" && model !== "vibecoder-flash";
+  let resolvedModel = model;
+
+  if (!isExplicitModelSelection) {
+    // Auto-route based on intent
+    if (intent.intent === "BUILD") {
+      resolvedModel = "vibecoder-claude"; // Claude Sonnet for full builds
+      console.log(`[ModelRouter] BUILD intent → auto-routing to Claude Sonnet (flagship engine)`);
+    } else {
+      resolvedModel = "vibecoder-flash"; // Gemini Flash for edits/fixes
+      console.log(`[ModelRouter] ${intent.intent} intent → using Gemini Flash (surgical worker)`);
+    }
+  }
+
+  const config = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-pro"];
 
   // Determine max tokens based on intent + micro-edit
   let maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : 65000;
