@@ -361,29 +361,23 @@ function validatePathIsolationServer(
 }
 
 // ═══════════════════════════════════════════════════════════════
-// COMPILE-FIX REPAIR: Send broken file + error to AI for fix
+// COMPILE-FIX REPAIR: Model-aware — uses same model that generated
+// Premium models repair with premium. Flash stays in its tier.
 // ═══════════════════════════════════════════════════════════════
 
 async function repairBrokenFile(
   filePath: string,
   brokenContent: string,
   syntaxError: string,
-  apiKey: string,
+  generatorConfig: ModelConfig,
 ): Promise<string | null> {
   try {
-    console.log(`[CompileFix] Attempting repair of ${filePath}: ${syntaxError}`);
-    const response = await fetch(GEMINI_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are a syntax repair tool. You receive a React/TypeScript file with a specific syntax error. Your ONLY job is to fix that exact error and return the corrected file.
+    console.log(`[CompileFix] Attempting repair of ${filePath} using ${generatorConfig.provider}/${generatorConfig.modelId}: ${syntaxError}`);
+    
+    const repairMessages = [
+      {
+        role: "system" as const,
+        content: `You are a syntax repair tool. You receive a React/TypeScript file with a specific syntax error. Your ONLY job is to fix that exact error and return the corrected file.
 
 RULES:
 1. Return ONLY the corrected file content — no markdown fences, no explanation, no commentary
@@ -393,15 +387,18 @@ RULES:
 5. If the error is "Malformed CSS url()", fix the url() syntax
 6. If the error is "Code appears truncated", complete the truncated expression
 7. Preserve ALL existing code exactly as-is except for the fix`,
-          },
-          {
-            role: "user",
-            content: `File: ${filePath}\nSyntax Error: ${syntaxError}\n\nBroken content:\n${brokenContent}`,
-          },
-        ],
-        max_tokens: 8000,
-        temperature: 0.1,
-      }),
+      },
+      {
+        role: "user" as const,
+        content: `File: ${filePath}\nSyntax Error: ${syntaxError}\n\nBroken content:\n${brokenContent}`,
+      },
+    ];
+
+    // Use the same model that generated the broken code (model-aware repair)
+    const response = await callModelAPI(generatorConfig, repairMessages, {
+      maxTokens: 8000,
+      temperature: 0.1,
+      stream: false,
     });
 
     if (!response.ok) {
@@ -410,7 +407,16 @@ RULES:
     }
 
     const data = await response.json();
-    const repaired = data.choices?.[0]?.message?.content;
+    
+    // Handle both OpenAI/Gemini format and Anthropic format
+    let repaired: string | null = null;
+    if (data.choices?.[0]?.message?.content) {
+      repaired = data.choices[0].message.content;
+    } else if (data.content?.[0]?.text) {
+      // Anthropic format
+      repaired = data.content[0].text;
+    }
+    
     if (!repaired || repaired.trim().length < 20) return null;
 
     // Strip markdown fences if model wrapped it
@@ -426,7 +432,7 @@ RULES:
       return null;
     }
 
-    console.log(`[CompileFix] ✅ Successfully repaired ${filePath}`);
+    console.log(`[CompileFix] ✅ Successfully repaired ${filePath} using ${generatorConfig.provider}`);
     return cleaned;
   } catch (e) {
     console.error(`[CompileFix] Exception repairing ${filePath}:`, e);
@@ -536,11 +542,24 @@ const MODEL_CONFIG: Record<string, ModelConfig> = {
   "vibecoder-gpt41": { modelId: "gpt-4.1", provider: "openai" },
 };
 
-// Helper: Call the correct provider API
+// ═══════════════════════════════════════════════════════════════
+// PREMIUM FALLBACK CHAIN
+// Claude → GPT-4o → abort (never silent downgrade to Flash)
+// GPT → Claude → abort
+// Gemini stays in its own tier (no cross-tier fallback)
+// ═══════════════════════════════════════════════════════════════
+
+const PREMIUM_FALLBACK_CHAIN: Record<string, ModelConfig | null> = {
+  "anthropic": { modelId: "gpt-4o", provider: "openai" },   // Claude fails → try GPT
+  "openai": { modelId: "claude-sonnet-4-20250514", provider: "anthropic" }, // GPT fails → try Claude
+};
+
+// Helper: Call the correct provider API (with premium cascading fallback)
 async function callModelAPI(
   config: ModelConfig,
   messages: Array<{ role: string; content: string }>,
   opts: { maxTokens: number; temperature: number; stream: boolean },
+  _fallbackAttempt: boolean = false,
 ): Promise<Response> {
   const GOOGLE_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY") || "";
   const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY") || "";
@@ -549,8 +568,17 @@ async function callModelAPI(
   switch (config.provider) {
     case "openai": {
       if (!OPENAI_KEY) {
-        console.warn(`[ModelRouter] No OPENAI_API_KEY, falling back to Gemini`);
-        return callModelAPI({ modelId: "gemini-2.5-flash", provider: "gemini" }, messages, opts);
+        // Premium: try lateral fallback, never downgrade to Flash
+        if (!_fallbackAttempt) {
+          const fallback = PREMIUM_FALLBACK_CHAIN["openai"];
+          if (fallback) {
+            console.warn(`[ModelRouter] No OPENAI_API_KEY — cascading to ${fallback.provider}/${fallback.modelId}`);
+            return callModelAPI(fallback, messages, opts, true);
+          }
+        }
+        // Both premium keys missing — fail loudly
+        console.error(`[ModelRouter] ABORT: No premium API keys available (OpenAI or Anthropic)`);
+        return new Response(JSON.stringify({ error: "Premium model unavailable — no API key configured" }), { status: 503 });
       }
       return fetch(OPENAI_API_URL, {
         method: "POST",
@@ -566,10 +594,16 @@ async function callModelAPI(
     }
     case "anthropic": {
       if (!ANTHROPIC_KEY) {
-        console.warn(`[ModelRouter] No ANTHROPIC_API_KEY, falling back to Gemini`);
-        return callModelAPI({ modelId: "gemini-2.5-flash", provider: "gemini" }, messages, opts);
+        if (!_fallbackAttempt) {
+          const fallback = PREMIUM_FALLBACK_CHAIN["anthropic"];
+          if (fallback) {
+            console.warn(`[ModelRouter] No ANTHROPIC_API_KEY — cascading to ${fallback.provider}/${fallback.modelId}`);
+            return callModelAPI(fallback, messages, opts, true);
+          }
+        }
+        console.error(`[ModelRouter] ABORT: No premium API keys available (Anthropic or OpenAI)`);
+        return new Response(JSON.stringify({ error: "Premium model unavailable — no API key configured" }), { status: 503 });
       }
-      // Anthropic uses a different format: system is separate, max_tokens is required
       const systemMsg = messages.find(m => m.role === "system");
       const nonSystemMsgs = messages.filter(m => m.role !== "system");
       return fetch(ANTHROPIC_API_URL, {
@@ -2214,7 +2248,9 @@ serve(async (req) => {
                   
                   let allRepaired = true;
                   for (const err of syntaxResult.errors) {
-                    const repaired = await repairBrokenFile(err.file, fileMap[err.file], err.error, GOOGLE_GEMINI_API_KEY);
+                    // Model-aware repair: use the same model that generated the code
+                    const generatorConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
+                    const repaired = await repairBrokenFile(err.file, fileMap[err.file], err.error, generatorConfig);
                     if (repaired) {
                       fileMap[err.file] = repaired;
                     } else {
