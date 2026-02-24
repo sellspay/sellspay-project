@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useBackgroundGeneration, type GenerationJob } from '@/hooks/useBackgroundGeneration';
 import { useGhostFixer } from '@/hooks/useGhostFixer';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import type { AIModel } from '../ChatInputBar';
 import { validateAllFiles } from '../transpileValidator';
 
@@ -78,21 +79,8 @@ export function useBackgroundGenerationController({
     const isActiveRun = activeJobIdRef.current === job.id;
     console.log('[BackgroundGen] Job completed:', job.id, { isActiveRun, status: job.status });
 
-    // TRUNCATION HANDLING: Restore last valid snapshot — never leave broken state
-    if (job.status === 'needs_continuation') {
-      console.warn('[BackgroundGen] ❌ Job truncated — restoring last valid snapshot');
-      
-      // ✅ RESTORE FROM LAST VALID SNAPSHOT (not message history)
-      const validSnapshot = getLastValidSnapshot();
-      if (validSnapshot && Object.keys(validSnapshot).length > 0) {
-        console.log('[BackgroundGen] Restoring from lastValidSnapshot:', Object.keys(validSnapshot).length, 'files');
-        setFiles(validSnapshot);
-      }
-
-      toast.error('Code generation was interrupted. Your project was preserved. Please retry with a simpler request.', { duration: 6000 });
-      if (activeProjectId) {
-        await addMessage('assistant', '⚠️ Code generation was interrupted. No changes were applied — your project was restored to its last stable state. Please simplify your request or break it into smaller parts.', undefined, activeProjectId);
-      }
+    // ─── Abort helper: clean up generation state without mutating sandbox ───
+    const abortGeneration = () => {
       if (isActiveRun) {
         setLiveSteps([]);
         pendingSummaryRef.current = '';
@@ -100,6 +88,16 @@ export function useBackgroundGenerationController({
         activeJobIdRef.current = null;
         resetAgent();
       }
+    };
+
+    // TRUNCATION HANDLING: No sandbox mutation — just abort cleanly
+    if (job.status === 'needs_continuation') {
+      console.warn('[BackgroundGen] ❌ Job truncated — aborting without sandbox mutation');
+      toast.error('Code generation was interrupted. Your project was preserved. Please retry with a simpler request.', { duration: 6000 });
+      if (activeProjectId) {
+        await addMessage('assistant', '⚠️ Code generation was interrupted. No changes were applied — your project remains in its last stable state. Please simplify your request or break it into smaller parts.', undefined, activeProjectId);
+      }
+      abortGeneration();
       return;
     }
 
@@ -118,7 +116,9 @@ export function useBackgroundGenerationController({
     };
 
     // ═══════════════════════════════════════════════════════
-    // ZERO-TRUST COMMIT GATE: Only accept validated JSON file maps
+    // ZERO-TRUST COMMIT GATE: Pure validation + atomic commit
+    // Failure = abort only (no sandbox mutation, no snapshot restore)
+    // Success = setFiles → persist to DB → flip snapshot ref
     // ═══════════════════════════════════════════════════════
     if (job.code_result) {
       const trimmedResult = job.code_result.trim();
@@ -127,18 +127,7 @@ export function useBackgroundGenerationController({
       if (!trimmedResult.startsWith('{')) {
         console.error('[ZERO-TRUST] code_result is not JSON. Refusing to commit:', job.id);
         toast.error('Generation produced invalid output. Please retry.');
-        // Restore snapshot
-        const validSnapshot = getLastValidSnapshot();
-        if (validSnapshot && Object.keys(validSnapshot).length > 0) {
-          setFiles(validSnapshot);
-        }
-        if (isActiveRun) {
-          setLiveSteps([]);
-          pendingSummaryRef.current = '';
-          generationLockRef.current = null;
-          activeJobIdRef.current = null;
-          resetAgent();
-        }
+        abortGeneration();
         return;
       }
       
@@ -149,17 +138,7 @@ export function useBackgroundGenerationController({
       } catch {
         console.error('[ZERO-TRUST] code_result JSON parse failed. Refusing to commit:', job.id);
         toast.error('Generation produced corrupt output. Please retry.');
-        const validSnapshot = getLastValidSnapshot();
-        if (validSnapshot && Object.keys(validSnapshot).length > 0) {
-          setFiles(validSnapshot);
-        }
-        if (isActiveRun) {
-          setLiveSteps([]);
-          pendingSummaryRef.current = '';
-          generationLockRef.current = null;
-          activeJobIdRef.current = null;
-          resetAgent();
-        }
+        abortGeneration();
         return;
       }
       
@@ -168,7 +147,6 @@ export function useBackgroundGenerationController({
         if (parsed.files && typeof parsed.files === 'object' && !Array.isArray(parsed.files)) {
           return parsed.files as Record<string, string>;
         }
-        // Direct file map
         const keys = Object.keys(parsed);
         if (keys.length > 0 && keys.some(k => k.endsWith('.tsx') || k.endsWith('.ts') || k.endsWith('.css'))) {
           return parsed as unknown as Record<string, string>;
@@ -179,17 +157,7 @@ export function useBackgroundGenerationController({
       if (!fileMap || Object.keys(fileMap).length === 0) {
         console.error('[ZERO-TRUST] code_result is not a valid file map. Refusing to commit:', job.id);
         toast.error('Generation produced invalid file structure. Please retry.');
-        const validSnapshot = getLastValidSnapshot();
-        if (validSnapshot && Object.keys(validSnapshot).length > 0) {
-          setFiles(validSnapshot);
-        }
-        if (isActiveRun) {
-          setLiveSteps([]);
-          pendingSummaryRef.current = '';
-          generationLockRef.current = null;
-          activeJobIdRef.current = null;
-          resetAgent();
-        }
+        abortGeneration();
         return;
       }
       
@@ -198,22 +166,13 @@ export function useBackgroundGenerationController({
       if (!allStrings) {
         console.error('[ZERO-TRUST] File map contains non-string values. Refusing to commit:', job.id);
         toast.error('Generation produced invalid file contents. Please retry.');
-        const validSnapshot = getLastValidSnapshot();
-        if (validSnapshot && Object.keys(validSnapshot).length > 0) {
-          setFiles(validSnapshot);
-        }
-        if (isActiveRun) {
-          setLiveSteps([]);
-          pendingSummaryRef.current = '';
-          generationLockRef.current = null;
-          activeJobIdRef.current = null;
-          resetAgent();
-        }
+        abortGeneration();
         return;
       }
       
       // LAYER 5: No conversational text in code files
       const forbiddenStarts = ['Alright', 'Got it!', 'Sure!', "Here's", "Let's", '=== ANALYSIS', '=== PLAN', '=== SUMMARY'];
+      let hasConversational = false;
       for (const [path, content] of Object.entries(fileMap)) {
         if ((path.endsWith('.tsx') || path.endsWith('.ts')) && typeof content === 'string') {
           const trimmedContent = content.trim();
@@ -222,20 +181,14 @@ export function useBackgroundGenerationController({
           if (isConversational || !hasCodeIndicators) {
             console.error(`[ZERO-TRUST] File ${path} contains conversational text. Refusing to commit.`);
             toast.error('Generation produced non-code output. Please retry.');
-            const validSnapshot = getLastValidSnapshot();
-            if (validSnapshot && Object.keys(validSnapshot).length > 0) {
-              setFiles(validSnapshot);
-            }
-            if (isActiveRun) {
-              setLiveSteps([]);
-              pendingSummaryRef.current = '';
-              generationLockRef.current = null;
-              activeJobIdRef.current = null;
-              resetAgent();
-            }
-            return;
+            hasConversational = true;
+            break;
           }
         }
+      }
+      if (hasConversational) {
+        abortGeneration();
+        return;
       }
       
       // LAYER 6: Transpile validation — reject if any file has syntax errors
@@ -244,26 +197,34 @@ export function useBackgroundGenerationController({
         const errorSummary = transpileResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
         console.error('[ZERO-TRUST] Transpile validation failed. Refusing to commit:', errorSummary);
         toast.error('Generation produced code with syntax errors. Please retry.');
-        const validSnapshot = getLastValidSnapshot();
-        if (validSnapshot && Object.keys(validSnapshot).length > 0) {
-          setFiles(validSnapshot);
-        }
-        if (isActiveRun) {
-          setLiveSteps([]);
-          pendingSummaryRef.current = '';
-          generationLockRef.current = null;
-          activeJobIdRef.current = null;
-          resetAgent();
-        }
+        abortGeneration();
         return;
       }
 
-      // ✅ ALL LAYERS PASSED — commit the file map
+      // ✅ ALL 6 LAYERS PASSED — atomic commit sequence
       console.log('[ZERO-TRUST] All layers passed (including transpile). Committing', Object.keys(fileMap).length, 'files for job:', job.id);
+      
+      // Step 1: Apply to sandbox
       setFiles(fileMap);
       
-      // 🔒 CRITICAL: Transition to EDIT/MERGE mode after first successful commit
-      // Without this, every generation stays in REPLACE mode, wiping the file tree
+      // Step 2: Persist to DB BEFORE flipping the ref
+      if (activeProjectId) {
+        try {
+          const { error } = await supabase
+            .from('vibecoder_projects')
+            .update({ last_valid_files: fileMap as any })
+            .eq('id', activeProjectId);
+          if (error) {
+            console.warn('[ZERO-TRUST] DB persist failed:', error.message);
+          } else {
+            console.log('[ZERO-TRUST] ✅ Snapshot persisted to DB');
+          }
+        } catch (e) {
+          console.warn('[ZERO-TRUST] DB persist exception:', e);
+        }
+      }
+      
+      // Step 3: Transition to EDIT/MERGE mode
       hasDbSnapshotRef.current = true;
       console.log('[ZERO-TRUST] hasDbSnapshotRef set to TRUE — future generations will use MERGE mode');
     } else {
@@ -292,7 +253,7 @@ export function useBackgroundGenerationController({
       onStreamingComplete();
       resetAgent();
     }
-  }, [activeProjectId, addMessage, onStreamingComplete, resetAgent, setCode, setFiles, getLastValidSnapshot, setPendingPlan, setLiveSteps, generationLockRef, activeJobIdRef, pendingSummaryRef]);
+  }, [activeProjectId, addMessage, onStreamingComplete, resetAgent, setCode, setFiles, setPendingPlan, setLiveSteps, generationLockRef, activeJobIdRef, pendingSummaryRef]);
 
   const handleJobError = useCallback((job: GenerationJob) => {
     console.error('[BackgroundGen] Job failed:', job.error_message);
@@ -315,24 +276,19 @@ export function useBackgroundGenerationController({
     }
 
     if (isActiveRun) {
-      // ✅ RESTORE FROM LAST VALID SNAPSHOT on any failure
-      const validSnapshot = getLastValidSnapshot();
-      if (validSnapshot && Object.keys(validSnapshot).length > 0) {
-        console.log('[BackgroundGen] Restoring from lastValidSnapshot on error:', Object.keys(validSnapshot).length, 'files');
-        setFiles(validSnapshot);
-      }
+      // No sandbox mutation on error — last committed state is still intact
 
       if (job.status === 'needs_user_action') {
         const msg = job.summary || 'This request may be too complex. Please simplify or break it into smaller parts.';
         toast.error(msg, { duration: 8000 });
         if (activeProjectId) {
-          addMessage('assistant', `⚠️ ${msg}\nNo changes were applied — your project was restored to its last stable state.`, undefined, activeProjectId);
+          addMessage('assistant', `⚠️ ${msg}\nNo changes were applied — your project remains in its last stable state.`, undefined, activeProjectId);
         }
       } else {
         toast.error(userMessage, { duration: 6000 });
         if (activeProjectId) {
           const retryHint = isRetryableError ? '\n\nYou can retry this request using the button below.' : '';
-          addMessage('assistant', `❌ Generation failed: ${userMessage}\nNo changes were applied — your project was restored to its last stable state.${retryHint}`, undefined, activeProjectId);
+          addMessage('assistant', `❌ Generation failed: ${userMessage}\nNo changes were applied — your project remains in its last stable state.${retryHint}`, undefined, activeProjectId);
         }
       }
       setLiveSteps([]);
@@ -342,7 +298,7 @@ export function useBackgroundGenerationController({
     } else {
       console.warn('[BackgroundGen] Stale job error suppressed:', userMessage);
     }
-  }, [onStreamingError, activeProjectId, addMessage, setFiles, getLastValidSnapshot, setLiveSteps, generationLockRef, activeJobIdRef]);
+  }, [onStreamingError, activeProjectId, addMessage, setFiles, setLiveSteps, generationLockRef, activeJobIdRef]);
 
   const {
     currentJob,
