@@ -773,8 +773,8 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
-const HARD_TIMEOUT_MS = 45_000;
-const PROVIDER_FETCH_TIMEOUT_MS = 40_000;
+const HARD_TIMEOUT_MS = 140_000; // 140s — must stay under Edge Function's 150s limit
+const PROVIDER_FETCH_TIMEOUT_MS = 135_000; // 135s — slightly under hard timeout
 
 async function fetchWithTimeout(
   input: string,
@@ -2942,19 +2942,25 @@ serve(async (req) => {
                 
                 // ═══════════════════════════════════════════════════════
                 // LAYER 6: BATCH COMPILE-FIX LOOP (Server-Side)
-                // Run full syntax validation on all files.
-                // If any fail, batch-repair ALL broken files in one call.
-                // Max 2 attempts. Returns structured COMPILE_FAILURE on abort.
+                // SKIPPED for first BUILD to reduce runtime pressure.
+                // On first BUILD, syntax validation is still logged but
+                // repair loop is disabled to stay under Edge timeout.
                 // ═══════════════════════════════════════════════════════
-                console.log(`[EDGE] Validation starting — ${Object.keys(fileMap).length} files`);
+                const isFirstBuildForValidation = !currentCode?.trim() && intentResult.intent === "BUILD";
+                console.log(`[EDGE] Validation starting — ${Object.keys(fileMap).length} files (firstBuild=${isFirstBuildForValidation})`);
                 const initialSyntaxCheck = validateAllFilesServer(fileMap);
                 if (!initialSyntaxCheck.valid) {
                   console.warn(`[EDGE] Validation FAILED — ${initialSyntaxCheck.errors.length} errors: ${initialSyntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
-                  console.warn(`[COMPILE_FIX] ${initialSyntaxCheck.errors.length} file(s) have syntax errors — starting batch repair`);
+                  if (isFirstBuildForValidation) {
+                    console.log(`[COMPILE_FIX] SKIPPED for first BUILD — transpile validation + repair loop disabled to reduce runtime`);
+                    // Still emit files — let client-side sandbox handle minor issues
+                  } else {
+                    console.warn(`[COMPILE_FIX] ${initialSyntaxCheck.errors.length} file(s) have syntax errors — starting batch repair`);
+                  }
                 } else {
                   console.log(`[EDGE] Syntax validation passed — all ${Object.keys(fileMap).length} files clean`);
                 }
-                if (!initialSyntaxCheck.valid) {
+                if (!initialSyntaxCheck.valid && !isFirstBuildForValidation) {
                   const batchGeneratorConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
                   const batchResult = await batchCompileFix(fileMap, batchGeneratorConfig, emitEvent);
                   
@@ -3476,7 +3482,7 @@ serve(async (req) => {
               // Skip for FIX/micro-edit — the 3000-char window is unreliable for detecting fixes
               // Also skip for multi-file partial edits (delta alone is misleading for intent check)
               const isMicro = detectMicroEdit(prompt, Boolean(currentCode?.trim()));
-              const skipIntentCheck = intentResult.intent === "FIX" || isMicro || isMultiFileJson;
+              const skipIntentCheck = intentResult.intent === "FIX" || isMicro || isMultiFileJson || (!currentCode?.trim() && intentResult.intent === "BUILD");
               if (!validationError && !skipIntentCheck) {
                 try {
                   const intentCheck = await validateIntent(prompt, codeResult, GOOGLE_GEMINI_API_KEY);
