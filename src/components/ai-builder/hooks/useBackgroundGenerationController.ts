@@ -9,9 +9,7 @@ import { validateAllFiles } from '../transpileValidator';
 interface BackgroundGenerationControllerOptions {
   activeProjectId: string | null;
   addMessage: (role: string, content: string, codeSnapshot?: string, projectId?: string) => Promise<any>;
-  setCode: (code: string, skipGuards?: boolean) => void;
   setFiles: (files: Record<string, string>) => void;
-  getLastValidSnapshot: () => Record<string, string> | null;
   setPendingPlan: (plan: { plan: any; originalPrompt: string } | null) => void;
   setLiveSteps: (steps: string[]) => void;
   resetAgent: () => void;
@@ -26,9 +24,7 @@ interface BackgroundGenerationControllerOptions {
 export function useBackgroundGenerationController({
   activeProjectId,
   addMessage,
-  setCode,
   setFiles,
-  getLastValidSnapshot,
   setPendingPlan,
   setLiveSteps,
   resetAgent,
@@ -256,7 +252,7 @@ export function useBackgroundGenerationController({
       onStreamingComplete();
       resetAgent();
     }
-  }, [activeProjectId, addMessage, onStreamingComplete, resetAgent, setCode, setFiles, setPendingPlan, setLiveSteps, generationLockRef, activeJobIdRef, pendingSummaryRef]);
+  }, [activeProjectId, addMessage, onStreamingComplete, resetAgent, setFiles, setPendingPlan, setLiveSteps, generationLockRef, activeJobIdRef, pendingSummaryRef]);
 
   const handleJobError = useCallback((job: GenerationJob) => {
     console.error('[BackgroundGen] Job failed:', job.error_message);
@@ -301,7 +297,7 @@ export function useBackgroundGenerationController({
     } else {
       console.warn('[BackgroundGen] Stale job error suppressed:', userMessage);
     }
-  }, [onStreamingError, activeProjectId, addMessage, setFiles, setLiveSteps, generationLockRef, activeJobIdRef]);
+  }, [onStreamingError, activeProjectId, addMessage, setLiveSteps, generationLockRef, activeJobIdRef]);
 
   const {
     currentJob,

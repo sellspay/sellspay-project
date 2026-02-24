@@ -632,9 +632,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   } = useBackgroundGenerationController({
     activeProjectId,
     addMessage,
-    setCode,
     setFiles,
-    getLastValidSnapshot,
     setPendingPlan,
     setLiveSteps,
     resetAgent,
