@@ -257,6 +257,153 @@ function looksTruncated(code: string, intent?: string): boolean {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SERVER-SIDE TRANSPILE VALIDATOR (Ported from frontend)
+// Catches syntax errors BEFORE committing to DB
+// ═══════════════════════════════════════════════════════════════
+
+function validateFileSyntaxServer(content: string, filePath: string): string | null {
+  if (!content || content.trim().length === 0) return 'Empty file';
+  if (!filePath.endsWith('.tsx') && !filePath.endsWith('.ts') && !filePath.endsWith('.jsx') && !filePath.endsWith('.js')) {
+    return null; // Skip non-code files
+  }
+
+  // 1. Brace/paren/bracket balance (string & comment aware)
+  let braces = 0, parens = 0, brackets = 0;
+  let inSingle = false, inDouble = false, inTemplate = false;
+  let inLineComment = false, inBlockComment = false, escaped = false;
+
+  for (let i = 0; i < content.length; i++) {
+    const c = content[i];
+    const n = content[i + 1];
+    if (inLineComment) { if (c === '\n') inLineComment = false; continue; }
+    if (inBlockComment) { if (c === '*' && n === '/') { inBlockComment = false; i++; } continue; }
+    if (inSingle || inDouble || inTemplate) {
+      if (escaped) { escaped = false; continue; }
+      if (c === '\\') { escaped = true; continue; }
+      if (inSingle && c === "'") inSingle = false;
+      else if (inDouble && c === '"') inDouble = false;
+      else if (inTemplate && c === '`') inTemplate = false;
+      continue;
+    }
+    if (c === '/' && n === '/') { inLineComment = true; i++; continue; }
+    if (c === '/' && n === '*') { inBlockComment = true; i++; continue; }
+    if (c === "'") { inSingle = true; continue; }
+    if (c === '"') { inDouble = true; continue; }
+    if (c === '`') { inTemplate = true; continue; }
+    if (c === '{') braces++; else if (c === '}') braces--;
+    if (c === '(') parens++; else if (c === ')') parens--;
+    if (c === '[') brackets++; else if (c === ']') brackets--;
+    if (braces < 0) return 'Extra closing brace }';
+    if (parens < 0) return 'Extra closing parenthesis )';
+    if (brackets < 0) return 'Extra closing bracket ]';
+  }
+
+  if (inSingle || inDouble || inTemplate) return 'Unterminated string literal';
+  if (inBlockComment) return 'Unterminated block comment';
+  if (braces !== 0) return `Unbalanced braces: ${braces > 0 ? braces + ' unclosed' : Math.abs(braces) + ' extra closing'}`;
+  if (parens !== 0) return `Unbalanced parentheses: ${parens > 0 ? parens + ' unclosed' : Math.abs(parens) + ' extra closing'}`;
+  if (brackets !== 0) return `Unbalanced brackets: ${brackets > 0 ? brackets + ' unclosed' : Math.abs(brackets) + ' extra closing'}`;
+
+  // 2. Truncation detection
+  const trimmed = content.trim();
+  const lastChar = trimmed.slice(-1);
+  if (['{', '(', '[', ',', ':', '=', '.', '+', '-', '*', '/'].includes(lastChar)) {
+    return `Code appears truncated — ends with "${lastChar}"`;
+  }
+
+  // 3. Malformed CSS url() (common AI error)
+  if (/url\([^)]*\([^)]*\)/.test(content)) {
+    return 'Malformed CSS url() — contains nested parentheses';
+  }
+
+  return null;
+}
+
+function validateAllFilesServer(files: Record<string, string>): { valid: boolean; errors: Array<{ file: string; error: string }> } {
+  const errors: Array<{ file: string; error: string }> = [];
+  for (const [path, content] of Object.entries(files)) {
+    if (typeof content !== 'string') continue;
+    const error = validateFileSyntaxServer(content, path);
+    if (error) errors.push({ file: path, error });
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COMPILE-FIX REPAIR: Send broken file + error to AI for fix
+// ═══════════════════════════════════════════════════════════════
+
+async function repairBrokenFile(
+  filePath: string,
+  brokenContent: string,
+  syntaxError: string,
+  apiKey: string,
+): Promise<string | null> {
+  try {
+    console.log(`[CompileFix] Attempting repair of ${filePath}: ${syntaxError}`);
+    const response = await fetch(GEMINI_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content: `You are a syntax repair tool. You receive a React/TypeScript file with a specific syntax error. Your ONLY job is to fix that exact error and return the corrected file.
+
+RULES:
+1. Return ONLY the corrected file content — no markdown fences, no explanation, no commentary
+2. Fix ONLY the syntax error described — do NOT change logic, styling, or structure
+3. If the error is "Unbalanced braces", find and close the missing brace
+4. If the error is "Unterminated string literal", find and close the string
+5. If the error is "Malformed CSS url()", fix the url() syntax
+6. If the error is "Code appears truncated", complete the truncated expression
+7. Preserve ALL existing code exactly as-is except for the fix`,
+          },
+          {
+            role: "user",
+            content: `File: ${filePath}\nSyntax Error: ${syntaxError}\n\nBroken content:\n${brokenContent}`,
+          },
+        ],
+        max_tokens: 8000,
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn(`[CompileFix] Repair API call failed for ${filePath}: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const repaired = data.choices?.[0]?.message?.content;
+    if (!repaired || repaired.trim().length < 20) return null;
+
+    // Strip markdown fences if model wrapped it
+    const cleaned = repaired
+      .replace(/^```(?:tsx?|jsx?|typescript|javascript)?\s*\n?/i, '')
+      .replace(/\n?```\s*$/i, '')
+      .trim();
+
+    // Validate the repair actually fixed the issue
+    const recheck = validateFileSyntaxServer(cleaned, filePath);
+    if (recheck) {
+      console.warn(`[CompileFix] Repair of ${filePath} still has errors: ${recheck}`);
+      return null;
+    }
+
+    console.log(`[CompileFix] ✅ Successfully repaired ${filePath}`);
+    return cleaned;
+  } catch (e) {
+    console.error(`[CompileFix] Exception repairing ${filePath}:`, e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // NO-OP DETECTOR: Catches "silent failure" where output matches input
 // ═══════════════════════════════════════════════════════════════
 
@@ -328,19 +475,105 @@ async function validateIntent(
 
 // Fair Pricing Economy (8x reduction from original)
 const CREDIT_COSTS: Record<string, number> = {
-  "vibecoder-pro": 3, // Premium model
+  "vibecoder-pro": 3, // Gemini Pro
   "vibecoder-flash": 0, // Free tier for small edits
-  "reasoning-o1": 5, // Deep reasoning (expensive)
+  "vibecoder-claude": 5, // Claude Sonnet (premium)
+  "vibecoder-gpt4": 5, // GPT-4o (premium)
+  "vibecoder-gpt41": 5, // GPT-4.1 (premium)
+  "reasoning-o1": 8, // Deep reasoning (expensive)
 };
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
-// Model Configuration Mapping - Route to different AI backends (Direct Google Gemini)
-const MODEL_CONFIG: Record<string, { modelId: string }> = {
-  "vibecoder-pro": { modelId: "gemini-2.5-flash" },
-  "vibecoder-flash": { modelId: "gemini-2.5-flash" },
-  "reasoning-o1": { modelId: "gemini-2.5-pro" },
+// Model Configuration Mapping - Multi-provider routing
+type ModelProvider = 'gemini' | 'openai' | 'anthropic';
+
+interface ModelConfig {
+  modelId: string;
+  provider: ModelProvider;
+}
+
+const MODEL_CONFIG: Record<string, ModelConfig> = {
+  "vibecoder-pro": { modelId: "gemini-2.5-flash", provider: "gemini" },
+  "vibecoder-flash": { modelId: "gemini-2.5-flash", provider: "gemini" },
+  "reasoning-o1": { modelId: "gemini-2.5-pro", provider: "gemini" },
+  // Premium tier — routes to Claude/OpenAI when keys are available
+  "vibecoder-claude": { modelId: "claude-sonnet-4-20250514", provider: "anthropic" },
+  "vibecoder-gpt4": { modelId: "gpt-4o", provider: "openai" },
+  "vibecoder-gpt41": { modelId: "gpt-4.1", provider: "openai" },
 };
+
+// Helper: Call the correct provider API
+async function callModelAPI(
+  config: ModelConfig,
+  messages: Array<{ role: string; content: string }>,
+  opts: { maxTokens: number; temperature: number; stream: boolean },
+): Promise<Response> {
+  const GOOGLE_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY") || "";
+  const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY") || "";
+  const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
+
+  switch (config.provider) {
+    case "openai": {
+      if (!OPENAI_KEY) {
+        console.warn(`[ModelRouter] No OPENAI_API_KEY, falling back to Gemini`);
+        return callModelAPI({ modelId: "gemini-2.5-flash", provider: "gemini" }, messages, opts);
+      }
+      return fetch(OPENAI_API_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: config.modelId,
+          messages,
+          stream: opts.stream,
+          max_tokens: opts.maxTokens,
+          temperature: opts.temperature,
+        }),
+      });
+    }
+    case "anthropic": {
+      if (!ANTHROPIC_KEY) {
+        console.warn(`[ModelRouter] No ANTHROPIC_API_KEY, falling back to Gemini`);
+        return callModelAPI({ modelId: "gemini-2.5-flash", provider: "gemini" }, messages, opts);
+      }
+      // Anthropic uses a different format: system is separate, max_tokens is required
+      const systemMsg = messages.find(m => m.role === "system");
+      const nonSystemMsgs = messages.filter(m => m.role !== "system");
+      return fetch(ANTHROPIC_API_URL, {
+        method: "POST",
+        headers: {
+          "x-api-key": ANTHROPIC_KEY,
+          "Content-Type": "application/json",
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: config.modelId,
+          system: systemMsg?.content || "",
+          messages: nonSystemMsgs,
+          max_tokens: opts.maxTokens,
+          temperature: opts.temperature,
+          stream: opts.stream,
+        }),
+      });
+    }
+    case "gemini":
+    default: {
+      return fetch(GEMINI_API_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${GOOGLE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: config.modelId,
+          messages,
+          stream: opts.stream,
+          max_tokens: opts.maxTokens,
+          temperature: opts.temperature,
+        }),
+      });
+    }
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // STAGE 1: INTENT CLASSIFIER (Chain-of-Thought Reasoning)
@@ -1301,22 +1534,13 @@ If the request says "change X", change ONLY X and nothing else.
   let maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : 65000;
   if (isMicro) maxTokens = 16000;
 
-  console.log(`[Executor] Using model: ${config.modelId} for intent: ${intent.intent}${isMicro ? ' (micro-edit, 16k tokens)' : ''}`);
+  console.log(`[Executor] Using model: ${config.modelId} (${config.provider}) for intent: ${intent.intent}${isMicro ? ' (micro-edit, 16k tokens)' : ''}`);
 
-  // Call the AI
-  const response = await fetch(GEMINI_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: config.modelId,
-      messages,
-      stream: shouldStream,
-      max_tokens: maxTokens,
-      temperature: 0.3,
-    }),
+  // Call the AI via multi-model router
+  const response = await callModelAPI(config, messages, {
+    maxTokens,
+    temperature: 0.3,
+    stream: shouldStream,
   });
 
   return response;
@@ -1902,12 +2126,59 @@ serve(async (req) => {
                   }
                 }
                 
-                emitEvent('files', { projectFiles: fileMap });
-                filesEmitted = true;
-                // ✅ SINGLE AUTHORITY: Mark SUMMARY as canonical parse
-                lastMergedFiles = fileMap;
-                summaryValidated = true;
-                console.log(`[Files] Emitted ${Object.keys(fileMap).length} files atomically (summaryValidated=true)`);
+                // ═══════════════════════════════════════════════════════
+                // COMPILE-FIX RETRY LOOP (Layer 6 Server-Side)
+                // Run full syntax validation on all files.
+                // If any fail, attempt one targeted repair per file.
+                // If repair fails, abort the entire commit.
+                // ═══════════════════════════════════════════════════════
+                const syntaxResult = validateAllFilesServer(fileMap);
+                if (!syntaxResult.valid) {
+                  console.warn(`[CompileFix] ${syntaxResult.errors.length} file(s) have syntax errors — attempting repair`);
+                  emitEvent('phase', { phase: 'repairing', files: syntaxResult.errors.map(e => e.file) });
+                  
+                  let allRepaired = true;
+                  for (const err of syntaxResult.errors) {
+                    const repaired = await repairBrokenFile(err.file, fileMap[err.file], err.error, GOOGLE_GEMINI_API_KEY);
+                    if (repaired) {
+                      fileMap[err.file] = repaired;
+                    } else {
+                      allRepaired = false;
+                      console.error(`[CompileFix] ❌ Could not repair ${err.file}: ${err.error}`);
+                    }
+                  }
+                  
+                  if (!allRepaired) {
+                    // Re-validate to get remaining errors
+                    const recheckResult = validateAllFilesServer(fileMap);
+                    if (!recheckResult.valid) {
+                      const errorSummary = recheckResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
+                      console.error(`[CompileFix] ABORT: Files still have syntax errors after repair: ${errorSummary}`);
+                      emitEvent('error', { code: 'SYNTAX_REPAIR_FAILED', message: `Code has syntax errors that could not be auto-repaired: ${errorSummary}` });
+                      // Don't emit files — abort this commit
+                      summaryValidated = false;
+                      lastMergedFiles = null as unknown as Record<string, string>;
+                      // Skip to summary section
+                    }
+                  }
+                  
+                  if (summaryValidated !== false) {
+                    // Final recheck passed
+                    const finalCheck = validateAllFilesServer(fileMap);
+                    if (finalCheck.valid) {
+                      console.log(`[CompileFix] ✅ All files pass syntax validation after repair`);
+                    }
+                  }
+                }
+                
+                // Only emit if validation passed (or was never triggered as failed)
+                if (summaryValidated !== false) {
+                  emitEvent('files', { projectFiles: fileMap });
+                  filesEmitted = true;
+                  lastMergedFiles = fileMap;
+                  summaryValidated = true;
+                  console.log(`[Files] Emitted ${Object.keys(fileMap).length} files atomically (summaryValidated=true, syntax-validated)`);
+                }
               }
             } catch (parseErr) {
               console.warn('[Files] JSON parse failed in SUMMARY, attempting fallback extraction:', parseErr);
@@ -2018,6 +2289,8 @@ serve(async (req) => {
             for (const line of lines) {
               const trimmed = line.trim();
               if (!trimmed || trimmed.startsWith(":")) continue;
+              // Skip Anthropic event-type lines (e.g. "event: content_block_delta")
+              if (trimmed.startsWith("event:")) continue;
               if (!trimmed.startsWith("data: ")) continue;
 
               const jsonStr = trimmed.slice(6).trim();
@@ -2025,7 +2298,12 @@ serve(async (req) => {
 
               try {
                 const parsed = JSON.parse(jsonStr);
-                const content = parsed.choices?.[0]?.delta?.content;
+                // OpenAI format: choices[0].delta.content
+                let content = parsed.choices?.[0]?.delta?.content;
+                // Anthropic format: delta.text (content_block_delta event)
+                if (!content && parsed.type === 'content_block_delta') {
+                  content = parsed.delta?.text;
+                }
                 if (content) {
                   fullContent += content;
                   
@@ -2047,7 +2325,8 @@ serve(async (req) => {
             if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
               try {
                 const parsed = JSON.parse(trimmed.slice(6));
-                const content = parsed.choices?.[0]?.delta?.content;
+                let content = parsed.choices?.[0]?.delta?.content;
+                if (!content && parsed.type === 'content_block_delta') content = parsed.delta?.text;
                 if (content) {
                   fullContent += content;
                   emitEvent('raw', { content });
