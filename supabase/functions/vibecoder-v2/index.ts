@@ -1450,6 +1450,9 @@ STRICT RULES (VIOLATIONS CAUSE JOB FAILURE)
 8. Never return plain text instead of JSON.
 9. Never omit the CODE section.
 10. If the request is invalid, output a structured refusal (no conversational text).
+11. For MODIFY/FIX: Return ONLY the files you changed. Do NOT re-output unchanged files.
+12. If output would exceed safe length, reduce code verbosity (shorter class names, fewer comments) but NEVER truncate mid-syntax. Every bracket, quote, and tag MUST be closed.
+13. PRIORITY: Valid complete JSON > comprehensive changes. If you cannot fit all changes, do fewer files but ensure each is syntactically complete.
 
 ════════════════════════════════════════════════════════════════
 🏗️ MANDATORY LAYOUT HIERARCHY (ABSOLUTE - ZERO EXCEPTIONS)
@@ -2208,11 +2211,12 @@ If the request says "change X", change ONLY X and nothing else.
         }
         
         // Multi-file project: show the full file map so AI can see all components
+        // For MODIFY: only include files that are likely to change to reduce output pressure
         const fileEntries = Object.entries(projectFiles)
           .filter(([path, content]) => typeof content === 'string' && content.trim().length > 0)
           .map(([path, content]) => `=== ${path} ===\n${content}`)
           .join('\n\n');
-        codeContext = `${fileInventoryBlock}Here is the full project file map:\n\n${fileEntries}\n\nIMPORTANT: Return your response as a complete files map. Modify ONLY the files that need changes. Preserve all other files exactly as they are.`;
+        codeContext = `${fileInventoryBlock}Here is the full project file map:\n\n${fileEntries}\n\nCRITICAL OUTPUT RULE: Return ONLY the files you are actually changing. Do NOT re-output unchanged files. If you change 2 files out of 7, return only those 2 files in your JSON. Unchanged files will be preserved automatically by the system.`;
       } else {
         // Single-file project: backward compatible
         codeContext = `Here is the current code:\n\n${currentCode}`;
@@ -2254,13 +2258,13 @@ If the request says "change X", change ONLY X and nothing else.
   const config = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-pro"];
 
   // Determine max tokens based on intent + micro-edit
-  // Provider limits: Claude=64000, GPT-4o=16384, Gemini=8192
+  // Provider limits: Claude=64000, GPT-4o=16384, Gemini=65536 (2.5 Flash supports 65k output)
   const PROVIDER_MAX_TOKENS: Record<string, number> = {
     anthropic: 60000,
     openai: 16000,
-    gemini: 8192,
+    gemini: 32000, // Gemini 2.5 Flash supports up to 65k — use 32k as safe cap
   };
-  const providerCap = PROVIDER_MAX_TOKENS[config.provider] || 8192;
+  const providerCap = PROVIDER_MAX_TOKENS[config.provider] || 16000;
   let maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : providerCap;
   if (isMicro) maxTokens = Math.min(16000, providerCap);
 
@@ -3029,13 +3033,21 @@ serve(async (req) => {
 
                 // Only emit if all validation passed
                 if (summaryValidated !== false) {
+                  // MERGE: For MODIFY/FIX, model returns only changed files — merge with existing
+                  const isPartialDelta = currentCode?.trim() && projectFiles && typeof projectFiles === 'object' && Object.keys(projectFiles).length > 0;
+                  let finalFileMap = fileMap;
+                  if (isPartialDelta) {
+                    const existingFiles = projectFiles as Record<string, string>;
+                    finalFileMap = { ...existingFiles, ...fileMap };
+                    console.log(`[Files] Merged ${Object.keys(fileMap).length} delta files with ${Object.keys(existingFiles).length} existing → ${Object.keys(finalFileMap).length} total`);
+                  }
                   console.log(`[EDGE] Validation passed — all layers OK`);
-                  console.log(`[EDGE] Emitting files — ${Object.keys(fileMap).length} files`);
-                  emitEvent('files', { projectFiles: fileMap });
+                  console.log(`[EDGE] Emitting files — ${Object.keys(finalFileMap).length} files`);
+                  emitEvent('files', { projectFiles: finalFileMap });
                   filesEmitted = true;
-                  lastMergedFiles = fileMap;
+                  lastMergedFiles = finalFileMap;
                   summaryValidated = true;
-                  console.log(`[Files] Emitted ${Object.keys(fileMap).length} files atomically (summaryValidated=true, syntax+path validated)`);
+                  console.log(`[Files] Emitted ${Object.keys(finalFileMap).length} files atomically (summaryValidated=true, syntax+path validated)`);
                 }
               }
             } catch (parseErr) {
