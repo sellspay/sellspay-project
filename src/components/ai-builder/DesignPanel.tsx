@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Palette, Sparkles, ArrowLeft, MoreHorizontal, Lock, Unlock, Download, Upload, Copy } from "lucide-react";
 import { motion } from "framer-motion";
 import { STYLE_PRESETS, type StylePreset, type StyleColors } from "./stylePresets";
@@ -93,6 +94,58 @@ function StyleDots({ tokens }: { tokens: ThemeTokens }) {
   );
 }
 
+function BrandLockToggle() {
+  const [locked, setLocked] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return;
+      supabase
+        .from("profiles")
+        .select("brand_identity_locked")
+        .eq("user_id", data.user.id)
+        .single()
+        .then(({ data: profile }) => {
+          setLocked((profile as any)?.brand_identity_locked === true);
+        });
+    });
+  }, []);
+
+  const toggle = useCallback(async (val: boolean) => {
+    setLocked(val);
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
+    await supabase
+      .from("profiles")
+      .update({ brand_identity_locked: val } as any)
+      .eq("user_id", data.user.id);
+  }, []);
+
+  if (locked === null) return null;
+
+  return (
+    <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-zinc-900/80 border border-zinc-800/50">
+      <div className="flex items-center gap-2">
+        {locked ? (
+          <Lock className="w-3.5 h-3.5 text-amber-500/80" />
+        ) : (
+          <Unlock className="w-3.5 h-3.5 text-zinc-400" />
+        )}
+        <div>
+          <p className="text-xs font-medium text-zinc-300">Lock Brand Direction</p>
+          <p className="text-[10px] text-zinc-600">
+            {locked ? 'AI cannot change your brand style' : 'AI can evolve your brand'}
+          </p>
+        </div>
+      </div>
+      <Switch
+        checked={locked}
+        onCheckedChange={toggle}
+      />
+    </div>
+  );
+}
+
 export function DesignPanel({ onVisualEditModeChange, selectedElement, onEditRequest }: DesignPanelProps) {
   const { theme, presetId, themeSource, isAutoThemeLocked, detectedVibe, setTheme, previewTheme, revertPreview, applyPreset, setAutoThemeLocked, extractThemeFromPreview, exportCurrentTheme, copyCurrentTheme, importThemeFromJSON } = useTheme();
   const [view, setView] = useState<DesignView>('home');
@@ -170,6 +223,9 @@ export function DesignPanel({ onVisualEditModeChange, selectedElement, onEditReq
               onCheckedChange={(checked) => setAutoThemeLocked(!checked)}
             />
           </div>
+
+          {/* Lock Brand Direction toggle */}
+          <BrandLockToggle />
 
           {themeSource === 'auto' && (
             <p className="text-[10px] text-emerald-500/70 flex items-center gap-1">

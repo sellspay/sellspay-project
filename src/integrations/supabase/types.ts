@@ -1640,6 +1640,8 @@ export type Database = {
           banner_position_y: number | null
           banner_url: string | null
           bio: string | null
+          brand_identity: Json | null
+          brand_identity_locked: boolean | null
           created_at: string | null
           creator_tags: string[] | null
           date_of_birth: string | null
@@ -1697,6 +1699,8 @@ export type Database = {
           banner_position_y?: number | null
           banner_url?: string | null
           bio?: string | null
+          brand_identity?: Json | null
+          brand_identity_locked?: boolean | null
           created_at?: string | null
           creator_tags?: string[] | null
           date_of_birth?: string | null
@@ -1754,6 +1758,8 @@ export type Database = {
           banner_position_y?: number | null
           banner_url?: string | null
           bio?: string | null
+          brand_identity?: Json | null
+          brand_identity_locked?: boolean | null
           created_at?: string | null
           creator_tags?: string[] | null
           date_of_birth?: string | null
