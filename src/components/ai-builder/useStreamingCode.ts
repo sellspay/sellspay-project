@@ -84,6 +84,7 @@ interface UseStreamingCodeOptions {
   onPlanItems?: (items: string[]) => void;
   onStreamSummary?: (text: string) => void;
   onConfidence?: (score: number, reason: string) => void;
+  onCodeProgress?: (bytes: number, elapsed: number) => void;
   // 2-Stage Analyzer Pipeline callbacks
   onSuggestions?: (suggestions: Array<{ label: string; prompt: string }>) => void;
   onQuestions?: (questions: Array<{ id: string; label: string; type: 'single' | 'multi'; options: Array<{ value: string; label: string }> }>, enhancedPromptSeed?: string) => void;
@@ -1030,8 +1031,8 @@ export function useStreamingCode(options: UseStreamingCodeOptions = {}) {
                   break;
                 }
                 case 'code_progress': {
-                  // Visual feedback during generation (no code applied)
-                  // Could update a progress indicator in the future
+                  // Visual feedback during code generation
+                  options.onCodeProgress?.(data.bytes || 0, data.elapsed || 0);
                   break;
                 }
                 case 'code_chunk': {
