@@ -20,6 +20,9 @@ interface AgentState {
   // Confidence scoring
   confidenceScore: number | null;
   confidenceReason: string;
+  // Code progress
+  codeProgressBytes: number;
+  codeProgressElapsed: number;
   // 2-Stage Analyzer Pipeline
   backendSuggestions: BackendSuggestion[];
   pendingQuestions: ClarificationQuestion[];
@@ -45,6 +48,8 @@ const INITIAL_STATE: AgentState = {
   summaryText: '',
   confidenceScore: null,
   confidenceReason: '',
+  codeProgressBytes: 0,
+  codeProgressElapsed: 0,
   backendSuggestions: [],
   pendingQuestions: [],
   enhancedPromptSeed: '',
@@ -99,6 +104,8 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
       summaryText: '',
       confidenceScore: null,
       confidenceReason: '',
+      codeProgressBytes: 0,
+      codeProgressElapsed: 0,
       backendSuggestions: [],
       pendingQuestions: [],
       enhancedPromptSeed: '',
@@ -170,6 +177,11 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
   /** Called when SSE emits confidence scoring */
   const onConfidence = useCallback((score: number, reason: string) => {
     setState(prev => ({ ...prev, confidenceScore: score, confidenceReason: reason }));
+  }, []);
+
+  /** Called when SSE emits code generation progress */
+  const onCodeProgress = useCallback((bytes: number, elapsed: number) => {
+    setState(prev => ({ ...prev, codeProgressBytes: bytes, codeProgressElapsed: elapsed }));
   }, []);
 
   /** Called when SSE emits suggestions from analyzer */
@@ -292,6 +304,7 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
     onPlanItems,
     onStreamSummary,
     onConfidence,
+    onCodeProgress,
     // 2-Stage Analyzer callbacks
     onSuggestions,
     onQuestions,
@@ -309,6 +322,8 @@ export function useAgentLoop({ onStreamCode, onComplete, getActiveProjectId }: U
     summaryText: state.summaryText,
     confidenceScore: state.confidenceScore,
     confidenceReason: state.confidenceReason,
+    codeProgressBytes: state.codeProgressBytes,
+    codeProgressElapsed: state.codeProgressElapsed,
     // 2-Stage Analyzer state
     backendSuggestions: state.backendSuggestions,
     pendingQuestions: state.pendingQuestions,

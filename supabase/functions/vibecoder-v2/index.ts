@@ -2771,6 +2771,9 @@ serve(async (req) => {
         let lastCodeEmitLength = 0;
         let retryCount = 0;
         const generationStartTime = Date.now();
+        // Progressive streaming: track last emitted content to send incremental updates
+        let lastAnalysisText = '';
+        let lastPlanItemCount = 0;
         
         // ═══════════════════════════════════════════════════════
         // SINGLE AUTHORITY: SUMMARY phase is the canonical parse.
@@ -2795,37 +2798,45 @@ serve(async (req) => {
         
         // Process accumulated content and emit structured events
         const processContent = async () => {
-          // === ANALYSIS === section
-          if (!analysisEmitted && fullContent.includes('=== ANALYSIS ===')) {
+          // === ANALYSIS === section (progressive streaming)
+          if (fullContent.includes('=== ANALYSIS ===')) {
             const analysisStart = fullContent.indexOf('=== ANALYSIS ===') + '=== ANALYSIS ==='.length;
             let analysisEnd = fullContent.indexOf('=== PLAN ===');
             if (analysisEnd < 0) analysisEnd = fullContent.indexOf('=== CODE ===');
+            const isFinal = analysisEnd > 0;
             if (analysisEnd < 0) analysisEnd = fullContent.length;
             
             const analysisText = fullContent.substring(analysisStart, analysisEnd).trim();
-            if (analysisText.length > 5) {
+            // Progressively emit analysis text as it grows (every 20+ new chars)
+            if (analysisText.length > 5 && (analysisText.length - lastAnalysisText.length >= 20 || isFinal)) {
               emitEvent('text', { content: analysisText });
-              analysisEmitted = true;
+              lastAnalysisText = analysisText;
+              if (isFinal) analysisEmitted = true;
             }
           }
           
-          // === PLAN === section
-          if (!planEmitted && fullContent.includes('=== PLAN ===')) {
-            emitEvent('phase', { phase: 'planning' });
+          // === PLAN === section (progressive streaming)
+          if (fullContent.includes('=== PLAN ===')) {
+            if (!planEmitted) {
+              emitEvent('phase', { phase: 'planning' });
+            }
             
             const planStart = fullContent.indexOf('=== PLAN ===') + '=== PLAN ==='.length;
             let planEnd = fullContent.indexOf('=== CODE ===');
+            const isFinal = planEnd > 0;
             if (planEnd < 0) planEnd = fullContent.length;
             
             const planText = fullContent.substring(planStart, planEnd).trim();
             const items = planText
               .split('\n')
-              .map((line: string) => line.replace(/^[-*•]\s*/, '').replace(/^(Step\s+\d+:\s*)/i, '').trim())
+              .map((line: string) => line.replace(/^[-*•]\s*/, '').replace(/^\d+\.\s*/, '').replace(/^(Step\s+\d+:\s*)/i, '').trim())
               .filter((line: string) => line.length > 2);
             
-            if (items.length > 0) {
+            // Emit whenever we have new plan items
+            if (items.length > lastPlanItemCount || (isFinal && items.length > 0)) {
               emitEvent('plan', { items });
-              planEmitted = true;
+              lastPlanItemCount = items.length;
+              if (isFinal) planEmitted = true;
             }
           }
           
@@ -2842,8 +2853,9 @@ serve(async (req) => {
             if (codeEnd < 0) codeEnd = fullContent.length;
             const codeSection = fullContent.substring(codeStart, codeEnd);
             // Only emit progress updates, not actual code
-            if (codeSection.length > lastCodeEmitLength + 200) {
-              emitEvent('code_progress', { bytes: codeSection.length });
+            if (codeSection.length > lastCodeEmitLength + 100) {
+              const elapsedSec = Math.round((Date.now() - generationStartTime) / 1000);
+              emitEvent('code_progress', { bytes: codeSection.length, elapsed: elapsedSec });
               lastCodeEmitLength = codeSection.length;
             }
           }

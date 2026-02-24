@@ -268,6 +268,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onPlanItems?: (items: string[]) => void;
     onStreamSummary?: (text: string) => void;
     onConfidence?: (score: number, reason: string) => void;
+    onCodeProgress?: (bytes: number, elapsed: number) => void;
     onSuggestions?: (suggestions: Array<{ label: string; prompt: string }>) => void;
     onQuestions?: (questions: Array<{ id: string; label: string; type: 'single' | 'multi'; options: Array<{ value: string; label: string }> }>, enhancedPromptSeed?: string) => void;
   }>({});
@@ -321,6 +322,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       latestPhaseDataRef.current.confidenceScore = score;
       latestPhaseDataRef.current.confidenceReason = reason;
     },
+    onCodeProgress: (bytes, elapsed) => phaseCallbacksRef.current.onCodeProgress?.(bytes, elapsed),
     onSuggestions: (suggestions) => phaseCallbacksRef.current.onSuggestions?.(suggestions),
     onQuestions: (questions, seed) => phaseCallbacksRef.current.onQuestions?.(questions, seed),
     // 🛑 RACE CONDITION GUARD: Check if generation should be discarded
@@ -580,6 +582,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     onPlanItems,
     onStreamSummary,
     onConfidence,
+    onCodeProgress,
     // 2-Stage Analyzer
     onSuggestions,
     onQuestions,
@@ -594,6 +597,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     summaryText,
     confidenceScore,
     confidenceReason,
+    codeProgressBytes,
+    codeProgressElapsed,
   } = useAgentLoop({
     onStreamCode: streamCode,
     onComplete: () => {
@@ -605,7 +610,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   });
 
   // Wire phase callbacks ref now that useAgentLoop is initialized
-  phaseCallbacksRef.current = { onPhaseChange, onAnalysis, onPlanItems, onStreamSummary, onConfidence, onSuggestions, onQuestions };
+  phaseCallbacksRef.current = { onPhaseChange, onAnalysis, onPlanItems, onStreamSummary, onConfidence, onCodeProgress, onSuggestions, onQuestions };
 
   // NOTE: latestPhaseDataRef is updated imperatively inside phase callbacks above
   // (onAnalysis, onPlanItems, onStreamSummary, onConfidence)
@@ -1566,6 +1571,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
                 summaryText,
                 confidenceScore: confidenceScore ?? undefined,
                 confidenceReason,
+                codeProgressBytes,
+                codeProgressElapsed,
               }}
               backendSuggestions={backendSuggestions}
               pendingQuestions={pendingQuestions}

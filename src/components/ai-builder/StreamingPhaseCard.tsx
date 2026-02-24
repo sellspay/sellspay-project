@@ -14,6 +14,8 @@ export interface StreamingPhaseData {
   elapsedSeconds?: number;
   confidenceScore?: number;
   confidenceReason?: string;
+  codeProgressBytes?: number;
+  codeProgressElapsed?: number;
 }
 
 interface StreamingPhaseCardProps {
@@ -23,9 +25,16 @@ interface StreamingPhaseCardProps {
 
 export const StreamingPhaseCard = forwardRef<HTMLDivElement, StreamingPhaseCardProps>(
   ({ data, className }, ref) => {
-  const { phase, analysisText, planItems, completedPlanItems = 0, summaryText, elapsedSeconds = 0, confidenceScore, confidenceReason } = data;
+  const { phase, analysisText, planItems, completedPlanItems = 0, summaryText, elapsedSeconds = 0, confidenceScore, confidenceReason, codeProgressBytes = 0, codeProgressElapsed = 0 } = data;
 
-  if (phase === 'idle') return null;
+  // Use code progress elapsed when in building phase, otherwise use provided elapsed
+  const displayElapsed = phase === 'building' && codeProgressElapsed > 0 ? codeProgressElapsed : elapsedSeconds;
+
+  // Format bytes for display
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  };
 
   return (
     <div ref={ref} className={cn("space-y-3 mb-6", className)}>
@@ -159,10 +168,18 @@ export const StreamingPhaseCard = forwardRef<HTMLDivElement, StreamingPhaseCardP
                   {phase === 'retrying' ? 'Retrying' : 'Building'}
                 </span>
                 <Loader2 size={12} className={phase === 'retrying' ? "text-amber-400 animate-spin" : "text-orange-400 animate-spin"} />
-                <span className="text-[10px] text-muted-foreground/60">{elapsedSeconds}s</span>
+                <span className="text-[10px] text-muted-foreground/60">{displayElapsed}s</span>
               </div>
-              {phase === 'retrying' && (
+              {phase === 'retrying' ? (
                 <p className="text-xs text-amber-400/70 mt-1">Code was incomplete, retrying generation...</p>
+              ) : codeProgressBytes > 0 ? (
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  Generating code... {formatBytes(codeProgressBytes)} written
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  Writing code for your project...
+                </p>
               )}
             </div>
           </motion.div>
