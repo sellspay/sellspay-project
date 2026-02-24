@@ -402,21 +402,30 @@ RULES:
     });
 
     if (!response.ok) {
-      console.warn(`[CompileFix] Repair API call failed for ${filePath}: ${response.status}`);
+      const errorBody = await response.text();
+      console.warn(`[CompileFix] Repair API call failed for ${filePath}: ${response.status} ${errorBody.slice(0, 200)}`);
       return null;
     }
 
-    const data = await response.json();
-    
-    // Handle both OpenAI/Gemini format and Anthropic format
-    let repaired: string | null = null;
-    if (data.choices?.[0]?.message?.content) {
-      repaired = data.choices[0].message.content;
-    } else if (data.content?.[0]?.text) {
-      // Anthropic format
-      repaired = data.content[0].text;
+    const rawText = await response.text();
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch (parseErr) {
+      console.warn(`[CompileFix] Failed to parse repair response for ${filePath}:`, parseErr);
+      return null;
     }
-    
+
+    // Handle normalized OpenAI-style format first, then Anthropic fallback
+    let repaired: string | null = null;
+    if (data?.choices?.[0]?.message?.content) {
+      repaired = data.choices[0].message.content;
+    } else if (Array.isArray(data?.content)) {
+      repaired = data.content
+        .map((c: any) => (typeof c?.text === "string" ? c.text : ""))
+        .join("");
+    }
+
     if (!repaired || repaired.trim().length < 20) return null;
 
     // Strip markdown fences if model wrapped it
@@ -554,7 +563,14 @@ async function validateIntent(
       return { implements_request: true, missing_requirements: [] };
     }
 
-    const data = await response.json();
+    const rawText = await response.text();
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch (parseErr) {
+      console.warn("[IntentValidator] Failed to parse API response, defaulting to pass:", parseErr);
+      return { implements_request: true, missing_requirements: [] };
+    }
     const content = data.choices?.[0]?.message?.content || "";
     const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
     const parsed = JSON.parse(cleaned);
@@ -623,107 +639,215 @@ async function callModelAPI(
   opts: { maxTokens: number; temperature: number; stream: boolean },
   _fallbackAttempt: boolean = false,
 ): Promise<Response> {
-  const GOOGLE_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY") || "";
-  const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY") || "";
-  const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
+  try {
+    const GOOGLE_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY") || "";
+    const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY") || "";
+    const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
 
-  // Helper: attempt fallback on non-OK response from premium providers
-  const maybeFallback = async (response: Response, providerKey: string): Promise<Response> => {
-    if (response.ok) return response;
-    
-    // Log the error for debugging
-    const errorBody = await response.text();
-    console.error(`[AI Gateway] ${providerKey} error: ${response.status} ${errorBody}`);
-    
-    // If we haven't tried fallback yet, cascade to the next premium provider
-    if (!_fallbackAttempt) {
+    const makeError = (
+      status: number,
+      type: string,
+      message: string,
+      extra: Record<string, unknown> = {},
+    ): Response => {
+      return new Response(JSON.stringify({ type, message, ...extra }), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    const tryPremiumFallback = async (
+      providerKey: "openai" | "anthropic",
+      reason: string,
+      primaryStatus?: number,
+      primaryBody?: string,
+    ): Promise<Response> => {
+      console.error(`[MODEL_ROUTER] Primary failed: ${providerKey} | ${reason}`);
+
+      if (_fallbackAttempt) {
+        console.error(`[MODEL_ROUTER] Final failure: fallback already attempted for ${providerKey}`);
+        return makeError(503, "MODEL_UNAVAILABLE", "Both premium models failed", {
+          provider: providerKey,
+          reason,
+          primary_status: primaryStatus ?? null,
+          primary_error: primaryBody?.slice(0, 500) ?? null,
+        });
+      }
+
       const fallback = PREMIUM_FALLBACK_CHAIN[providerKey];
-      if (fallback) {
-        console.warn(`[ModelRouter] ${providerKey} returned ${response.status} — cascading to ${fallback.provider}/${fallback.modelId}`);
-        return callModelAPI(fallback, messages, opts, true);
+      if (!fallback) {
+        console.error(`[MODEL_ROUTER] Final failure: no fallback configured for ${providerKey}`);
+        return makeError(503, "MODEL_UNAVAILABLE", "Both premium models failed", {
+          provider: providerKey,
+          reason,
+          primary_status: primaryStatus ?? null,
+          primary_error: primaryBody?.slice(0, 500) ?? null,
+        });
       }
-    }
-    
-    // No fallback available — return a clean error response
-    console.error(`[ModelRouter] ABORT: ${providerKey} failed (${response.status}) and no fallback available`);
-    return new Response(JSON.stringify({ error: `AI provider error (${response.status}): ${errorBody.slice(0, 200)}` }), {
-      status: 503,
-      headers: { "Content-Type": "application/json" },
-    });
-  };
 
-  switch (config.provider) {
-    case "openai": {
-      if (!OPENAI_KEY) {
-        if (!_fallbackAttempt) {
-          const fallback = PREMIUM_FALLBACK_CHAIN["openai"];
-          if (fallback) {
-            console.warn(`[ModelRouter] No OPENAI_API_KEY — cascading to ${fallback.provider}/${fallback.modelId}`);
-            return callModelAPI(fallback, messages, opts, true);
-          }
+      console.warn(`[MODEL_ROUTER] Fallback triggered: ${providerKey} -> ${fallback.provider}/${fallback.modelId}`);
+      const fallbackResponse = await callModelAPI(fallback, messages, opts, true);
+      if (fallbackResponse.ok) return fallbackResponse;
+
+      const fallbackBody = await fallbackResponse.text();
+      console.error(`[MODEL_ROUTER] Final failure: ${providerKey} + ${fallback.provider} both failed`);
+      return makeError(503, "MODEL_UNAVAILABLE", "Both premium models failed", {
+        primary_provider: providerKey,
+        primary_status: primaryStatus ?? null,
+        primary_error: primaryBody?.slice(0, 500) ?? null,
+        fallback_provider: fallback.provider,
+        fallback_status: fallbackResponse.status,
+        fallback_error: fallbackBody.slice(0, 500),
+      });
+    };
+
+    console.log(`[MODEL_ROUTER] Provider selected: ${config.provider}/${config.modelId}`);
+
+    switch (config.provider) {
+      case "openai": {
+        if (!OPENAI_KEY) {
+          console.error("[MODEL_ROUTER] OPENAI_API_KEY missing");
+          return tryPremiumFallback("openai", "OPENAI_API_KEY is missing");
         }
-        console.error(`[ModelRouter] ABORT: No premium API keys available (OpenAI or Anthropic)`);
-        return new Response(JSON.stringify({ error: "Premium model unavailable — no API key configured" }), { status: 503 });
-      }
-      const resp = await fetch(OPENAI_API_URL, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${OPENAI_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: config.modelId,
-          messages,
-          stream: opts.stream,
-          max_tokens: opts.maxTokens,
-          temperature: opts.temperature,
-        }),
-      });
-      return maybeFallback(resp, "openai");
-    }
-    case "anthropic": {
-      if (!ANTHROPIC_KEY) {
-        if (!_fallbackAttempt) {
-          const fallback = PREMIUM_FALLBACK_CHAIN["anthropic"];
-          if (fallback) {
-            console.warn(`[ModelRouter] No ANTHROPIC_API_KEY — cascading to ${fallback.provider}/${fallback.modelId}`);
-            return callModelAPI(fallback, messages, opts, true);
-          }
+
+        const response = await fetch(OPENAI_API_URL, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${OPENAI_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: config.modelId,
+            messages,
+            stream: opts.stream,
+            max_tokens: opts.maxTokens,
+            temperature: opts.temperature,
+          }),
+        });
+
+        if (!response.ok) {
+          const rawText = await response.text();
+          return tryPremiumFallback("openai", `OpenAI API error ${response.status}`, response.status, rawText);
         }
-        console.error(`[ModelRouter] ABORT: No premium API keys available (Anthropic or OpenAI)`);
-        return new Response(JSON.stringify({ error: "Premium model unavailable — no API key configured" }), { status: 503 });
+
+        return response;
       }
-      const systemMsg = messages.find(m => m.role === "system");
-      const nonSystemMsgs = messages.filter(m => m.role !== "system");
-      const resp = await fetch(ANTHROPIC_API_URL, {
-        method: "POST",
-        headers: {
-          "x-api-key": ANTHROPIC_KEY,
-          "Content-Type": "application/json",
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: config.modelId,
-          system: systemMsg?.content || "",
-          messages: nonSystemMsgs,
-          max_tokens: opts.maxTokens,
-          temperature: opts.temperature,
-          stream: opts.stream,
-        }),
-      });
-      return maybeFallback(resp, "anthropic");
+
+      case "anthropic": {
+        if (!ANTHROPIC_KEY) {
+          console.error("[MODEL_ROUTER] ANTHROPIC_API_KEY missing");
+          return tryPremiumFallback("anthropic", "ANTHROPIC_API_KEY is missing");
+        }
+
+        const systemMsg = messages.find((m) => m.role === "system")?.content || "";
+        const nonSystemMsgs = messages.filter((m) => m.role !== "system");
+        const userPrompt = nonSystemMsgs
+          .map((m) => `${m.role.toUpperCase()}:\n${m.content}`)
+          .join("\n\n");
+
+        const response = await fetch(ANTHROPIC_API_URL, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-api-key": ANTHROPIC_KEY,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: config.modelId,
+            max_tokens: opts.maxTokens,
+            temperature: opts.temperature,
+            system: systemMsg,
+            messages: [{ role: "user", content: userPrompt }],
+            stream: opts.stream,
+          }),
+        });
+
+        if (opts.stream) {
+          if (!response.ok) {
+            const rawText = await response.text();
+            return tryPremiumFallback("anthropic", `Anthropic API error ${response.status}`, response.status, rawText);
+          }
+          return response;
+        }
+
+        const rawText = await response.text();
+        if (!response.ok) {
+          return tryPremiumFallback("anthropic", `Anthropic API error ${response.status}`, response.status, rawText);
+        }
+
+        let parsed: any;
+        try {
+          parsed = JSON.parse(rawText);
+        } catch (parseErr) {
+          console.error("[MODEL_ROUTER] Anthropic parse error:", parseErr);
+          return makeError(502, "RESPONSE_PARSE_ERROR", "Failed to parse Anthropic response", {
+            provider: "anthropic",
+            details: rawText.slice(0, 1000),
+          });
+        }
+
+        const extractedContent = Array.isArray(parsed?.content)
+          ? parsed.content.map((c: any) => (typeof c?.text === "string" ? c.text : "")).join("")
+          : "";
+
+        const normalized = {
+          choices: [
+            {
+              message: {
+                role: "assistant",
+                content: extractedContent,
+              },
+            },
+          ],
+          provider: "anthropic",
+        };
+
+        return new Response(JSON.stringify(normalized), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      case "gemini":
+      default: {
+        if (!GOOGLE_KEY) {
+          console.error("[MODEL_ROUTER] GOOGLE_GEMINI_API_KEY missing");
+          return makeError(503, "CONFIGURATION_ERROR", "GOOGLE_GEMINI_API_KEY is missing", {
+            provider: "gemini",
+          });
+        }
+
+        const response = await fetch(GEMINI_API_URL, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${GOOGLE_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: config.modelId,
+            messages,
+            stream: opts.stream,
+            max_tokens: opts.maxTokens,
+            temperature: opts.temperature,
+          }),
+        });
+
+        if (!response.ok) {
+          const rawText = await response.text();
+          console.error(`[MODEL_ROUTER] Final failure: gemini ${response.status} ${rawText.slice(0, 500)}`);
+          return makeError(503, "MODEL_UNAVAILABLE", "Gemini provider failed", {
+            provider: "gemini",
+            status: response.status,
+            details: rawText.slice(0, 500),
+          });
+        }
+
+        return response;
+      }
     }
-    case "gemini":
-    default: {
-      return fetch(GEMINI_API_URL, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${GOOGLE_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: config.modelId,
-          messages,
-          stream: opts.stream,
-          max_tokens: opts.maxTokens,
-          temperature: opts.temperature,
-        }),
-      });
-    }
+  } catch (e) {
+    console.error("[MODEL_ROUTER_CRASH]", e);
+    return new Response(
+      JSON.stringify({
+        type: "EDGE_CRASH",
+        message: String(e),
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
   }
 }
 
@@ -1401,7 +1525,20 @@ async function classifyIntent(
     };
   }
 
-  const data = await response.json();
+  const rawText = await response.text();
+  let data: any;
+  try {
+    data = JSON.parse(rawText);
+  } catch (parseErr) {
+    console.error("[Intent Classifier] Failed to parse model response, defaulting to MODIFY:", parseErr);
+    return {
+      reasoning: "Classifier response parse failed, defaulting to code generation",
+      intent: "MODIFY",
+      interactionMode: "vision",
+      confidence: 0.5,
+      context_needed: true,
+    };
+  }
   const content = data.choices?.[0]?.message?.content || "";
 
   try {
@@ -1540,7 +1677,14 @@ async function analyzeIntent(
       return null;
     }
 
-    const data = await response.json();
+    const rawText = await response.text();
+    let data: any;
+    try {
+      data = JSON.parse(rawText);
+    } catch (parseErr) {
+      console.warn("[Analyzer] Failed to parse API response, skipping analysis:", parseErr);
+      return null;
+    }
     const content = data.choices?.[0]?.message?.content || "";
     const cleaned = content
       .replace(/^```json\s*/i, "")
@@ -1916,13 +2060,24 @@ If the request says "change X", change ONLY X and nothing else.
   console.log(`[Executor] Using model: ${config.modelId} (${config.provider}) for intent: ${intent.intent}${isMicro ? ' (micro-edit, 16k tokens)' : ''}`);
 
   // Call the AI via multi-model router
-  const response = await callModelAPI(config, messages, {
-    maxTokens,
-    temperature: 0.3,
-    stream: shouldStream,
-  });
+  try {
+    const result = await callModelAPI(config, messages, {
+      maxTokens,
+      temperature: 0.3,
+      stream: shouldStream,
+    });
 
-  return response;
+    return result;
+  } catch (e) {
+    console.error("[MODEL_ROUTER_CRASH]", e);
+    return new Response(
+      JSON.stringify({
+        type: "EDGE_CRASH",
+        message: String(e),
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
 }
 
 serve(async (req) => {
@@ -2285,8 +2440,32 @@ serve(async (req) => {
         });
       }
 
-      return new Response(JSON.stringify({ error: "AI generation failed" }), {
-        status: 500,
+      let structured: Record<string, unknown> = {};
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed && typeof parsed === "object") {
+          structured = parsed as Record<string, unknown>;
+        }
+      } catch {
+        // keep fallback payload below
+      }
+
+      const isEdgeCrash = structured.type === "EDGE_CRASH";
+      const status = isEdgeCrash
+        ? 500
+        : (response.status === 502 || response.status === 503 ? response.status : 503);
+      if (!structured.type) {
+        structured.type = status === 502 ? "RESPONSE_PARSE_ERROR" : status === 500 ? "EDGE_CRASH" : "MODEL_UNAVAILABLE";
+      }
+      if (!structured.message) {
+        structured.message = status === 500 ? "Unexpected model router crash" : "AI provider failure";
+      }
+      if (!structured.details && errorText) {
+        structured.details = errorText.slice(0, 500);
+      }
+
+      return new Response(JSON.stringify(structured), {
+        status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -2504,31 +2683,20 @@ serve(async (req) => {
                 // Auto-repair if validation errors found
                 if (validationErrors.length > 0) {
                   console.warn(`[AutoRepair] ${validationErrors.length} file(s) need repair`);
+                  const autoRepairConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-flash"] || MODEL_CONFIG["vibecoder-pro"];
+
                   for (const err of validationErrors) {
                     try {
-                      const repairResponse = await fetch(GEMINI_API_URL, {
-                        method: "POST",
-                        headers: {
-                          Authorization: `Bearer ${GOOGLE_GEMINI_API_KEY}`,
-                          "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                          model: "gemini-2.5-flash",
-                          messages: [
-                            { role: "system", content: "You are a code repair tool. Return ONLY the corrected file content. No markdown fences, no explanation." },
-                            { role: "user", content: `Fix this React component file (${err.path}):\n\nError: ${err.error}\n\nCurrent content:\n${fileMap[err.path] || '(empty)'}\n\nReturn ONLY the corrected TypeScript/React code.` },
-                          ],
-                          max_tokens: 4000,
-                          temperature: 0.1,
-                        }),
-                      });
-                      if (repairResponse.ok) {
-                        const repairData = await repairResponse.json();
-                        const repairedContent = repairData.choices?.[0]?.message?.content;
-                        if (repairedContent && repairedContent.trim().length > 20) {
-                          fileMap[err.path] = repairedContent.replace(/^```(?:tsx?|jsx?)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-                          console.log(`[AutoRepair] ✅ Repaired ${err.path}`);
-                        }
+                      const repairedContent = await repairBrokenFile(
+                        err.path,
+                        fileMap[err.path] || "",
+                        err.error,
+                        autoRepairConfig,
+                      );
+
+                      if (repairedContent && repairedContent.trim().length > 20) {
+                        fileMap[err.path] = repairedContent;
+                        console.log(`[AutoRepair] ✅ Repaired ${err.path}`);
                       }
                     } catch (repairErr) {
                       console.warn(`[AutoRepair] Failed to repair ${err.path}:`, repairErr);
