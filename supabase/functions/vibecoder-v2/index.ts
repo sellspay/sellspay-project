@@ -627,10 +627,34 @@ async function callModelAPI(
   const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY") || "";
   const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
 
+  // Helper: attempt fallback on non-OK response from premium providers
+  const maybeFallback = async (response: Response, providerKey: string): Promise<Response> => {
+    if (response.ok) return response;
+    
+    // Log the error for debugging
+    const errorBody = await response.text();
+    console.error(`[AI Gateway] ${providerKey} error: ${response.status} ${errorBody}`);
+    
+    // If we haven't tried fallback yet, cascade to the next premium provider
+    if (!_fallbackAttempt) {
+      const fallback = PREMIUM_FALLBACK_CHAIN[providerKey];
+      if (fallback) {
+        console.warn(`[ModelRouter] ${providerKey} returned ${response.status} — cascading to ${fallback.provider}/${fallback.modelId}`);
+        return callModelAPI(fallback, messages, opts, true);
+      }
+    }
+    
+    // No fallback available — return a clean error response
+    console.error(`[ModelRouter] ABORT: ${providerKey} failed (${response.status}) and no fallback available`);
+    return new Response(JSON.stringify({ error: `AI provider error (${response.status}): ${errorBody.slice(0, 200)}` }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
   switch (config.provider) {
     case "openai": {
       if (!OPENAI_KEY) {
-        // Premium: try lateral fallback, never downgrade to Flash
         if (!_fallbackAttempt) {
           const fallback = PREMIUM_FALLBACK_CHAIN["openai"];
           if (fallback) {
@@ -638,11 +662,10 @@ async function callModelAPI(
             return callModelAPI(fallback, messages, opts, true);
           }
         }
-        // Both premium keys missing — fail loudly
         console.error(`[ModelRouter] ABORT: No premium API keys available (OpenAI or Anthropic)`);
         return new Response(JSON.stringify({ error: "Premium model unavailable — no API key configured" }), { status: 503 });
       }
-      return fetch(OPENAI_API_URL, {
+      const resp = await fetch(OPENAI_API_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -653,6 +676,7 @@ async function callModelAPI(
           temperature: opts.temperature,
         }),
       });
+      return maybeFallback(resp, "openai");
     }
     case "anthropic": {
       if (!ANTHROPIC_KEY) {
@@ -668,7 +692,7 @@ async function callModelAPI(
       }
       const systemMsg = messages.find(m => m.role === "system");
       const nonSystemMsgs = messages.filter(m => m.role !== "system");
-      return fetch(ANTHROPIC_API_URL, {
+      const resp = await fetch(ANTHROPIC_API_URL, {
         method: "POST",
         headers: {
           "x-api-key": ANTHROPIC_KEY,
@@ -684,6 +708,7 @@ async function callModelAPI(
           stream: opts.stream,
         }),
       });
+      return maybeFallback(resp, "anthropic");
     }
     case "gemini":
     default: {
