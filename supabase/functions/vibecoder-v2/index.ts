@@ -450,6 +450,177 @@ RULES:
 }
 
 // ═══════════════════════════════════════════════════════════════
+// BATCH COMPILE-FIX LOOP: Sends ALL broken files in one repair call
+// Max 2 attempts. Returns corrected fileMap or null on failure.
+// ═══════════════════════════════════════════════════════════════
+
+interface BatchRepairResult {
+  success: boolean;
+  fileMap: Record<string, string>;
+  attempts: number;
+  remainingErrors: Array<{ file: string; error: string }>;
+}
+
+async function batchCompileFix(
+  fileMap: Record<string, string>,
+  generatorConfig: ModelConfig,
+  emitEvent: (eventType: string, data: any) => void,
+): Promise<BatchRepairResult> {
+  const MAX_ATTEMPTS = 2;
+  let currentMap = { ...fileMap };
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const syntaxResult = validateAllFilesServer(currentMap);
+    if (syntaxResult.valid) {
+      if (attempt > 1) console.log(`[COMPILE_FIX] success`);
+      return { success: true, fileMap: currentMap, attempts: attempt - 1, remainingErrors: [] };
+    }
+
+    console.log(`[COMPILE_FIX] attempt=${attempt} files=${syntaxResult.errors.length}`);
+    emitEvent('phase', { phase: 'repairing', attempt, files: syntaxResult.errors.map(e => e.file) });
+
+    // Build a single batch repair payload with ALL broken files
+    const repairPayload = syntaxResult.errors.map(e => ({
+      path: e.file,
+      error: e.error,
+      content: currentMap[e.file] || '',
+    }));
+
+    const repairMessages = [
+      {
+        role: "system" as const,
+        content: `You are a batch syntax repair tool. You receive multiple React/TypeScript files with syntax errors.
+Return a valid JSON object mapping file paths to their FULLY CORRECTED content.
+
+RULES:
+1. Return ONLY valid JSON: { "/path/file.tsx": "corrected content", ... }
+2. Fix ONLY the syntax errors described — do NOT change logic, styling, or structure
+3. Return ALL files provided, with corrections applied
+4. No markdown fences, no explanation, no commentary — ONLY the JSON object
+5. Every value must be a complete, valid file content string`,
+      },
+      {
+        role: "user" as const,
+        content: `Fix these ${repairPayload.length} files:\n\n${repairPayload.map(f => 
+          `=== ${f.path} ===\nError: ${f.error}\n\n${f.content}`
+        ).join('\n\n---\n\n')}`,
+      },
+    ];
+
+    try {
+      const response = await callModelAPI(generatorConfig, repairMessages, {
+        maxTokens: Math.min(60000, (generatorConfig.provider === 'openai' ? 16000 : generatorConfig.provider === 'anthropic' ? 60000 : 8192)),
+        temperature: 0.1,
+        stream: false,
+      });
+
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.warn(`[COMPILE_FIX] Repair API failed (attempt ${attempt}): ${response.status} ${errBody.slice(0, 200)}`);
+        // Try lateral model on last attempt
+        if (attempt === MAX_ATTEMPTS) break;
+        // Try with fallback model
+        const lateralConfig = PREMIUM_FALLBACK_CHAIN[generatorConfig.provider];
+        if (lateralConfig) {
+          console.log(`[COMPILE_FIX] Trying lateral model: ${lateralConfig.provider}/${lateralConfig.modelId}`);
+          generatorConfig = lateralConfig;
+        }
+        continue;
+      }
+
+      const rawText = await response.text();
+      let parsed: any;
+      try {
+        parsed = JSON.parse(rawText);
+      } catch {
+        console.warn(`[COMPILE_FIX] Failed to parse repair response (attempt ${attempt})`);
+        continue;
+      }
+
+      // Extract content from normalized response
+      let repairedContent = '';
+      if (parsed?.choices?.[0]?.message?.content) {
+        repairedContent = parsed.choices[0].message.content;
+      } else if (Array.isArray(parsed?.content)) {
+        repairedContent = parsed.content.map((c: any) => c?.text || '').join('');
+      }
+
+      if (!repairedContent) {
+        console.warn(`[COMPILE_FIX] Empty repair response (attempt ${attempt})`);
+        continue;
+      }
+
+      // Strip markdown fences
+      const cleanedRepair = repairedContent
+        .replace(/^```(?:json|tsx?|jsx?)?\s*\n?/i, '')
+        .replace(/\n?```\s*$/i, '')
+        .trim();
+
+      let repairedMap: Record<string, string>;
+      try {
+        repairedMap = JSON.parse(cleanedRepair);
+      } catch {
+        console.warn(`[COMPILE_FIX] Repair response is not valid JSON (attempt ${attempt})`);
+        continue;
+      }
+
+      // Apply repaired files back into the map
+      for (const [path, content] of Object.entries(repairedMap)) {
+        if (typeof content === 'string' && content.trim().length > 10) {
+          // Strip any markdown fences the model might have added per-file
+          const cleanFile = content
+            .replace(/^```(?:tsx?|jsx?|typescript|javascript)?\s*\n?/i, '')
+            .replace(/\n?```\s*$/i, '')
+            .trim();
+          currentMap[path] = cleanFile;
+        }
+      }
+    } catch (e) {
+      console.error(`[COMPILE_FIX] Exception during batch repair (attempt ${attempt}):`, e);
+      continue;
+    }
+  }
+
+  // Final validation after all attempts
+  const finalResult = validateAllFilesServer(currentMap);
+  if (finalResult.valid) {
+    console.log(`[COMPILE_FIX] success`);
+    return { success: true, fileMap: currentMap, attempts: MAX_ATTEMPTS, remainingErrors: [] };
+  }
+
+  console.error(`[COMPILE_FIX] final_failure`);
+  return { success: false, fileMap: currentMap, attempts: MAX_ATTEMPTS, remainingErrors: finalResult.errors };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BUILD PATH WHITELIST: For first-time builds, restrict output paths
+// ═══════════════════════════════════════════════════════════════
+
+const FIRST_BUILD_ALLOWED_PATHS = [
+  '/App.tsx',
+  '/storefront/Home.tsx',
+  '/storefront/theme.ts',
+];
+
+function isFirstBuildPathAllowed(path: string): boolean {
+  if (FIRST_BUILD_ALLOWED_PATHS.includes(path)) return true;
+  if (path.startsWith('/storefront/components/')) return true;
+  // Allow .css files in storefront
+  if (path.startsWith('/storefront/') && path.endsWith('.css')) return true;
+  return false;
+}
+
+function validateFirstBuildPaths(files: Record<string, string>): { valid: boolean; errors: Array<{ file: string; error: string }> } {
+  const errors: Array<{ file: string; error: string }> = [];
+  for (const path of Object.keys(files)) {
+    if (!isFirstBuildPathAllowed(path)) {
+      errors.push({ file: path, error: `Not allowed in first BUILD. Only /App.tsx, /storefront/Home.tsx, /storefront/components/**, and /storefront/theme.ts are permitted.` });
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // VIBE INTENT DETECTION (Backend port of vibe-from-text.ts)
 // Detects aesthetic/emotional keywords for Brand Layer injection
 // ═══════════════════════════════════════════════════════════════
@@ -2019,7 +2190,7 @@ If the request says "change X", change ONLY X and nothing else.
       // First build (REPLACE mode) — skip ANALYSIS/PLAN to reduce token burden and avoid timeouts
       messages.push({
         role: "user",
-        content: `${modeInjection}${brandMemoryInjection}${brandLayerInjection}${intentInjection}${creatorInjection}${productsInjection}Create a complete storefront with this description: ${prompt}\n\nIMPORTANT: This is a FIRST BUILD — skip the ANALYSIS and PLAN sections. Go directly to === CODE ===, then === SUMMARY ===, then === CONFIDENCE ===. Focus all tokens on generating high-quality code.`,
+        content: `${modeInjection}${brandMemoryInjection}${brandLayerInjection}${intentInjection}${creatorInjection}${productsInjection}Create a complete storefront with this description: ${prompt}\n\nIMPORTANT: This is a FIRST BUILD — skip the ANALYSIS and PLAN sections. Go directly to === CODE ===, then === SUMMARY ===, then === CONFIDENCE ===. Focus all tokens on generating high-quality code.\n\nFILE OUTPUT RESTRICTION: For this first build, you may ONLY create these files:\n- /App.tsx (main entry)\n- /storefront/Home.tsx (home page)\n- /storefront/theme.ts (theme tokens)\n- /storefront/components/*.tsx (UI components)\n\nDo NOT create additional route files (About, Contact, FAQ, etc.) unless the user explicitly asked for them. Keep the output minimal and focused.`,
       });
     }
   }
@@ -2705,64 +2876,62 @@ serve(async (req) => {
                 }
                 
                 // ═══════════════════════════════════════════════════════
-                // COMPILE-FIX RETRY LOOP (Layer 6 Server-Side)
+                // LAYER 6: BATCH COMPILE-FIX LOOP (Server-Side)
                 // Run full syntax validation on all files.
-                // If any fail, attempt one targeted repair per file.
-                // If repair fails, abort the entire commit.
+                // If any fail, batch-repair ALL broken files in one call.
+                // Max 2 attempts. Returns structured COMPILE_FAILURE on abort.
                 // ═══════════════════════════════════════════════════════
-                const syntaxResult = validateAllFilesServer(fileMap);
-                if (!syntaxResult.valid) {
-                  console.warn(`[CompileFix] ${syntaxResult.errors.length} file(s) have syntax errors — attempting repair`);
-                  emitEvent('phase', { phase: 'repairing', files: syntaxResult.errors.map(e => e.file) });
+                const initialSyntaxCheck = validateAllFilesServer(fileMap);
+                if (!initialSyntaxCheck.valid) {
+                  console.warn(`[COMPILE_FIX] ${initialSyntaxCheck.errors.length} file(s) have syntax errors — starting batch repair`);
+                  const batchGeneratorConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
+                  const batchResult = await batchCompileFix(fileMap, batchGeneratorConfig, emitEvent);
                   
-                  let allRepaired = true;
-                  for (const err of syntaxResult.errors) {
-                    // Model-aware repair: use the same model that generated the code
-                    const generatorConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-pro"];
-                    let repaired = await repairBrokenFile(err.file, fileMap[err.file], err.error, generatorConfig);
-                    
-                    // Lateral retry: if primary repair fails, try the other premium model
-                    if (!repaired) {
-                      const lateralConfig = PREMIUM_FALLBACK_CHAIN[generatorConfig.provider];
-                      if (lateralConfig) {
-                        console.log(`[CompileFix] Primary repair failed for ${err.file}, trying lateral: ${lateralConfig.provider}/${lateralConfig.modelId}`);
-                        repaired = await repairBrokenFile(err.file, fileMap[err.file], err.error, lateralConfig);
-                      }
+                  if (batchResult.success) {
+                    // Apply repaired files
+                    for (const [path, content] of Object.entries(batchResult.fileMap)) {
+                      fileMap[path] = content;
                     }
-                    
-                    if (repaired) {
-                      fileMap[err.file] = repaired;
-                    } else {
-                      allRepaired = false;
-                      console.error(`[CompileFix] ❌ Could not repair ${err.file} (both primary + lateral failed): ${err.error}`);
-                    }
-                  }
-                  
-                  if (!allRepaired) {
-                    // Re-validate to get remaining errors
-                    const recheckResult = validateAllFilesServer(fileMap);
-                    if (!recheckResult.valid) {
-                      const errorSummary = recheckResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
-                      console.error(`[CompileFix] ABORT: Files still have syntax errors after repair: ${errorSummary}`);
-                      emitEvent('error', { code: 'SYNTAX_REPAIR_FAILED', message: `Code has syntax errors that could not be auto-repaired: ${errorSummary}` });
-                      // Don't emit files — abort this commit
-                      summaryValidated = false;
-                      lastMergedFiles = null as unknown as Record<string, string>;
-                      // Skip to summary section
-                    }
-                  }
-                  
-                  if (summaryValidated !== false) {
-                    // Final recheck passed
-                    const finalCheck = validateAllFilesServer(fileMap);
-                    if (finalCheck.valid) {
-                      console.log(`[CompileFix] ✅ All files pass syntax validation after repair`);
-                    }
+                    console.log(`[COMPILE_FIX] ✅ Batch repair succeeded after ${batchResult.attempts} attempt(s)`);
+                  } else {
+                    // Structured COMPILE_FAILURE error
+                    const compileFailure = {
+                      type: "COMPILE_FAILURE",
+                      attempts: batchResult.attempts,
+                      files: batchResult.remainingErrors.map(e => e.file),
+                      errors: batchResult.remainingErrors,
+                    };
+                    console.error(`[COMPILE_FIX] final_failure:`, JSON.stringify(compileFailure));
+                    emitEvent('error', { 
+                      code: 'COMPILE_FAILURE', 
+                      message: `Code has syntax errors after ${batchResult.attempts} repair attempts`,
+                      ...compileFailure,
+                    });
+                    // Abort commit
+                    summaryValidated = false;
+                    lastMergedFiles = null as unknown as Record<string, string>;
                   }
                 }
                 
                 // ═══════════════════════════════════════════════════════
-                // LAYER 7: PATH ISOLATION GUARD (Server-Side)
+                // LAYER 7a: FIRST BUILD PATH WHITELIST
+                // On first BUILD, restrict to essential paths only
+                // ═══════════════════════════════════════════════════════
+                const isFirstBuild = !currentCode?.trim();
+                if (summaryValidated !== false && isFirstBuild && intentResult.intent === "BUILD") {
+                  const firstBuildResult = validateFirstBuildPaths(fileMap);
+                  if (!firstBuildResult.valid) {
+                    // Remove disallowed files instead of aborting
+                    for (const err of firstBuildResult.errors) {
+                      console.warn(`[FirstBuildWhitelist] Removing disallowed file: ${err.file}`);
+                      delete fileMap[err.file];
+                    }
+                    console.log(`[FirstBuildWhitelist] Stripped ${firstBuildResult.errors.length} over-generated files. Remaining: ${Object.keys(fileMap).length}`);
+                  }
+                }
+
+                // ═══════════════════════════════════════════════════════
+                // LAYER 7b: PATH ISOLATION GUARD (Server-Side)
                 // Block files targeting restricted folders
                 // ═══════════════════════════════════════════════════════
                 if (summaryValidated !== false) {
