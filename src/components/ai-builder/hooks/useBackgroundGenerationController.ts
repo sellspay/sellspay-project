@@ -203,11 +203,9 @@ export function useBackgroundGenerationController({
 
       // ✅ ALL 6 LAYERS PASSED — atomic commit sequence
       console.log('[ZERO-TRUST] All layers passed (including transpile). Committing', Object.keys(fileMap).length, 'files for job:', job.id);
-      
-      // Step 1: Apply to sandbox
-      setFiles(fileMap);
-      
-      // Step 2: Persist to DB BEFORE flipping the ref
+
+      // ATOMIC COMMIT: DB first, then sandbox, then ref
+      // If DB fails, no UI mutation occurs — prevents refresh inconsistency
       if (activeProjectId) {
         try {
           const { error } = await supabase
@@ -215,18 +213,23 @@ export function useBackgroundGenerationController({
             .update({ last_valid_files: fileMap as any })
             .eq('id', activeProjectId);
           if (error) {
-            console.warn('[ZERO-TRUST] DB persist failed:', error.message);
-          } else {
-            console.log('[ZERO-TRUST] ✅ Snapshot persisted to DB');
+            console.error('[ZERO-TRUST] DB persistence failed. Aborting commit:', error.message);
+            toast.error('Failed to persist changes. Please retry.');
+            abortGeneration();
+            return;
           }
         } catch (e) {
-          console.warn('[ZERO-TRUST] DB persist exception:', e);
+          console.error('[ZERO-TRUST] DB persistence exception. Aborting commit:', e);
+          toast.error('Failed to persist changes. Please retry.');
+          abortGeneration();
+          return;
         }
       }
-      
-      // Step 3: Transition to EDIT/MERGE mode
+
+      // DB succeeded — safe to mutate sandbox
+      setFiles(fileMap);
       hasDbSnapshotRef.current = true;
-      console.log('[ZERO-TRUST] hasDbSnapshotRef set to TRUE — future generations will use MERGE mode');
+      console.log('[ZERO-TRUST] ✅ Commit + persistence successful');
     } else {
       console.warn('[BackgroundGen] Job completed with no code_result:', job.id);
     }
