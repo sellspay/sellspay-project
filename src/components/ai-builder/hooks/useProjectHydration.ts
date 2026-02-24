@@ -80,9 +80,6 @@ export function useProjectHydration({
   // STRICT LOADING: Verify project exists before rendering preview
   const [isVerifyingProject, setIsVerifyingProject] = useState(false);
 
-  // NOTE: isWaitingForPreviewMount removed — preview is now purely files-driven.
-  // Preview renders whenever files exist. No handshake needed.
-
   // Expose abortController ref for cleanup
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -117,20 +114,35 @@ export function useProjectHydration({
     pendingSummaryRef.current = '';
   }, [cancelStream, cancelAgent, forceResetStreaming, generationLockRef, activeJobIdRef, pendingSummaryRef, onResetTransientState]);
 
+  // =============== CODE RESTORATION FROM MESSAGES ===============
+  // Track the DB-fetched last_valid_files for use during restoration
+  const dbLastValidFilesRef = useRef<Record<string, string> | null>(null);
+  const [dbSnapshotReady, setDbSnapshotReady] = useState(false);
+
   // =============== SCORCHED EARTH ORCHESTRATOR ===============
   useLayoutEffect(() => {
     let isMounted = true;
 
+    // 🔒 FIX 1: Guard against transient nulls — do NOTHING if activeProjectId is null
+    if (!activeProjectId) return;
+
     // Skip if project ID hasn't actually changed
-    if (previousProjectIdRef.current === activeProjectId && previousProjectIdRef.current !== null) {
-      return;
+    if (previousProjectIdRef.current === activeProjectId) return;
+
+    // 🔒 FIX 3: Only reset hasDbSnapshotRef on a REAL project switch (old → new, both non-null)
+    if (previousProjectIdRef.current && previousProjectIdRef.current !== activeProjectId) {
+      hasDbSnapshotRef.current = false;
     }
+
+    // 🔒 FIX 2: Stamp the ref BEFORE async work to prevent re-entry
+    const previousId = previousProjectIdRef.current;
+    previousProjectIdRef.current = activeProjectId;
 
     // 🚨 CRITICAL: These MUST run SYNCHRONOUSLY
     setContentProjectId(null);
     setIsVerifyingProject(true);
+    setDbSnapshotReady(false);
     loadingProjectRef.current = activeProjectId;
-    hasDbSnapshotRef.current = false; // Reset until DB fetch confirms
 
     // ✅ STEP 1: Run the unified cleanup gate
     cleanupProjectRuntime();
@@ -138,31 +150,17 @@ export function useProjectHydration({
 
     async function loadRoute() {
       // 2. DETECT PROJECT SWITCH
-      const isProjectSwitch = previousProjectIdRef.current !== null &&
-                               previousProjectIdRef.current !== activeProjectId;
+      const isProjectSwitch = previousId !== null && previousId !== activeProjectId;
 
       if (isProjectSwitch) {
-        console.log(`🔄 Project switch detected: ${previousProjectIdRef.current} → ${activeProjectId}`);
-        if (previousProjectIdRef.current) {
-          clearProjectLocalStorage(previousProjectIdRef.current);
+        console.log(`🔄 Project switch detected: ${previousId} → ${activeProjectId}`);
+        if (previousId) {
+          clearProjectLocalStorage(previousId);
         }
         await nukeSandpackCache();
       }
 
-      previousProjectIdRef.current = activeProjectId;
-
-      // 3. NO PROJECT: Show Hero screen with blank slate
-      if (!activeProjectId) {
-        setContentProjectId(null);
-        resetCode();
-        onIncrementResetKey();
-        onIncrementRefreshKey();
-        onResetTransientState();
-        resetAgent();
-        clearAssets();
-        setIsVerifyingProject(false);
-        return;
-      }
+      // 3. NO PROJECT case is handled by the null guard above — we never reach here without an ID
 
       setIsVerifyingProject(true);
       console.log(`🚀 Loading fresh context for: ${activeProjectId}`);
@@ -186,6 +184,8 @@ export function useProjectHydration({
         onResetTransientState();
         resetAgent();
         clearAssets();
+        dbLastValidFilesRef.current = null;
+        setDbSnapshotReady(true);
         toast.info('Previous project was deleted. Starting fresh.');
       } else {
         // Project verified
@@ -193,14 +193,16 @@ export function useProjectHydration({
         mountAgentProject(activeProjectId);
         onResetTransientState();
 
-        // 🔥 CRITICAL: Set hasDbSnapshotRef HERE — before any useEffect can run.
-        // This eliminates the race where user sends a prompt before the separate
-        // DB snapshot fetch effect completes, causing REPLACE mode on existing projects.
+        // 🔥 FIX 4: Populate dbLastValidFilesRef HERE — single source of truth, no duplicate fetch
         if (data.last_valid_files && typeof data.last_valid_files === 'object' &&
             Object.keys(data.last_valid_files as Record<string, string>).length > 0) {
           hasDbSnapshotRef.current = true;
+          dbLastValidFilesRef.current = data.last_valid_files as Record<string, string>;
           console.log('🔒 hasDbSnapshotRef set to TRUE in layout effect (race-free)');
+        } else {
+          dbLastValidFilesRef.current = null;
         }
+        setDbSnapshotReady(true);
       }
 
       setIsVerifyingProject(false);
@@ -217,48 +219,9 @@ export function useProjectHydration({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProjectId]);
 
-  // =============== CODE RESTORATION FROM MESSAGES ===============
-  // Track the DB-fetched last_valid_files for use during restoration
-  const dbLastValidFilesRef = useRef<Record<string, string> | null>(null);
-  const [dbSnapshotReady, setDbSnapshotReady] = useState(false);
-
-  // hasDbSnapshotRef is now passed in from parent (owned by AIBuilderCanvas)
-
-  // Fetch stable snapshot from DB when project is verified
-  useEffect(() => {
-    if (!activeProjectId) {
-      dbLastValidFilesRef.current = null;
-      setDbSnapshotReady(true); // No project = ready (nothing to fetch)
-      return;
-    }
-    if (isVerifyingProject) {
-      setDbSnapshotReady(false);
-      return;
-    }
-    
-    let cancelled = false;
-    setDbSnapshotReady(false);
-    
-    const fetchStableSnapshot = async () => {
-      const { data } = await supabase
-        .from('vibecoder_projects')
-        .select('last_valid_files')
-        .eq('id', activeProjectId)
-        .maybeSingle();
-      if (cancelled) return;
-      if (data?.last_valid_files && typeof data.last_valid_files === 'object') {
-        dbLastValidFilesRef.current = data.last_valid_files as Record<string, string>;
-        hasDbSnapshotRef.current = true;
-      } else {
-        dbLastValidFilesRef.current = null;
-        hasDbSnapshotRef.current = false;
-      }
-      setDbSnapshotReady(true);
-    };
-    fetchStableSnapshot();
-    
-    return () => { cancelled = true; };
-  }, [activeProjectId, isVerifyingProject]);
+  // 🔥 FIX 4: DUPLICATE DB FETCH EFFECT DELETED
+  // The layout effect above now handles dbLastValidFilesRef + dbSnapshotReady + hasDbSnapshotRef
+  // in a single pass, eliminating the race condition.
 
   useEffect(() => {
     if (loadingProjectRef.current === activeProjectId) return;
