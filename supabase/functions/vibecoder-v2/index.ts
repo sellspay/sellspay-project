@@ -1652,9 +1652,6 @@ You MUST:
 - Output ONLY valid JSON.
 - Output nothing before JSON.
 - Output nothing after JSON.
-- Do not include analysis.
-- Do not include plan.
-- Do not include summary.
 - Do not explain.
 - Do not include markdown.
 - Do not include backticks.
@@ -1683,8 +1680,10 @@ STRICT RULES:
 - Return ONLY the file(s) that were changed.
 - Each returned file must be complete and syntactically valid.
 - Never truncate code.
-- The first character must be '{'.
-- The last character must be '}'.`;
+- The first character of your response must be '{'.
+- The last character of your response must be '}'.
+- You are NOT allowed to respond conversationally.
+- If you fail to return valid JSON code, the build will fail.`;
 
 // MODIFY-ONLY PROMPT — lean JSON-only, no ANALYSIS/PLAN/SUMMARY
 // ════════════════════════════════════════════════════════════════
@@ -3563,9 +3562,9 @@ serve(async (req) => {
         // Process accumulated content and emit structured events
         const processContent = async () => {
           // ═══════════════════════════════════════════════════════
-          // MODIFY FAST PATH: entire response is raw JSON, no sections
+          // MODIFY/FIX FAST PATH: entire response is raw JSON, no sections
           // ═══════════════════════════════════════════════════════
-          if (intentResult.intent === "MODIFY") {
+          if (intentResult.intent === "MODIFY" || intentResult.intent === "FIX") {
             // Skip ANALYSIS/PLAN parsing — go straight to code accumulation
             if (!codePhaseEmitted) {
               emitEvent('phase', { phase: 'building' });
@@ -3577,7 +3576,7 @@ serve(async (req) => {
               emitEvent('code_progress', { bytes: fullContent.length, elapsed: elapsedSec });
               lastCodeEmitLength = fullContent.length;
             }
-            return; // No section parsing needed for MODIFY
+            return; // No section parsing needed for MODIFY/FIX
           }
 
           // === ANALYSIS === section (progressive streaming)
@@ -4279,13 +4278,13 @@ serve(async (req) => {
             // ═══════════════════════════════════════════════════════
             // MODIFY FAST PATH: entire response IS the JSON — no section extraction
             // ═══════════════════════════════════════════════════════
-            if (intentResult.intent === "MODIFY") {
+            if (intentResult.intent === "MODIFY" || intentResult.intent === "FIX") {
               codeResult = fullContent
                 .replace(/^```(?:json|tsx?|jsx?)?\s*\n?/i, '')
                 .replace(/\n?```\s*$/i, '')
                 .trim();
-              summary = "Modification applied.";
-              console.log(`[Job ${jobId}] MODIFY fast-path: treating full response as JSON (${codeResult.length} chars)`);
+              summary = intentResult.intent === "FIX" ? "Fix applied." : "Modification applied.";
+              console.log(`[Job ${jobId}] ${intentResult.intent} fast-path: treating full response as JSON (${codeResult.length} chars)`);
             } else if (fullContent.includes("=== CODE ===")) {
               const codeStart = fullContent.indexOf("=== CODE ===") + "=== CODE ===".length;
               let codeEnd = fullContent.indexOf("=== SUMMARY ===");
