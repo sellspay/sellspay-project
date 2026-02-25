@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef } from "react";
-import { ChevronDown, ChevronRight, Loader2, Terminal } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface LiveThoughtProps {
   logs: string[];
@@ -18,15 +19,25 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
   function LiveThought({ logs, isThinking, className, mode = 'building' }: LiveThoughtProps, ref) {
     const [isExpanded, setIsExpanded] = useState(false);
     const [seconds, setSeconds] = useState(0);
+    const [dots, setDots] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Live timer
     useEffect(() => {
       let interval: NodeJS.Timeout;
       if (isThinking) {
-        setSeconds(0); // Reset on new thinking session
+        setSeconds(0);
         interval = setInterval(() => setSeconds((s) => s + 1), 1000);
       }
+      return () => clearInterval(interval);
+    }, [isThinking]);
+
+    // Animated dots
+    useEffect(() => {
+      if (!isThinking) return;
+      const interval = setInterval(() => {
+        setDots(prev => prev.length >= 3 ? '' : prev + '.');
+      }, 500);
       return () => clearInterval(interval);
     }, [isThinking]);
 
@@ -39,12 +50,11 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
 
     if (!isThinking && logs.length === 0) return null;
 
-    // Determine if we're in "thinking" phase (no logs yet) vs "building" phase (logs arriving)
     const hasRealLogs = logs.length > 0;
     const isThinkingPhase = isThinking && !hasRealLogs;
     const isBuildingPhase = isThinking && hasRealLogs;
 
-    // THINKING PHASE: Simple "Thinking..." indicator with no logs
+    // THINKING PHASE: Clean minimal text
     if (isThinkingPhase || mode === 'thinking') {
       if (!isThinking) return null;
       
@@ -56,18 +66,14 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
             className
           )}
         >
-          <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
-            </span>
-            <span>Thinking...</span>
+          <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+            <span className="opacity-70">Thinking{dots}</span>
           </div>
         </div>
       );
     }
 
-    // BUILDING PHASE: Show detailed logs with timer
+    // BUILDING PHASE: Clean log view
     return (
       <div
         ref={ref}
@@ -76,84 +82,71 @@ export const LiveThought = forwardRef<HTMLDivElement, LiveThoughtProps>(
           className
         )}
       >
-        
-        {/* HEADER (Always Visible) */}
+        {/* HEADER */}
         <button 
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-xs font-medium mb-2 select-none group"
+          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-xs mb-2 select-none group"
         >
           {isExpanded ? (
-            <ChevronDown size={14} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+            <ChevronDown size={12} className="opacity-50 group-hover:opacity-100 transition-opacity" />
           ) : (
-            <ChevronRight size={14} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+            <ChevronRight size={12} className="opacity-50 group-hover:opacity-100 transition-opacity" />
           )}
           
-          <span className="flex items-center gap-2">
-            {isBuildingPhase ? (
-              <>
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500" />
-                </span>
-                <span>Building for {seconds}s</span>
-              </>
-            ) : (
-              <span className="text-muted-foreground">Built in {seconds}s</span>
-            )}
-          </span>
+          {isBuildingPhase ? (
+            <span className="opacity-70">Working · {seconds}s</span>
+          ) : (
+            <span className="opacity-50">Completed · {seconds}s</span>
+          )}
         </button>
 
         {/* EXPANDABLE LOG CONTAINER */}
-        {isExpanded && (
-          <div className="bg-card/50 border border-border rounded-lg overflow-hidden backdrop-blur-sm">
-            
-            {/* HEADER BAR */}
-            <div className="px-3 py-2 border-b border-border flex items-center justify-between bg-card/80">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Terminal size={12} />
-                <span className="text-[10px] font-mono uppercase tracking-wider">Execution Log</span>
-              </div>
-              {isBuildingPhase && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
-            </div>
-
-            {/* LOG STREAM */}
-            <div 
-              ref={scrollRef}
-              className="p-3 max-h-[200px] overflow-y-auto font-mono text-[11px] space-y-1.5 text-muted-foreground custom-scrollbar"
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
             >
-              {logs.map((log, i) => {
-                // Clean the log message
-                const cleanLog = log.replace(/^\[LOG:\s*/, '').replace(/\]$/, '').replace(/^>\s*/, '').trim();
-                const isError = log.toLowerCase().includes('error');
-                
-                return (
-                  <div key={i} className="flex gap-2 animate-in fade-in duration-300">
-                    <span className="text-muted-foreground/50 select-none shrink-0">›</span>
-                    <span
-                      className={cn(
-                        "break-words",
-                        isError ? "text-destructive" : "text-foreground/80"
-                      )}
-                    >
-                      {cleanLog}
-                    </span>
-                  </div>
-                );
-              })}
-              
-              {isBuildingPhase && (
-                <div className="flex gap-2 opacity-50">
-                  <span className="text-muted-foreground/50">›</span>
-                  <span className="animate-pulse">_</span>
+              <div className="border border-border/50 rounded-lg overflow-hidden bg-card/30">
+                <div 
+                  ref={scrollRef}
+                  className="p-3 max-h-[180px] overflow-y-auto text-[11px] space-y-1 text-muted-foreground custom-scrollbar"
+                >
+                  {logs.map((log, i) => {
+                    const cleanLog = log.replace(/^\[LOG:\s*/, '').replace(/\]$/, '').replace(/^>\s*/, '').trim();
+                    const isError = log.toLowerCase().includes('error');
+                    
+                    return (
+                      <div key={i} className="flex gap-2 animate-in fade-in duration-200">
+                        <span className="opacity-30 select-none shrink-0">›</span>
+                        <span className={cn(
+                          "break-words leading-relaxed",
+                          isError ? "text-destructive" : "text-foreground/60"
+                        )}>
+                          {cleanLog}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  
+                  {isBuildingPhase && (
+                    <div className="flex gap-2 opacity-30">
+                      <span>›</span>
+                      <span className="animate-pulse">_</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* PREVIEW LINE (When Collapsed) */}
         {!isExpanded && logs.length > 0 && (
-          <div className="ml-6 text-xs text-muted-foreground/70 truncate font-mono">
+          <div className="ml-4 text-[11px] text-muted-foreground/50 truncate">
             {logs[logs.length - 1].replace(/^\[LOG:\s*/, '').replace(/\]$/, '').replace(/^>\s*/, '').trim()}
             {isBuildingPhase && '...'}
           </div>
