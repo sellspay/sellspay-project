@@ -2079,53 +2079,66 @@ async function analyzeScope(
   prompt: string,
   filePaths: string[],
   conversationHistory: Array<{ role: string; content: string }>,
-  apiKey: string,
+  _apiKey: string,
 ): Promise<ScopeAnalysisResult | null> {
   try {
-    const recentMessages = conversationHistory.slice(-4);
-    const conversationContext = recentMessages.length > 0
-      ? "\nRecent conversation:\n" + recentMessages.map(m => `${m.role}: "${m.content}"`).join("\n")
-      : "";
+    const SCOPE_SYSTEM_PROMPT = `You are a code impact analysis engine.
 
-    const response = await fetchWithTimeout(GEMINI_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
-        messages: [
-          {
-            role: "system",
-            content: `You are a scope analyzer for a code generation system. Given a file list and user request, determine which files need to change.
+Your task is to determine which project files must change
+to satisfy a user's request.
 
-Return ONLY a valid JSON object with:
-- affectedFiles: array of file paths that must change to fulfill the request
-- strategy: "micro" (1 file, < 50 lines changed), "partial" (2-4 files), or "full" (5+ files or structural redesign)
-- estimatedOutputTokens: rough estimate of total output tokens needed
+You MUST NOT generate code.
+You MUST NOT explain your reasoning.
+You MUST ONLY return valid JSON.
+
+Return format:
+
+{
+  "affectedFiles": ["path/file1.tsx", "path/file2.css"],
+  "strategy": "micro" | "partial" | "full",
+  "estimatedOutputTokens": number
+}
 
 Rules:
+- Only include files that truly require modification.
+- Do NOT include unchanged files.
+- Do NOT include new files unless absolutely required.
+- If no files need modification, return an empty array.
+- strategy: "micro" (1 file, < 50 lines changed), "partial" (2-4 files), or "full" (5+ files or structural redesign)
+- estimatedOutputTokens: rough estimate of total output tokens needed
 - For style/color/font changes: include theme.ts + any component files that hardcode styles
 - For text content changes: include only the file containing that text
 - For layout changes: include the layout file + affected components
 - For "make it more premium/modern/etc": include theme.ts + main page files
 - For adding a new section: include the page file + optionally a new component file
 - When in doubt, lean toward "partial" not "full"
-- NEVER return "full" unless the user explicitly asks to rebuild everything or the change truly affects 5+ files`
-          },
-          {
-            role: "user",
-            content: `File list:\n${filePaths.join("\n")}${conversationContext}\n\nUser request: "${prompt}"`
-          },
-        ],
-        max_tokens: 500,
-        temperature: 0.1,
-      }),
-    }, 15_000); // 15s timeout for scope analysis
+- NEVER return "full" unless the user explicitly asks to rebuild everything or the change truly affects 5+ files
+- Output JSON only.
+- No markdown.
+- No commentary.`;
+
+    const recentMessages = conversationHistory.slice(-4);
+    const conversationContext = recentMessages.length > 0
+      ? "\nRecent conversation:\n" + recentMessages.map(m => `${m.role}: "${m.content}"`).join("\n")
+      : "";
+
+    const userContent = `Project Files:\n${filePaths.join("\n")}${conversationContext}\n\nUser Request:\n${prompt}\n\nReturn affectedFiles JSON only.`;
+
+    // Use Claude Sonnet for scope analysis — reliable structured JSON output
+    const scopeConfig: ModelConfig = { modelId: "claude-sonnet-4-20250514", provider: "anthropic" };
+    const scopeMessages = [
+      { role: "system", content: SCOPE_SYSTEM_PROMPT },
+      { role: "user", content: userContent },
+    ];
+
+    const response = await callModelAPI(scopeConfig, scopeMessages, {
+      maxTokens: 500,
+      temperature: 0.1,
+      stream: false,
+    });
 
     if (!response.ok) {
-      console.warn("[ScopeAnalyzer] API call failed, defaulting to full scope");
+      console.warn("[ScopeAnalyzer] Claude API call failed, defaulting to full scope");
       return null;
     }
 
@@ -2133,12 +2146,13 @@ Rules:
     let data: any;
     try { data = JSON.parse(rawText); } catch { return null; }
     
+    // Handle normalized response (Claude returns OpenAI-compatible format via callModelAPI)
     const content = data.choices?.[0]?.message?.content || "";
     const cleaned = content.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
     const parsed = JSON.parse(cleaned);
 
     // Validate the result
-    if (!Array.isArray(parsed.affectedFiles) || !parsed.strategy) {
+    if (!Array.isArray(parsed.affectedFiles)) {
       console.warn("[ScopeAnalyzer] Invalid response shape, defaulting to full");
       return null;
     }
@@ -2630,7 +2644,10 @@ If the request says "change X", change ONLY X and nothing else.
         // Other files are listed by path only (no content) to save tokens
         // ═══════════════════════════════════════════════════════
         if (scopeResult && scopeResult.strategy !== 'full' && scopeResult.affectedFiles.length > 0) {
-          // Scoped context: only include affected files with content
+          // ═══════════════════════════════════════════════════════
+          // SCOPED MODIFY: Only send affected files with content
+          // Uses strict generation format from Part 2 spec
+          // ═══════════════════════════════════════════════════════
           const scopedFiles: Record<string, string> = {};
           const otherPaths: string[] = [];
           for (const [path, content] of Object.entries(projectFiles)) {
@@ -2642,21 +2659,24 @@ If the request says "change X", change ONLY X and nothing else.
             }
           }
 
+          // Build scoped context using === FILE: path === format
           const scopedEntries = Object.entries(scopedFiles)
-            .map(([path, content]) => `=== ${path} ===\n${content}`)
+            .map(([path, content]) => `=== FILE: ${path} ===\n${content}`)
             .join('\n\n');
           
+          const affectedFilesList = scopeResult.affectedFiles.join('\n');
+          
           const otherFilesListing = otherPaths.length > 0
-            ? `\n\nOTHER PROJECT FILES (paths only — do NOT output these unless absolutely necessary):\n${otherPaths.join('\n')}`
+            ? `\n\nOTHER PROJECT FILES (do not output these):\n${otherPaths.join('\n')}`
             : '';
 
-          codeContext = `${fileInventoryBlock}SCOPE: ${scopeResult.strategy.toUpperCase()} — Only ${scopeResult.affectedFiles.length} file(s) need changes.\n\nFILES TO MODIFY:\n\n${scopedEntries}${otherFilesListing}\n\nCRITICAL OUTPUT RULE: Return ONLY the files listed above that you are actually changing. Do NOT output files from the "OTHER PROJECT FILES" list unless the change absolutely requires it.`;
+          codeContext = `${fileInventoryBlock}You must update ONLY the following files:\n\n${affectedFilesList}\n\nCurrent file contents:\n\n${scopedEntries}${otherFilesListing}\n\nReturn JSON only. Do NOT output files not listed above.`;
           console.log(`[ScopeFilter] Scoped context: ${Object.keys(scopedFiles).length} files with content, ${otherPaths.length} paths only (strategy: ${scopeResult.strategy})`);
         } else {
           // Full context: send everything (BUILD, full strategy, or no scope result)
           const fileEntries = Object.entries(projectFiles)
             .filter(([path, content]) => typeof content === 'string' && content.trim().length > 0)
-            .map(([path, content]) => `=== ${path} ===\n${content}`)
+            .map(([path, content]) => `=== FILE: ${path} ===\n${content}`)
             .join('\n\n');
           codeContext = `${fileInventoryBlock}Here is the full project file map:\n\n${fileEntries}\n\nCRITICAL OUTPUT RULE: Return ONLY the files you are actually changing. Do NOT re-output unchanged files. If you change 2 files out of 7, return only those 2 files in your JSON. Unchanged files will be preserved automatically by the system.`;
         }
@@ -3674,20 +3694,25 @@ serve(async (req) => {
               
               if (!filesEmitted && retryCount === 0) {
                 // ═══════════════════════════════════════════════════════
-                // LAYER 4: MODEL-LEVEL RETRY (non-streaming fallback)
-                // All 3 JSON fallbacks failed. Make one more attempt with
-                // explicit instruction and reduced temperature.
+                // LAYER 4: MODEL-LEVEL RETRY (TRUE RETRY — new model call)
+                // All 3 JSON fallbacks failed. Make a NEW call with:
+                // - Explicit "previous output was invalid" instruction
+                // - Reduced temperature (0.1)
+                // - If this also fails → fallback to full REPLACE generation
                 // ═══════════════════════════════════════════════════════
                 retryCount++;
-                console.warn(`[RETRY] All fallbacks exhausted — triggering model-level retry (attempt ${retryCount})`);
+                console.warn(`[RETRY] All fallbacks exhausted — triggering TRUE model-level retry (attempt ${retryCount})`);
                 emitEvent('phase', { phase: 'retrying' });
 
                 try {
+                  // Retry system prompt: original + explicit recovery instruction
+                  const retrySystemPrompt = messages[0].content + `\n\nThe previous output was invalid or truncated.\nYou MUST return complete, valid JSON.\nDo not shorten files.\nDo not include commentary.\nOutput JSON only.`;
+
                   const retryMessages = [
-                    messages[0], // system prompt
+                    { role: "system", content: retrySystemPrompt },
                     {
                       role: "user",
-                      content: `Previous generation produced invalid JSON output. You MUST return ONLY a valid JSON object with this structure:\n{"files": {"/path.tsx": "file content"}}\n\nNo markdown, no commentary, no explanation. Just the JSON.\n\nOriginal request: ${prompt}`,
+                      content: `Previous generation produced invalid JSON output. You MUST return ONLY a valid JSON object with this exact structure:\n{"files": {"/path.tsx": "FULL file content here"}}\n\nRules:\n- Output ONLY valid JSON.\n- No explanation. No commentary. No markdown. No backticks.\n- Each file must be complete and syntactically valid.\n- Never truncate code.\n- If content is long, reduce verbosity but NEVER break syntax.\n\nOriginal request: ${prompt}`,
                     },
                   ];
 
@@ -3730,11 +3755,64 @@ serve(async (req) => {
                           filesEmitted = true;
                           lastMergedFiles = finalRetry;
                           summaryValidated = true;
-                          console.log(`[RETRY] ✅ Model retry succeeded — ${Object.keys(retryFiles).length} files recovered`);
+                          console.log(`[RETRY] ✅ TRUE retry succeeded — ${Object.keys(retryFiles).length} files recovered`);
                         }
                       } catch {
-                        console.error('[RETRY] Retry response also invalid JSON');
+                        console.error('[RETRY] Retry response also invalid JSON — falling back to REPLACE');
                       }
+                    }
+                  }
+
+                  // ═══════════════════════════════════════════════════════
+                  // FALLBACK TO REPLACE: If retry also failed, do full rebuild
+                  // This is the last resort — regenerate the entire project
+                  // ═══════════════════════════════════════════════════════
+                  if (!filesEmitted) {
+                    console.warn('[RETRY] TRUE retry failed — triggering REPLACE fallback (full rebuild)');
+                    emitEvent('phase', { phase: 'rebuilding' });
+                    
+                    try {
+                      const replaceMessages = [
+                        { role: "system", content: messages[0].content },
+                        {
+                          role: "user",
+                          content: `Generate a complete storefront based on this request. Output ONLY valid JSON: {"files": {"/App.tsx": "...", ...}}\n\nNo markdown. No commentary. JSON only.\n\nRequest: ${prompt}`,
+                        },
+                      ];
+                      
+                      const replaceConfig = MODEL_CONFIG["vibecoder-claude"];
+                      const replaceResponse = await callModelAPI(replaceConfig, replaceMessages, {
+                        maxTokens: Math.min(50000, providerCap),
+                        temperature: 0.2,
+                        stream: false,
+                      });
+                      
+                      if (replaceResponse.ok) {
+                        const replaceRaw = await replaceResponse.text();
+                        let replaceData: any;
+                        try { replaceData = JSON.parse(replaceRaw); } catch { replaceData = null; }
+                        const replaceContent = replaceData?.choices?.[0]?.message?.content
+                          || (Array.isArray(replaceData?.content) ? replaceData.content.map((c: any) => c?.text || '').join('') : null);
+                        
+                        if (replaceContent) {
+                          const replaceCleaned = replaceContent.replace(/^```(?:json|tsx?)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+                          const replaceSanitized = sanitizeJsonEscapes(replaceCleaned);
+                          const replaceParsed = JSON.parse(replaceSanitized);
+                          const replaceFiles = replaceParsed?.files || (
+                            Object.keys(replaceParsed).some((k: string) => k.endsWith('.tsx') || k.endsWith('.ts')) ? replaceParsed : null
+                          );
+                          
+                          if (replaceFiles && typeof replaceFiles === 'object' && Object.keys(replaceFiles).length > 0) {
+                            emitEvent('files', { projectFiles: replaceFiles });
+                            filesEmitted = true;
+                            lastMergedFiles = replaceFiles;
+                            summaryValidated = true;
+                            console.log(`[RETRY] ✅ REPLACE fallback succeeded — ${Object.keys(replaceFiles).length} files generated`);
+                          }
+                        }
+                      }
+                    } catch (replaceErr) {
+                      console.error('[RETRY] REPLACE fallback also failed:', replaceErr);
                     }
                   }
                 } catch (retryErr) {
