@@ -32,6 +32,7 @@ interface VibecoderHeaderProps {
   // Profile menu props
   avatarUrl?: string | null;
   userCredits?: number;
+  creditBreakdown?: { rollover: number; monthly: number; bonus: number };
   subscriptionTier?: string | null;
   onSignOut?: () => void;
   // Chat collapse
@@ -68,6 +69,7 @@ export function VibecoderHeader({
   pages = [{ id: 'home', path: '/', label: 'Home' }],
   avatarUrl,
   userCredits = 0,
+  creditBreakdown = { rollover: 0, monthly: 0, bonus: 0 },
   subscriptionTier,
   onSignOut,
   chatCollapsed = false,
@@ -219,6 +221,7 @@ export function VibecoderHeader({
             avatarUrl={avatarUrl}
             username={username}
             userCredits={userCredits}
+            creditBreakdown={creditBreakdown}
             subscriptionTier={subscriptionTier}
             onSignOut={onSignOut}
           />

@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { ReferralDialog } from "@/components/studio/ReferralDialog";
+import { CreditSegmentBar } from "@/components/ui/CreditSegmentBar";
 import { useAuth } from "@/lib/auth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toolsRegistry, SUBCATEGORY_LABELS, type ToolSubcategory } from "@/components/tools/toolsRegistry";
@@ -316,20 +317,17 @@ export function StudioSidebar({
                       <>
                         {(() => {
                           const maxCredits = plan === 'agency' ? 1500 : plan === 'creator' ? 500 : plan === 'basic' ? 100 : 5;
-                          const ratio = Math.min(creditBalance / maxCredits, 1);
                           return (
-                            <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden flex">
-                              <div className="h-full rounded-l-full transition-all duration-500" style={{ width: `${ratio * 60}%`, background: 'linear-gradient(90deg, hsl(263 70% 50%), hsl(263 67% 42%))' }} />
-                              <div className="h-full transition-all duration-500" style={{ width: `${ratio * 40}%`, background: 'linear-gradient(90deg, hsl(217 91% 60%), hsl(217 91% 53%))' }} />
-                            </div>
+                            <CreditSegmentBar
+                              rollover={0}
+                              monthly={creditBalance}
+                              bonus={0}
+                              total={creditBalance}
+                              maxCredits={maxCredits}
+                              showLegend
+                            />
                           );
                         })()}
-                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                          {plan && plan !== 'browser'
-                            ? "Using rollover credits"
-                            : "Using free credits"}
-                        </p>
                       </>
                     )}
                   </div>

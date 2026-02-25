@@ -3,6 +3,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
+import type { CreditBreakdown } from "@/hooks/useUserCredits";
 
 export type PlanTier = 'browser' | 'starter' | 'basic' | 'creator' | 'agency';
 export type BadgeType = 'none' | 'grey' | 'gold';
@@ -16,6 +17,7 @@ export interface SubscriptionCapabilities {
 export interface SubscriptionState {
   plan: PlanTier;
   credits: number;
+  creditBreakdown: CreditBreakdown;
   capabilities: SubscriptionCapabilities;
   sellerFee: number;
   badge: BadgeType;
@@ -62,6 +64,7 @@ export function clearSubscriptionCache() {
 const DEFAULT_STATE: SubscriptionState = {
   plan: 'browser',
   credits: 0,
+  creditBreakdown: { rollover: 0, monthly: 0, bonus: 0 },
   capabilities: {
     vibecoder: false,
     imageGen: false,
@@ -129,6 +132,7 @@ export function useSubscription() {
       const newState: SubscriptionState = {
         plan: isPrivileged ? 'agency' : (data?.plan || 'browser'),
         credits: data?.credits || 0,
+        creditBreakdown: data?.creditBreakdown || { rollover: 0, monthly: 0, bonus: 0 },
         capabilities: isPrivileged 
           ? { vibecoder: true, imageGen: true, videoGen: true }
           : (data?.capabilities || DEFAULT_STATE.capabilities),
@@ -329,8 +333,13 @@ export function useSubscription() {
           (payload) => {
             if (payload.new && 'balance' in payload.new) {
               const newBalance = payload.new.balance as number;
+              const newBreakdown: CreditBreakdown = {
+                rollover: (payload.new as any).rollover_credits ?? 0,
+                monthly: (payload.new as any).monthly_credits ?? 0,
+                bonus: (payload.new as any).bonus_credits ?? 0,
+              };
               setState(prev => {
-                const updated = { ...prev, credits: newBalance };
+                const updated = { ...prev, credits: newBalance, creditBreakdown: newBreakdown };
                 subscriptionCache = { userId: user.id, state: updated, timestamp: Date.now() };
                 return updated;
               });
@@ -351,6 +360,7 @@ export function useSubscription() {
     // State
     plan: state.plan,
     credits: state.credits,
+    creditBreakdown: state.creditBreakdown,
     capabilities: state.capabilities,
     sellerFee: state.sellerFee,
     badge: state.badge,

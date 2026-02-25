@@ -94,7 +94,7 @@ serve(async (req) => {
     // Get wallet balance
     const { data: wallet, error: walletError } = await supabaseClient
       .from("user_wallets")
-      .select("balance")
+      .select("balance, rollover_credits, monthly_credits, bonus_credits")
       .eq("user_id", user.id)
       .single();
 
@@ -103,11 +103,17 @@ serve(async (req) => {
     }
 
     const credits = wallet?.balance ?? 0;
+    const creditBreakdown = {
+      rollover: (wallet as any)?.rollover_credits ?? 0,
+      monthly: (wallet as any)?.monthly_credits ?? 0,
+      bonus: (wallet as any)?.bonus_credits ?? 0,
+    };
     logStep("Data fetched", { credits, planId });
 
     const response = {
       plan: planId,
       credits,
+      creditBreakdown,
       capabilities: {
         vibecoder: plan?.vibecoder_access ?? false,
         imageGen: plan?.image_gen_access ?? false,
