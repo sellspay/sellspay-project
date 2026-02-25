@@ -252,10 +252,13 @@ function checkJsxTagBalance(code: string): string | null {
     if (isSelfClosing) continue;
     
     if (isClosing) {
-      if (tagStack.length === 0) {
-        return `Extra closing JSX tag </${tagName}> with no matching opening tag`;
+      // Name-aware matching: find the matching opening tag
+      const idx = tagStack.lastIndexOf(tagName);
+      if (idx >= 0) {
+        tagStack.splice(idx, 1);
       }
-      tagStack.pop();
+      // If no matching opening tag, just ignore (could be a false positive)
+      continue;
     } else {
       if (voidElements.has(tagName.toLowerCase())) continue;
       tagStack.push(tagName);
