@@ -28,6 +28,8 @@ export interface VibecoderMessage {
   meta_data?: {
     type?: 'policy_violation' | string;
     category?: string;
+    /** URLs of images/files attached by the user */
+    attachmentUrls?: string[];
     /** Persisted streaming phase data so analysis/plan/building is visible in history */
     streamPhase?: {
       analysisText?: string;
