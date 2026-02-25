@@ -4854,6 +4854,7 @@ serve(async (req) => {
                 try {
                   const parsedForSyntax = JSON.parse(sanitizeJsonEscapes(codeResult));
                   if (parsedForSyntax?.files) {
+                    // Wrapped format: { files: [...] } or { files: {...} }
                     if (Array.isArray(parsedForSyntax.files)) {
                       const m: Record<string, string> = {};
                       for (const e of parsedForSyntax.files) {
@@ -4862,6 +4863,14 @@ serve(async (req) => {
                       deltaForSyntax = m;
                     } else if (typeof parsedForSyntax.files === 'object') {
                       deltaForSyntax = parsedForSyntax.files;
+                    }
+                  } else if (typeof parsedForSyntax === 'object' && parsedForSyntax !== null && !Array.isArray(parsedForSyntax)) {
+                    // Direct file map format: { "/App.tsx": "...", "/storefront/Home.tsx": "..." }
+                    const keys = Object.keys(parsedForSyntax);
+                    const looksLikeFileMap = keys.length > 0 && keys.every(k => k.startsWith('/') || k.endsWith('.tsx') || k.endsWith('.ts') || k.endsWith('.css') || k.endsWith('.js') || k.endsWith('.jsx'));
+                    if (looksLikeFileMap) {
+                      deltaForSyntax = parsedForSyntax as Record<string, string>;
+                      console.log(`[Job ${jobId}] GATE 4: Detected direct file map format (${keys.length} files)`);
                     }
                   }
                 } catch { /* already handled above */ }
