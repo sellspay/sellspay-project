@@ -317,8 +317,8 @@ export function LovableHero({
           </div>
         </div>
 
-        {/* Project Shelf — full width, outside max-w-2xl container */}
-        {onSelectProject && (
+        {/* Project Shelf — full width, only on mobile (sidebar handles desktop) */}
+        {onSelectProject && isMobile && (
           <div className="relative z-10 w-full px-6 pb-6 mt-auto">
             <ProjectShelf
               projects={recentProjects}
