@@ -2882,8 +2882,16 @@ serve(async (req) => {
             console.log(`[Job ${jobId}] RAW_CODE_SECTION total length: ${cleaned.length}`);
             
             let filesEmitted = false;
+            
+            // Sanitize invalid escape sequences that LLMs sometimes produce
+            // Valid JSON escapes: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX
+            const sanitizeJsonEscapes = (raw: string): string => {
+              return raw.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+            };
+            const sanitizedCleaned = sanitizeJsonEscapes(cleaned);
+            
             try {
-              const parsed = JSON.parse(cleaned);
+              const parsed = JSON.parse(sanitizedCleaned);
               console.log(`[EDGE] JSON parsed successfully — top-level keys: ${Object.keys(parsed).join(', ')}`);
               if (parsed.files && typeof parsed.files === 'object') {
                 const fileMap: Record<string, string> = parsed.files;
@@ -3071,7 +3079,7 @@ serve(async (req) => {
               const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
               if (codeBlockMatch) {
                 try {
-                  const innerParsed = JSON.parse(codeBlockMatch[1].trim());
+                  const innerParsed = JSON.parse(sanitizeJsonEscapes(codeBlockMatch[1].trim()));
                   if (innerParsed?.files && typeof innerParsed.files === 'object' && Object.keys(innerParsed.files).length > 0) {
                     emitEvent('files', { projectFiles: innerParsed.files });
                     filesEmitted = true;
@@ -3089,7 +3097,7 @@ serve(async (req) => {
               // ═══════════════════════════════════════════════════════
               if (!filesEmitted) {
                 try {
-                  let repaired = cleaned;
+                  let repaired = sanitizeJsonEscapes(cleaned);
                   let braces = 0, brackets = 0;
                   for (const char of repaired) {
                     if (char === '{') braces++;

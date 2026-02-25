@@ -315,18 +315,24 @@ export function useBackgroundGenerationController({
     console.error('[BackgroundGen] Job failed:', job.error_message);
     
     let userMessage = job.error_message || 'Unknown error';
+    let errorType = '';
     try {
       const parsed = JSON.parse(userMessage);
+      if (parsed?.type) errorType = parsed.type;
       if (parsed?.message) userMessage = parsed.message;
     } catch { /* not JSON, use as-is */ }
 
     const isActiveRun = activeJobIdRef.current === job.id;
 
     // 🔄 RETRY: Capture the failed prompt so users can retry
-    const isRetryableError = userMessage.includes('NO_CODE_PRODUCED') || 
-      userMessage.includes('CORRUPT_JSON_OUTPUT') ||
-      userMessage.includes('did not generate any code') ||
-      userMessage.includes('responded conversationally');
+    // Check both the extracted errorType and the userMessage for retryable patterns
+    const combinedCheck = `${errorType} ${userMessage}`;
+    const isRetryableError = combinedCheck.includes('NO_CODE_PRODUCED') || 
+      combinedCheck.includes('CORRUPT_JSON_OUTPUT') ||
+      combinedCheck.includes('did not generate any code') ||
+      combinedCheck.includes('responded conversationally') ||
+      combinedCheck.includes('COMPILE_FAILURE') ||
+      combinedCheck.includes('EDGE_TIMEOUT');
     if (isRetryableError && job.prompt) {
       setLastFailedPrompt(job.prompt);
     }
