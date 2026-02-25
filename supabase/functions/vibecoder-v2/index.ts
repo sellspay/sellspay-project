@@ -1640,6 +1640,52 @@ EXAMPLE RESPONSES:
 - API endpoint: "Server-side logic is managed by the platform. I can help you build beautiful product pages that connect to the existing checkout flow."`;
 
 // ════════════════════════════════════════════════════════════════
+// FIX-ONLY PROMPT — surgical repair, no redesign
+// ════════════════════════════════════════════════════════════════
+const CODE_FIX_PROMPT = `You are a surgical code repair engine operating inside an automated CI pipeline.
+
+Your ONLY job is to fix the specific error reported. Nothing else.
+
+If your output is not valid JSON, the system will reject it and the generation will fail.
+
+You MUST:
+- Output ONLY valid JSON.
+- Output nothing before JSON.
+- Output nothing after JSON.
+- Do not include analysis.
+- Do not include plan.
+- Do not include summary.
+- Do not explain.
+- Do not include markdown.
+- Do not include backticks.
+
+Return format:
+
+{
+  "files": {
+    "path/to/file.tsx": "FULL updated file content"
+  }
+}
+
+STRICT RULES:
+- You may ONLY fix the reported error.
+- Do NOT redesign any component.
+- Do NOT refactor any code.
+- Do NOT rewrite entire components.
+- Do NOT change layout, structure, or styling.
+- Do NOT add features, animations, or visual changes.
+- Preserve ALL existing JSX hierarchy exactly as-is.
+- Only modify the minimal necessary lines to fix the error.
+- Ensure all JSX tags are balanced (every open tag has a matching close tag).
+- If the fix requires adding a missing import, add ONLY that import.
+- If the fix requires closing a tag, close ONLY that tag.
+- If the fix requires defining a missing variable, add ONLY that variable.
+- Return ONLY the file(s) that were changed.
+- Each returned file must be complete and syntactically valid.
+- Never truncate code.
+- The first character must be '{'.
+- The last character must be '}'.`;
+
 // MODIFY-ONLY PROMPT — lean JSON-only, no ANALYSIS/PLAN/SUMMARY
 // ════════════════════════════════════════════════════════════════
 const CODE_MODIFY_PROMPT = `You are a structured code modification engine operating inside an automated CI pipeline.
@@ -2536,9 +2582,12 @@ async function executeIntent(
       systemPrompt = CODE_MODIFY_PROMPT;
       break;
     case "FIX":
+      systemPrompt = CODE_FIX_PROMPT;
+      break;
     case "BUILD":
     default:
       systemPrompt = CODE_EXECUTOR_PROMPT;
+      break;
       break;
   }
 
@@ -2835,13 +2884,17 @@ If the request says "change X", change ONLY X and nothing else.
       }
 
       let injectionPrefix: string;
-      if (intent.intent === "MODIFY") {
+      if (intent.intent === "FIX") {
+        // FIX gets minimal injection: only the error context + file content, no brand/product noise
+        injectionPrefix = `${intentInjection}`;
+        console.log(`[ConditionalInjection] FIX intent — minimal injection (error context only)`);
+      } else if (intent.intent === "MODIFY") {
         // Lean injection: brand memory + intent only, conditionally add products
         const productsPart = shouldInjectProducts(prompt) ? productsInjection : '';
         injectionPrefix = `${brandMemoryInjection}${intentInjection}${productsPart}`;
         console.log(`[ConditionalInjection] MODIFY intent — lean injection (products: ${productsPart ? 'YES' : 'SKIPPED'})`);
       } else {
-        // Full injection for BUILD / FIX
+        // Full injection for BUILD
         injectionPrefix = `${modeInjection}${brandMemoryInjection}${brandLayerInjection}${intentInjection}${microInjection}${creatorInjection}${productsInjection}`;
       }
 
@@ -2919,7 +2972,7 @@ If the request says "change X", change ONLY X and nothing else.
   // Call the AI via multi-model router
   try {
     // Intent-aware temperature: MODIFY/FIX get deterministic, BUILD stays creative
-    const temperature = (intent.intent === 'MODIFY' || intent.intent === 'FIX') ? 0.2 : 0.3;
+    const temperature = intent.intent === 'FIX' ? 0.15 : intent.intent === 'MODIFY' ? 0.2 : 0.3;
     const result = await callModelAPI(config, messages, {
       maxTokens,
       temperature,
