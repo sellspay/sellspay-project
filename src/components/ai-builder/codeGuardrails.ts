@@ -37,7 +37,7 @@ export interface GuardConfig {
 
 const NORMAL_CONFIG: GuardConfig = {
   minLengthRatio: 0.35,
-  maxDiffRatio: 0.6,
+  maxDiffRatio: 0.75,
   minLineRatio: 0.3,
   activationThreshold: 200,
   minConfidence: 40,
@@ -92,6 +92,13 @@ export function lengthGuard(oldCode: string, newCode: string, config: GuardConfi
 export function diffGuard(oldCode: string, newCode: string, config: GuardConfig): GuardResult {
   const oldLines = oldCode.split('\n');
   const newLines = newCode.split('\n');
+
+  // Small files (< 80 lines) are exempt — a few-line change in a short file
+  // can easily hit 100% diff ratio but is totally safe
+  if (oldLines.length < 80) {
+    return { passed: true, guard: 'DIFF_GUARD', message: 'OK (small file exempt)' };
+  }
+
   const minLen = Math.min(oldLines.length, newLines.length);
 
   let changed = 0;
