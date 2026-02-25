@@ -115,9 +115,22 @@ export function useProjectHydration({
   }, [cancelStream, cancelAgent, forceResetStreaming, generationLockRef, activeJobIdRef, pendingSummaryRef, onResetTransientState]);
 
   // =============== CODE RESTORATION FROM MESSAGES ===============
-  // Track the DB-fetched last_valid_files for use during restoration
+  // Track the DB-fetched stable snapshot for use during restoration
   const dbLastValidFilesRef = useRef<Record<string, string> | null>(null);
   const [dbSnapshotReady, setDbSnapshotReady] = useState(false);
+
+  const normalizeFilesSnapshot = useCallback((snapshot: unknown): Record<string, string> | null => {
+    if (!snapshot || typeof snapshot !== 'object') return null;
+
+    const normalized: Record<string, string> = {};
+    for (const [path, content] of Object.entries(snapshot as Record<string, unknown>)) {
+      if (typeof content !== 'string') continue;
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      normalized[normalizedPath] = content;
+    }
+
+    return Object.keys(normalized).length > 0 ? normalized : null;
+  }, []);
 
   // =============== SCORCHED EARTH ORCHESTRATOR ===============
   useLayoutEffect(() => {
@@ -142,6 +155,7 @@ export function useProjectHydration({
     setContentProjectId(null);
     setIsVerifyingProject(true);
     setDbSnapshotReady(false);
+    hasRestoredCodeRef.current = null;
     loadingProjectRef.current = activeProjectId;
 
     // ✅ STEP 1: Run the unified cleanup gate
@@ -193,14 +207,48 @@ export function useProjectHydration({
         mountAgentProject(activeProjectId);
         onResetTransientState();
 
-        // 🔥 FIX 4: Populate dbLastValidFilesRef HERE — single source of truth, no duplicate fetch
-        if (data.last_valid_files && typeof data.last_valid_files === 'object' &&
-            Object.keys(data.last_valid_files as Record<string, string>).length > 0) {
+        // Prefer persisted stable snapshot from project row
+        const persistedSnapshot = normalizeFilesSnapshot(data.last_valid_files);
+        if (persistedSnapshot) {
           hasDbSnapshotRef.current = true;
-          dbLastValidFilesRef.current = data.last_valid_files as Record<string, string>;
-          console.log('🔒 hasDbSnapshotRef set to TRUE in layout effect (race-free)');
+          dbLastValidFilesRef.current = persistedSnapshot;
+          console.log('🔒 hasDbSnapshotRef set to TRUE from vibecoder_projects.last_valid_files');
         } else {
+          // Generalized recovery: fetch latest snapshot payload directly from this project’s message history
           dbLastValidFilesRef.current = null;
+
+          const { data: recentSnapshots, error: snapshotError } = await supabase
+            .from('vibecoder_messages')
+            .select('files_snapshot, code_snapshot, created_at')
+            .eq('project_id', activeProjectId)
+            .order('created_at', { ascending: false })
+            .limit(25);
+
+          if (!isMounted) return;
+
+          if (snapshotError) {
+            console.warn('[ProjectHydration] Failed to fetch recovery snapshots:', snapshotError.message);
+          } else {
+            for (const row of recentSnapshots ?? []) {
+              const messageFiles = normalizeFilesSnapshot((row as any).files_snapshot);
+              if (messageFiles) {
+                dbLastValidFilesRef.current = messageFiles;
+                hasDbSnapshotRef.current = true;
+                console.log('🛟 Recovered project snapshot from vibecoder_messages.files_snapshot');
+                break;
+              }
+
+              const codeSnapshot = typeof (row as any).code_snapshot === 'string'
+                ? (row as any).code_snapshot.trim()
+                : '';
+              if (codeSnapshot.length > 0) {
+                dbLastValidFilesRef.current = { '/App.tsx': codeSnapshot };
+                hasDbSnapshotRef.current = true;
+                console.log('🛟 Recovered project snapshot from vibecoder_messages.code_snapshot');
+                break;
+              }
+            }
+          }
         }
         setDbSnapshotReady(true);
       }
@@ -232,23 +280,14 @@ export function useProjectHydration({
     if (hasRestoredCodeRef.current === activeProjectId) return;
     if (isStreaming) return;
 
-    // ✅ PRIORITY 1: Restore from DB-persisted stable snapshot (survives refresh)
     const dbSnapshot = dbLastValidFilesRef.current;
     if (dbSnapshot && Object.keys(dbSnapshot).length > 0) {
-      // Normalize all file paths to have leading slash (required by Sandpack)
-      const normalizedSnapshot: Record<string, string> = {};
-      for (const [path, content] of Object.entries(dbSnapshot)) {
-        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-        if (typeof content === 'string') {
-          normalizedSnapshot[normalizedPath] = content;
-        }
-      }
-      console.log('📦 Restoring from DB last_valid_files for project:', activeProjectId, `(${Object.keys(normalizedSnapshot).length} files)`);
-      setFiles(normalizedSnapshot);
+      console.log('📦 Restoring from DB snapshot for project:', activeProjectId, `(${Object.keys(dbSnapshot).length} files)`);
+      setFiles(dbSnapshot);
       // 🔥 CRITICAL: Signal that a DB snapshot exists so guardrails use EDIT mode
       hasDbSnapshotRef.current = true;
       hasRestoredCodeRef.current = activeProjectId;
-    console.log('🚪 Opening content gate for project:', activeProjectId);
+      console.log('🚪 Opening content gate for project:', activeProjectId);
       setContentProjectId(activeProjectId);
       onIncrementRefreshKey();
       return;
@@ -285,10 +324,6 @@ export function useProjectHydration({
     }
   }, [activeProjectId, messagesLoading, isVerifyingProject, dbSnapshotReady, getLastCodeSnapshot, getLastFilesSnapshot, setCode, setFiles, isStreaming, onIncrementRefreshKey]);
 
-  // Reset restoration tracker when project changes
-  useEffect(() => {
-    hasRestoredCodeRef.current = null;
-  }, [activeProjectId]);
 
   return {
     contentProjectId,
