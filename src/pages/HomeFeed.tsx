@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
@@ -94,7 +94,7 @@ const BROWSE_CATEGORIES = [
   { label: 'Fonts', value: 'font', icon: PenTool },
 ];
 
-export default function HomeFeed() {
+const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
@@ -233,7 +233,7 @@ export default function HomeFeed() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-16">
+    <div ref={ref} className="min-h-screen bg-background pb-16">
       {/* Greeting bar */}
       <div className="px-6 sm:px-8 lg:px-10 pt-8 pb-4">
         <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
@@ -408,4 +408,8 @@ export default function HomeFeed() {
       </Reveal>
     </div>
   );
-}
+});
+
+HomeFeed.displayName = 'HomeFeed';
+
+export default HomeFeed;
