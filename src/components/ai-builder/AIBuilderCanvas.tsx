@@ -26,7 +26,6 @@ import { toast } from 'sonner';
 import { nukeSandpackCache, clearProjectLocalStorage } from '@/utils/storageNuke';
 import { LovableHero } from './LovableHero';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useUserCredits } from '@/hooks/useUserCredits';
 
 import { FixErrorToast } from './FixErrorToast';
 import { GenerationOverlay } from './GenerationOverlay';
@@ -49,8 +48,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const [publishing, setPublishing] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
-  const { plan: subscriptionTier } = useSubscription();
-  const { credits: userCredits, refetch: refetchCredits } = useUserCredits();
+  const { plan: subscriptionTier, credits: userCredits, refreshSubscription } = useSubscription();
+  const refetchCredits = useCallback(() => refreshSubscription(true), [refreshSubscription]);
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
