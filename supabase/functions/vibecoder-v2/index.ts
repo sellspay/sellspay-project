@@ -1474,8 +1474,14 @@ function detectMicroEdit(prompt: string, hasExistingCode: boolean): boolean {
   if (!hasExistingCode) return false; // New builds are never micro-edits
   const lower = prompt.toLowerCase();
   const wordCount = prompt.split(/\s+/).filter((w) => w.length > 0).length;
-  if (wordCount > 25) return false; // Long prompts are not micro-edits
-  return MICRO_EDIT_KEYWORDS.some((kw) => lower.includes(kw));
+  if (wordCount > 15) return false; // Tighter: only very short prompts qualify
+  // Must match at least one keyword AND not mention multiple things (no "and")
+  const hasKeyword = MICRO_EDIT_KEYWORDS.some((kw) => lower.includes(kw));
+  if (!hasKeyword) return false;
+  // If prompt contains "and" it's likely multi-part → NOT micro
+  const hasMultipleParts = lower.includes(' and ') || lower.includes(', ');
+  if (hasMultipleParts) return false;
+  return true;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2516,11 +2522,15 @@ If the request says "change X", change ONLY X and nothing else.
   const PROVIDER_MAX_TOKENS: Record<string, number> = {
     anthropic: 60000,
     openai: 16000,
-    gemini: 32000, // Gemini 2.5 Flash supports up to 65k — use 32k as safe cap
+    gemini: 65000, // Gemini 2.5 Flash supports up to 65k — use full capacity to prevent truncation
   };
   const providerCap = PROVIDER_MAX_TOKENS[config.provider] || 16000;
   let maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : providerCap;
-  if (isMicro) maxTokens = Math.min(16000, providerCap);
+  // Micro-edits: only reduce for QUESTION-like intents, NOT for code generation
+  // The model will naturally produce less output for simple changes
+  if (isMicro && (intent.intent === "QUESTION" || intent.intent === "REFUSE")) {
+    maxTokens = Math.min(16000, providerCap);
+  }
 
   console.log(`[EDGE] Model resolved: ${config.modelId} (${config.provider}) for intent: ${intent.intent} | maxTokens=${maxTokens} | micro=${isMicro}`);
   console.log(`[MODEL_ROUTER] Provider selected: ${config.provider} | Model: ${config.modelId} | Intent: ${intent.intent}`);
