@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, CheckCircle2, Code2, Brain, ListChecks, Sparkles, RefreshCw, Search } from 'lucide-react';
+import { Loader2, CheckCircle2, Code2, ListChecks, Sparkles, RefreshCw, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type StreamPhase = 'analyzing' | 'scoping' | 'planning' | 'building' | 'retrying' | 'rebuilding' | 'complete' | 'idle';
@@ -38,7 +38,7 @@ export const StreamingPhaseCard = forwardRef<HTMLDivElement, StreamingPhaseCardP
 
   return (
     <div ref={ref} className={cn("space-y-3 mb-6", className)}>
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence>
         {/* SCOPING PHASE: Scope analysis indicator */}
         {phase === 'scoping' && (
           <motion.div
@@ -67,38 +67,19 @@ export const StreamingPhaseCard = forwardRef<HTMLDivElement, StreamingPhaseCardP
           </motion.div>
         )}
 
-        {/* ANALYZING PHASE: Streaming text bubble */}
-        {(phase === 'analyzing' || analysisText) && (
+        {/* ANALYZING PHASE: Minimal thinking text */}
+        {phase === 'analyzing' && (
           <motion.div
             key="analysis"
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0.5 }}
-            className="flex gap-3"
+            exit={{ opacity: 0 }}
+            className="flex items-center gap-1.5"
           >
-            <div className="flex-shrink-0 mt-1">
-              <div className={cn(
-                "w-7 h-7 rounded-full flex items-center justify-center border",
-                phase === 'analyzing' 
-                  ? "bg-violet-500/20 border-violet-500/50 shadow-[0_0_12px_rgba(139,92,246,0.4)]" 
-                  : "bg-muted/50 border-border/50"
-              )}>
-                {phase === 'analyzing' ? (
-                  <Brain size={13} className="text-violet-400 animate-pulse" />
-                ) : (
-                  <CheckCircle2 size={13} className="text-green-500" />
-                )}
-              </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium mb-1">Analysis</p>
-              <p className="text-sm text-foreground/90 leading-relaxed">
-                {analysisText || 'Analyzing your request...'}
-                {phase === 'analyzing' && (
-                  <span className="inline-block w-1.5 h-4 bg-violet-400 ml-0.5 animate-pulse rounded-sm" />
-                )}
-              </p>
-            </div>
+            <span className="text-xs text-muted-foreground/75">
+              {analysisText || 'Thinking'}
+              <span className="inline-block ml-0.5 animate-pulse">...</span>
+            </span>
           </motion.div>
         )}
 
