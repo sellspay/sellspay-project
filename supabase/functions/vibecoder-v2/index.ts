@@ -4566,8 +4566,19 @@ serve(async (req) => {
                   if (parsedResult && typeof parsedResult === 'object') {
                     // Detect file map: either {files: {...}} wrapper or direct {"/path.tsx": "..."}
                     let deltaFiles: Record<string, string> | null = null;
-                    if (parsedResult.files && typeof parsedResult.files === 'object' && !Array.isArray(parsedResult.files)) {
-                      deltaFiles = parsedResult.files;
+                    if (parsedResult.files && typeof parsedResult.files === 'object') {
+                      if (Array.isArray(parsedResult.files)) {
+                        // Array format: [{path, content}, ...] → convert to object map
+                        const map: Record<string, string> = {};
+                        for (const entry of parsedResult.files) {
+                          if (entry && typeof entry.path === 'string' && typeof entry.content === 'string') {
+                            map[entry.path] = entry.content;
+                          }
+                        }
+                        if (Object.keys(map).length > 0) deltaFiles = map;
+                      } else {
+                        deltaFiles = parsedResult.files;
+                      }
                     } else {
                       const keys = Object.keys(parsedResult);
                       const looksLikeFileMap = keys.length > 0 && keys.some(k => 
@@ -4707,6 +4718,83 @@ serve(async (req) => {
               } else if (skipIntentCheck) {
                 validationReport.intent_ok = true;
                 console.log(`[Job ${jobId}] GATE 3 SKIP: ${intentResult.intent} intent / micro-edit / multi-file — bypassing intent check`);
+              }
+
+              // ═══════════════════════════════════════════════════════
+              // GATE 4: SERVER-SIDE SYNTAX VALIDATION
+              // Catches unclosed JSX tags, unbalanced braces, etc.
+              // that would otherwise only be caught by client-side
+              // Zero-Trust gate (causing silent failures for users).
+              // ═══════════════════════════════════════════════════════
+              if (!validationError && isMultiFileJson) {
+                // Get delta files for syntax checking
+                let deltaForSyntax: Record<string, string> | null = null;
+                try {
+                  const parsedForSyntax = JSON.parse(sanitizeJsonEscapes(codeResult));
+                  if (parsedForSyntax?.files) {
+                    if (Array.isArray(parsedForSyntax.files)) {
+                      const m: Record<string, string> = {};
+                      for (const e of parsedForSyntax.files) {
+                        if (e?.path && typeof e.content === 'string') m[e.path] = e.content;
+                      }
+                      deltaForSyntax = m;
+                    } else if (typeof parsedForSyntax.files === 'object') {
+                      deltaForSyntax = parsedForSyntax.files;
+                    }
+                  }
+                } catch { /* already handled above */ }
+
+                if (deltaForSyntax && Object.keys(deltaForSyntax).length > 0) {
+                  const syntaxCheck = validateAllFilesServer(deltaForSyntax);
+                  if (!syntaxCheck.valid) {
+                    console.warn(`[Job ${jobId}] GATE 4: ${syntaxCheck.errors.length} syntax error(s) in delta: ${syntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
+                    
+                    // Attempt auto-repair
+                    const repairConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-flash"] || MODEL_CONFIG["vibecoder-pro"];
+                    let repaired = false;
+                    for (const err of syntaxCheck.errors) {
+                      try {
+                        const fixed = await repairBrokenFile(err.file, deltaForSyntax[err.file] || "", err.error, repairConfig);
+                        if (fixed && fixed.trim().length > 20) {
+                          const recheck = validateFileSyntaxServer(fixed, err.file);
+                          if (!recheck) {
+                            deltaForSyntax[err.file] = fixed;
+                            console.log(`[Job ${jobId}] GATE 4 REPAIR: ✅ Fixed ${err.file}`);
+                            repaired = true;
+                          } else {
+                            console.warn(`[Job ${jobId}] GATE 4 REPAIR: Repair of ${err.file} still has errors: ${recheck}`);
+                          }
+                        }
+                      } catch (repairErr) {
+                        console.warn(`[Job ${jobId}] GATE 4 REPAIR: Failed for ${err.file}:`, repairErr);
+                      }
+                    }
+                    
+                    // Re-validate after repairs
+                    const recheckAll = validateAllFilesServer(deltaForSyntax);
+                    if (!recheckAll.valid) {
+                      const errSummary = recheckAll.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
+                      console.error(`[Job ${jobId}] GATE 4 FAIL: Syntax errors persist after repair: ${errSummary}`);
+                      validationError = { errorType: 'COMPILE_FAILURE', errorMessage: `Code has syntax errors: ${errSummary}` };
+                      jobStatus = "failed";
+                      terminalReason = "compile_failure";
+                      emitEvent('error', { code: 'COMPILE_FAILURE', message: `Syntax errors in generated code: ${errSummary}` });
+                    } else if (repaired) {
+                      // Update codeResult with repaired files
+                      codeResult = JSON.stringify({ files: deltaForSyntax });
+                      console.log(`[Job ${jobId}] GATE 4 PASS: All syntax errors repaired server-side`);
+                      
+                      // Re-merge with existing files
+                      const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
+                        ? projectFiles as Record<string, string> : {};
+                      lastMergedFiles = { ...existingFiles, ...deltaForSyntax };
+                      summaryValidated = true;
+                      emitEvent('files', { projectFiles: lastMergedFiles });
+                    }
+                  } else {
+                    console.log(`[Job ${jobId}] GATE 4 PASS: All ${Object.keys(deltaForSyntax).length} delta files syntax-clean`);
+                  }
+                }
               }
             }
 
