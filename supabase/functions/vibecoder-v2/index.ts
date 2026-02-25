@@ -4388,7 +4388,6 @@ serve(async (req) => {
                         const filePath = fileMatch[1];
                         const contentStart = fileMatch.index + fileMatch[0].length;
                         // Find the end of this string value - look for unescaped closing quote
-                        let depth = 0;
                         let i = contentStart;
                         let escaped = false;
                         while (i < trimmedFull.length) {
@@ -4398,6 +4397,7 @@ serve(async (req) => {
                           if (ch === '"') break;
                           i++;
                         }
+
                         if (i < trimmedFull.length) {
                           const rawContent = trimmedFull.substring(contentStart, i);
                           // Unescape the content
@@ -4405,6 +4405,23 @@ serve(async (req) => {
                             fileEntries[filePath] = JSON.parse(`"${rawContent}"`);
                           } catch {
                             fileEntries[filePath] = rawContent.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"');
+                          }
+                        } else {
+                          // Truncated tail rescue: keep partial file content so server-side syntax repair can recover it
+                          const rawTail = trimmedFull.substring(contentStart)
+                            .replace(/\\u[0-9a-fA-F]{0,3}$/g, '')
+                            .replace(/\\x[0-9a-fA-F]?$/g, '')
+                            .replace(/\\+$/g, '')
+                            .trimEnd();
+
+                          if (rawTail.length > 20) {
+                            fileEntries[filePath] = rawTail
+                              .replace(/\\n/g, '\n')
+                              .replace(/\\r/g, '\r')
+                              .replace(/\\t/g, '\t')
+                              .replace(/\\"/g, '"')
+                              .replace(/\\\\/g, '\\');
+                            console.warn(`[Job ${jobId}] AUTO-DETECT RESCUE: Recovered truncated file tail for ${filePath} (${fileEntries[filePath].length} chars)`);
                           }
                         }
                       }
@@ -4496,11 +4513,21 @@ serve(async (req) => {
             // ═══════════════════════════════════════════════════════
             const codeRequiredIntents = ["BUILD", "MODIFY", "FIX"];
             if (!codeResult && codeRequiredIntents.includes(intentResult.intent)) {
+              const looksLikeTruncatedJson = fullContent.trimStart().startsWith('{') &&
+                (/"files"\s*:\s*\{/.test(fullContent) || /"\/?[^"]+\.(?:tsx?|jsx?|css|html|json)"\s*:/.test(fullContent));
+
               // Check if SUMMARY streaming already emitted files successfully
               if (summaryValidated && lastMergedFiles && Object.keys(lastMergedFiles).length > 0) {
                 // SUMMARY phase handled it — synthesize codeResult from canonical files
                 codeResult = JSON.stringify({ files: lastMergedFiles });
                 console.log(`[Job ${jobId}] GATE -1: No === CODE === section, but SUMMARY emitted ${Object.keys(lastMergedFiles).length} files — using canonical result`);
+              } else if (looksLikeTruncatedJson) {
+                console.error(`[Job ${jobId}] GATE -1 RECLASSIFIED: Output looked like JSON file map but extraction failed/truncated`);
+                validationError = { errorType: 'MODEL_TRUNCATED', errorMessage: 'AI output was truncated before valid code extraction completed. Please retry.' };
+                jobStatus = "failed";
+                terminalReason = "model_truncated";
+                validationReport.truncation_detected = true;
+                emitEvent('error', { code: 'MODEL_TRUNCATED', message: 'Model output was truncated before code extraction completed. Please retry.' });
               } else {
                 console.error(`[Job ${jobId}] GATE -1 FAIL: Intent is ${intentResult.intent} but model produced NO code. Full content length: ${fullContent.length}`);
                 console.error(`[Job ${jobId}] GATE -1 DEBUG: Has === CODE ===: ${fullContent.includes('=== CODE ===')}, Has /// BEGIN_CODE ///: ${fullContent.includes('/// BEGIN_CODE ///')}`);
