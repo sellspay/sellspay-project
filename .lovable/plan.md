@@ -1,174 +1,176 @@
 
 
-# VibeCoder Intelligence Layer: Mode Detection, Structural Diff, and Design Intelligence
+# VibeCoder Orchestration Architecture Refactor
 
 ## Overview
+Refactor the `vibecoder-v2` edge function from a monolithic 4000-line file into a modular, scope-aware orchestration system. This eliminates truncation failures, prevents full-project rewrites for small edits, and reduces token waste.
 
-Four changes that shift VibeCoder from infrastructure to product intelligence. These are additive — nothing breaks.
+## Current State (Problems)
+- Single 4000+ line `index.ts` file handles everything
+- MODIFY intent sends ALL project files to Claude, even for "change button color"
+- No token estimation before calling the model -- output can exceed limits
+- Retry logic only exists at the JSON-parse level (fallbacks 1-3), not at the model-call level
+- Micro-edit detection exists but doesn't actually scope which files to send
 
----
+## Architecture: 4-Layer System
 
-## Step 1: Mode Detection (Vision vs Developer)
+```text
+User Prompt
+     |
+     v
+[Layer 1: Intent Classifier]  (existing, Gemini Flash Lite -- no change)
+     |
+     v
+[Layer 2: Scope Analyzer]     (NEW -- lightweight Claude call for MODIFY)
+     |  Returns: affectedFiles[], estimatedComplexity
+     v
+[Layer 3: Model Router]       (UPGRADED -- token-aware decision engine)
+     |  Decides: model, maxTokens, which files to include in context
+     v
+[Layer 4: Generation + Retry] (UPGRADED -- structured retry with scope reduction)
+     |  On failure: reduce scope, retry with explicit instruction
+     v
+[Zero-Trust Gate]              (existing -- no changes)
+```
 
-### What Changes
+## Phase 1: Scope Analyzer (NEW)
 
-Add an `interactionMode` field to the intent classifier output. The existing `classifyIntent` function (line 1258) already returns structured JSON — we extend its output schema.
+**What it does:** Before any MODIFY generation, makes a lightweight call to determine which files need changing.
 
-### Files Modified
+**Implementation:**
+- Add a new `analyzeScope()` function in `index.ts`
+- Uses Gemini Flash (cheap, fast) with a structured prompt
+- Input: file list (paths only, no content), user prompt, conversation history
+- Output: `{ affectedFiles: string[], strategy: "micro" | "partial" | "full", estimatedOutputTokens: number }`
 
-**`supabase/functions/vibecoder-v2/index.ts`**
+**Prompt template:**
+```
+Given this project file list and user request, return ONLY a JSON object:
+- affectedFiles: array of file paths that must change
+- strategy: "micro" (1 file, < 50 lines changed), "partial" (2-4 files), or "full" (5+ files or structural)
+- estimatedOutputTokens: rough estimate of output size
 
-1. Update `INTENT_CLASSIFIER_PROMPT` (line 649) to include a new output field:
-   ```
-   "interactionMode": "vision" | "developer"
-   ```
-   Add classification rules:
-   - "vision": emotional/aesthetic language ("make it feel like", "luxury", "cozy", "bold", "clean")
-   - "developer": technical language ("CSS grid", "memoize", "useEffect", "flex", "z-index", "component")
+File list: [paths]
+User request: "..."
+```
 
-2. Update `IntentClassification` interface (line 1250) to add:
-   ```typescript
-   interactionMode: "vision" | "developer";
-   ```
+**Integration point:** Called after intent classification, before `executeIntent()`. Result feeds into the context builder to send only relevant files.
 
-3. Update `classifyIntent` response parsing (line 1306) to extract `interactionMode`, defaulting to `"vision"`.
+## Phase 2: Context Scoping (MODIFY intent)
 
-4. Update `executeIntent` (line 1482) to inject mode-specific behavior:
-   - **Vision mode**: Add a prompt injection that says "The user is non-technical. Focus on creative interpretation. Translate their emotional language into concrete design decisions. Be opinionated about layout, color, and spacing."
-   - **Developer mode**: Add a prompt injection that says "The user is technical. Apply surgical precision. Respect exact CSS/React terminology. Do not interpret — execute literally."
+**What changes:** In `executeIntent()`, the code context builder (lines ~2455-2483) currently sends ALL project files for MODIFY.
 
-### No Frontend Changes Required
+**New behavior:**
+- If scope analyzer returns `strategy: "micro"` or `"partial"`, only include `affectedFiles` in the context
+- Include a file listing of OTHER files (paths only, no content) so the model knows what exists
+- This dramatically reduces input tokens (e.g., 8 files x 200 lines = 12K tokens down to 2 files x 200 lines = 3K tokens)
 
-The mode detection is invisible to the user — it just makes the AI smarter. The classifier already runs on every request.
+**Code change:** Modify the `projectFiles` filtering block:
+```typescript
+// If scope analysis available, filter context to affected files only
+if (scopeResult && scopeResult.strategy !== 'full') {
+  const scopedFiles: Record<string, string> = {};
+  const otherPaths: string[] = [];
+  for (const [path, content] of Object.entries(projectFiles)) {
+    if (scopeResult.affectedFiles.includes(path)) {
+      scopedFiles[path] = content;
+    } else {
+      otherPaths.push(path);
+    }
+  }
+  // Build context with scoped files + path listing of untouched files
+  codeContext = `FILES TO MODIFY:\n${Object.entries(scopedFiles).map(...)}\n\nOTHER FILES (do not output these):\n${otherPaths.join('\n')}`;
+}
+```
 
----
+## Phase 3: Token Guardrail System
 
-## Step 2: Structural Diff Engine
+**What it does:** Before calling Claude, estimates whether the generation will exceed safe output limits.
 
-### What Changes
+**Implementation:**
+- Add `estimateTokenBudget()` function
+- Input tokens: count chars in system prompt + user message, divide by 4
+- Output estimate: from scope analyzer's `estimatedOutputTokens`, or heuristic based on file count x average file size
+- If estimated output exceeds 50K tokens (Claude's safe zone), force strategy to `"partial"` and reduce files
 
-Add a diff-awareness layer to the MODIFY intent path. Instead of the AI receiving "here is the full file, change X", it receives a hint about what changed in the last generation, reducing hallucinated regressions.
+**Hard rules:**
+- Claude Sonnet: cap at 50K output tokens (leave headroom from 64K limit)
+- If scope says 8+ files need full rewrite, split into 2 batches (not implemented in v1 -- just limit to most critical files)
 
-### Files Modified
+## Phase 4: Structured Retry Mechanism
 
-**`supabase/functions/vibecoder-v2/index.ts`**
+**What changes:** Currently, retries only happen at JSON-parse level (fallbacks 1-3). No model-level retry exists.
 
-1. Add a `computeFileDiff` helper function that compares the incoming `projectFiles` against the previous `last_valid_files` snapshot and produces a lightweight diff summary:
-   ```typescript
-   function computeFileDiff(
-     prevFiles: Record<string, string>,
-     newFiles: Record<string, string>
-   ): { added: string[]; removed: string[]; modified: string[]; unchanged: string[] }
-   ```
-   This is NOT a line-level diff — it's a file-level inventory that tells the AI "these files exist, these changed, these are new."
+**New behavior:** Add a retry wrapper around `callModelAPI()` for code generation:
 
-2. In `executeIntent` (line 1611), when building the code context for MODIFY/FIX intents with multi-file projects, inject a `FILE_INVENTORY` block before the file contents:
-   ```
-   FILE INVENTORY (do NOT modify unchanged files):
-   - UNCHANGED: /storefront/components/Hero.tsx, /storefront/routes/Home.tsx
-   - MODIFIED LAST TIME: /storefront/Layout.tsx
-   - NEW: (none)
-   
-   Only output files you are actually changing.
-   ```
+```typescript
+async function generateWithRetry(config, messages, opts, maxRetries = 1): Promise<Response> {
+  const response = await callModelAPI(config, messages, opts);
+  
+  // If streaming, can't retry here -- handled in stream processing
+  if (opts.stream) return response;
+  
+  // For non-streaming: check response quality
+  const text = await response.text();
+  const parsed = tryParseCodeResponse(text);
+  
+  if (!parsed && maxRetries > 0) {
+    // Retry with explicit instruction
+    const retryMessages = [...messages];
+    retryMessages.push({
+      role: "user",
+      content: "Previous output was truncated or invalid JSON. Return ONLY the JSON file map. Reduce verbosity if needed but ensure every bracket is closed."
+    });
+    return generateWithRetry(config, retryMessages, { ...opts, temperature: 0.1 }, maxRetries - 1);
+  }
+  
+  return new Response(text, { status: response.status, headers: response.headers });
+}
+```
 
-3. Fetch `last_valid_files` from `vibecoder_projects` table at the start of the request (when `requestProjectId` is available) so the diff can be computed.
+**For streaming (primary path):** After the stream completes and JSON parse fails in the SUMMARY handler (lines ~3184-3445), before falling through to fallbacks:
+- If all 3 fallbacks fail AND we haven't retried yet, trigger a non-streaming retry call with reduced scope
+- Emit a `phase: retrying` event to the frontend
 
-### Why File-Level Not Line-Level
+## Phase 5: Strategy Matrix
 
-Line-level diffs are expensive to compute server-side and unreliable with AI output. File-level inventory is cheap (just key comparison) and achieves the same goal: telling the AI which files to leave alone.
+**Integrated into Scope Analyzer output:**
 
----
+| User Request Pattern | Strategy | Files Sent | Max Output |
+|---|---|---|---|
+| "change button color" | micro | 1 file | 8K tokens |
+| "update hero and footer" | partial | 2-3 files | 20K tokens |
+| "make it more premium" (style change) | partial | theme.ts + affected components | 30K tokens |
+| "rebuild everything" | full | all files | 50K tokens |
+| First BUILD (no existing code) | full | none (fresh) | 50K tokens |
 
-## Step 3: Compile-Fix Second Retry (Controlled)
+## Files Changed
 
-### What Changes
+**1. `supabase/functions/vibecoder-v2/index.ts`** (the only file)
 
-The current repair loop (line 2238) does one attempt with the same model. Add a single lateral retry: if the primary model's repair fails, try the other premium model before aborting.
+Changes:
+- Add `analyzeScope()` function (~60 lines) after the existing `analyzeIntent()` function
+- Add `estimateTokenBudget()` function (~20 lines)
+- Modify `executeIntent()` to accept and use scope results for context filtering
+- Modify the main `serve()` handler to call scope analyzer before execution (for MODIFY/FIX intents)
+- Add retry logic in the stream processing section (after fallback 3 fails)
+- Update streaming to emit `phase: scoping` event during scope analysis
 
-### Files Modified
+**2. Frontend changes: None required**
+- The existing `StreamingPhaseCard` already handles dynamic phase names
+- New phases (`scoping`, `retrying`) will display automatically
 
-**`supabase/functions/vibecoder-v2/index.ts`**
+## Constraints Preserved
+- Zero-Trust commit gate: untouched
+- Validation logic: untouched (except benefiting from less truncation)
+- Atomic job authority: untouched
+- Credit system: untouched
+- All existing fallback/rescue logic: preserved as-is
 
-1. In the compile-fix loop (line 2250), after a repair attempt fails (`repaired` is null), add one lateral retry:
-   ```typescript
-   if (!repaired) {
-     // Lateral retry: try the other premium model
-     const lateralConfig = PREMIUM_FALLBACK_CHAIN[generatorConfig.provider];
-     if (lateralConfig) {
-       console.log(`[CompileFix] Primary repair failed, trying lateral: ${lateralConfig.provider}`);
-       repaired = await repairBrokenFile(err.file, fileMap[err.file], err.error, lateralConfig);
-     }
-   }
-   ```
-
-2. This adds exactly one more repair attempt (2 total max), then abort. Matches the "stability over complexity" principle.
-
----
-
-## Step 4: Storefront Design Intelligence (Brand Layer)
-
-### What Changes
-
-When the user uses emotional/vision language ("make it dark and futuristic"), the AI should update theme tokens holistically — not just random class edits. This connects the existing `theme-vibes.ts` system to the AI generation pipeline.
-
-### Files Modified
-
-**`supabase/functions/vibecoder-v2/index.ts`**
-
-1. Add a `BRAND_LAYER_PROMPT` injection for vision-mode requests that contain style/vibe keywords. This goes into `executeIntent` when `interactionMode === "vision"` AND the prompt matches vibe keywords (reuse the keyword map from `vibe-from-text.ts`):
-
-   ```
-   DESIGN INTELLIGENCE: BRAND LAYER
-   When the user describes a feeling or aesthetic, update the ENTIRE design system coherently:
-   1. /storefront/theme.ts — Update color tokens, spacing scale, border radius, typography
-   2. Component files — Apply the theme tokens consistently (use CSS variables, not hardcoded colors)
-   
-   VIBE MAP:
-   - "luxury/premium/elegant" → Dark backgrounds, serif headings, wide spacing, subtle borders, gold accents
-   - "futuristic/neon/cyber" → Near-black bg, neon accent colors, tight spacing, sharp corners, glow effects
-   - "playful/fun/colorful" → Vibrant palette, rounded corners, bouncy animations, bold typography
-   - "minimal/clean/simple" → Maximum whitespace, thin fonts, no decorative elements, monochrome
-   - "corporate/professional" → Blue accents, system fonts, structured grid, subtle shadows
-   
-   CRITICAL: When changing the vibe, update theme.ts AND ensure components reference theme tokens.
-   Never scatter hardcoded colors — centralize in theme.ts.
-   ```
-
-2. Add vibe keyword detection to the backend (port the keyword map from `vibe-from-text.ts`):
-   ```typescript
-   function detectVibeIntent(prompt: string): string | null {
-     // Same keyword matching as vibe-from-text.ts
-     // Returns: "luxury" | "cyberpunk" | "playful" | "minimal" | "corporate" | "editorial" | null
-   }
-   ```
-
-3. When a vibe is detected AND mode is "vision", inject the brand layer prompt AND append to the user message:
-   ```
-   DETECTED VIBE: luxury
-   Apply the "luxury" design system comprehensively across all affected files.
-   ```
-
-### No New Files Required
-
-This leverages the existing `theme-vibes.ts` intelligence but surfaces it to the AI code generation pipeline. The theme system already exists on the client side — we're just teaching the AI to use it properly.
-
----
-
-## Summary of All Changes
-
-| File | Change |
-|------|--------|
-| `supabase/functions/vibecoder-v2/index.ts` | Add interactionMode to classifier, file inventory diff, lateral repair retry, brand layer prompt injection |
-
-All changes are in a single file. No new files. No database changes. No frontend changes. Pure backend intelligence upgrade.
-
-## Execution Order
-
-1. Mode Detection (extends classifier — foundational)
-2. Brand Layer (depends on mode detection)
-3. File Inventory Diff (independent)
-4. Lateral Repair Retry (independent, 5-line change)
-
-All four can be implemented in a single edge function update and deployment.
+## Expected Outcomes
+- "make it more premium" modifies only theme.ts + affected component files (not all 8)
+- Token usage drops 40-60% for typical MODIFY requests
+- Truncation failures drop significantly (less output pressure)
+- CHAT responses still use Gemini Flash (no change)
+- BUILD still uses Claude with full context (no change)
 
