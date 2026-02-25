@@ -6,11 +6,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CreditTopUpDialog } from "./CreditTopUpDialog";
-
+import { CreditSegmentBar } from "@/components/ui/CreditSegmentBar";
+import type { CreditBreakdown } from "@/hooks/useUserCredits";
 interface ProfileMenuProps {
   avatarUrl?: string | null;
   username?: string | null;
   userCredits: number;
+  creditBreakdown?: CreditBreakdown;
   subscriptionTier?: string | null;
   onSignOut: () => void;
 }
@@ -52,6 +54,7 @@ export function ProfileMenu({
   avatarUrl, 
   username = "Creator", 
   userCredits = 0,
+  creditBreakdown = { rollover: 0, monthly: 0, bonus: 0 },
   subscriptionTier,
   onSignOut 
 }: ProfileMenuProps) {
@@ -200,33 +203,19 @@ export function ProfileMenu({
             {/* Segmented progress bar */}
             {(() => {
               const maxCredits = subscriptionTier === 'agency' ? 1500 : subscriptionTier === 'creator' ? 500 : subscriptionTier === 'basic' ? 100 : 5;
-              const ratio = Math.min(userCredits / maxCredits, 1);
-              const usedRatio = 1 - ratio;
               return (
-                <div className="mt-2 h-1.5 bg-zinc-800 rounded-full overflow-hidden flex">
-                  <div 
-                    className="h-full rounded-l-full transition-all duration-500"
-                    style={{ 
-                      width: `${ratio * 60}%`,
-                      background: 'linear-gradient(90deg, #7c3aed, #6d28d9)'
-                    }}
-                  />
-                  <div 
-                    className="h-full transition-all duration-500"
-                    style={{ 
-                      width: `${ratio * 40}%`,
-                      background: 'linear-gradient(90deg, #3b82f6, #2563eb)'
-                    }}
+                <div className="mt-2">
+                  <CreditSegmentBar
+                    rollover={creditBreakdown.rollover}
+                    monthly={creditBreakdown.monthly}
+                    bonus={creditBreakdown.bonus}
+                    total={userCredits}
+                    maxCredits={maxCredits}
+                    showLegend
                   />
                 </div>
               );
             })()}
-            <p className="text-xs text-zinc-500 flex items-center gap-1.5 mt-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-              {subscriptionTier && subscriptionTier !== 'browser'
-                ? "Using rollover credits"
-                : "Using free credits"}
-            </p>
           </button>
 
           {/* Navigation Links */}

@@ -30,6 +30,7 @@ import sellspayLogo from '@/assets/sellspay-logo-optimized.webp';
 import { cn } from '@/lib/utils';
 import { LowCreditWarning, LOW_CREDIT_THRESHOLD } from '@/components/ai-builder/LowCreditWarning';
 import { CreditTopUpDialog } from '@/components/ai-builder/CreditTopUpDialog';
+import { CreditSegmentBar } from '@/components/ui/CreditSegmentBar';
 
 // Product categories for dropdown
 const productCategories = [
@@ -79,7 +80,7 @@ export default function Header() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
-  const { credits, loading: creditsLoading, plan } = useSubscription();
+  const { credits, creditBreakdown, loading: creditsLoading, plan } = useSubscription();
 
   const isCreator = profile?.is_creator || false;
   const isSeller = profile?.is_seller || false;
@@ -453,20 +454,17 @@ export default function Header() {
                       <>
                         {(() => {
                           const maxCredits = plan === 'agency' ? 1500 : plan === 'creator' ? 500 : plan === 'basic' ? 100 : 5;
-                          const ratio = Math.min(credits / maxCredits, 1);
                           return (
-                            <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden flex">
-                              <div className="h-full rounded-l-full transition-all duration-500" style={{ width: `${ratio * 60}%`, background: 'linear-gradient(90deg, hsl(263 70% 50%), hsl(263 67% 42%))' }} />
-                              <div className="h-full transition-all duration-500" style={{ width: `${ratio * 40}%`, background: 'linear-gradient(90deg, hsl(217 91% 60%), hsl(217 91% 53%))' }} />
-                            </div>
+                            <CreditSegmentBar
+                              rollover={creditBreakdown.rollover}
+                              monthly={creditBreakdown.monthly}
+                              bonus={creditBreakdown.bonus}
+                              total={credits}
+                              maxCredits={maxCredits}
+                              showLegend
+                            />
                           );
                         })()}
-                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                          {plan && plan !== 'browser'
-                            ? "Using rollover credits"
-                            : "Using free credits"}
-                        </p>
                       </>
                     )}
                   </div>

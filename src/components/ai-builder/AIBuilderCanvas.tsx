@@ -48,7 +48,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   const [publishing, setPublishing] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
-  const { plan: subscriptionTier, credits: userCredits, refreshSubscription } = useSubscription();
+  const { plan: subscriptionTier, credits: userCredits, creditBreakdown: userCreditBreakdown, refreshSubscription } = useSubscription();
   const refetchCredits = useCallback(() => refreshSubscription(true), [refreshSubscription]);
   const { needsOnboarding, completeOnboarding } = useAIBuilderOnboarding(profileId);
   
@@ -1332,6 +1332,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
             pages={detectedPages}
             avatarUrl={userAvatarUrl}
             userCredits={userCredits}
+            creditBreakdown={userCreditBreakdown}
             subscriptionTier={subscriptionTier}
             onSignOut={handleSignOut}
             chatCollapsed={chatCollapsed}

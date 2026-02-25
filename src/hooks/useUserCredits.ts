@@ -2,8 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 
+export interface CreditBreakdown {
+  rollover: number;
+  monthly: number;
+  bonus: number;
+}
+
 interface UseUserCreditsReturn {
   credits: number;
+  creditBreakdown: CreditBreakdown;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -15,6 +22,7 @@ export function useUserCredits(): UseUserCreditsReturn {
   const isPrivileged = isAdmin || isOwner;
 
   const [credits, setCredits] = useState(0);
+  const [creditBreakdown, setCreditBreakdown] = useState<CreditBreakdown>({ rollover: 0, monthly: 0, bonus: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,13 +33,14 @@ export function useUserCredits(): UseUserCreditsReturn {
 
       const { data: session } = await supabase.auth.getSession();
       if (!session.session?.user) {
-        setCredits(0);
-        return;
+          setCredits(0);
+          setCreditBreakdown({ rollover: 0, monthly: 0, bonus: 0 });
+          return;
       }
 
       const { data: wallet, error: walletError } = await supabase
         .from('user_wallets')
-        .select('balance')
+        .select('balance, rollover_credits, monthly_credits, bonus_credits')
         .eq('user_id', session.session.user.id)
         .single();
 
@@ -45,10 +54,16 @@ export function useUserCredits(): UseUserCreditsReturn {
       }
 
       setCredits(wallet?.balance ?? 0);
+      setCreditBreakdown({
+        rollover: (wallet as any)?.rollover_credits ?? 0,
+        monthly: (wallet as any)?.monthly_credits ?? 0,
+        bonus: (wallet as any)?.bonus_credits ?? 0,
+      });
     } catch (err) {
       console.error('Error fetching credits:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch credits');
       setCredits(0);
+      setCreditBreakdown({ rollover: 0, monthly: 0, bonus: 0 });
     } finally {
       setIsLoading(false);
     }
@@ -119,6 +134,11 @@ export function useUserCredits(): UseUserCreditsReturn {
           (payload) => {
             if (payload.new && 'balance' in payload.new) {
               setCredits(payload.new.balance as number);
+              setCreditBreakdown({
+                rollover: (payload.new as any).rollover_credits ?? 0,
+                monthly: (payload.new as any).monthly_credits ?? 0,
+                bonus: (payload.new as any).bonus_credits ?? 0,
+              });
             }
           }
         )
@@ -134,6 +154,7 @@ export function useUserCredits(): UseUserCreditsReturn {
 
   return {
     credits,
+    creditBreakdown,
     isLoading,
     error,
     refetch: fetchCredits,

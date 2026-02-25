@@ -3199,20 +3199,32 @@ export type Database = {
       user_wallets: {
         Row: {
           balance: number
+          bonus_credits: number
           created_at: string | null
           last_refill_at: string | null
+          monthly_credits: number
+          rollover_credits: number
+          updated_at: string
           user_id: string
         }
         Insert: {
           balance?: number
+          bonus_credits?: number
           created_at?: string | null
           last_refill_at?: string | null
+          monthly_credits?: number
+          rollover_credits?: number
+          updated_at?: string
           user_id: string
         }
         Update: {
           balance?: number
+          bonus_credits?: number
           created_at?: string | null
           last_refill_at?: string | null
+          monthly_credits?: number
+          rollover_credits?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -3475,24 +3487,30 @@ export type Database = {
           action: string
           amount: number
           created_at: string | null
+          credit_source: string | null
           description: string | null
           id: string
+          transaction_type: string | null
           user_id: string
         }
         Insert: {
           action: string
           amount: number
           created_at?: string | null
+          credit_source?: string | null
           description?: string | null
           id?: string
+          transaction_type?: string | null
           user_id: string
         }
         Update: {
           action?: string
           amount?: number
           created_at?: string | null
+          credit_source?: string | null
           description?: string | null
           id?: string
+          transaction_type?: string | null
           user_id?: string
         }
         Relationships: []
