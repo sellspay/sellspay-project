@@ -261,6 +261,117 @@ function looksTruncated(code: string, intent?: string): boolean {
 // Catches syntax errors BEFORE committing to DB
 // ═══════════════════════════════════════════════════════════════
 
+const SERVER_TS_TYPE_NAMES = new Set([
+  'string', 'number', 'boolean', 'any', 'void', 'never', 'null', 'undefined',
+  'object', 'unknown', 'bigint', 'symbol', 'keyof', 'typeof', 'infer',
+  'Record', 'Partial', 'Required', 'Readonly', 'Pick', 'Omit', 'Exclude',
+  'Extract', 'NonNullable', 'ReturnType', 'Parameters', 'InstanceType',
+  'Promise', 'Array', 'Map', 'Set', 'WeakMap', 'WeakSet',
+]);
+
+const SERVER_VOID_ELEMENTS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+  'link', 'meta', 'param', 'source', 'track', 'wbr',
+]);
+
+function stripStringsAndCommentsServer(code: string): string {
+  let result = '';
+  let inSingle = false;
+  let inDouble = false;
+  let inTemplate = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escaped = false;
+  let templateDepth = 0;
+
+  for (let i = 0; i < code.length; i++) {
+    const c = code[i];
+    const n = code[i + 1];
+
+    if (inLineComment) {
+      if (c === '\n') { inLineComment = false; result += '\n'; }
+      else result += ' ';
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (c === '*' && n === '/') { inBlockComment = false; result += '  '; i++; }
+      else result += c === '\n' ? '\n' : ' ';
+      continue;
+    }
+
+    if (inSingle || inDouble) {
+      if (escaped) { escaped = false; result += ' '; continue; }
+      if (c === '\\') { escaped = true; result += ' '; continue; }
+      if (inSingle && c === "'") { inSingle = false; result += ' '; }
+      else if (inDouble && c === '"') { inDouble = false; result += ' '; }
+      else result += ' ';
+      continue;
+    }
+
+    if (inTemplate) {
+      if (escaped) { escaped = false; result += ' '; continue; }
+      if (c === '\\') { escaped = true; result += ' '; continue; }
+      if (c === '`') { inTemplate = false; result += ' '; continue; }
+      if (c === '$' && n === '{') { templateDepth++; inTemplate = false; result += '  '; i++; continue; }
+      result += c === '\n' ? '\n' : ' ';
+      continue;
+    }
+
+    if (c === '/' && n === '/') { inLineComment = true; result += ' '; i++; continue; }
+    if (c === '/' && n === '*') { inBlockComment = true; result += ' '; i++; continue; }
+    if (c === "'") { inSingle = true; result += ' '; continue; }
+    if (c === '"') { inDouble = true; result += ' '; continue; }
+    if (c === '`') { inTemplate = true; result += ' '; continue; }
+    if (c === '}' && templateDepth > 0) { templateDepth--; inTemplate = true; result += ' '; continue; }
+
+    result += c;
+  }
+
+  return result;
+}
+
+function checkJsxTagBalanceServer(code: string): string | null {
+  const stripped = stripStringsAndCommentsServer(code);
+  const tagStack: string[] = [];
+  const tagRegex = /<\/?([A-Za-z][A-Za-z0-9.]*)[^>]*?\/?>/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = tagRegex.exec(stripped)) !== null) {
+    const fullMatch = match[0];
+    const tagName = match[1];
+    const matchIndex = match.index;
+
+    if (!tagName) continue;
+
+    // Skip TypeScript generics like FC<Props>, Record<string, ...>
+    if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
+    if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
+    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
+
+    const isSelfClosing = fullMatch.endsWith('/>');
+    const isClosing = fullMatch.startsWith('</');
+
+    if (isSelfClosing) continue;
+
+    if (isClosing) {
+      if (tagStack.length === 0) {
+        return `Extra closing JSX tag </${tagName}> with no matching opening tag`;
+      }
+      tagStack.pop();
+    } else {
+      if (SERVER_VOID_ELEMENTS.has(tagName.toLowerCase())) continue;
+      tagStack.push(tagName);
+    }
+  }
+
+  if (tagStack.length > 0) {
+    return `Unclosed JSX tag(s): ${tagStack.slice(-3).map(t => '<' + t + '>').join(', ')} — ${tagStack.length} unclosed`;
+  }
+
+  return null;
+}
+
 function validateFileSyntaxServer(content: string, filePath: string): string | null {
   if (!content || content.trim().length === 0) return 'Empty file';
   if (!filePath.endsWith('.tsx') && !filePath.endsWith('.ts') && !filePath.endsWith('.jsx') && !filePath.endsWith('.js')) {
@@ -314,6 +425,12 @@ function validateFileSyntaxServer(content: string, filePath: string): string | n
   // 3. Malformed CSS url() (common AI error)
   if (/url\([^)]*\([^)]*\)/.test(content)) {
     return 'Malformed CSS url() — contains nested parentheses';
+  }
+
+  // 4. JSX tag balance (prevents frontend-only failures)
+  if (filePath.endsWith('.tsx') || filePath.endsWith('.jsx')) {
+    const jsxError = checkJsxTagBalanceServer(content);
+    if (jsxError) return jsxError;
   }
 
   return null;
@@ -2381,6 +2498,32 @@ serve(async (req) => {
   let requestJobId: string | null = null;
   let supabaseAdmin: ReturnType<typeof createClient> | null = null;
   let endedAsSuccess = false;
+  let chargedUserId: string | null = null;
+  let chargedCredits = 0;
+  let refundIssued = false;
+
+  const refundCreditsIfNeeded = async (reason: string) => {
+    if (!supabaseAdmin || refundIssued || !chargedUserId || chargedCredits <= 0) return;
+
+    try {
+      const { error } = await supabaseAdmin.rpc("add_credits", {
+        p_user_id: chargedUserId,
+        p_amount: chargedCredits,
+        p_action: "refund",
+        p_description: `Auto-refund: vibecoder generation failed (${reason})`,
+      });
+
+      if (error) {
+        console.error("[CREDITS] Refund failed:", error);
+        return;
+      }
+
+      refundIssued = true;
+      console.log(`[CREDITS] Refunded ${chargedCredits} credits to user ${chargedUserId} (${reason})`);
+    } catch (refundError) {
+      console.error("[CREDITS] Refund exception:", refundError);
+    }
+  };
 
   console.log("[EDGE] START", { method: req.method });
 
@@ -2524,6 +2667,9 @@ serve(async (req) => {
           },
         );
       }
+
+      chargedUserId = userId;
+      chargedCredits = cost;
 
       console.log(`Deducted ${cost} credits from user ${userId} for model ${model}`);
     }
@@ -2743,6 +2889,7 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("[EDGE] Generation FAILED:", response.status, errorText.slice(0, 500));
+      await refundCreditsIfNeeded(`provider_response_${response.status}`);
 
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
@@ -3760,6 +3907,10 @@ serve(async (req) => {
               });
             }
 
+            if (jobStatus !== "completed") {
+              await refundCreditsIfNeeded(`job_${jobStatus}_${terminalReason || "unknown"}`);
+            }
+
             await supabase.from("ai_generation_jobs").update(updatePayload).eq("id", jobId);
             console.log(`[Job ${jobId}] Job ${jobStatus} | Reason: ${terminalReason}`);
           }
@@ -3775,6 +3926,7 @@ serve(async (req) => {
 
           // If job-backed, mark as failed
           if (jobId) {
+            await refundCreditsIfNeeded(errorType.toLowerCase());
             await supabase
               .from("ai_generation_jobs")
               .update({
@@ -3805,6 +3957,7 @@ serve(async (req) => {
   } catch (error) {
     const isTimeout = error instanceof Error && error.message === "EDGE_TIMEOUT";
     console.error("[EDGE_TIMEOUT_OR_CRASH]", error);
+    await refundCreditsIfNeeded(isTimeout ? "edge_timeout" : "edge_crash");
 
     if (requestJobId && supabaseAdmin) {
       await supabaseAdmin
