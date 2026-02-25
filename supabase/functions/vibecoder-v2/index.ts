@@ -319,6 +319,91 @@ function validateFileSyntaxServer(content: string, filePath: string): string | n
   return null;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// BULLETPROOF JSON SANITIZER (Top-Level, Reusable)
+// Handles all known LLM escape issues:
+// 1. Invalid escape sequences (e.g. \x, \', \ <space>)
+// 2. Unescaped control characters inside strings
+// 3. Trailing commas before } or ]
+// ═══════════════════════════════════════════════════════════════
+function sanitizeJsonEscapes(raw: string): string {
+  // Step 1: Fix invalid escape sequences
+  // Valid JSON escapes: \" \\ \/ \b \f \n \r \t \uXXXX
+  let result = raw.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+  
+  // Step 2: Remove raw control characters (except \n \r \t which are common in code)
+  // These can appear when LLMs emit binary-ish content
+  result = result.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+  
+  // Step 3: Fix trailing commas (very common LLM mistake)
+  result = result.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+  
+  return result;
+}
+
+// Attempt to rescue valid file entries from partially broken JSON
+function rescuePartialFileMap(raw: string): Record<string, string> | null {
+  // Strategy: find all "path": "content" pairs using a state machine
+  // that tracks JSON string boundaries properly
+  const rescued: Record<string, string> = {};
+  
+  // Find the "files" object start
+  const filesMatch = raw.match(/"files"\s*:\s*\{/);
+  if (!filesMatch || filesMatch.index === undefined) {
+    // Maybe it's a direct file map (no wrapper)
+    if (!raw.trimStart().startsWith('{')) return null;
+  }
+  
+  const startIdx = filesMatch ? filesMatch.index! + filesMatch[0].length : raw.indexOf('{') + 1;
+  
+  // Use regex to find key-value pairs: "path.tsx": "...content..."
+  // This works even if the last file is truncated
+  const keyPattern = /"(\/?\w[\w\-./]*\.(?:tsx?|jsx?|css|html|json))"\s*:\s*"/g;
+  let match;
+  const keys: Array<{key: string; valueStart: number}> = [];
+  
+  const searchArea = raw.substring(startIdx);
+  while ((match = keyPattern.exec(searchArea)) !== null) {
+    keys.push({
+      key: match[1],
+      valueStart: match.index + match[0].length,
+    });
+  }
+  
+  if (keys.length === 0) return null;
+  
+  // For each key, extract the value by finding the closing unescaped quote
+  for (let i = 0; i < keys.length; i++) {
+    const start = keys[i].valueStart;
+    const nextKeyStart = i + 1 < keys.length ? keys[i + 1].valueStart - keys[i + 1].key.length - 5 : searchArea.length;
+    
+    // Find the end of the JSON string value
+    let end = -1;
+    let escaped = false;
+    for (let j = start; j < nextKeyStart && j < searchArea.length; j++) {
+      if (escaped) { escaped = false; continue; }
+      if (searchArea[j] === '\\') { escaped = true; continue; }
+      if (searchArea[j] === '"') { end = j; break; }
+    }
+    
+    if (end > start) {
+      try {
+        // Parse the JSON string value properly
+        const jsonStr = '"' + searchArea.substring(start, end) + '"';
+        const value = JSON.parse(jsonStr);
+        if (typeof value === 'string' && value.trim().length > 5) {
+          rescued[keys[i].key] = value;
+        }
+      } catch {
+        // Skip this file - it's corrupted
+        console.warn(`[RescueJSON] Could not parse value for ${keys[i].key}`);
+      }
+    }
+  }
+  
+  return Object.keys(rescued).length > 0 ? rescued : null;
+}
+
 function validateAllFilesServer(files: Record<string, string>): { valid: boolean; errors: Array<{ file: string; error: string }> } {
   const errors: Array<{ file: string; error: string }> = [];
   for (const [path, content] of Object.entries(files)) {
@@ -2883,11 +2968,7 @@ serve(async (req) => {
             
             let filesEmitted = false;
             
-            // Sanitize invalid escape sequences that LLMs sometimes produce
-            // Valid JSON escapes: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX
-            const sanitizeJsonEscapes = (raw: string): string => {
-              return raw.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
-            };
+            // Use top-level bulletproof sanitizer
             const sanitizedCleaned = sanitizeJsonEscapes(cleaned);
             
             try {
@@ -3126,6 +3207,27 @@ serve(async (req) => {
               // ═══════════════════════════════════════════════════════
               // ZERO-TRUST: NO raw TSX fallback. Must be valid JSON file map.
               // ═══════════════════════════════════════════════════════
+              // ═══════════════════════════════════════════════════════
+              // FALLBACK 3: Rescue partial file map (extract valid entries)
+              // ═══════════════════════════════════════════════════════
+              if (!filesEmitted) {
+                console.warn('[Files] FALLBACK 3: Attempting partial file map rescue...');
+                const rescued = rescuePartialFileMap(cleaned);
+                if (rescued && Object.keys(rescued).length > 0) {
+                  // Apply same merge logic
+                  const isPartialDelta = currentCode?.trim() && projectFiles && typeof projectFiles === 'object';
+                  let finalRescued = rescued;
+                  if (isPartialDelta) {
+                    finalRescued = { ...(projectFiles as Record<string, string>), ...rescued };
+                  }
+                  emitEvent('files', { projectFiles: finalRescued });
+                  filesEmitted = true;
+                  lastMergedFiles = finalRescued;
+                  summaryValidated = true;
+                  console.log(`[Files] FALLBACK 3: Rescued ${Object.keys(rescued).length} files from partial JSON`);
+                }
+              }
+              
               if (!filesEmitted) {
                 console.error('[Files] ZERO-TRUST GATE: No valid JSON file map extracted. All fallbacks exhausted.');
                 summaryValidated = false;
@@ -3423,8 +3525,10 @@ serve(async (req) => {
                 console.log(`[Job ${jobId}] GATE 1: Using SUMMARY-validated files (${Object.keys(lastMergedFiles).length} files, summaryValidated=true)`);
               } else {
                 // Fallback: SUMMARY didn't fire (legacy single-file or parse failure)
+                // Apply sanitization before parsing (this was the missing piece!)
+                const sanitizedCodeResult = sanitizeJsonEscapes(codeResult);
                 try {
-                  const parsedResult = JSON.parse(codeResult);
+                  const parsedResult = JSON.parse(sanitizedCodeResult);
                   if (parsedResult && typeof parsedResult === 'object') {
                     // Detect file map: either {files: {...}} wrapper or direct {"/path.tsx": "..."}
                     let deltaFiles: Record<string, string> | null = null;
@@ -3453,12 +3557,31 @@ serve(async (req) => {
                     }
                   }
                 } catch {
-                  // ZERO-TRUST: codeResult is not valid JSON — fail explicitly
-                  console.error(`[Job ${jobId}] ZERO-TRUST GATE: codeResult is not valid JSON. Failing job.`);
-                  validationError = { errorType: 'CORRUPT_JSON_OUTPUT', errorMessage: 'AI returned non-JSON output that cannot be committed as files. Please retry.' };
-                  jobStatus = "failed";
-                  terminalReason = "corrupt_json_output";
-                  validationReport.truncation_detected = true;
+                  // Last resort: try partial rescue before giving up
+                  console.warn(`[Job ${jobId}] GATE 1: Sanitized JSON parse failed, trying partial rescue...`);
+                  const rescued = rescuePartialFileMap(codeResult);
+                  if (rescued && Object.keys(rescued).length > 0) {
+                    isMultiFileJson = true;
+                    const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
+                      ? projectFiles as Record<string, string>
+                      : {};
+                    const mergedFiles = { ...existingFiles, ...rescued };
+                    lastMergedFiles = mergedFiles;
+                    summaryValidated = true;
+                    const appKey = Object.keys(mergedFiles).find(k => 
+                      k === '/App.tsx' || k === 'App.tsx' || k.endsWith('/App.tsx')
+                    );
+                    mergedAppContent = appKey ? mergedFiles[appKey] : null;
+                    emitEvent('files', { projectFiles: mergedFiles });
+                    console.log(`[Job ${jobId}] GATE 1 RESCUE: Rescued ${Object.keys(rescued).length} files from partial JSON`);
+                  } else {
+                    // ZERO-TRUST: codeResult is not valid JSON — fail explicitly
+                    console.error(`[Job ${jobId}] ZERO-TRUST GATE: codeResult is not valid JSON. Failing job.`);
+                    validationError = { errorType: 'CORRUPT_JSON_OUTPUT', errorMessage: 'AI returned non-JSON output that cannot be committed as files. Please retry.' };
+                    jobStatus = "failed";
+                    terminalReason = "corrupt_json_output";
+                    validationReport.truncation_detected = true;
+                  }
                 }
               }
               
