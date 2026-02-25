@@ -603,7 +603,7 @@ RULES:
     // Use the same model that generated the broken code (model-aware repair)
     const response = await callModelAPI(generatorConfig, repairMessages, {
       maxTokens: 8000,
-      temperature: 0.1,
+      temperature: 0.0,
       stream: false,
     });
 
@@ -716,7 +716,7 @@ RULES:
     try {
       const response = await callModelAPI(generatorConfig, repairMessages, {
         maxTokens: Math.min(60000, (generatorConfig.provider === 'openai' ? 16000 : generatorConfig.provider === 'anthropic' ? 60000 : 8192)),
-        temperature: 0.1,
+        temperature: 0.0,
         stream: false,
       });
 
@@ -1675,6 +1675,18 @@ Rules:
 - Never truncate syntax.
 - The first character must be '{'.
 - The last character must be '}'.
+
+════════════════════════════════════════════════════════════════
+🔒 JSX STRUCTURAL PRESERVATION (ABSOLUTE - ZERO EXCEPTIONS)
+════════════════════════════════════════════════════════════════
+When modifying JSX:
+- You MUST preserve ALL existing opening and closing tags.
+- Do NOT remove, rewrap, or restructure parent containers unless explicitly instructed.
+- Never rewrite entire sections when only a small change is requested.
+- Only edit the minimal necessary lines.
+- Every <div>, <section>, <motion.div> etc. that you open MUST be closed.
+- Count your tags. If you open 5 <div>s, you MUST close 5 </div>s.
+- If the existing code has deeply nested JSX, do NOT flatten or restructure it.
 
 ════════════════════════════════════════════════════════════════
 🏗️ MANDATORY LAYOUT HIERARCHY (ABSOLUTE - ZERO EXCEPTIONS)
@@ -2906,9 +2918,11 @@ If the request says "change X", change ONLY X and nothing else.
 
   // Call the AI via multi-model router
   try {
+    // Intent-aware temperature: MODIFY/FIX get deterministic, BUILD stays creative
+    const temperature = (intent.intent === 'MODIFY' || intent.intent === 'FIX') ? 0.2 : 0.3;
     const result = await callModelAPI(config, messages, {
       maxTokens,
-      temperature: 0.3,
+      temperature,
       stream: shouldStream,
     });
 
@@ -3885,7 +3899,7 @@ serve(async (req) => {
                   const retryConfig = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-claude"];
                   const retryResponse = await callModelAPI(retryConfig, retryMessages, {
                     maxTokens: Math.min(30000, providerCap),
-                    temperature: 0.1,
+                    temperature: 0.0,
                     stream: false,
                   });
 
