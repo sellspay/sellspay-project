@@ -906,17 +906,21 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
       return; // ⛔ HARD STOP - show upgrade modal instead
     }
 
-    // 💰 CREDIT CHECK: Verify sufficient credits before generation
+    // 💰 CREDIT CHECK: Verify minimum credits before generation (dynamic billing — final cost computed post-generation)
     const modelId = activeModel?.id || 'vibecoder-pro';
-    const CREDIT_COSTS: Record<string, number> = {
-      'vibecoder-pro': 3,
+    const CREDIT_MINIMUMS: Record<string, number> = {
+      'vibecoder-pro': 1,
       'vibecoder-flash': 0,
-      'vibecoder-turbo': 2,
+      'vibecoder-turbo': 1,
+      'vibecoder-claude': 2,
+      'vibecoder-gpt4': 2,
+      'vibecoder-gpt41': 2,
+      'reasoning-o1': 3,
     };
-    const generationCost = CREDIT_COSTS[modelId] ?? 3;
+    const minimumCost = CREDIT_MINIMUMS[modelId] ?? 1;
     
-    if (generationCost > 0 && userCredits < generationCost) {
-      toast.error(`Insufficient credits. You need ${generationCost} credits but have ${userCredits}. Please top up to continue.`, {
+    if (minimumCost > 0 && userCredits < minimumCost) {
+      toast.error(`Insufficient credits. You need at least ${minimumCost} credit${minimumCost > 1 ? 's' : ''} but have ${userCredits}. Cost scales with request complexity.`, {
         action: {
           label: 'Top Up',
           onClick: () => window.open('/billing', '_blank'),

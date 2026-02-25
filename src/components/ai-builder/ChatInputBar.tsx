@@ -64,20 +64,20 @@ declare global {
 // Updated Fair Pricing: 8x reduction to match actual API costs
 export const AI_MODELS = {
   code: [
-    { id: "vibecoder-pro", name: "Gemini 3 Pro", desc: "Best for complex layouts", cost: 3, icon: Sparkles, category: "code" },
-    { id: "vibecoder-flash", name: "Gemini Flash", desc: "Fast, for small edits", cost: 0, icon: Zap, category: "code" },
-    { id: "vibecoder-claude", name: "Claude Sonnet", desc: "Premium JSX quality", cost: 5, icon: BrainCircuit, category: "code" },
-    { id: "vibecoder-gpt4", name: "GPT-4o", desc: "Strong planning + code", cost: 5, icon: Sparkles, category: "code" },
-    { id: "reasoning-o1", name: "GPT-5.2", desc: "Deep reasoning mode", cost: 8, icon: BrainCircuit, category: "code" },
+    { id: "vibecoder-pro", name: "Gemini 3 Pro", desc: "Best for complex layouts", cost: 1, costLabel: "1-10c", icon: Sparkles, category: "code" },
+    { id: "vibecoder-flash", name: "Gemini Flash", desc: "Fast, for small edits", cost: 0, costLabel: "Free", icon: Zap, category: "code" },
+    { id: "vibecoder-claude", name: "Claude Sonnet", desc: "Premium JSX quality", cost: 2, costLabel: "2-15c", icon: BrainCircuit, category: "code" },
+    { id: "vibecoder-gpt4", name: "GPT-4o", desc: "Strong planning + code", cost: 2, costLabel: "2-15c", icon: Sparkles, category: "code" },
+    { id: "reasoning-o1", name: "GPT-5.2", desc: "Deep reasoning mode", cost: 3, costLabel: "3-20c", icon: BrainCircuit, category: "code" },
   ],
   image: [
-    { id: "nano-banana", name: "Nano Banana", desc: "Gemini Image Gen", cost: 10, icon: ImageIcon, category: "image" },
-    { id: "flux-pro", name: "Flux 1.1 Pro", desc: "High quality images", cost: 10, icon: Sparkles, category: "image" },
-    { id: "recraft-v3", name: "Recraft V3", desc: "Vector & SVG ready", cost: 10, icon: ImageIcon, category: "image" },
+    { id: "nano-banana", name: "Nano Banana", desc: "Gemini Image Gen", cost: 10, costLabel: "10c", icon: ImageIcon, category: "image" },
+    { id: "flux-pro", name: "Flux 1.1 Pro", desc: "High quality images", cost: 10, costLabel: "10c", icon: Sparkles, category: "image" },
+    { id: "recraft-v3", name: "Recraft V3", desc: "Vector & SVG ready", cost: 10, costLabel: "10c", icon: ImageIcon, category: "image" },
   ],
   video: [
-    { id: "luma-ray-2", name: "Luma Ray 2", desc: "Premium video gen", cost: 50, icon: Film, category: "video" },
-    { id: "kling-video", name: "Kling Video", desc: "High quality video", cost: 50, icon: Video, category: "video" },
+    { id: "luma-ray-2", name: "Luma Ray 2", desc: "Premium video gen", cost: 50, costLabel: "50c", icon: Film, category: "video" },
+    { id: "kling-video", name: "Kling Video", desc: "High quality video", cost: 50, costLabel: "50c", icon: Video, category: "video" },
   ],
 } as const;
 
@@ -180,17 +180,16 @@ function ModelOption({
           <div className="text-[10px] text-zinc-500">{model.desc}</div>
         </div>
       </div>
-      {model.cost > 0 && (
+      {(model as AIModel).cost > 0 ? (
         <span className={cn(
           "text-[10px] px-1.5 py-0.5 rounded font-medium",
           canAfford 
             ? "bg-zinc-700 text-zinc-300" 
             : "bg-red-500/20 text-red-400"
         )}>
-          {model.cost}c
+          {'costLabel' in model ? (model as any).costLabel : `${(model as AIModel).cost}c`}
         </span>
-      )}
-      {model.cost === 0 && (
+      ) : (
         <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-medium">
           Free
         </span>
@@ -859,7 +858,7 @@ export function ChatInputBar({
                 Not Enough Credits
               </h3>
               <p className="text-sm text-zinc-400 text-center mb-4">
-                You need {selectedModel.cost}c to use {selectedModel.name}.
+                You need at least {selectedModel.cost}c to use {selectedModel.name}. Cost scales with complexity.
               </p>
               <div className="flex items-center justify-between px-3 py-2 bg-zinc-800/50 rounded-lg mb-4">
                 <span className="text-xs text-zinc-400">Balance</span>
