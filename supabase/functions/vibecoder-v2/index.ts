@@ -428,33 +428,44 @@ function autoCloseTruncatedFile(content: string, filePath: string): string | nul
 
   let fixed = content;
 
-  // Step 1: Close unclosed JSX tags (in reverse stack order)
-  const unclosedTags = getUnclosedJsxTags(fixed);
-  if (unclosedTags && unclosedTags.length > 0) {
-    const closingJsx = unclosedTags.reverse().map(t => `</${t}>`).join('\n      ');
-
-    // Insert closures inside component body (before `);`), not at file end.
-    // This avoids producing `</tag>` after `export default ...`.
-    const exportDefaultRegex = /\n\s*export\s+default\s+[A-Za-z0-9_$]+\s*;?\s*$/;
-    const exportMatch = fixed.match(exportDefaultRegex);
-    const splitIndex = exportMatch && exportMatch.index !== undefined ? exportMatch.index : fixed.length;
-
-    const head = fixed.slice(0, splitIndex);
-    const tail = fixed.slice(splitIndex);
-
-    // Prefer inserting before component close block: `);` then `}` or `};`
-    const componentClosePattern = /(\n\s*\);\s*\n\s*\}?\s*;?\s*)$/;
-    if (componentClosePattern.test(head)) {
-      fixed = `${head.replace(componentClosePattern, `\n      ${closingJsx}$1`)}${tail}`;
+  // Step 1: REMOVE orphan closing tags (closers without matching openers).
+  // These are the #1 cause of "Adjacent JSX elements" errors — the model
+  // truncates, and inserting closers at the wrong nesting level is worse
+  // than the original truncation. So we STRIP them instead.
+  const stripped = stripStringsAndCommentsServer(fixed);
+  const tagStack: string[] = [];
+  const orphanClosers: string[] = [];
+  const tagRegex = /<\/?([A-Za-z][A-Za-z0-9.]*)[^>]*?\/?>/g;
+  let tagMatch: RegExpExecArray | null;
+  while ((tagMatch = tagRegex.exec(stripped)) !== null) {
+    const fullMatch = tagMatch[0];
+    const tagName = tagMatch[1];
+    const matchIndex = tagMatch.index;
+    if (!tagName) continue;
+    if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
+    if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
+    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
+    const isSelfClosing = fullMatch.endsWith('/>');
+    const isClosing = fullMatch.startsWith('</');
+    if (isSelfClosing) continue;
+    if (isClosing) {
+      const idx = tagStack.lastIndexOf(tagName);
+      if (idx >= 0) {
+        tagStack.splice(idx, 1);
+      } else {
+        orphanClosers.push(tagName);
+      }
     } else {
-      // Fallback: insert before export default if present; otherwise append safely
-      const needsParenClose = (head.match(/\(/g) || []).length > (head.match(/\)/g) || []).length;
-      const needsBraceClose = (head.match(/\{/g) || []).length > (head.match(/\}/g) || []).length;
-      let patchedHead = `${head.trimEnd()}\n      ${closingJsx}`;
-      if (needsParenClose) patchedHead += '\n  );';
-      if (needsBraceClose) patchedHead += '\n}';
-      fixed = `${patchedHead}${tail}`;
+      if (SERVER_VOID_ELEMENTS.has(tagName.toLowerCase())) continue;
+      tagStack.push(tagName);
     }
+  }
+
+  // Remove each orphan closing tag occurrence from the source
+  for (const orphan of orphanClosers) {
+    // Remove the line containing the orphan closer (greedy: first match only)
+    const orphanLineRegex = new RegExp(`^\\s*</${orphan}>\\s*$`, 'm');
+    fixed = fixed.replace(orphanLineRegex, '');
   }
 
   // Step 2: Balance braces, parens, brackets
