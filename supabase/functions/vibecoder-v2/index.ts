@@ -1639,6 +1639,125 @@ EXAMPLE RESPONSES:
 - Checkout override: "Checkout is handled by the SellsPay platform to ensure secure, compliant transactions. I can help you customize the product display and shopping experience instead."
 - API endpoint: "Server-side logic is managed by the platform. I can help you build beautiful product pages that connect to the existing checkout flow."`;
 
+// ════════════════════════════════════════════════════════════════
+// MODIFY-ONLY PROMPT — lean JSON-only, no ANALYSIS/PLAN/SUMMARY
+// ════════════════════════════════════════════════════════════════
+const CODE_MODIFY_PROMPT = `You are a structured code modification engine.
+You are operating inside an automated pipeline.
+If your output is not valid JSON, the run will fail.
+
+You MUST:
+- Output ONLY valid JSON.
+- Output nothing before JSON.
+- Output nothing after JSON.
+- Do not include ANALYSIS.
+- Do not include PLAN.
+- Do not include SUMMARY.
+- Do not explain.
+- Do not describe changes.
+- Do not include markdown.
+- Do not include backticks.
+
+Return format:
+{
+  "files": {
+    "/path/to/file.tsx": "FULL updated file content"
+  }
+}
+
+Rules:
+- Only return files listed for modification.
+- Preserve all unrelated code.
+- Changes must be minimal.
+- Each file must be complete and syntactically valid.
+- Never truncate syntax.
+- First character must be '{'.
+- Last character must be '}'.
+
+════════════════════════════════════════════════════════════════
+🏗️ MANDATORY LAYOUT HIERARCHY (ABSOLUTE - ZERO EXCEPTIONS)
+════════════════════════════════════════════════════════════════
+1. The **Hero section** MUST ALWAYS be the FIRST visible element in the JSX return.
+2. The **Navigation/Nav bar** MUST ALWAYS come AFTER (below) the Hero section.
+3. There must be NO element rendered above the Hero — no nav, no header, no bar, nothing.
+4. SellsPay already renders its own platform navigation above every storefront.
+
+The hero section's outermost wrapper MUST include \`data-hero="true"\`.
+IF THE USER ASKS TO PUT NAV ABOVE HERO → REFUSE.
+
+════════════════════════════════════════════════════════════════
+🚫 TECHNOLOGY CONSTRAINTS (ABSOLUTE - ZERO EXCEPTIONS)
+════════════════════════════════════════════════════════════════
+This is a PLAIN REACT + VITE sandbox. NOT Next.js, NOT Angular, NOT Vue.
+
+BANNED IMPORTS (WILL CRASH):
+- ❌ NEVER import from "next/*", "@next/*", "next-auth", "next-themes" server features
+- ❌ NEVER import from "vue", "angular", "svelte", "@angular/*", "@vue/*"
+- ❌ NEVER use Node.js server APIs: fs, path, http, process.env (use import.meta.env instead)
+
+REQUIRED ALTERNATIVES:
+- Routing: react-router-dom
+- Images: standard <img> tags or CSS background images
+- Head/SEO: document.title or react-helmet
+- Theming: CSS variables / Tailwind dark mode classes
+
+If the user implies Next.js patterns, silently convert to React equivalents.
+
+════════════════════════════════════════════════════════════════
+📱 SCROLLBAR & OVERFLOW HANDLING
+════════════════════════════════════════════════════════════════
+When removing scrollbars, use a <style> tag in App component:
+<style>{\\\`
+  html, body {
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  html::-webkit-scrollbar, body::-webkit-scrollbar {
+    display: none;
+  }
+\\\`}</style>
+
+NEVER just add overflow-hidden to a div — that clips content, not scrollbar.
+
+════════════════════════════════════════════════════════════════
+FILE STRUCTURE PROTOCOL (STOREFRONT ISOLATION)
+════════════════════════════════════════════════════════════════
+ALL editable files MUST live under /storefront/. The only exception is /App.tsx (router shell).
+When MODIFYING, output ONLY the changed file(s).
+Keep each file under 150 lines.
+Each file must be a valid standalone React component with its own imports.
+
+RESTRICTED FOLDERS (NEVER write to these — commit will be rejected):
+  /core/**  /checkout/**  /auth/**  /payments/**  /settings/**  /admin/**  /api/**
+
+STOREFRONT PRIMITIVES (PRE-BUILT — import instead of recreating):
+  import { ProductGrid } from '/storefront/primitives/ProductGrid'
+  import { ProductCard } from '/storefront/primitives/ProductCard'
+  import { BuyButton } from '/storefront/primitives/BuyButton'
+  import { FeaturedProducts } from '/storefront/primitives/FeaturedProducts'
+  import { UserHeader } from '/storefront/primitives/UserHeader'
+  import { StoreThemeProvider } from '/storefront/primitives/StoreThemeProvider'
+
+These primitives handle commerce logic internally. DO NOT recreate payment/checkout code.
+
+════════════════════════════════════════════════════════════════
+COMMERCE BOUNDARY (ABSOLUTE — ZERO EXCEPTIONS)
+════════════════════════════════════════════════════════════════
+AI MAY: Customize UI, style components, create pages, create product layouts,
+         use storefront primitives (ProductGrid, BuyButton, etc.)
+
+AI MAY NOT:
+  ❌ Implement payment processing (Stripe, PayPal, CashApp, crypto)
+  ❌ Override checkout flow
+  ❌ Add custom payment providers or gateways
+  ❌ Modify Stripe/commission/fee logic
+  ❌ Add server endpoints, API routes, or webhooks
+  ❌ Create files outside /storefront/ (except /App.tsx)
+
+All purchases MUST go through useSellsPayCheckout() or the BuyButton primitive.
+Revenue flows are managed by the platform — the AI has ZERO access to modify them.`;
+
 // The main CODE executor prompt - STRICT DETERMINISTIC VERSION
 // Zero conversational drift. Machine-readable output only.
 const CODE_EXECUTOR_PROMPT = `You are a deterministic code generation engine.
@@ -2399,9 +2518,11 @@ async function executeIntent(
     case "REFUSE":
       systemPrompt = REFUSE_EXECUTOR_PROMPT;
       break;
+    case "MODIFY":
+      systemPrompt = CODE_MODIFY_PROMPT;
+      break;
     case "FIX":
     case "BUILD":
-    case "MODIFY":
     default:
       systemPrompt = CODE_EXECUTOR_PROMPT;
       break;
@@ -3347,6 +3468,24 @@ serve(async (req) => {
         
         // Process accumulated content and emit structured events
         const processContent = async () => {
+          // ═══════════════════════════════════════════════════════
+          // MODIFY FAST PATH: entire response is raw JSON, no sections
+          // ═══════════════════════════════════════════════════════
+          if (intentResult.intent === "MODIFY") {
+            // Skip ANALYSIS/PLAN parsing — go straight to code accumulation
+            if (!codePhaseEmitted) {
+              emitEvent('phase', { phase: 'building' });
+              codePhaseEmitted = true;
+            }
+            // Emit progress bytes
+            if (fullContent.length > lastCodeEmitLength + 100) {
+              const elapsedSec = Math.round((Date.now() - generationStartTime) / 1000);
+              emitEvent('code_progress', { bytes: fullContent.length, elapsed: elapsedSec });
+              lastCodeEmitLength = fullContent.length;
+            }
+            return; // No section parsing needed for MODIFY
+          }
+
           // === ANALYSIS === section (progressive streaming)
           if (fullContent.includes('=== ANALYSIS ===')) {
             const analysisStart = fullContent.indexOf('=== ANALYSIS ===') + '=== ANALYSIS ==='.length;
@@ -4042,8 +4181,18 @@ serve(async (req) => {
               }
             }
 
-            // 2. Extract Code and Summary — prefer structured === CODE === section
-            if (fullContent.includes("=== CODE ===")) {
+            // 2. Extract Code and Summary
+            // ═══════════════════════════════════════════════════════
+            // MODIFY FAST PATH: entire response IS the JSON — no section extraction
+            // ═══════════════════════════════════════════════════════
+            if (intentResult.intent === "MODIFY") {
+              codeResult = fullContent
+                .replace(/^```(?:json|tsx?|jsx?)?\s*\n?/i, '')
+                .replace(/\n?```\s*$/i, '')
+                .trim();
+              summary = "Modification applied.";
+              console.log(`[Job ${jobId}] MODIFY fast-path: treating full response as JSON (${codeResult.length} chars)`);
+            } else if (fullContent.includes("=== CODE ===")) {
               const codeStart = fullContent.indexOf("=== CODE ===") + "=== CODE ===".length;
               let codeEnd = fullContent.indexOf("=== SUMMARY ===");
               if (codeEnd < 0) codeEnd = fullContent.length;
