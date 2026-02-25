@@ -2808,9 +2808,34 @@ If the request says "change X", change ONLY X and nothing else.
         codeContext = `Here is the current code:\n\n${currentCode}`;
       }
 
+      // ═══════════════════════════════════════════════════════════════
+      // CONDITIONAL INJECTION: MODIFY gets lean context, BUILD/FIX get full suite
+      // ═══════════════════════════════════════════════════════════════
+      const PRODUCT_KEYWORDS = [
+        "product", "products", "pricing", "price", "store", "shop",
+        "catalog", "checkout", "cart", "inventory", "sku",
+        "subscription", "plan", "plans", "tier", "tiers"
+      ];
+      
+      function shouldInjectProducts(p: string): boolean {
+        const lower = p.toLowerCase();
+        return PRODUCT_KEYWORDS.some(kw => lower.includes(kw));
+      }
+
+      let injectionPrefix: string;
+      if (intent.intent === "MODIFY") {
+        // Lean injection: brand memory + intent only, conditionally add products
+        const productsPart = shouldInjectProducts(prompt) ? productsInjection : '';
+        injectionPrefix = `${brandMemoryInjection}${intentInjection}${productsPart}`;
+        console.log(`[ConditionalInjection] MODIFY intent — lean injection (products: ${productsPart ? 'YES' : 'SKIPPED'})`);
+      } else {
+        // Full injection for BUILD / FIX
+        injectionPrefix = `${modeInjection}${brandMemoryInjection}${brandLayerInjection}${intentInjection}${microInjection}${creatorInjection}${productsInjection}`;
+      }
+
       messages.push({
         role: "user",
-        content: `${modeInjection}${brandMemoryInjection}${brandLayerInjection}${intentInjection}${microInjection}${creatorInjection}${productsInjection}${resolvedTargetContext}${minimalDiffReminder}${codeContext}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
+        content: `${injectionPrefix}${resolvedTargetContext}${minimalDiffReminder}${codeContext}\n\nNow, apply this SPECIFIC change and NOTHING ELSE: ${prompt}`,
       });
     } else {
       // First build (REPLACE mode) — skip ANALYSIS/PLAN to reduce token burden and avoid timeouts
