@@ -568,13 +568,18 @@ export function useVibecoderProjects() {
 
   // Select project - also syncs URL so refresh lands on the same project
   const selectProject = useCallback((projectId: string) => {
+    if (projectId === activeProjectId) return;
+
+    // Immediately mark messages as loading + clear old buffer to prevent stale snapshot hydration.
+    setMessagesLoading(true);
+    setMessages([]);
     setActiveProjectId(projectId);
 
     // Sync URL query param for refresh consistency
     const url = new URL(window.location.href);
     url.searchParams.set('project', projectId);
     window.history.replaceState(null, '', url.toString());
-  }, []);
+  }, [activeProjectId]);
 
   // Clear active project - used for "Fresh Start" flow
   const clearActiveProject = useCallback(() => {
