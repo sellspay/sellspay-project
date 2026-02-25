@@ -197,19 +197,34 @@ export function ProfileMenu({
                 <ChevronRight size={14} className="text-zinc-600" />
               </div>
             </div>
-            {/* Progress bar */}
-            <div className="mt-2 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-              <div 
-                className="h-full rounded-full bg-primary transition-all duration-500"
-                style={{ 
-                  width: `${Math.min((userCredits / (subscriptionTier === 'agency' ? 1500 : subscriptionTier === 'creator' ? 500 : subscriptionTier === 'basic' ? 100 : 5)) * 100, 100)}%` 
-                }}
-              />
-            </div>
+            {/* Segmented progress bar */}
+            {(() => {
+              const maxCredits = subscriptionTier === 'agency' ? 1500 : subscriptionTier === 'creator' ? 500 : subscriptionTier === 'basic' ? 100 : 5;
+              const ratio = Math.min(userCredits / maxCredits, 1);
+              const usedRatio = 1 - ratio;
+              return (
+                <div className="mt-2 h-1.5 bg-zinc-800 rounded-full overflow-hidden flex">
+                  <div 
+                    className="h-full rounded-l-full transition-all duration-500"
+                    style={{ 
+                      width: `${ratio * 60}%`,
+                      background: 'linear-gradient(90deg, #7c3aed, #6d28d9)'
+                    }}
+                  />
+                  <div 
+                    className="h-full transition-all duration-500"
+                    style={{ 
+                      width: `${ratio * 40}%`,
+                      background: 'linear-gradient(90deg, #3b82f6, #2563eb)'
+                    }}
+                  />
+                </div>
+              );
+            })()}
             <p className="text-xs text-zinc-500 flex items-center gap-1.5 mt-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
               {subscriptionTier && subscriptionTier !== 'browser'
-                ? "Using subscription credits"
+                ? "Using rollover credits"
                 : "Using free credits"}
             </p>
           </button>
