@@ -314,16 +314,20 @@ export function StudioSidebar({
                     {/* Progress bar */}
                     {!isLoadingCredits && (
                       <>
-                        <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all duration-500"
-                            style={{ width: `${Math.min(100, (creditBalance / (plan === 'agency' ? 1500 : plan === 'creator' ? 500 : plan === 'basic' ? 100 : 5)) * 100)}%` }}
-                          />
-                        </div>
+                        {(() => {
+                          const maxCredits = plan === 'agency' ? 1500 : plan === 'creator' ? 500 : plan === 'basic' ? 100 : 5;
+                          const ratio = Math.min(creditBalance / maxCredits, 1);
+                          return (
+                            <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden flex">
+                              <div className="h-full rounded-l-full transition-all duration-500" style={{ width: `${ratio * 60}%`, background: 'linear-gradient(90deg, hsl(263 70% 50%), hsl(263 67% 42%))' }} />
+                              <div className="h-full transition-all duration-500" style={{ width: `${ratio * 40}%`, background: 'linear-gradient(90deg, hsl(217 91% 60%), hsl(217 91% 53%))' }} />
+                            </div>
+                          );
+                        })()}
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
                           {plan && plan !== 'browser'
-                            ? "Using subscription credits"
+                            ? "Using rollover credits"
                             : "Using free credits"}
                         </p>
                       </>
