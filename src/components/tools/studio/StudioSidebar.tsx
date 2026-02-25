@@ -317,7 +317,7 @@ export function StudioSidebar({
                         <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
                           <div
                             className="h-full rounded-full bg-primary transition-all duration-500"
-                            style={{ width: `${Math.min(100, (creditBalance / Math.max(creditBalance, 100)) * 100)}%` }}
+                            style={{ width: `${Math.min(100, (creditBalance / (plan === 'agency' ? 1500 : plan === 'creator' ? 500 : plan === 'basic' ? 100 : 5)) * 100)}%` }}
                           />
                         </div>
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5">

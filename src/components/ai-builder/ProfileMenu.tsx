@@ -202,7 +202,7 @@ export function ProfileMenu({
               <div 
                 className="h-full rounded-full bg-primary transition-all duration-500"
                 style={{ 
-                  width: `${Math.min((userCredits / (subscriptionTier === 'agency' ? 12000 : subscriptionTier === 'creator' ? 2500 : 100)) * 100, 100)}%` 
+                  width: `${Math.min((userCredits / (subscriptionTier === 'agency' ? 1500 : subscriptionTier === 'creator' ? 500 : subscriptionTier === 'basic' ? 100 : 5)) * 100, 100)}%` 
                 }}
               />
             </div>
