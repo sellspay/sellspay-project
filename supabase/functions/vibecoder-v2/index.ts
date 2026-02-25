@@ -338,6 +338,7 @@ function stripStringsAndCommentsServer(code: string): string {
 function checkJsxTagBalanceServer(code: string): string | null {
   const stripped = stripStringsAndCommentsServer(code);
   const tagStack: string[] = [];
+  const unexpectedClosings: string[] = [];
   const tagRegex = /<\/?([A-Za-z][A-Za-z0-9.]*)[^>]*?\/?>/g;
   let match: RegExpExecArray | null;
 
@@ -363,13 +364,18 @@ function checkJsxTagBalanceServer(code: string): string | null {
       const idx = tagStack.lastIndexOf(tagName);
       if (idx >= 0) {
         tagStack.splice(idx, 1);
+      } else {
+        unexpectedClosings.push(tagName);
       }
-      // If no matching opening tag, just ignore (could be a false positive)
       continue;
     } else {
       if (SERVER_VOID_ELEMENTS.has(tagName.toLowerCase())) continue;
       tagStack.push(tagName);
     }
+  }
+
+  if (unexpectedClosings.length > 0) {
+    return `Unexpected closing JSX tag(s): ${unexpectedClosings.slice(0, 3).map(t => `</${t}>`).join(', ')} — ${unexpectedClosings.length} unexpected`;
   }
 
   if (tagStack.length > 0) {
@@ -425,24 +431,29 @@ function autoCloseTruncatedFile(content: string, filePath: string): string | nul
   // Step 1: Close unclosed JSX tags (in reverse stack order)
   const unclosedTags = getUnclosedJsxTags(fixed);
   if (unclosedTags && unclosedTags.length > 0) {
-    // Find the last line of actual code
-    const lines = fixed.trimEnd().split('\n');
     const closingJsx = unclosedTags.reverse().map(t => `</${t}>`).join('\n      ');
-    
-    // Insert closing tags before the component's closing structure
-    // Look for the pattern: "  );\n}" at the end
-    const endPattern = /(\s*\);\s*\n\s*\}\s*$)/;
-    if (endPattern.test(fixed)) {
-      // Insert before the closing );  }
-      fixed = fixed.replace(endPattern, `\n      ${closingJsx}$1`);
+
+    // Insert closures inside component body (before `);`), not at file end.
+    // This avoids producing `</tag>` after `export default ...`.
+    const exportDefaultRegex = /\n\s*export\s+default\s+[A-Za-z0-9_$]+\s*;?\s*$/;
+    const exportMatch = fixed.match(exportDefaultRegex);
+    const splitIndex = exportMatch && exportMatch.index !== undefined ? exportMatch.index : fixed.length;
+
+    const head = fixed.slice(0, splitIndex);
+    const tail = fixed.slice(splitIndex);
+
+    // Prefer inserting before component close block: `);` then `}` or `};`
+    const componentClosePattern = /(\n\s*\);\s*\n\s*\}?\s*;?\s*)$/;
+    if (componentClosePattern.test(head)) {
+      fixed = `${head.replace(componentClosePattern, `\n      ${closingJsx}$1`)}${tail}`;
     } else {
-      // Just append the tags + proper component closure
-      const needsParenClose = (fixed.match(/\(/g) || []).length > (fixed.match(/\)/g) || []).length;
-      const needsBraceClose = (fixed.match(/\{/g) || []).length > (fixed.match(/\}/g) || []).length;
-      
-      fixed += `\n      ${closingJsx}`;
-      if (needsParenClose) fixed += '\n  );';
-      if (needsBraceClose) fixed += '\n}';
+      // Fallback: insert before export default if present; otherwise append safely
+      const needsParenClose = (head.match(/\(/g) || []).length > (head.match(/\)/g) || []).length;
+      const needsBraceClose = (head.match(/\{/g) || []).length > (head.match(/\}/g) || []).length;
+      let patchedHead = `${head.trimEnd()}\n      ${closingJsx}`;
+      if (needsParenClose) patchedHead += '\n  );';
+      if (needsBraceClose) patchedHead += '\n}';
+      fixed = `${patchedHead}${tail}`;
     }
   }
 
