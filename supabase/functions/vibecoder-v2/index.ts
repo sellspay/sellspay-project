@@ -4749,28 +4749,58 @@ serve(async (req) => {
                   if (!syntaxCheck.valid) {
                     console.warn(`[Job ${jobId}] GATE 4: ${syntaxCheck.errors.length} syntax error(s) in delta: ${syntaxCheck.errors.map(e => `${e.file}: ${e.error}`).join(' | ')}`);
                     
-                    // Attempt robust batch auto-repair (retry + lateral fallback)
+                    // Two-phase repair: single-file first (more reliable), batch fallback
                     const repairConfig = MODEL_CONFIG[model] || MODEL_CONFIG["vibecoder-flash"] || MODEL_CONFIG["vibecoder-pro"];
-                    const batchRepair = await batchCompileFix(deltaForSyntax, repairConfig, emitEvent);
-
-                    if (!batchRepair.success) {
-                      const errSummary = batchRepair.remainingErrors.map(e => `${e.file}: ${e.error}`).join(' | ');
-                      console.error(`[Job ${jobId}] GATE 4 FAIL: Syntax errors persist after batch repair (${batchRepair.attempts} attempt(s)): ${errSummary}`);
+                    
+                    // Phase 1: Individual file repair (works better for 1-2 files)
+                    let allFixed = true;
+                    for (const err of syntaxCheck.errors) {
+                      try {
+                        const fixed = await repairBrokenFile(err.file, deltaForSyntax[err.file] || "", err.error, repairConfig);
+                        if (fixed && fixed.trim().length > 20) {
+                          const recheck = validateFileSyntaxServer(fixed, err.file);
+                          if (!recheck) {
+                            deltaForSyntax[err.file] = fixed;
+                            console.log(`[Job ${jobId}] GATE 4 REPAIR: ✅ Fixed ${err.file}`);
+                          } else {
+                            console.warn(`[Job ${jobId}] GATE 4 REPAIR: Repair of ${err.file} still has errors: ${recheck}`);
+                            allFixed = false;
+                          }
+                        } else {
+                          allFixed = false;
+                        }
+                      } catch (repairErr) {
+                        console.warn(`[Job ${jobId}] GATE 4 REPAIR: Failed for ${err.file}:`, repairErr);
+                        allFixed = false;
+                      }
+                    }
+                    
+                    // Phase 2: If individual repair failed, try batch with lateral fallback
+                    if (!allFixed) {
+                      const recheckMid = validateAllFilesServer(deltaForSyntax);
+                      if (!recheckMid.valid) {
+                        console.log(`[Job ${jobId}] GATE 4: Individual repair incomplete, trying batch...`);
+                        const batchRepair = await batchCompileFix(deltaForSyntax, repairConfig, emitEvent);
+                        if (batchRepair.success) {
+                          deltaForSyntax = batchRepair.fileMap;
+                          console.log(`[Job ${jobId}] GATE 4: Batch repair succeeded`);
+                        }
+                      }
+                    }
+                    
+                    // Final check
+                    const recheckAll = validateAllFilesServer(deltaForSyntax);
+                    if (!recheckAll.valid) {
+                      const errSummary = recheckAll.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
+                      console.error(`[Job ${jobId}] GATE 4 FAIL: Syntax errors persist after all repair attempts: ${errSummary}`);
                       validationError = { errorType: 'COMPILE_FAILURE', errorMessage: `Code has syntax errors: ${errSummary}` };
                       jobStatus = "failed";
                       terminalReason = "compile_failure";
-                      emitEvent('error', {
-                        code: 'COMPILE_FAILURE',
-                        message: `Syntax errors in generated code after ${batchRepair.attempts} repair attempt(s): ${errSummary}`,
-                        attempts: batchRepair.attempts,
-                        files: batchRepair.remainingErrors.map(e => e.file),
-                      });
+                      emitEvent('error', { code: 'COMPILE_FAILURE', message: `Syntax errors in generated code: ${errSummary}` });
                     } else {
-                      deltaForSyntax = batchRepair.fileMap;
-
                       // Update codeResult with repaired files
                       codeResult = JSON.stringify({ files: deltaForSyntax });
-                      console.log(`[Job ${jobId}] GATE 4 PASS: Syntax repaired server-side in ${batchRepair.attempts} attempt(s)`);
+                      console.log(`[Job ${jobId}] GATE 4 PASS: All syntax errors repaired server-side`);
 
                       // Re-merge with existing files
                       const existingFiles: Record<string, string> = projectFiles && typeof projectFiles === 'object'
