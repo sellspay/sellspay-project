@@ -961,15 +961,63 @@ async function validateIntent(
 // LEGACY VALIDATION (kept for backward compat but simplified)
 // ═══════════════════════════════════════════════════════════════
 
-// Fair Pricing Economy (8x reduction from original)
+// Dynamic Pricing Economy — cost scales with output complexity
+// Base costs are minimums; actual cost computed post-generation from token output
 const CREDIT_COSTS: Record<string, number> = {
-  "vibecoder-pro": 3, // Gemini Pro
+  "vibecoder-pro": 3, // Gemini Pro — base minimum
   "vibecoder-flash": 0, // Free tier for small edits
-  "vibecoder-claude": 5, // Claude Sonnet (premium)
-  "vibecoder-gpt4": 5, // GPT-4o (premium)
-  "vibecoder-gpt41": 5, // GPT-4.1 (premium)
-  "reasoning-o1": 8, // Deep reasoning (expensive)
+  "vibecoder-claude": 5, // Claude Sonnet (premium) — base minimum
+  "vibecoder-gpt4": 5, // GPT-4o (premium) — base minimum
+  "vibecoder-gpt41": 5, // GPT-4.1 (premium) — base minimum
+  "reasoning-o1": 8, // Deep reasoning (expensive) — base minimum
 };
+
+// Pre-charge: small upfront deduction to validate wallet, rest charged after generation
+const PRE_CHARGE_AMOUNT = 1; // 1 credit pre-charge for all models
+
+// Dynamic cost calculation based on output size (chars → approximate tokens)
+// ~4 chars per token, cost per 1K output tokens varies by model tier
+const MODEL_COST_PER_1K_OUTPUT: Record<string, number> = {
+  "vibecoder-pro": 0.5,    // 0.5 credits per 1K output tokens
+  "vibecoder-flash": 0,     // Free
+  "vibecoder-claude": 0.8,  // 0.8 credits per 1K output tokens
+  "vibecoder-gpt4": 0.8,    // 0.8 credits per 1K output tokens
+  "vibecoder-gpt41": 0.8,   // 0.8 credits per 1K output tokens
+  "reasoning-o1": 1.2,      // 1.2 credits per 1K output tokens
+};
+
+// Min/max bounds per model to keep pricing predictable
+const MODEL_MIN_COST: Record<string, number> = {
+  "vibecoder-pro": 1,
+  "vibecoder-flash": 0,
+  "vibecoder-claude": 2,
+  "vibecoder-gpt4": 2,
+  "vibecoder-gpt41": 2,
+  "reasoning-o1": 3,
+};
+const MODEL_MAX_COST: Record<string, number> = {
+  "vibecoder-pro": 10,
+  "vibecoder-flash": 0,
+  "vibecoder-claude": 15,
+  "vibecoder-gpt4": 15,
+  "vibecoder-gpt41": 15,
+  "reasoning-o1": 20,
+};
+
+/**
+ * Calculate dynamic cost from output size.
+ * Simple "change button color" → ~500 chars → ~125 tokens → ~0.06 credits → rounds to min (1)
+ * Complex "rebuild storefront" → ~30K chars → ~7500 tokens → ~3.75 credits → 4
+ */
+function calculateDynamicCost(model: string, outputChars: number): number {
+  if (model === "vibecoder-flash") return 0;
+  const approxTokens = Math.ceil(outputChars / 4);
+  const costPer1K = MODEL_COST_PER_1K_OUTPUT[model] ?? 0.5;
+  const rawCost = Math.ceil((approxTokens / 1000) * costPer1K);
+  const minCost = MODEL_MIN_COST[model] ?? 1;
+  const maxCost = MODEL_MAX_COST[model] ?? 10;
+  return Math.max(minCost, Math.min(maxCost, rawCost));
+}
 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
@@ -2599,7 +2647,8 @@ serve(async (req) => {
     }
 
     const userId = userData.user.id;
-    const cost = CREDIT_COSTS[model] ?? 3; // Default to pro cost
+    const cost = CREDIT_COSTS[model] ?? 3; // Base cost (used as pre-check minimum)
+    const preChargeAmount = model === "vibecoder-flash" ? 0 : PRE_CHARGE_AMOUNT;
 
     // Check if user is admin/owner (bypasses credit checks)
     const { data: isPrivileged } = await supabase.rpc("has_role", {
@@ -2612,9 +2661,10 @@ serve(async (req) => {
     });
     const bypassCredits = isPrivileged === true || isAdmin === true;
 
-    // Only deduct if cost > 0 (flash is free) AND user is not privileged
-    if (cost > 0 && !bypassCredits) {
-      // Get current balance
+    // DYNAMIC BILLING: Pre-charge minimum to validate wallet, then charge remainder post-generation
+    if (preChargeAmount > 0 && !bypassCredits) {
+      // Get current balance — check against MODEL MINIMUM (not base cost)
+      const minCost = MODEL_MIN_COST[model] ?? 1;
       const { data: wallet, error: walletError } = await supabase
         .from("user_wallets")
         .select("balance")
@@ -2628,12 +2678,12 @@ serve(async (req) => {
 
       const currentBalance = wallet?.balance ?? 0;
 
-      if (currentBalance < cost) {
+      if (currentBalance < minCost) {
         return new Response(
           JSON.stringify({
             error: "INSUFFICIENT_CREDITS",
-            message: `Insufficient credits. You have ${currentBalance}, but this costs ${cost}.`,
-            required: cost,
+            message: `Insufficient credits. You have ${currentBalance}, but this costs at least ${minCost}.`,
+            required: minCost,
             available: currentBalance,
           }),
           {
@@ -2643,15 +2693,15 @@ serve(async (req) => {
         );
       }
 
-      // Deduct credits using the secure RPC function
+      // Pre-charge: deduct 1 credit to lock in the generation
       const { data: deductSuccess, error: deductError } = await supabase.rpc("deduct_credits", {
         p_user_id: userId,
-        p_amount: cost,
-        p_action: "vibecoder_gen",
+        p_amount: preChargeAmount,
+        p_action: "vibecoder_gen_precharge",
       });
 
       if (deductError) {
-        console.error("Credit deduction error:", deductError);
+        console.error("Credit pre-charge error:", deductError);
         throw new Error("Failed to deduct credits");
       }
 
@@ -2669,9 +2719,9 @@ serve(async (req) => {
       }
 
       chargedUserId = userId;
-      chargedCredits = cost;
+      chargedCredits = preChargeAmount; // Track pre-charge for refund if needed
 
-      console.log(`Deducted ${cost} credits from user ${userId} for model ${model}`);
+      console.log(`[DYNAMIC_BILLING] Pre-charged ${preChargeAmount} credit from user ${userId} for model ${model} (final cost computed post-generation)`);
     }
 
     // ════════════════════════════════════════════════════════════
@@ -3505,6 +3555,38 @@ serve(async (req) => {
             model,
           };
           console.log(`[Telemetry] ${JSON.stringify(telemetry)}`);
+
+          // ════════════════════════════════════════════════════════
+          // DYNAMIC BILLING: Post-generation charge based on output size
+          // Pre-charge was 1 credit; now compute real cost and charge remainder
+          // ════════════════════════════════════════════════════════
+          if (chargedUserId && !bypassCredits && model !== "vibecoder-flash") {
+            const dynamicCost = calculateDynamicCost(model, fullContent.length);
+            const remainder = dynamicCost - chargedCredits; // chargedCredits = pre-charge (1)
+            
+            if (remainder > 0) {
+              // Charge the difference
+              const { data: remainderSuccess, error: remainderError } = await supabase.rpc("deduct_credits", {
+                p_user_id: chargedUserId,
+                p_amount: remainder,
+                p_action: "vibecoder_gen_dynamic",
+              });
+              
+              if (remainderError || !remainderSuccess) {
+                // If remainder charge fails (insufficient), the generation still goes through
+                // but we log it — the pre-charge already covered the minimum
+                console.warn(`[DYNAMIC_BILLING] Remainder charge failed (${remainder} credits). Pre-charge (${chargedCredits}) stands.`);
+              } else {
+                chargedCredits += remainder; // Update total for accurate refund if needed
+                console.log(`[DYNAMIC_BILLING] ✅ Final cost: ${dynamicCost} credits (pre-charge: ${PRE_CHARGE_AMOUNT} + remainder: ${remainder}) | Output: ${fullContent.length} chars (~${Math.ceil(fullContent.length / 4)} tokens)`);
+              }
+            } else {
+              console.log(`[DYNAMIC_BILLING] ✅ Final cost: ${dynamicCost} credits (covered by pre-charge of ${chargedCredits}) | Output: ${fullContent.length} chars`);
+            }
+            
+            // Emit the final cost to the client so UI can display it
+            emitEvent('billing', { cost: chargedCredits, outputTokens: Math.ceil(fullContent.length / 4), model });
+          }
 
           // ════════════════════════════════════════════════════════
           // BRAND MEMORY: Auto-update brand_identity if AI evolved it
