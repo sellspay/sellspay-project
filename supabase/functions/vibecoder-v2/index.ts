@@ -2225,8 +2225,8 @@ async function classifyIntent(
     if (upperContent.includes("QUESTION")) {
       return { reasoning: "Detected question pattern", intent: "QUESTION", interactionMode: "vision", confidence: 0.6, context_needed: false };
     }
-    if (upperContent.includes("FIX") || upperContent.includes("ERROR")) {
-      return { reasoning: "Detected error pattern", intent: "FIX", interactionMode: "developer", confidence: 0.6, context_needed: true };
+    if (upperContent.includes("FIX") || upperContent.includes("ERROR") || upperContent.includes("CRITICAL_ERROR_REPORT") || upperContent.includes("SYNTAXERROR") || upperContent.includes("UNCLOSED") || upperContent.includes("TYPEERROR") || upperContent.includes("REFERENCEERROR") || upperContent.includes("UNEXPECTED TOKEN")) {
+      return { reasoning: "Detected error/fix pattern", intent: "FIX", interactionMode: "developer", confidence: 0.7, context_needed: true };
     }
     if (upperContent.includes("REFUSE")) {
       return { reasoning: "Detected prohibited request", intent: "REFUSE", interactionMode: "vision", confidence: 0.6, context_needed: false };
@@ -4328,10 +4328,41 @@ serve(async (req) => {
               // Chat-only response — no code expected
               summary = fullContent.replace("/// TYPE: CHAT ///", "").trim();
             } else {
-              // ZERO-TRUST: Do NOT treat raw fullContent as code
-              // Only use it as summary text
-              summary = fullContent.length > 200 ? fullContent.substring(0, 200) + '...' : fullContent;
-              console.warn(`[Job ${jobId}] ZERO-TRUST: No structured sections found. Raw content treated as summary only.`);
+              // AUTO-DETECT: Rescue valid JSON code even if intent was misclassified
+              // This prevents NO_CODE_PRODUCED false negatives when model returns
+              // valid file maps but intent routing skipped the fast-path
+              const trimmedFull = fullContent.trim();
+              let rescued = false;
+              if (trimmedFull.startsWith('{')) {
+                try {
+                  const parsed = JSON.parse(trimmedFull);
+                  if (parsed?.files && typeof parsed.files === 'object') {
+                    // Wrapped format: { "files": { "/path": "content" } } or { "files": [...] }
+                    codeResult = trimmedFull;
+                    summary = intentResult.intent === "FIX" ? "Fix applied." : "Changes applied.";
+                    rescued = true;
+                    console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: Found valid { files } JSON in unstructured response. Intent was ${intentResult.intent}.`);
+                  } else {
+                    // Check direct file map format: { "/path.tsx": "content", ... }
+                    const keys = Object.keys(parsed);
+                    if (keys.length > 0 && keys.some(k => k.endsWith('.tsx') || k.endsWith('.ts') || k.endsWith('.css') || k.endsWith('.html') || k.endsWith('.json'))) {
+                      codeResult = trimmedFull;
+                      summary = "Changes applied.";
+                      rescued = true;
+                      console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: Found direct file map JSON (${keys.length} files) in unstructured response.`);
+                    }
+                  }
+                } catch {
+                  // Not valid JSON, fall through to summary treatment
+                }
+              }
+
+              if (!rescued) {
+                // ZERO-TRUST: Do NOT treat raw fullContent as code
+                // Only use it as summary text
+                summary = fullContent.length > 200 ? fullContent.substring(0, 200) + '...' : fullContent;
+                console.warn(`[Job ${jobId}] ZERO-TRUST: No structured sections found. Raw content treated as summary only.`);
+              }
             }
 
             // ═══════════════════════════════════════════════════════
