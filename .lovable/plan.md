@@ -1,59 +1,83 @@
 
 
-# Conditional Injection for MODIFY Intent
+# Fix: FIX Intent Code Extraction Failure
 
-## What Changes
+## Problem
+When the FIX intent generates valid JSON code, the pipeline reports `NO_CODE_PRODUCED` and rejects it. The model IS producing code, but it's being discarded.
 
-**Single file**: `supabase/functions/vibecoder-v2/index.ts`
+## Root Cause Analysis
+The `summary` field in the completed job contains the JSON (`{ "files": { "/storefront/..." } }`), which means `codeResult` was never set. This happens when:
 
-### 1. Add product keyword detection (~line 2780, before injection assembly)
+1. **Intent misclassification**: The intent classifier may return something other than "FIX" for auto-triggered error repairs (e.g., if the error prompt doesn't strongly match FIX patterns). When intent != FIX/MODIFY, the fast-path at line 4281 is skipped, and the response falls to the `else` branch (line 4331) which treats the entire response as summary text only.
 
-Add a simple keyword list and detection function:
+2. **No fallback**: Even when the raw `fullContent` is clearly valid JSON with a `files` key, the non-fast-path branches don't attempt to detect and extract it.
 
-```typescript
-const PRODUCT_KEYWORDS = [
-  "product", "products", "pricing", "price", "store", "shop",
-  "catalog", "checkout", "cart", "inventory", "sku",
-  "subscription", "plan", "plans", "tier", "tiers"
-];
+## Solution: Two-Part Fix
 
-function shouldInjectProducts(prompt: string): boolean {
-  const lower = prompt.toLowerCase();
-  return PRODUCT_KEYWORDS.some(keyword => lower.includes(keyword));
+### Part 1: Add JSON Auto-Detection Fallback (Backend)
+
+In the post-stream extraction logic (around line 4327-4335), before the final `else` branch that discards content as summary, add a JSON auto-detection check:
+
+```text
+} else {
+  // NEW: Auto-detect raw JSON file maps regardless of intent
+  // Catches cases where intent was misclassified but model 
+  // still returned valid code JSON
+  const trimmedFull = fullContent.trim();
+  if (trimmedFull.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmedFull);
+      if (parsed?.files && typeof parsed.files === 'object') {
+        codeResult = trimmedFull;
+        summary = intentResult.intent === "FIX" 
+          ? "Fix applied." 
+          : "Changes applied.";
+        // log the rescue
+      } else {
+        // Check direct file map format
+        const keys = Object.keys(parsed);
+        if (keys.some(k => k.endsWith('.tsx') || ...)) {
+          codeResult = trimmedFull;
+          summary = "Changes applied.";
+        }
+      }
+    } catch { /* not JSON, fall through */ }
+  }
+  
+  // Only treat as summary if we couldn't extract code
+  if (!codeResult) {
+    summary = fullContent.length > 200 
+      ? fullContent.substring(0, 200) + '...' 
+      : fullContent;
+  }
 }
 ```
 
-### 2. Branch the injection assembly at line 2813
+This ensures that even if intent classification is wrong, valid JSON code is never thrown away.
 
-Currently all intents get the same injection string. Change the MODIFY path to use a lean context:
+### Part 2: Harden Intent Classifier for FIX Detection
 
-**For MODIFY** (when `intent.intent === "MODIFY"`):
-- Always include: `brandMemoryInjection`, `intentInjection`
-- Conditionally include: `productsInjection` (only if prompt matches product keywords)
-- Drop: `modeInjection`, `brandLayerInjection`, `creatorInjection`, `microInjection`
+In the keyword fallback parser (around line 2228), strengthen FIX detection for auto-generated error prompts. These typically contain patterns like `CRITICAL_ERROR_REPORT`, `SyntaxError`, `Unclosed JSX`, `TypeError`, etc. Add these patterns to the FIX detection:
 
-This reduces MODIFY injection from ~1,500-4,000 tokens down to ~400-800 tokens for non-product changes.
+```text
+if (upperContent.includes("FIX") || 
+    upperContent.includes("ERROR") ||
+    upperContent.includes("CRITICAL_ERROR_REPORT") ||
+    upperContent.includes("SYNTAXERROR") ||
+    upperContent.includes("UNCLOSED") ||
+    upperContent.includes("TYPEERROR")) {
+  return { intent: "FIX", ... };
+}
+```
 
-**For BUILD/FIX**: No change -- they keep the full injection suite.
+## Files to Modify
 
-### 3. Token savings breakdown
+- `supabase/functions/vibecoder-v2/index.ts`
+  - Add JSON auto-detection fallback in post-stream extraction (around lines 4327-4335)
+  - Strengthen FIX intent keyword detection (around line 2228)
 
-| Injection | Tokens | MODIFY keeps? |
-|-----------|--------|---------------|
-| brandMemoryInjection | ~300-600 | Yes (always) |
-| intentInjection | ~50-100 | Yes (always) |
-| productsInjection | ~1,000-3,000 | Only if product keywords detected |
-| modeInjection | ~200 | No |
-| brandLayerInjection | ~350 | No |
-| creatorInjection | ~80 | No |
-| microInjection | ~50 | No |
-
-## What Does NOT Change
-
-- BUILD injection (full suite)
-- FIX injection (full suite)
-- System prompts
-- Stream parser
-- Token guardrails
-- Retry logic
-
+## What This Does NOT Touch
+- BUILD pipeline (unchanged)
+- MODIFY pipeline (unchanged)
+- Client-side zero-trust handler (already handles both formats)
+- Temperatures, prompts, or routing logic
