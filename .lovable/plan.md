@@ -1,44 +1,95 @@
 
 
-# VibeCoder Orchestration Architecture Refactor — IMPLEMENTED ✅
+# Prompt Specialization: Dedicated MODIFY Prompt
 
-## Overview
-Refactored the `vibecoder-v2` edge function into a 4-layer scope-aware orchestration system.
+## Problem
+MODIFY currently uses `CODE_EXECUTOR_PROMPT` which forces Claude to output 5 sections (ANALYSIS, PLAN, CODE, SUMMARY, CONFIDENCE). For a "change button color" request, this means Claude generates hundreds of tokens of reasoning before any JSON, inflating output size and increasing truncation risk.
 
-## What Was Implemented
+## Solution
+Create a dedicated `CODE_MODIFY_PROMPT` — a lean, JSON-only system prompt used exclusively when `intent === "MODIFY"`.
 
-### Layer 1: Intent Classifier (existing — no change)
-- Gemini Flash Lite classifies intent as BUILD/MODIFY/FIX/QUESTION/REFUSE
+## Changes (single file)
 
-### Layer 2: Scope Analyzer ✅ NEW
-- `analyzeScope()` function using Gemini Flash Lite (fast, cheap)
-- Input: file paths + user prompt + conversation history
-- Output: `{ affectedFiles[], strategy: "micro"|"partial"|"full", estimatedOutputTokens }`
-- Called before executeIntent for MODIFY/FIX intents with multi-file projects
-- 15s timeout to avoid blocking generation
+**File: `supabase/functions/vibecoder-v2/index.ts`**
 
-### Layer 3: Token Guardrail + Context Scoping ✅ NEW
-- `estimateTokenBudget()` estimates input/output tokens before Claude call
-- Provider-specific output caps (Claude: 50K, GPT: 14K, Gemini: 50K)
-- Context scoping in executeIntent: micro/partial strategies only send affected files
-- Other files listed by path only (no content) to save tokens
+### 1. Add new `CODE_MODIFY_PROMPT` constant (~line 1642, before `CODE_EXECUTOR_PROMPT`)
 
-### Layer 4: Generation + Structured Retry ✅ UPGRADED
-- Model routing: Claude for all code gen, Gemini Flash for chat only
-- After all 3 JSON fallbacks fail, triggers non-streaming model retry
-- Retry uses explicit JSON-only instruction + temperature 0.1
-- Emits `phase: retrying` event to frontend
+A strict JSON-only prompt with no ANALYSIS/PLAN/SUMMARY sections:
 
-### Frontend: Scoping Phase ✅ NEW
-- Added `scoping` phase to StreamingPhaseCard
-- Cyan-colored indicator with Search icon during scope analysis
+```
+You are a structured code modification engine.
+You are operating inside an automated pipeline.
+If your output is not valid JSON, the run will fail.
 
-## Files Changed
-1. `supabase/functions/vibecoder-v2/index.ts` — All backend orchestration
-2. `src/components/ai-builder/StreamingPhaseCard.tsx` — Scoping phase UI
+You MUST:
+- Output ONLY valid JSON.
+- Output nothing before JSON.
+- Output nothing after JSON.
+- Do not include ANALYSIS.
+- Do not include PLAN.
+- Do not include SUMMARY.
+- Do not explain.
+- Do not describe changes.
+- Do not include markdown.
+- Do not include backticks.
 
-## Expected Outcomes
-- MODIFY sends only affected files to Claude (40-60% token reduction)
-- Truncation failures reduced (less output pressure)
-- Model-level retry catches JSON failures that fallbacks miss
-- "make it more premium" modifies theme.ts + affected components only
+Return format:
+{
+  "files": {
+    "/path/to/file.tsx": "FULL updated file content"
+  }
+}
+
+Rules:
+- Only return files listed for modification.
+- Preserve all unrelated code.
+- Changes must be minimal.
+- Each file must be complete and syntactically valid.
+- Never truncate syntax.
+- First character must be '{'.
+- Last character must be '}'.
+```
+
+This prompt will also include the mandatory layout hierarchy, technology constraints, scrollbar handling, and file structure protocol sections (copied from `CODE_EXECUTOR_PROMPT`) since those rules still apply.
+
+### 2. Update the switch statement (~line 2395)
+
+Change:
+```typescript
+case "FIX":
+case "BUILD":
+case "MODIFY":
+default:
+  systemPrompt = CODE_EXECUTOR_PROMPT;
+```
+
+To:
+```typescript
+case "MODIFY":
+  systemPrompt = CODE_MODIFY_PROMPT;
+  break;
+case "FIX":
+case "BUILD":
+default:
+  systemPrompt = CODE_EXECUTOR_PROMPT;
+```
+
+### 3. Update stream parser for MODIFY responses
+
+The existing stream parser extracts code from `=== CODE ===` sections. For MODIFY, the entire response IS the JSON — no section extraction needed. Add a check: if intent is MODIFY, treat the full streamed text as the code result (skip section parsing).
+
+## What Does NOT Change
+- BUILD prompt (keeps ANALYSIS/PLAN/CODE/SUMMARY)
+- FIX prompt (keeps structured format)
+- QUESTION/REFUSE prompts (already separate)
+- Zero-Trust commit gate
+- Scope analyzer
+- Token guardrails
+- Retry logic
+- All existing injections (brand memory, brand layer, products, creator identity) still get appended to the MODIFY prompt
+
+## Expected Impact
+- MODIFY output shrinks by 30-50% (no ANALYSIS/PLAN/SUMMARY overhead)
+- Truncation probability drops significantly
+- JSON starts at character 0 — no text-before-JSON drift
+- Stream parser becomes simpler for MODIFY path
