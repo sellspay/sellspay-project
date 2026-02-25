@@ -190,9 +190,21 @@ export function useBackgroundGenerationController({
         return;
       }
       
-      // LAYER 3: Must be a valid file map (either {files:{...}} or direct {"/App.tsx": "..."})
+      // LAYER 3: Must be a valid file map
+      // Accepts: {files:{...}}, {files:[{path,content}]}, or direct {"/App.tsx": "..."}
       const fileMap: Record<string, string> | null = (() => {
-        if (parsed.files && typeof parsed.files === 'object' && !Array.isArray(parsed.files)) {
+        if (parsed.files && typeof parsed.files === 'object') {
+          // Array format: [{path, content}, ...]
+          if (Array.isArray(parsed.files)) {
+            const map: Record<string, string> = {};
+            for (const entry of parsed.files as Array<{path?: string; content?: string}>) {
+              if (entry && typeof entry.path === 'string' && typeof entry.content === 'string') {
+                map[entry.path] = entry.content;
+              }
+            }
+            return Object.keys(map).length > 0 ? map : null;
+          }
+          // Object format: {"/path.tsx": "content", ...}
           return parsed.files as Record<string, string>;
         }
         const keys = Object.keys(parsed);
