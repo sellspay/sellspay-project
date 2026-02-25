@@ -1,9 +1,9 @@
 import React, { forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, CheckCircle2, Code2, Brain, ListChecks, Sparkles, RefreshCw } from 'lucide-react';
+import { Loader2, CheckCircle2, Code2, Brain, ListChecks, Sparkles, RefreshCw, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type StreamPhase = 'analyzing' | 'planning' | 'building' | 'retrying' | 'complete' | 'idle';
+export type StreamPhase = 'analyzing' | 'scoping' | 'planning' | 'building' | 'retrying' | 'complete' | 'idle';
 
 export interface StreamingPhaseData {
   phase: StreamPhase;
@@ -39,6 +39,34 @@ export const StreamingPhaseCard = forwardRef<HTMLDivElement, StreamingPhaseCardP
   return (
     <div ref={ref} className={cn("space-y-3 mb-6", className)}>
       <AnimatePresence mode="popLayout">
+        {/* SCOPING PHASE: Scope analysis indicator */}
+        {phase === 'scoping' && (
+          <motion.div
+            key="scoping"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0.5 }}
+            className="flex gap-3"
+          >
+            <div className="flex-shrink-0 mt-1">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center border bg-cyan-500/20 border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.4)]">
+                <Search size={13} className="text-cyan-400 animate-pulse" />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/15 text-cyan-400 rounded border border-cyan-500/30 font-medium uppercase tracking-wider">
+                  Scoping
+                </span>
+                <Loader2 size={12} className="text-cyan-400 animate-spin" />
+              </div>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Analyzing which files need changes...
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {/* ANALYZING PHASE: Streaming text bubble */}
         {(phase === 'analyzing' || analysisText) && (
           <motion.div
