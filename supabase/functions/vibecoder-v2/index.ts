@@ -4344,6 +4344,9 @@ serve(async (req) => {
                 .replace(/\n?```\s*$/i, '')
                 .trim();
               
+              // Log pre-sanitization state
+              console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: trimmedFull starts with '{': ${trimmedFull.startsWith('{')}, first 80 chars: ${trimmedFull.substring(0, 80)}`);
+              
               // Sanitize common JSON issues before parsing
               // Remove trailing commas in objects/arrays
               trimmedFull = trimmedFull.replace(/,\s*([\]}])/g, '$1');
@@ -4352,8 +4355,72 @@ serve(async (req) => {
               
               let rescued = false;
               if (trimmedFull.startsWith('{')) {
+                // ATTEMPT 1: Direct JSON.parse
+                let parsed: any = null;
                 try {
-                  const parsed = JSON.parse(trimmedFull);
+                  parsed = JSON.parse(trimmedFull);
+                  console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: JSON.parse succeeded on attempt 1`);
+                } catch (parseErr1) {
+                  console.warn(`[Job ${jobId}] AUTO-DETECT RESCUE: JSON.parse attempt 1 failed: ${parseErr1 instanceof Error ? parseErr1.message : parseErr1}`);
+                  console.warn(`[Job ${jobId}] AUTO-DETECT RESCUE: First 300 chars: ${trimmedFull.substring(0, 300)}`);
+                  
+                  // ATTEMPT 2: Fix unescaped newlines inside JSON string values
+                  // Models sometimes output literal newlines inside string values instead of \n
+                  try {
+                    // Strategy: find string values and escape their internal newlines
+                    // This regex replaces newlines that are inside JSON string values
+                    const fixedNewlines = trimmedFull.replace(
+                      /"(?:[^"\\]|\\.)*"/g,
+                      (match) => match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+                    );
+                    parsed = JSON.parse(fixedNewlines);
+                    console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: JSON.parse succeeded on attempt 2 (newline fix)`);
+                  } catch (parseErr2) {
+                    console.warn(`[Job ${jobId}] AUTO-DETECT RESCUE: JSON.parse attempt 2 failed: ${parseErr2 instanceof Error ? parseErr2.message : parseErr2}`);
+                    
+                    // ATTEMPT 3: Try extracting just the files object with regex
+                    try {
+                      // Find all file entries: "/path.tsx": "content"
+                      const fileEntries: Record<string, string> = {};
+                      const fileRegex = /"(\/[^"]+\.(?:tsx?|jsx?|css|html|json))"\s*:\s*"/g;
+                      let fileMatch;
+                      while ((fileMatch = fileRegex.exec(trimmedFull)) !== null) {
+                        const filePath = fileMatch[1];
+                        const contentStart = fileMatch.index + fileMatch[0].length;
+                        // Find the end of this string value - look for unescaped closing quote
+                        let depth = 0;
+                        let i = contentStart;
+                        let escaped = false;
+                        while (i < trimmedFull.length) {
+                          const ch = trimmedFull[i];
+                          if (escaped) { escaped = false; i++; continue; }
+                          if (ch === '\\') { escaped = true; i++; continue; }
+                          if (ch === '"') break;
+                          i++;
+                        }
+                        if (i < trimmedFull.length) {
+                          const rawContent = trimmedFull.substring(contentStart, i);
+                          // Unescape the content
+                          try {
+                            fileEntries[filePath] = JSON.parse(`"${rawContent}"`);
+                          } catch {
+                            fileEntries[filePath] = rawContent.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"');
+                          }
+                        }
+                      }
+                      if (Object.keys(fileEntries).length > 0) {
+                        parsed = { files: fileEntries };
+                        console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: Regex extraction succeeded — ${Object.keys(fileEntries).length} files`);
+                      } else {
+                        console.error(`[Job ${jobId}] AUTO-DETECT RESCUE: All 3 parse attempts failed. Content length: ${trimmedFull.length}`);
+                      }
+                    } catch (parseErr3) {
+                      console.error(`[Job ${jobId}] AUTO-DETECT RESCUE: Regex extraction threw: ${parseErr3 instanceof Error ? parseErr3.message : parseErr3}`);
+                    }
+                  }
+                }
+                
+                if (parsed) {
                   if (parsed?.files && typeof parsed.files === 'object') {
                     // Normalize object map → array format for downstream consistency
                     if (!Array.isArray(parsed.files)) {
@@ -4363,14 +4430,14 @@ serve(async (req) => {
                       }));
                       codeResult = JSON.stringify({ files: normalizedFiles });
                     } else {
-                      codeResult = trimmedFull;
+                      codeResult = JSON.stringify(parsed);
                     }
                     // Intent-aware summary
                     summary = intentResult.intent === "FIX" ? "Fix applied."
                             : intentResult.intent === "MODIFY" ? "Modification applied."
                             : "Changes applied.";
                     rescued = true;
-                    console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: Found valid { files } JSON (intent: ${intentResult.intent}, ${codeResult.length} chars)`);
+                    console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: ✅ Found valid { files } JSON (intent: ${intentResult.intent}, ${codeResult.length} chars)`);
                   } else {
                     // Check direct file map format: { "/path.tsx": "content", ... }
                     const keys = Object.keys(parsed);
@@ -4382,16 +4449,12 @@ serve(async (req) => {
                               : intentResult.intent === "MODIFY" ? "Modification applied."
                               : "Changes applied.";
                       rescued = true;
-                      console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: Found direct file map JSON (${keys.length} files, intent: ${intentResult.intent})`);
+                      console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: ✅ Found direct file map JSON (${keys.length} files, intent: ${intentResult.intent})`);
                     }
                   }
-                } catch (parseErr) {
-                  // Log the actual parse error for debugging
-                  console.error(`[Job ${jobId}] AUTO-DETECT RESCUE: JSON.parse failed:`, parseErr instanceof Error ? parseErr.message : parseErr);
-                  console.error(`[Job ${jobId}] AUTO-DETECT RESCUE: First 300 chars of trimmed content:`, trimmedFull.substring(0, 300));
                 }
               } else {
-                console.warn(`[Job ${jobId}] AUTO-DETECT RESCUE: Content does not start with '{'. First 100 chars:`, trimmedFull.substring(0, 100));
+                console.warn(`[Job ${jobId}] AUTO-DETECT RESCUE: Content does not start with '{'. First 100 chars: ${trimmedFull.substring(0, 100)}`);
               }
 
               if (!rescued) {
