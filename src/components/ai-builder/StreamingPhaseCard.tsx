@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, CheckCircle2, Code2, Brain, ListChecks, Sparkles, RefreshCw, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type StreamPhase = 'analyzing' | 'scoping' | 'planning' | 'building' | 'retrying' | 'complete' | 'idle';
+export type StreamPhase = 'analyzing' | 'scoping' | 'planning' | 'building' | 'retrying' | 'rebuilding' | 'complete' | 'idle';
 
 export interface StreamingPhaseData {
   phase: StreamPhase;
@@ -164,7 +164,7 @@ export const StreamingPhaseCard = forwardRef<HTMLDivElement, StreamingPhaseCardP
         )}
 
         {/* BUILDING PHASE: Phase pill + spinner */}
-        {(phase === 'building' || phase === 'retrying') && (
+        {(phase === 'building' || phase === 'retrying' || phase === 'rebuilding') && (
           <motion.div
             key="building"
             initial={{ opacity: 0, y: 10 }}
@@ -174,11 +174,11 @@ export const StreamingPhaseCard = forwardRef<HTMLDivElement, StreamingPhaseCardP
             <div className="flex-shrink-0 mt-1">
               <div className={cn(
                 "w-7 h-7 rounded-full border flex items-center justify-center",
-                phase === 'retrying'
+                phase === 'retrying' || phase === 'rebuilding'
                   ? "bg-amber-500/20 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
                   : "bg-orange-500/20 border-orange-500/50 shadow-[0_0_12px_rgba(249,115,22,0.4)]"
               )}>
-                {phase === 'retrying' ? (
+                {phase === 'retrying' || phase === 'rebuilding' ? (
                   <RefreshCw size={13} className="text-amber-400 animate-spin" />
                 ) : (
                   <Code2 size={13} className="text-orange-400 animate-pulse" />
@@ -189,16 +189,18 @@ export const StreamingPhaseCard = forwardRef<HTMLDivElement, StreamingPhaseCardP
               <div className="flex items-center gap-2">
                 <span className={cn(
                   "text-[10px] px-1.5 py-0.5 rounded border font-medium uppercase tracking-wider",
-                  phase === 'retrying'
+                  phase === 'retrying' || phase === 'rebuilding'
                     ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
                     : "bg-orange-500/15 text-orange-400 border-orange-500/30"
                 )}>
-                  {phase === 'retrying' ? 'Retrying' : 'Building'}
+                  {phase === 'rebuilding' ? 'Rebuilding' : phase === 'retrying' ? 'Retrying' : 'Building'}
                 </span>
-                <Loader2 size={12} className={phase === 'retrying' ? "text-amber-400 animate-spin" : "text-orange-400 animate-spin"} />
+                <Loader2 size={12} className={phase === 'retrying' || phase === 'rebuilding' ? "text-amber-400 animate-spin" : "text-orange-400 animate-spin"} />
                 <span className="text-[10px] text-muted-foreground/60">{displayElapsed}s</span>
               </div>
-              {phase === 'retrying' ? (
+              {phase === 'rebuilding' ? (
+                <p className="text-xs text-amber-400/70 mt-1">Retry failed — performing full safe rebuild...</p>
+              ) : phase === 'retrying' ? (
                 <p className="text-xs text-amber-400/70 mt-1">Code was incomplete, retrying generation...</p>
               ) : codeProgressBytes > 0 ? (
                 <p className="text-xs text-muted-foreground/70 mt-1">
