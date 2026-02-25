@@ -217,6 +217,7 @@ function checkJsxTagBalance(code: string): string | null {
   const stripped = stripStringsAndComments(code);
   
   const tagStack: string[] = [];
+  const unexpectedClosings: string[] = [];
   // Match opening tags, closing tags, and self-closing tags
   const tagRegex = /<\/?([A-Za-z][A-Za-z0-9.]*)[^>]*?\/?>/g;
   let match: RegExpExecArray | null;
@@ -256,13 +257,18 @@ function checkJsxTagBalance(code: string): string | null {
       const idx = tagStack.lastIndexOf(tagName);
       if (idx >= 0) {
         tagStack.splice(idx, 1);
+      } else {
+        unexpectedClosings.push(tagName);
       }
-      // If no matching opening tag, just ignore (could be a false positive)
       continue;
     } else {
       if (voidElements.has(tagName.toLowerCase())) continue;
       tagStack.push(tagName);
     }
+  }
+
+  if (unexpectedClosings.length > 0) {
+    return `Unexpected closing JSX tag(s): ${unexpectedClosings.slice(0, 3).map(t => `</${t}>`).join(', ')} — ${unexpectedClosings.length} unexpected`;
   }
   
   if (tagStack.length > 0) {
