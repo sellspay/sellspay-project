@@ -1,83 +1,81 @@
 
 
-# Fix: FIX Intent Code Extraction Failure
+# Fix: Remove FIX/MODIFY Fast-Path, Unify Code Extraction
 
 ## Problem
-When the FIX intent generates valid JSON code, the pipeline reports `NO_CODE_PRODUCED` and rejects it. The model IS producing code, but it's being discarded.
+The FIX/MODIFY fast-path at line 4281 creates a fragile coupling:
+- If intent is correctly classified as FIX/MODIFY, fast-path works
+- If intent is misclassified (e.g., auto-triggered error reports not tagged as FIX), the raw JSON response skips the fast-path, falls to the `else` branch, and gets discarded as summary text
+- Result: `NO_CODE_PRODUCED` even though the model returned valid code
 
-## Root Cause Analysis
-The `summary` field in the completed job contains the JSON (`{ "files": { "/storefront/..." } }`), which means `codeResult` was never set. This happens when:
+## Root Cause
+The fast-path creates a single point of failure tied to intent classification accuracy. When it misses, there's no recovery.
 
-1. **Intent misclassification**: The intent classifier may return something other than "FIX" for auto-triggered error repairs (e.g., if the error prompt doesn't strongly match FIX patterns). When intent != FIX/MODIFY, the fast-path at line 4281 is skipped, and the response falls to the `else` branch (line 4331) which treats the entire response as summary text only.
+## Solution: Remove Fast-Path, Unify Extraction
 
-2. **No fallback**: Even when the raw `fullContent` is clearly valid JSON with a `files` key, the non-fast-path branches don't attempt to detect and extract it.
+### Step 1: Delete the MODIFY/FIX Fast-Path (lines 4281-4287)
 
-## Solution: Two-Part Fix
-
-### Part 1: Add JSON Auto-Detection Fallback (Backend)
-
-In the post-stream extraction logic (around line 4327-4335), before the final `else` branch that discards content as summary, add a JSON auto-detection check:
-
+Remove this entire block:
 ```text
-} else {
-  // NEW: Auto-detect raw JSON file maps regardless of intent
-  // Catches cases where intent was misclassified but model 
-  // still returned valid code JSON
-  const trimmedFull = fullContent.trim();
-  if (trimmedFull.startsWith('{')) {
-    try {
-      const parsed = JSON.parse(trimmedFull);
-      if (parsed?.files && typeof parsed.files === 'object') {
-        codeResult = trimmedFull;
-        summary = intentResult.intent === "FIX" 
-          ? "Fix applied." 
-          : "Changes applied.";
-        // log the rescue
-      } else {
-        // Check direct file map format
-        const keys = Object.keys(parsed);
-        if (keys.some(k => k.endsWith('.tsx') || ...)) {
-          codeResult = trimmedFull;
-          summary = "Changes applied.";
-        }
-      }
-    } catch { /* not JSON, fall through */ }
-  }
-  
-  // Only treat as summary if we couldn't extract code
-  if (!codeResult) {
-    summary = fullContent.length > 200 
-      ? fullContent.substring(0, 200) + '...' 
-      : fullContent;
-  }
+if (intentResult.intent === "MODIFY" || intentResult.intent === "FIX") {
+  codeResult = fullContent
+    .replace(/^```(?:json|tsx?|jsx?)?\s*\n?/i, '')
+    .replace(/\n?```\s*$/i, '')
+    .trim();
+  summary = intentResult.intent === "FIX" ? "Fix applied." : "Modification applied.";
+  console.log(...);
 }
 ```
 
-This ensures that even if intent classification is wrong, valid JSON code is never thrown away.
+### Step 2: Unified Flow
 
-### Part 2: Harden Intent Classifier for FIX Detection
+After removal, ALL intents follow the same extraction chain:
 
-In the keyword fallback parser (around line 2228), strengthen FIX detection for auto-generated error prompts. These typically contain patterns like `CRITICAL_ERROR_REPORT`, `SyntaxError`, `Unclosed JSX`, `TypeError`, etc. Add these patterns to the FIX detection:
+1. Check for `=== CODE ===` section (BUILD structured responses)
+2. Check for `/// TYPE: CHAT ///` (chat-only responses)
+3. **Auto-detect rescue** (catches raw JSON from FIX/MODIFY regardless of intent classification)
 
-```text
-if (upperContent.includes("FIX") || 
-    upperContent.includes("ERROR") ||
-    upperContent.includes("CRITICAL_ERROR_REPORT") ||
-    upperContent.includes("SYNTAXERROR") ||
-    upperContent.includes("UNCLOSED") ||
-    upperContent.includes("TYPEERROR")) {
-  return { intent: "FIX", ... };
-}
-```
+The auto-detect rescue (already at lines 4331-4365) handles both:
+- `{ "files": { "/path": "content" } }` (object map)
+- `{ "files": [{ "path": "...", "content": "..." }] }` (array format)
+- Direct file maps: `{ "/path.tsx": "content" }`
 
-## Files to Modify
+### Step 3: Strengthen Auto-Detect with Schema Normalization
+
+Inside the auto-detect rescue, after successfully parsing JSON, normalize the `files` format so downstream validation always receives a consistent structure. Convert object maps to the expected format before setting `codeResult`.
+
+### Step 4: Add Intent-Aware Summary Defaults
+
+In the auto-detect rescue, set appropriate summary text:
+- FIX intent: "Fix applied."
+- MODIFY intent: "Modification applied."
+- Other: "Changes applied."
+
+## File to Modify
 
 - `supabase/functions/vibecoder-v2/index.ts`
-  - Add JSON auto-detection fallback in post-stream extraction (around lines 4327-4335)
-  - Strengthen FIX intent keyword detection (around line 2228)
+  - Remove lines 4281-4287 (fast-path block)
+  - Adjust the `else if` at line 4288 to become the primary `if` check
+  - The auto-detect rescue at lines 4331-4365 already handles the fallback
 
-## What This Does NOT Touch
-- BUILD pipeline (unchanged)
-- MODIFY pipeline (unchanged)
-- Client-side zero-trust handler (already handles both formats)
-- Temperatures, prompts, or routing logic
+## What Changes
+
+- FIX responses: raw JSON -> auto-detect rescue -> `codeResult` set -> validation gates
+- MODIFY responses: raw JSON -> auto-detect rescue -> `codeResult` set -> validation gates  
+- BUILD responses: structured sections -> `=== CODE ===` parser -> validation gates (unchanged)
+
+## What Does NOT Change
+
+- FIX/MODIFY prompts (still instruct raw JSON output)
+- BUILD pipeline (still uses structured sections)
+- Zero-trust validation gates
+- Temperature settings
+- Intent classifier (already hardened for FIX detection)
+
+## Why This Works
+
+The auto-detect rescue is intent-agnostic. It checks the actual content structure, not the intent label. This means:
+- Correct intent classification: works (auto-detect finds JSON)
+- Wrong intent classification: still works (auto-detect finds JSON)
+- No more single point of failure tied to intent routing
+
