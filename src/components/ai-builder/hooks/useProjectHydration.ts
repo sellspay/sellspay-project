@@ -235,8 +235,16 @@ export function useProjectHydration({
     // ✅ PRIORITY 1: Restore from DB-persisted stable snapshot (survives refresh)
     const dbSnapshot = dbLastValidFilesRef.current;
     if (dbSnapshot && Object.keys(dbSnapshot).length > 0) {
-      console.log('📦 Restoring from DB last_valid_files for project:', activeProjectId, `(${Object.keys(dbSnapshot).length} files)`);
-      setFiles(dbSnapshot);
+      // Normalize all file paths to have leading slash (required by Sandpack)
+      const normalizedSnapshot: Record<string, string> = {};
+      for (const [path, content] of Object.entries(dbSnapshot)) {
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        if (typeof content === 'string') {
+          normalizedSnapshot[normalizedPath] = content;
+        }
+      }
+      console.log('📦 Restoring from DB last_valid_files for project:', activeProjectId, `(${Object.keys(normalizedSnapshot).length} files)`);
+      setFiles(normalizedSnapshot);
       // 🔥 CRITICAL: Signal that a DB snapshot exists so guardrails use EDIT mode
       hasDbSnapshotRef.current = true;
       hasRestoredCodeRef.current = activeProjectId;
