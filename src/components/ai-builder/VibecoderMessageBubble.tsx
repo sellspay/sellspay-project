@@ -16,7 +16,7 @@ export interface MessageWithSteps extends VibecoderMessage {
 }
 
 // --- USER BUBBLE (The "Salmon" Look) ---
-function UserBubble({ content }: { content: string }) {
+function UserBubble({ content, attachmentUrls }: { content: string; attachmentUrls?: string[] }) {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -24,6 +24,20 @@ function UserBubble({ content }: { content: string }) {
       className="flex justify-end mb-6 w-full"
     >
       <div className="max-w-[85%] bg-gradient-to-br from-[#FF5533] to-[#E0482B] text-white px-5 py-3 rounded-2xl rounded-tr-sm shadow-lg shadow-orange-900/10 text-sm font-medium leading-relaxed">
+        {/* Attached images */}
+        {attachmentUrls && attachmentUrls.length > 0 && (
+          <div className={cn("mb-2 gap-2", attachmentUrls.length === 1 ? "flex" : "grid grid-cols-2")}>
+            {attachmentUrls.map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                alt={`Attachment ${i + 1}`}
+                className="rounded-lg max-h-48 w-full object-cover border border-white/20"
+                loading="lazy"
+              />
+            ))}
+          </div>
+        )}
         <div className="break-words whitespace-pre-wrap">
           {content}
         </div>
@@ -300,7 +314,7 @@ export function VibecoderMessageBubble({
   isLatestCodeMessage = false,
 }: VibecoderMessageBubbleProps) {
   if (message.role === 'user') {
-    return <UserBubble content={message.content ?? ''} />;
+    return <UserBubble content={message.content ?? ''} attachmentUrls={message.meta_data?.attachmentUrls} />;
   }
   
   // Render policy violation card for blocked requests

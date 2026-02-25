@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Loader2, Code2, CheckCircle2, RefreshCw } from 'lucide-react';
 import { ChatInterface } from './VibecoderMessageBubble';
@@ -16,7 +18,7 @@ import { ClarificationCard, type ClarificationQuestion } from './ClarificationCa
 import { useTheme } from '@/lib/theme';
 
 interface VibecoderChatProps {
-  onSendMessage: (displayMessage: string, aiPrompt?: string) => void;
+  onSendMessage: (displayMessage: string, aiPrompt?: string, attachmentUrls?: string[]) => void;
   onGenerateAsset?: (model: AIModel, prompt: string) => void;
   isStreaming: boolean;
   onCancel: () => void;
@@ -200,7 +202,7 @@ export function VibecoderChat({
     }
   }, [messages, isStreaming]);
 
-  const handleSubmit = (options: { 
+  const handleSubmit = async (options: { 
     isPlanMode: boolean; 
     model: AIModel; 
     attachments: File[];
@@ -237,13 +239,41 @@ export function VibecoderChat({
       aiPrompt = `[MODEL: ${options.model.id}]\n${aiPrompt}`;
     }
     
-    // TODO: Handle attachments (upload to storage and include URLs in prompt)
+    // Handle attachments: upload to storage and include URLs in prompt
     if (options.attachments.length > 0) {
-      console.log('Attachments to process:', options.attachments.length);
+      const uploadedUrls: string[] = [];
+      for (const file of options.attachments) {
+        try {
+          const ext = file.name.split('.').pop() || 'png';
+          const path = `chat-attachments/${crypto.randomUUID()}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from('site-assets')
+            .upload(path, file, { contentType: file.type });
+          if (uploadError) throw uploadError;
+          const { data: urlData } = supabase.storage
+            .from('site-assets')
+            .getPublicUrl(path);
+          uploadedUrls.push(urlData.publicUrl);
+        } catch (err) {
+          console.error('Failed to upload attachment:', err);
+          toast.error('Failed to upload image. Try again.');
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
+        // Append image context to AI prompt
+        const imageContext = uploadedUrls
+          .map((url, i) => `[Attached Image ${i + 1}]: ${url}`)
+          .join('\n');
+        aiPrompt = `${aiPrompt}\n\n${imageContext}`;
+      }
+
+      onSendMessage(cleanPrompt, aiPrompt, uploadedUrls);
+      setInput('');
+      return;
     }
     
     // Send the CLEAN prompt for display, but pass the AI prompt for processing
-    // The onSendMessage handler will receive this and should save the clean version
     onSendMessage(cleanPrompt, aiPrompt);
     setInput('');
   };

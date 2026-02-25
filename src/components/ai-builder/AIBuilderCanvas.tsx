@@ -890,7 +890,7 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
   // Implements the "Chat-to-Create" flow: first message creates project automatically
   // displayMessage: Clean user prompt shown in chat
   // aiPrompt: Backend-only prompt with system instructions (optional - defaults to displayMessage)
-  const handleSendMessage = async (displayMessage: string, aiPrompt?: string) => {
+  const handleSendMessage = async (displayMessage: string, aiPrompt?: string, attachmentUrls?: string[]) => {
     // 🚧 PROJECT READY GATE: Block generation during project switch / hydration
     // This prevents the race condition where job creation fires before the new project
     // is fully stabilized in the database, causing insert failures and ghost streams.
@@ -979,7 +979,8 @@ export function AIBuilderCanvas({ profileId, hasPremiumAccess = false }: AIBuild
     lastUserPromptRef.current = cleanPrompt;
 
     // Add user message to history (CLEAN prompt only - no system instructions visible)
-    await addMessage('user', cleanPrompt, undefined, projectId);
+    const userMetaData = attachmentUrls?.length ? { attachmentUrls } : undefined;
+    await addMessage('user', cleanPrompt, undefined, projectId, undefined, userMetaData);
 
     // 🛡️ AUTO-FIX SAFETY: If this is an auto-fix request, don't feed the AI the currently-broken code.
     // Use the last known-good snapshot instead.
