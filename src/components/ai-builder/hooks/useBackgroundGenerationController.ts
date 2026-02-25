@@ -76,8 +76,27 @@ export function useBackgroundGenerationController({
     console.log('[BackgroundGen] Job completed:', job.id, { isActiveRun, status: job.status });
 
     // ─── Abort helper: clean up generation state without mutating sandbox ───
-    const abortGeneration = () => {
+    // Optional: show the AI's summary in chat and enable retry button
+    const abortGeneration = async (opts?: { showSummary?: boolean; enableRetry?: boolean; errorDetail?: string }) => {
       if (isActiveRun) {
+        // Show AI summary + error context in chat so the user sees a reply
+        if (opts?.showSummary && activeProjectId) {
+          const summaryText = job.summary || '';
+          const errorInfo = opts.errorDetail 
+            ? `\n\n⚠️ **Build blocked:** ${opts.errorDetail}` 
+            : '';
+          const retryHint = opts.enableRetry 
+            ? '\n\nNo changes were applied — your project is safe. Use the retry button below to try again.' 
+            : '\nNo changes were applied — your project remains in its last stable state.';
+          const fullMessage = summaryText 
+            ? `${summaryText}${errorInfo}${retryHint}` 
+            : `❌ Generation failed.${errorInfo}${retryHint}`;
+          await addMessage('assistant', fullMessage, undefined, activeProjectId);
+        }
+        // Enable retry button
+        if (opts?.enableRetry && job.prompt) {
+          setLastFailedPrompt(job.prompt);
+        }
         setLiveSteps([]);
         pendingSummaryRef.current = '';
         generationLockRef.current = null;
@@ -93,7 +112,8 @@ export function useBackgroundGenerationController({
       if (activeProjectId) {
         await addMessage('assistant', '⚠️ Code generation was interrupted. No changes were applied — your project remains in its last stable state. Please simplify your request or break it into smaller parts.', undefined, activeProjectId);
       }
-      abortGeneration();
+      if (job.prompt) setLastFailedPrompt(job.prompt);
+      await abortGeneration();
       return;
     }
 
@@ -123,7 +143,7 @@ export function useBackgroundGenerationController({
       if (!trimmedResult.startsWith('{')) {
         console.error('[ZERO-TRUST] code_result is not JSON. Refusing to commit:', job.id);
         toast.error('Generation produced invalid output. Please retry.');
-        abortGeneration();
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI returned non-code output that could not be committed.' });
         return;
       }
       
@@ -134,7 +154,7 @@ export function useBackgroundGenerationController({
       } catch {
         console.error('[ZERO-TRUST] code_result JSON parse failed. Refusing to commit:', job.id);
         toast.error('Generation produced corrupt output. Please retry.');
-        abortGeneration();
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI produced corrupt JSON output.' });
         return;
       }
       
@@ -153,7 +173,7 @@ export function useBackgroundGenerationController({
       if (!fileMap || Object.keys(fileMap).length === 0) {
         console.error('[ZERO-TRUST] code_result is not a valid file map. Refusing to commit:', job.id);
         toast.error('Generation produced invalid file structure. Please retry.');
-        abortGeneration();
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI returned an invalid file structure.' });
         return;
       }
       
@@ -162,7 +182,7 @@ export function useBackgroundGenerationController({
       if (!allStrings) {
         console.error('[ZERO-TRUST] File map contains non-string values. Refusing to commit:', job.id);
         toast.error('Generation produced invalid file contents. Please retry.');
-        abortGeneration();
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'File contents contained invalid data.' });
         return;
       }
       
@@ -194,7 +214,7 @@ export function useBackgroundGenerationController({
         }
       }
       if (hasConversational) {
-        abortGeneration();
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI produced conversational text instead of code.' });
         return;
       }
       
@@ -204,7 +224,7 @@ export function useBackgroundGenerationController({
         const errorSummary = transpileResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
         console.error('[ZERO-TRUST] Transpile validation failed. Refusing to commit:', errorSummary);
         toast.error('Generation produced code with syntax errors. Please retry.');
-        abortGeneration();
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: `Syntax errors detected: ${errorSummary}` });
         return;
       }
 
@@ -222,7 +242,7 @@ export function useBackgroundGenerationController({
         const errorSummary = pathResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
         console.error('[ZERO-TRUST] Path isolation failed. Refusing to commit:', errorSummary);
         toast.error('Generation attempted to modify restricted files. Please retry.');
-        abortGeneration();
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI attempted to modify restricted files.' });
         return;
       }
 
@@ -268,14 +288,14 @@ export function useBackgroundGenerationController({
           if (error) {
             console.error('[ZERO-TRUST] DB persistence failed. Aborting commit:', error.message);
             toast.error('Failed to persist changes. Please retry.');
-            abortGeneration();
+            await abortGeneration({ enableRetry: true });
             return;
           }
         } catch (e) {
           console.error('[ZERO-TRUST] DB persistence exception. Aborting commit:', e);
-          toast.error('Failed to persist changes. Please retry.');
-          abortGeneration();
-          return;
+            toast.error('Failed to persist changes. Please retry.');
+            await abortGeneration({ enableRetry: true });
+            return;
         }
       }
 
