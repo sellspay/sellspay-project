@@ -4281,10 +4281,18 @@ serve(async (req) => {
             // 2) Chat marker (/// TYPE: CHAT ///)
             // 3) Auto-detect rescue (raw JSON regardless of intent)
             // ═══════════════════════════════════════════════════════
-            if (fullContent.includes("=== CODE ===")) {
-              const codeStart = fullContent.indexOf("=== CODE ===") + "=== CODE ===".length;
-              let codeEnd = fullContent.indexOf("=== SUMMARY ===");
-              if (codeEnd < 0) codeEnd = fullContent.length;
+            // Tolerant section detection (whitespace/case insensitive)
+            const hasCodeSection = /===\s*CODE\s*===/i.test(fullContent);
+            const hasSummarySection = /===\s*SUMMARY\s*===/i.test(fullContent);
+            const hasAnalysisSection = /===\s*ANALYSIS\s*===/i.test(fullContent);
+            const hasPlanSection = /===\s*PLAN\s*===/i.test(fullContent);
+            const hasConfidenceSection = /===\s*CONFIDENCE\s*===/i.test(fullContent);
+
+            if (hasCodeSection) {
+              const codeMatch = fullContent.match(/===\s*CODE\s*===/i);
+              const codeStart = codeMatch!.index! + codeMatch![0].length;
+              const summaryMatch = fullContent.match(/===\s*SUMMARY\s*===/i);
+              let codeEnd = summaryMatch ? summaryMatch.index! : fullContent.length;
               codeResult = fullContent.substring(codeStart, codeEnd)
                 .replace(/^```(?:tsx?|jsx?|javascript|typescript|json)?\s*\n?/i, '')
                 .replace(/\n?```\s*$/i, '')
@@ -4292,15 +4300,16 @@ serve(async (req) => {
                 .trim();
               
               // Extract summary from === SUMMARY === section
-              if (fullContent.includes("=== SUMMARY ===")) {
-                const sumStart = fullContent.indexOf("=== SUMMARY ===") + "=== SUMMARY ===".length;
-                let sumEnd = fullContent.indexOf("=== CONFIDENCE ===");
-                if (sumEnd < 0) sumEnd = fullContent.length;
+              if (hasSummarySection) {
+                const sumMatch = fullContent.match(/===\s*SUMMARY\s*===/i);
+                const sumStart = sumMatch!.index! + sumMatch![0].length;
+                const confMatch = fullContent.match(/===\s*CONFIDENCE\s*===/i);
+                let sumEnd = confMatch ? confMatch.index! : fullContent.length;
                 let summaryBody = fullContent.substring(sumStart, sumEnd).trim();
                 
                 // Append confidence score to the summary text for display
-                if (fullContent.includes("=== CONFIDENCE ===")) {
-                  const confStart = fullContent.indexOf("=== CONFIDENCE ===") + "=== CONFIDENCE ===".length;
+                if (hasConfidenceSection && confMatch) {
+                  const confStart = confMatch.index! + confMatch[0].length;
                   const confText = fullContent.substring(confStart).trim();
                   const confLines = confText.split('\n').filter((l: string) => l.trim().length > 0);
                   if (confLines.length >= 1) {
@@ -4314,10 +4323,12 @@ serve(async (req) => {
                 summary = summaryBody;
               } else {
                 // Fall back to analysis text
-                const analysisIdx = fullContent.indexOf("=== ANALYSIS ===");
-                if (analysisIdx >= 0) {
-                  const aEnd = fullContent.indexOf("=== PLAN ===");
-                  summary = fullContent.substring(analysisIdx + "=== ANALYSIS ===".length, aEnd > 0 ? aEnd : codeStart).trim();
+                if (hasAnalysisSection) {
+                  const analysisMatch = fullContent.match(/===\s*ANALYSIS\s*===/i);
+                  const planMatch = fullContent.match(/===\s*PLAN\s*===/i);
+                  const aStart = analysisMatch!.index! + analysisMatch![0].length;
+                  const aEnd = planMatch ? planMatch.index! : codeStart;
+                  summary = fullContent.substring(aStart, aEnd).trim();
                 }
               }
               console.log(`[Job ${jobId}] Structured extraction: extracted CODE section (${codeResult.length} chars)`);
@@ -4327,10 +4338,18 @@ serve(async (req) => {
             } else {
               // AUTO-DETECT RESCUE: Catches raw JSON from any intent (FIX, MODIFY, BUILD, etc.)
               // This is intent-agnostic — checks actual content structure, not the intent label
-              const trimmedFull = fullContent
+              console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: Attempting raw JSON rescue (intent: ${intentResult.intent}, length: ${fullContent.length})`);
+              let trimmedFull = fullContent
                 .replace(/^```(?:json|tsx?|jsx?)?\s*\n?/i, '')
                 .replace(/\n?```\s*$/i, '')
                 .trim();
+              
+              // Sanitize common JSON issues before parsing
+              // Remove trailing commas in objects/arrays
+              trimmedFull = trimmedFull.replace(/,\s*([\]}])/g, '$1');
+              // Remove control characters except \n \r \t
+              trimmedFull = trimmedFull.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+              
               let rescued = false;
               if (trimmedFull.startsWith('{')) {
                 try {
@@ -4366,9 +4385,13 @@ serve(async (req) => {
                       console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: Found direct file map JSON (${keys.length} files, intent: ${intentResult.intent})`);
                     }
                   }
-                } catch {
-                  // Not valid JSON, fall through to summary treatment
+                } catch (parseErr) {
+                  // Log the actual parse error for debugging
+                  console.error(`[Job ${jobId}] AUTO-DETECT RESCUE: JSON.parse failed:`, parseErr instanceof Error ? parseErr.message : parseErr);
+                  console.error(`[Job ${jobId}] AUTO-DETECT RESCUE: First 300 chars of trimmed content:`, trimmedFull.substring(0, 300));
                 }
+              } else {
+                console.warn(`[Job ${jobId}] AUTO-DETECT RESCUE: Content does not start with '{'. First 100 chars:`, trimmedFull.substring(0, 100));
               }
 
               if (!rescued) {
@@ -4378,6 +4401,16 @@ serve(async (req) => {
                 console.warn(`[Job ${jobId}] ZERO-TRUST: No structured sections found. Raw content treated as summary only (intent: ${intentResult.intent}).`);
               }
             }
+
+            // ═══════════════════════════════════════════════════════
+            // EXTRACTION DEBUG INSTRUMENTATION
+            // ═══════════════════════════════════════════════════════
+            console.log(`[Job ${jobId}] [EXTRACTION DEBUG] intent: ${intentResult.intent}`);
+            console.log(`[Job ${jobId}] [EXTRACTION DEBUG] has === CODE ===: ${hasCodeSection}`);
+            console.log(`[Job ${jobId}] [EXTRACTION DEBUG] fullContent length: ${fullContent?.length}`);
+            console.log(`[Job ${jobId}] [EXTRACTION DEBUG] codeResult type: ${typeof codeResult}`);
+            console.log(`[Job ${jobId}] [EXTRACTION DEBUG] codeResult length: ${codeResult?.length ?? 'null'}`);
+            console.log(`[Job ${jobId}] [EXTRACTION DEBUG] first 500 chars of codeResult: ${codeResult?.slice(0, 500) ?? 'NULL'}`);
 
             // ═══════════════════════════════════════════════════════
             // VALIDATION GATES
