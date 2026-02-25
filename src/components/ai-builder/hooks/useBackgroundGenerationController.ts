@@ -77,7 +77,39 @@ export function useBackgroundGenerationController({
 
     // ─── Abort helper: clean up generation state without mutating sandbox ───
     // Optional: show the AI's summary in chat and enable retry button
-    const abortGeneration = async (opts?: { showSummary?: boolean; enableRetry?: boolean; errorDetail?: string }) => {
+    // CRITICAL: Also issues a credit refund when the frontend blocks a valid backend job
+    const abortGeneration = async (opts?: { showSummary?: boolean; enableRetry?: boolean; errorDetail?: string; refundReason?: string }) => {
+      // 💰 AUTO-REFUND: If the backend charged credits but frontend rejected the output,
+      // call the refund endpoint so users don't lose money
+      if (opts?.refundReason && job.id) {
+        try {
+          console.log(`[ZERO-TRUST] Requesting credit refund for job ${job.id}: ${opts.refundReason}`);
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData?.session?.access_token) {
+            const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+            const resp = await fetch(
+              `https://${projectId}.supabase.co/functions/v1/refund-credits`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${sessionData.session.access_token}`,
+                },
+                body: JSON.stringify({ jobId: job.id, reason: opts.refundReason }),
+              }
+            );
+            const result = await resp.json();
+            if (result.success) {
+              console.log(`[ZERO-TRUST] ✅ Refunded ${result.refunded} credits`);
+              toast.info(`${result.refunded} credits refunded — validation blocked this build.`);
+            } else {
+              console.warn('[ZERO-TRUST] Refund call failed:', result.error);
+            }
+          }
+        } catch (refundErr) {
+          console.error('[ZERO-TRUST] Refund request exception:', refundErr);
+        }
+      }
       if (isActiveRun) {
         // Show AI summary + error context in chat so the user sees a reply
         if (opts?.showSummary && activeProjectId) {
@@ -143,7 +175,7 @@ export function useBackgroundGenerationController({
       if (!trimmedResult.startsWith('{')) {
         console.error('[ZERO-TRUST] code_result is not JSON. Refusing to commit:', job.id);
         toast.error('Generation produced invalid output. Please retry.');
-        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI returned non-code output that could not be committed.' });
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI returned non-code output that could not be committed.', refundReason: 'not_json' });
         return;
       }
       
@@ -154,7 +186,7 @@ export function useBackgroundGenerationController({
       } catch {
         console.error('[ZERO-TRUST] code_result JSON parse failed. Refusing to commit:', job.id);
         toast.error('Generation produced corrupt output. Please retry.');
-        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI produced corrupt JSON output.' });
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI produced corrupt JSON output.', refundReason: 'json_parse_failed' });
         return;
       }
       
@@ -173,7 +205,7 @@ export function useBackgroundGenerationController({
       if (!fileMap || Object.keys(fileMap).length === 0) {
         console.error('[ZERO-TRUST] code_result is not a valid file map. Refusing to commit:', job.id);
         toast.error('Generation produced invalid file structure. Please retry.');
-        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI returned an invalid file structure.' });
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI returned an invalid file structure.', refundReason: 'invalid_file_map' });
         return;
       }
       
@@ -182,7 +214,7 @@ export function useBackgroundGenerationController({
       if (!allStrings) {
         console.error('[ZERO-TRUST] File map contains non-string values. Refusing to commit:', job.id);
         toast.error('Generation produced invalid file contents. Please retry.');
-        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'File contents contained invalid data.' });
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'File contents contained invalid data.', refundReason: 'non_string_values' });
         return;
       }
       
@@ -214,7 +246,7 @@ export function useBackgroundGenerationController({
         }
       }
       if (hasConversational) {
-        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI produced conversational text instead of code.' });
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI produced conversational text instead of code.', refundReason: 'conversational_text' });
         return;
       }
       
@@ -224,7 +256,7 @@ export function useBackgroundGenerationController({
         const errorSummary = transpileResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
         console.error('[ZERO-TRUST] Transpile validation failed. Refusing to commit:', errorSummary);
         toast.error('Generation produced code with syntax errors. Please retry.');
-        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: `Syntax errors detected: ${errorSummary}` });
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: `Syntax errors detected: ${errorSummary}`, refundReason: 'syntax_errors' });
         return;
       }
 
@@ -242,7 +274,7 @@ export function useBackgroundGenerationController({
         const errorSummary = pathResult.errors.map(e => `${e.file}: ${e.error}`).join(' | ');
         console.error('[ZERO-TRUST] Path isolation failed. Refusing to commit:', errorSummary);
         toast.error('Generation attempted to modify restricted files. Please retry.');
-        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI attempted to modify restricted files.' });
+        await abortGeneration({ showSummary: true, enableRetry: true, errorDetail: 'The AI attempted to modify restricted files.', refundReason: 'path_isolation' });
         return;
       }
 
