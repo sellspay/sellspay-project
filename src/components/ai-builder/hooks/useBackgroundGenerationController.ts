@@ -384,7 +384,11 @@ export function useBackgroundGenerationController({
       combinedCheck.includes('did not generate any code') ||
       combinedCheck.includes('responded conversationally') ||
       combinedCheck.includes('COMPILE_FAILURE') ||
-      combinedCheck.includes('EDGE_TIMEOUT');
+      combinedCheck.includes('EDGE_TIMEOUT') ||
+      combinedCheck.includes('CODE_TOO_SHORT') ||
+      combinedCheck.includes('MODEL_EMPTY_RESPONSE') ||
+      combinedCheck.includes('MODEL_TRUNCATED') ||
+      combinedCheck.includes('MISSING_EXPORT_DEFAULT');
     if (isRetryableError && job.prompt) {
       setLastFailedPrompt(job.prompt);
     }

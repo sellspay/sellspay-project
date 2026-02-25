@@ -225,9 +225,13 @@ const VIBECODER_COMPLETE_SENTINEL = "// --- VIBECODER_COMPLETE ---";
 
 /**
  * Detailed truncation check that returns a specific error code.
- * For FIX intent, skips sentinel check (model often omits it for small edits).
+ * For FIX/MODIFY intents, skips strict min-length checks because
+ * surgical delta edits can keep /App.tsx intentionally small.
  */
 function getValidationError(code: string, _intent?: string): { type: string; message: string } | null {
+  const normalizedIntent = (_intent || '').toUpperCase();
+  const isEditIntent = normalizedIntent === 'FIX' || normalizedIntent === 'MODIFY';
+
   if (!code || code.trim().length < 50) {
     return { type: "MODEL_EMPTY_RESPONSE", message: "AI returned no usable code. Please retry." };
   }
@@ -242,7 +246,7 @@ function getValidationError(code: string, _intent?: string): { type: string; mes
     return { type: "MODEL_TRUNCATED", message: "Generated code appears truncated (unbalanced brackets). Retrying..." };
   }
 
-  if (code.length < 300) {
+  if (!isEditIntent && code.length < 300) {
     return { type: "CODE_TOO_SHORT", message: "Generated code was too short to be a valid component. Please retry." };
   }
 
