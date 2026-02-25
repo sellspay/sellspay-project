@@ -2064,6 +2064,159 @@ async function classifyIntent(
 }
 
 // ═══════════════════════════════════════════════════════════════
+// LAYER 2: SCOPE ANALYZER (NEW — scope-aware context filtering)
+// Lightweight Gemini Flash call to determine which files need changing
+// before sending full context to Claude for MODIFY/FIX intents
+// ═══════════════════════════════════════════════════════════════
+
+interface ScopeAnalysisResult {
+  affectedFiles: string[];
+  strategy: "micro" | "partial" | "full";
+  estimatedOutputTokens: number;
+}
+
+async function analyzeScope(
+  prompt: string,
+  filePaths: string[],
+  conversationHistory: Array<{ role: string; content: string }>,
+  apiKey: string,
+): Promise<ScopeAnalysisResult | null> {
+  try {
+    const recentMessages = conversationHistory.slice(-4);
+    const conversationContext = recentMessages.length > 0
+      ? "\nRecent conversation:\n" + recentMessages.map(m => `${m.role}: "${m.content}"`).join("\n")
+      : "";
+
+    const response = await fetchWithTimeout(GEMINI_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gemini-2.5-flash-lite",
+        messages: [
+          {
+            role: "system",
+            content: `You are a scope analyzer for a code generation system. Given a file list and user request, determine which files need to change.
+
+Return ONLY a valid JSON object with:
+- affectedFiles: array of file paths that must change to fulfill the request
+- strategy: "micro" (1 file, < 50 lines changed), "partial" (2-4 files), or "full" (5+ files or structural redesign)
+- estimatedOutputTokens: rough estimate of total output tokens needed
+
+Rules:
+- For style/color/font changes: include theme.ts + any component files that hardcode styles
+- For text content changes: include only the file containing that text
+- For layout changes: include the layout file + affected components
+- For "make it more premium/modern/etc": include theme.ts + main page files
+- For adding a new section: include the page file + optionally a new component file
+- When in doubt, lean toward "partial" not "full"
+- NEVER return "full" unless the user explicitly asks to rebuild everything or the change truly affects 5+ files`
+          },
+          {
+            role: "user",
+            content: `File list:\n${filePaths.join("\n")}${conversationContext}\n\nUser request: "${prompt}"`
+          },
+        ],
+        max_tokens: 500,
+        temperature: 0.1,
+      }),
+    }, 15_000); // 15s timeout for scope analysis
+
+    if (!response.ok) {
+      console.warn("[ScopeAnalyzer] API call failed, defaulting to full scope");
+      return null;
+    }
+
+    const rawText = await response.text();
+    let data: any;
+    try { data = JSON.parse(rawText); } catch { return null; }
+    
+    const content = data.choices?.[0]?.message?.content || "";
+    const cleaned = content.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+    const parsed = JSON.parse(cleaned);
+
+    // Validate the result
+    if (!Array.isArray(parsed.affectedFiles) || !parsed.strategy) {
+      console.warn("[ScopeAnalyzer] Invalid response shape, defaulting to full");
+      return null;
+    }
+
+    // Filter affectedFiles to only include files that actually exist
+    const validFiles = parsed.affectedFiles.filter((f: string) => filePaths.includes(f));
+    
+    const result: ScopeAnalysisResult = {
+      affectedFiles: validFiles.length > 0 ? validFiles : filePaths, // fallback to all if none matched
+      strategy: parsed.strategy === "micro" || parsed.strategy === "partial" ? parsed.strategy : "full",
+      estimatedOutputTokens: Math.max(500, Math.min(60000, parsed.estimatedOutputTokens || 8000)),
+    };
+
+    console.log(`[ScopeAnalyzer] Strategy: ${result.strategy} | Affected: ${result.affectedFiles.length}/${filePaths.length} files | Est. output: ${result.estimatedOutputTokens} tokens`);
+    return result;
+  } catch (e) {
+    console.warn("[ScopeAnalyzer] Error, defaulting to full scope:", e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LAYER 3: TOKEN GUARDRAIL SYSTEM
+// Estimates token budget before calling Claude to prevent truncation
+// ═══════════════════════════════════════════════════════════════
+
+interface TokenBudget {
+  estimatedInputTokens: number;
+  estimatedOutputTokens: number;
+  safeToGenerate: boolean;
+  reducedScope: boolean;
+  maxOutputTokens: number;
+}
+
+function estimateTokenBudget(
+  systemPromptLength: number,
+  userMessageLength: number,
+  scopeResult: ScopeAnalysisResult | null,
+  fileCount: number,
+  avgFileSize: number,
+  provider: ModelProvider,
+): TokenBudget {
+  const PROVIDER_OUTPUT_CAPS: Record<string, number> = {
+    anthropic: 50000,  // Leave headroom from 64K limit
+    openai: 14000,     // Leave headroom from 16K limit
+    gemini: 50000,     // Leave headroom from 65K limit
+  };
+
+  const outputCap = PROVIDER_OUTPUT_CAPS[provider] || 16000;
+  const estimatedInputTokens = Math.ceil((systemPromptLength + userMessageLength) / 4);
+  
+  let estimatedOutputTokens: number;
+  if (scopeResult) {
+    estimatedOutputTokens = scopeResult.estimatedOutputTokens;
+  } else {
+    // Heuristic: each file averages avgFileSize chars = avgFileSize/4 tokens
+    estimatedOutputTokens = Math.ceil(fileCount * avgFileSize / 4);
+  }
+
+  const safeToGenerate = estimatedOutputTokens <= outputCap;
+  let reducedScope = false;
+
+  if (!safeToGenerate && scopeResult && scopeResult.strategy === "full") {
+    // Force to partial: limit to most critical files
+    console.warn(`[TokenGuardrail] Estimated output ${estimatedOutputTokens} exceeds cap ${outputCap} — forcing partial scope`);
+    reducedScope = true;
+  }
+
+  return {
+    estimatedInputTokens,
+    estimatedOutputTokens,
+    safeToGenerate,
+    reducedScope,
+    maxOutputTokens: Math.min(estimatedOutputTokens + 5000, outputCap), // Add buffer
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // STAGE 0.5: ANALYZER (2-Stage Pipeline)
 // Fast Gemini call to infer intent, generate suggestions + questions
 // ═══════════════════════════════════════════════════════════════
@@ -2219,6 +2372,7 @@ async function executeIntent(
   lastValidFiles?: Record<string, string> | null,
   brandIdentity?: Record<string, unknown> | null,
   brandIdentityLocked?: boolean,
+  scopeResult?: ScopeAnalysisResult | null,
 ): Promise<Response> {
   // Select the appropriate system prompt based on intent
   let systemPrompt: string;
@@ -2470,13 +2624,42 @@ If the request says "change X", change ONLY X and nothing else.
           console.log(`[FileDiff] Inventory: ${diff.unchanged.length} unchanged, ${diff.modified.length} modified, ${diff.added.length} added`);
         }
         
-        // Multi-file project: show the full file map so AI can see all components
-        // For MODIFY: only include files that are likely to change to reduce output pressure
-        const fileEntries = Object.entries(projectFiles)
-          .filter(([path, content]) => typeof content === 'string' && content.trim().length > 0)
-          .map(([path, content]) => `=== ${path} ===\n${content}`)
-          .join('\n\n');
-        codeContext = `${fileInventoryBlock}Here is the full project file map:\n\n${fileEntries}\n\nCRITICAL OUTPUT RULE: Return ONLY the files you are actually changing. Do NOT re-output unchanged files. If you change 2 files out of 7, return only those 2 files in your JSON. Unchanged files will be preserved automatically by the system.`;
+        // ═══════════════════════════════════════════════════════
+        // SCOPE-AWARE CONTEXT FILTERING (Layer 2 Integration)
+        // If scope analysis returned micro/partial, only send affected files
+        // Other files are listed by path only (no content) to save tokens
+        // ═══════════════════════════════════════════════════════
+        if (scopeResult && scopeResult.strategy !== 'full' && scopeResult.affectedFiles.length > 0) {
+          // Scoped context: only include affected files with content
+          const scopedFiles: Record<string, string> = {};
+          const otherPaths: string[] = [];
+          for (const [path, content] of Object.entries(projectFiles)) {
+            if (typeof content !== 'string' || content.trim().length === 0) continue;
+            if (scopeResult.affectedFiles.includes(path)) {
+              scopedFiles[path] = content;
+            } else {
+              otherPaths.push(path);
+            }
+          }
+
+          const scopedEntries = Object.entries(scopedFiles)
+            .map(([path, content]) => `=== ${path} ===\n${content}`)
+            .join('\n\n');
+          
+          const otherFilesListing = otherPaths.length > 0
+            ? `\n\nOTHER PROJECT FILES (paths only — do NOT output these unless absolutely necessary):\n${otherPaths.join('\n')}`
+            : '';
+
+          codeContext = `${fileInventoryBlock}SCOPE: ${scopeResult.strategy.toUpperCase()} — Only ${scopeResult.affectedFiles.length} file(s) need changes.\n\nFILES TO MODIFY:\n\n${scopedEntries}${otherFilesListing}\n\nCRITICAL OUTPUT RULE: Return ONLY the files listed above that you are actually changing. Do NOT output files from the "OTHER PROJECT FILES" list unless the change absolutely requires it.`;
+          console.log(`[ScopeFilter] Scoped context: ${Object.keys(scopedFiles).length} files with content, ${otherPaths.length} paths only (strategy: ${scopeResult.strategy})`);
+        } else {
+          // Full context: send everything (BUILD, full strategy, or no scope result)
+          const fileEntries = Object.entries(projectFiles)
+            .filter(([path, content]) => typeof content === 'string' && content.trim().length > 0)
+            .map(([path, content]) => `=== ${path} ===\n${content}`)
+            .join('\n\n');
+          codeContext = `${fileInventoryBlock}Here is the full project file map:\n\n${fileEntries}\n\nCRITICAL OUTPUT RULE: Return ONLY the files you are actually changing. Do NOT re-output unchanged files. If you change 2 files out of 7, return only those 2 files in your JSON. Unchanged files will be preserved automatically by the system.`;
+        }
       } else {
         // Single-file project: backward compatible
         codeContext = `Here is the current code:\n\n${currentCode}`;
@@ -2516,17 +2699,36 @@ If the request says "change X", change ONLY X and nothing else.
 
   const config = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-pro"];
 
-  // Determine max tokens based on intent + micro-edit
+  // Determine max tokens based on intent + micro-edit + token guardrails
   // Provider limits: Claude=64000, GPT-4o=16384, Gemini=65536 (2.5 Flash supports 65k output)
   const PROVIDER_MAX_TOKENS: Record<string, number> = {
     anthropic: 60000,
     openai: 16000,
-    gemini: 65000, // Gemini 2.5 Flash supports up to 65k — use full capacity to prevent truncation
+    gemini: 65000,
   };
   const providerCap = PROVIDER_MAX_TOKENS[config.provider] || 16000;
   let maxTokens = intent.intent === "QUESTION" || intent.intent === "REFUSE" ? 500 : providerCap;
+  
+  // Token Guardrail: estimate output budget and cap if needed
+  if (scopeResult && (intent.intent === "MODIFY" || intent.intent === "FIX")) {
+    const systemPromptLen = messages[0]?.content?.length || 0;
+    const userMsgLen = messages[messages.length - 1]?.content?.length || 0;
+    const fileCount = scopeResult.affectedFiles.length;
+    const avgFileSize = projectFiles
+      ? Object.values(projectFiles).reduce((sum, c) => sum + (typeof c === 'string' ? c.length : 0), 0) / Math.max(Object.keys(projectFiles).length, 1)
+      : 1000;
+    
+    const budget = estimateTokenBudget(systemPromptLen, userMsgLen, scopeResult, fileCount, avgFileSize, config.provider);
+    
+    if (budget.reducedScope) {
+      console.warn(`[TokenGuardrail] Reducing maxTokens from ${maxTokens} to ${budget.maxOutputTokens}`);
+      maxTokens = Math.min(maxTokens, budget.maxOutputTokens);
+    }
+    
+    console.log(`[TokenGuardrail] Input: ~${budget.estimatedInputTokens} tokens | Output est: ~${budget.estimatedOutputTokens} tokens | Safe: ${budget.safeToGenerate} | MaxTokens: ${maxTokens}`);
+  }
+  
   // Micro-edits: only reduce for QUESTION-like intents, NOT for code generation
-  // The model will naturally produce less output for simple changes
   if (isMicro && (intent.intent === "QUESTION" || intent.intent === "REFUSE")) {
     maxTokens = Math.min(16000, providerCap);
   }
@@ -2909,6 +3111,37 @@ serve(async (req) => {
     }
 
     // ════════════════════════════════════════════════════════════
+    // LAYER 2: SCOPE ANALYSIS (for MODIFY/FIX — determines affected files)
+    // Runs BEFORE executeIntent to scope the context sent to Claude
+    // ════════════════════════════════════════════════════════════
+    let scopeResult: ScopeAnalysisResult | null = null;
+    if (
+      (intentResult.intent === "MODIFY" || intentResult.intent === "FIX") &&
+      projectFiles && typeof projectFiles === 'object' &&
+      Object.keys(projectFiles).length > 1
+    ) {
+      const filePaths = Object.keys(projectFiles).filter(
+        p => typeof (projectFiles as Record<string, string>)[p] === 'string'
+      );
+      
+      if (filePaths.length > 1) {
+        console.log(`[Layer 2] Starting scope analysis for ${filePaths.length} files...`);
+        scopeResult = await analyzeScope(
+          prompt,
+          filePaths,
+          conversationHistory || [],
+          GOOGLE_GEMINI_API_KEY,
+        );
+        
+        if (scopeResult) {
+          console.log(`[Layer 2] Scope result: strategy=${scopeResult.strategy} affected=${scopeResult.affectedFiles.length} est_tokens=${scopeResult.estimatedOutputTokens}`);
+        } else {
+          console.log(`[Layer 2] Scope analysis returned null — using full context`);
+        }
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════
     // STAGE 1.5: ARCHITECT MODE (only when user explicitly requests it)
     // ════════════════════════════════════════════════════════════
     let modifiedPrompt = prompt;
@@ -2927,7 +3160,7 @@ serve(async (req) => {
     // ════════════════════════════════════════════════════════════
     // STAGE 2: EXECUTE BASED ON CLASSIFIED INTENT
     // ════════════════════════════════════════════════════════════
-    console.log(`[EDGE] Starting generation — intent=${intentResult.intent} model=${model} resolvedConfig will be computed inside executeIntent`);
+    console.log(`[EDGE] Starting generation — intent=${intentResult.intent} model=${model} scope=${scopeResult?.strategy || 'none'}`);
     console.log(`[Stage 2] Executing ${intentResult.intent} handler (mode: ${intentResult.interactionMode})${forcePlanMode ? " (Plan Mode Forced)" : ""}...`);
 
     const response = await withHardTimeout(
@@ -2943,6 +3176,7 @@ serve(async (req) => {
         lastValidFiles,
         brandIdentity,
         brandIdentityLocked,
+        scopeResult,
       ),
       HARD_TIMEOUT_MS,
     );
@@ -3438,8 +3672,78 @@ serve(async (req) => {
                 }
               }
               
+              if (!filesEmitted && retryCount === 0) {
+                // ═══════════════════════════════════════════════════════
+                // LAYER 4: MODEL-LEVEL RETRY (non-streaming fallback)
+                // All 3 JSON fallbacks failed. Make one more attempt with
+                // explicit instruction and reduced temperature.
+                // ═══════════════════════════════════════════════════════
+                retryCount++;
+                console.warn(`[RETRY] All fallbacks exhausted — triggering model-level retry (attempt ${retryCount})`);
+                emitEvent('phase', { phase: 'retrying' });
+
+                try {
+                  const retryMessages = [
+                    messages[0], // system prompt
+                    {
+                      role: "user",
+                      content: `Previous generation produced invalid JSON output. You MUST return ONLY a valid JSON object with this structure:\n{"files": {"/path.tsx": "file content"}}\n\nNo markdown, no commentary, no explanation. Just the JSON.\n\nOriginal request: ${prompt}`,
+                    },
+                  ];
+
+                  const retryConfig = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-claude"];
+                  const retryResponse = await callModelAPI(retryConfig, retryMessages, {
+                    maxTokens: Math.min(30000, providerCap),
+                    temperature: 0.1,
+                    stream: false,
+                  });
+
+                  if (retryResponse.ok) {
+                    const retryRaw = await retryResponse.text();
+                    let retryData: any;
+                    try { retryData = JSON.parse(retryRaw); } catch { retryData = null; }
+                    
+                    const retryContent = retryData?.choices?.[0]?.message?.content 
+                      || (Array.isArray(retryData?.content) ? retryData.content.map((c: any) => c?.text || '').join('') : null);
+                    
+                    if (retryContent) {
+                      const retryCleaned = retryContent
+                        .replace(/^```(?:json|tsx?)?\s*\n?/i, '')
+                        .replace(/\n?```\s*$/i, '')
+                        .trim();
+                      const retrySanitized = sanitizeJsonEscapes(retryCleaned);
+                      
+                      try {
+                        const retryParsed = JSON.parse(retrySanitized);
+                        const retryFiles = retryParsed?.files || (
+                          Object.keys(retryParsed).some((k: string) => k.endsWith('.tsx') || k.endsWith('.ts'))
+                            ? retryParsed : null
+                        );
+                        
+                        if (retryFiles && typeof retryFiles === 'object' && Object.keys(retryFiles).length > 0) {
+                          const isPartialDelta = currentCode?.trim() && projectFiles && typeof projectFiles === 'object';
+                          let finalRetry = retryFiles;
+                          if (isPartialDelta) {
+                            finalRetry = { ...(projectFiles as Record<string, string>), ...retryFiles };
+                          }
+                          emitEvent('files', { projectFiles: finalRetry });
+                          filesEmitted = true;
+                          lastMergedFiles = finalRetry;
+                          summaryValidated = true;
+                          console.log(`[RETRY] ✅ Model retry succeeded — ${Object.keys(retryFiles).length} files recovered`);
+                        }
+                      } catch {
+                        console.error('[RETRY] Retry response also invalid JSON');
+                      }
+                    }
+                  }
+                } catch (retryErr) {
+                  console.error('[RETRY] Model retry failed:', retryErr);
+                }
+              }
+              
               if (!filesEmitted) {
-                console.error('[Files] ZERO-TRUST GATE: No valid JSON file map extracted. All fallbacks exhausted.');
+                console.error('[Files] ZERO-TRUST GATE: No valid JSON file map extracted. All fallbacks + retry exhausted.');
                 summaryValidated = false;
                 lastMergedFiles = null as unknown as Record<string, string>;
               }
