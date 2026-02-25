@@ -217,7 +217,6 @@ function checkJsxTagBalance(code: string): string | null {
   const stripped = stripStringsAndComments(code);
   
   const tagStack: string[] = [];
-  const unexpectedClosings: string[] = [];
   // Match opening tags, closing tags, and self-closing tags
   const tagRegex = /<\/?([A-Za-z][A-Za-z0-9.]*)[^>]*?\/?>/g;
   let match: RegExpExecArray | null;
@@ -231,17 +230,10 @@ function checkJsxTagBalance(code: string): string | null {
     if (!tagName) continue;
 
     // ── SKIP TypeScript generics (the #1 source of false positives) ──
-    // If the char before '<' is a word char, it's a generic like FC<Props>, not JSX
     if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
-    
-    // Skip known TypeScript type names (e.g. <string> inside mapped types)
     if (TS_TYPE_NAMES.has(tagName)) continue;
-
-    // Skip names ending with "Props", "State", "Type", "Config", "Options" — 
-    // these are virtually always type parameters, never JSX components
     if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
     
-    // Skip HTML void elements that don't need closing
     const voidElements = new Set([
       'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
       'link', 'meta', 'param', 'source', 'track', 'wbr'
@@ -253,22 +245,30 @@ function checkJsxTagBalance(code: string): string | null {
     if (isSelfClosing) continue;
     
     if (isClosing) {
-      // Name-aware matching: find the matching opening tag
-      const idx = tagStack.lastIndexOf(tagName);
-      if (idx >= 0) {
-        tagStack.splice(idx, 1);
-      } else {
-        unexpectedClosings.push(tagName);
+      // Proper stack pop: closing tag must match the MOST RECENT opener
+      if (tagStack.length === 0) {
+        return `Unexpected closing JSX tag </${tagName}> — no matching opener`;
       }
-      continue;
+      const top = tagStack[tagStack.length - 1];
+      if (top === tagName) {
+        tagStack.pop();
+      } else {
+        // Mismatch: look deeper in stack (allows some flexibility for React patterns)
+        const idx = tagStack.lastIndexOf(tagName);
+        if (idx >= 0) {
+          // There's a matching opener, but tags between idx and top are unclosed
+          const unclosed = tagStack.splice(idx).slice(1);
+          if (unclosed.length > 0) {
+            return `Unclosed JSX tag(s) inside <${tagName}>: ${unclosed.map(t => '<' + t + '>').join(', ')} — must be closed before </${tagName}>`;
+          }
+        } else {
+          return `Unexpected closing JSX tag </${tagName}> — no matching opener (top of stack: <${top}>)`;
+        }
+      }
     } else {
       if (voidElements.has(tagName.toLowerCase())) continue;
       tagStack.push(tagName);
     }
-  }
-
-  if (unexpectedClosings.length > 0) {
-    return `Unexpected closing JSX tag(s): ${unexpectedClosings.slice(0, 3).map(t => `</${t}>`).join(', ')} — ${unexpectedClosings.length} unexpected`;
   }
   
   if (tagStack.length > 0) {
