@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { cn } from '@/lib/utils';
 
@@ -9,14 +10,14 @@ interface RevealProps {
   className?: string;
 }
 
-export function Reveal({
+export const Reveal = forwardRef<HTMLDivElement, RevealProps>(({
   children,
   delay = 0,
   direction = 'up',
   blur = false,
   className,
-}: RevealProps) {
-  const [ref, isVisible] = useIntersectionObserver<HTMLDivElement>({
+}, forwardedRef) => {
+  const [observerRef, isVisible] = useIntersectionObserver<HTMLDivElement>({
     threshold: 0.15,
     triggerOnce: true,
   });
@@ -30,7 +31,12 @@ export function Reveal({
 
   return (
     <div
-      ref={ref}
+      ref={(node) => {
+        // Assign both refs
+        (observerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        if (typeof forwardedRef === 'function') forwardedRef(node);
+        else if (forwardedRef) forwardedRef.current = node;
+      }}
       className={cn(
         'transition-all duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
         isVisible
@@ -43,7 +49,9 @@ export function Reveal({
       {children}
     </div>
   );
-}
+});
+
+Reveal.displayName = 'Reveal';
 
 interface RevealStaggerProps {
   children: React.ReactNode[];

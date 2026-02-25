@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, forwardRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ProductCard from '@/components/ProductCard';
@@ -28,7 +28,7 @@ interface ProductCarouselProps {
   viewAllLink?: string;
 }
 
-export function ProductCarousel({ title, products, viewAllLink }: ProductCarouselProps) {
+export const ProductCarousel = forwardRef<HTMLElement, ProductCarouselProps>(({ title, products, viewAllLink }, ref) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -57,8 +57,7 @@ export function ProductCarousel({ title, products, viewAllLink }: ProductCarouse
   if (products.length === 0) return null;
 
   return (
-    <section className="relative">
-      {/* Header */}
+    <section ref={ref} className="relative">
       <div className="flex items-center justify-between px-6 sm:px-8 lg:px-10 mb-3">
         <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
         {viewAllLink && (
@@ -68,9 +67,7 @@ export function ProductCarousel({ title, products, viewAllLink }: ProductCarouse
         )}
       </div>
 
-      {/* Carousel */}
       <div className="relative group/carousel">
-        {/* Left arrow */}
         {canScrollLeft && (
           <button
             onClick={() => scroll('left')}
@@ -80,7 +77,6 @@ export function ProductCarousel({ title, products, viewAllLink }: ProductCarouse
           </button>
         )}
 
-        {/* Right arrow */}
         {canScrollRight && (
           <button
             onClick={() => scroll('right')}
@@ -108,4 +104,6 @@ export function ProductCarousel({ title, products, viewAllLink }: ProductCarouse
       </div>
     </section>
   );
-}
+});
+
+ProductCarousel.displayName = 'ProductCarousel';

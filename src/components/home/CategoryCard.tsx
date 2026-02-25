@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 
 interface CategoryItem {
@@ -12,9 +13,9 @@ interface CategoryCardProps {
   footerLink?: { label: string; to: string };
 }
 
-export function CategoryCard({ title, items, footerLink }: CategoryCardProps) {
+export const CategoryCard = forwardRef<HTMLDivElement, CategoryCardProps>(({ title, items, footerLink }, ref) => {
   return (
-    <div className="bg-card border border-border/40 rounded-lg p-5 flex flex-col h-full hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
+    <div ref={ref} className="bg-card border border-border/40 rounded-lg p-5 flex flex-col h-full hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
       <h3 className="text-base font-bold text-foreground mb-3 tracking-tight">{title}</h3>
       <div className="grid grid-cols-2 gap-3 flex-1">
         {items.slice(0, 4).map((item) => (
@@ -49,4 +50,6 @@ export function CategoryCard({ title, items, footerLink }: CategoryCardProps) {
       )}
     </div>
   );
-}
+});
+
+CategoryCard.displayName = 'CategoryCard';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,7 @@ interface ChatRoom {
   is_active: boolean;
 }
 
-export default function EditorChatIcon() {
+const EditorChatIcon = forwardRef<HTMLDivElement>((_, ref) => {
   const { profile } = useAuth();
   const [activeChatRoom, setActiveChatRoom] = useState<ChatRoom | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -26,7 +26,6 @@ export default function EditorChatIcon() {
 
     fetchActiveChat();
 
-    // Subscribe to new messages for unread count
     const channel = supabase
       .channel('chat-notifications')
       .on(
@@ -37,7 +36,6 @@ export default function EditorChatIcon() {
           table: 'editor_chat_messages',
         },
         (payload) => {
-          // Check if message is for our room and not from us
           if (activeChatRoom && payload.new.room_id === activeChatRoom.id && payload.new.sender_id !== profile.id) {
             setUnreadCount(prev => prev + 1);
           }
@@ -53,9 +51,6 @@ export default function EditorChatIcon() {
   const fetchActiveChat = async () => {
     if (!profile?.id) return;
 
-    // Fetch chat rooms that are either:
-    // 1. Active (session in progress) OR
-    // 2. Not expired yet (for read-only history after session ends)
     const { data, error } = await supabase
       .from('editor_chat_rooms')
       .select('*')
@@ -86,11 +81,10 @@ export default function EditorChatIcon() {
     setUnreadCount(count || 0);
   };
 
-  // Don't render if no active chat
   if (!activeChatRoom) return null;
 
   return (
-    <>
+    <div ref={ref}>
       <Button
         variant="ghost"
         size="icon"
@@ -118,6 +112,10 @@ export default function EditorChatIcon() {
         chatRoom={activeChatRoom}
         onMessagesRead={() => setUnreadCount(0)}
       />
-    </>
+    </div>
   );
-}
+});
+
+EditorChatIcon.displayName = 'EditorChatIcon';
+
+export default EditorChatIcon;
