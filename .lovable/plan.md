@@ -1,95 +1,76 @@
 
 
-# Prompt Specialization: Dedicated MODIFY Prompt
+# Prompt Specialization: Finalize MODIFY_PROMPT
 
-## Problem
-MODIFY currently uses `CODE_EXECUTOR_PROMPT` which forces Claude to output 5 sections (ANALYSIS, PLAN, CODE, SUMMARY, CONFIDENCE). For a "change button color" request, this means Claude generates hundreds of tokens of reasoning before any JSON, inflating output size and increasing truncation risk.
+## Current State
 
-## Solution
-Create a dedicated `CODE_MODIFY_PROMPT` — a lean, JSON-only system prompt used exclusively when `intent === "MODIFY"`.
+The `CODE_MODIFY_PROMPT` already exists at line 1645, and the routing (`case "MODIFY"` at line 2521) and stream parser fast-path (lines 3474, 4188) are already wired up. However, the prompt wording doesn't match the exact spec, and `FIX` still shares `CODE_EXECUTOR_PROMPT` with `BUILD`.
 
-## Changes (single file)
+## Changes
 
-**File: `supabase/functions/vibecoder-v2/index.ts`**
+### 1. Replace `CODE_MODIFY_PROMPT` wording (lines 1645-1675)
 
-### 1. Add new `CODE_MODIFY_PROMPT` constant (~line 1642, before `CODE_EXECUTOR_PROMPT`)
-
-A strict JSON-only prompt with no ANALYSIS/PLAN/SUMMARY sections:
+Update the prompt body to match the exact spec:
 
 ```
-You are a structured code modification engine.
-You are operating inside an automated pipeline.
-If your output is not valid JSON, the run will fail.
+You are a structured code modification engine operating inside an automated CI pipeline.
+
+If your output is not valid JSON, the system will reject it and the generation will fail.
 
 You MUST:
 - Output ONLY valid JSON.
 - Output nothing before JSON.
 - Output nothing after JSON.
-- Do not include ANALYSIS.
-- Do not include PLAN.
-- Do not include SUMMARY.
+- Do not include analysis.
+- Do not include plan.
+- Do not include summary.
 - Do not explain.
-- Do not describe changes.
+- Do not describe what you changed.
 - Do not include markdown.
 - Do not include backticks.
 
 Return format:
+
 {
   "files": {
-    "/path/to/file.tsx": "FULL updated file content"
+    "path/to/file.tsx": "FULL updated file content"
   }
 }
 
 Rules:
-- Only return files listed for modification.
-- Preserve all unrelated code.
-- Changes must be minimal.
+- Only modify files explicitly provided.
+- Do NOT add new files unless explicitly required.
+- Preserve all unrelated logic and structure.
+- Changes must be minimal and precise.
 - Each file must be complete and syntactically valid.
 - Never truncate syntax.
-- First character must be '{'.
-- Last character must be '}'.
+- The first character must be '{'
+- The last character must be '}'
 ```
 
-This prompt will also include the mandatory layout hierarchy, technology constraints, scrollbar handling, and file structure protocol sections (copied from `CODE_EXECUTOR_PROMPT`) since those rules still apply.
+**Note on format**: The prompt uses the object format (`"files": { "path": "content" }`) because the entire downstream pipeline (primary parser at line 3580, fallbacks at 3767/3797, and zero-trust gate at 4484) expects `parsed.files` as a `Record<string, string>`. Switching to array format would require updating 4+ parser paths. The object format is functionally equivalent and already battle-tested.
 
-### 2. Update the switch statement (~line 2395)
+The existing layout hierarchy, technology constraints, scrollbar handling, and file structure protocol sections (lines 1677-1730) remain unchanged.
 
-Change:
-```typescript
-case "FIX":
-case "BUILD":
-case "MODIFY":
-default:
-  systemPrompt = CODE_EXECUTOR_PROMPT;
-```
+### 2. Generation temperature
 
-To:
-```typescript
-case "MODIFY":
-  systemPrompt = CODE_MODIFY_PROMPT;
-  break;
-case "FIX":
-case "BUILD":
-default:
-  systemPrompt = CODE_EXECUTOR_PROMPT;
-```
+Already set to `0.3` at line 2884 -- within the 0.2-0.3 range. No change needed.
 
-### 3. Update stream parser for MODIFY responses
+### 3. FIX intent (future-ready separation)
 
-The existing stream parser extracts code from `=== CODE ===` sections. For MODIFY, the entire response IS the JSON — no section extraction needed. Add a check: if intent is MODIFY, treat the full streamed text as the code result (skip section parsing).
+`FIX` currently falls through to `CODE_EXECUTOR_PROMPT` at line 2524. This is noted for a future step but will not be changed in this iteration, per the user's guidance ("MODIFY is priority").
 
 ## What Does NOT Change
-- BUILD prompt (keeps ANALYSIS/PLAN/CODE/SUMMARY)
-- FIX prompt (keeps structured format)
-- QUESTION/REFUSE prompts (already separate)
+- BUILD prompt (ANALYSIS/PLAN/CODE/SUMMARY)
+- FIX routing (stays on CODE_EXECUTOR_PROMPT for now)
+- Stream parser fast-path (already correct)
+- All downstream JSON parsers (already handle the object format)
 - Zero-Trust commit gate
 - Scope analyzer
 - Token guardrails
 - Retry logic
-- All existing injections (brand memory, brand layer, products, creator identity) still get appended to the MODIFY prompt
+- All injections (brand memory, brand layer, products, creator identity)
 
-## Expected Impact
-- MODIFY output shrinks by 30-50% (no ANALYSIS/PLAN/SUMMARY overhead)
-- Truncation probability drops significantly
-- JSON starts at character 0 — no text-before-JSON drift
-- Stream parser becomes simpler for MODIFY path
+## Summary
+
+This is a surgical update to the prompt text only. The routing, parsing, and pipeline are already correctly wired from previous iterations. The prompt wording gets tightened to the exact production spec with stronger CI-pipeline framing and explicit "do not describe what you changed" instruction.
