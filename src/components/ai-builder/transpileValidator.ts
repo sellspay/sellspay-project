@@ -199,24 +199,46 @@ function checkMalformedStyles(code: string): string | null {
  * Check JSX tag balance in TSX/JSX files.
  * Uses a stack-based approach to detect unclosed or mismatched JSX tags.
  */
+/**
+ * Known TypeScript primitive/utility types that should never be treated as JSX tags.
+ * These commonly appear inside generics like Record<string, ...>, Array<number>, etc.
+ */
+const TS_TYPE_NAMES = new Set([
+  'string', 'number', 'boolean', 'any', 'void', 'never', 'null', 'undefined',
+  'object', 'unknown', 'bigint', 'symbol', 'keyof', 'typeof', 'infer',
+  // Common utility types
+  'Record', 'Partial', 'Required', 'Readonly', 'Pick', 'Omit', 'Exclude',
+  'Extract', 'NonNullable', 'ReturnType', 'Parameters', 'InstanceType',
+  'Promise', 'Array', 'Map', 'Set', 'WeakMap', 'WeakSet',
+]);
+
 function checkJsxTagBalance(code: string): string | null {
   // Strip strings, comments, and template literals to avoid false positives
   const stripped = stripStringsAndComments(code);
   
   const tagStack: string[] = [];
   // Match opening tags, closing tags, and self-closing tags
-  // Opening: <TagName or <tag.name  (not </ and not <>)
-  // Closing: </TagName> or </tag.name>
-  // Self-closing: ... />
   const tagRegex = /<\/?([A-Za-z][A-Za-z0-9.]*)[^>]*?\/?>/g;
   let match: RegExpExecArray | null;
 
   while ((match = tagRegex.exec(stripped)) !== null) {
     const fullMatch = match[0];
     const tagName = match[1];
+    const matchIndex = match.index;
     
     // Skip fragment shorthand <> </>
     if (!tagName) continue;
+
+    // ── SKIP TypeScript generics (the #1 source of false positives) ──
+    // If the char before '<' is a word char, it's a generic like FC<Props>, not JSX
+    if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
+    
+    // Skip known TypeScript type names (e.g. <string> inside mapped types)
+    if (TS_TYPE_NAMES.has(tagName)) continue;
+
+    // Skip names ending with "Props", "State", "Type", "Config", "Options" — 
+    // these are virtually always type parameters, never JSX components
+    if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
     
     // Skip HTML void elements that don't need closing
     const voidElements = new Set([
@@ -227,20 +249,14 @@ function checkJsxTagBalance(code: string): string | null {
     const isSelfClosing = fullMatch.endsWith('/>');
     const isClosing = fullMatch.startsWith('</');
     
-    if (isSelfClosing) {
-      // Self-closing tags are balanced
-      continue;
-    }
+    if (isSelfClosing) continue;
     
     if (isClosing) {
       if (tagStack.length === 0) {
         return `Extra closing JSX tag </${tagName}> with no matching opening tag`;
       }
-      // Pop — we don't enforce strict matching since conditional rendering 
-      // can make strict matching unreliable. Just check count balance.
       tagStack.pop();
     } else {
-      // Opening tag
       if (voidElements.has(tagName.toLowerCase())) continue;
       tagStack.push(tagName);
     }
