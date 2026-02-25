@@ -338,7 +338,6 @@ function stripStringsAndCommentsServer(code: string): string {
 function checkJsxTagBalanceServer(code: string): string | null {
   const stripped = stripStringsAndCommentsServer(code);
   const tagStack: string[] = [];
-  const unexpectedClosings: string[] = [];
   const tagRegex = /<\/?([A-Za-z][A-Za-z0-9.]*)[^>]*?\/?>/g;
   let match: RegExpExecArray | null;
 
@@ -348,8 +347,6 @@ function checkJsxTagBalanceServer(code: string): string | null {
     const matchIndex = match.index;
 
     if (!tagName) continue;
-
-    // Skip TypeScript generics like FC<Props>, Record<string, ...>
     if (matchIndex > 0 && /\w/.test(stripped[matchIndex - 1])) continue;
     if (SERVER_TS_TYPE_NAMES.has(tagName)) continue;
     if (/(?:Props|State|Type|Config|Options|Params|Args|Result|Data|Item|Entry|Key|Value|Ref|Context|Handler|Callback|Fn|Interface)$/.test(tagName)) continue;
@@ -360,22 +357,30 @@ function checkJsxTagBalanceServer(code: string): string | null {
     if (isSelfClosing) continue;
 
     if (isClosing) {
-      // Match closing tag to its opening (name-aware, not just stack pop)
-      const idx = tagStack.lastIndexOf(tagName);
-      if (idx >= 0) {
-        tagStack.splice(idx, 1);
-      } else {
-        unexpectedClosings.push(tagName);
+      // Proper stack pop: closing tag must match the MOST RECENT opener
+      if (tagStack.length === 0) {
+        return `Unexpected closing JSX tag </${tagName}> — no matching opener`;
       }
-      continue;
+      const top = tagStack[tagStack.length - 1];
+      if (top === tagName) {
+        tagStack.pop();
+      } else {
+        // Mismatch: look deeper in stack (allows some flexibility for React patterns)
+        const idx = tagStack.lastIndexOf(tagName);
+        if (idx >= 0) {
+          // There's a matching opener, but tags between idx and top are unclosed
+          const unclosed = tagStack.splice(idx).slice(1);
+          if (unclosed.length > 0) {
+            return `Unclosed JSX tag(s) inside <${tagName}>: ${unclosed.map(t => '<' + t + '>').join(', ')} — must be closed before </${tagName}>`;
+          }
+        } else {
+          return `Unexpected closing JSX tag </${tagName}> — no matching opener (top of stack: <${top}>)`;
+        }
+      }
     } else {
       if (SERVER_VOID_ELEMENTS.has(tagName.toLowerCase())) continue;
       tagStack.push(tagName);
     }
-  }
-
-  if (unexpectedClosings.length > 0) {
-    return `Unexpected closing JSX tag(s): ${unexpectedClosings.slice(0, 3).map(t => `</${t}>`).join(', ')} — ${unexpectedClosings.length} unexpected`;
   }
 
   if (tagStack.length > 0) {
@@ -407,8 +412,11 @@ function getUnclosedJsxTags(code: string): string[] | null {
     const isClosing = fullMatch.startsWith('</');
     if (isSelfClosing) continue;
     if (isClosing) {
-      const idx = tagStack.lastIndexOf(tagName);
-      if (idx >= 0) tagStack.splice(idx, 1);
+      // Strict stack pop: must match top of stack
+      if (tagStack.length > 0 && tagStack[tagStack.length - 1] === tagName) {
+        tagStack.pop();
+      }
+      // If it doesn't match top, it's a nesting error — leave stack as-is
       continue;
     }
     if (SERVER_VOID_ELEMENTS.has(tagName.toLowerCase())) continue;
