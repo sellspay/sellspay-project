@@ -2496,22 +2496,21 @@ If the request says "change X", change ONLY X and nothing else.
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // INTENT-AWARE MODEL ROUTING
-  // BUILD → Claude Sonnet (structural JSON discipline, multi-file cohesion)
-  // MODIFY/FIX/QUESTION/REFUSE → Gemini Flash (fast, cheap, surgical)
-  // User can override with explicit model selection (e.g. vibecoder-claude)
+  // MODEL ROUTING — Claude for ALL code generation
+  // BUILD/MODIFY/FIX → Claude Sonnet (reliable JSON, no truncation)
+  // QUESTION/REFUSE → Gemini Flash (fast, cheap for chat responses)
+  // User can override with explicit model selection
   // ═══════════════════════════════════════════════════════════════
   const isExplicitModelSelection = model !== "vibecoder-pro" && model !== "vibecoder-flash";
   let resolvedModel = model;
 
   if (!isExplicitModelSelection) {
-    // Auto-route based on intent
-    if (intent.intent === "BUILD") {
-      resolvedModel = "vibecoder-claude"; // Claude Sonnet for full builds
-      console.log(`[ModelRouter] BUILD intent → auto-routing to Claude Sonnet (flagship engine)`);
+    if (intent.intent === "QUESTION" || intent.intent === "REFUSE") {
+      resolvedModel = "vibecoder-flash"; // Gemini Flash for non-code responses
+      console.log(`[ModelRouter] ${intent.intent} intent → using Gemini Flash (chat response)`);
     } else {
-      resolvedModel = "vibecoder-flash"; // Gemini Flash for edits/fixes
-      console.log(`[ModelRouter] ${intent.intent} intent → using Gemini Flash (surgical worker)`);
+      resolvedModel = "vibecoder-claude"; // Claude for all code generation
+      console.log(`[ModelRouter] ${intent.intent} intent → using Claude Sonnet (code engine)`);
     }
   }
 
