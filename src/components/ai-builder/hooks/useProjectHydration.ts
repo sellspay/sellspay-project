@@ -258,8 +258,13 @@ export function useProjectHydration({
     // Restore multi-file projects first, fall back to single-file
     const lastFilesSnapshot = getLastFilesSnapshot();
     if (lastFilesSnapshot && Object.keys(lastFilesSnapshot).length > 0) {
-      console.log('📦 Restoring multi-file project from message history for project:', activeProjectId, `(${Object.keys(lastFilesSnapshot).length} files)`);
-      setFiles(lastFilesSnapshot);
+      // Normalize paths for Sandpack
+      const normalizedFiles: Record<string, string> = {};
+      for (const [path, content] of Object.entries(lastFilesSnapshot)) {
+        normalizedFiles[path.startsWith('/') ? path : `/${path}`] = content;
+      }
+      console.log('📦 Restoring multi-file project from message history for project:', activeProjectId, `(${Object.keys(normalizedFiles).length} files)`);
+      setFiles(normalizedFiles);
     } else {
       const lastSnapshot = getLastCodeSnapshot();
       if (lastSnapshot) {
