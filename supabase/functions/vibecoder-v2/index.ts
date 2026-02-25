@@ -4276,21 +4276,17 @@ serve(async (req) => {
 
             // 2. Extract Code and Summary
             // ═══════════════════════════════════════════════════════
-            // MODIFY FAST PATH: entire response IS the JSON — no section extraction
+            // UNIFIED EXTRACTION: All intents use the same chain
+            // 1) Structured sections (=== CODE ===)
+            // 2) Chat marker (/// TYPE: CHAT ///)
+            // 3) Auto-detect rescue (raw JSON regardless of intent)
             // ═══════════════════════════════════════════════════════
-            if (intentResult.intent === "MODIFY" || intentResult.intent === "FIX") {
-              codeResult = fullContent
-                .replace(/^```(?:json|tsx?|jsx?)?\s*\n?/i, '')
-                .replace(/\n?```\s*$/i, '')
-                .trim();
-              summary = intentResult.intent === "FIX" ? "Fix applied." : "Modification applied.";
-              console.log(`[Job ${jobId}] ${intentResult.intent} fast-path: treating full response as JSON (${codeResult.length} chars)`);
-            } else if (fullContent.includes("=== CODE ===")) {
+            if (fullContent.includes("=== CODE ===")) {
               const codeStart = fullContent.indexOf("=== CODE ===") + "=== CODE ===".length;
               let codeEnd = fullContent.indexOf("=== SUMMARY ===");
               if (codeEnd < 0) codeEnd = fullContent.length;
               codeResult = fullContent.substring(codeStart, codeEnd)
-                .replace(/^```(?:tsx?|jsx?|javascript|typescript)?\s*\n?/i, '')
+                .replace(/^```(?:tsx?|jsx?|javascript|typescript|json)?\s*\n?/i, '')
                 .replace(/\n?```\s*$/i, '')
                 .replace(/\/\/\s*---\s*VIBECODER_COMPLETE\s*---/g, '')
                 .trim();
@@ -4324,32 +4320,50 @@ serve(async (req) => {
                   summary = fullContent.substring(analysisIdx + "=== ANALYSIS ===".length, aEnd > 0 ? aEnd : codeStart).trim();
                 }
               }
+              console.log(`[Job ${jobId}] Structured extraction: extracted CODE section (${codeResult.length} chars)`);
             } else if (fullContent.includes("/// TYPE: CHAT ///")) {
               // Chat-only response — no code expected
               summary = fullContent.replace("/// TYPE: CHAT ///", "").trim();
             } else {
-              // AUTO-DETECT: Rescue valid JSON code even if intent was misclassified
-              // This prevents NO_CODE_PRODUCED false negatives when model returns
-              // valid file maps but intent routing skipped the fast-path
-              const trimmedFull = fullContent.trim();
+              // AUTO-DETECT RESCUE: Catches raw JSON from any intent (FIX, MODIFY, BUILD, etc.)
+              // This is intent-agnostic — checks actual content structure, not the intent label
+              const trimmedFull = fullContent
+                .replace(/^```(?:json|tsx?|jsx?)?\s*\n?/i, '')
+                .replace(/\n?```\s*$/i, '')
+                .trim();
               let rescued = false;
               if (trimmedFull.startsWith('{')) {
                 try {
                   const parsed = JSON.parse(trimmedFull);
                   if (parsed?.files && typeof parsed.files === 'object') {
-                    // Wrapped format: { "files": { "/path": "content" } } or { "files": [...] }
-                    codeResult = trimmedFull;
-                    summary = intentResult.intent === "FIX" ? "Fix applied." : "Changes applied.";
+                    // Normalize object map → array format for downstream consistency
+                    if (!Array.isArray(parsed.files)) {
+                      const normalizedFiles = Object.entries(parsed.files).map(([path, content]) => ({
+                        path,
+                        content
+                      }));
+                      codeResult = JSON.stringify({ files: normalizedFiles });
+                    } else {
+                      codeResult = trimmedFull;
+                    }
+                    // Intent-aware summary
+                    summary = intentResult.intent === "FIX" ? "Fix applied."
+                            : intentResult.intent === "MODIFY" ? "Modification applied."
+                            : "Changes applied.";
                     rescued = true;
-                    console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: Found valid { files } JSON in unstructured response. Intent was ${intentResult.intent}.`);
+                    console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: Found valid { files } JSON (intent: ${intentResult.intent}, ${codeResult.length} chars)`);
                   } else {
                     // Check direct file map format: { "/path.tsx": "content", ... }
                     const keys = Object.keys(parsed);
                     if (keys.length > 0 && keys.some(k => k.endsWith('.tsx') || k.endsWith('.ts') || k.endsWith('.css') || k.endsWith('.html') || k.endsWith('.json'))) {
-                      codeResult = trimmedFull;
-                      summary = "Changes applied.";
+                      // Normalize direct file map to wrapped format
+                      const normalizedFiles = keys.map(k => ({ path: k, content: parsed[k] }));
+                      codeResult = JSON.stringify({ files: normalizedFiles });
+                      summary = intentResult.intent === "FIX" ? "Fix applied."
+                              : intentResult.intent === "MODIFY" ? "Modification applied."
+                              : "Changes applied.";
                       rescued = true;
-                      console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: Found direct file map JSON (${keys.length} files) in unstructured response.`);
+                      console.log(`[Job ${jobId}] AUTO-DETECT RESCUE: Found direct file map JSON (${keys.length} files, intent: ${intentResult.intent})`);
                     }
                   }
                 } catch {
@@ -4361,7 +4375,7 @@ serve(async (req) => {
                 // ZERO-TRUST: Do NOT treat raw fullContent as code
                 // Only use it as summary text
                 summary = fullContent.length > 200 ? fullContent.substring(0, 200) + '...' : fullContent;
-                console.warn(`[Job ${jobId}] ZERO-TRUST: No structured sections found. Raw content treated as summary only.`);
+                console.warn(`[Job ${jobId}] ZERO-TRUST: No structured sections found. Raw content treated as summary only (intent: ${intentResult.intent}).`);
               }
             }
 
