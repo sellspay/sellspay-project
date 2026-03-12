@@ -1592,7 +1592,21 @@ CRITICAL RULES:
 - Include "resolved_target" when pronouns like "it", "that", "this" are used
 - Be DECISIVE - pick the most likely intent even if uncertain
 - Default to QUESTION if the message is ambiguous or conversational
-- context_needed = true if you need to see the current code to respond properly`;
+- context_needed = true if you need to see the current code to respond properly
+
+CRITICAL — AESTHETIC / STYLE CHANGE = MODIFY, NEVER QUESTION:
+Any request that uses "make it/this more …", "make it darker/brighter/bolder",
+or aesthetic adjectives like luxury, minimal, playful, cyberpunk, elegant,
+modern, cozy, futuristic, vibrant, clean, sleek, bold, moody, warm, cold,
+premium, professional, colorful, retro — is ALWAYS a MODIFY request.
+The user wants the DESIGN CHANGED, not a conversation about it.
+Examples that MUST be MODIFY:
+  - "make this more luxury" → MODIFY
+  - "darker theme" → MODIFY
+  - "can you make it feel more premium" → MODIFY
+  - "brighter colors" → MODIFY
+  - "more minimalist" → MODIFY
+  - "give it a cyberpunk vibe" → MODIFY`;
 
 // ═══════════════════════════════════════════════════════════════
 // STAGE 2: EXECUTOR PROMPTS (Specialized for each intent)
