@@ -1623,6 +1623,12 @@ const MICRO_EDIT_KEYWORDS = [
   "href", "link", "typo", "text", "color", "font", "size",
   "title", "rename", "change the", "fix the", "update the",
   "remove the", "add a", "swap", "replace the",
+  // Aesthetic / style keywords — short vibe-shift prompts are micro-edits
+  "luxury", "luxurious", "premium", "elegant", "minimal", "minimalist",
+  "playful", "bold", "darker", "brighter", "modern", "sleek", "cozy",
+  "futuristic", "cyberpunk", "vibrant", "moody", "warm", "cold",
+  "professional", "colorful", "retro", "clean", "make it", "make this",
+  "more", "vibe", "theme", "aesthetic",
 ];
 
 function detectMicroEdit(prompt: string, hasExistingCode: boolean): boolean {
