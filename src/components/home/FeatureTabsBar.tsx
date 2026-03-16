@@ -89,10 +89,20 @@ export function FeatureTabsBar() {
     <section className="py-20 sm:py-28 lg:py-32">
       <div className="px-6 sm:px-8 lg:px-12 max-w-[1400px] mx-auto">
         {/* Section header */}
-        <div className="mb-12 sm:mb-16">
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground tracking-tight">
-            Everything you need
-          </h2>
+        <div className="mb-12 sm:mb-16 flex flex-col lg:flex-row lg:items-center gap-8 lg:gap-14">
+          <div className="lg:flex-1">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground tracking-tight">
+              Everything you need
+            </h2>
+          </div>
+          <div className="lg:flex-1 rounded-2xl overflow-hidden aspect-[16/9] max-h-[320px]">
+            <img
+              src={everythingYouNeedImg}
+              alt="Creative workspace with tools for digital creators"
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          </div>
         </div>
 
         {/* Tab buttons row — horizontally scrollable */}
