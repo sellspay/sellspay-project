@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Image, Video, Music, Sparkles, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import everythingYouNeedImg from '@/assets/everything-you-need.jpg';
 
 interface FeatureTab {
   id: string;
