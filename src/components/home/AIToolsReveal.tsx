@@ -40,9 +40,10 @@ const DEFAULT_STEPS: Step[] = [
       image: aiPanel2,
    },
    {
-      bg: "#060606",
-     text: "#ffffff",
-     headline: ["Audio Made", "Simple"],
+       bg: "#060606",
+      text: "#ffffff",
+      headline: ["Audio Made", "Simple"],
+      image: aiPanel3,
    },
    {
      bg: "#e76e50",
