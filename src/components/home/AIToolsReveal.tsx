@@ -7,7 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
  gsap.registerPlugin(ScrollTrigger);
  
  import aiPanel1 from "@/assets/ai-panel-1.png";
+ import aiPanel2 from "@/assets/ai-panel-2.png";
+ import aiPanel3 from "@/assets/ai-panel-3.png";
  import aiPanel5 from "@/assets/ai-panel-5.png";
+ import aiPanel6 from "@/assets/ai-panel-6.png";
  
 interface PanelMedia {
   url: string | null;
