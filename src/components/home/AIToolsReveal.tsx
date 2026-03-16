@@ -58,9 +58,10 @@ const DEFAULT_STEPS: Step[] = [
       image: aiPanel5,
     },
    {
-    bg: "#060606",  // Matches first step for seamless loop
-     text: "#ffffff",
-     headline: ["All in", "one"],
+     bg: "#060606",
+      text: "#ffffff",
+      headline: ["All in", "one"],
+      image: aiPanel6,
    },
  ];
  
