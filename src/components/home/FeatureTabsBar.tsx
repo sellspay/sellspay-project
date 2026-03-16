@@ -24,7 +24,7 @@ const tabs: FeatureTab[] = [
     description: 'Discover thousands of premium digital products from top creators worldwide. From LUTs to presets, sound effects to templates — find everything you need to level up your creative workflow.',
     tags: ['LUTs', 'Presets', 'Templates', 'Sound Packs'],
     link: '/products',
-    image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80',
+    image: everythingYouNeedImg,
   },
   {
     id: 'image-gen',
