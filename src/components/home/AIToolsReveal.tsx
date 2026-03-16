@@ -7,7 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
  gsap.registerPlugin(ScrollTrigger);
  
  import aiPanel1 from "@/assets/ai-panel-1.png";
+ import aiPanel2 from "@/assets/ai-panel-2.png";
+ import aiPanel3 from "@/assets/ai-panel-3.png";
  import aiPanel5 from "@/assets/ai-panel-5.png";
+ import aiPanel6 from "@/assets/ai-panel-6.png";
  
 interface PanelMedia {
   url: string | null;
@@ -31,14 +34,16 @@ const DEFAULT_STEPS: Step[] = [
      image: aiPanel1,
    },
    {
-     bg: "#ffffff",
-     text: "#111111",
-     headline: ["Sell", "products"],
+      bg: "#ffffff",
+      text: "#111111",
+      headline: ["Sell", "products"],
+      image: aiPanel2,
    },
    {
-      bg: "#060606",
-     text: "#ffffff",
-     headline: ["Audio Made", "Simple"],
+       bg: "#060606",
+      text: "#ffffff",
+      headline: ["Audio Made", "Simple"],
+      image: aiPanel3,
    },
    {
      bg: "#e76e50",
@@ -53,9 +58,10 @@ const DEFAULT_STEPS: Step[] = [
       image: aiPanel5,
     },
    {
-    bg: "#060606",  // Matches first step for seamless loop
-     text: "#ffffff",
-     headline: ["All in", "one"],
+     bg: "#060606",
+      text: "#ffffff",
+      headline: ["All in", "one"],
+      image: aiPanel6,
    },
  ];
  
