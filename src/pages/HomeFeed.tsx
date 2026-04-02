@@ -29,7 +29,9 @@ interface Product {
 }
 
 const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const [builderPrompt, setBuilderPrompt] = useState('');
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
