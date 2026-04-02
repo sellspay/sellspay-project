@@ -4118,7 +4118,7 @@ serve(async (req) => {
                     },
                   ];
 
-                  const retryConfig = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-claude"];
+                  const retryConfig = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-gpt4"];
                   const retryResponse = await callModelAPI(retryConfig, retryMessages, {
                     maxTokens: Math.min(30000, providerCap),
                     temperature: 0.0,
