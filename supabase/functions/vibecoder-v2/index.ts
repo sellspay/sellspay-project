@@ -1231,7 +1231,7 @@ const MODEL_CONFIG: Record<string, ModelConfig> = {
 
 const PREMIUM_FALLBACK_CHAIN: Record<string, ModelConfig | null> = {
   "anthropic": { modelId: "gpt-4o", provider: "openai" },   // Claude fails → try GPT
-  "openai": { modelId: "claude-sonnet-4-20250514", provider: "anthropic" }, // GPT fails → try Claude
+  "openai": { modelId: "gemini-2.5-flash", provider: "gemini" }, // GPT fails → try Gemini (Claude account disabled)
 };
 
 // Helper: Call the correct provider API (with premium cascading fallback)
@@ -2472,8 +2472,8 @@ Rules:
 
     const userContent = `Project Files:\n${filePaths.join("\n")}${conversationContext}\n\nUser Request:\n${prompt}\n\nReturn affectedFiles JSON only.`;
 
-    // Use Claude Sonnet for scope analysis — reliable structured JSON output
-    const scopeConfig: ModelConfig = { modelId: "claude-sonnet-4-20250514", provider: "anthropic" };
+    // Use GPT-4o for scope analysis (Claude account disabled)
+    const scopeConfig: ModelConfig = { modelId: "gpt-4o", provider: "openai" };
     const scopeMessages = [
       { role: "system", content: SCOPE_SYSTEM_PROMPT },
       { role: "user", content: userContent },
@@ -3094,8 +3094,8 @@ If the request says "change X", change ONLY X and nothing else.
       resolvedModel = "vibecoder-flash"; // Gemini Flash for non-code responses
       console.log(`[ModelRouter] ${intent.intent} intent → using Gemini Flash (chat response)`);
     } else {
-      resolvedModel = "vibecoder-claude"; // Claude for all code generation
-      console.log(`[ModelRouter] ${intent.intent} intent → using Claude Sonnet (code engine)`);
+      resolvedModel = "vibecoder-gpt4"; // GPT-4o for all code generation (Claude account disabled)
+      console.log(`[ModelRouter] ${intent.intent} intent → using GPT-4o (code engine)`);
     }
   }
 
@@ -4118,7 +4118,7 @@ serve(async (req) => {
                     },
                   ];
 
-                  const retryConfig = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-claude"];
+                  const retryConfig = MODEL_CONFIG[resolvedModel] || MODEL_CONFIG["vibecoder-gpt4"];
                   const retryResponse = await callModelAPI(retryConfig, retryMessages, {
                     maxTokens: Math.min(30000, providerCap),
                     temperature: 0.0,
@@ -4182,7 +4182,7 @@ serve(async (req) => {
                         },
                       ];
                       
-                      const replaceConfig = MODEL_CONFIG["vibecoder-claude"];
+                      const replaceConfig = MODEL_CONFIG["vibecoder-gpt4"];
                       const replaceResponse = await callModelAPI(replaceConfig, replaceMessages, {
                         maxTokens: Math.min(50000, providerCap),
                         temperature: 0.2,
