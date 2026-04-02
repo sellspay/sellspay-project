@@ -2472,8 +2472,8 @@ Rules:
 
     const userContent = `Project Files:\n${filePaths.join("\n")}${conversationContext}\n\nUser Request:\n${prompt}\n\nReturn affectedFiles JSON only.`;
 
-    // Use Claude Sonnet for scope analysis — reliable structured JSON output
-    const scopeConfig: ModelConfig = { modelId: "claude-sonnet-4-20250514", provider: "anthropic" };
+    // Use GPT-4o for scope analysis (Claude account disabled)
+    const scopeConfig: ModelConfig = { modelId: "gpt-4o", provider: "openai" };
     const scopeMessages = [
       { role: "system", content: SCOPE_SYSTEM_PROMPT },
       { role: "user", content: userContent },
