@@ -1303,7 +1303,16 @@ async function callModelAPI(
       });
     };
 
-    console.log(`[MODEL_ROUTER] Provider selected: ${config.provider}/${config.modelId}`);
+    // Cap max_tokens to each provider's actual limit (critical for fallback scenarios)
+    const PROVIDER_TOKEN_CAPS: Record<string, number> = {
+      openai: 16000,
+      anthropic: 60000,
+      gemini: 65000,
+    };
+    const cappedMaxTokens = Math.min(opts.maxTokens, PROVIDER_TOKEN_CAPS[config.provider] || 16000);
+    const cappedOpts = { ...opts, maxTokens: cappedMaxTokens };
+
+    console.log(`[MODEL_ROUTER] Provider selected: ${config.provider}/${config.modelId} | maxTokens capped: ${opts.maxTokens} → ${cappedMaxTokens}`);
 
     switch (config.provider) {
       case "openai": {
@@ -1319,8 +1328,8 @@ async function callModelAPI(
             model: config.modelId,
             messages,
             stream: opts.stream,
-            max_tokens: opts.maxTokens,
-            temperature: opts.temperature,
+            max_tokens: cappedOpts.maxTokens,
+            temperature: cappedOpts.temperature,
           }),
         });
 
@@ -1353,8 +1362,8 @@ async function callModelAPI(
           },
           body: JSON.stringify({
             model: config.modelId,
-            max_tokens: opts.maxTokens,
-            temperature: opts.temperature,
+            max_tokens: cappedOpts.maxTokens,
+            temperature: cappedOpts.temperature,
             system: systemMsg,
             messages: [{ role: "user", content: userPrompt }],
             stream: opts.stream,
@@ -1423,8 +1432,8 @@ async function callModelAPI(
             model: config.modelId,
             messages,
             stream: opts.stream,
-            max_tokens: opts.maxTokens,
-            temperature: opts.temperature,
+            max_tokens: cappedOpts.maxTokens,
+            temperature: cappedOpts.temperature,
           }),
         });
 
