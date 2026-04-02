@@ -1362,8 +1362,8 @@ async function callModelAPI(
           },
           body: JSON.stringify({
             model: config.modelId,
-            max_tokens: opts.maxTokens,
-            temperature: opts.temperature,
+            max_tokens: cappedOpts.maxTokens,
+            temperature: cappedOpts.temperature,
             system: systemMsg,
             messages: [{ role: "user", content: userPrompt }],
             stream: opts.stream,
