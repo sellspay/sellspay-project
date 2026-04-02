@@ -1328,8 +1328,8 @@ async function callModelAPI(
             model: config.modelId,
             messages,
             stream: opts.stream,
-            max_tokens: opts.maxTokens,
-            temperature: opts.temperature,
+            max_tokens: cappedOpts.maxTokens,
+            temperature: cappedOpts.temperature,
           }),
         });
 
