@@ -167,7 +167,11 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                navigate('/ai-builder', { state: { initialPrompt: builderPrompt } });
+                if (builderPrompt.trim()) {
+                  navigate('/ai-builder', { state: { initialPrompt: builderPrompt.trim() } });
+                } else {
+                  navigate('/ai-builder');
+                }
               }}
               className="relative z-10 max-w-3xl mx-auto"
             >
@@ -177,7 +181,6 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
                 <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-emerald-500/40 via-primary/30 to-emerald-500/40 opacity-0 group-focus-within:opacity-100 transition-all duration-500" />
 
                 <div className="relative flex items-center bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl overflow-hidden group-focus-within:border-transparent transition-colors shadow-2xl shadow-background/50">
-                  {/* Terminal indicator */}
                   <div className="flex items-center gap-2 pl-5 pr-2">
                     <div className="relative">
                       <Sparkles className="h-5 w-5 text-emerald-400/70 group-focus-within:text-emerald-400 transition-colors" />
