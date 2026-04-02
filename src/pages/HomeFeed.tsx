@@ -142,23 +142,23 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
       <Reveal>
         <section className="px-6 sm:px-8 lg:px-10 pb-8">
           {/* Ambient glow background */}
-          <div className="relative py-10 sm:py-14">
+          <div className="relative py-16 sm:py-24 lg:py-28">
             {/* Animated gradient orbs */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-emerald-500/[0.07] rounded-full blur-[100px] animate-pulse" />
-              <div className="absolute top-1/3 left-1/3 w-[300px] h-[200px] bg-primary/[0.05] rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '1s' }} />
-              <div className="absolute bottom-1/4 right-1/3 w-[250px] h-[180px] bg-emerald-400/[0.04] rounded-full blur-[90px] animate-pulse" style={{ animationDelay: '2s' }} />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[450px] bg-emerald-500/[0.07] rounded-full blur-[120px] animate-pulse" />
+              <div className="absolute top-1/3 left-1/3 w-[400px] h-[300px] bg-primary/[0.05] rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+              <div className="absolute bottom-1/4 right-1/3 w-[350px] h-[250px] bg-emerald-400/[0.04] rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }} />
             </div>
 
-            <div className="relative z-10 text-center mb-8">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 mb-5">
-                <Code className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-400">VibeCoder</span>
+            <div className="relative z-10 text-center mb-10 sm:mb-12">
+              <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 mb-6">
+                <Code className="h-4 w-4 text-emerald-400" />
+                <span className="text-xs font-semibold uppercase tracking-[0.15em] text-emerald-400">VibeCoder</span>
               </div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight mb-3">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight mb-4">
                 What do you want to build?
               </h2>
-              <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed">
+              <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
                 Describe your idea and watch AI generate a live storefront — no code needed
               </p>
             </div>
