@@ -414,45 +414,6 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </Reveal>
       )}
 
-      {/* AI Studio Banner — big cinematic video banner */}
-      <Reveal>
-        <section className="px-6 sm:px-8 lg:px-10 pb-8">
-          <Link
-            to="/studio"
-            className="group relative block w-full overflow-hidden rounded-xl border border-border/40"
-            style={{ aspectRatio: '21/7' }}
-          >
-            {/* Video background — user can add a video later */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-primary/10" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_40%,_hsl(var(--background))_100%)]" />
-
-            {/* Content overlay */}
-            <div className="relative z-10 flex flex-col items-center justify-center h-full gap-4 sm:gap-5">
-              <div className="flex items-center gap-2.5">
-                <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                <span className="text-xs sm:text-sm font-medium uppercase tracking-[0.2em] text-primary">
-                  AI-Powered
-                </span>
-              </div>
-              <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold text-foreground tracking-tight text-center">
-                AI Studio
-              </h2>
-              <p className="text-sm sm:text-base text-muted-foreground text-center max-w-md px-4">
-                Vocal isolation, stem splitting, SFX generation & more
-              </p>
-              <Button
-                className="mt-1 sm:mt-2 px-8 h-11 sm:h-12 text-sm sm:text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
-                asChild
-              >
-                <span>
-                  Open Studio
-                  <ArrowRight className="h-4 w-4" />
-                </span>
-              </Button>
-            </div>
-          </Link>
-        </section>
-      </Reveal>
     </div>
   );
 });
