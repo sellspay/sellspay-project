@@ -5,8 +5,9 @@ import { useAuth } from '@/lib/auth';
 import { ProductCarousel } from '@/components/home/ProductCarousel';
 import { Reveal } from '@/components/home/Reveal';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Wand2 } from 'lucide-react';
+import { ArrowRight, Wand2, Code } from 'lucide-react';
 import aiStudioBanner from '@/assets/ai-studio-banner.jpg';
+import aiBuilderBanner from '@/assets/ai-builder-banner.jpg';
 
 interface Product {
   id: string;
