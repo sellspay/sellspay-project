@@ -3094,8 +3094,8 @@ If the request says "change X", change ONLY X and nothing else.
       resolvedModel = "vibecoder-flash"; // Gemini Flash for non-code responses
       console.log(`[ModelRouter] ${intent.intent} intent → using Gemini Flash (chat response)`);
     } else {
-      resolvedModel = "vibecoder-claude"; // Claude for all code generation
-      console.log(`[ModelRouter] ${intent.intent} intent → using Claude Sonnet (code engine)`);
+      resolvedModel = "vibecoder-gpt4"; // GPT-4o for all code generation (Claude account disabled)
+      console.log(`[ModelRouter] ${intent.intent} intent → using GPT-4o (code engine)`);
     }
   }
 
