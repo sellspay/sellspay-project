@@ -6,8 +6,9 @@ import { CategoryCard } from '@/components/home/CategoryCard';
 import { ProductCarousel } from '@/components/home/ProductCarousel';
 import { Reveal } from '@/components/home/Reveal';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight, Play, Music, Palette, Video, BookOpen, Code, Image, Layers, FileText, Package, Mic, Shapes, Brush, MonitorSmartphone, PenTool, Camera, Gamepad2, Presentation, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, ArrowRight, Play, Music, Palette, Video, BookOpen, Code, Image, Layers, FileText, Package, Mic, Shapes, Brush, MonitorSmartphone, PenTool, Camera, Gamepad2, Presentation, ChevronLeft, ChevronRight, Wand2 } from 'lucide-react';
 import ProductCard from '@/components/ProductCard';
+import aiStudioBanner from '@/assets/ai-studio-banner.jpg';
 
 interface Product {
   id: string;
