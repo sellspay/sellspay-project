@@ -27,83 +27,10 @@ interface Product {
   creator_id: string | null;
 }
 
-const CATEGORY_CARDS = [
-  {
-    title: 'Presets & LUTs',
-    items: [
-      { label: 'Color Presets', image: null, link: '/products?type=preset' },
-      { label: 'LUTs', image: null, link: '/products?type=lut' },
-      { label: 'Film Looks', image: null, link: '/products?tag=film' },
-      { label: 'Cinematic', image: null, link: '/products?tag=cinematic' },
-    ],
-    footerLink: { label: 'Explore all presets', to: '/products?type=preset' },
-  },
-  {
-    title: 'Sound & Music',
-    items: [
-      { label: 'SFX Packs', image: null, link: '/products?type=sfx' },
-      { label: 'Music', image: null, link: '/products?type=music' },
-      { label: 'Transitions', image: null, link: '/products?tag=transition' },
-      { label: 'Ambience', image: null, link: '/products?tag=ambience' },
-    ],
-    footerLink: { label: 'Browse all audio', to: '/products?type=sfx' },
-  },
-  {
-    title: 'AI Studio Tools',
-    items: [
-      { label: 'Vocal Isolator', image: null, link: '/studio/voice-isolator' },
-      { label: 'Music Splitter', image: null, link: '/studio/music-splitter' },
-      { label: 'SFX Generator', image: null, link: '/studio/sfx-generator' },
-      { label: 'Video Editor', image: null, link: '/studio/video-editor' },
-    ],
-    footerLink: { label: 'Open AI Studio', to: '/studio' },
-  },
-  {
-    title: 'Templates & Projects',
-    items: [
-      { label: 'Templates', image: null, link: '/products?type=template' },
-      { label: 'Project Files', image: null, link: '/products?type=project_file' },
-      { label: 'Overlays', image: null, link: '/products?type=overlay' },
-      { label: 'Digital Art', image: null, link: '/products?type=digital_art' },
-    ],
-    footerLink: { label: 'See all templates', to: '/products?type=template' },
-  },
-];
-
-const BROWSE_CATEGORIES = [
-  { label: 'Presets', value: 'preset', icon: Palette },
-  { label: 'LUTs', value: 'lut', icon: Video },
-  { label: 'Sound Effects', value: 'sfx', icon: Music },
-  { label: 'Music', value: 'music', icon: Mic },
-  { label: 'Templates', value: 'template', icon: Layers },
-  { label: 'Courses', value: 'course', icon: BookOpen },
-  { label: 'Tutorials', value: 'tutorial', icon: Presentation },
-  { label: 'Digital Art', value: 'digital_art', icon: Brush },
-  { label: 'SaaS', value: 'saas', icon: Code },
-  { label: 'Software', value: 'software', icon: MonitorSmartphone },
-  { label: 'Plugins', value: 'plugin', icon: Package },
-  { label: '3D Assets', value: '3d_asset', icon: Shapes },
-  { label: 'UI Kits', value: 'ui_kit', icon: PenTool },
-  { label: 'Mockups', value: 'mockup', icon: Image },
-  { label: 'Photography', value: 'photography', icon: Camera },
-  { label: 'eBooks', value: 'ebook', icon: FileText },
-  { label: 'Illustrations', value: 'illustration', icon: Brush },
-  { label: 'Motion Graphics', value: 'motion_graphics', icon: Gamepad2 },
-  { label: 'Overlays', value: 'overlay', icon: Layers },
-  { label: 'Fonts', value: 'font', icon: PenTool },
-];
-
 const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
-  const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
-  const [categoryProducts, setCategoryProducts] = useState<Product[]>([]);
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
-  const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
-  const categoryScrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollCatLeft, setCanScrollCatLeft] = useState(false);
-  const [canScrollCatRight, setCanScrollCatRight] = useState(true);
 
   useEffect(() => {
     document.title = 'SellsPay — Home';
