@@ -1,11 +1,11 @@
 import { useState, useEffect, forwardRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { ProductCarousel } from '@/components/home/ProductCarousel';
 import { Reveal } from '@/components/home/Reveal';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Wand2, Code } from 'lucide-react';
+import { ArrowRight, Wand2, Code, Sparkles } from 'lucide-react';
 import aiStudioBanner from '@/assets/ai-studio-banner.jpg';
 import aiBuilderBanner from '@/assets/ai-builder-banner.jpg';
 
