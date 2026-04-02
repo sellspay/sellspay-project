@@ -1,11 +1,11 @@
 import { useState, useEffect, forwardRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { ProductCarousel } from '@/components/home/ProductCarousel';
 import { Reveal } from '@/components/home/Reveal';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Wand2, Code } from 'lucide-react';
+import { ArrowRight, Wand2, Code, Sparkles } from 'lucide-react';
 import aiStudioBanner from '@/assets/ai-studio-banner.jpg';
 import aiBuilderBanner from '@/assets/ai-builder-banner.jpg';
 
@@ -29,7 +29,9 @@ interface Product {
 }
 
 const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const [builderPrompt, setBuilderPrompt] = useState('');
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -136,58 +138,72 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </section>
       </Reveal>
 
-      {/* AI Builder — Feature Card */}
+      {/* AI Builder — Interactive Demo Teaser */}
       <Reveal>
         <section className="px-6 sm:px-8 lg:px-10 pb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 rounded-2xl border border-border/40 overflow-hidden bg-card">
-            {/* Left: Image showcase */}
-            <div className="lg:col-span-3 relative overflow-hidden min-h-[240px] lg:min-h-[320px]">
-              <img
-                src={aiBuilderBanner}
-                alt="AI Builder"
-                loading="lazy"
-                width={1920}
-                height={736}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-card/80 hidden lg:block" />
-              <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent lg:hidden" />
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 mb-4">
+              <Code className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-400">VibeCoder</span>
             </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight mb-2">
+              What do you want to build?
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              Describe your idea and AI will generate a live storefront for you
+            </p>
+          </div>
 
-            {/* Right: Content */}
-            <div className="lg:col-span-2 flex flex-col justify-center p-6 sm:p-8 lg:p-10">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-8 w-8 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
-                  <Code className="h-4 w-4 text-emerald-400" />
+          {/* Mock terminal prompt */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigate('/ai-builder', { state: { initialPrompt: builderPrompt } });
+            }}
+            className="max-w-2xl mx-auto"
+          >
+            <div className="relative group">
+              <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-emerald-500/50 via-primary/50 to-emerald-500/50 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 blur-[1px]" />
+              <div className="relative flex items-center bg-card border border-border/60 rounded-xl overflow-hidden group-focus-within:border-transparent transition-colors">
+                <div className="flex items-center gap-2 pl-4 pr-2 text-muted-foreground/50">
+                  <Sparkles className="h-4 w-4" />
+                  <span className="text-xs font-mono hidden sm:inline">›</span>
                 </div>
-                <span className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-400">VibeCoder</span>
+                <input
+                  type="text"
+                  value={builderPrompt}
+                  onChange={(e) => setBuilderPrompt(e.target.value)}
+                  placeholder="A sleek portfolio with dark theme and project gallery..."
+                  className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/40 py-4 pr-2"
+                />
+                <div className="pr-2">
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="h-8 px-4 text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 rounded-lg gap-1.5 shadow-lg shadow-emerald-500/20"
+                  >
+                    Build
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
-
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground tracking-tight leading-tight mb-3">
-                Build Your Storefront with AI
-              </h2>
-
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-                Just describe your vision — our AI writes the code, generates the design, and deploys a live storefront for you. Zero coding skills needed.
-              </p>
-
-              <ul className="space-y-2.5 mb-6">
-                {['Prompt-to-website in seconds', 'Live preview & instant publish', 'Full code editor access'].map((item) => (
-                  <li key={item} className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                className="w-full sm:w-fit px-6 h-11 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 gap-2 shadow-lg shadow-emerald-500/20"
-                onClick={() => window.location.href = '/ai-builder'}
-              >
-                Start Building
-                <ArrowRight className="h-4 w-4" />
-              </Button>
             </div>
+          </form>
+
+          {/* Quick prompt suggestions */}
+          <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-2xl mx-auto">
+            {['Music producer store', 'Photography portfolio', 'Digital art shop', 'SFX marketplace'].map((suggestion) => (
+              <button
+                key={suggestion}
+                onClick={() => {
+                  setBuilderPrompt(suggestion);
+                  navigate('/ai-builder', { state: { initialPrompt: suggestion } });
+                }}
+                className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 border border-border/30 rounded-full transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
           </div>
         </section>
       </Reveal>
