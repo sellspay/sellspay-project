@@ -4182,7 +4182,7 @@ serve(async (req) => {
                         },
                       ];
                       
-                      const replaceConfig = MODEL_CONFIG["vibecoder-claude"];
+                      const replaceConfig = MODEL_CONFIG["vibecoder-gpt4"];
                       const replaceResponse = await callModelAPI(replaceConfig, replaceMessages, {
                         maxTokens: Math.min(50000, providerCap),
                         temperature: 0.2,
