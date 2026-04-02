@@ -141,69 +141,87 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
       {/* AI Builder — Interactive Demo Teaser */}
       <Reveal>
         <section className="px-6 sm:px-8 lg:px-10 pb-8">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 mb-4">
-              <Code className="h-3.5 w-3.5 text-emerald-400" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-400">VibeCoder</span>
+          {/* Ambient glow background */}
+          <div className="relative py-10 sm:py-14">
+            {/* Animated gradient orbs */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-emerald-500/[0.07] rounded-full blur-[100px] animate-pulse" />
+              <div className="absolute top-1/3 left-1/3 w-[300px] h-[200px] bg-primary/[0.05] rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '1s' }} />
+              <div className="absolute bottom-1/4 right-1/3 w-[250px] h-[180px] bg-emerald-400/[0.04] rounded-full blur-[90px] animate-pulse" style={{ animationDelay: '2s' }} />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight mb-2">
-              What do you want to build?
-            </h2>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Describe your idea and AI will generate a live storefront for you
-            </p>
-          </div>
 
-          {/* Mock terminal prompt */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              navigate('/ai-builder', { state: { initialPrompt: builderPrompt } });
-            }}
-            className="max-w-2xl mx-auto"
-          >
-            <div className="relative group">
-              <div className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-emerald-500/50 via-primary/50 to-emerald-500/50 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 blur-[1px]" />
-              <div className="relative flex items-center bg-card border border-border/60 rounded-xl overflow-hidden group-focus-within:border-transparent transition-colors">
-                <div className="flex items-center gap-2 pl-4 pr-2 text-muted-foreground/50">
-                  <Sparkles className="h-4 w-4" />
-                  <span className="text-xs font-mono hidden sm:inline">›</span>
-                </div>
-                <input
-                  type="text"
-                  value={builderPrompt}
-                  onChange={(e) => setBuilderPrompt(e.target.value)}
-                  placeholder="A sleek portfolio with dark theme and project gallery..."
-                  className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/40 py-4 pr-2"
-                />
-                <div className="pr-2">
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="h-8 px-4 text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 rounded-lg gap-1.5 shadow-lg shadow-emerald-500/20"
-                  >
-                    Build
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
+            <div className="relative z-10 text-center mb-8">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 mb-5">
+                <Code className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-400">VibeCoder</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight mb-3">
+                What do you want to build?
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed">
+                Describe your idea and watch AI generate a live storefront — no code needed
+              </p>
+            </div>
+
+            {/* Terminal-style prompt */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                navigate('/ai-builder', { state: { initialPrompt: builderPrompt } });
+              }}
+              className="relative z-10 max-w-2xl mx-auto"
+            >
+              <div className="relative group">
+                {/* Glow ring on focus */}
+                <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-emerald-500/60 via-primary/40 to-emerald-500/60 opacity-0 group-focus-within:opacity-100 transition-all duration-500 blur-sm" />
+                <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-emerald-500/40 via-primary/30 to-emerald-500/40 opacity-0 group-focus-within:opacity-100 transition-all duration-500" />
+
+                <div className="relative flex items-center bg-card/80 backdrop-blur-sm border border-border/40 rounded-2xl overflow-hidden group-focus-within:border-transparent transition-colors shadow-2xl shadow-background/50">
+                  {/* Terminal indicator */}
+                  <div className="flex items-center gap-2 pl-5 pr-2">
+                    <div className="relative">
+                      <Sparkles className="h-5 w-5 text-emerald-400/70 group-focus-within:text-emerald-400 transition-colors" />
+                      <div className="absolute inset-0 h-5 w-5 text-emerald-400 blur-sm opacity-0 group-focus-within:opacity-50 transition-opacity">
+                        <Sparkles className="h-5 w-5" />
+                      </div>
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    value={builderPrompt}
+                    onChange={(e) => setBuilderPrompt(e.target.value)}
+                    placeholder="A sleek portfolio with dark theme and project gallery..."
+                    className="flex-1 bg-transparent border-none outline-none text-sm sm:text-base text-foreground placeholder:text-muted-foreground/30 py-5 pr-2 font-medium"
+                  />
+                  <div className="pr-3">
+                    <Button
+                      type="submit"
+                      className="h-10 px-5 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-400 rounded-xl gap-2 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:scale-[1.02]"
+                    >
+                      Build
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </form>
+            </form>
 
-          {/* Quick prompt suggestions */}
-          <div className="flex flex-wrap justify-center gap-2 mt-4 max-w-2xl mx-auto">
-            {['Music producer store', 'Photography portfolio', 'Digital art shop', 'SFX marketplace'].map((suggestion) => (
-              <button
-                key={suggestion}
-                onClick={() => {
-                  setBuilderPrompt(suggestion);
-                  navigate('/ai-builder', { state: { initialPrompt: suggestion } });
-                }}
-                className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/50 border border-border/30 rounded-full transition-colors"
-              >
-                {suggestion}
-              </button>
-            ))}
+            {/* Quick prompt suggestions */}
+            <div className="relative z-10 flex flex-wrap justify-center gap-2 mt-5 max-w-2xl mx-auto">
+              {['Music producer store', 'Photography portfolio', 'Digital art shop', 'SFX marketplace'].map((suggestion, i) => (
+                <button
+                  key={suggestion}
+                  onClick={() => {
+                    setBuilderPrompt(suggestion);
+                    navigate('/ai-builder', { state: { initialPrompt: suggestion } });
+                  }}
+                  className="px-4 py-2 text-xs font-medium text-muted-foreground/70 hover:text-emerald-400 bg-card/50 hover:bg-emerald-500/10 border border-border/20 hover:border-emerald-500/30 rounded-full transition-all duration-300"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
           </div>
         </section>
       </Reveal>
