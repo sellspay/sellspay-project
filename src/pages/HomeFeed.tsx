@@ -44,88 +44,23 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
 
     const fetchAll = async () => {
       try {
-      const [trendingRes, newRes, viewedRes, catImagesRes] = await Promise.all([
-        supabase
-          .from('product_likes')
-          .select('product_id')
-          .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()),
-        supabase
-          .from('products')
-          .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, subscription_access, price_cents, currency, youtube_url, tags, created_at, creator_id')
-          .eq('status', 'published')
-          .order('created_at', { ascending: false })
-          .limit(20),
-        supabase
+        // Fetch recently viewed products
+        const viewedRes = await supabase
           .from('product_views')
           .select('product_id')
           .eq('viewer_id', user.id)
           .order('created_at', { ascending: false })
-          .limit(20),
-        supabase
-          .from('products')
-          .select('product_type, cover_image_url')
-          .eq('status', 'published')
-          .not('cover_image_url', 'is', null)
-          .not('product_type', 'is', null)
-          .limit(100),
-      ]);
+          .limit(20);
 
-      // Build category images map
-      const imgMap: Record<string, string> = {};
-      catImagesRes.data?.forEach(p => {
-        if (p.product_type && p.cover_image_url && !imgMap[p.product_type]) {
-          imgMap[p.product_type] = p.cover_image_url;
+        if (viewedRes.data && viewedRes.data.length > 0) {
+          const uniqueIds = [...new Set(viewedRes.data.map(r => r.product_id))].slice(0, 12);
+          const { data: viewedProducts } = await supabase
+            .from('products')
+            .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, subscription_access, price_cents, currency, youtube_url, tags, created_at, creator_id')
+            .in('id', uniqueIds)
+            .eq('status', 'published');
+          setRecentlyViewed(viewedProducts || []);
         }
-      });
-      setCategoryImages(imgMap);
-
-      // Process trending
-      const likeCounts = new Map<string, number>();
-      trendingRes.data?.forEach(l => likeCounts.set(l.product_id, (likeCounts.get(l.product_id) || 0) + 1));
-      const topIds = [...likeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([id]) => id);
-
-      let trendingData: Product[] = [];
-      if (topIds.length > 0) {
-        const { data } = await supabase
-          .from('products')
-          .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, subscription_access, price_cents, currency, youtube_url, tags, created_at, creator_id')
-          .in('id', topIds)
-          .eq('status', 'published');
-        trendingData = data || [];
-      }
-
-      if (trendingData.length < 6) {
-        const existingIds = new Set(trendingData.map(p => p.id));
-        const filler = (newRes.data || []).filter(p => !existingIds.has(p.id));
-        trendingData = [...trendingData, ...filler].slice(0, 20);
-      }
-
-      setTrendingProducts(trendingData);
-
-      // Fetch one product per category for "Browse by Category" row
-      const allPublished = (newRes.data || []) as Product[];
-      const seenTypes = new Set<string>();
-      const catProds: Product[] = [];
-      for (const cat of BROWSE_CATEGORIES) {
-        const match = allPublished.find(p => p.product_type === cat.value && !seenTypes.has(cat.value));
-        if (match) {
-          seenTypes.add(cat.value);
-          catProds.push(match);
-        }
-      }
-      setCategoryProducts(catProds);
-
-      // Process recently viewed
-      if (viewedRes.data && viewedRes.data.length > 0) {
-        const uniqueIds = [...new Set(viewedRes.data.map(r => r.product_id))].slice(0, 12);
-        const { data: viewedProducts } = await supabase
-          .from('products')
-          .select('id, name, status, product_type, featured, cover_image_url, preview_video_url, pricing_type, subscription_access, price_cents, currency, youtube_url, tags, created_at, creator_id')
-          .in('id', uniqueIds)
-          .eq('status', 'published');
-        setRecentlyViewed(viewedProducts || []);
-      }
-
       } catch (err) {
         console.error('HomeFeed fetchAll error:', err);
       } finally {
@@ -135,19 +70,6 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
 
     fetchAll();
   }, [user]);
-
-  // Enrich category cards with real product images
-  const enrichedCategories = CATEGORY_CARDS.map(cat => ({
-    ...cat,
-    items: cat.items.map(item => {
-      const typeMap: Record<string, string> = {
-        'Color Presets': 'preset', 'LUTs': 'lut', 'SFX Packs': 'sfx',
-        'Music': 'music', 'Templates': 'template', 'Project Files': 'project_file',
-        'Overlays': 'overlay', 'Digital Art': 'digital_art',
-      };
-      const type = typeMap[item.label];
-      return { ...item, image: (type && categoryImages[type]) || item.image };
-    }),
   }));
 
   if (loading) {
