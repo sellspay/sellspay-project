@@ -136,55 +136,59 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </section>
       </Reveal>
 
-      {/* AI Builder Banner — right-aligned, compact card layout */}
+      {/* AI Builder — Feature Card */}
       <Reveal>
         <section className="px-6 sm:px-8 lg:px-10 pb-8">
-          <Link
-            to="/ai-builder"
-            className="group relative block w-full overflow-hidden rounded-2xl border border-border/40"
-            style={{ aspectRatio: '21/7' }}
-          >
-            <img
-              src={aiBuilderBanner}
-              alt="AI Builder"
-              loading="lazy"
-              width={1920}
-              height={736}
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-            />
-            {/* Right-side gradient (content on the right) */}
-            <div className="absolute inset-0 bg-gradient-to-l from-background/95 via-background/60 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent" />
-
-            {/* Right-aligned content */}
-            <div className="relative z-10 flex flex-col justify-center items-end h-full px-8 sm:px-12 lg:px-16 text-right">
-              <div className="max-w-lg">
-                <div className="flex items-center justify-end gap-2 mb-3">
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
-                    <Code className="h-3.5 w-3.5 text-emerald-400" />
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-400">VibeCoder</span>
-                  </div>
-                </div>
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight leading-tight mb-2">
-                  Build with AI
-                </h2>
-                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-5">
-                  Describe your vision and let AI generate a fully functional storefront — no coding required.
-                </p>
-                <div className="flex justify-end">
-                  <Button
-                    className="px-6 h-10 sm:h-11 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 gap-2 shadow-lg shadow-emerald-500/20"
-                    asChild
-                  >
-                    <span>
-                      Start Building
-                      <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </Button>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 rounded-2xl border border-border/40 overflow-hidden bg-card">
+            {/* Left: Image showcase */}
+            <div className="lg:col-span-3 relative overflow-hidden min-h-[240px] lg:min-h-[320px]">
+              <img
+                src={aiBuilderBanner}
+                alt="AI Builder"
+                loading="lazy"
+                width={1920}
+                height={736}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-card/80 hidden lg:block" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent lg:hidden" />
             </div>
-          </Link>
+
+            {/* Right: Content */}
+            <div className="lg:col-span-2 flex flex-col justify-center p-6 sm:p-8 lg:p-10">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-8 w-8 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                  <Code className="h-4 w-4 text-emerald-400" />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-400">VibeCoder</span>
+              </div>
+
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground tracking-tight leading-tight mb-3">
+                Build Your Storefront with AI
+              </h2>
+
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                Just describe your vision — our AI writes the code, generates the design, and deploys a live storefront for you. Zero coding skills needed.
+              </p>
+
+              <ul className="space-y-2.5 mb-6">
+                {['Prompt-to-website in seconds', 'Live preview & instant publish', 'Full code editor access'].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                className="w-full sm:w-fit px-6 h-11 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 gap-2 shadow-lg shadow-emerald-500/20"
+                onClick={() => window.location.href = '/ai-builder'}
+              >
+                Start Building
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </section>
       </Reveal>
 
