@@ -136,13 +136,13 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         </section>
       </Reveal>
 
-      {/* AI Builder Banner */}
+      {/* AI Builder Banner — right-aligned, compact card layout */}
       <Reveal>
         <section className="px-6 sm:px-8 lg:px-10 pb-8">
           <Link
             to="/ai-builder"
-            className="group relative block w-full overflow-hidden rounded-2xl border border-primary/20"
-            style={{ aspectRatio: '21/8' }}
+            className="group relative block w-full overflow-hidden rounded-2xl border border-border/40"
+            style={{ aspectRatio: '21/7' }}
           >
             <img
               src={aiBuilderBanner}
@@ -152,31 +152,37 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
               height={736}
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/60 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+            {/* Right-side gradient (content on the right) */}
+            <div className="absolute inset-0 bg-gradient-to-l from-background/95 via-background/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent" />
 
-            <div className="relative z-10 flex flex-col justify-center h-full px-8 sm:px-12 lg:px-16 max-w-2xl">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/25">
-                  <Code className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary">AI Code Builder</span>
+            {/* Right-aligned content */}
+            <div className="relative z-10 flex flex-col justify-center items-end h-full px-8 sm:px-12 lg:px-16 text-right">
+              <div className="max-w-lg">
+                <div className="flex items-center justify-end gap-2 mb-3">
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
+                    <Code className="h-3.5 w-3.5 text-emerald-400" />
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-400">VibeCoder</span>
+                  </div>
+                </div>
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight leading-tight mb-2">
+                  Build with AI
+                </h2>
+                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-5">
+                  Describe your vision and let AI generate a fully functional storefront — no coding required.
+                </p>
+                <div className="flex justify-end">
+                  <Button
+                    className="px-6 h-10 sm:h-11 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 gap-2 shadow-lg shadow-emerald-500/20"
+                    asChild
+                  >
+                    <span>
+                      Start Building
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </Button>
                 </div>
               </div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight leading-tight mb-2">
-                Build with AI
-              </h2>
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-5 max-w-md">
-                Describe what you want to build and watch AI generate a fully functional storefront — no coding required.
-              </p>
-              <Button
-                className="w-fit px-6 h-10 sm:h-11 text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 gap-2 shadow-lg shadow-primary/20"
-                asChild
-              >
-                <span>
-                  Start Building
-                  <ArrowRight className="h-4 w-4" />
-                </span>
-              </Button>
             </div>
           </Link>
         </section>
