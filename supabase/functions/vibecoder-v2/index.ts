@@ -1231,7 +1231,7 @@ const MODEL_CONFIG: Record<string, ModelConfig> = {
 
 const PREMIUM_FALLBACK_CHAIN: Record<string, ModelConfig | null> = {
   "anthropic": { modelId: "gpt-4o", provider: "openai" },   // Claude fails → try GPT
-  "openai": { modelId: "claude-sonnet-4-20250514", provider: "anthropic" }, // GPT fails → try Claude
+  "openai": { modelId: "gemini-2.5-flash", provider: "gemini" }, // GPT fails → try Gemini (Claude account disabled)
 };
 
 // Helper: Call the correct provider API (with premium cascading fallback)
