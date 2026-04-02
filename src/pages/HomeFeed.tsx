@@ -1,13 +1,11 @@
-import { useState, useEffect, useRef, forwardRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, forwardRef } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
-import { CategoryCard } from '@/components/home/CategoryCard';
 import { ProductCarousel } from '@/components/home/ProductCarousel';
 import { Reveal } from '@/components/home/Reveal';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight, Play, Music, Palette, Video, BookOpen, Code, Image, Layers, FileText, Package, Mic, Shapes, Brush, MonitorSmartphone, PenTool, Camera, Gamepad2, Presentation, ChevronLeft, ChevronRight, Wand2 } from 'lucide-react';
-import ProductCard from '@/components/ProductCard';
+import { ArrowRight, Wand2 } from 'lucide-react';
 import aiStudioBanner from '@/assets/ai-studio-banner.jpg';
 
 interface Product {
