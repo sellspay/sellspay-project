@@ -169,7 +169,7 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
                 e.preventDefault();
                 navigate('/ai-builder', { state: { initialPrompt: builderPrompt } });
               }}
-              className="relative z-10 max-w-2xl mx-auto"
+              className="relative z-10 max-w-3xl mx-auto"
             >
               <div className="relative group">
                 {/* Glow ring on focus */}
