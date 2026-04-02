@@ -3,12 +3,12 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useSubscription } from "@/hooks/useSubscription";
 import MainLayout from "@/components/layout/MainLayout";
-import { Check, X, Sparkles, Crown, Info, Loader2, Monitor, Image as ImageIcon, Video } from "lucide-react";
+import { Check, X, Sparkles, Crown, Info, Loader2, Monitor, Image as ImageIcon, Video, ArrowRight, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// --- PLANS DATA (Updated 4-tier structure with dynamic pricing) ---
+// --- PLANS DATA ---
 const PLANS = [
   {
     id: "starter" as const,
@@ -94,15 +94,14 @@ const PLANS = [
   },
 ];
 
-// --- FAQ DATA ---
 const FAQS = [
   {
     q: "What AI models do you use?",
     a: "We use the absolute bleeding edge. Vibecoder is powered by Claude 3.5 Sonnet for code. Image generation uses Flux 1.1 Pro and Recraft V3. Video generation uses Kling AI and Luma Ray 2. We handle all the API costs."
   },
   {
-    q: "How far do 12,000 credits go?",
-    a: "A lot. That's enough for roughly 600 AI videos, OR 6,000 high-fidelity images, OR 4,000 code iterations. Most agencies can run their entire storefront design business on one subscription."
+    q: "How far do 6,000 credits go?",
+    a: "A lot. That's enough for roughly 300 AI videos, OR 3,000 high-fidelity images, OR 2,000 code iterations. Most agencies can run their entire storefront design business on one subscription."
   },
   {
     q: "Can I cancel anytime?",
@@ -116,30 +115,26 @@ const FAQS = [
 
 // --- COMPONENTS ---
 
-interface FeatureItemProps {
-  feature: {
-    text: string;
-    included?: boolean;
-    isNeutral?: boolean;
-    highlight?: boolean;
-    highlightColor?: string;
-  };
-}
-
-function FeatureRow({ feature }: FeatureItemProps) {
+function FeatureRow({ feature }: { feature: { text: string; included?: boolean; isNeutral?: boolean; highlight?: boolean; highlightColor?: string } }) {
   const isNegative = feature.included === false;
   const isNeutral = feature.isNeutral;
-  
+
   return (
-    <div className={`flex items-start gap-3 text-sm ${isNegative ? "opacity-50" : ""}`}>
+    <div className={cn("flex items-start gap-3 py-1", isNegative && "opacity-40")}>
       {isNegative ? (
-        <X size={16} className="text-zinc-500 mt-0.5 shrink-0" />
+        <X size={15} className="text-zinc-600 mt-0.5 shrink-0" />
       ) : isNeutral ? (
-        <Info size={16} className="text-zinc-500 mt-0.5 shrink-0" />
+        <Info size={15} className="text-zinc-500 mt-0.5 shrink-0" />
       ) : (
-        <Check size={16} className={`${feature.highlightColor || (feature.highlight ? "text-violet-400" : "text-green-400")} mt-0.5 shrink-0`} />
+        <Check size={15} className={cn(
+          "mt-0.5 shrink-0",
+          feature.highlightColor || (feature.highlight ? "text-primary" : "text-emerald-400")
+        )} />
       )}
-      <span className={feature.highlight ? "text-white font-medium" : isNegative ? "text-zinc-500" : "text-zinc-300"}>
+      <span className={cn(
+        "text-[13px] leading-snug",
+        feature.highlight ? "text-white font-medium" : isNegative ? "text-zinc-600" : "text-zinc-400"
+      )}>
         {feature.text}
       </span>
     </div>
@@ -147,63 +142,61 @@ function FeatureRow({ feature }: FeatureItemProps) {
 }
 
 function ToolShowcase() {
+  const tools = [
+    {
+      icon: Monitor,
+      name: "VibeCoder Architect",
+      models: "Claude 3.5 Sonnet · GPT-4o",
+      desc: "Generates complex React layouts, Tailwind styling, and full-stack logic. Smart enough to fix its own bugs.",
+      color: "text-primary",
+      bg: "bg-primary/10",
+      cost: "3",
+      unit: "per message",
+    },
+    {
+      icon: ImageIcon,
+      name: "Visual Studio",
+      models: "Flux 1.1 Pro · Recraft V3",
+      desc: "Create photorealistic product mockups, vector logos, and hero banners. Replaces Midjourney.",
+      color: "text-pink-400",
+      bg: "bg-pink-500/10",
+      cost: "2",
+      unit: "per image",
+    },
+    {
+      icon: Video,
+      name: "Cinematic Video",
+      models: "Kling AI · Luma Ray 2",
+      desc: "Generate high-fidelity motion backgrounds and product commercials. 4K resolution supported.",
+      color: "text-amber-400",
+      bg: "bg-amber-500/10",
+      cost: "20",
+      unit: "per video",
+    },
+  ];
+
   return (
-    <div className="max-w-5xl mx-auto mb-20">
-      <div className="text-center mb-10">
-        <h2 className="text-2xl font-bold text-white mb-2">Powering Next-Gen Intelligence</h2>
-        <p className="text-zinc-400 text-sm">One subscription. Full access to the world's best AI models.</p>
+    <div className="max-w-5xl mx-auto mb-24">
+      <div className="text-center mb-12">
+        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-primary/70 mb-3">Built-in Intelligence</p>
+        <h2 className="text-3xl font-bold text-white">One subscription. Three powerhouses.</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* CARD 1: CODE */}
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col items-center text-center">
-          <div className="w-12 h-12 bg-violet-500/10 rounded-full flex items-center justify-center text-violet-400 mb-4">
-            <Monitor size={24} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {tools.map((tool) => (
+          <div key={tool.name} className="group bg-zinc-900/60 border border-zinc-800/80 p-6 rounded-2xl hover:border-zinc-700 transition-all duration-300">
+            <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center mb-5", tool.bg)}>
+              <tool.icon size={20} className={tool.color} />
+            </div>
+            <h3 className="font-bold text-white text-base mb-1">{tool.name}</h3>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-4 font-medium">{tool.models}</p>
+            <p className="text-xs text-zinc-400 leading-relaxed mb-6">{tool.desc}</p>
+            <div className="pt-4 border-t border-zinc-800/60 flex justify-between items-center">
+              <span className="text-[11px] text-zinc-500 font-medium">{tool.unit}</span>
+              <span className="text-sm font-bold text-white">{tool.cost} Credits</span>
+            </div>
           </div>
-          <h3 className="font-bold text-white mb-1">VibeCoder Architect</h3>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-4">Claude 3.5 Sonnet • GPT-4o</p>
-          <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
-             Generates complex React layouts, Tailwind styling, and full-stack logic. Smart enough to fix its own bugs.
-          </p>
-          <div className="mt-auto pt-4 border-t border-zinc-800 w-full flex justify-between items-center">
-             <span className="text-xs text-zinc-500">Cost per msg</span>
-             <span className="text-sm font-bold text-white">3 Credits</span>
-          </div>
-        </div>
-
-        {/* CARD 2: IMAGE */}
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col items-center text-center">
-          <div className="w-12 h-12 bg-pink-500/10 rounded-full flex items-center justify-center text-pink-400 mb-4">
-            <ImageIcon size={24} />
-          </div>
-          <h3 className="font-bold text-white mb-1">Visual Studio</h3>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-4">Flux 1.1 Pro • Recraft V3</p>
-          <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
-             Create photorealistic product mockups, vector logos, and hero banners. Replaces Midjourney.
-          </p>
-          <div className="mt-auto pt-4 border-t border-zinc-800 w-full flex justify-between items-center">
-             <span className="text-xs text-zinc-500">Cost per image</span>
-             <span className="text-sm font-bold text-white">2 Credits</span>
-          </div>
-        </div>
-
-        {/* CARD 3: VIDEO */}
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex flex-col items-center text-center">
-          <div className="w-12 h-12 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-400 mb-4">
-            <Video size={24} />
-          </div>
-          <h3 className="font-bold text-white mb-1">Cinematic Video</h3>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-4">Kling AI • Luma Ray 2</p>
-          <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
-             Generate high-fidelity motion backgrounds and product commercials. 4K resolution supported.
-          </p>
-          <div className="mt-auto pt-4 border-t border-zinc-800 w-full flex justify-between items-center">
-             <span className="text-xs text-zinc-500">Cost per video</span>
-             <span className="text-sm font-bold text-white">20 Credits</span>
-          </div>
-        </div>
-
+        ))}
       </div>
     </div>
   );
@@ -222,14 +215,10 @@ export default function Pricing() {
       navigate("/login");
       return;
     }
-
     setPurchasing(tierId);
     try {
       const result = await startCheckout(tierId);
-      
-      if (result?.error) {
-        toast.error(result.error);
-      }
+      if (result?.error) toast.error(result.error);
     } catch (error) {
       console.error("Checkout error:", error);
       toast.error("Failed to start checkout");
@@ -240,47 +229,11 @@ export default function Pricing() {
 
   const isCurrentPlan = (tierId: string) => plan === tierId || (plan === 'browser' && tierId === 'starter');
 
-  const getButtonConfig = (planData: typeof PLANS[number]) => {
-    const isCurrent = isCurrentPlan(planData.id);
-    const isPurchasing = purchasing === planData.id;
-    
-    if (planData.id === 'starter') {
-      return {
-        text: isCurrent ? "Current Plan" : "Start Building Free",
-        style: "bg-zinc-800 hover:bg-zinc-700 text-white",
-        disabled: isCurrent,
-        isLink: true,
-      };
-    }
-    
-    if (isCurrent) {
-      return {
-        text: "Current Plan",
-        style: "bg-green-500/20 text-green-400 border border-green-500/30 cursor-default",
-        disabled: true,
-      };
-    }
-    
-    if (planData.id === 'agency') {
-      return {
-        text: isPurchasing ? "Processing..." : "Go Elite",
-        style: "bg-gradient-to-r from-amber-500 to-orange-600 hover:opacity-90 text-white shadow-lg shadow-orange-900/20",
-        disabled: isPurchasing,
-      };
-    }
-    
-    return {
-      text: isPurchasing ? "Processing..." : "Subscribe Now",
-      style: "bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-900/20",
-      disabled: isPurchasing,
-    };
-  };
-
   if (loading) {
     return (
       <MainLayout>
-        <div className="min-h-screen flex items-center justify-center bg-zinc-950">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
         </div>
       </MainLayout>
     );
@@ -288,151 +241,183 @@ export default function Pricing() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-zinc-950 text-white pb-20 pt-24 px-4">
-        
-        {/* HERO */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-6">
-            Unlock Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">Creative Potential</span>
-          </h1>
-          <p className="text-zinc-400 text-lg">
-            Start building for free. Upgrade to unlock the full power of the VibeCoder AI suite.
-          </p>
+      <div className="min-h-screen bg-background text-white pb-24 pt-28 px-4 sm:px-6">
+
+        {/* ─── HERO ─── */}
+        <div className="text-center max-w-2xl mx-auto mb-20">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 mb-6">
+              <Zap size={12} className="text-primary" />
+              <span className="text-xs font-medium text-primary/80 tracking-wide">Simple, transparent pricing</span>
+            </div>
+            <h1 className="text-4xl md:text-[3.25rem] font-extrabold tracking-tight leading-[1.1] mb-5">
+              Build faster with
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-violet-400 to-fuchsia-400">AI-powered tools</span>
+            </h1>
+            <p className="text-zinc-400 text-base md:text-lg max-w-lg mx-auto leading-relaxed">
+              Start free. Scale when you're ready. Every plan includes your own storefront and marketplace access.
+            </p>
+          </motion.div>
         </div>
 
-        {/* PRICING CARDS */}
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-24">
-          
-          {PLANS.map((planData) => {
-            const buttonConfig = getButtonConfig(planData);
+        {/* ─── PRICING CARDS ─── */}
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-28">
+          {PLANS.map((planData, i) => {
             const isCurrent = isCurrentPlan(planData.id);
             const isCreator = planData.id === 'creator';
             const isAgency = planData.id === 'agency';
-            
+            const isPurchasing = purchasing === planData.id;
+
             return (
-              <motion.div 
+              <motion.div
                 key={planData.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.45, delay: i * 0.08 }}
                 className={cn(
-                  "relative flex flex-col p-8 rounded-3xl border transition-all overflow-hidden",
-                  isCreator 
-                    ? "bg-zinc-900 border-violet-500/30 shadow-2xl shadow-violet-900/10 scale-105 z-10" 
+                  "relative flex flex-col rounded-2xl border transition-all duration-300 overflow-hidden",
+                  isCreator
+                    ? "bg-zinc-900/80 border-primary/30 ring-1 ring-primary/10 shadow-[0_0_60px_-15px] shadow-primary/15 lg:scale-[1.03] z-10"
                     : isAgency
-                    ? "bg-zinc-900/50 border-zinc-800 hover:border-amber-500/30"
-                    : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
+                      ? "bg-zinc-900/50 border-zinc-800 hover:border-amber-500/25"
+                      : "bg-zinc-900/40 border-zinc-800/80 hover:border-zinc-700"
                 )}
               >
-                {/* TOP ACCENT BAR */}
-                <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-r ${planData.accentGradient}`} />
-                
-                {/* BADGE */}
+                {/* Accent line */}
+                <div className={cn("h-px bg-gradient-to-r", planData.accentGradient)} />
+
+                {/* Badge */}
                 {planData.badge && !isCurrent && (
-                  <div className="absolute top-4 right-4 px-3 py-1 bg-violet-500/20 text-violet-300 text-[10px] font-bold uppercase tracking-wider rounded-full border border-violet-500/30">
+                  <div className={cn(
+                    "absolute top-5 right-5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full border",
+                    isAgency
+                      ? "bg-amber-500/10 text-amber-400 border-amber-500/25"
+                      : "bg-primary/10 text-primary border-primary/25"
+                  )}>
                     {planData.badge}
                   </div>
                 )}
 
-                {/* HEADER */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                    {planData.name}
-                    {isAgency && <Crown size={16} className="text-amber-400 fill-amber-400" />}
-                  </h3>
-                  <p className="text-sm text-zinc-400 h-10">{planData.description}</p>
-                </div>
-
-                {/* PRICE */}
-                <div className="mb-8">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-extrabold text-white">${planData.price}</span>
-                    <span className="text-zinc-500">/mo</span>
+                <div className="p-7 flex flex-col flex-1">
+                  {/* Header */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                      {planData.name}
+                      {isAgency && <Crown size={15} className="text-amber-400" />}
+                    </h3>
+                    <p className="text-xs text-zinc-500 leading-relaxed">{planData.description}</p>
                   </div>
-                  <div className={`mt-4 p-3 ${isCreator ? 'bg-zinc-950' : 'bg-zinc-900'} rounded-xl border border-zinc-800 flex items-center justify-between`}>
-                    <span className="text-xs font-medium text-zinc-400">Monthly Credits</span>
-                    <div className="flex items-center gap-2">
-                      {planData.credits > 0 && (
-                        isAgency 
-                          ? <Crown size={14} className="text-amber-400" />
-                          : <Sparkles size={14} className="text-violet-400" />
-                      )}
-                      <span className={`text-sm font-bold ${isAgency ? 'text-amber-400' : 'text-white'}`}>
-                        {planData.credits.toLocaleString()}
-                      </span>
+
+                  {/* Price */}
+                  <div className="mb-6">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-[2.5rem] font-extrabold tracking-tight text-white leading-none">${planData.price}</span>
+                      <span className="text-sm text-zinc-500 font-medium">/mo</span>
                     </div>
+
+                    {planData.credits > 0 && (
+                      <div className="mt-3 flex items-center gap-2">
+                        {isAgency
+                          ? <Crown size={13} className="text-amber-400" />
+                          : <Sparkles size={13} className="text-primary/70" />
+                        }
+                        <span className={cn(
+                          "text-xs font-semibold",
+                          isAgency ? "text-amber-400/80" : "text-zinc-400"
+                        )}>
+                          {planData.credits.toLocaleString()} credits/month
+                        </span>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Divider */}
+                  <div className="h-px bg-zinc-800/60 mb-5" />
+
+                  {/* Features */}
+                  <div className="space-y-2 mb-7 flex-1">
+                    {planData.features.map((feature, idx) => (
+                      <FeatureRow key={idx} feature={feature} />
+                    ))}
+                  </div>
+
+                  {/* CTA */}
+                  {planData.id === 'starter' ? (
+                    isCurrent ? (
+                      <div className="w-full py-2.5 rounded-xl text-sm font-medium text-center text-zinc-500 border border-zinc-800 bg-zinc-900/50">
+                        Current Plan
+                      </div>
+                    ) : (
+                      <Link
+                        to="/dashboard"
+                        className="w-full py-2.5 rounded-xl text-sm font-semibold text-center text-zinc-300 border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2"
+                      >
+                        Start Free <ArrowRight size={14} />
+                      </Link>
+                    )
+                  ) : isCurrent ? (
+                    <div className="w-full py-2.5 rounded-xl text-sm font-medium text-center text-emerald-400 border border-emerald-500/25 bg-emerald-500/10">
+                      Current Plan
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleSubscribe(planData.id as 'basic' | 'creator' | 'agency')}
+                      disabled={isPurchasing}
+                      className={cn(
+                        "w-full py-2.5 rounded-xl text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2",
+                        isAgency
+                          ? "bg-gradient-to-r from-amber-500 to-orange-600 hover:brightness-110 text-white"
+                          : isCreator
+                            ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+                            : "bg-zinc-100 hover:bg-white text-zinc-900"
+                      )}
+                    >
+                      {isPurchasing && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {isPurchasing ? "Processing..." : isAgency ? "Go Elite" : "Subscribe"}
+                    </button>
+                  )}
                 </div>
-
-                {/* FEATURES */}
-                <div className="space-y-4 mb-8 flex-1">
-                  {planData.features.map((feature, idx) => (
-                    <FeatureRow key={idx} feature={feature} />
-                  ))}
-                </div>
-
-                {/* BUTTON */}
-                {buttonConfig.isLink ? (
-                  <Link 
-                    to="/dashboard" 
-                    className={cn(
-                      "w-full py-3 rounded-xl font-bold text-sm transition-all text-center",
-                      buttonConfig.style
-                    )}
-                  >
-                    {buttonConfig.text}
-                  </Link>
-                ) : (
-                  <button 
-                    onClick={() => {
-                      if (!buttonConfig.disabled && planData.id !== 'starter') {
-                        handleSubscribe(planData.id as 'basic' | 'creator' | 'agency');
-                      }
-                    }}
-                    disabled={buttonConfig.disabled}
-                    className={cn(
-                      "w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
-                      buttonConfig.style
-                    )}
-                  >
-                    {purchasing === planData.id && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {buttonConfig.text}
-                  </button>
-                )}
-
               </motion.div>
             );
           })}
         </div>
 
-        {/* MODEL COSTS BREAKDOWN */}
+        {/* ─── TOOL SHOWCASE ─── */}
         <ToolShowcase />
 
-        {/* FAQ SECTION */}
-        <div className="max-w-3xl mx-auto mt-20">
-          <h2 className="text-2xl font-bold text-center mb-12">Frequently Asked Questions</h2>
-          <div className="space-y-4">
+        {/* ─── FAQ ─── */}
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs font-semibold tracking-[0.2em] uppercase text-zinc-500 mb-3">Support</p>
+            <h2 className="text-2xl font-bold text-white">Frequently asked questions</h2>
+          </div>
+          <div className="space-y-3">
             {FAQS.map((faq, idx) => (
-              <div 
-                key={idx} 
-                className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden"
+              <div
+                key={idx}
+                className="border border-zinc-800/60 rounded-xl overflow-hidden bg-zinc-900/30 hover:bg-zinc-900/50 transition-colors"
               >
                 <button
                   onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
-                  className="w-full flex items-center justify-between p-5 text-left hover:bg-zinc-900/70 transition-colors"
+                  className="w-full flex items-center justify-between p-5 text-left"
                 >
-                  <span className="font-medium text-white">{faq.q}</span>
+                  <span className="font-medium text-white text-sm">{faq.q}</span>
                   <motion.div
                     animate={{ rotate: openFaq === idx ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
-                    className="text-zinc-400"
+                    className="text-zinc-500 ml-4 shrink-0"
                   >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                       <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </motion.div>
                 </button>
-                
+
                 <AnimatePresence>
                   {openFaq === idx && (
                     <motion.div
@@ -442,7 +427,7 @@ export default function Pricing() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-5 pb-5 text-sm text-zinc-400 leading-relaxed">
+                      <div className="px-5 pb-5 text-[13px] text-zinc-400 leading-relaxed">
                         {faq.a}
                       </div>
                     </motion.div>
@@ -452,6 +437,7 @@ export default function Pricing() {
             ))}
           </div>
         </div>
+
       </div>
     </MainLayout>
   );
