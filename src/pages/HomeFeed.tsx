@@ -70,7 +70,7 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
 
     fetchAll();
   }, [user]);
-  }));
+  
 
   if (loading) {
     return (
