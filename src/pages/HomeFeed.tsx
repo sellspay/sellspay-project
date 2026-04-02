@@ -191,12 +191,12 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
                     value={builderPrompt}
                     onChange={(e) => setBuilderPrompt(e.target.value)}
                     placeholder="A sleek portfolio with dark theme and project gallery..."
-                    className="flex-1 bg-transparent border-none outline-none text-sm sm:text-base text-foreground placeholder:text-muted-foreground/30 py-5 pr-2 font-medium"
+                    className="flex-1 bg-transparent border-none outline-none text-base sm:text-lg text-foreground placeholder:text-muted-foreground/30 py-6 pr-2 font-medium"
                   />
-                  <div className="pr-3">
+                  <div className="pr-4">
                     <Button
                       type="submit"
-                      className="h-10 px-5 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-400 rounded-xl gap-2 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:scale-[1.02]"
+                      className="h-12 px-7 text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-400 rounded-xl gap-2 shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:scale-[1.02]"
                     >
                       Build
                       <ArrowRight className="h-4 w-4" />
