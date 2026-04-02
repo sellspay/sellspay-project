@@ -207,7 +207,7 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
             </form>
 
             {/* Quick prompt suggestions */}
-            <div className="relative z-10 flex flex-wrap justify-center gap-2 mt-5 max-w-2xl mx-auto">
+            <div className="relative z-10 flex flex-wrap justify-center gap-2.5 mt-6 max-w-3xl mx-auto">
               {['Music producer store', 'Photography portfolio', 'Digital art shop', 'SFX marketplace'].map((suggestion, i) => (
                 <button
                   key={suggestion}
