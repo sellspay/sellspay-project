@@ -106,6 +106,9 @@ export default function Header() {
       
       <div className="mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="relative flex h-16 items-center justify-between">
+          {/* Left spacer for desktop (balances right side) */}
+          <div className="hidden lg:block" />
+          
           {/* Mobile: Hamburger on far left */}
           <div className="lg:hidden flex items-center">
             <button
