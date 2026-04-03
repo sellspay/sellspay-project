@@ -248,8 +248,8 @@ export default function Header() {
                 <Popover>
                   <PopoverTrigger asChild>
                     <button className={cn(
-                      "h-10 px-3 text-[15px] font-normal bg-transparent inline-flex items-center gap-1",
-                      "text-foreground/70 hover:text-foreground",
+                      "h-10 px-3 text-[16px] font-medium bg-transparent inline-flex items-center gap-1",
+                      "text-foreground hover:text-primary",
                       "transition-colors duration-200"
                     )}>
                       Community
