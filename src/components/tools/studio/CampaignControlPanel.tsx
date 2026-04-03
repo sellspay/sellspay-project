@@ -52,7 +52,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 320, opacity: 0 }}
       transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="h-full border-l border-white/[0.06] bg-card/60 backdrop-blur-xl overflow-y-auto custom-scrollbar"
+      className="h-full border-l border-border/50 bg-background overflow-y-auto custom-scrollbar"
     >
       <div className="p-5 space-y-5">
         {/* Header */}
