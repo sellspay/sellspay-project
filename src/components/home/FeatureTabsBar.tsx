@@ -86,23 +86,41 @@ export function FeatureTabsBar() {
 
   return (
     <Reveal>
-      <section className="px-6 sm:px-8 lg:px-10 pt-20 sm:pt-28 pb-16 sm:pb-20">
+      <section className="px-6 sm:px-8 lg:px-10 pt-20 sm:pt-28 pb-16 sm:pb-20 max-w-5xl mx-auto">
         {/* Header */}
-        <div className="flex items-start justify-between mb-10 sm:mb-14">
-          <div>
-            <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold text-foreground tracking-tight">
-              Everything you need
-            </h2>
-            <p className="text-base sm:text-lg text-muted-foreground mt-2 max-w-md leading-relaxed">
-              One platform for selling, creating, and growing your digital brand.
-            </p>
-          </div>
-          <Link
-            to="/login"
-            className="hidden sm:inline-flex h-10 px-6 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors shrink-0"
+        <div className="text-center mb-12 sm:mb-16">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight"
           >
-            Try online
-          </Link>
+            Everything you need
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.15, ease: 'easeOut' }}
+            className="text-base sm:text-lg text-muted-foreground mt-3 max-w-md mx-auto leading-relaxed"
+          >
+            One platform for selling, creating, and growing your digital brand.
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="mt-5"
+          >
+            <Link
+              to="/login"
+              className="inline-flex h-10 px-6 items-center justify-center rounded-full bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 transition-colors"
+            >
+              Try online
+            </Link>
+          </motion.div>
         </div>
 
         {/* Accordion rows */}
@@ -114,19 +132,19 @@ export function FeatureTabsBar() {
                 {/* Row header */}
                 <button
                   onClick={() => toggle(cat.id)}
-                  className="w-full flex items-center gap-6 sm:gap-10 py-6 sm:py-8 group text-left"
+                  className="w-full flex items-center gap-4 sm:gap-8 py-4 sm:py-5 group text-left"
                 >
-                  <span className="text-2xl sm:text-3xl lg:text-4xl font-light text-muted-foreground/40 tabular-nums w-12 sm:w-16 shrink-0">
+                  <span className="text-lg sm:text-xl lg:text-2xl font-light text-muted-foreground/40 tabular-nums w-10 sm:w-12 shrink-0">
                     {cat.number}
                   </span>
-                  <span className="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground flex-1 group-hover:text-primary transition-colors">
+                  <span className="text-base sm:text-lg lg:text-xl font-semibold text-foreground flex-1 group-hover:text-primary transition-colors">
                     {cat.label}
                   </span>
                   <div className="p-1">
                     {isOpen ? (
-                      <Minus className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+                      <Minus className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                     ) : (
-                      <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+                      <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                     )}
                   </div>
                 </button>
