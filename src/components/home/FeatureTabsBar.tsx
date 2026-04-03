@@ -134,7 +134,7 @@ export function FeatureTabsBar() {
                   onClick={() => toggle(cat.id)}
                   className="w-full flex items-center gap-4 sm:gap-8 py-4 sm:py-5 group text-left"
                 >
-                  <span className="text-lg sm:text-xl lg:text-2xl font-light text-muted-foreground/40 tabular-nums w-10 sm:w-12 shrink-0">
+                  <span className="text-lg sm:text-xl lg:text-2xl font-medium text-muted-foreground/70 tabular-nums w-10 sm:w-12 shrink-0">
                     {cat.number}
                   </span>
                   <span className="text-base sm:text-lg lg:text-xl font-semibold text-foreground flex-1 group-hover:text-primary transition-colors">
