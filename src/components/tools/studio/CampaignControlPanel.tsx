@@ -52,7 +52,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 320, opacity: 0 }}
       transition={{ duration: 0.25, ease: "easeInOut" }}
-      className="h-full border-l border-white/[0.06] bg-card/60 backdrop-blur-xl overflow-y-auto custom-scrollbar"
+      className="h-full border-l border-border/50 bg-background overflow-y-auto custom-scrollbar"
     >
       <div className="p-5 space-y-5">
         {/* Header */}
@@ -85,7 +85,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
 
         {/* Checklist */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-white/[0.02]">
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-muted/30">
             <Package className={cn("h-3.5 w-3.5", hasProduct ? "text-emerald-400" : "text-muted-foreground/30")} />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">Product</p>
@@ -96,7 +96,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
             {hasProduct && <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />}
           </div>
 
-          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-white/[0.02]">
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-muted/30">
             <Target className={cn("h-3.5 w-3.5", hasGoal ? "text-emerald-400" : "text-muted-foreground/30")} />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">Goal</p>
@@ -109,7 +109,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
             {hasGoal && <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />}
           </div>
 
-          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-white/[0.02]">
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg bg-muted/30">
             <Palette className={cn("h-3.5 w-3.5", hasTemplate ? "text-emerald-400" : "text-muted-foreground/30")} />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">Style</p>
@@ -132,13 +132,13 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
                 key={opt.id}
                 onClick={() => toggleOutput(opt.id)}
                 disabled={isGenerating}
-                className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg text-left transition-colors hover:bg-white/[0.03] disabled:opacity-50"
+                className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg text-left transition-colors hover:bg-muted/30 disabled:opacity-50"
               >
                 <div className={cn(
                   "h-4 w-4 rounded border flex items-center justify-center transition-colors",
                   enabledOutputs.has(opt.id)
-                    ? "bg-gradient-to-b from-[#4B8BF5] to-[#2563EB] border-transparent"
-                    : "border-white/[0.12] bg-transparent"
+                    ? "bg-primary border-transparent"
+                    : "border-border bg-transparent"
                 )}>
                   {enabledOutputs.has(opt.id) && <Check className="h-2.5 w-2.5 text-white" />}
                 </div>
@@ -156,7 +156,7 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
         <div className="h-px bg-border/30" />
 
         {/* Credits */}
-        <div className="rounded-lg bg-white/[0.02] p-3 space-y-1">
+        <div className="rounded-lg bg-muted/30 p-3 space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground/60">Estimated cost</span>
             <span className="text-sm font-semibold text-foreground tabular-nums">{estimatedCredits} credits</span>
@@ -171,10 +171,9 @@ export function CampaignControlPanel({ creditBalance, isLoadingCredits, onGenera
           className={cn(
             "w-full py-3 text-sm font-semibold rounded-[10px] shadow-sm transition-all flex items-center justify-center gap-2",
             isReady && !isGenerating
-              ? "text-white hover:shadow-md cursor-pointer"
-              : "text-white/40 cursor-not-allowed opacity-50"
+              ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+              : "bg-primary/50 text-primary-foreground/40 cursor-not-allowed opacity-50"
           )}
-          style={{ background: "linear-gradient(180deg, #4B8BF5 0%, #2563EB 100%)" }}
         >
           {isGenerating ? (
             <>

@@ -10,10 +10,10 @@ export function ToolShowcaseHeader({
   isLoadingCredits,
 }: ToolShowcaseHeaderProps) {
   return (
-    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="px-3 sm:px-4 md:px-8 py-4 flex items-end justify-between gap-4">
+    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/90 backdrop-blur-xl">
+      <div className="px-3 sm:px-4 md:px-8 py-4 flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-3xl md:text-4xl font-serif italic text-foreground truncate">
+          <h1 className="text-2xl font-bold text-foreground truncate">
             AI Studio
           </h1>
           <p className="text-sm text-muted-foreground truncate">
@@ -22,10 +22,10 @@ export function ToolShowcaseHeader({
         </div>
 
         <div className="shrink-0">
-          <div className="flex items-center gap-3 px-4 py-2 border border-border bg-card">
+          <div className="flex items-center gap-2.5 px-4 py-2 rounded-full border border-border bg-muted/30">
             <Wallet className="h-4 w-4 text-primary" />
             <span className="text-sm text-muted-foreground">Credits</span>
-            <span className="text-lg font-semibold text-foreground tabular-nums">
+            <span className="text-base font-bold text-foreground tabular-nums">
               {isLoadingCredits ? "…" : creditBalance}
             </span>
           </div>

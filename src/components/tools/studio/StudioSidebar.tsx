@@ -13,6 +13,7 @@ import { CreditSegmentBar } from "@/components/ui/CreditSegmentBar";
 import { useAuth } from "@/lib/auth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toolsRegistry, SUBCATEGORY_LABELS, type ToolSubcategory } from "@/components/tools/toolsRegistry";
+import sellspayLogo from "@/assets/sellspay-s-logo-new.png";
 
 interface StudioSidebarProps {
   collapsed: boolean;
@@ -53,26 +54,26 @@ export function StudioSidebar({
     <>
     <TooltipProvider delayDuration={0}>
       <motion.aside
-        className="h-full flex flex-col bg-[#0F1115] overflow-hidden"
+        className="h-full flex flex-col bg-background border-r border-border/60 overflow-hidden"
         animate={{ width: collapsed ? 56 : 220 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
       >
-        {/* Exit Studio */}
-        <div className="shrink-0 px-3 pt-4 pb-1">
+        {/* Logo + Brand */}
+        <div className="shrink-0 px-3 pt-4 pb-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={() => navigate("/")}
                 className={cn(
-                  "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-muted-foreground/60 hover:text-foreground hover:bg-white/[0.04] transition-colors",
+                  "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors",
                   collapsed && "justify-center"
                 )}
               >
-                <ArrowLeft className="h-4 w-4 shrink-0" />
-                {!collapsed && <span className="font-medium">Exit Studio</span>}
+                <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
+                {!collapsed && <span className="font-bold text-foreground tracking-tight">SellsPay</span>}
               </button>
             </TooltipTrigger>
-            {collapsed && <TooltipContent side="right">Exit Studio</TooltipContent>}
+            {collapsed && <TooltipContent side="right">Back to Home</TooltipContent>}
           </Tooltip>
         </div>
 
@@ -85,20 +86,20 @@ export function StudioSidebar({
                 className={cn(
                   "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
                   !activeTool && activeSection === "home"
-                    ? "bg-gradient-to-r from-[#4B8BF5] to-[#2563EB] text-white font-medium shadow-sm"
-                    : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-white/[0.03]",
+                    ? "bg-primary text-primary-foreground font-medium shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                   collapsed && "justify-center"
                 )}
               >
                 <Home className="h-4 w-4 shrink-0" />
-                {!collapsed && <span>Home</span>}
+                {!collapsed && <span>All Tools</span>}
               </button>
             </TooltipTrigger>
-            {collapsed && <TooltipContent side="right">Home</TooltipContent>}
+            {collapsed && <TooltipContent side="right">All Tools</TooltipContent>}
           </Tooltip>
         </div>
 
-        <div className="h-px bg-white/[0.06] mx-3" />
+        <div className="h-px bg-border/50 mx-3" />
 
         {/* Tool groups */}
         <nav className="flex-1 overflow-y-auto custom-scrollbar px-2 py-2 space-y-1">
@@ -115,7 +116,7 @@ export function StudioSidebar({
                 {!collapsed ? (
                   <button
                     onClick={() => toggleGroup(subcat)}
-                    className="flex items-center gap-1.5 w-full px-2 py-1.5 text-[10px] font-semibold text-muted-foreground/40 uppercase tracking-wider hover:text-muted-foreground/60 transition-colors"
+                    className="flex items-center gap-1.5 w-full px-2 py-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider hover:text-muted-foreground transition-colors"
                   >
                     {isExpanded ? (
                       <ChevronDown className="h-3 w-3 shrink-0" />
@@ -125,7 +126,7 @@ export function StudioSidebar({
                     {SUBCATEGORY_LABELS[subcat]}
                   </button>
                 ) : (
-                  <div className="h-px bg-white/[0.04] mx-1 my-1.5" />
+                  <div className="h-px bg-border/30 mx-1 my-1.5" />
                 )}
 
                 {(isExpanded || collapsed) && (
@@ -141,8 +142,8 @@ export function StudioSidebar({
                           className={cn(
                             "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-[13px] transition-colors",
                             isActive
-                              ? "bg-gradient-to-r from-[#4B8BF5] to-[#2563EB] text-white font-medium shadow-sm"
-                              : "text-muted-foreground/50 hover:text-foreground/80 hover:bg-white/[0.03]",
+                              ? "bg-primary text-primary-foreground font-medium shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                             collapsed && "justify-center"
                           )}
                         >
@@ -151,10 +152,10 @@ export function StudioSidebar({
                             <span className="truncate flex-1 text-left">{tool.name}</span>
                           )}
                           {!collapsed && tool.isPro && (
-                            <Sparkles className="h-3 w-3 text-primary/60 shrink-0" />
+                            <Sparkles className="h-3 w-3 text-primary shrink-0" />
                           )}
                           {!collapsed && tool.comingSoon && (
-                            <span className="text-[8px] text-muted-foreground/30 uppercase font-bold shrink-0">Soon</span>
+                            <span className="text-[8px] text-muted-foreground/50 uppercase font-bold shrink-0">Soon</span>
                           )}
                         </button>
                       );
@@ -176,8 +177,8 @@ export function StudioSidebar({
           })}
         </nav>
 
-        {/* Bottom section: Auth-aware */}
-        <div className="shrink-0 border-t border-white/[0.06]">
+        {/* Bottom section */}
+        <div className="shrink-0 border-t border-border/50">
           <div className="px-3 py-2">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -185,7 +186,7 @@ export function StudioSidebar({
                   onClick={() => onSectionChange("assets")}
                   className={cn(
                     "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
-                    "text-muted-foreground/50 hover:text-foreground/80 hover:bg-white/[0.03]",
+                    "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                     collapsed && "justify-center"
                   )}
                 >
@@ -198,11 +199,10 @@ export function StudioSidebar({
           </div>
 
           <div className={cn(
-            "px-3 py-3 border-t border-white/[0.06]",
+            "px-3 py-3 border-t border-border/50",
             collapsed && "flex justify-center px-2"
           )}>
             {!user ? (
-              /* Guest: Start Free button */
               collapsed ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -225,7 +225,6 @@ export function StudioSidebar({
                 </button>
               )
             ) : (
-              /* Signed in: Profile popover */
               <Popover>
                 <PopoverTrigger asChild>
                   {collapsed ? (
@@ -235,7 +234,7 @@ export function StudioSidebar({
                           {profile?.avatar_url ? (
                             <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full bg-primary/20 flex items-center justify-center">
+                            <div className="w-full h-full bg-primary/10 flex items-center justify-center">
                               <span className="text-[10px] font-bold text-primary">
                                 {(profile?.username || "U").slice(0, 2).toUpperCase()}
                               </span>
@@ -246,25 +245,25 @@ export function StudioSidebar({
                       <TooltipContent side="right">Profile</TooltipContent>
                     </Tooltip>
                   ) : (
-                    <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-muted-foreground/70 hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                    <button className="flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
                       <div className="w-7 h-7 rounded-full overflow-hidden border border-border shrink-0">
                         {profile?.avatar_url ? (
                           <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full bg-primary/20 flex items-center justify-center">
+                          <div className="w-full h-full bg-primary/10 flex items-center justify-center">
                             <span className="text-[9px] font-bold text-primary">
                               {(profile?.username || "U").slice(0, 2).toUpperCase()}
                             </span>
                           </div>
                         )}
                       </div>
-                      <span className="truncate flex-1 text-left font-medium">{profile?.username || "Creator"}</span>
+                      <span className="truncate flex-1 text-left font-medium text-foreground">{profile?.username || "Creator"}</span>
                     </button>
                   )}
                 </PopoverTrigger>
-                <PopoverContent side="right" align="end" sideOffset={8} className="w-72 p-0 bg-[#0F1115] border-border/50 rounded-2xl overflow-hidden shadow-2xl shadow-black/60">
-                  {/* Back to dashboard link */}
-                  <div className="px-4 py-3 border-b border-border/30">
+                <PopoverContent side="right" align="end" sideOffset={8} className="w-72 p-0 bg-background border-border rounded-2xl overflow-hidden shadow-xl">
+                  {/* Back to dashboard */}
+                  <div className="px-4 py-3 border-b border-border/50">
                     <button
                       onClick={() => navigate("/")}
                       className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -274,10 +273,10 @@ export function StudioSidebar({
                     </button>
                   </div>
 
-                  {/* User identity + tier badge */}
-                  <div className="px-4 py-3 border-b border-border/30">
+                  {/* User identity */}
+                  <div className="px-4 py-3 border-b border-border/50">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg overflow-hidden border border-border shrink-0 bg-primary/20 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-lg overflow-hidden border border-border shrink-0 bg-primary/10 flex items-center justify-center">
                         {profile?.avatar_url ? (
                           <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -289,16 +288,16 @@ export function StudioSidebar({
                       <span className="text-sm font-semibold text-foreground truncate">{profile?.username || "Creator"}</span>
                       {(() => {
                         const tier = plan;
-                        if (tier === 'agency') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">Agency</span>;
-                        if (tier === 'creator') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30">Pro</span>;
-                        if (tier === 'basic') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Basic</span>;
+                        if (tier === 'agency') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20">Agency</span>;
+                        if (tier === 'creator') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Pro</span>;
+                        if (tier === 'basic') return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">Basic</span>;
                         return <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">Free</span>;
                       })()}
                     </div>
                   </div>
 
-                  {/* Credit wallet with progress bar */}
-                  <div className="px-4 py-3 border-b border-border/30 space-y-2.5">
+                  {/* Credits */}
+                  <div className="px-4 py-3 border-b border-border/50 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-foreground">Credits</span>
                       <button
@@ -312,7 +311,6 @@ export function StudioSidebar({
                         <ChevRight className="h-3.5 w-3.5 text-muted-foreground" />
                       </button>
                     </div>
-                    {/* Progress bar */}
                     {!isLoadingCredits && (
                       <>
                         {(() => {
@@ -333,7 +331,7 @@ export function StudioSidebar({
                   </div>
 
                   {/* Get free credits */}
-                  <div className="px-4 py-2.5 border-b border-border/30">
+                  <div className="px-4 py-2.5 border-b border-border/50">
                     <button
                       onClick={() => setReferralOpen(true)}
                       className="flex items-center gap-2.5 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
@@ -353,7 +351,7 @@ export function StudioSidebar({
                       <button
                         key={item.path}
                         onClick={() => navigate(item.path)}
-                        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                       >
                         <item.icon className="h-4 w-4" />
                         <span>{item.label}</span>
@@ -362,10 +360,10 @@ export function StudioSidebar({
                   </div>
 
                   {/* Sign out */}
-                  <div className="border-t border-border/30 py-1.5">
+                  <div className="border-t border-border/50 py-1.5">
                     <button
                       onClick={() => signOut()}
-                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-destructive hover:bg-destructive/5 transition-colors"
                     >
                       <LogOut className="h-4 w-4" />
                       <span>Sign Out</span>
