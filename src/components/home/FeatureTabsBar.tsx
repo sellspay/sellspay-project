@@ -141,17 +141,17 @@ export function FeatureTabsBar() {
                       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                       className="overflow-hidden"
                     >
-                      <div className="rounded-2xl bg-secondary/50 border border-border/20 p-6 sm:p-8 lg:p-10 mb-6 sm:mb-8">
-                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 lg:gap-12">
+                      <div className="rounded-2xl bg-secondary/30 border border-border/10 p-5 sm:p-6 lg:p-8 mb-4 sm:mb-6 max-w-4xl mx-auto">
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-6 lg:gap-8 items-center">
                           {/* Left: Content */}
                           <div className="flex flex-col justify-center">
-                            <div className="flex items-center gap-2 mb-3">
-                              <Sparkles className="h-4 w-4 text-primary" />
+                            <div className="flex items-center gap-2 mb-2">
+                              <Sparkles className="h-3.5 w-3.5 text-primary" />
                               <span className="text-sm font-semibold text-foreground">
                                 {cat.featured.title}
                               </span>
                             </div>
-                            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-md mb-6">
+                            <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mb-5">
                               <Link
                                 to={cat.featured.link}
                                 className="text-primary hover:underline"
@@ -162,10 +162,9 @@ export function FeatureTabsBar() {
                               {cat.featured.desc}
                             </p>
 
-                            {/* Other tools list */}
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                               {cat.tools.map((tool) => (
-                                <p key={tool} className="text-sm sm:text-base font-semibold text-foreground">
+                                <p key={tool} className="text-sm font-semibold text-foreground">
                                   {tool}
                                 </p>
                               ))}
@@ -173,7 +172,7 @@ export function FeatureTabsBar() {
                           </div>
 
                           {/* Right: Image */}
-                          <div className="w-full lg:w-[340px] xl:w-[400px] shrink-0">
+                          <div className="w-full shrink-0">
                             <img
                               src={cat.featured.image}
                               alt={cat.featured.title}
