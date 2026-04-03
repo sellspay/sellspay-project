@@ -473,11 +473,11 @@ export default function Header() {
                         <span>Create Product</span>
                       </button>
                     )}
-                    <button onClick={() => navigate("/profile")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                    <button onClick={() => navigate("/profile")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                       <User className="h-4 w-4" />
                       <span>My Profile</span>
                     </button>
-                    <button onClick={() => navigate("/settings")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors">
+                    <button onClick={() => navigate("/settings")} className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                       <Settings className="h-4 w-4" />
                       <span>Settings</span>
                     </button>
