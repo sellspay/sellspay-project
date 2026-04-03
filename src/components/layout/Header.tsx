@@ -554,27 +554,6 @@ export default function Header() {
                 { to: '/studio', icon: Wand2, label: 'AI Studio' },
                 { to: '/community', icon: MessageSquare, label: 'Community' },
                 { to: '/hire-professionals', icon: Mic, label: 'Hire Professionals' },
-              ].map((item) => {
-                if (item.to === '/pricing') {
-                  return (
-                    <button
-                      key="pricing"
-                      onClick={() => { setMobileMenuOpen(false); setPricingOpen(true); }}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground/70 hover:bg-muted hover:text-foreground transition-all"
-                    >
-                      <DollarSign className="h-5 w-5" />
-                      Pricing
-                    </button>
-                  );
-                }
-                return null;
-              })}
-              {[
-                { to: '/products', icon: Package, label: 'Marketplace' },
-                { to: '/creators', icon: Users, label: 'Creators' },
-                { to: '/studio', icon: Wand2, label: 'AI Studio' },
-                { to: '/community', icon: MessageSquare, label: 'Community' },
-                { to: '/hire-professionals', icon: Mic, label: 'Hire Professionals' },
               ].map((item) => (
                 <Link
                   key={item.to}
