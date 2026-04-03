@@ -153,8 +153,6 @@ const HomeFeed = forwardRef<HTMLDivElement>((_, ref) => {
         ctaLink="/explore"
       />
 
-      {/* Trending Products */}
-      <TrendingProducts />
 
       {/* Browse by Category — Artlist-style image strip */}
       <BrowseCategories />
