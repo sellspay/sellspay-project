@@ -1,14 +1,14 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
-  ArrowLeft, Home, Sparkles, ChevronDown, ChevronRight, FolderOpen,
+  ArrowLeft, Home, Sparkles, FolderOpen,
   User, Settings, CreditCard, LogOut, Zap, Gift, ChevronRight as ChevRight,
-  PanelLeftClose, PanelLeft,
+  PanelLeftClose, PanelLeft, GripVertical, Plus, X,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ReferralDialog } from "@/components/studio/ReferralDialog";
 import { CreditSegmentBar } from "@/components/ui/CreditSegmentBar";
 import { useAuth } from "@/lib/auth";
@@ -29,7 +29,12 @@ interface StudioSidebarProps {
   onGoHome: () => void;
 }
 
-const SUBCATEGORY_ORDER: ToolSubcategory[] = ["media_creation", "store_growth", "social_content", "utility"];
+// Default 10 most popular/useful tools shown pinned
+const DEFAULT_PINNED = [
+  "sfx-generator", "voice-isolator", "music-splitter", "sfx-isolator",
+  "thumbnail-generator", "social-posts-pack", "short-form-script",
+  "background-remover", "image-upscaler", "audio-cutter",
+];
 
 export function StudioSidebar({
   collapsed, onToggleCollapse, activeSection, onSectionChange,
@@ -38,19 +43,34 @@ export function StudioSidebar({
   const { user, profile, signOut } = useAuth();
   const { plan } = useSubscription();
   const navigate = useNavigate();
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    media_creation: true,
-    store_growth: true,
-    social_content: false,
-    utility: false,
-  });
   const [referralOpen, setReferralOpen] = useState(false);
+  const [addToolsOpen, setAddToolsOpen] = useState(false);
+  
+  // Pinned tools state with localStorage persistence
+  const [pinnedToolIds, setPinnedToolIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("studio-pinned-tools");
+      return saved ? JSON.parse(saved) : DEFAULT_PINNED;
+    } catch { return DEFAULT_PINNED; }
+  });
 
-  const toggleGroup = (group: string) => {
-    setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
+  useEffect(() => {
+    try { localStorage.setItem("studio-pinned-tools", JSON.stringify(pinnedToolIds)); } catch {}
+  }, [pinnedToolIds]);
+
+  const allQuickTools = toolsRegistry.filter(t => t.category === "quick_tool" && t.isActive);
+  const pinnedTools = pinnedToolIds
+    .map(id => allQuickTools.find(t => t.id === id))
+    .filter(Boolean) as typeof allQuickTools;
+  const unpinnedTools = allQuickTools.filter(t => !pinnedToolIds.includes(t.id));
+
+  const togglePin = (toolId: string) => {
+    setPinnedToolIds(prev =>
+      prev.includes(toolId)
+        ? prev.filter(id => id !== toolId)
+        : [...prev, toolId]
+    );
   };
-
-  const quickTools = toolsRegistry.filter(t => t.category === "quick_tool" && t.isActive);
 
   return (
     <>
@@ -60,52 +80,64 @@ export function StudioSidebar({
         animate={{ width: collapsed ? 56 : 220 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
       >
-        {/* Logo + Brand */}
-        <div className="shrink-0 px-3 pt-4 pb-2 flex items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
+        {/* Logo + collapse toggle */}
+        <div className="shrink-0 px-2 pt-3 pb-1 flex items-center gap-1">
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onToggleCollapse}
+                  className="flex items-center justify-center w-full p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <PanelLeft className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Expand sidebar</TooltipContent>
+            </Tooltip>
+          ) : (
+            <>
               <button
                 onClick={() => navigate("/")}
-                className={cn(
-                  "flex items-center gap-2.5 flex-1 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors",
-                  collapsed && "justify-center"
-                )}
+                className="flex items-center gap-2 flex-1 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               >
                 <img src={sellspayLogo} alt="SellsPay" className="h-6 w-6 shrink-0" />
-                {!collapsed && <span className="font-bold text-foreground tracking-tight">SellsPay</span>}
+                <span className="font-bold text-foreground tracking-tight">SellsPay</span>
               </button>
-            </TooltipTrigger>
-            {collapsed && <TooltipContent side="right">Back to Home</TooltipContent>}
-          </Tooltip>
-          
-          <Tooltip>
-            <TooltipTrigger asChild>
               <button
                 onClick={onToggleCollapse}
                 className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
               >
-                {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                <PanelLeftClose className="h-4 w-4" />
               </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">{collapsed ? "Expand sidebar" : "Collapse sidebar"}</TooltipContent>
-          </Tooltip>
+            </>
+          )}
         </div>
 
-        {/* Home button */}
-        <div className="shrink-0 px-3 pb-2">
+        {/* All Tools button */}
+        <div className="shrink-0 px-2 pb-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={onGoHome}
                 className={cn(
-                  "flex items-center gap-2.5 w-full rounded-lg px-2.5 py-2 text-sm transition-colors",
+                  "flex items-center gap-2.5 w-full rounded-full px-3 py-2.5 text-sm transition-all duration-200",
                   !activeTool && activeSection === "home"
-                    ? "bg-primary text-primary-foreground font-medium shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                  collapsed && "justify-center"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-md shadow-primary/25"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent hover:border-border/50",
+                  collapsed && "justify-center rounded-xl px-2"
                 )}
               >
-                <Home className="h-4 w-4 shrink-0" />
+                <div className={cn(
+                  "h-6 w-6 rounded-md flex items-center justify-center shrink-0",
+                  !activeTool && activeSection === "home"
+                    ? "bg-primary-foreground/20"
+                    : "bg-primary/10"
+                )}>
+                  <Home className={cn(
+                    "h-3.5 w-3.5",
+                    !activeTool && activeSection === "home" ? "text-primary-foreground" : "text-primary"
+                  )} />
+                </div>
                 {!collapsed && <span>All Tools</span>}
               </button>
             </TooltipTrigger>
@@ -113,108 +145,176 @@ export function StudioSidebar({
           </Tooltip>
         </div>
 
-        <div className="h-px bg-border/50 mx-3" />
+        {/* Pinned label + Add Tools button */}
+        {!collapsed && (
+          <div className="shrink-0 px-4 pt-3 pb-1 flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest">Pinned</span>
+          </div>
+        )}
+        {collapsed && <div className="h-px bg-border/40 mx-2 my-1" />}
 
-        {/* Tool groups */}
-        <nav className="flex-1 overflow-y-auto custom-scrollbar px-2 py-2 space-y-1">
-          {SUBCATEGORY_ORDER.map(subcat => {
-            const tools = quickTools
-              .filter(t => t.subcategory === subcat)
-              .sort((a, b) => a.sortOrder - b.sortOrder);
-            if (!tools.length) return null;
-
-            const isExpanded = expandedGroups[subcat] ?? false;
-
-            return (
-              <div key={subcat}>
-                {!collapsed ? (
+        {/* Add Tools button */}
+        <div className="shrink-0 px-2 pb-1">
+          <Popover open={addToolsOpen} onOpenChange={setAddToolsOpen}>
+            <PopoverTrigger asChild>
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <button
-                    onClick={() => toggleGroup(subcat)}
                     className={cn(
-                      "flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-[11px] font-bold uppercase tracking-widest transition-all duration-150",
-                      isExpanded
-                        ? "text-primary bg-primary/8"
-                        : "text-foreground/70 hover:text-foreground hover:bg-muted/60"
+                      "flex items-center gap-2.5 w-full rounded-full px-3 py-2 text-sm transition-all duration-150",
+                      "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                      collapsed && "justify-center px-2"
                     )}
                   >
-                    {isExpanded ? (
-                      <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-                    ) : (
-                      <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-                    )}
-                    {SUBCATEGORY_LABELS[subcat]}
+                    <div className="h-6 w-6 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center shrink-0">
+                      <Plus className="h-3 w-3" />
+                    </div>
+                    {!collapsed && <span>Add Tools</span>}
                   </button>
-                ) : (
-                  <div className="h-px bg-border/30 mx-1 my-1.5" />
-                )}
-
-                {(isExpanded || collapsed) && (
-                  <div className="space-y-0.5">
-                    {tools.map(tool => {
-                      const Icon = tool.icon;
-                      const isActive = activeTool === tool.id || activeTool === tool.legacyRoute;
-                      const thumb = toolThumbnails[tool.id];
-
-                      const btn = (
-                        <button
-                          key={tool.id}
-                          onClick={() => onToolSelect(tool.id)}
-                          className={cn(
-                            "flex items-center gap-2.5 w-full rounded-lg px-2 py-1.5 text-[13px] transition-all duration-150",
-                            isActive
-                              ? "bg-primary text-primary-foreground font-medium shadow-sm"
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                            collapsed && "justify-center"
-                          )}
-                        >
-                          {/* Colorful thumbnail circle */}
-                          <div className={cn(
-                            "h-7 w-7 rounded-full overflow-hidden shrink-0 border",
-                            isActive ? "border-primary-foreground/30" : "border-border/60"
-                          )}>
-                            {thumb ? (
-                              <img src={thumb} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className={cn(
-                                "w-full h-full flex items-center justify-center",
-                                isActive ? "bg-primary-foreground/20" : "bg-primary/10"
-                              )}>
-                                <Icon className={cn("h-3.5 w-3.5", isActive ? "text-primary-foreground" : "text-primary/60")} />
-                              </div>
-                            )}
-                          </div>
-                          {!collapsed && (
-                            <span className="truncate flex-1 text-left">{tool.name}</span>
-                          )}
-                          {!collapsed && tool.isPro && (
-                            <Sparkles className="h-3 w-3 text-primary shrink-0" />
-                          )}
-                          {!collapsed && tool.comingSoon && (
-                            <span className="text-[8px] text-muted-foreground/50 uppercase font-bold shrink-0">Soon</span>
-                          )}
-                        </button>
-                      );
-
-                      if (collapsed) {
+                </TooltipTrigger>
+                {collapsed && <TooltipContent side="right">Add Tools</TooltipContent>}
+              </Tooltip>
+            </PopoverTrigger>
+            <PopoverContent side="right" align="start" sideOffset={8} className="w-80 p-0 bg-background border-border rounded-2xl overflow-hidden shadow-xl max-h-[500px]">
+              <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+                <span className="text-sm font-bold text-foreground">Add Tools</span>
+                <button onClick={() => setAddToolsOpen(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="overflow-y-auto max-h-[420px] custom-scrollbar">
+                {/* Pinned tools */}
+                {pinnedTools.length > 0 && (
+                  <div className="px-3 py-2">
+                    <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest px-1">Pinned</span>
+                    <div className="mt-1.5 space-y-0.5">
+                      {pinnedTools.map(tool => {
+                        const Icon = tool.icon;
+                        const thumb = toolThumbnails[tool.id];
                         return (
-                          <Tooltip key={tool.id}>
-                            <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                            <TooltipContent side="right">{tool.name}</TooltipContent>
-                          </Tooltip>
+                          <div key={tool.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted/50 group">
+                            <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 border border-border/60">
+                              {thumb ? (
+                                <img src={thumb} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                                  <Icon className="h-3.5 w-3.5 text-primary/60" />
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-sm text-foreground flex-1 truncate">{tool.name}</span>
+                            <button
+                              onClick={() => togglePin(tool.id)}
+                              className="text-muted-foreground/40 hover:text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         );
-                      }
-                      return <div key={tool.id}>{btn}</div>;
-                    })}
+                      })}
+                    </div>
+                  </div>
+                )}
+                {/* Available to add */}
+                {unpinnedTools.length > 0 && (
+                  <div className="px-3 py-2 border-t border-border/30">
+                    <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest px-1">Available</span>
+                    <div className="mt-1.5 space-y-0.5">
+                      {unpinnedTools.map(tool => {
+                        const Icon = tool.icon;
+                        const thumb = toolThumbnails[tool.id];
+                        return (
+                          <button
+                            key={tool.id}
+                            onClick={() => togglePin(tool.id)}
+                            className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg hover:bg-muted/50 text-left group"
+                          >
+                            <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 border border-border/60">
+                              {thumb ? (
+                                <img src={thumb} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                                  <Icon className="h-3.5 w-3.5 text-primary/60" />
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-sm text-foreground flex-1 truncate">{tool.name}</span>
+                            <Plus className="h-3.5 w-3.5 text-primary/50 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Pinned tools list */}
+        <nav className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1 space-y-0.5">
+          {pinnedTools.map(tool => {
+            const Icon = tool.icon;
+            const isActive = activeTool === tool.id || activeTool === tool.legacyRoute;
+            const thumb = toolThumbnails[tool.id];
+
+            const btn = (
+              <button
+                key={tool.id}
+                onClick={() => onToolSelect(tool.id)}
+                className={cn(
+                  "group/tool flex items-center gap-2 w-full rounded-full px-2 py-1.5 text-[13px] transition-all duration-150 relative",
+                  isActive
+                    ? "bg-primary text-primary-foreground font-medium shadow-md shadow-primary/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                  collapsed && "justify-center rounded-xl"
+                )}
+              >
+                {/* Drag handle - visible on hover */}
+                {!collapsed && (
+                  <GripVertical className="h-3 w-3 shrink-0 opacity-0 group-hover/tool:opacity-40 transition-opacity cursor-grab text-muted-foreground" />
+                )}
+                
+                {/* Colorful thumbnail circle */}
+                <div className={cn(
+                  "h-7 w-7 rounded-full overflow-hidden shrink-0 border",
+                  isActive ? "border-primary-foreground/30 ring-2 ring-primary-foreground/10" : "border-border/60"
+                )}>
+                  {thumb ? (
+                    <img src={thumb} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className={cn(
+                      "w-full h-full flex items-center justify-center",
+                      isActive ? "bg-primary-foreground/20" : "bg-primary/10"
+                    )}>
+                      <Icon className={cn("h-3.5 w-3.5", isActive ? "text-primary-foreground" : "text-primary/60")} />
+                    </div>
+                  )}
+                </div>
+                {!collapsed && (
+                  <span className="truncate flex-1 text-left">{tool.name}</span>
+                )}
+                {!collapsed && tool.comingSoon && (
+                  <span className="text-[8px] text-muted-foreground/50 uppercase font-bold shrink-0">Soon</span>
+                )}
+              </button>
             );
+
+            if (collapsed) {
+              return (
+                <Tooltip key={tool.id}>
+                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
+                  <TooltipContent side="right">{tool.name}</TooltipContent>
+                </Tooltip>
+              );
+            }
+            return <div key={tool.id}>{btn}</div>;
           })}
         </nav>
 
         {/* Bottom section */}
         <div className="shrink-0 border-t border-border/50">
-          <div className="px-3 py-2">
+          <div className="px-2 py-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
