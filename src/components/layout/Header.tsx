@@ -142,9 +142,8 @@ export default function Header() {
                   <NavigationMenuContent>
                     <div className={cn(
                       "w-[420px] p-5",
-                      // Solid card styling
                       "bg-card border border-border",
-                      "shadow-xl shadow-black/30",
+                      "shadow-xl shadow-black/5",
                       "rounded-xl"
                     )}>
                       
