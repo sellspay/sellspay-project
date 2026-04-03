@@ -65,7 +65,7 @@ const DEFAULT_STEPS: Step[] = [
    },
  ];
  
-const CARD_COLORS = ["#0d0d0d", "#f5f5f5", "#0d0d0d", "#e76e50", "#50A9E7", "#0d0d0d"];
+const CARD_COLORS = ["#ffffff", "#f5f5f5", "#0d0d0d", "#e76e50", "#50A9E7", "#ffffff"];
 const STEP_DISTANCE_DESKTOP = 500;
 const STEP_DISTANCE_MOBILE = 300;
 const STACK_Y = 14;
